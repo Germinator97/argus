@@ -75,7 +75,7 @@ final List<ArgusScreen> argusScreens = <ArgusScreen>[];
 ///
 /// ⚠️ SANS ELLES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
 /// défaut de `flutter_test` rend chaque glyphe dans un carré d'un cadratin : un
-/// texte y est jusqu'à deux fois plus large qu'en Geist ou en Inter, il replie
+/// texte y est jusqu'à deux fois plus large qu'en Inter ou en Roboto, il replie
 /// sur deux lignes, et le test déclare intenable une rangée qui tient très bien.
 ///
 /// ⚠️ UNE FAMILLE PAR ENTRÉE. Une app sérieuse en a plusieurs — affichage,
@@ -89,8 +89,8 @@ final List<ArgusScreen> argusScreens = <ArgusScreen>[];
 /// défaut qu'on croyait écarter.
 ///
 ///     const Map<String, List<String>> argusFonts = <String, List<String>>{
-///       'Geist': <String>['assets/fonts/geist/Geist-Variable.ttf'],
-///       'JetBrainsMono': <String>['assets/fonts/jetbrains_mono/JetBrainsMono-Variable.ttf'],
+///       'FamilleTexte': <String>['assets/fonts/texte/Texte-Variable.ttf'],
+///       'FamilleChiffres': <String>['assets/fonts/chiffres/Chiffres-Variable.ttf'],
 ///     };
 const Map<String, List<String>> argusFonts = <String, List<String>>{};
 
@@ -126,7 +126,7 @@ const Locale argusLocale = Locale('fr', 'FR');
 /// raison ; les cibles tactiles et la disposition, elles, ne dépendent pas du
 /// thème et continuent de mesurer.
 ///
-///     ThemeData? argusTheme() => AppTheme.dark();
+///     ThemeData? argusTheme() => MonTheme.sombre();
 ///
 /// ⚠️ Si ton app propose les DEUX thèmes, duplique le garde de contraste :
 /// une couleur née sur les fonds sombres passe en sombre et échoue en clair,
