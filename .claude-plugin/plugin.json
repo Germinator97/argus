@@ -1,7 +1,7 @@
 {
   "name": "argus",
-  "version": "1.0.0",
-  "description": "Argus — agent QA/QE pour applications web : audit live exploratoire (EXPLORE), mode démo vidéo (DEMO) et harness @playwright/test de non-régression (REGRESS) — régression visuelle, accessibilité axe/WCAG, Core Web Vitals, liens, console/réseau, sécurité (DAST/SCA/headers/authz), rapports JSON/JUnit/HTML, CI. Invocable via /argus.",
+  "version": "1.1.0",
+  "description": "Argus — agents QA/QE pour applications web ET mobiles. /argus : audit live (EXPLORE), démo vidéo (DEMO) et harness @playwright/test de non-régression (REGRESS) — régression visuelle, accessibilité axe/WCAG, Core Web Vitals, liens, console/réseau, sécurité (DAST/SCA/headers/authz). /argus-mobile : le même pour les apps Flutter Android et iOS, avec Maestro — parcours E2E sur le binaire compilé, régression visuelle par device, accessibilité et disposition à grande police sans émulateur, démarrage à froid et jank, sécurité OWASP MASVS. Rapports JSON/JUnit/HTML et gating CI dans les deux cas.",
   "author": {
     "name": "Alex Wilfried OUATTARA",
     "email": "alexwilfriedo@gmail.com"
@@ -11,12 +11,18 @@
     "qa",
     "qe",
     "playwright",
+    "maestro",
     "e2e",
+    "mobile",
+    "flutter",
+    "android",
+    "ios",
     "non-regression",
     "visual-regression",
     "accessibility",
     "core-web-vitals",
     "security",
+    "masvs",
     "ci"
   ]
 }

@@ -139,3 +139,4 @@ Détails complets et matrice par environnement : `references/methodology.md` §3
 - **`scripts/install.sh`** — copie idempotente du scaffold dans un projet cible.
 - **`assets/scaffold/`** — le harness `@playwright/test` réel, copié dans le projet à tester
   (inclut `scripts/argus-report.mjs` : JSON Playwright → rapport HTML Argus, lancé par `npm run argus:report`).
+- **Application MOBILE (Flutter, Android/iOS) ?** Ce skill cible le web : utilise `/argus-mobile`, qui pilote Maestro sur le binaire compilé.
