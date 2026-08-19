@@ -557,7 +557,7 @@ async function main() {
   const animations = disableAnimations(platform, resolved.udid, opts.dryRun);
   (animations.ok ? log : warn)(`animations : ${animations.detail}`);
 
-  const secretsPassed = (config.auth?.secretsFromEnv ?? []).filter((n) => process.env[n]);
+  const secretsPassed = (config.auth?.secretsFromEnv ?? []).filter((/** @type {string} */ n) => process.env[n]);
   if (secretsPassed.length) {
     warn(`${secretsPassed.join(', ')} passés à Maestro via -e : visibles dans \`ps\` le temps du run.`);
   }
@@ -627,7 +627,9 @@ async function main() {
     coverage: {
       screensDeclared: (config.screens ?? []).length,
       screensConfigured: screens.length,
-      notConfigured: (config.screens ?? []).filter((s) => !screens.includes(s)).map((s) => s.id),
+      notConfigured: (config.screens ?? [])
+        .filter((/** @type {any} */ s) => !screens.includes(s))
+        .map((/** @type {any} */ s) => s.id),
       visualScreens: visualScreens.map((s) => s.id),
       visualMode,
     },

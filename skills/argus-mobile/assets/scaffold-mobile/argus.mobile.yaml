@@ -207,8 +207,8 @@ security:
     - 'ya29\.[0-9A-Za-z\-_]+'                                     # jeton OAuth Google
     - 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.'            # JWT signé en dur
     - 'sk-[A-Za-z0-9]{32,}'                                       # clé de type OpenAI
-    - '(?i)storePassword\s*=\s*\S+'                               # keystore Android
-    - '(?i)keyPassword\s*=\s*\S+'
+    - '[sS]tore[pP]assword\s*=\s*\S+'                             # keystore Android
+    - '[kK]ey[pP]assword\s*=\s*\S+'
   # Fichiers où un motif ci-dessus est ATTENDU et légitime : la clé `AIza` de
   # google-services.json est une clé client publique, pas une fuite. Sans cette
   # liste, chaque run remonterait le même faux positif — et un rapport qui crie

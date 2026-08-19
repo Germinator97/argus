@@ -481,6 +481,7 @@ export const TOOLS = {
   aapt2: { probe: ['version'], why: 'lecture du manifeste de l\'APK', install: 'Android SDK Build-Tools (ajoute-le au PATH)' },
   apkanalyzer: { probe: ['-h'], why: 'taille et contenu de l\'APK', install: 'Android SDK Command-line Tools' },
   'osv-scanner': { probe: ['--version'], why: 'CVE des dépendances', install: 'https://google.github.io/osv-scanner/installation/' },
+  unzip: { probe: ['-v'], why: 'lecture du contenu de l\'APK', install: 'présent par défaut sur macOS et Linux ; sur Windows, via Git Bash ou WSL' },
 };
 
 /**
