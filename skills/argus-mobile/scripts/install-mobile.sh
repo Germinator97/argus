@@ -10,14 +10,24 @@
 #              fichiers que tu édites.
 #
 # LA FRONTIÈRE EST DÉRIVÉE DE LA SOURCE, pas d'une liste tenue à la main —
-# chaque fichier du scaffold dit lui-même à quelle catégorie il appartient :
-#   « TODO(argus) »  → il T'APPARTIENT (config, ancres, parcours métier) :
+# chaque fichier du scaffold se déclare, dans ses 20 premières lignes :
+#   « ARGUS:OWNED »  → il T'APPARTIENT (config, ancres, parcours métier) :
 #                      jamais écrasé, jamais comparé.
-#   « fusionn… »     → à FUSIONNER dans un homonyme du projet (.gitignore,
+#   « ARGUS:MERGE »  → à FUSIONNER dans un homonyme du projet (.gitignore,
 #                      snippet npm) : jamais écrasé, jamais comparé.
 #   sinon            → du CADRE (scripts, suites de test, CI) : comparable et
 #                      remplaçable par --update.
 # Une liste de noms écrite à la main aurait vieilli au premier fichier ajouté.
+#
+# ⚠️ Les marqueurs sont RÉSERVÉS et bornés à l'en-tête, pour qu'un fichier
+# puisse en PARLER sans être classé par ce qu'il dit. Les repérer par des mots
+# courants a coûté deux fichiers mal classés en silence : le scanner MASVS
+# parlait du « manifeste fusionné », et la doc du harness citait le marqueur de
+# propriété en l'expliquant. Ni l'un ni l'autre n'était plus mis à jour.
+#
+# ⚠️ Un fichier de CADRE n'est comparé que si la copie locale porte la
+# signature d'Argus : un homonyme du projet — Makefile, typiquement — n'est ni
+# écrasé par --update, ni compté « en retard » par --check.
 #
 # ⚠️ Sans --update, une amélioration du plugin NE REDESCEND PAS dans un projet
 # déjà installé : la copie locale reste à la version du jour de l'installation,
@@ -34,7 +44,9 @@ for arg in "$@"; do
     --check)  MODE="check" ;;
     --update) MODE="update" ;;
     -h|--help)
-      sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      # Dérivé : tout l'en-tête, jusqu'à la première ligne de code. Une plage
+      # de lignes figée se serait tue dès qu'on ajoute un paragraphe au-dessus.
+      sed -n '2,/^[^#]/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'
       exit 0 ;;
     *) TARGET="$arg" ;;
   esac
@@ -63,6 +75,8 @@ copied=0
 skipped=0
 outdated=0
 updated=0
+foreign=0
+foreign_list=''
 while IFS= read -r src; do
   rel="${src#"$SCAFFOLD_DIR"/}"
   dest="$TARGET/$rel"
@@ -80,23 +94,37 @@ while IFS= read -r src; do
     continue
   fi
 
-  # Fichier que TU édites : il porte un TODO(argus) dans la source du plugin.
-  if grep -q 'TODO(argus)' "$src"; then
+  # Fichier que TU édites : la source se déclare ARGUS:OWNED en en-tête.
+  if head -20 "$src" | grep -qF 'ARGUS:OWNED'; then
     [ "$MODE" = "install" ] && echo "  ⏭️  à toi, conservé : $rel" || true
     skipped=$((skipped + 1))
     continue
   fi
 
   # Fichier à FUSIONNER dans un homonyme du projet (.gitignore, snippet npm) :
-  # il ne remplace rien et ne se compare à rien. Reconnu à ce que la source le
-  # dit d'elle-même, plutôt qu'à une liste de noms qui vieillirait.
-  if grep -qi 'fusionn' "$src"; then
+  # il ne remplace rien et ne se compare à rien.
+  if head -20 "$src" | grep -qF 'ARGUS:MERGE'; then
     [ "$MODE" = "install" ] && echo "  ⏭️  à fusionner à la main : $rel" || true
     skipped=$((skipped + 1))
     continue
   fi
 
-  # Fichier de cadre : comparable, donc remplaçable.
+  # Fichier de CADRE — mais est-ce bien NOTRE copie ? Un projet peut avoir son
+  # propre fichier au même nom (Makefile). L'écraser sous prétexte qu'il diffère
+  # du nôtre détruirait son travail, et le compter « en retard » ferait rougir
+  # sa CI pour un fichier qui ne nous appartient pas.
+  # La signature est dérivée de la source : sa première ligne qui se nomme. Une
+  # source sans signature ne permet pas de trancher — on garde alors l'ancien
+  # comportement plutôt que d'inventer un verdict.
+  signature="$(grep -m1 -i 'argus' "$src" || true)"
+  if [ -n "$signature" ] && ! grep -qF "$signature" "$dest"; then
+    echo "  ⏭️  présent chez toi, pas d'origine Argus : $rel"
+    foreign=$((foreign + 1))
+    foreign_list="$foreign_list $rel"
+    continue
+  fi
+
+  # Notre copie, donc comparable et remplaçable.
   if cmp -s "$src" "$dest"; then
     skipped=$((skipped + 1))
     continue
@@ -115,6 +143,7 @@ fi
 echo
 case "$MODE" in
   check)
+    [ "$foreign" -gt 0 ] && echo "  ⚠️  pas d'origine Argus, donc laissé(s) intact(s) :$foreign_list" || true
     if [ "$outdated" -gt 0 ]; then
       echo "✖ $outdated fichier(s) de cadre en retard ou absent(s). Rejoue avec --update."
       exit 1
@@ -142,7 +171,13 @@ for tool in node flutter maestro adb osv-scanner; do
     echo "  ○ $tool absent"
   fi
 done
-echo
+if [ "$foreign" -gt 0 ]; then
+  echo "⚠️  Ces fichiers existaient déjà chez toi et ne viennent pas d'Argus :"
+  echo "  $foreign_list"
+  echo "   Ils sont intacts — et le harness n'en profite donc pas. Recopie ce"
+  echo "   dont tu as besoin depuis le scaffold."
+  echo
+fi
 
 echo "Prochaines étapes :"
 echo "  1. Édite argus.mobile.yaml (identifiants d'app, devices, écrans, seuils)."

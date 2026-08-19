@@ -1,5 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // Argus Mobile — étage 1 : les gardes qui tournent SANS device.
+// ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
 //
 // C'EST LE FICHIER À ÉDITER pour brancher les gardes `flutter test` sur ton app.
 // Les deux suites qui l'utilisent (a11y_test.dart, layout_test.dart, dans ce

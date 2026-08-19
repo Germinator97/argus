@@ -1,4 +1,5 @@
 appId: ${APP_ID}
+# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
 name: Argus — accessibilité (couverture sémantique)
 tags:
   - argus

@@ -1,0 +1,48 @@
+# CI du plugin lui-même — à ne pas confondre avec le workflow que le scaffold
+# installe chez le projet d'accueil (skills/argus-mobile/assets/…/argus-mobile.yml).
+#
+# Elle ne teste pas les harness : elle vérifie que ce que le plugin DISTRIBUE
+# est cohérent. Sans elle, tools/check-scaffold.sh n'aurait aucun lecteur, et
+# un garde que personne n'exécute ne garde rien.
+name: plugin
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  scaffold:
+    name: Cohérence du scaffold
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Classification lue par l'installeur
+        run: bash tools/check-scaffold.sh
+
+      - name: Syntaxe des installeurs
+        run: |
+          bash -n skills/argus/scripts/install.sh
+          bash -n skills/argus-mobile/scripts/install-mobile.sh
+
+      - name: Installation à blanc, puis --check
+        run: |
+          mkdir -p /tmp/host && printf 'name: host\n' > /tmp/host/pubspec.yaml
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host --check
+
+      - name: Un homonyme du projet n'est jamais écrasé
+        run: |
+          mkdir -p /tmp/own && printf 'name: own\n' > /tmp/own/pubspec.yaml
+          printf 'build:\n\t@echo mine\n' > /tmp/own/Makefile
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/own
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/own --update
+          grep -q 'echo mine' /tmp/own/Makefile \
+            || { echo "✖ le Makefile du projet a été écrasé"; exit 1; }
+
+      - name: Les scripts du harness parsent
+        run: |
+          for f in skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
+            node --check "$f"
+          done

@@ -1,8 +1,9 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # argus.mobile.yaml — réglages du harness QA mobile, spécifiques à l'application.
+# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
 #
 # C'EST LE SEUL FICHIER À ÉDITER pour brancher Argus Mobile sur une app Flutter.
-# Tous les scripts (`scripts/argus-mobile-*.mjs`) et tous les flows Maestro lisent
+# Tous les scripts (`scripts/argus/*.mjs`) et tous les flows Maestro lisent
 # depuis ici : source unique.
 #
 # Les valeurs sensibles n'ont RIEN à faire dans ce fichier. Les identifiants de

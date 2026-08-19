@@ -3,7 +3,7 @@
 /**
  * Argus Mobile — socle partagé (lecture de config, outillage, utilitaires)
  * ------------------------------------------------------------------------
- * Tous les autres scripts `argus-mobile-*.mjs` importent depuis ici.
+ * Tous les autres scripts de `scripts/argus/` importent depuis ici.
  *
  * Pourquoi un parseur YAML maison plutôt que `js-yaml` : un projet Flutter n'a
  * ni `package.json` ni `node_modules`. Exiger `npm install` pour lire un fichier

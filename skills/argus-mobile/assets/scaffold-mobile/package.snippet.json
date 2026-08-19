@@ -1,5 +1,5 @@
 {
-  "_comment": "Fusionner ces scripts dans le package.json du projet SI il en a un. Un projet Flutter n'en a généralement pas : utilise alors le Makefile fourni, qui expose les mêmes cibles. Aucune devDependency : les scripts Argus Mobile n'utilisent que Node >= 18 et ses modules natifs.",
+  "_comment": "ARGUS:MERGE — à fusionner dans le fichier homonyme du projet, à la main. Fusionner ces scripts dans le package.json du projet SI il en a un. Un projet Flutter n'en a généralement pas : utilise alors le Makefile fourni, qui expose les mêmes cibles. Aucune devDependency : les scripts Argus Mobile n'utilisent que Node >= 18 et ses modules natifs.",
   "scripts": {
     "argus:doctor": "node scripts/argus/config.mjs",
     "argus:lint": "for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do [ \"$(basename $f)\" = config.yaml ] || maestro check-syntax \"$f\"; done",

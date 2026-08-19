@@ -1,4 +1,5 @@
 # Argus Mobile — à FUSIONNER dans le .gitignore du projet (ne pas écraser).
+# ARGUS:MERGE — à fusionner dans le fichier homonyme du projet, à la main.
 
 # Rapports et artefacts de run. Contiennent des captures d'écran de l'app en
 # session authentifiée, et les journaux device : rien de tout ça n'a sa place

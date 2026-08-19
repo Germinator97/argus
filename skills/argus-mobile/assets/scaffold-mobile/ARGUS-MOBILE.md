@@ -209,10 +209,16 @@ bash <SKILL_DIR>/scripts/install-mobile.sh . --check    # signale, sort en 1
 bash <SKILL_DIR>/scripts/install-mobile.sh . --update   # remet le cadre à niveau
 ```
 
-La frontière est **dérivée de la source**, pas d'une liste : un fichier du
-scaffold qui contient `TODO(argus)` t'appartient (config, ancres, parcours
-métier) et n'est jamais touché ; un fichier qui dit se **fusionner** l'est à la
-main ; tout le reste est du cadre — scripts, suites de test, CI — et se remplace.
+La frontière est **dérivée de la source**, pas d'une liste : chaque fichier du
+scaffold se déclare dans ses vingt premières lignes. `ARGUS:OWNED` t'appartient
+(config, ancres, parcours métier) et n'est jamais touché ; `ARGUS:MERGE` est à
+fusionner à la main dans ton homonyme ; tout le reste est du cadre — scripts,
+suites de test, CI — et se remplace.
+
+Les marqueurs sont réservés et bornés à l'en-tête pour qu'un fichier puisse en
+**parler** sans être classé par ce qu'il dit — cette page-ci les cite, et reste
+du cadre. Un fichier de cadre n'est comparé que si ta copie porte la signature
+d'Argus : ton propre `Makefile` n'est donc ni écrasé, ni compté en retard.
 
 `--check` sort en 1 : à câbler en CI pour que la dérive se voie au lieu de
 s'installer.
