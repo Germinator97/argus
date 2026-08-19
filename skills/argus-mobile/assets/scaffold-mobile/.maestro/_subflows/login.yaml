@@ -1,0 +1,50 @@
+# Authentification paramétrée. AUCUN identifiant en dur : QA_USER et QA_PASS sont
+# lus dans l'environnement par le runner et injectés via `maestro test -e`.
+#
+# ⚠️ `label:` masque la valeur saisie dans la console et dans les rapports, MAIS
+# la doc Maestro est explicite : « the actual values remain visible in raw
+# internal debug logs ». Ne publie donc JAMAIS le contenu de `--debug-output`
+# comme artefact CI ouvert. Voir SKILL.md §5.
+#
+# Le bloc entier skippe si les secrets OU les ancres manquent : une suite qui
+# tente de se connecter sans identifiants échoue pour la mauvaise raison, et on
+# passe une heure à chercher un bug applicatif qui n'existe pas.
+- runFlow:
+    when:
+      true: "${typeof QA_USER !== 'undefined' && QA_USER !== '' && typeof ARGUS_AUTH_USER !== 'undefined' && ARGUS_AUTH_USER !== ''}"
+    commands:
+      - assertVisible:
+          id: ${ARGUS_AUTH_SCREEN}
+          label: Écran de connexion affiché
+
+      - tapOn:
+          id: ${ARGUS_AUTH_USER}
+          label: Champ identifiant
+      - inputText: ${QA_USER}
+
+      - tapOn:
+          id: ${ARGUS_AUTH_PASS}
+          label: Champ mot de passe
+      - inputText:
+          text: ${QA_PASS}
+          label: Saisie du mot de passe du compte de test
+
+      - tapOn:
+          id: ${ARGUS_AUTH_SUBMIT}
+          label: Validation de la connexion
+
+      # Attendre un ÉTAT, jamais un délai. `extendedWaitUntil` laisse au réseau
+      # le temps de répondre sans immobiliser la suite quand il répond vite.
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_AUTH_SUCCESS}
+          timeout: 20000
+          label: Session ouverte (ancre post-connexion visible)
+
+- runFlow:
+    when:
+      true: "${typeof QA_USER === 'undefined' || QA_USER === '' || typeof ARGUS_AUTH_USER === 'undefined' || ARGUS_AUTH_USER === ''}"
+    commands:
+      - assertTrue:
+          condition: "${true}"
+          label: 'SKIP connexion — QA_USER absent de l''environnement ou auth.anchors vide dans argus.mobile.yaml'

@@ -1,0 +1,84 @@
+appId: ${APP_ID}
+name: Argus — cycle de vie et deep links
+tags:
+  - argus
+  - lifecycle
+---
+# Mise en arrière-plan, mort du processus, restauration d'état, deep links.
+# C'est le domaine où Maestro est irremplaçable : aucun test in-process ne peut
+# tuer l'app puis la relancer, parce qu'il meurt avec elle.
+
+- runFlow: _subflows/launch-clean.yaml
+- runFlow: _subflows/login.yaml
+
+# ── 1. Arrière-plan puis retour ────────────────────────────────────────────
+# `stopApp: false` ramène l'app au premier plan SANS la redémarrer : c'est la
+# différence entre tester un retour d'arrière-plan et tester un lancement.
+- pressKey: Home
+- launchApp:
+    stopApp: false
+    label: Retour au premier plan sans redémarrage
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - assertVisible:
+          id: ${ARGUS_ANCHOR_HOME}
+          label: L'écran est retrouvé tel qu'il était
+
+# ── 2. Mort du processus et restauration ───────────────────────────────────
+# `killApp` déclenche sur Android une mort de processus initiée par le système
+# (équivalent `adb shell am kill`) — exactement ce que fait l'OS quand la mémoire
+# manque. C'est le scénario qui casse les états non persistés, et il arrive en
+# vrai tous les jours sur les appareils d'entrée de gamme.
+- pressKey: Home
+- killApp
+- launchApp:
+    stopApp: false
+    label: Relance après mort du processus
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_ANCHOR_HOME}
+          timeout: 20000
+          label: L'app repart proprement après mort du processus
+      # TODO(argus): asserte ici la DONNÉE restaurée, pas seulement l'écran.
+      # Un écran qui revient vide après une mort de processus est un défaut que
+      # l'assertion ci-dessus ne voit pas.
+      # - assertVisible:
+      #     id: panier_resume
+      #     label: Le panier a survécu à la mort du processus
+
+# ── 3. Deep link ───────────────────────────────────────────────────────────
+- runFlow:
+    when:
+      true: "${typeof ARGUS_DEEPLINK !== 'undefined' && ARGUS_DEEPLINK !== ''}"
+    commands:
+      - openLink:
+          link: ${ARGUS_DEEPLINK}
+          autoVerify: true
+          label: Ouverture du deep link
+      # ⚠️ iOS affiche au premier deep link une confirmation système, et le choix
+      # est PERMANENT pour ce simulateur — `clearState` ne le réinitialise pas.
+      # Sans ce garde, le premier run d'une machine neuve échoue et les suivants
+      # passent : le pire profil de flake.
+      - runFlow:
+          when:
+            visible: 'Open in'
+          commands:
+            - tapOn: Open
+      # TODO(argus): asserte l'écran que le deep link doit ouvrir. Sans ça, on
+      # prouve seulement que l'OS a transmis l'intent, pas que l'app l'a honoré.
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_DEEPLINK === 'undefined' || ARGUS_DEEPLINK === ''}"
+    commands:
+      - assertTrue:
+          condition: "${true}"
+          label: 'SKIP deep link — renseigne deepLinks[] dans argus.mobile.yaml'

@@ -107,6 +107,15 @@ dynamicRegions: []
 # Conteneur sur lequel recadrer les captures visuelles. Vide → plein écran.
 visualCropOn: ''
 
+# ── Deep links à éprouver ──────────────────────────────────────────────────
+# Consommés par .maestro/lifecycle.yaml. Le premier de la liste est joué.
+# Les trouver : android/app/src/main/AndroidManifest.xml → <intent-filter>,
+#               ios/Runner/Info.plist → CFBundleURLSchemes.
+# ⚠️ iOS affiche au PREMIER deep link une confirmation système, et le choix est
+# permanent pour ce simulateur — `clearState` ne le réinitialise pas. Le flow le
+# gère, mais garde-le en tête quand un run neuf se comporte autrement.
+deepLinks: []
+
 # ── Seuils ─────────────────────────────────────────────────────────────────
 thresholds:
   # Démarrage à froid / à chaud, en ms (Android : `adb shell am start -W`).
@@ -156,6 +165,15 @@ auth:
   secretsFromEnv:
     - QA_USER
     - QA_PASS
+  # Ancres sémantiques du formulaire de connexion, consommées par
+  # .maestro/_subflows/login.yaml. Une seule vide → le sous-flow skippe en entier
+  # plutôt que d'échouer à mi-parcours sur un champ introuvable.
+  anchors:
+    screen: ''     # TODO(argus): ancre de l'écran de connexion
+    user: ''       # TODO(argus): champ identifiant
+    password: ''   # TODO(argus): champ mot de passe
+    submit: ''     # TODO(argus): bouton de validation
+    success: ''    # TODO(argus): ancre prouvant que la session est ouverte
 
 # ── Sécurité (MASVS statique — détection, jamais exploitation) ─────────────
 # ⚠️ Uniquement sur TES propres builds. Jamais de reverse-engineering d'une app

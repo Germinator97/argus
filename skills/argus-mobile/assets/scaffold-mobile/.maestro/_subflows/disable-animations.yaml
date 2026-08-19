@@ -1,0 +1,22 @@
+# ⚠️ CE SOUS-FLOW NE DÉSACTIVE PAS LES ANIMATIONS — il vérifie qu'elles l'ont été.
+#
+# Pourquoi il ne peut pas les couper lui-même :
+#   1. la sandbox JavaScript de Maestro (GraalJS) n'a ni accès au système de
+#      fichiers ni accès au shell : aucun flow ne peut appeler `adb` ;
+#   2. `platform.android.disableAnimations` du config.yaml est une option
+#      MAESTRO CLOUD UNIQUEMENT, sans effet sur un émulateur local.
+#
+# C'est donc `scripts/argus-mobile-run.mjs` qui les coupe avant la suite :
+#   adb shell settings put global window_animation_scale 0
+#   adb shell settings put global transition_animation_scale 0
+#   adb shell settings put global animator_duration_scale 0
+# Les TROIS comptent : n'en couper que deux laisse passer assez de mouvement pour
+# rendre une capture instable.
+#
+# Ce garde affiche ⚠️ quand ça n'a pas été fait, plutôt que de porter un nom qui
+# ment. `optional: true` pour qu'un run direct (`maestro test .maestro`) reste
+# possible : il sera simplement non déterministe, et le dira.
+- assertTrue:
+    condition: "${typeof ARGUS_ANIMATIONS_DISABLED !== 'undefined' && ARGUS_ANIMATIONS_DISABLED === 'true'}"
+    optional: true
+    label: Animations coupées par le runner (sinon captures et timings instables)

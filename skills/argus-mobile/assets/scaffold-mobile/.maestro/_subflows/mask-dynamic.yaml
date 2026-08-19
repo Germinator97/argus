@@ -1,0 +1,31 @@
+# Neutralisation des zones non déterministes AVANT capture.
+#
+# ⚠️ Maestro n'a PAS de masquage de pixels : l'équivalent de `dynamicSelectors`
+# du harness web n'existe pas. Seul `cropOn` permet de restreindre la capture.
+# Ce sous-flow fait donc la seule chose qui reste possible depuis un flow :
+# amener l'écran dans un état stable avant de le photographier.
+#
+# Trois leviers, du plus fiable au moins fiable :
+#   1. figer la DONNÉE (horloge, solde, jeu de test) — côté app, via les
+#      `arguments` de launchApp ou un environnement de test dédié ;
+#   2. FERMER ce qui flotte (bannières, toasts, tooltips) — ci-dessous ;
+#   3. RECADRER sur un conteneur stable — `visualCropOn` dans argus.mobile.yaml.
+#
+# Ce qu'il ne faut PAS faire : relâcher `visualMatchPercentage`. Ça masque les
+# zones dynamiques ET les vraies régressions, sans distinction.
+
+# Laisse retomber toute animation d'entrée avant de capturer.
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# TODO(argus): ferme ici ce qui flotte au-dessus de tes écrans. Garde
+# `optional: true` : ces éléments n'apparaissent pas à tous les runs, et leur
+# absence ne doit pas faire échouer la capture.
+# - tapOn:
+#     id: banner_dismiss
+#     optional: true
+#     label: Ferme la bannière promotionnelle si elle est là
+# - tapOn:
+#     text: 'Plus tard'
+#     optional: true
+#     label: Ferme l'invite de mise à jour si elle est là

@@ -1,0 +1,73 @@
+appId: ${APP_ID}
+name: Argus — régression visuelle
+tags:
+  - argus
+  - visual
+---
+# Régression visuelle d'UN écran, désigné par ARGUS_SCREEN_ID / ARGUS_SCREEN_ANCHOR.
+# C'est le RUNNER qui boucle sur `screens[].visual` et rappelle ce flow une fois
+# par écran : un flow Maestro ne sait pas itérer sur une liste d'écrans, et
+# surtout il ne saurait pas NAVIGUER vers chacun d'eux.
+#
+# Deux modes, pilotés par ARGUS_VISUAL_MODE :
+#   update → `takeScreenshot` produit la référence, que le runner recopie dans
+#            argus.mobile.yaml → artifacts.baselines
+#   assert → `assertScreenshot` compare à cette référence
+#
+# ⚠️ `thresholdPercentage` est un POURCENTAGE DE CORRESPONDANCE REQUIS (défaut
+# Maestro : 95), pas un ratio de différence. 99 = on tolère 1 % de pixels
+# divergents. Y mettre 0.01 accepterait n'importe quelle image.
+#
+# ⚠️ Les baselines sont liées au couple device + version d'OS. Une référence
+# produite sur ton simulateur ne correspondra JAMAIS au rendu de l'émulateur de
+# la CI : génère-les sur la même image que la CI.
+
+- runFlow: _subflows/launch-clean.yaml
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_SCREEN_ANCHOR !== 'undefined' && ARGUS_SCREEN_ANCHOR !== ''}"
+    commands:
+      - runFlow:
+          file: _subflows/goto.yaml
+          env:
+            SCREEN_ID: ${ARGUS_SCREEN_ID}
+
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_SCREEN_ANCHOR}
+          timeout: 20000
+          label: Écran cible affiché avant capture
+
+      - runFlow: _subflows/mask-dynamic.yaml
+
+      # ── mode update : produire la référence ──────────────────────────────
+      - runFlow:
+          when:
+            true: "${typeof ARGUS_VISUAL_MODE !== 'undefined' && ARGUS_VISUAL_MODE === 'update'}"
+          commands:
+            - takeScreenshot:
+                path: ${ARGUS_SCREEN_ID}
+                label: Nouvelle référence visuelle
+
+      # ── mode assert : comparer ───────────────────────────────────────────
+      # Le chemin de référence est ABSOLU et injecté par le runner. La doc Maestro
+      # ne précise nulle part depuis quelle racine un chemin relatif de
+      # `assertScreenshot` est résolu ; plutôt que de le deviner, on passe un
+      # chemin qui ne dépend d'aucune racine.
+      - runFlow:
+          when:
+            true: "${typeof ARGUS_VISUAL_MODE === 'undefined' || ARGUS_VISUAL_MODE !== 'update'}"
+          commands:
+            - assertScreenshot:
+                path: ${ARGUS_BASELINE_DIR}/${ARGUS_SCREEN_ID}.png
+                thresholdPercentage: ${ARGUS_VISUAL_THRESHOLD}
+                label: Comparaison à la référence visuelle
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_SCREEN_ANCHOR === 'undefined' || ARGUS_SCREEN_ANCHOR === ''}"
+    commands:
+      - assertTrue:
+          condition: "${true}"
+          label: 'SKIP visuel — lance `node scripts/argus-mobile-run.mjs`, qui boucle sur screens[].visual'

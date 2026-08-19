@@ -1,0 +1,95 @@
+appId: ${APP_ID}
+name: Argus — conditions réelles
+tags:
+  - argus
+  - resilience
+---
+# Ce qui arrive vraiment aux utilisateurs : permission refusée, réseau coupé,
+# téléphone tourné. Les défauts trouvés ici sont ceux qu'aucun test de parcours
+# nominal ne verra jamais.
+#
+# ⚠️ PIÈGE DE PLATEFORME : `setAirplaneMode` et `toggleAirplaneMode` ne
+# fonctionnent QUE sur Android. La doc dit qu'ils « passent sans effet » sur iOS
+# et sur le web — donc un test de mode avion non gardé passe au VERT sur iOS en
+# n'ayant rien testé. C'est un faux vert, pas une limitation bénigne : d'où les
+# `when: platform: Android` ci-dessous.
+# Même chose pour `back`, supporté sur Android et Web seulement.
+
+# ── 1. Permissions refusées ────────────────────────────────────────────────
+# Le parcours le plus souvent cassé, parce que le plus rarement joué à la main.
+# `all: deny` force le chemin où l'utilisateur a dit non.
+- launchApp:
+    clearState: true
+    permissions:
+      all: deny
+    label: Lancement toutes permissions refusées
+
+- runFlow: _subflows/disable-animations.yaml
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_ANCHOR_HOME}
+          timeout: 20000
+          label: L'app reste utilisable sans aucune permission (pas d'écran blanc, pas de crash)
+
+# Puis on accorde, et l'app doit se rattraper sans redémarrage.
+- setPermissions:
+    permissions:
+      all: allow
+    label: Permissions accordées en cours de session
+
+# ── 2. Rotation ────────────────────────────────────────────────────────────
+# Une dimension figée qui porte du texte déborde en paysage. Le flow ne mesure
+# pas le débordement (c'est le rôle de test/argus_layout_test.dart) : il vérifie
+# que l'écran SURVIT à la rotation, ce qu'un test de widget ne voit pas.
+- setOrientation: LANDSCAPE_LEFT
+- waitForAnimationToEnd:
+    timeout: 5000
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - assertVisible:
+          id: ${ARGUS_ANCHOR_HOME}
+          label: L'écran survit au passage en paysage
+- setOrientation: PORTRAIT
+- waitForAnimationToEnd:
+    timeout: 5000
+
+# ── 3. Réseau coupé (Android uniquement) ───────────────────────────────────
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - setAirplaneMode: enabled
+      - runFlow:
+          when:
+            true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+          commands:
+            - assertVisible:
+                id: ${ARGUS_ANCHOR_HOME}
+                label: L'app tient hors ligne (état vide ou message, jamais un crash)
+      # TODO(argus): asserte ici TON message hors-ligne, pas seulement l'absence
+      # de crash. Un écran figé sans explication est un défaut, même s'il ne
+      # plante pas.
+      # - assertVisible:
+      #     id: offline_banner
+      #     label: L'utilisateur est informé de la perte de réseau
+      # Rétablir le réseau AVANT de sortir du bloc : un flow qui laisse le mode
+      # avion actif casse tous les flows suivants de la session, et le vrai
+      # défaut se retrouve masqué par une cascade d'échecs sans rapport.
+      - setAirplaneMode: disabled
+
+# ── 4. Retour système (Android uniquement) ─────────────────────────────────
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      # Retour système depuis l'accueil : ne doit pas laisser d'écran orphelin.
+      - back

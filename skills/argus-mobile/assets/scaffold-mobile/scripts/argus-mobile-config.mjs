@@ -341,7 +341,11 @@ const DEFAULTS = {
   },
   a11y: { minTouchTargetDp: 48, textScales: [1.0, 1.3, 2.0], minContrastRatio: 4.5 },
   locale: { deviceLocale: 'fr_FR', currency: 'XOF', currencySample: '1 234 567 FCFA', timezone: 'Africa/Abidjan' },
-  auth: { required: false, kind: 'form', secretsFromEnv: [] },
+  auth: {
+    required: false, kind: 'form', secretsFromEnv: [],
+    anchors: { screen: '', user: '', password: '', submit: '', success: '' },
+  },
+  deepLinks: [],
   security: {
     expectedPermissions: [], forbiddenPermissions: [], requireDebuggableOff: true,
     requireCleartextDisabled: true, requireAllowBackupOff: true, requireObfuscation: true,

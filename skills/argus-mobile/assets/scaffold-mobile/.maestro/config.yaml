@@ -1,0 +1,34 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# Découverte des flows et réglages de workspace Maestro.
+# Maestro cherche ce fichier à la racine du dossier visé : `maestro test .maestro`.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Par défaut Maestro n'exécute QUE les flows situés à la racine du dossier visé.
+# `_subflows/` et `_baselines/` restent donc volontairement hors de ce motif :
+# ce sont des briques réutilisables et des images de référence, pas des cas de
+# test. Ne mets pas `**` ici sans savoir que tu ferais tourner les sous-flows
+# comme des tests à part entière.
+flows:
+  - '*'
+
+# Tags exclus de toute exécution, sauf demande explicite en ligne de commande.
+#   wip    : flow en cours d'écriture
+#   manual : demande une intervention humaine (biométrie physique, SIM réelle,
+#            paiement sandbox) — jamais en CI
+excludeTags:
+  - wip
+  - manual
+
+# ⚠️ `disableAnimations` est une option MAESTRO CLOUD UNIQUEMENT. Elle n'a aucun
+# effet sur un émulateur ou un simulateur local — la doc est explicite là-dessus.
+# Le déterminisme local est assuré par scripts/argus-mobile-run.mjs, qui coupe
+# les TROIS échelles d'animation en adb avant de lancer la suite. Ces deux lignes
+# ne servent donc qu'aux runs Maestro Cloud.
+platform:
+  android:
+    disableAnimations: true
+  ios:
+    disableAnimations: true
+
+# NOTE : `testOutputDir` n'est volontairement pas fixé ici. Le runner passe
+# `--test-output-dir`, et le flag CLI l'emporte de toute façon sur ce fichier.

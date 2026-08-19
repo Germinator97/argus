@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+name: Argus — smoke
+tags:
+  - argus
+  - smoke
+  - p0
+---
+# Le test le moins cher et le plus rentable : l'app se lance, l'écran d'accueil
+# s'affiche, rien ne casse. S'il tombe, aucun autre résultat de la suite n'a de
+# valeur — d'où le tag p0.
+#
+# Ce que ce flow prouve VRAIMENT quand il passe :
+#   - le binaire installé démarre sur le device visé ;
+#   - l'ancre sémantique de l'accueil existe dans l'arbre d'accessibilité ;
+#   - aucun crash au lancement (Maestro collecte crash-report.txt / anr-report.txt
+#     dans le dossier d'artefacts du flow — le runner les relève).
+
+- runFlow: _subflows/launch-clean.yaml
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_ANCHOR_HOME}
+          timeout: 20000
+          label: Écran d'accueil affiché (ancre sémantique)
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME === 'undefined' || ARGUS_ANCHOR_HOME === ''}"
+    commands:
+      # Repli quand rien n'est encore configuré : on prouve au moins que l'app
+      # affiche QUELQUE CHOSE, et on dit exactement quoi renseigner. Un flow qui
+      # skippe en silence donnerait un vert qui ne vaut rien.
+      - assertVisible:
+          traits: text
+          label: 'SKIP ancre — renseigne screens[id=home].anchor dans argus.mobile.yaml (repli : au moins du texte est rendu)'

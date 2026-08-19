@@ -1,0 +1,29 @@
+# Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`.
+#
+# Aucun outil ne peut deviner comment on atteint un écran dans TON app : c'est la
+# seule partie du harness qui demande vraiment du travail projet. Chaque branche
+# ci-dessous est un `when` sur l'identifiant d'écran déclaré dans
+# `argus.mobile.yaml → screens[].id`.
+#
+# `home` ne demande rien : `launch-clean.yaml` y a déjà mené.
+
+- runFlow:
+    when:
+      true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === 'home'}"
+    commands:
+      - assertTrue:
+          condition: "${true}"
+          label: Écran d'accueil — atteint par le lancement, rien à naviguer
+
+# TODO(argus): une branche par écran de argus.mobile.yaml → screens[].
+# - runFlow:
+#     when:
+#       true: "${SCREEN_ID === 'profile'}"
+#     commands:
+#       - tapOn:
+#           id: nav_profile
+#           label: Onglet Profil
+#       - extendedWaitUntil:
+#           visible:
+#             id: profile_root
+#           timeout: 10000

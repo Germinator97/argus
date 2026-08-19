@@ -1,0 +1,54 @@
+appId: ${APP_ID}
+name: Argus — accessibilité (couverture sémantique)
+tags:
+  - argus
+  - a11y
+---
+# CE QUE CE FLOW MESURE, ET CE QU'IL NE MESURE PAS.
+#
+# Il mesure : la COUVERTURE SÉMANTIQUE. Chaque ancre déclarée dans
+# `argus.mobile.yaml → screens[]` doit exister dans l'arbre d'accessibilité du
+# device. C'est un vrai test de non-régression a11y : le jour où un refactor
+# retire un `Semantics(identifier:)`, ce flow tombe. Et comme Maestro voit
+# exactement ce que voit TalkBack ou VoiceOver, une ancre introuvable ici est
+# aussi un élément que le lecteur d'écran n'annonce pas.
+#
+# Il NE mesure PAS la taille des cibles tactiles ni les contrastes. Les sélecteurs
+# `width`/`height` de Maestro sont des ÉGALITÉS en pixels, avec une `tolerance` :
+# « ≥ 48 dp » ne s'écrit pas. Ces deux dimensions sont couvertes ailleurs :
+#   - test/argus_a11y_test.dart  → androidTapTargetGuideline, textContrastGuideline
+#                                  (déterministe, sans device, à chaque PR)
+#   - scripts/argus-mobile-a11y.mjs → mesure sur device via le dump de hiérarchie
+#                                  croisé avec `adb shell wm density`
+# Voir references/methodology-mobile.md §6.
+
+- runFlow: _subflows/launch-clean.yaml
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_ANCHOR_HOME}
+          timeout: 20000
+          label: Ancre d'accueil exposée à la couche d'accessibilité
+
+      # TODO(argus): une assertion par ancre déclarée dans screens[], atteinte
+      # via _subflows/goto.yaml. Chacune prouve qu'un lecteur d'écran trouverait
+      # l'élément.
+      # - runFlow:
+      #     file: _subflows/goto.yaml
+      #     env:
+      #       SCREEN_ID: profile
+      # - assertVisible:
+      #     id: profile_root
+      #     label: Ancre de l'écran Profil exposée
+
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME === 'undefined' || ARGUS_ANCHOR_HOME === ''}"
+    commands:
+      - assertTrue:
+          condition: "${true}"
+          label: 'SKIP a11y — aucune ancre déclarée : la couverture sémantique est nulle, pas verte'

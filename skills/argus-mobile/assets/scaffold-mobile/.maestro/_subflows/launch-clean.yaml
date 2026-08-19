@@ -1,0 +1,25 @@
+# Point d'entrée de TOUS les flows Argus : état vidé, app lancée, écran stable.
+#
+# `clearState: true` avant chaque flow est la première règle anti-flake mobile.
+# Sans elle, un flow hérite de l'onboarding déjà passé, du cache et de la session
+# du flow précédent : son résultat dépend alors de l'ordre d'exécution, ce qui est
+# la définition même d'une suite non déterministe.
+#   Android : équivalent de `adb shell pm clear <package>`
+#   iOS     : Maestro RÉINSTALLE l'app (plus lent, mais état vraiment neuf)
+#
+# `permissions.all: allow` est déjà le défaut de Maestro ; il est écrit ici pour
+# être explicite — resilience.yaml refait un `launchApp` avec `all: deny` pour
+# éprouver le parcours inverse.
+- launchApp:
+    clearState: true
+    permissions:
+      all: allow
+    label: Lancement à état vide (clearState)
+
+- runFlow: disable-animations.yaml
+
+# Attend que l'UI se stabilise plutôt que de dormir un temps fixe. Un `sleep`
+# arbitraire est soit trop court (flake), soit trop long (suite lente) ; il n'est
+# jamais juste.
+- waitForAnimationToEnd:
+    timeout: 5000
