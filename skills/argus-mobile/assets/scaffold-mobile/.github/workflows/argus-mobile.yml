@@ -1,0 +1,239 @@
+# argus-mobile — CI
+#
+# Trois étages, du moins cher au plus cher. Le premier tourne à chaque PR ;
+# les suivants coûtent un émulateur, donc on les cadre.
+#
+# Versions d'actions alignées sur le workflow du skill web (confirmées juin 2026) :
+#   actions/checkout@v6, actions/setup-node@v6, actions/upload-artifact@v7
+# subosito/flutter-action@v2 : version employée par la documentation Maestro.
+# reactivecircus/android-emulator-runner@v2 : major stable de longue date.
+# <!-- À VÉRIFIER --> confronte ces deux dernières au marketplace avant le
+# premier run : une action épinglée sur un major peut changer de comportement.
+name: argus-mobile
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: argus-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Étage 1 : les gardes sans device ────────────────────────────────────
+  # Quelques secondes, aucun émulateur. Couvre les cibles tactiles, les
+  # contrastes et la disposition à 130 % et 200 % de taille de texte —
+  # précisément ce qu'un flow Maestro ne sait pas exprimer.
+  guards:
+    name: gardes flutter_test (sans device)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - run: flutter pub get
+      - name: Analyse
+        run: flutter analyze
+      - name: Gardes a11y et disposition
+        run: flutter test test/argus_a11y_test.dart test/argus_layout_test.dart
+      # ⚠️ Ces gardes se marquent SKIPPÉES tant que `argusScreens` est vide dans
+      # test/argus_harness.dart. Un job vert ne prouve donc rien avant que
+      # quelqu'un les ait branchées : lis la sortie, pas seulement la pastille.
+
+  # ── Étage 1 bis : sécurité statique ─────────────────────────────────────
+  # Ne demande ni device ni binaire pour le niveau A (sources).
+  security:
+    name: MASVS et CVE
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - run: flutter pub get
+      - name: Installer osv-scanner
+        run: |
+          curl -sSfL -o /usr/local/bin/osv-scanner \
+            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          chmod +x /usr/local/bin/osv-scanner
+      - name: Construire l'APK (niveau B de l'analyse)
+        run: flutter build apk --debug
+      # `--require-tools` fait échouer si le binaire ou le scanner manquent.
+      # Sans ce flag, une CI où l'installation a raté rendrait vert une analyse
+      # de sécurité qui n'a rien analysé.
+      - name: MASVS statique
+        run: node scripts/argus-mobile-sec.mjs --require-tools
+      - name: CVE des dépendances
+        run: node scripts/argus-mobile-sca.mjs --require-tools
+      - name: Rapport
+        if: ${{ !cancelled() }}
+        run: node scripts/argus-mobile-report.mjs
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: argus-mobile-security
+          path: argus-mobile-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ── Étage 2 : la suite Maestro sur émulateur Android ────────────────────
+  e2e-android:
+    name: e2e Android (émulateur)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      # L'émulateur exige l'accélération matérielle : sans KVM, il démarre en
+      # ARM émulé et la suite dépasse tous les timeouts.
+      - name: Activer KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17' # Maestro exige Java 17+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - run: flutter pub get
+      - run: flutter build apk --debug
+
+      - name: Installer Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      - name: Suite Argus Mobile
+        uses: reactivecircus/android-emulator-runner@v2
+        env:
+          QA_USER: ${{ secrets.QA_USER }}
+          QA_PASS: ${{ secrets.QA_PASS }}
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          # La locale se fige au démarrage du device : `maestro test` n'a pas de
+          # `--device-locale`, et aucun flow ne peut la changer.
+          emulator-options: >-
+            -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+            -change-locale fr-FR
+          script: node scripts/argus-mobile-run.mjs --platform=android
+
+      - name: Mesures de performance
+        if: ${{ !cancelled() }}
+        run: node scripts/argus-mobile-perf.mjs || true
+
+      - name: Rapport
+        if: ${{ !cancelled() }}
+        run: node scripts/argus-mobile-report.mjs
+
+      # ⚠️ NE PAS publier `--debug-output` en artefact ouvert : `label:` masque
+      # les secrets en console et dans les rapports, mais la doc Maestro précise
+      # que les valeurs restent en clair dans les journaux de debug bruts.
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: argus-mobile-report
+          path: |
+            argus-mobile-report/report.html
+            argus-mobile-report/*.json
+            argus-mobile-report/*.xml
+            argus-mobile-report/maestro/**/screenshots/**
+            argus-mobile-report/maestro/**/startRecording/**
+          retention-days: 14
+          if-no-files-found: warn
+
+  # ── Étage 2 bis : iOS, optionnel ────────────────────────────────────────
+  # Désactivé par défaut : un runner macOS coûte dix fois un runner Linux.
+  # Active-le quand la plateforme ios figure dans argus.mobile.yaml.
+  e2e-ios:
+    name: e2e iOS (simulateur)
+    if: false
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+      - run: flutter pub get
+      - run: flutter build ios --debug --simulator
+      - name: Installer Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+      - name: Démarrer un simulateur
+        run: maestro start-device --platform ios --device-locale fr_FR
+      - name: Suite Argus Mobile
+        env:
+          QA_USER: ${{ secrets.QA_USER }}
+          QA_PASS: ${{ secrets.QA_PASS }}
+        run: node scripts/argus-mobile-run.mjs --platform=ios
+      - name: Rapport
+        if: ${{ !cancelled() }}
+        run: node scripts/argus-mobile-report.mjs
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: argus-mobile-report-ios
+          path: argus-mobile-report/
+          retention-days: 14
+          if-no-files-found: warn
+
+# ═══════════════════════════════════════════════════════════════════════════
+# BASELINES VISUELLES — le même piège que côté web
+# ═══════════════════════════════════════════════════════════════════════════
+# Une capture de référence est liée au COUPLE device + version d'OS. Générée sur
+# ton simulateur, elle ne correspondra JAMAIS au rendu de l'émulateur ci-dessus,
+# et la dimension visuelle sera rouge en permanence.
+#
+# Génère-les dans la MÊME configuration que la CI (api-level 33, pixel_6,
+# fr-FR), depuis une machine ou un job dédié :
+#
+#   node scripts/argus-mobile-run.mjs --update-baselines
+#
+# puis commite `.maestro/_baselines/<device-id>/`. Ne lance JAMAIS
+# `--update-baselines` dans ce workflow : une baseline régénérée en CI accepte
+# la régression qu'elle était censée détecter.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# OPTION — Maestro Cloud (plan payant, remplace le job e2e-android)
+# ═══════════════════════════════════════════════════════════════════════════
+#   - uses: mobile-dev-inc/action-maestro-cloud@v2.0.2
+#     with:
+#       api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
+#       project-id: ${{ secrets.MAESTRO_PROJECT_ID }}
+#       app-file: build/app/outputs/flutter-apk/app-debug.apk
+#       workspace: .maestro
+#       device-model: pixel_6
+#       device-os: android-34
+#       device-locale: fr_FR
+#
+# Le Cloud parallélise et gère les devices, mais il ne lance PAS les scripts
+# perf/sec/a11y : ceux-ci restent à exécuter dans un job local.

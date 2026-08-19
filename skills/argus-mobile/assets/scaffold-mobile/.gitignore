@@ -1,0 +1,21 @@
+# Argus Mobile — à FUSIONNER dans le .gitignore du projet (ne pas écraser).
+
+# Rapports et artefacts de run. Contiennent des captures d'écran de l'app en
+# session authentifiée, et les journaux device : rien de tout ça n'a sa place
+# dans le dépôt.
+/argus-mobile-report/
+
+# Journaux de debug Maestro. ⚠️ `label:` masque les secrets en console et dans
+# les rapports, MAIS la doc Maestro précise que les valeurs restent en clair
+# dans les journaux internes bruts. Ne les commite jamais, et ne les publie pas
+# comme artefact CI ouvert.
+/.maestro/debug-output/
+/.maestro/logs/
+
+# Sortie par défaut de Maestro quand aucun --test-output-dir n'est passé.
+/.maestro/tests/
+
+# EXCEPTION : les baselines visuelles se COMMITENT. Sans elles, la dimension
+# visuelle n'a aucune référence et se saute à chaque run — un harness de
+# non-régression visuelle sans référence versionnée ne garde rien.
+!/.maestro/_baselines/

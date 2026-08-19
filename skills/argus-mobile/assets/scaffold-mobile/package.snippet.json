@@ -1,0 +1,16 @@
+{
+  "_comment": "Fusionner ces scripts dans le package.json du projet SI il en a un. Un projet Flutter n'en a généralement pas : utilise alors le Makefile fourni, qui expose les mêmes cibles. Aucune devDependency : les scripts Argus Mobile n'utilisent que Node >= 18 et ses modules natifs.",
+  "scripts": {
+    "argus:doctor": "node scripts/argus-mobile-config.mjs",
+    "argus:guards": "flutter test test/argus_a11y_test.dart test/argus_layout_test.dart",
+    "argus:run": "node scripts/argus-mobile-run.mjs",
+    "argus:smoke": "node scripts/argus-mobile-run.mjs --tags=smoke",
+    "argus:visual": "node scripts/argus-mobile-run.mjs --tags=visual",
+    "argus:baselines": "node scripts/argus-mobile-run.mjs --update-baselines",
+    "argus:perf": "node scripts/argus-mobile-perf.mjs",
+    "argus:a11y": "node scripts/argus-mobile-a11y.mjs",
+    "argus:sec": "node scripts/argus-mobile-sec.mjs",
+    "argus:sca": "node scripts/argus-mobile-sca.mjs",
+    "argus:report": "node scripts/argus-mobile-report.mjs"
+  }
+}
