@@ -59,8 +59,8 @@ void main() {
               isNull,
               reason:
                   'Débordement sur ${screen.id} en $label.\n'
-                  "Cherche « The relevant error-causing widget was » dans la sortie : le widget "
-                  "fautif n'est presque jamais celui de l'écran.\n$thrown",
+                  'Cherche « The relevant error-causing widget was » dans la sortie : '
+                  "le widget fautif n'est presque jamais celui de l'écran.\n\$thrown",
             );
           }, skip: argusShouldSkip);
 
@@ -84,9 +84,9 @@ void main() {
               reason:
                   'Texte(s) tronqué(s) sur ${screen.id} en $label :\n'
                   '  ${truncated.join('\n  ')}\n'
-                  "Un libellé se raccourcit, un NOMBRE ne se tronque pas : « 12 340 XP » coupé "
-                  "en « 1234… » affiche un montant qui n'existe pas. Fais rétrécir les valeurs "
-                  '(FittedBox scaleDown) et raccourcis le libellé, pas la quantité.',
+                  'Un libellé se raccourcit, un NOMBRE ne se tronque pas : « 12 340 XP » '
+                  "coupé en « 1234… » affiche un montant qui n'existe pas. Fais rétrécir "
+                  'les valeurs (FittedBox scaleDown) et raccourcis le libellé.',
             );
           }, skip: argusShouldSkip);
         }

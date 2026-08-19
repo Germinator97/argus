@@ -70,22 +70,34 @@ class ArgusScreen {
 /// qu'un garde absent, parce qu'il rassure.
 final List<ArgusScreen> argusScreens = <ArgusScreen>[];
 
-/// TODO(argus): la famille de police réellement utilisée par l'app.
+/// TODO(argus): les polices du projet, recopiées de la section `fonts:` du
+/// `pubspec.yaml` — une entrée par FAMILLE, avec ses fichiers.
 ///
-/// ⚠️ SANS ELLE, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
+/// ⚠️ SANS ELLES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
 /// défaut de `flutter_test` rend chaque glyphe dans un carré d'un cadratin : un
-/// texte y est jusqu'à deux fois plus large qu'en Nunito ou en Inter, il replie
+/// texte y est jusqu'à deux fois plus large qu'en Geist ou en Inter, il replie
 /// sur deux lignes, et le test déclare intenable une rangée qui tient très bien.
+///
+/// ⚠️ UNE FAMILLE PAR ENTRÉE. Une app sérieuse en a plusieurs — affichage,
+/// texte courant, chiffres — et les enregistrer toutes sous un seul nom fausse
+/// la mesure sans rien signaler : le texte serait rendu dans la mauvaise fonte,
+/// à la mauvaise largeur, et le verdict porterait sur un écran qui n'existe pas.
 ///
 /// ⚠️ Avec `google_fonts`, la famille n'est PAS le nom nu : c'est
 /// `Famille_variante` (`Cinzel_700`, `CormorantGaramond_italic`). Un nom qui ne
 /// correspond à rien retombe EN SILENCE sur la police de test — exactement le
 /// défaut qu'on croyait écarter.
-const String argusFontFamily = '';
+///
+///     const Map<String, List<String>> argusFonts = <String, List<String>>{
+///       'Geist': <String>['assets/fonts/geist/Geist-Variable.ttf'],
+///       'JetBrainsMono': <String>['assets/fonts/jetbrains_mono/JetBrainsMono-Variable.ttf'],
+///     };
+const Map<String, List<String>> argusFonts = <String, List<String>>{};
 
-/// Dossier des TTF du projet. Tous les `.ttf` trouvés sont enregistrés sous
-/// [argusFontFamily].
-const String argusFontsDirectory = 'assets/fonts';
+/// TODO(argus): la famille appliquée par défaut au thème de test — celle que
+/// `ThemeData.fontFamily` porte dans l'app. DOIT être une clé de [argusFonts] :
+/// un nom qui n'y figure pas retombe en silence sur la police de test.
+const String argusFontFamily = '';
 
 /// TODO(argus): si ton app formate des dates ou des nombres localisés
 /// (`DateFormat(…, 'fr_FR')`, pluriels `intl`), ajoute ici les delegates —
@@ -100,6 +112,26 @@ const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =
 
 /// Locale imposée à la surface de test.
 const Locale argusLocale = Locale('fr', 'FR');
+
+/// TODO(argus): le thème RÉEL de l'application.
+///
+/// ⚠️ SANS LUI, LE CONTRASTE NE PEUT PAS ÊTRE MESURÉ. Les widgets seraient
+/// montés sur le thème Material par défaut, dont le fond est BLANC : sur une
+/// app sombre, chaque texte clair y ressort autour de 1:1 et le garde rapporte
+/// une dizaine de défauts qui n'existent pas. Mesurer un contraste sur le
+/// mauvais fond est pire que ne pas le mesurer — ça remplit un rapport de bruit
+/// et on cesse de le lire.
+///
+/// Tant qu'il vaut `null`, le garde de contraste se marque SKIPPÉ avec sa
+/// raison ; les cibles tactiles et la disposition, elles, ne dépendent pas du
+/// thème et continuent de mesurer.
+///
+///     ThemeData? argusTheme() => AppTheme.dark();
+///
+/// ⚠️ Si ton app propose les DEUX thèmes, duplique le garde de contraste :
+/// une couleur née sur les fonds sombres passe en sombre et échoue en clair,
+/// et l'inverse est tout aussi vrai.
+ThemeData? argusTheme() => null;
 
 // ───────────────────────────────────────────────────────────────────────────
 // 2. Gabarits de mesure
@@ -174,28 +206,37 @@ const List<double> argusTextScales = <double>[1.0, 1.3, 2.0];
 // 3. Mécanique
 // ───────────────────────────────────────────────────────────────────────────
 
-/// Charge les TTF du projet sous [argusFontFamily].
+/// Charge chaque famille déclarée dans [argusFonts] sous SON nom.
 ///
-/// Rend le nombre de fichiers chargés. Zéro signifie que la mesure se ferait
-/// avec la police de test — c'est [argusSkipReason] qui en tire les conséquences.
+/// ⚠️ Un fichier déclaré mais absent fait ÉCHOUER le chargement, il n'est pas
+/// sauté : une police qui manque en silence, c'est la police de test qui prend
+/// sa place, et toutes les mesures qui suivent portent alors sur un rendu qui
+/// n'existe nulle part. Mieux vaut un test rouge qu'un chiffre faux.
+///
+/// Rend le nombre de fichiers chargés.
 Future<int> loadArgusFonts() async {
-  if (argusFontFamily.isEmpty) return 0;
-  final Directory directory = Directory(argusFontsDirectory);
-  if (!directory.existsSync()) return 0;
-  final List<File> fonts = directory
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((File file) => file.path.toLowerCase().endsWith('.ttf'))
-      .toList();
-  if (fonts.isEmpty) return 0;
-  final FontLoader loader = FontLoader(argusFontFamily);
-  for (final File font in fonts) {
-    loader.addFont(
-      Future<ByteData>.value(ByteData.sublistView(font.readAsBytesSync())),
-    );
+  int loaded = 0;
+  for (final MapEntry<String, List<String>> family in argusFonts.entries) {
+    final FontLoader loader = FontLoader(family.key);
+    for (final String assetPath in family.value) {
+      final File file = File(assetPath);
+      if (!file.existsSync()) {
+        throw StateError(
+          "Police déclarée mais introuvable : '$assetPath' (famille "
+          "'${family.key}'). Corrige argusFonts dans test/argus_harness.dart. "
+          'Sans ce fichier, flutter_test rendrait le texte dans sa police par '
+          "défaut — un carré d'un cadratin par glyphe — et toute mesure de "
+          'disposition porterait sur un écran qui n\'existe pas.',
+        );
+      }
+      loader.addFont(
+        Future<ByteData>.value(ByteData.sublistView(file.readAsBytesSync())),
+      );
+      loaded += 1;
+    }
+    await loader.load();
   }
-  await loader.load();
-  return fonts.length;
+  return loaded;
 }
 
 /// Raison de sauter les gardes, ou `null` s'ils sont exploitables.
@@ -206,14 +247,21 @@ String? argusSkipReason() {
   if (argusScreens.isEmpty) {
     return 'aucun écran déclaré — remplis argusScreens dans test/argus_harness.dart';
   }
-  if (argusFontFamily.isEmpty) {
-    return 'argusFontFamily est vide : sans la vraie police, la mesure de disposition '
+  if (argusFonts.isEmpty) {
+    return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
         'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
-        "d'un cadratin). Renseigne-la dans test/argus_harness.dart.";
+        "d'un cadratin). Recopie la section fonts: du pubspec dans "
+        'test/argus_harness.dart.';
   }
-  if (!Directory(argusFontsDirectory).existsSync()) {
-    return '$argusFontsDirectory introuvable : embarque les TTF dans le projet plutôt '
-        'que de dépendre du téléchargement de google_fonts au lancement.';
+  if (argusFontFamily.isEmpty) {
+    return 'argusFontFamily est vide : indique la famille par défaut du thème.';
+  }
+  if (!argusFonts.containsKey(argusFontFamily)) {
+    // Le piège exact qu'on veut écarter : un nom qui ne correspond à rien
+    // retombe EN SILENCE sur la police de test.
+    return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une clé de "
+        'argusFonts (${argusFonts.keys.join(', ')}). Un nom qui ne correspond à '
+        'aucune famille chargée retombe en silence sur la police de test.';
   }
   return null;
 }
@@ -240,9 +288,9 @@ Future<void> pumpArgus(
       localizationsDelegates: argusLocalizationsDelegates.isEmpty
           ? null
           : argusLocalizationsDelegates,
-      theme: ThemeData(
-        fontFamily: argusFontFamily.isEmpty ? null : argusFontFamily,
-      ),
+      theme:
+          argusTheme() ??
+          ThemeData(fontFamily: argusFontFamily.isEmpty ? null : argusFontFamily),
       debugShowCheckedModeBanner: false,
       home: Builder(
         builder: (BuildContext context) => MediaQuery(

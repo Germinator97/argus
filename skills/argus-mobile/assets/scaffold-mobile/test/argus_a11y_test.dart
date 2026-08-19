@@ -52,12 +52,23 @@ void main() {
       // fonds sombres passe en sombre et échoue en clair, et l'inverse est tout
       // aussi vrai. Le garde ci-dessous mesure le thème que `pumpArgus` applique ;
       // duplique-le avec un thème sombre dès que ton app en propose un.
-      testWidgets(argusName('contraste du texte (WCAG AA)'), (WidgetTester tester) async {
-        final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
-        await expectLater(tester, meetsGuideline(textContrastGuideline));
-        handle.dispose();
-      }, skip: argusShouldSkip);
+      // ⚠️ Skippé tant qu'`argusTheme` n'est pas renseigné : mesurer un
+      // contraste sur le thème Material par défaut (fond blanc) donnerait des
+      // défauts inventés sur toute app sombre.
+      testWidgets(
+        argusName(
+          argusTheme() == null
+              ? "contraste du texte (WCAG AA)  [SKIP — argusTheme() vaut null : le fond mesuré ne serait pas celui de l'app]"
+              : 'contraste du texte (WCAG AA)',
+        ),
+        (WidgetTester tester) async {
+          final SemanticsHandle handle = tester.ensureSemantics();
+          await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+          handle.dispose();
+        },
+        skip: argusShouldSkip || argusTheme() == null,
+      );
 
       // Ce que Maestro voit d'un élément, c'est ce que TalkBack et VoiceOver en
       // annoncent. Une cible sans label est un bouton que le lecteur d'écran
