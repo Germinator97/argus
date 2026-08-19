@@ -1,0 +1,231 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# argus.mobile.yaml — réglages du harness QA mobile, spécifiques à l'application.
+#
+# C'EST LE SEUL FICHIER À ÉDITER pour brancher Argus Mobile sur une app Flutter.
+# Tous les scripts (`scripts/argus-mobile-*.mjs`) et tous les flows Maestro lisent
+# depuis ici : source unique.
+#
+# Les valeurs sensibles n'ont RIEN à faire dans ce fichier. Les identifiants de
+# test viennent de l'environnement (voir `auth.secretsFromEnv`) et sont injectés
+# aux flows par le runner via `maestro test -e KEY=…`.
+#
+# SOUS-ENSEMBLE YAML ACCEPTÉ (scripts/argus-mobile-config.mjs, sans dépendance) :
+#   commentaires · maps imbriquées · listes (bloc `- x` et flow `[a, b]`)
+#   chaînes nues ou quotées · entiers · flottants · true/false · null/~
+# NON accepté, et signalé par une erreur explicite plutôt que mal interprété :
+#   ancres/alias (&, *) · blocs multi-lignes (|, >) · maps en flow ({a: 1})
+#   `yes`/`no`/`on`/`off` nus (ambigus en YAML 1.1 — écris true/false)
+# ═══════════════════════════════════════════════════════════════════════════
+
+# ── L'application sous test ────────────────────────────────────────────────
+app:
+  # Nom du paquet Dart (pubspec.yaml → name). Sert d'étiquette dans les rapports.
+  name: mon_app
+  # Identifiant Android (applicationId) et iOS (CFBundleIdentifier). C'est ce que
+  # Maestro met dans `appId:` en tête de chaque flow. REQUIS pour la plateforme
+  # que tu testes ; laisse vide celle que tu ne testes pas.
+  # Retrouve-les : android/app/build.gradle(.kts) → applicationId
+  #                ios/Runner.xcodeproj → PRODUCT_BUNDLE_IDENTIFIER
+  androidPackage: ''   # TODO(argus): ex. com.exemple.monapp
+  iosBundleId: ''      # TODO(argus): ex. com.exemple.monapp
+  # Flavor / scheme testé. Vide si le projet n'en a pas.
+  flavor: ''
+
+# ── Le binaire à installer ─────────────────────────────────────────────────
+# Maestro N'INSTALLE PAS l'application : il pilote un binaire déjà présent sur
+# le device. C'est le runner qui installe (adb install -r / xcrun simctl install)
+# et qui VÉRIFIE que l'installation a réussi — `adb install` peut échouer en
+# silence et laisser tourner la version précédente.
+build:
+  android: build/app/outputs/flutter-apk/app-debug.apk
+  ios: build/ios/iphonesimulator/Runner.app
+  # Commandes de build proposées quand le binaire est absent. Jamais lancées
+  # sans confirmation.
+  androidBuildCmd: flutter build apk --debug
+  iosBuildCmd: flutter build ios --debug --simulator
+
+# ── Plateformes activées ───────────────────────────────────────────────────
+# Retire `ios` si tu n'as pas de Mac / Xcode. Une plateforme désactivée est
+# rapportée `skipped`, jamais verte.
+platforms:
+  - android
+
+# ── Matrice de devices ─────────────────────────────────────────────────────
+# Comment la choisir sous budget : references/device-matrix.md.
+# `udid` vide  → le runner prend le premier device de cette plateforme.
+# `autoStart`  → démarre le device s'il n'est pas déjà là
+#                (maestro start-device --device-model … --device-os …).
+# `role: primary` → device qui porte les baselines visuelles et les mesures perf.
+devices:
+  - id: android-emu
+    platform: android
+    udid: ''
+    model: pixel_6
+    os: android-33
+    autoStart: true
+    role: primary
+  # - id: ios-sim
+  #   platform: ios
+  #   udid: ''
+  #   model: iPhone-16
+  #   os: iOS-18-2
+  #   autoStart: true
+  #   role: secondary
+
+# ── Écrans clés ────────────────────────────────────────────────────────────
+# `anchor` = l'identifiant sémantique qui PROUVE que l'écran est affiché, posé
+# côté Dart par `Semantics(identifier: 'home_root')` (Flutter ≥ 3.19).
+# ⚠️ Les `Key` Flutter ne sont PAS exposées à la couche d'accessibilité : un flow
+# qui cible une Key échoue. C'est le piège n°1 — voir methodology-mobile.md §6.
+#
+# Un écran dont `anchor` est vide est IGNORÉ par les flows (skip propre), et
+# compté dans `coverage.notConfigured` du rapport. Il n'est jamais vert.
+screens:
+  - id: home
+    anchor: ''         # TODO(argus): Semantics(identifier: '…') de l'écran d'accueil
+    priority: p0
+    visual: true
+  - id: login
+    anchor: ''         # TODO(argus)
+    priority: p0
+    visual: true
+  # - id: profile
+  #   anchor: profile_root
+  #   priority: p1
+  #   visual: true
+
+# ── Zones non déterministes ────────────────────────────────────────────────
+# ⚠️ Maestro N'A PAS de masquage de pixels : l'équivalent de `dynamicSelectors`
+# du harness web n'existe pas. Seul `cropOn` existe. Deux stratégies réelles :
+#   1. `cropOn` : recadrer la capture sur un conteneur stable (`visualCropOn`) ;
+#   2. rendre l'app déterministe avant capture (horloge figée, données de test).
+# Relâcher `visualMatchPercentage` est la MAUVAISE réponse : ça masque aussi les
+# vraies régressions.
+# Ces identifiants sont signalés dans le rapport comme « à neutraliser ».
+dynamicRegions: []
+
+# Conteneur sur lequel recadrer les captures visuelles. Vide → plein écran.
+visualCropOn: ''
+
+# ── Seuils ─────────────────────────────────────────────────────────────────
+thresholds:
+  # Démarrage à froid / à chaud, en ms (Android : `adb shell am start -W`).
+  coldStartMs: 2000
+  warmStartMs: 1000
+  # % de frames au-delà du budget de 16 ms (`dumpsys gfxinfo … framestats`).
+  jankFramesPct: 1
+  memoryMb: 250
+  binarySizeMb: 60
+  crashFreePct: 99.5
+  # ⚠️ INVERSION PAR RAPPORT AU HARNESS WEB. Côté Playwright on tolère un RATIO
+  # DE DIFFÉRENCE (0.01 = 1 % de pixels divergents). Côté Maestro,
+  # `thresholdPercentage` est un POURCENTAGE DE CORRESPONDANCE REQUIS, et son
+  # défaut est 95. Donc « 1 % de diff toléré » s'écrit 99, pas 0.01.
+  # Mettre 0.01 ici accepterait n'importe quelle image.
+  visualMatchPercentage: 99
+
+# ── Accessibilité ──────────────────────────────────────────────────────────
+a11y:
+  # Cible tactile minimale, en dp. Android : 48. iOS (HIG) : 44.
+  minTouchTargetDp: 48
+  # Échelles de texte éprouvées par les gardes `flutter test` (étage 1).
+  # 1.3 est un cran de réglage système courant, pas un cas limite.
+  textScales: [1.0, 1.3, 2.0]
+  # Ratio de contraste minimal (WCAG AA sur texte normal).
+  minContrastRatio: 4.5
+
+# ── Localisation ───────────────────────────────────────────────────────────
+# ⚠️ `--device-locale` n'existe QUE sur `maestro start-device` et `maestro cloud`,
+# pas sur `maestro test` : la locale se fige au DÉMARRAGE du device. Aucun flow
+# ne peut la changer.
+locale:
+  deviceLocale: fr_FR
+  currency: XOF
+  # Format monétaire attendu (espace insécable étroit avant FCFA côté UEMOA).
+  currencySample: '1 234 567 FCFA'
+  timezone: Africa/Abidjan
+
+# ── Authentification ───────────────────────────────────────────────────────
+# AUCUNE valeur en dur. Le runner lit ces variables dans l'environnement et les
+# passe aux flows via `-e`. Une variable absente → le flow de login skippe et la
+# dimension est rapportée non couverte.
+auth:
+  required: false
+  # form | otp | sso | biometric
+  kind: form
+  secretsFromEnv:
+    - QA_USER
+    - QA_PASS
+
+# ── Sécurité (MASVS statique — détection, jamais exploitation) ─────────────
+# ⚠️ Uniquement sur TES propres builds. Jamais de reverse-engineering d'une app
+# tierce : c'est la frontière, elle n'est pas négociable.
+security:
+  # Permissions attendues au manifeste. Toute permission déclarée hors de cette
+  # liste est un finding (permission excessive).
+  expectedPermissions:
+    - android.permission.INTERNET
+  # Permissions qui font échouer immédiatement si présentes.
+  forbiddenPermissions:
+    - android.permission.READ_SMS
+    - android.permission.RECEIVE_SMS
+    - android.permission.READ_CONTACTS
+    - android.permission.ACCESS_FINE_LOCATION
+  # Drapeaux du manifeste Android exigés en release.
+  requireDebuggableOff: true
+  requireCleartextDisabled: true
+  requireAllowBackupOff: true
+  # Exiger `--obfuscate --split-debug-info` sur les builds release.
+  requireObfuscation: true
+  # Motifs de secrets cherchés dans le binaire ET dans les sources.
+  # Repris du harness web (argus.config.ts) + spécifiques mobile.
+  secretPatterns:
+    - 'AKIA[0-9A-Z]{16}'                                          # AWS access key id
+    - 'sk_live_[0-9a-zA-Z]{16,}'                                  # Stripe live secret
+    - 'AIza[0-9A-Za-z\-_]{35}'                                    # Google API key
+    - 'ghp_[0-9A-Za-z]{36}'                                       # GitHub PAT
+    - 'xox[baprs]-[0-9A-Za-z-]{10,}'                              # Slack token
+    - '-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----'    # clé privée
+    - 'ya29\.[0-9A-Za-z\-_]+'                                     # jeton OAuth Google
+    - 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.'            # JWT signé en dur
+    - 'sk-[A-Za-z0-9]{32,}'                                       # clé de type OpenAI
+    - '(?i)storePassword\s*=\s*\S+'                               # keystore Android
+    - '(?i)keyPassword\s*=\s*\S+'
+  # Fichiers où un motif ci-dessus est ATTENDU et légitime : la clé `AIza` de
+  # google-services.json est une clé client publique, pas une fuite. Sans cette
+  # liste, chaque run remonterait le même faux positif — et un rapport qui crie
+  # au loup à chaque fois finit par ne plus être lu.
+  allowSecretsIn:
+    - android/app/google-services.json
+    - ios/Runner/GoogleService-Info.plist
+  # Sévérité SCA (osv-scanner) qui fait échouer.
+  scaFailOn: high
+
+# ── Budget d'exécution ─────────────────────────────────────────────────────
+# Dépassement → on loggue ce qui a été échantillonné ET ce qui a été ignoré.
+# Jamais de troncature silencieuse.
+budget:
+  maxMinutes: 25
+  maxFlows: 40
+  parallelDevices: 1
+
+# ── Gating CI ──────────────────────────────────────────────────────────────
+# Sévérités et exit codes IDENTIQUES au skill web : 0 vert · 1 major · 2 blocker
+# ou critical. Voir references/methodology-mobile.md §8.
+gate:
+  failOn: [blocker, critical, major]
+  failOnNewFinding: true
+  failOnVisualDiff: true
+  # Une suite où AUCUN flow n'a réellement tourné (toutes les ancres vides) sort
+  # en exit 2. Sans cette règle, un scaffold neuf rendrait un vert parfait en
+  # ne testant rien — le pire résultat possible pour une garde de non-régression.
+  failOnEmptyRun: true
+
+# ── Artefacts ──────────────────────────────────────────────────────────────
+artifacts:
+  dir: argus-mobile-report
+  # Baselines de régression visuelle. ⚠️ Elles sont liées au COUPLE device+OS :
+  # une baseline générée sur ton simulateur ne correspondra jamais au rendu de
+  # l'émulateur de la CI. Génère-les sur la même image que la CI (même piège que
+  # les snapshots Playwright du skill web).
+  baselines: .maestro/_baselines
