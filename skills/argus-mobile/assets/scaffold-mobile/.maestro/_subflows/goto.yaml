@@ -1,3 +1,10 @@
+appId: ${APP_ID}
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas
+# (« Config Section Required »). Le glob `flows` de config.yaml décide de ce qui
+# s'EXÉCUTE, pas de ce qui se PARSE.
+---
 # Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`.
 #
 # Aucun outil ne peut deviner comment on atteint un écran dans TON app : c'est la

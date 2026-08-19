@@ -3,12 +3,13 @@
 # Trois étages, du moins cher au plus cher. Le premier tourne à chaque PR ;
 # les suivants coûtent un émulateur, donc on les cadre.
 #
-# Versions d'actions alignées sur le workflow du skill web (confirmées juin 2026) :
-#   actions/checkout@v6, actions/setup-node@v6, actions/upload-artifact@v7
-# subosito/flutter-action@v2 : version employée par la documentation Maestro.
-# reactivecircus/android-emulator-runner@v2 : major stable de longue date.
-# <!-- À VÉRIFIER --> confronte ces deux dernières au marketplace avant le
-# premier run : une action épinglée sur un major peut changer de comportement.
+# Versions relevées via l'API GitHub le 19/08/2026 (dernière release de chacune) :
+#   actions/checkout          v7.0.1     actions/setup-node   v7.0.0
+#   actions/setup-java        v5.7.0     actions/upload-artifact v7.0.1
+#   subosito/flutter-action   v2.23.0    android-emulator-runner v2.38.0
+#   mobile-dev-inc/action-maestro-cloud  v3.0.1
+# ⚠️ Le workflow du skill web est encore sur checkout@v6 / setup-node@v6 : les
+# deux ne sont plus alignés. Bumpe-le dans la même passe si tu y touches.
 name: argus-mobile
 
 on:
@@ -32,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
@@ -52,11 +53,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - run: flutter pub get
@@ -91,7 +92,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # L'émulateur exige l'accélération matérielle : sans KVM, il démarre en
       # ARM émulé et la suite dépasse tous les timeouts.
@@ -109,7 +110,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
 
@@ -120,6 +121,17 @@ jobs:
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # Contrôle de syntaxe AVANT de démarrer l'émulateur : une erreur de flow
+      # se voit en deux secondes plutôt qu'après cinq minutes de boot.
+      # ⚠️ `check-syntax` prend UN fichier à la fois, pas un dossier.
+      - name: Syntaxe des flows
+        run: |
+          set -e
+          for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do
+            [ "$(basename "$f")" = config.yaml ] && continue
+            maestro check-syntax "$f"
+          done
 
       - name: Suite Argus Mobile
         uses: reactivecircus/android-emulator-runner@v2
@@ -171,7 +183,7 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -179,7 +191,7 @@ jobs:
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '20'
       - run: flutter pub get
@@ -225,7 +237,7 @@ jobs:
 # ═══════════════════════════════════════════════════════════════════════════
 # OPTION — Maestro Cloud (plan payant, remplace le job e2e-android)
 # ═══════════════════════════════════════════════════════════════════════════
-#   - uses: mobile-dev-inc/action-maestro-cloud@v2.0.2
+#   - uses: mobile-dev-inc/action-maestro-cloud@v3.0.1
 #     with:
 #       api-key: ${{ secrets.MAESTRO_CLOUD_API_KEY }}
 #       project-id: ${{ secrets.MAESTRO_PROJECT_ID }}

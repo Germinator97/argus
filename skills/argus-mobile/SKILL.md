@@ -103,10 +103,11 @@ signale-le avant.
 et leurs ancres, seuils, règles de sécurité, gate. Puis `test/argus_harness.dart`
 pour l'étage 1 (écrans à monter, famille de police).
 
-**d. Vérifier avant de lancer :**
-```bash
-node scripts/argus-mobile-config.mjs   # config résolue + outillage détecté
-```
+**d. Vérifier avant de lancer** : `node scripts/argus-mobile-config.mjs` (config
+résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
+⚠️ **Tout fichier YAML du workspace doit porter une section de configuration**
+(`appId:` puis `---`), sous-flows compris : Maestro les valide TOUS au démarrage
+et rejette la suite entière sur « Config Section Required ».
 
 **e. Garde-fous gitignore.** Fusionne le `.gitignore` fourni : `argus-mobile-report/`
 et les journaux de debug Maestro sont ignorés, **mais `.maestro/_baselines/` est
@@ -135,10 +136,9 @@ Outillage, par ordre d'utilité pour un agent :
    `inspect_screen` (hiérarchie en JSON compact), `run` (YAML inline),
    `take_screenshot`, `list_devices`. C'est la boucle la plus courte : inspecter,
    écrire un flow, l'exécuter, corriger, sans jamais recompiler.
-2. **`maestro hierarchy`** — dump de l'arbre dans le terminal, quand le MCP n'est
-   pas branché. <!-- À VÉRIFIER : cette commande est citée en prose dans la doc
-   Maestro mais absente de la table des sous-commandes ; ses flags ne sont pas
-   documentés. -->
+2. **`maestro hierarchy`** — dump de l'arbre dans le terminal quand le MCP n'est
+   pas branché ; `--compact` en sort du CSV, plus lisible que le JSON complet.
+   (Vérifié sur 2.8.0 : présente dans la CLI, absente de la table de la doc.)
 3. **Maestro Studio** — application **desktop**, plus une sous-commande CLI ; utile
    à l'humain, pas à l'agent. **`adb` / `xcrun simctl`** pour les mesures device.
 

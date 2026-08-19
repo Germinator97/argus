@@ -69,11 +69,20 @@ ElevatedButton(key: const Key('login_button'), …)
 C'est le prix d'entrée de l'automatisation — et il améliore l'accessibilité
 réelle au passage, ce qui n'est pas un effet de bord négligeable.
 
+## Le piège n°2 : tout fichier YAML doit avoir un en-tête
+
+Maestro valide **tous** les fichiers YAML du workspace au démarrage, sous-flows
+compris. Un seul sans section de configuration (`appId:` puis `---`) fait tomber
+la suite entière sur `Config Section Required`, **avant qu'aucun flow ne tourne**.
+Le glob `flows` de `.maestro/config.yaml` décide de ce qui s'**exécute**, pas de
+ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device.
+
 ## Commandes
 
 | Cible | Effet |
 |---|---|
 | `make argus-doctor` | config résolue, outillage détecté, problèmes de configuration |
+| `make argus-lint` | syntaxe des flows Maestro, sans device |
 | `make argus-guards` | étage 1 : a11y + disposition, sans device |
 | `make argus-run` | étage 2 : suite Maestro complète |
 | `make argus-smoke` | smoke seul — le plus rapide |

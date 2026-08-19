@@ -59,8 +59,21 @@ ni l'autre.
 | vidéo demandée par le flow | `<sortie>/<session>/<flow>/startRecording/` |
 | journal device | `logs/device-logcat.txt` (Android) · `logs/device-simulator.log` (iOS) |
 | crash / ANR | `logs/crash-report.txt` · `logs/anr-report.txt` |
-| index de tout le bundle | `manifest.json` — **contrat documenté**, à lire plutôt que balayer le dossier |
-| une entrée par étape exécutée | `commands.json` — statut, durée, erreur, artefacts produits |
+| index de tout le bundle | `manifest.json` → clé **`entries`** (pas `artifacts`) |
+| une entrée par étape exécutée | `commands.json` → `[{command, metadata}]` |
+
+⚠️ **Forme relevée sur Maestro 2.8.0**, différente de ce que la doc laisse croire :
+- le dossier d'un flow porte son champ **`name:`**, pas son nom de fichier —
+  celui-ci se relit dans `commands.json` via `MAESTRO_FILENAME` ;
+- le statut d'une étape est à `metadata.status`, pas à la racine ; l'erreur à
+  `metadata.error.message` ; les preuves de l'étape à `metadata.artifacts[]`
+  (`{type, path}`) — bien plus utiles que l'index global du bundle ;
+- `metadata.evaluatedCommand` porte les variables **résolues** : sans lui, un
+  finding annonce `id=${ARGUS_ANCHOR_HOME}` au lieu de l'ancre cherchée ;
+- les sélecteurs sont sérialisés en `idRegex` / `textRegex`, pas `id` / `text` ;
+- l'échec d'une commande **conteneur** (`runFlow`, `repeat`, `retry`) n'est que
+  la conséquence de celui d'une étape déjà rapportée : la compter doublerait
+  chaque finding.
 
 ⚠️ Le rapport **JUnit n'est PAS dans `--test-output-dir`** : il va où pointe
 `--output`, et par défaut dans `report.xml` du répertoire courant.

@@ -30,7 +30,7 @@ import { join } from 'node:path';
 import process from 'node:process';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
+  artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
 } from './argus-mobile-config.mjs';
 
@@ -56,13 +56,6 @@ function parseArgs(argv) {
 
 /** @param {string} udid @param {string[]} args */
 const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
-
-/** @returns {string} */
-function firstAndroidDevice() {
-  const res = sh('adb', ['devices']);
-  const line = res.stdout.split('\n').slice(1).map((l) => l.trim().split(/\s+/)).find((p) => p[1] === 'device');
-  return line ? line[0] : '';
-}
 
 /**
  * Densité effective, en dpi. « Override density » l'emporte quand elle existe :
@@ -214,11 +207,12 @@ function main() {
     process.exit(2);
   }
 
-  const udid = opts.device || firstAndroidDevice();
-  if (!udid) {
-    err('aucun device Android connecté (adb devices).');
+  const picked = opts.device ? { udid: opts.device, why: '' } : defaultAndroidDevice();
+  if (!picked.udid) {
+    err(picked.why);
     process.exit(2);
   }
+  const udid = picked.udid;
 
   const dpi = deviceDensity(udid);
   if (!dpi) {
@@ -258,7 +252,11 @@ function main() {
   // le dump ne contient qu'une vue-conteneur et tout paraît parfait. Rapporter
   // « aucun problème » dans cet état serait exactement le faux vert que ce
   // script est censé empêcher.
-  if (result.interactive === 0) {
+  // Zéro élément interactif alors que des nœuds portent du texte ou une
+  // description : la couche sémantique EST peuplée, l'écran n'a simplement
+  // aucun contrôle. C'est un résultat légitime (écran de chargement, reçu,
+  // splash), pas une panne de mesure. Ne crier que quand rien n'est annonçable.
+  if (result.interactive === 0 && labelled === 0) {
     const reasonEmpty = `aucun élément interactif dans l'arbre d'accessibilité de ${packageName} `
       + `(${appNodes.length} nœuds, dont ${labelled} porteurs de texte ou de description). `
       + 'Sur une app Flutter, cela signifie presque toujours que la couche sémantique n\'est pas peuplée : '
@@ -272,6 +270,10 @@ function main() {
     process.exit(2);
   }
 
+  if (result.interactive === 0) {
+    warn(`aucun contrôle interactif sur cet écran (${appNodes.length} nœuds, ${labelled} annonçables) — rien à mesurer ici, mais la couche sémantique répond.`);
+  }
+
   const findings = buildFindings(result, minDp);
   const report = {
     platform, device: { udid, dpi }, screen: opts.screen,
@@ -282,7 +284,11 @@ function main() {
       interactiveElements: result.interactive,
       tooSmall: result.tooSmall.length,
       unlabeled: result.unlabeled.length,
-      labelCoveragePct: Math.round(((result.interactive - result.unlabeled.length) / result.interactive) * 1000) / 10,
+      // `null` plutôt que NaN quand il n'y a rien à diviser : un NaN affiché
+      // se lit comme une valeur, et une valeur fausse est pire qu'une absence.
+      labelCoveragePct: result.interactive === 0
+        ? null
+        : Math.round(((result.interactive - result.unlabeled.length) / result.interactive) * 1000) / 10,
       minTouchTargetDp: minDp,
     },
     details: { tooSmall: result.tooSmall, unlabeled: result.unlabeled },
@@ -291,7 +297,8 @@ function main() {
   writeJson(reportPath, report);
 
   log(`${packageName} : ${appNodes.length} nœud(s), ${result.interactive} interactif(s) · ${result.tooSmall.length} sous ${minDp} dp · ${result.unlabeled.length} sans label`);
-  log(`couverture de label : ${report.metrics.labelCoveragePct} % · rapport : ${reportPath}`);
+  const coverage = report.metrics.labelCoveragePct;
+  log(`couverture de label : ${coverage === null ? 'sans objet' : `${coverage} %`} · rapport : ${reportPath}`);
   process.exit(exitCodeFor(findings, config.gate));
 }
 

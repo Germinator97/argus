@@ -8,7 +8,7 @@
 # optionnels : leur absence donne une dimension SAUTÉE et mentionnée, jamais un
 # faux vert.
 
-.PHONY: argus-help argus argus-guards argus-run argus-smoke argus-visual \
+.PHONY: argus-help argus argus-lint argus-guards argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-doctor argus-build
 
@@ -20,6 +20,13 @@ argus-doctor: ## Config résolue + outillage détecté
 
 argus-build: ## Construit l'APK debug
 	@flutter build apk --debug
+
+argus-lint: ## Syntaxe des flows Maestro, sans device
+	@set -e; for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do \
+		[ "$$(basename $$f)" = config.yaml ] && continue; \
+		maestro check-syntax "$$f"; \
+	done
+	@echo "✔ tous les flows parsent"
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 	@flutter test test/argus_a11y_test.dart test/argus_layout_test.dart
@@ -51,4 +58,4 @@ argus-sca: ## CVE des dépendances Dart et natives
 argus-report: ## Agrège tout en rapport HTML
 	@node scripts/argus-mobile-report.mjs
 
-argus: argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca argus-report ## Tout, dans l'ordre
+argus: argus-lint argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca argus-report ## Tout, dans l'ordre

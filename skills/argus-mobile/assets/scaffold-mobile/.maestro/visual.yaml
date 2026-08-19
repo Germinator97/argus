@@ -51,10 +51,12 @@ tags:
                 label: Nouvelle référence visuelle
 
       # ── mode assert : comparer ───────────────────────────────────────────
-      # Le chemin de référence est ABSOLU et injecté par le runner.
-      # <!-- À VÉRIFIER : la doc Maestro ne précise nulle part depuis quelle
-      # racine un chemin RELATIF de `assertScreenshot` est résolu. Plutôt que de
-      # le deviner, on passe un chemin absolu, qui ne dépend d'aucune racine. -->
+      # Le chemin de référence est ABSOLU et injecté par le runner. La doc
+      # Maestro ne précise nulle part depuis quelle racine un chemin RELATIF
+      # serait résolu ; plutôt que de le deviner, on passe un chemin qui ne
+      # dépend d'aucune racine. Éprouvé sur device (Maestro 2.8.0) : génération
+      # de la référence, comparaison conforme, puis détection d'une référence
+      # corrompue.
       - runFlow:
           when:
             true: "${typeof ARGUS_VISUAL_MODE === 'undefined' || ARGUS_VISUAL_MODE !== 'update'}"

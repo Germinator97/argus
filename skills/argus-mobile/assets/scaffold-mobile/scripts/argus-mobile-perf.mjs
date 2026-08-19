@@ -27,7 +27,7 @@ import { join, resolve } from 'node:path';
 import process from 'node:process';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
+  artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
 } from './argus-mobile-config.mjs';
 
@@ -60,16 +60,6 @@ function parseArgs(argv) {
 const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
 
 /**
- * Premier device Android connecté, à défaut d'un udid explicite.
- * @returns {string}
- */
-function firstAndroidDevice() {
-  const res = sh('adb', ['devices']);
-  const line = res.stdout.split('\n').slice(1).map((l) => l.trim().split(/\s+/)).find((p) => p[1] === 'device');
-  return line ? line[0] : '';
-}
-
-/**
  * Activité de lancement du paquet. Sans elle, `am start -W` ne sait pas quoi
  * démarrer et la mesure n'a pas lieu.
  * @param {string} udid @param {string} packageName @returns {string}
@@ -85,23 +75,31 @@ function launchComponent(udid, packageName) {
  * frame de l'app) et WaitTime (temps vu par le système, transitions comprises).
  * TotalTime est celui qui décrit l'app ; WaitTime est gardé pour le contexte.
  *
- * ⚠️ Quand l'activité est DÉJÀ au premier plan, `am start` ne la relance pas et
- * rend « TotalTime: 0 » avec un avertissement. Ce zéro n'est pas une mesure :
- * c'est l'absence de mesure, et il passerait pour un démarrage parfait. On le
- * rejette explicitement plutôt que de l'agréger.
+ * ⚠️ `am start` rend DEUX avertissements « Activity not started » très
+ * différents, et les confondre coûte une dimension entière :
+ *
+ *   « intent has been delivered to currently running top-most instance »
+ *       L'app était DÉJÀ devant : rien n'a été relancé. `TotalTime: 0` s'affiche
+ *       alors, et ce zéro passerait pour un démarrage parfait. Ce n'est pas une
+ *       mesure, c'est son absence → rejeté.
+ *
+ *   « its current task has been brought to the front »
+ *       C'EST le démarrage à chaud. Aucune activité n'est créée, donc `am start`
+ *       ne rend AUCUN TotalTime — seul `WaitTime` décrit le retour au premier
+ *       plan. Rejeter ce cas laissait warmStartMs à null indéfiniment.
  * @param {string} udid @param {string} component
- * @returns {{totalMs:number|null, waitMs:number|null}}
+ * @returns {{totalMs:number|null, waitMs:number|null, kind:'launched'|'resumed'|'none'}}
  */
 function timedLaunch(udid, component) {
   const res = adb(udid, ['shell', 'am', 'start', '-W', '-n', component]);
-  if (/Activity not started/i.test(res.stdout)) return { totalMs: null, waitMs: null };
-  const total = /TotalTime:\s*(\d+)/.exec(res.stdout);
-  const wait = /WaitTime:\s*(\d+)/.exec(res.stdout);
+  const out = res.stdout;
+  if (/top-most instance/i.test(out)) return { totalMs: null, waitMs: null, kind: 'none' };
+  const total = /TotalTime:\s*(\d+)/.exec(out);
+  const wait = /WaitTime:\s*(\d+)/.exec(out);
+  const waitMs = wait ? Number.parseInt(wait[1], 10) : null;
+  if (/brought to the front/i.test(out)) return { totalMs: null, waitMs, kind: 'resumed' };
   const totalMs = total ? Number.parseInt(total[1], 10) : null;
-  return {
-    totalMs: totalMs === 0 ? null : totalMs,
-    waitMs: wait ? Number.parseInt(wait[1], 10) : null,
-  };
+  return { totalMs: totalMs === 0 ? null : totalMs, waitMs, kind: 'launched' };
 }
 
 /** @param {number[]} values @returns {number|null} */
@@ -131,6 +129,11 @@ function measureColdStarts(udid, packageName, component, samples) {
 
 /**
  * Démarrages à chaud : l'app reste en mémoire, on la renvoie juste à l'écran.
+ *
+ * La grandeur mesurée ici est un `WaitTime`, pas un `TotalTime` : c'est le seul
+ * chiffre qu'`am start` produit quand il ne fait que ramener une tâche au
+ * premier plan. Le rapport le dit, pour qu'on ne compare jamais ce nombre au
+ * démarrage à froid comme s'il décrivait la même chose.
  * @param {string} udid @param {string} component @param {number} samples
  */
 function measureWarmStarts(udid, component, samples) {
@@ -138,10 +141,11 @@ function measureWarmStarts(udid, component, samples) {
   const values = [];
   for (let i = 0; i < samples; i += 1) {
     adb(udid, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
-    const { totalMs } = timedLaunch(udid, component);
-    if (totalMs !== null) values.push(totalMs);
+    const { totalMs, waitMs, kind } = timedLaunch(udid, component);
+    const value = kind === 'resumed' ? waitMs : totalMs;
+    if (value !== null) values.push(value);
   }
-  return { samples: values, medianMs: median(values) };
+  return { samples: values, medianMs: median(values), metric: 'WaitTime (retour au premier plan)' };
 }
 
 /**
@@ -269,11 +273,12 @@ function main() {
     process.exit(2);
   }
 
-  const udid = opts.device || firstAndroidDevice();
-  if (!udid) {
-    err('aucun device Android connecté (adb devices).');
+  const picked = opts.device ? { udid: opts.device, why: '' } : defaultAndroidDevice();
+  if (!picked.udid) {
+    err(picked.why);
     process.exit(2);
   }
+  const udid = picked.udid;
   const packageName = config.app.androidPackage;
   const component = launchComponent(udid, packageName);
   if (!component) {
@@ -312,7 +317,7 @@ function main() {
       // Isolé du régime stabilisé : c'est un état réel, pas une valeur aberrante.
       firstLaunchMs: cold.firstLaunchMs,
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
-      warmStartMs: warm.medianMs, warmStartSamples: warm.samples,
+      warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
       jankFramesPct: jank.jankFramesPct, framesRendered: jank.totalFrames,
       memoryMb, binarySizeMb: sizeMb,
     },

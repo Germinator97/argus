@@ -518,6 +518,34 @@ export function missingToolMessage(name) {
 }
 
 /**
+ * Device Android à cibler par défaut : un ÉMULATEUR, jamais un téléphone.
+ *
+ * Prendre le premier de `adb devices` reviendrait à lancer, arrêter et sonder
+ * une app sur l'appareil personnel de quelqu'un simplement parce qu'il était
+ * branché. Un appareil réel doit être nommé explicitement par `--device`.
+ * @returns {{udid:string, why:string}}
+ */
+export function defaultAndroidDevice() {
+  const res = sh('adb', ['devices']);
+  const listed = res.stdout
+    .split('\n')
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/))
+    .filter((parts) => parts.length >= 2 && parts[1] === 'device')
+    .map((parts) => parts[0]);
+  const emulator = listed.find((udid) => udid.startsWith('emulator-'));
+  if (emulator) return { udid: emulator, why: '' };
+  if (listed.length > 0) {
+    return {
+      udid: '',
+      why: `aucun émulateur branché — seuls des appareils réels le sont (${listed.join(', ')}). `
+        + 'Argus ne les cible jamais par défaut : démarre un émulateur, ou passe --device=<udid> en connaissance de cause.',
+    };
+  }
+  return { udid: '', why: 'aucun device Android connecté (adb devices).' };
+}
+
+/**
  * `adb -s <udid> shell …` avec repli quand un seul device est branché.
  * @param {string} udid @param {string[]} command
  */

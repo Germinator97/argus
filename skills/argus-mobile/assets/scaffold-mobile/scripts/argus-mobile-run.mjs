@@ -352,28 +352,97 @@ const subdirs = (dir) => (existsSync(dir) ? readdirSync(dir).filter((n) => statS
 
 /**
  * Lit les dossiers de session apparus depuis `before` et rend un bundle par flow.
- * Le manifeste est le contrat documenté : on le lit plutôt que de balayer le
- * dossier à l'aveugle.
+ *
+ * Structure réelle, relevée sur Maestro 2.8.0 :
+ *   <outputDir>/<horodatage>/<NOM DU FLOW>/{commands.json, manifest.json, logs/,
+ *                                           screenshots/, screen-hierarchy/,
+ *                                           takeScreenshot/, startRecording/}
+ * ⚠️ Le dossier porte le champ `name:` du flow — avec ses espaces et ses tirets
+ * cadratins — pas son nom de fichier. Le nom de fichier, lui, est injecté par
+ * Maestro dans `MAESTRO_FILENAME` et se relit dans commands.json : c'est cette
+ * clé-là qui sert à attribuer une dimension, parce qu'elle ne bouge pas quand
+ * quelqu'un reformule le `name:`.
  * @param {string} outputDir @param {Set<string>} before
- * @returns {Array<{flow:string, dir:string, steps:any[], artifacts:any[]}>}
+ * @returns {Array<{flow:string, name:string, tags:string[], dir:string, steps:any[], artifacts:any[]}>}
  */
 function harvest(outputDir, before) {
   const sessions = subdirs(outputDir).filter((name) => !before.has(name));
-  /** @type {Array<{flow:string, dir:string, steps:any[], artifacts:any[]}>} */
+  /** @type {Array<{flow:string, name:string, tags:string[], dir:string, steps:any[], artifacts:any[]}>} */
   const bundles = [];
   for (const session of sessions) {
     const sessionDir = join(outputDir, session);
-    for (const flow of subdirs(sessionDir)) {
-      const dir = join(sessionDir, flow);
+    for (const dirName of subdirs(sessionDir)) {
+      const dir = join(sessionDir, dirName);
+      const steps = readJsonSafe(join(dir, 'commands.json')) ?? [];
+      const config = flowConfig(steps);
       bundles.push({
-        flow,
+        flow: flowFilename(steps) || dirName,
+        name: config.name ?? dirName,
+        tags: Array.isArray(config.tags) ? config.tags.map(String) : [],
         dir,
-        steps: readJsonSafe(join(dir, 'commands.json')) ?? [],
-        artifacts: readJsonSafe(join(dir, 'manifest.json'))?.artifacts ?? [],
+        steps,
+        // Le manifeste expose `entries`, pas `artifacts` : un index de haut
+        // niveau du bundle. Les preuves PAR ÉTAPE vivent dans commands.json.
+        artifacts: readJsonSafe(join(dir, 'manifest.json'))?.entries ?? [],
       });
     }
   }
   return bundles;
+}
+
+/**
+ * Commandes CONTENEUR : leur échec n'est que la conséquence de celui d'une
+ * étape qu'elles enveloppent, déjà rapportée pour elle-même. Les garder
+ * doublerait chaque finding, avec en prime un libellé vide et une capture
+ * générique — deux entrées pour un seul défaut.
+ */
+const CONTAINER_COMMANDS = new Set(['runFlowCommand', 'repeatCommand', 'retryCommand']);
+
+/**
+ * Corps de la première (et unique) clé d'une commande Maestro sérialisée.
+ *
+ * On lit `evaluatedCommand` en priorité : il porte les variables RÉSOLUES.
+ * Sans ça, un finding annonce « id=${ARGUS_ANCHOR_HOME} » au lieu de l'ancre
+ * réellement cherchée, ce qui n'aide personne à reproduire.
+ * @param {any} step @returns {{key:string, body:any}}
+ */
+function commandBody(step) {
+  const command = step?.metadata?.evaluatedCommand ?? step?.command ?? {};
+  const key = Object.keys(command)[0];
+  return { key: key ?? '', body: key ? command[key] : {} };
+}
+
+/**
+ * Libellé lisible quand la commande n'en porte pas.
+ * @param {string} key @param {any} body @param {string} selector @returns {string}
+ */
+function describeCommand(key, body, selector) {
+  const name = key.replace(/Command$/, '');
+  return selector ? `${name} ${selector}` : name;
+}
+
+/**
+ * `MAESTRO_FILENAME` injecté par Maestro en tête de chaque flow.
+ * @param {any[]} steps @returns {string}
+ */
+function flowFilename(steps) {
+  for (const step of steps) {
+    const env = step?.command?.defineVariablesCommand?.env;
+    if (env?.MAESTRO_FILENAME) return String(env.MAESTRO_FILENAME);
+  }
+  return '';
+}
+
+/**
+ * En-tête du flow (`appId`, `name`, `tags`) tel que Maestro l'a appliqué.
+ * @param {any[]} steps @returns {any}
+ */
+function flowConfig(steps) {
+  for (const step of steps) {
+    const config = step?.command?.applyConfigurationCommand?.config;
+    if (config) return config;
+  }
+  return {};
 }
 
 /** @param {string} path @returns {any} */
@@ -388,29 +457,42 @@ function readJsonSafe(path) {
 
 /**
  * Une étape en échec devient un finding portant sa preuve.
- * @param {Array<{flow:string, dir:string, steps:any[], artifacts:any[]}>} bundles
+ *
+ * Forme relevée sur Maestro 2.8.0 : chaque entrée de commands.json est
+ * `{command: {<nomCommande>: {...}}, metadata: {status, sequenceNumber, error,
+ * artifacts}}`. Le statut n'est PAS à la racine — le lire là rendait zéro
+ * finding sur une suite pourtant rouge, soit exactement le faux vert que tout
+ * le reste du harness s'emploie à empêcher.
+ * @param {Array<{flow:string, name:string, dir:string, steps:any[]}>} bundles
  * @param {any} device @param {string} platform @param {any} config @returns {any[]}
  */
 function findingsFrom(bundles, device, platform, config) {
   /** @type {any[]} */
   const findings = [];
   for (const bundle of bundles) {
-    const failed = bundle.steps.filter((s) => String(s?.status ?? '').toUpperCase() === 'FAILED');
+    const failed = bundle.steps
+      .filter((s) => String(s?.metadata?.status ?? '').toUpperCase() === 'FAILED')
+      .filter((s) => !CONTAINER_COMMANDS.has(Object.keys(s?.command ?? {})[0] ?? ''));
     for (const [index, step] of failed.entries()) {
+      const meta = step.metadata ?? {};
+      const { key, body } = commandBody(step);
+      const selector = selectorOf(step);
       findings.push({
         id: `QAM-${String(findings.length + 1).padStart(3, '0')}`,
-        title: step.label ?? step.command ?? `étape ${step.sequenceNumber ?? index}`,
+        title: body?.label ?? describeCommand(key, body, selector) ?? `étape ${meta.sequenceNumber ?? index}`,
         severity: severityForFlow(bundle.flow, config),
         dimension: dimensionForFlow(bundle.flow),
-        screen: bundle.flow,
-        step: step.sequenceNumber ?? index,
-        selector: selectorOf(step),
+        screen: bundle.name,
+        step: meta.sequenceNumber ?? index,
+        selector,
         device: device.id,
         platform,
         osVersion: device.os ?? '',
         expected: 'étape réussie',
-        actual: String(step.error ?? 'échec sans message'),
-        evidence: bundle.artifacts.map((a) => join(bundle.dir, a.relativePath ?? '')).filter(Boolean),
+        actual: String(meta.error?.message ?? 'échec sans message'),
+        // Les preuves de L'ÉTAPE (capture et dump de hiérarchie du moment où ça
+        // casse) valent bien mieux que l'index global du bundle.
+        evidence: (meta.artifacts ?? []).map((/** @type {any} */ a) => join(bundle.dir, a.path ?? '')).filter(Boolean),
         repro: [`maestro --device=${device.udid} test .maestro/${bundle.flow}.yaml`],
         status: 'open',
       });
@@ -439,12 +521,17 @@ const DIMENSION_BY_FLOW = {
 /** @param {string} flow @returns {string} */
 const dimensionForFlow = (flow) => DIMENSION_BY_FLOW[flow.replace(/-\d+$/, '')] ?? 'functional';
 
-/** @param {any} step @returns {string} */
+/**
+ * Sélecteur employé par l'étape. Maestro sérialise les sélecteurs en `idRegex`
+ * et `textRegex` — pas en `id`/`text`, qui sont la forme d'ÉCRITURE du YAML.
+ * Lu sur la commande ÉVALUÉE, pour rendre la valeur réelle et non `${VAR}`.
+ * @param {any} step @returns {string}
+ */
 function selectorOf(step) {
-  const raw = JSON.stringify(step?.command ?? {});
-  const byId = /"id"\s*:\s*"([^"]+)"/.exec(raw);
+  const raw = JSON.stringify(step?.metadata?.evaluatedCommand ?? step?.command ?? {});
+  const byId = /"idRegex"\s*:\s*"([^"]+)"/.exec(raw);
   if (byId) return `id=${byId[1]}`;
-  const byText = /"text"\s*:\s*"([^"]+)"/.exec(raw);
+  const byText = /"textRegex"\s*:\s*"([^"]+)"/.exec(raw);
   return byText ? `text=${byText[1]}` : '';
 }
 

@@ -183,8 +183,10 @@ réels, du plus fiable au moins fiable :
 2. **Fermer ce qui flotte** — bannières, toasts, tooltips (`optional: true`) ;
 3. **Recadrer** sur un conteneur stable (`visualCropOn`).
 
-<!-- À VÉRIFIER : la racine de résolution d'un chemin relatif de `assertScreenshot`
-n'est pas documentée. Le harness contourne en injectant un chemin absolu. -->
+La racine de résolution d'un chemin **relatif** de `assertScreenshot` n'est
+documentée nulle part. Le harness n'essaie pas de la deviner : il injecte un
+chemin **absolu**, ce qui a été éprouvé sur device — génération de la référence,
+comparaison conforme, puis détection d'une référence corrompue.
 
 Ce qu'il ne faut **pas** faire : relâcher `visualMatchPercentage`. Ça masque les
 zones dynamiques **et** les vraies régressions, sans distinction.
@@ -243,8 +245,17 @@ est vrai, l'explication est inventée, et on optimise à côté. Fais varier **u
 variable, et vérifie que le mécanisme supposé bouge pendant que le chrono ne
 bouge pas.
 
-⚠️ `am start -W` rend `TotalTime: 0` quand l'activité est déjà au premier plan.
-Ce zéro est l'absence de mesure, pas un démarrage parfait.
+⚠️ `am start -W` rend DEUX avertissements « Activity not started » qu'il ne faut
+pas confondre — vérifié sur device :
+- « intent has been delivered to currently running **top-most instance** » :
+  l'app était déjà devant, rien n'a été relancé. `TotalTime: 0` s'affiche alors,
+  et ce zéro passerait pour un démarrage parfait. Ce n'est pas une mesure.
+- « its current task has been **brought to the front** » : c'est LE démarrage à
+  chaud. Aucune activité n'étant créée, `am start` ne rend **aucun TotalTime** —
+  seul `WaitTime` décrit le retour au premier plan. Rejeter ce cas laisse
+  `warmStartMs` à `null` indéfiniment, et la dimension disparaît en silence.
+  Le rapport nomme donc la grandeur (`warmStartMetric`) : un WaitTime ne se
+  compare pas à un TotalTime.
 
 ### SECURITY (OWASP MASVS/MASTG) — détection, jamais exploitation, sur TES builds
 - **Statique / binaire** : secrets en dur dans l'APK/IPA ; clés d'API dans
@@ -382,3 +393,10 @@ analyse de sécurité qui n'a rien analysé.
   fichier en plus de la sienne.
 - **Un échec Maestro sans étape fautive** (device perdu, driver, app absente) ne
   doit pas rendre vert sous prétexte qu'aucun finding n'a été produit.
+- **Tout fichier YAML du workspace doit avoir une section de configuration**,
+  sous-flows compris. Maestro valide l'ensemble des fichiers au démarrage :
+  un seul sans en-tête fait tomber la suite entière sur « Config Section
+  Required », avant qu'aucun flow ne tourne. Le glob `flows` de `config.yaml`
+  décide de ce qui s'**exécute**, pas de ce qui se **parse**. Vérifié sur
+  Maestro 2.8.0 ; aucun contrôle hors ligne ne le voit, seul `maestro
+  check-syntax <fichier>` (un fichier à la fois) ou un vrai run le révèle.

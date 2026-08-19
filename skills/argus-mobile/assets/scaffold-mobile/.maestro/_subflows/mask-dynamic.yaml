@@ -1,3 +1,10 @@
+appId: ${APP_ID}
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas
+# (« Config Section Required »). Le glob `flows` de config.yaml décide de ce qui
+# s'EXÉCUTE, pas de ce qui se PARSE.
+---
 # Neutralisation des zones non déterministes AVANT capture.
 #
 # ⚠️ Maestro n'a PAS de masquage de pixels : l'équivalent de `dynamicSelectors`
