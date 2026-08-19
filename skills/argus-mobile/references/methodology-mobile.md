@@ -183,6 +183,9 @@ réels, du plus fiable au moins fiable :
 2. **Fermer ce qui flotte** — bannières, toasts, tooltips (`optional: true`) ;
 3. **Recadrer** sur un conteneur stable (`visualCropOn`).
 
+<!-- À VÉRIFIER : la racine de résolution d'un chemin relatif de `assertScreenshot`
+n'est pas documentée. Le harness contourne en injectant un chemin absolu. -->
+
 Ce qu'il ne faut **pas** faire : relâcher `visualMatchPercentage`. Ça masque les
 zones dynamiques **et** les vraies régressions, sans distinction.
 
