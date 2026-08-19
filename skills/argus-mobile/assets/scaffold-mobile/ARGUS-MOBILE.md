@@ -193,8 +193,27 @@ scripts/
   argus-mobile-sca.mjs       # CVE
   argus-mobile-report.mjs    # agrégation → rapport HTML
 .github/workflows/argus-mobile.yml
-Makefile · package.snippet.json · .gitignore
+Makefile · package.snippet.json · .gitignore · ARGUS-MOBILE.md
 ```
+
+## Mettre le harness à jour
+
+L'installeur **n'écrase jamais** un fichier existant. Sans action, une
+amélioration du plugin ne redescend donc **pas** ici : la copie locale reste
+celle du jour de l'installation, et rien ne le signale.
+
+```bash
+bash <SKILL_DIR>/scripts/install-mobile.sh . --check    # signale, sort en 1
+bash <SKILL_DIR>/scripts/install-mobile.sh . --update   # remet le cadre à niveau
+```
+
+La frontière est **dérivée de la source**, pas d'une liste : un fichier du
+scaffold qui contient `TODO(argus)` t'appartient (config, ancres, parcours
+métier) et n'est jamais touché ; un fichier qui dit se **fusionner** l'est à la
+main ; tout le reste est du cadre — scripts, suites de test, CI — et se remplace.
+
+`--check` sort en 1 : à câbler en CI pour que la dérive se voie au lieu de
+s'installer.
 
 ## Codes de sortie
 

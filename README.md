@@ -145,7 +145,8 @@ skills/argus-mobile/               # MOBILE — Flutter × Maestro
       ├── .maestro/                # 7 flows + 6 sous-flows
       ├── test/                    # gardes flutter_test (étage 1)
       ├── scripts/                 # runner, perf, a11y, MASVS, SCA, rapport
-      └── .github/workflows/
+      ├── .github/workflows/
+      └── ARGUS-MOBILE.md          # doc du harness, côté projet d'accueil
 ```
 
 *Plugin perso · v1.1.0 · MIT*

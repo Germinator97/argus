@@ -53,9 +53,8 @@ déduit pas, demande-le.
 Étape critique qui n'a pas d'équivalent côté web : Maestro ne voit que ce que
 l'app expose à la couche d'accessibilité.
 
-**a. Le projet.** `pubspec.yaml` (nom, version, contrainte SDK), `flutter --version`
-≥ **3.19** (`Semantics(identifier:)` y est apparu). Flavors et `--dart-define`
-côté Android et iOS. Plateformes réellement présentes.
+**a. Le projet.** `pubspec.yaml`, `flutter --version` ≥ **3.19**
+(`Semantics(identifier:)` y est apparu), flavors, plateformes présentes.
 
 **b. Audit d'instrumentation Semantics.** C'est le livrable de cette étape.
 Cherche dans `lib/` les `Semantics(identifier:` et `semanticLabel:` déjà posés,
@@ -83,10 +82,9 @@ code de production de quelqu'un.
 **d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
 `flutter build ios --debug --simulator`.
 
-**e. Flutter Web ?** Si le projet cible aussi le web : `SemanticsBinding.instance
-.ensureSemantics()` dans `main()` est **obligatoire**, sinon Maestro ne voit
-**aucun** élément et `assertVisible`/`tapOn` échouent en silence. Flutter Desktop
-n'est pas supporté par Maestro.
+**e. Flutter Web ?** `SemanticsBinding.instance.ensureSemantics()` dans `main()`
+est **obligatoire**, sinon Maestro ne voit **aucun** élément et échoue en
+silence. Flutter Desktop n'est pas supporté.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 3. Installer le harness de non-régression
@@ -110,12 +108,16 @@ résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
 (`appId:` puis `---`), sous-flows compris : Maestro les valide TOUS au démarrage
 et rejette la suite entière sur « Config Section Required ».
 
-**e. Garde-fous gitignore.** Fusionne le `.gitignore` fourni : `argus-mobile-report/`
+**e. Déjà installé ?** `install-mobile.sh <TARGET> --check` signale le cadre en
+retard sur le plugin (exit 1) ; `--update` le remet à niveau sans toucher à ce
+que l'utilisateur édite. Sans ça, une amélioration ne redescend jamais.
+
+**f. Garde-fous gitignore.** Fusionne le `.gitignore` fourni : `argus-mobile-report/`
 et les journaux de debug Maestro sont ignorés, **mais `.maestro/_baselines/` est
 volontairement conservé** — une régression visuelle sans référence versionnée ne
 garde rien.
 
-**f. Premier run.**
+**g. Premier run.**
 ```bash
 make argus-guards      # étage 1, sans device, quelques secondes
 flutter build apk --debug
@@ -124,7 +126,7 @@ make argus-baselines   # références visuelles (1re fois, sur le device de la C
 make argus-report      # rapport HTML
 ```
 
-**g. Récapitule** : fichiers ajoutés, commandes, et les 1–2 prochaines étapes
+**h. Récapitule** : fichiers ajoutés, commandes, et les 1–2 prochaines étapes
 (remplir `journey-critical.yaml`, brancher la CI). **Ne prétends pas que la suite
 passe tant que tu ne l'as pas exécutée.**
 
@@ -168,17 +170,14 @@ soit `ENV=staging` avec données jetables, soit une confirmation explicite.
 - **Pas de push** vers de vrais utilisateurs.
 - **Appareil réel** : jamais un device personnel portant de vraies données. Argus
   installe un binaire et efface les données de l'app (`clearState`) — le runner
-  refuse d'ailleurs de cibler un téléphone sans `physical: true` explicite.
-  `clearState` avant chaque flow ; ne laisse aucun compte de test connecté.
+  refuse de cibler un téléphone sans `physical: true` explicite.
 - **Secrets** : `QA_USER`, `QA_PASS` et consorts **uniquement** via
   l'environnement, jamais dans un `.yaml` commité. ⚠️ Ils sont passés à Maestro
   par `-e`, donc **visibles dans `ps`** le temps du run. Et `label:` les masque en
   console et dans les rapports **mais pas dans les journaux de debug bruts** :
   ne publie jamais `--debug-output` comme artefact CI ouvert.
-- **Captures** : masque les zones sensibles avant capture ; une baseline visuelle
-  d'un écran authentifié contient des données réelles.
-- **Analyse de binaire** : uniquement sur **tes propres builds**. Jamais de
-  reverse-engineering d'une app tierce. Détection, pas exploitation.
+- **Captures** : une baseline d'un écran authentifié contient des données réelles.
+- **Analyse de binaire** : uniquement sur **tes propres builds**, en détection.
 
 Matrice complète par environnement : `references/methodology-mobile.md` §3.
 
@@ -197,4 +196,5 @@ Matrice complète par environnement : `references/methodology-mobile.md` §3.
   recopier. À lire au moment de produire un rapport.
 - **`scripts/install-mobile.sh`** — copie idempotente du scaffold dans un projet Flutter.
 - **`assets/scaffold-mobile/`** — le harness réel : flows Maestro, scripts de mesure,
-  gardes `flutter_test`, CI. Son `README.md` documente l'usage côté projet.
+  gardes `flutter_test`, CI. Son `ARGUS-MOBILE.md` documente l'usage côté projet
+  (nommé ainsi pour ne pas écraser le README du projet d'accueil).
