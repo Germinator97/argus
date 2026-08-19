@@ -125,6 +125,8 @@ Bumper `version` dans `.claude-plugin/plugin.json` **et**
 
 ```
 .claude-plugin/{plugin.json, marketplace.json}
+.github/workflows/plugin.yml       # CI du plugin : cohérence de ce qu'il distribue
+tools/check-scaffold.sh            # fige la classification lue par l'installeur
 
 skills/argus/                      # WEB — Playwright
   ├── SKILL.md                     # orchestrateur interactif
@@ -142,9 +144,9 @@ skills/argus-mobile/               # MOBILE — Flutter × Maestro
   ├── scripts/install-mobile.sh    # copie idempotente du scaffold
   └── assets/scaffold-mobile/      # le harness réel
       ├── argus.mobile.yaml        # LE seul fichier de configuration
-      ├── .maestro/                # 7 flows + 6 sous-flows
-      ├── test/                    # gardes flutter_test (étage 1)
-      ├── scripts/                 # runner, perf, a11y, MASVS, SCA, rapport
+      ├── .maestro/                # 7 flows + 5 sous-flows
+      ├── test/argus/              # gardes flutter_test (étage 1)
+      ├── scripts/argus/           # runner, perf, a11y, MASVS, SCA, rapport
       ├── .github/workflows/
       └── ARGUS-MOBILE.md          # doc du harness, côté projet d'accueil
 ```

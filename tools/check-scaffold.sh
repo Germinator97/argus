@@ -91,6 +91,24 @@ while IFS=$'\t' read -r cat rel; do
   grep -q 'TODO(argus)' "$SCAFFOLD/$rel" || note "déclaré ARGUS:OWNED mais sans TODO(argus) : $rel"
 done <<< "$ACTUAL"
 
+# ── 4. Les nombres annoncés dans la doc valent-ils encore ? ──────────────────
+# Un compteur écrit à la main s'affiche exactement aussi bien quand il est faux.
+# On le dérive donc du contenu — et on exige d'abord que le motif soit TROUVÉ,
+# sinon une reformulation rendrait ce contrôle muet sans rien dire.
+flows=$(find "$SCAFFOLD/.maestro" -maxdepth 1 -name '*.yaml' ! -name 'config.yaml' | wc -l | tr -d ' ')
+subs=$(find "$SCAFFOLD/.maestro/_subflows" -name '*.yaml' | wc -l | tr -d ' ')
+claims=$(grep -rnoE '[0-9]+ flows \+ [0-9]+ sous-flows' "$ROOT" --include='*.md' || true)
+if [ -z "$claims" ]; then
+  note "le motif « N flows + M sous-flows » a disparu de la doc — mets ce contrôle à jour, ou retire-le"
+else
+  while IFS= read -r hit; do
+    said="${hit##*:}"
+    where="$(printf '%s' "${hit#"$ROOT"/}" | cut -d: -f1,2)"
+    [ "$said" = "$flows flows + $subs sous-flows" ] \
+      || note "compteur périmé : « $said » alors qu'il y a $flows flows et $subs sous-flows — $where"
+  done <<< "$claims"
+fi
+
 echo
 if [ "$fail" -ne 0 ]; then
   echo "✖ contrôle du scaffold en échec."
