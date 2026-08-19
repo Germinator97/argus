@@ -30,8 +30,6 @@ import process from 'node:process';
 /**
  * Ligne significative du document, une fois commentaires et blancs retirés.
  * @typedef {{ indent: number, text: string, line: number, raw: string }} YamlLine
- */
-/**
  * Contexte d'erreur porté par chaque scalaire.
  * @typedef {{ file: string, line: number, raw: string }} YamlCtx
  */
@@ -455,8 +453,6 @@ const IS_WINDOWS = process.platform === 'win32';
 /**
  * Exécute une commande et rend {ok, status, stdout, stderr}. Ne lève jamais :
  * un outil manquant est une information, pas un plantage.
- */
-/**
  * @param {string} bin @param {string[]} [args] @param {object} [opts]
  * @returns {{ok:boolean, status:number, stdout:string, stderr:string, error:string|null}}
  */
