@@ -46,7 +46,7 @@ tags:
 
 # ── 2. Rotation ────────────────────────────────────────────────────────────
 # Une dimension figée qui porte du texte déborde en paysage. Le flow ne mesure
-# pas le débordement (c'est le rôle de test/argus_layout_test.dart) : il vérifie
+# pas le débordement (c'est le rôle de test/argus/layout_test.dart) : il vérifie
 # que l'écran SURVIT à la rotation, ce qu'un test de widget ne voit pas.
 - setOrientation: LANDSCAPE_LEFT
 - waitForAnimationToEnd:

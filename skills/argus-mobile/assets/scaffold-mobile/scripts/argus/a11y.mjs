@@ -12,7 +12,7 @@
  * (`uiautomator dump`) avec la densité du device (`wm density`) — les bounds
  * sont en pixels, les seuils d'accessibilité en dp.
  *
- * CE QU'IL NE REMPLACE PAS : test/argus_a11y_test.dart, qui couvre les mêmes
+ * CE QU'IL NE REMPLACE PAS : test/argus/a11y_test.dart, qui couvre les mêmes
  * règles via `meetsGuideline(androidTapTargetGuideline)` et
  * `meetsGuideline(textContrastGuideline)`, sans device et à chaque PR. Ce script
  * mesure le RENDU RÉEL sur un device donné ; le test Dart mesure la RÈGLE.
@@ -22,8 +22,8 @@
  * outil externe. Le volet iOS est rapporté `skipped`, jamais vert.
  *
  * Usage :
- *   node scripts/argus-mobile-a11y.mjs
- *   node scripts/argus-mobile-a11y.mjs --screen=home --device=<udid>
+ *   node scripts/argus/a11y.mjs
+ *   node scripts/argus/a11y.mjs --screen=home --device=<udid>
  */
 
 import { join } from 'node:path';
@@ -32,7 +32,7 @@ import process from 'node:process';
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
-} from './argus-mobile-config.mjs';
+} from './config.mjs';
 
 const DUMP_PATH = '/sdcard/argus-a11y-dump.xml';
 /** Densité de référence Android : 1 dp = 1 px à 160 dpi. */
@@ -193,7 +193,7 @@ function main() {
     writeJson(reportPath, {
       platform, skipped: true,
       skipReason: 'iOS n\'expose pas d\'équivalent d\'`uiautomator dump` à un outil externe. '
-        + 'Les cibles tactiles et les contrastes iOS sont couverts par test/argus_a11y_test.dart '
+        + 'Les cibles tactiles et les contrastes iOS sont couverts par test/argus/a11y_test.dart '
         + '(iOSTapTargetGuideline, textContrastGuideline), sans device.',
       findings: [],
     });

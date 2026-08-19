@@ -21,11 +21,11 @@
 // une carte à hauteur figée trois niveaux plus bas. La ligne à chercher dans la
 // sortie est « The relevant error-causing widget was ».
 //
-// À brancher dans test/argus_harness.dart — rien à modifier dans ce fichier.
+// À brancher dans test/argus/harness.dart — rien à modifier dans ce fichier.
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'argus_harness.dart';
+import 'harness.dart';
 
 void main() {
   setUpAll(() async {

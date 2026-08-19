@@ -13,8 +13,8 @@
  * c'est précisément pour ça qu'il faut les distinguer explicitement.
  *
  * Usage :
- *   node scripts/argus-mobile-sca.mjs
- *   node scripts/argus-mobile-sca.mjs --require-tools   # en CI
+ *   node scripts/argus/sca.mjs
+ *   node scripts/argus/sca.mjs --require-tools   # en CI
  *
  * `--require-tools` fait ÉCHOUER quand osv-scanner est absent. Sans lui, une CI
  * sur laquelle le scanner n'a pas été installé rendrait vert en n'ayant rien
@@ -30,7 +30,7 @@ import process from 'node:process';
 import {
   artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
-} from './argus-mobile-config.mjs';
+} from './config.mjs';
 
 /** Bandes CVSS v3, du plus grave au moins grave. */
 const CVSS_BANDS = [

@@ -43,7 +43,7 @@ Source unique : identifiants d'app, chemins de binaire, matrice de devices,
 écrans et leurs ancres sémantiques, seuils, règles de sécurité, gate. Les scripts
 et les flows lisent tous depuis là.
 
-Il est parsé par un **sous-ensemble strict de YAML** (`scripts/argus-mobile-config.mjs`)
+Il est parsé par un **sous-ensemble strict de YAML** (`scripts/argus/config.mjs`)
 plutôt que par une dépendance : un projet Flutter n'a ni `package.json` ni
 `node_modules`, et rien ne doit s'installer avant de pouvoir lancer la suite. Le
 parseur refuse ce qu'il ne sait pas lire — ancres, blocs multi-lignes, maps en
@@ -181,17 +181,19 @@ argus.mobile.yaml            # LE fichier à éditer
   lifecycle.yaml             # arrière-plan, mort du processus, deep links [lifecycle]
   i18n.yaml                  # fr-FR, format XOF, clés manquantes          [i18n]
 test/
-  argus_harness.dart         # étage 1 : LE fichier à éditer
-  argus_a11y_test.dart       # cibles tactiles, contrastes, labels
-  argus_layout_test.dart     # 3 gabarits × 3 échelles de texte
+  argus/                     # tout le harness ici : un seul dossier à retirer
+    harness.dart             # étage 1 : LE fichier à éditer
+    a11y_test.dart           # cibles tactiles, contrastes, labels
+    layout_test.dart         # 3 gabarits × 3 échelles de texte
 scripts/
-  argus-mobile-config.mjs    # config + outillage + parseur YAML (socle partagé)
-  argus-mobile-run.mjs       # devices, install vérifiée, Maestro, report.json
-  argus-mobile-perf.mjs      # démarrage, jank, mémoire, taille
-  argus-mobile-a11y.mjs      # cibles tactiles sur device
-  argus-mobile-sec.mjs       # MASVS statique
-  argus-mobile-sca.mjs       # CVE
-  argus-mobile-report.mjs    # agrégation → rapport HTML
+  argus/
+    config.mjs               # config + outillage + parseur YAML (socle partagé)
+    run.mjs                  # devices, install vérifiée, Maestro, report.json
+    perf.mjs                 # démarrage, jank, mémoire, taille
+    a11y.mjs                 # cibles tactiles sur device
+    sec.mjs                  # MASVS statique
+    sca.mjs                  # CVE
+    report.mjs               # agrégation → rapport HTML
 .github/workflows/argus-mobile.yml
 Makefile · package.snippet.json · .gitignore · ARGUS-MOBILE.md
 ```
@@ -214,6 +216,29 @@ main ; tout le reste est du cadre — scripts, suites de test, CI — et se remp
 
 `--check` sort en 1 : à câbler en CI pour que la dérive se voie au lieu de
 s'installer.
+
+## Retirer le harness
+
+Tout ce qu'Argus pose vit dans des dossiers ou des noms qui lui appartiennent :
+rien n'est mélangé à tes fichiers, donc le retrait est un `rm`, sans tri.
+
+```bash
+rm -rf test/argus scripts/argus .maestro argus-mobile-report
+rm -f argus.mobile.yaml ARGUS-MOBILE.md package.snippet.json \
+      .github/workflows/argus-mobile.yml
+```
+
+Deux fichiers demandent un geste manuel, parce qu'ils ont pu être fusionnés
+dans les tiens : le `Makefile` (retire les cibles `argus-*` si tu en avais
+d'autres) et le `.gitignore` (retire le bloc Argus).
+
+⚠️ `.maestro/_baselines/` part avec le reste, et c'est le seul artefact du
+harness qui coûte un device à reconstruire. Pour un retrait temporaire, garde
+ce dossier.
+
+⚠️ L'instrumentation `Semantics(identifier:)` posée dans `lib/` **reste** : elle
+est dans ton code, pas dans le harness. Elle ne coûte rien à garder — un nœud
+sémantique de plus — et c'est ce qui rendra une réinstallation immédiate.
 
 ## Codes de sortie
 

@@ -99,10 +99,10 @@ signale-le avant.
 
 **c. Paramétrer.** Édite **`argus.mobile.yaml`** — c'est le **seul** fichier à
 éditer : identifiants d'app, chemins de binaire, matrice de devices, `screens[]`
-et leurs ancres, seuils, règles de sécurité, gate. Puis `test/argus_harness.dart`
+et leurs ancres, seuils, règles de sécurité, gate. Puis `test/argus/harness.dart`
 pour l'étage 1 (écrans à monter, famille de police).
 
-**d. Vérifier avant de lancer** : `node scripts/argus-mobile-config.mjs` (config
+**d. Vérifier avant de lancer** : `node scripts/argus/config.mjs` (config
 résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
 ⚠️ **Tout fichier YAML du workspace doit porter une section de configuration**
 (`appId:` puis `---`), sous-flows compris : Maestro les valide TOUS au démarrage

@@ -16,8 +16,8 @@
  * les deux dans une moyenne qui ne décrit aucun des deux.
  *
  * Usage :
- *   node scripts/argus-mobile-perf.mjs
- *   node scripts/argus-mobile-perf.mjs --samples=5 --device=<udid>
+ *   node scripts/argus/perf.mjs
+ *   node scripts/argus/perf.mjs --samples=5 --device=<udid>
  *
  * Codes de sortie : 0 vert · 1 major · 2 blocker/critical ou outillage absent.
  */
@@ -29,7 +29,7 @@ import process from 'node:process';
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
-} from './argus-mobile-config.mjs';
+} from './config.mjs';
 
 const MB = 1024 * 1024;
 
@@ -283,7 +283,7 @@ function main() {
   const component = launchComponent(udid, packageName);
   if (!component) {
     err(`activité de lancement introuvable pour ${packageName} — l'app est-elle installée sur ${udid} ?`);
-    err('  node scripts/argus-mobile-run.mjs installe et vérifie l\'installation.');
+    err('  node scripts/argus/run.mjs installe et vérifie l\'installation.');
     process.exit(2);
   }
 

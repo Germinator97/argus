@@ -12,11 +12,11 @@
  * ne l'installe jamais. (Seul `maestro cloud` prend un `--app-file`.)
  *
  * Usage :
- *   node scripts/argus-mobile-run.mjs
- *   node scripts/argus-mobile-run.mjs --platform=ios
- *   node scripts/argus-mobile-run.mjs --update-baselines
- *   node scripts/argus-mobile-run.mjs --dry-run
- *   node scripts/argus-mobile-run.mjs --tags=smoke,p0
+ *   node scripts/argus/run.mjs
+ *   node scripts/argus/run.mjs --platform=ios
+ *   node scripts/argus/run.mjs --update-baselines
+ *   node scripts/argus/run.mjs --dry-run
+ *   node scripts/argus/run.mjs --tags=smoke,p0
  *
  * Codes de sortie (identiques au skill web) :
  *   0 = vert · 1 = major dans le gate · 2 = blocker/critical, ou outillage
@@ -30,7 +30,7 @@ import process from 'node:process';
 import {
   activeDevices, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
   loadConfig, log, missingToolMessage, parseYaml, sh, validateConfig, warn, writeJson,
-} from './argus-mobile-config.mjs';
+} from './config.mjs';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Arguments
@@ -670,7 +670,7 @@ async function main() {
   const visualMode = opts.updateBaselines ? 'update' : 'assert';
   if (visualMode === 'assert' && !existsSync(baselineDir)) {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
-    warn('  Génère-les : node scripts/argus-mobile-run.mjs --update-baselines');
+    warn('  Génère-les : node scripts/argus/run.mjs --update-baselines');
   } else {
     for (const screen of visualScreens) {
       runs.push(runMaestro({

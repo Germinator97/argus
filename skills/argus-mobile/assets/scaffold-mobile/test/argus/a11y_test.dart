@@ -4,15 +4,15 @@
 // cibles tactiles et le contraste. Les sélecteurs `width`/`height` de Maestro
 // sont des égalités en pixels ; « ≥ 48 dp » ne s'y écrit pas.
 //
-// Le pendant sur device est scripts/argus-mobile-a11y.mjs, qui mesure le RENDU
+// Le pendant sur device est scripts/argus/a11y.mjs, qui mesure le RENDU
 // RÉEL sur un appareil donné. Ici on mesure la RÈGLE. Les deux se trompent
 // différemment, d'où l'intérêt d'avoir les deux.
 //
-// À brancher dans test/argus_harness.dart — rien à modifier dans ce fichier.
+// À brancher dans test/argus/harness.dart — rien à modifier dans ce fichier.
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'argus_harness.dart';
+import 'harness.dart';
 
 void main() {
   setUpAll(() async {

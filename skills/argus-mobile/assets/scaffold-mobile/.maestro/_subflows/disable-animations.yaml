@@ -13,7 +13,7 @@ appId: ${APP_ID}
 #   2. `platform.android.disableAnimations` du config.yaml est une option
 #      MAESTRO CLOUD UNIQUEMENT, sans effet sur un émulateur local.
 #
-# C'est donc `scripts/argus-mobile-run.mjs` qui les coupe avant la suite :
+# C'est donc `scripts/argus/run.mjs` qui les coupe avant la suite :
 #   adb shell settings put global window_animation_scale 0
 #   adb shell settings put global transition_animation_scale 0
 #   adb shell settings put global animator_duration_scale 0

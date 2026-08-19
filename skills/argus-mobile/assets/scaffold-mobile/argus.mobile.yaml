@@ -9,7 +9,7 @@
 # test viennent de l'environnement (voir `auth.secretsFromEnv`) et sont injectés
 # aux flows par le runner via `maestro test -e KEY=…`.
 #
-# SOUS-ENSEMBLE YAML ACCEPTÉ (scripts/argus-mobile-config.mjs, sans dépendance) :
+# SOUS-ENSEMBLE YAML ACCEPTÉ (scripts/argus/config.mjs, sans dépendance) :
 #   commentaires · maps imbriquées · listes (bloc `- x` et flow `[a, b]`)
 #   chaînes nues ou quotées · entiers · flottants · true/false · null/~
 # NON accepté, et signalé par une erreur explicite plutôt que mal interprété :

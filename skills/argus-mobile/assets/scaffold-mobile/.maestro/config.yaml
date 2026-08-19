@@ -21,7 +21,7 @@ excludeTags:
 
 # ⚠️ `disableAnimations` est une option MAESTRO CLOUD UNIQUEMENT. Elle n'a aucun
 # effet sur un émulateur ou un simulateur local — la doc est explicite là-dessus.
-# Le déterminisme local est assuré par scripts/argus-mobile-run.mjs, qui coupe
+# Le déterminisme local est assuré par scripts/argus/run.mjs, qui coupe
 # les TROIS échelles d'animation en adb avant de lancer la suite. Ces deux lignes
 # ne servent donc qu'aux runs Maestro Cloud.
 platform:

@@ -2,8 +2,8 @@
 // Argus Mobile — étage 1 : les gardes qui tournent SANS device.
 //
 // C'EST LE FICHIER À ÉDITER pour brancher les gardes `flutter test` sur ton app.
-// Les deux suites qui l'utilisent (argus_a11y_test.dart, argus_layout_test.dart)
-// n'ont rien à modifier.
+// Les deux suites qui l'utilisent (a11y_test.dart, layout_test.dart, dans ce
+// même dossier) n'ont rien à modifier.
 //
 // Pourquoi cet étage existe alors qu'Argus pilote déjà Maestro : deux mesures
 // lui sont structurellement inaccessibles.
@@ -223,7 +223,7 @@ Future<int> loadArgusFonts() async {
       if (!file.existsSync()) {
         throw StateError(
           "Police déclarée mais introuvable : '$assetPath' (famille "
-          "'${family.key}'). Corrige argusFonts dans test/argus_harness.dart. "
+          "'${family.key}'). Corrige argusFonts dans test/argus/harness.dart. "
           'Sans ce fichier, flutter_test rendrait le texte dans sa police par '
           "défaut — un carré d'un cadratin par glyphe — et toute mesure de "
           'disposition porterait sur un écran qui n\'existe pas.',
@@ -245,13 +245,13 @@ Future<int> loadArgusFonts() async {
 /// transforme en « ça a toujours été comme ça » au bout de deux semaines.
 String? argusSkipReason() {
   if (argusScreens.isEmpty) {
-    return 'aucun écran déclaré — remplis argusScreens dans test/argus_harness.dart';
+    return 'aucun écran déclaré — remplis argusScreens dans test/argus/harness.dart';
   }
   if (argusFonts.isEmpty) {
     return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
         'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
         "d'un cadratin). Recopie la section fonts: du pubspec dans "
-        'test/argus_harness.dart.';
+        'test/argus/harness.dart.';
   }
   if (argusFontFamily.isEmpty) {
     return 'argusFontFamily est vide : indique la famille par défaut du thème.';

@@ -16,9 +16,9 @@ tags:
 # Il NE mesure PAS la taille des cibles tactiles ni les contrastes. Les sélecteurs
 # `width`/`height` de Maestro sont des ÉGALITÉS en pixels, avec une `tolerance` :
 # « ≥ 48 dp » ne s'écrit pas. Ces deux dimensions sont couvertes ailleurs :
-#   - test/argus_a11y_test.dart  → androidTapTargetGuideline, textContrastGuideline
+#   - test/argus/a11y_test.dart  → androidTapTargetGuideline, textContrastGuideline
 #                                  (déterministe, sans device, à chaque PR)
-#   - scripts/argus-mobile-a11y.mjs → mesure sur device via le dump de hiérarchie
+#   - scripts/argus/a11y.mjs → mesure sur device via le dump de hiérarchie
 #                                  croisé avec `adb shell wm density`
 # Voir references/methodology-mobile.md §6.
 

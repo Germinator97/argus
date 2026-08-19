@@ -14,7 +14,7 @@ tags:
 #
 # ⚠️ Le débordement dû à la longueur du français ne se voit pas ici : rien ne
 # « déborde » au sens de Maestro, le texte est simplement tronqué ou replié, ce
-# qui n'échoue nulle part. C'est test/argus_layout_test.dart qui le mesure, à
+# qui n'échoue nulle part. C'est test/argus/layout_test.dart qui le mesure, à
 # 100 %, 130 % et 200 % de taille de texte.
 
 - runFlow: _subflows/launch-clean.yaml

@@ -72,4 +72,4 @@ tags:
     commands:
       - assertTrue:
           condition: "${true}"
-          label: 'SKIP visuel — lance `node scripts/argus-mobile-run.mjs`, qui boucle sur screens[].visual'
+          label: 'SKIP visuel — lance `node scripts/argus/run.mjs`, qui boucle sur screens[].visual'

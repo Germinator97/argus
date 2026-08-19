@@ -41,9 +41,9 @@ jobs:
       - name: Analyse
         run: flutter analyze
       - name: Gardes a11y et disposition
-        run: flutter test test/argus_a11y_test.dart test/argus_layout_test.dart
+        run: flutter test test/argus
       # ⚠️ Ces gardes se marquent SKIPPÉES tant que `argusScreens` est vide dans
-      # test/argus_harness.dart. Un job vert ne prouve donc rien avant que
+      # test/argus/harness.dart. Un job vert ne prouve donc rien avant que
       # quelqu'un les ait branchées : lis la sortie, pas seulement la pastille.
 
   # ── Étage 1 bis : sécurité statique ─────────────────────────────────────
@@ -72,12 +72,12 @@ jobs:
       # Sans ce flag, une CI où l'installation a raté rendrait vert une analyse
       # de sécurité qui n'a rien analysé.
       - name: MASVS statique
-        run: node scripts/argus-mobile-sec.mjs --require-tools
+        run: node scripts/argus/sec.mjs --require-tools
       - name: CVE des dépendances
-        run: node scripts/argus-mobile-sca.mjs --require-tools
+        run: node scripts/argus/sca.mjs --require-tools
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus-mobile-report.mjs
+        run: node scripts/argus/report.mjs
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -148,15 +148,15 @@ jobs:
           emulator-options: >-
             -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
             -change-locale fr-FR
-          script: node scripts/argus-mobile-run.mjs --platform=android
+          script: node scripts/argus/run.mjs --platform=android
 
       - name: Mesures de performance
         if: ${{ !cancelled() }}
-        run: node scripts/argus-mobile-perf.mjs || true
+        run: node scripts/argus/perf.mjs || true
 
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus-mobile-report.mjs
+        run: node scripts/argus/report.mjs
 
       # ⚠️ NE PAS publier `--debug-output` en artefact ouvert : `label:` masque
       # les secrets en console et dans les rapports, mais la doc Maestro précise
@@ -206,10 +206,10 @@ jobs:
         env:
           QA_USER: ${{ secrets.QA_USER }}
           QA_PASS: ${{ secrets.QA_PASS }}
-        run: node scripts/argus-mobile-run.mjs --platform=ios
+        run: node scripts/argus/run.mjs --platform=ios
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus-mobile-report.mjs
+        run: node scripts/argus/report.mjs
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -228,7 +228,7 @@ jobs:
 # Génère-les dans la MÊME configuration que la CI (api-level 33, pixel_6,
 # fr-FR), depuis une machine ou un job dédié :
 #
-#   node scripts/argus-mobile-run.mjs --update-baselines
+#   node scripts/argus/run.mjs --update-baselines
 #
 # puis commite `.maestro/_baselines/<device-id>/`. Ne lance JAMAIS
 # `--update-baselines` dans ce workflow : une baseline régénérée en CI accepte

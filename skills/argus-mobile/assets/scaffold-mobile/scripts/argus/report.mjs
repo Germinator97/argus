@@ -14,24 +14,24 @@
  * Sans cette distinction, un rapport où rien n'a tourné se lit comme un rapport
  * où rien n'a cassé.
  *
- * Usage : node scripts/argus-mobile-report.mjs
+ * Usage : node scripts/argus/report.mjs
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import process from 'node:process';
 
-import { artifactsDir, loadConfig, log, err, writeJson } from './argus-mobile-config.mjs';
+import { artifactsDir, loadConfig, log, err, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
 /** Les cinq sources, avec la dimension qu'elles couvrent. */
 const SOURCES = [
-  { file: 'report.json', label: 'Parcours Maestro', dimensions: 'functional · visual · a11y · resilience · stability · i18n', how: 'node scripts/argus-mobile-run.mjs' },
-  { file: 'perf.json', label: 'Performance', dimensions: 'performance', how: 'node scripts/argus-mobile-perf.mjs' },
-  { file: 'a11y.json', label: 'Accessibilité (device)', dimensions: 'a11y', how: 'node scripts/argus-mobile-a11y.mjs' },
-  { file: 'sec.json', label: 'Sécurité MASVS', dimensions: 'security', how: 'node scripts/argus-mobile-sec.mjs' },
-  { file: 'sca.json', label: 'Dépendances (CVE)', dimensions: 'security', how: 'node scripts/argus-mobile-sca.mjs' },
+  { file: 'report.json', label: 'Parcours Maestro', dimensions: 'functional · visual · a11y · resilience · stability · i18n', how: 'node scripts/argus/run.mjs' },
+  { file: 'perf.json', label: 'Performance', dimensions: 'performance', how: 'node scripts/argus/perf.mjs' },
+  { file: 'a11y.json', label: 'Accessibilité (device)', dimensions: 'a11y', how: 'node scripts/argus/a11y.mjs' },
+  { file: 'sec.json', label: 'Sécurité MASVS', dimensions: 'security', how: 'node scripts/argus/sec.mjs' },
+  { file: 'sca.json', label: 'Dépendances (CVE)', dimensions: 'security', how: 'node scripts/argus/sca.mjs' },
 ];
 
 /** @param {string} path @returns {any} */

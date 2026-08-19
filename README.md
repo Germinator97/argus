@@ -55,9 +55,9 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
    produire un rapport d'instrumentation Semantics : c'est le prix d'entrée de
    l'automatisation mobile, et il est explicite.
 2. Pour le harness : il copie le scaffold, tu édites **`argus.mobile.yaml`** (le
-   seul fichier de configuration) et **`test/argus_harness.dart`**, puis :
+   seul fichier de configuration) et **`test/argus/harness.dart`**, puis :
    ```bash
-   node scripts/argus-mobile-config.mjs   # config résolue + outillage détecté
+   node scripts/argus/config.mjs   # config résolue + outillage détecté
    make argus-guards                      # étage 1 : a11y + disposition, sans device
    flutter build apk --debug
    make argus-run                         # étage 2 : suite Maestro sur émulateur

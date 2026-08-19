@@ -88,7 +88,7 @@ jamais en artefact CI ouvert.
 Même structure que le web (`report-format.md` §C) : header, bandeau métriques,
 findings groupés par sévérité puis dimension, couverture, « ✅ ce qui fonctionne »,
 footer « Généré par Argus Mobile (Claude Code) ». Généré par
-`scripts/argus-mobile-report.mjs`, qui agrège les cinq JSON.
+`scripts/argus/report.mjs`, qui agrège les cinq JSON.
 
 **Une section en plus, et elle est essentielle : la COUVERTURE PAR DIMENSION.**
 Chaque source y a l'un de trois états :

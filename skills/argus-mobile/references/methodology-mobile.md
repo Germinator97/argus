@@ -217,7 +217,7 @@ Et `--update-baselines` ne se lance **jamais** en CI : une référence régéné
 accepte la régression qu'elle devait détecter.
 
 ⚠️ **Le débordement à grande police ne se voit sur aucune capture prise à 100 %.**
-C'est l'étage 1 qui le mesure (`test/argus_layout_test.dart`), sur trois gabarits
+C'est l'étage 1 qui le mesure (`test/argus/layout_test.dart`), sur trois gabarits
 × trois échelles.
 
 ### A11Y — dimension de premier ordre, pas un bonus
@@ -226,8 +226,8 @@ Trois mesures, trois outils, parce qu'aucun ne couvre les trois :
 | Mesure | Où | Pourquoi pas ailleurs |
 |---|---|---|
 | Couverture des ancres sémantiques | `.maestro/a11y.yaml` | seul Maestro voit l'arbre réel du device |
-| Cibles tactiles ≥ 48 dp, contrastes, labels | `test/argus_a11y_test.dart` | **inexprimable en Maestro** : `width`/`height` sont des égalités en pixels |
-| Cibles tactiles sur le rendu réel | `scripts/argus-mobile-a11y.mjs` | croise `uiautomator dump` et `wm density` |
+| Cibles tactiles ≥ 48 dp, contrastes, labels | `test/argus/a11y_test.dart` | **inexprimable en Maestro** : `width`/`height` sont des égalités en pixels |
+| Cibles tactiles sur le rendu réel | `scripts/argus/a11y.mjs` | croise `uiautomator dump` et `wm density` |
 
 Le **rapport d'instrumentation** de SKILL.md §2 EST une métrique a11y : un widget
 que Maestro ne trouve pas est un widget que TalkBack n'annonce pas.
