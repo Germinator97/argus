@@ -1,0 +1,332 @@
+#!/usr/bin/env node
+// @ts-check
+/**
+ * Argus Mobile — performance et stabilité
+ * ------------------------------------------------------------------------
+ * Démarrage à froid et à chaud, jank, mémoire, taille du binaire.
+ * Écrit argus-mobile-report/perf.json et sort selon le gate.
+ *
+ * ⚠️ UN CHIFFRE DE PERFORMANCE NE VEUT RIEN DIRE SANS L'ÉTAT OÙ IL EST PRIS.
+ * Le PREMIER lancement après installation est plusieurs fois plus lent que les
+ * suivants — pas à cause de la taille de l'APK ni de la compilation ART (les
+ * deux se mesurent et se réfutent), mais à cause de l'initialisation applicative
+ * de premier démarrage. C'est un état RÉEL, vécu une fois par chaque
+ * utilisateur, et une séance de recette le reproduit à chaque réinstallation.
+ * Ce script le mesure donc SÉPARÉMENT du régime stabilisé, au lieu de mélanger
+ * les deux dans une moyenne qui ne décrit aucun des deux.
+ *
+ * Usage :
+ *   node scripts/argus-mobile-perf.mjs
+ *   node scripts/argus-mobile-perf.mjs --samples=5 --device=<udid>
+ *
+ * Codes de sortie : 0 vert · 1 major · 2 blocker/critical ou outillage absent.
+ */
+
+import { existsSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import process from 'node:process';
+
+import {
+  artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
+  missingToolMessage, sh, warn, writeJson,
+} from './argus-mobile-config.mjs';
+
+const MB = 1024 * 1024;
+
+/** @param {string[]} argv */
+function parseArgs(argv) {
+  const opts = { samples: 3, device: '', platform: '' };
+  for (const arg of argv) {
+    const [key, value] = arg.split('=');
+    if (key === '--samples') opts.samples = Math.max(1, Number.parseInt(value, 10) || 3);
+    else if (key === '--device') opts.device = value ?? '';
+    else if (key === '--platform') opts.platform = value ?? '';
+    else if (key === '--help' || key === '-h') {
+      console.log('Argus Mobile — perf\n  --samples=N   mesures du régime stabilisé (défaut 3)\n  --device=<udid>\n  --platform=android|ios');
+      process.exit(0);
+    } else { err(`option inconnue : ${arg}`); process.exit(2); }
+  }
+  return opts;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Android — mesures
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * `adb -s <udid> …`, ou sans `-s` si un seul device est branché.
+ * @param {string} udid @param {string[]} args
+ */
+const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
+
+/**
+ * Premier device Android connecté, à défaut d'un udid explicite.
+ * @returns {string}
+ */
+function firstAndroidDevice() {
+  const res = sh('adb', ['devices']);
+  const line = res.stdout.split('\n').slice(1).map((l) => l.trim().split(/\s+/)).find((p) => p[1] === 'device');
+  return line ? line[0] : '';
+}
+
+/**
+ * Activité de lancement du paquet. Sans elle, `am start -W` ne sait pas quoi
+ * démarrer et la mesure n'a pas lieu.
+ * @param {string} udid @param {string} packageName @returns {string}
+ */
+function launchComponent(udid, packageName) {
+  const res = adb(udid, ['shell', 'cmd', 'package', 'resolve-activity', '--brief', packageName]);
+  const line = res.stdout.trim().split('\n').pop() ?? '';
+  return line.includes('/') ? line.trim() : '';
+}
+
+/**
+ * Un lancement chronométré. `am start -W` rend TotalTime (temps jusqu'au premier
+ * frame de l'app) et WaitTime (temps vu par le système, transitions comprises).
+ * TotalTime est celui qui décrit l'app ; WaitTime est gardé pour le contexte.
+ *
+ * ⚠️ Quand l'activité est DÉJÀ au premier plan, `am start` ne la relance pas et
+ * rend « TotalTime: 0 » avec un avertissement. Ce zéro n'est pas une mesure :
+ * c'est l'absence de mesure, et il passerait pour un démarrage parfait. On le
+ * rejette explicitement plutôt que de l'agréger.
+ * @param {string} udid @param {string} component
+ * @returns {{totalMs:number|null, waitMs:number|null}}
+ */
+function timedLaunch(udid, component) {
+  const res = adb(udid, ['shell', 'am', 'start', '-W', '-n', component]);
+  if (/Activity not started/i.test(res.stdout)) return { totalMs: null, waitMs: null };
+  const total = /TotalTime:\s*(\d+)/.exec(res.stdout);
+  const wait = /WaitTime:\s*(\d+)/.exec(res.stdout);
+  const totalMs = total ? Number.parseInt(total[1], 10) : null;
+  return {
+    totalMs: totalMs === 0 ? null : totalMs,
+    waitMs: wait ? Number.parseInt(wait[1], 10) : null,
+  };
+}
+
+/** @param {number[]} values @returns {number|null} */
+function median(values) {
+  const sorted = [...values].sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+/**
+ * Démarrages à froid : l'app est arrêtée avant chaque mesure.
+ * Le PREMIER échantillon est isolé — c'est l'état « premier lancement après
+ * installation », qui n'a rien à voir avec le régime stabilisé.
+ * @param {string} udid @param {string} packageName @param {string} component @param {number} samples
+ */
+function measureColdStarts(udid, packageName, component, samples) {
+  /** @type {number[]} */
+  const values = [];
+  for (let i = 0; i < samples + 1; i += 1) {
+    adb(udid, ['shell', 'am', 'force-stop', packageName]);
+    const { totalMs } = timedLaunch(udid, component);
+    if (totalMs !== null) values.push(totalMs);
+  }
+  return { firstLaunchMs: values[0] ?? null, samples: values.slice(1), medianMs: median(values.slice(1)) };
+}
+
+/**
+ * Démarrages à chaud : l'app reste en mémoire, on la renvoie juste à l'écran.
+ * @param {string} udid @param {string} component @param {number} samples
+ */
+function measureWarmStarts(udid, component, samples) {
+  /** @type {number[]} */
+  const values = [];
+  for (let i = 0; i < samples; i += 1) {
+    adb(udid, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
+    const { totalMs } = timedLaunch(udid, component);
+    if (totalMs !== null) values.push(totalMs);
+  }
+  return { samples: values, medianMs: median(values) };
+}
+
+/**
+ * Jank : part des frames au-delà du budget d'affichage.
+ * `dumpsys gfxinfo <pkg>` agrège depuis le dernier `reset` — d'où le reset, une
+ * navigation, puis la lecture. Sans reset, on lit l'historique du device.
+ * @param {string} udid @param {string} packageName
+ * @returns {{jankFramesPct:number|null, totalFrames:number|null}}
+ */
+function measureJank(udid, packageName) {
+  const res = adb(udid, ['shell', 'dumpsys', 'gfxinfo', packageName]);
+  const total = /Total frames rendered:\s*(\d+)/.exec(res.stdout);
+  const janky = /Janky frames:\s*(\d+)\s*\(([\d.]+)%\)/.exec(res.stdout);
+  return {
+    jankFramesPct: janky ? Number.parseFloat(janky[2]) : null,
+    totalFrames: total ? Number.parseInt(total[1], 10) : null,
+  };
+}
+
+/**
+ * Mémoire : TOTAL PSS, la mesure qui compte pour un budget d'app.
+ * @param {string} udid @param {string} packageName @returns {number|null}
+ */
+function measureMemory(udid, packageName) {
+  const res = adb(udid, ['shell', 'dumpsys', 'meminfo', packageName]);
+  const match = /TOTAL(?:\s+PSS)?:?\s+(\d+)/.exec(res.stdout);
+  return match ? Math.round((Number.parseInt(match[1], 10) / 1024) * 10) / 10 : null;
+}
+
+/**
+ * Contexte du device. Enregistré POUR SITUER la mesure, jamais pour expliquer
+ * un écart : attribuer un chiffre de performance à un mécanisme sans l'avoir
+ * isolé fait optimiser à côté.
+ * @param {string} udid @param {string} packageName
+ */
+function deviceContext(udid, packageName) {
+  const prop = (/** @type {string} */ name) => adb(udid, ['shell', 'getprop', name]).stdout.trim();
+  const compile = adb(udid, ['shell', 'dumpsys', 'package', packageName]).stdout;
+  const status = /\[status=([a-z-]+)\]/.exec(compile) ?? /status=([a-z-]+)/.exec(compile);
+  return {
+    androidRelease: prop('ro.build.version.release'),
+    sdkInt: prop('ro.build.version.sdk'),
+    model: prop('ro.product.model'),
+    artCompilation: status ? status[1] : null,
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Taille du binaire
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Taille du binaire livré. Sur un dossier `.app` iOS, on somme récursivement.
+ * @param {string} path @returns {number|null} Mo
+ */
+function binarySizeMb(path) {
+  if (!existsSync(path)) return null;
+  const stat = statSync(path);
+  if (stat.isFile()) return Math.round((stat.size / MB) * 10) / 10;
+  const res = sh('du', ['-sk', path]);
+  const kb = Number.parseInt(res.stdout.trim().split(/\s+/)[0], 10);
+  return Number.isFinite(kb) ? Math.round((kb / 1024) * 10) / 10 : null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Findings
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Un seuil dépassé devient un finding. Au-delà du double du seuil, c'est
+ * `critical` : ce n'est plus une dégradation, c'est un parcours abandonné.
+ * @param {string} id @param {string} label @param {number|null|undefined} value
+ * @param {number} budget @param {string} unit @param {string} [dimension]
+ * @returns {any}
+ */
+function thresholdFinding(id, label, value, budget, unit, dimension = 'performance') {
+  if (value === null || value === undefined || value <= budget) return null;
+  return {
+    id, title: `${label} au-dessus du budget`, dimension,
+    severity: value > budget * 2 ? 'critical' : 'major',
+    expected: `≤ ${budget} ${unit}`, actual: `${value} ${unit}`,
+    suggestedFix: 'Profiler le chemin concerné avant d\'optimiser : un mécanisme plausible mais non isolé fait optimiser à côté.',
+    status: 'open',
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point d'entrée
+// ═══════════════════════════════════════════════════════════════════════════
+
+function main() {
+  const opts = parseArgs(process.argv.slice(2));
+  let config;
+  try {
+    config = loadConfig();
+  } catch (e) {
+    err(e instanceof Error ? e.message : String(e));
+    process.exit(2);
+  }
+
+  const platform = opts.platform || (config.platforms ?? ['android'])[0];
+  const reportPath = join(artifactsDir(config), 'perf.json');
+  const thresholds = config.thresholds ?? {};
+  const sizeMb = binarySizeMb(resolve(process.cwd(), platform === 'ios' ? config.build.ios : config.build.android));
+
+  // iOS : pas d'équivalent local à `am start -W`. On le DIT et on rapporte
+  // `skipped`, plutôt que de rendre un vert qui laisserait croire à une mesure.
+  if (platform !== 'android') {
+    const findings = [thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo')].filter(Boolean);
+    writeJson(reportPath, {
+      platform, skipped: true,
+      skipReason: 'iOS : aucun équivalent local de `adb shell am start -W` / `dumpsys gfxinfo`. '
+        + 'Le démarrage et le jank iOS se mesurent avec Instruments (App Launch, Animation Hitches), '
+        + 'hors périmètre automatisable de ce harness.',
+      binarySizeMb: sizeMb, findings,
+    });
+    warn('perf iOS non mesurée (voir skipReason dans perf.json) — seule la taille du binaire est relevée.');
+    process.exit(exitCodeFor(findings, config.gate));
+  }
+
+  const tools = detectTools(['adb']);
+  if (!tools.adb.present) {
+    err(missingToolMessage('adb'));
+    writeJson(reportPath, { platform, skipped: true, skipReason: 'adb absent', findings: [] });
+    process.exit(2);
+  }
+
+  const udid = opts.device || firstAndroidDevice();
+  if (!udid) {
+    err('aucun device Android connecté (adb devices).');
+    process.exit(2);
+  }
+  const packageName = config.app.androidPackage;
+  const component = launchComponent(udid, packageName);
+  if (!component) {
+    err(`activité de lancement introuvable pour ${packageName} — l'app est-elle installée sur ${udid} ?`);
+    err('  node scripts/argus-mobile-run.mjs installe et vérifie l\'installation.');
+    process.exit(2);
+  }
+
+  log(`mesures sur ${udid} · ${component}`);
+  const cold = measureColdStarts(udid, packageName, component, opts.samples);
+  const warm = measureWarmStarts(udid, component, opts.samples);
+  adb(udid, ['shell', 'dumpsys', 'gfxinfo', packageName, 'reset']);
+  timedLaunch(udid, component);
+  const jank = measureJank(udid, packageName);
+  const memoryMb = measureMemory(udid, packageName);
+  const context = deviceContext(udid, packageName);
+
+  if (cold.medianMs === null && warm.medianMs === null) {
+    err('aucun lancement chronométrable : `am start -W` n\'a rendu que des « Activity not started ».');
+    err(`  Vérifie que ${component} est bien l'activité de lancement et que l'app n'est pas figée.`);
+    writeJson(reportPath, { platform, device: { udid }, package: packageName, skipped: true, skipReason: 'aucun échantillon de démarrage valide', findings: [] });
+    process.exit(2);
+  }
+
+  const findings = [
+    thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
+    thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
+    thresholdFinding('QAM-PERF-JANK', 'Frames en retard', jank.jankFramesPct, thresholds.jankFramesPct, '%'),
+    thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo'),
+    thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo'),
+  ].filter(Boolean);
+
+  const report = {
+    platform, device: { udid, ...context }, package: packageName,
+    metrics: {
+      // Isolé du régime stabilisé : c'est un état réel, pas une valeur aberrante.
+      firstLaunchMs: cold.firstLaunchMs,
+      coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
+      warmStartMs: warm.medianMs, warmStartSamples: warm.samples,
+      jankFramesPct: jank.jankFramesPct, framesRendered: jank.totalFrames,
+      memoryMb, binarySizeMb: sizeMb,
+    },
+    thresholds, findings,
+  };
+  writeJson(reportPath, report);
+
+  log(`premier lancement ${cold.firstLaunchMs ?? '?'} ms · à froid ${cold.medianMs ?? '?'} ms · à chaud ${warm.medianMs ?? '?'} ms`);
+  log(`jank ${jank.jankFramesPct ?? '?'} % · mémoire ${memoryMb ?? '?'} Mo · binaire ${sizeMb ?? '?'} Mo`);
+  if (cold.firstLaunchMs && cold.medianMs && cold.firstLaunchMs > cold.medianMs * 1.5) {
+    warn(`premier lancement ${Math.round((cold.firstLaunchMs / cold.medianMs) * 10) / 10}× plus lent que le régime stabilisé — chaque utilisateur le vit une fois.`);
+  }
+  log(`rapport : ${reportPath}`);
+  process.exit(exitCodeFor(findings, config.gate));
+}
+
+main();

@@ -116,7 +116,7 @@ function splitFlow(text) {
     else current += ch;
   }
   parts.push(current);
-  return parts.map((p) => p.trim()).filter((p, idx) => p !== '' || parts.length === 1);
+  return parts.map((p) => p.trim()).filter((p) => p !== '' || parts.length === 1);
 }
 
 /**
