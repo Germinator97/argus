@@ -66,6 +66,17 @@ Icon(Icons.add, semanticLabel: 'fabAddIcon')
 ElevatedButton(key: const Key('login_button'), …)
 ```
 
+Sur une **racine d'écran**, la recette complète est :
+
+```dart
+Semantics(
+  identifier: 'home_root',
+  container: true,
+  explicitChildNodes: true,  // ⚠️ sans lui, ce nœud absorbe tout le sous-arbre
+  child: …,
+)
+```
+
 C'est le prix d'entrée de l'automatisation — et il améliore l'accessibilité
 réelle au passage, ce qui n'est pas un effet de bord négligeable.
 

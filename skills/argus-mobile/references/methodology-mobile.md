@@ -170,6 +170,26 @@ flow qui cible une Key échoue, toujours. Trois voies, par ordre de robustesse :
 ⚠️ **`back` est Android et Web uniquement.** Un flow de retour non gardé passe au
 vert sur iOS sans rien tester.
 
+⚠️ **LA RECETTE DE L'ANCRE D'ÉCRAN, VÉRIFIÉE SUR DEVICE.** Une ancre posée sur
+la racine d'une page doit être un conteneur INERTE :
+
+```dart
+Semantics(
+  identifier: 'home_root',
+  container: true,          // garantit un nœud propre
+  explicitChildNodes: true, // ⚠️ SANS LUI, LE NŒUD ABSORBE SES DESCENDANTS
+  child: …,
+)
+```
+
+Sans `explicitChildNodes`, le nœud avale tout le sous-arbre : dans un cas réel,
+`home_root` devenait **cliquable**, son `content-desc` contenait la totalité du
+texte de l'écran, et le bouton interne `home_demarrer` **n'avait plus de nœud** —
+donc plus d'identifiant ciblable, et TalkBack annonçait la page en un seul bloc.
+Le remède est une ligne, mais le défaut ne se voit qu'en lisant l'arbre du
+device : `maestro hierarchy --compact`.
+
+
 ### VISUAL
 `assertScreenshot` par écran clé × device × orientation × thème ; débordements et
 texte tronqué ; safe areas, encoche, barre de gestes ; **grandes polices** ;
@@ -278,6 +298,14 @@ pas confondre — vérifié sur device :
   verrouillage biométrique contournable.
 - **SCA** : `flutter pub outdated`, CVE via `osv-scanner` sur `pubspec.lock` et les
   lockfiles Gradle, MobSF si disponible.
+
+⚠️ **Le scan de secrets ne porte que sur ce que GIT SUIT.** Un secret présent
+sur le disque mais gitignoré n'est pas une fuite — c'est la pratique correcte,
+et `android/key.properties` en est l'exemple type. Scanner l'arborescence
+entière remonte aussi tout SDK vendu dans le dépôt : mesuré sur un projet réel,
+`.fvm/` (une copie complète du SDK Flutter, avec ses fausses clés de test)
+produisait **9 findings bloquants, tous faux**, sur 6 127 fichiers parcourus là
+où git en suit 288.
 
 ⚠️ **`allowSecretsIn` n'est pas une facilité, c'est une nécessité** :
 `google-services.json` contient légitimement une clé `AIza` publique. Un rapport

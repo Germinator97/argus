@@ -72,15 +72,16 @@ exposées** à la couche d'accessibilité. Un flow qui cible une Key échoue,
 toujours. C'est `Semantics(identifier:)` qu'il faut, et c'est la voie recommandée
 parce qu'elle survit à un changement de langue et de wording.
 
-**c. Proposer, jamais imposer.** Prépare un patch minimal ajoutant
-`Semantics(identifier: …)` sur les widgets des parcours P0. Explique que c'est le
+**c. Proposer, jamais imposer.** Patch minimal. Sur un widget interactif,
+l'identifiant se pose sur le nœud `Semantics` qui porte DÉJÀ le rôle — pas dans
+une enveloppe. Sur une racine d'écran : `container: true` **et**
+`explicitChildNodes: true`, sans quoi le nœud absorbe ses descendants. Explique que c'est le
 prix d'entrée de l'automatisation, et qu'il améliore l'accessibilité réelle au
 passage. **Demande confirmation avant d'éditer du code applicatif** — c'est le
 code de production de quelqu'un.
 
-**d. Un binaire installable.** Sinon guide : `flutter build apk --debug`
-(→ `build/app/outputs/flutter-apk/`) ou `flutter build ios --debug --simulator`
-(→ `build/ios/iphonesimulator/`).
+**d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
+`flutter build ios --debug --simulator`.
 
 **e. Flutter Web ?** Si le projet cible aussi le web : `SemanticsBinding.instance
 .ensureSemantics()` dans `main()` est **obligatoire**, sinon Maestro ne voit

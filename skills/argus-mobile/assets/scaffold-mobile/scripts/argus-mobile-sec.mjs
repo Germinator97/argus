@@ -35,8 +35,16 @@ import {
   artifactsDir, detectTools, err, exitCodeFor, loadConfig, log, sh, warn, writeJson,
 } from './argus-mobile-config.mjs';
 
-/** Dossiers jamais scannés : générés, volumineux, ou hors du code du projet. */
-const SKIP_DIRS = new Set(['.git', 'build', '.dart_tool', 'node_modules', '.idea', 'Pods', 'DerivedData', 'argus-mobile-report']);
+/**
+ * Dossiers jamais scannés en repli : générés, volumineux, ou hors du projet.
+ * ⚠️ `.fvm` contient une COPIE COMPLÈTE du SDK Flutter — avec ses fixtures de
+ * test, ses fausses clés privées et ses READMEs. Sans lui, le scan remonte huit
+ * « secrets » qui appartiennent à Flutter, pas au projet. Mesuré en vrai.
+ */
+const SKIP_DIRS = new Set([
+  '.git', 'build', '.dart_tool', 'node_modules', '.idea', 'Pods', 'DerivedData',
+  'argus-mobile-report', '.fvm', '.pub-cache', '.symlinks', 'ephemeral',
+]);
 /** Extensions binaires : un motif de secret y serait du bruit. */
 const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ttf', '.otf', '.woff', '.woff2', '.zip', '.jar', '.apk', '.aab', '.so', '.ipa', '.mp3', '.mp4', '.pdf', '.ico', '.svg']);
 const MAX_SCAN_BYTES = 2 * 1024 * 1024;
@@ -208,6 +216,24 @@ function compilePattern(source) {
   }
 }
 
+/**
+ * Les fichiers à scanner : ceux que git SUIT quand on est dans un dépôt,
+ * sinon un parcours de répertoire filtré par [SKIP_DIRS].
+ * @param {string} root @returns {string[]}
+ */
+function scannableFiles(root) {
+  const tracked = sh('git', ['-C', root, 'ls-files', '-z']);
+  if (tracked.ok) {
+    return tracked.stdout
+      .split('\0')
+      .filter(Boolean)
+      .map((rel) => join(root, rel))
+      .filter((f) => existsSync(f) && !SKIP_EXT.has(extname(f).toLowerCase()) && statSync(f).size <= MAX_SCAN_BYTES);
+  }
+  warn('hors dépôt git : le scan de secrets parcourt le disque et peut remonter des fichiers non versionnés.');
+  return walkFiles(root, root);
+}
+
 /** @param {string} dir @param {string} root @returns {string[]} */
 function walkFiles(dir, root) {
   /** @type {string[]} */
@@ -229,6 +255,14 @@ function walkFiles(dir, root) {
  * google-services.json est une clé client publique. Sans cette liste, chaque
  * run remonterait le même faux positif — et un rapport qui crie au loup à
  * chaque fois finit par ne plus être lu du tout.
+ * ⚠️ ON NE SCANNE QUE CE QUE GIT SUIT. Un secret présent sur le disque mais
+ * gitignoré n'est PAS une fuite — c'est même la pratique correcte
+ * (`android/key.properties` en est l'exemple type). Scanner l'arborescence
+ * entière remonterait ce fichier en `blocker`, plus tout le SDK vendu dans
+ * `.fvm/`. Sur un projet réel, ça faisait 9 findings bloquants dont 9 faux, et
+ * 6 127 fichiers parcourus là où git en suit 288.
+ *
+ * Hors dépôt git, on retombe sur le parcours de répertoire et [SKIP_DIRS].
  * @param {string} root @param {any} config @returns {any[]}
  */
 function auditSecrets(root, config) {
@@ -245,7 +279,7 @@ function auditSecrets(root, config) {
   const patterns = compiled.filter((/** @type {any} */ c) => 'regex' in c);
   if (patterns.length === 0) return findings;
   const allowed = (config.security?.allowSecretsIn ?? []).map(String);
-  for (const file of walkFiles(root, root)) {
+  for (const file of scannableFiles(root)) {
     const rel = relative(root, file);
     if (allowed.some((/** @type {string} */ a) => rel === a || rel.endsWith(a))) continue;
     let content;
