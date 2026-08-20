@@ -177,6 +177,17 @@ partir, et rendue sous forme de patch dans le rapport (§4). Dis lequel des deux
 tu appliques AVANT de toucher au premier fichier : c'est la même édition, mais
 pas le même engagement.
 
+⚠️ **À ce stade, ton instrumentation n'est PAS vérifiée.** Un identifiant posé
+dans le code n'arrive pas forcément dans l'arbre sémantique — un parent qui
+absorbe, un widget qui ne construit pas de nœud, un état qui ne rend pas
+l'ancre : rien de tout ça n'échoue à la compilation et `flutter analyze` n'en
+dit rien. Le harnais porte la suite qui le prouve, mais elle n'arrive qu'avec
+l'installation : **dès le scaffold posé (§3), renseigne `anchor:` sur chaque
+`ArgusScreen` et lance `make argus-anchors`** — sans device, en secondes. C'est
+la première chose à faire après l'installation, avant même le premier run. Tant
+qu'elle n'a pas tourné, dis que l'instrumentation est *proposée*, jamais
+*validée*.
+
 **d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
 `flutter build ios --debug --simulator`.
 
@@ -215,8 +226,18 @@ et les journaux de debug Maestro sont ignorés, **mais `.maestro/_baselines/` es
 volontairement conservé** — une régression visuelle sans référence versionnée ne
 garde rien.
 
+**f bis. Prouve l'instrumentation AVANT de lancer quoi que ce soit d'autre.**
+Renseigne `anchor:` sur chaque `ArgusScreen` de `test/argus/harness.dart` — la
+même valeur que `screens[].anchor` — puis :
+```bash
+make argus-anchors     # sans device, quelques secondes
+```
+Rouge ici, tout l'étage 2 échouera sur device sans en nommer la cause : de son
+point de vue, l'élément aura simplement disparu.
+
 **g. Premier run.**
 ```bash
+make argus-anchors
 make argus-guards      # étage 1, sans device, quelques secondes
 flutter build apk --debug
 make argus-run         # étage 2, sur émulateur

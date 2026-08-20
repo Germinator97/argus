@@ -45,6 +45,7 @@ cadre	scripts/argus/run.mjs
 cadre	scripts/argus/sca.mjs
 cadre	scripts/argus/sec.mjs
 cadre	test/argus/a11y_test.dart
+cadre	test/argus/anchors_test.dart
 owned	test/argus/harness.dart
 cadre	test/argus/layout_test.dart
 EOF

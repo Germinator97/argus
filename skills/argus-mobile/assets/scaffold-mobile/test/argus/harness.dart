@@ -32,12 +32,22 @@ class ArgusScreen {
   const ArgusScreen({
     required this.id,
     required this.build,
+    this.anchor,
     this.priority = 'p0',
   });
 
   /// Doit correspondre à `screens[].id` de argus.mobile.yaml, pour que les deux
   /// étages parlent des mêmes écrans dans le rapport.
   final String id;
+
+  /// L'ancre sémantique de la racine — la même valeur que `screens[].anchor`
+  /// de argus.mobile.yaml, celle que les flows Maestro ciblent.
+  ///
+  /// La renseigner branche `anchors_test.dart`, qui PROUVE que l'identifiant
+  /// arrive réellement dans l'arbre sémantique. Sans lui, l'instrumentation
+  /// n'est vérifiée qu'à l'étage 2, sur device, où son absence se manifeste par
+  /// un flow entier qui échoue sans dire pourquoi.
+  final String? anchor;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
   /// pose lui-même la surface, la police et les marges système.

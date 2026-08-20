@@ -16,6 +16,7 @@ FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo fl
 
 .PHONY: argus-help argus argus-lint argus-guards argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
+        argus-anchors \
         argus-doctor argus-build
 
 argus-help: ## Liste les cibles
@@ -34,6 +35,9 @@ argus-lint: ## Syntaxe des flows Maestro, sans device
 		maestro check-syntax "$$f"; \
 	done
 	@echo "✔ tous les flows parsent"
+
+argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans device)
+	@$(FLUTTER) test test/argus/anchors_test.dart
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 	@$(FLUTTER) test test/argus
