@@ -308,7 +308,14 @@ Future<void> pumpArgus(
           data: MediaQuery.of(
             context,
           ).copyWith(textScaler: TextScaler.linear(textScale)),
-          child: child,
+          // `MaterialApp.home` ne fournit PAS de `Material` ancêtre — c'est le
+          // `Scaffold` qui en pose un. Sans lui, tout écran contenant un
+          // `InkWell`, un `ListTile` ou un champ Material lève « No Material
+          // widget found » au montage, et l'échec qu'on lit ensuite est une
+          // conséquence sans rapport (relevé : un débordement de 99805 px).
+          // On pose donc le minimum manquant, en transparence : un écran qui
+          // porte déjà son propre Scaffold reste rendu tel qu'il est écrit.
+          child: Material(type: MaterialType.transparency, child: child),
         ),
       ),
     ),
