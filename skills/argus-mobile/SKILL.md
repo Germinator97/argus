@@ -110,6 +110,14 @@ et il vaut d'être signalé comme tel à l'utilisateur : un champ requis ajouté
 un de ses types n'est plus un patch minimal, c'est une modification de son
 modèle.
 
+⚠️ **La portée de ce patch dépend de l'intention cadrée en §1.** En REGRESS,
+l'instrumentation RESTE : c'est le prix d'entrée d'une garde qui doit tourner à
+chaque PR, et sans elle la suite installée ne teste plus rien. En EXPLORE/DEMO
+elle est **temporaire** — posée pour permettre la mesure, retirée avant de
+partir, et rendue sous forme de patch dans le rapport (§4). Dis lequel des deux
+tu appliques AVANT de toucher au premier fichier : c'est la même édition, mais
+pas le même engagement.
+
 **d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
 `flutter build ios --debug --simulator`.
 
@@ -209,6 +217,39 @@ Puis :
 5. **Capitalise** : toute trouvaille stable et reproductible doit être **codifiée
    en flow Maestro** (ou en garde `flutter_test` si elle relève de l'étage 1) pour
    entrer dans la garde de non-régression. C'est ainsi que la couverture s'accumule.
+6. **Ne laisse RIEN.** Un audit live rend le projet dans l'état où il l'a trouvé.
+
+### Instrumentation temporaire : la poser, la rendre
+
+Mesurer exige des ancres, et l'app n'en a pas forcément. En EXPLORE/DEMO on les
+pose donc pour la durée de l'audit, puis on les retire — et on les **rend** à
+l'équipe sous forme de patch, avec le finding qui explique pourquoi les appliquer.
+Le gain d'accessibilité est réel : c'est une décision de produit, pas un effet
+de bord d'un outil de passage.
+
+```bash
+git status --porcelain lib/   # DOIT être vide avant de commencer
+# … instrumenter · flutter build apk --debug · mesurer …
+git diff lib/ > argus-mobile-report/instrumentation.patch
+git apply --reverse argus-mobile-report/instrumentation.patch
+git status --porcelain lib/   # vide à nouveau : le retrait est PROUVÉ, pas supposé
+```
+
+⚠️ **Trois précautions, chacune pour un dégât déjà vu ailleurs :**
+- **Exige `lib/` propre avant de poser quoi que ce soit.** Sur un arbre déjà
+  modifié, plus personne ne sait démêler tes lignes des siennes — et le retrait
+  emporterait son travail.
+- **Écris le patch AVANT de retirer.** Dans l'autre ordre, un retrait qui réussit
+  à moitié laisse un projet abîmé et aucune trace de ce qu'il contenait.
+- **Jamais `git checkout -- lib/`** pour retirer : il restaure depuis `HEAD`, donc
+  il détruit *tout* ce qui n'est pas commité, pas seulement ce que tu as ajouté.
+  Le patch inverse, lui, ne retire que tes lignes et échoue bruyamment s'il ne
+  retrouve pas son contexte.
+
+Le rapport porte alors un finding de dimension `a11y` — « N écrans et M widgets
+sans identifiant sémantique » — dont le `suggestedFix` pointe le patch et dont
+l'`evidence` le liste. C'est ce qui distingue « on n'a pas pu mesurer » de
+« voici ce qu'il faut faire pour qu'on puisse ».
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 5. Garde-fous de sécurité (NON NÉGOCIABLE — adaptés à ENV)

@@ -60,6 +60,7 @@ ni l'autre.
 | journal device | `logs/device-logcat.txt` (Android) · `logs/device-simulator.log` (iOS) |
 | crash / ANR | `logs/crash-report.txt` · `logs/anr-report.txt` |
 | index de tout le bundle | `manifest.json` → clé **`entries`** (pas `artifacts`) |
+| instrumentation rendue (EXPLORE/DEMO) | `instrumentation.patch` à la racine du dossier de rapport |
 | une entrée par étape exécutée | `commands.json` → `[{command, metadata}]` |
 
 ⚠️ **Forme relevée sur Maestro 2.8.0**, différente de ce que la doc laisse croire :
@@ -82,6 +83,33 @@ ni l'autre.
 captures, vidéos et `commands.json`. Ce ne sont pas les mêmes artefacts, et
 **`--debug-output` contient les valeurs de secrets en clair** : il ne se publie
 jamais en artefact CI ouvert.
+
+## B bis. L'instrumentation rendue (EXPLORE/DEMO seulement)
+
+Un audit live pose les ancres qui manquent, mesure, puis **les retire** : le
+projet repart comme il était. Ce qui a été posé n'est pas perdu pour autant, il
+est rendu — `instrumentation.patch`, applicable par `git apply`, accompagné d'un
+finding qui le justifie :
+
+```jsonc
+{
+  "id": "QA-0xx", "severity": "major", "dimension": "a11y",
+  "title": "N écrans et M widgets interactifs sans identifiant sémantique",
+  "expected": "chaque écran clé et chaque contrôle porte un Semantics(identifier:)",
+  "actual": "aucun identifiant : ni un lecteur d'écran ni un outil de test ne peut les nommer",
+  "evidence": ["argus-mobile-report/instrumentation.patch"],
+  "suggestedFix": "git apply argus-mobile-report/instrumentation.patch — pose les ancres "
+                  + "utilisées pendant cet audit. Gain d'accessibilité réel, indépendant d'Argus."
+}
+```
+
+⚠️ Le finding décrit **l'app**, pas l'audit. Écrire « je n'ai pas pu mesurer »
+en ferait un rapport sur soi-même ; ce qui intéresse le lecteur est que ses
+contrôles ne sont nommés nulle part — pour un outil de test comme pour un
+lecteur d'écran.
+
+En REGRESS il n'y a pas de patch : l'instrumentation reste dans le code, et
+c'est `coverage.notConfigured[]` qui dit ce qui n'a pas d'ancre.
 
 ## C. Rapport HTML
 
