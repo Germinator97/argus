@@ -352,6 +352,7 @@ const DEFAULTS = {
   budget: { maxMinutes: 25, maxFlows: 40, parallelDevices: 1 },
   gate: { failOn: ['blocker', 'critical', 'major'], failOnNewFinding: true, failOnVisualDiff: true, failOnEmptyRun: true },
   artifacts: { dir: 'argus-mobile-report', baselines: '.maestro/_baselines' },
+  artifact: { enabled: false, url: '', title: '', evidence: 'all', maxMb: 12 },
 };
 
 /** @param {any} v @returns {boolean} */
@@ -412,6 +413,26 @@ export function validateConfig(config) {
       problems.push({ level: 'error', message: `aucun device déclaré pour la plateforme « ${platform} ».` });
     }
   }
+  const evidence = config.artifact?.evidence ?? 'all';
+  if (!['all', 'major', 'none'].includes(evidence)) {
+    problems.push({ level: 'error', message: `artifact.evidence vaut « ${evidence} » : attendu all, major ou none.` });
+  }
+  const maxMb = config.artifact?.maxMb;
+  if (typeof maxMb !== 'number' || !(maxMb > 0)) {
+    problems.push({ level: 'error', message: `artifact.maxMb vaut « ${maxMb} » : attendu un nombre > 0.` });
+  }
+
+  // Publier envoie le rapport — captures comprises — à un service tiers. Le
+  // rappeler ici plutôt que dans la doc seule : c'est au moment de lire sa
+  // config qu'on vérifie ce qu'on a activé, pas en relisant un README.
+  if (config.artifact?.enabled && ['all', 'major'].includes(evidence)) {
+    problems.push({
+      level: 'warn',
+      message: 'artifact.enabled et artifact.evidence=' + evidence + ' : les captures d\'écran de l\'app '
+        + 'partiront avec le rapport publié. Sur une app sous contrat, vérifie que c\'est permis.',
+    });
+  }
+
   const configured = configuredScreens(config);
   if (configured.length === 0) {
     problems.push({

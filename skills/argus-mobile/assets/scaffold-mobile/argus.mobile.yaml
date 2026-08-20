@@ -248,3 +248,30 @@ artifacts:
   # l'émulateur de la CI. Génère-les sur la même image que la CI (même piège que
   # les snapshots Playwright du skill web).
   baselines: .maestro/_baselines
+
+# ── Publication du rapport ─────────────────────────────────────────────────
+# Le rapport HTML peut être publié comme page consultable, en plus des fichiers
+# du dossier ci-dessus. C'est l'agent qui publie : les scripts n'en ont pas le
+# moyen, et une CI n'a pas d'agent — un job produira donc toujours le fichier,
+# jamais l'URL.
+#
+# ⚠️ Publier ENVOIE le rapport à un service tiers. La page est privée par
+# défaut, ce qui veut dire « pas partagée avec d'autres », pas « restée sur ta
+# machine » : le contenu est bien hébergé ailleurs, et une page privée se
+# partage d'un clic. Sur une application sous contrat, vérifie que c'est permis
+# AVANT d'activer — d'où le défaut ci-dessous.
+artifact:
+  enabled: false
+  # Renseignée à la première publication, puis réutilisée : sans elle, chaque
+  # run créerait une page de plus au lieu de mettre la sienne à jour.
+  url: ''
+  # TODO(argus): le nom de la page. Vide = « Rapport Argus Mobile ». Le garder
+  # STABLE : c'est ainsi qu'on la retrouve parmi les autres.
+  title: ''
+  # Captures des findings embarquées dans la page : all | major | none.
+  # « none » laisse les chemins, comme dans le rapport local : rien de l'app ne
+  # part, mais la page ne se suffit plus à elle-même.
+  evidence: all
+  # Plafond de la page. Ce qui ne rentre pas est ANNONCÉ dans le rapport, jamais
+  # retiré en silence — une preuve absente sans un mot se lit « pas de preuve ».
+  maxMb: 12

@@ -18,7 +18,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 
 import { artifactsDir, loadConfig, log, err, writeJson } from './config.mjs';
@@ -111,8 +111,8 @@ function perfRows(perf) {
   }).join('');
 }
 
-/** @param {any[]} findings @returns {string} */
-function findingCards(findings) {
+/** @param {any[]} findings @param {Map<string,string>} shots @returns {string} */
+function findingCards(findings, shots = new Map()) {
   if (findings.length === 0) return '<p class="muted">Aucun finding. 🎉</p>';
   return SEVERITIES.map((severity) => {
     const group = findings.filter((f) => f.severity === severity);
@@ -122,7 +122,7 @@ function findingCards(findings) {
       <div class="meta">${esc(f.dimension ?? '')}${f.screen ? ` · écran ${esc(f.screen)}` : ''}${f.selector ? ` · ${esc(f.selector)}` : ''}${f.device ? ` · ${esc(f.device)}` : ''}${f.platform ? ` · ${esc(f.platform)}` : ''}</div>
       <table class="kv"><tr><th>attendu</th><td>${esc(f.expected)}</td></tr><tr><th>constaté</th><td>${esc(f.actual)}</td></tr></table>
       ${f.suggestedFix ? `<div class="fix">${esc(f.suggestedFix)}</div>` : ''}
-      ${(f.evidence ?? []).length ? `<div class="meta">preuve : ${(f.evidence ?? []).map((/** @type {string} */ e) => esc(e)).join(' · ')}</div>` : ''}
+      ${(f.evidence ?? []).length ? `<div class="meta">preuve : ${(f.evidence ?? []).map((/** @type {string} */ e) => esc(e)).join(' · ')}</div>` : ''}${(f.evidence ?? []).filter((/** @type {string} */ e) => shots.has(e)).map((/** @type {string} */ e) => `<img class="shot" src="${shots.get(e)}" alt="preuve : ${esc(e)}" loading="lazy">`).join('')}
       ${(f.repro ?? []).length ? `<pre>${(f.repro ?? []).map((/** @type {string} */ r) => esc(r)).join('\n')}</pre>` : ''}
       ${f.wcag ? `<div class="meta">${esc(f.wcag)}</div>` : ''}
     </div>`).join('');
@@ -134,16 +134,10 @@ function findingCards(findings) {
 // Rendu
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** @param {any} context @returns {string} */
-function render(context) {
-  const { run, counts, gate, parts, findings, coverage, perf, generatedAt } = context;
-  const devices = (run?.devices ?? []).map((/** @type {any} */ d) => `${d.id} (${d.model || '?'} · ${d.os || '?'}${d.physical ? ' · APPAREIL RÉEL' : ''})`).join(', ');
-  const ok = parts.filter((/** @type {any} */ p) => p.state === 'ok' && p.findings.length === 0);
+const TITLE = 'Argus Mobile — rapport QA';
 
-  return `<!doctype html>
-<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Argus Mobile — rapport QA</title>
-<style>
+/** Le style, partagé par les deux rendus. */
+const STYLE = `<style>
   :root{--bg:#0f1115;--card:#181b22;--fg:#e7e9ee;--muted:#8b93a7;--ok:#2ecc71;--bad:#e85d26;--warn:#f1c40f;--line:#262b36}
   *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:1100px;margin:0 auto;padding:32px 20px}
@@ -171,9 +165,23 @@ function render(context) {
   .badge.minor,.badge.info{background:rgba(139,147,167,.18);color:var(--muted)}
   .badge.good{background:rgba(46,204,113,.18);color:var(--ok)}
   pre{background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
+  .shot{max-width:100%;display:block;border:1px solid var(--line);border-radius:6px;margin-top:8px}
   .ok-list{list-style:none;padding:0}.ok-list li{margin:4px 0}
   .muted{color:var(--muted)}footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
-</style></head><body><div class="wrap">
+</style>`;
+
+/**
+ * Le corps du rapport — SEULE source de vérité des deux rendus. Les dupliquer
+ * les aurait laissés diverger dès la première section ajoutée d'un seul côté.
+ * @param {any} context @returns {string}
+ */
+function renderBody(context) {
+  const { run, counts, gate, parts, findings, coverage, perf, generatedAt } = context;
+  const shots = context.shots ?? new Map();
+  const devices = (run?.devices ?? []).map((/** @type {any} */ d) => `${d.id} (${d.model || '?'} · ${d.os || '?'}${d.physical ? ' · APPAREIL RÉEL' : ''})`).join(', ');
+  const ok = parts.filter((/** @type {any} */ p) => p.state === 'ok' && p.findings.length === 0);
+
+  return `<div class="wrap">
   <h1>Argus Mobile — rapport QA</h1>
   <div class="sub">
     ${esc(run?.appId ?? '')} ·
@@ -196,13 +204,81 @@ function render(context) {
   <p class="muted">Le premier lancement après installation est mesuré à part : c'est un état réel, vécu une fois par chaque utilisateur, et le moyenner avec le régime stabilisé ne décrirait ni l'un ni l'autre.</p>` : ''}
 
   <h2>Findings (${findings.length})</h2>
-  ${findingCards(findings)}
+  ${context.evidenceNote ?? ''}${findingCards(findings, shots)}
 
   <h2>✅ Ce qui fonctionne</h2>
   ${ok.length ? `<ul class="ok-list">${ok.map((/** @type {any} */ p) => `<li>${esc(p.label)} <span class="muted">— exécutée, aucun finding</span></li>`).join('')}</ul>` : '<p class="muted">Aucune dimension n\'a tourné sans finding.</p>'}
 
   <footer>Généré par Argus Mobile (Claude Code) · ${esc(generatedAt)}</footer>
-</div></body></html>`;
+</div>`;
+}
+
+/** Le rapport tel qu'il s'ouvre depuis le disque, enveloppe comprise.
+ * @param {any} context @returns {string} */
+function render(context) {
+  return `<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${TITLE}</title>
+${STYLE}</head><body>${renderBody(context)}</body></html>`;
+}
+
+/**
+ * Page prête à publier. Le format d'artefact fournit lui-même l'enveloppe
+ * <html>/<head>/<body> et REFUSE qu'on la redonne : on ne livre donc que le
+ * titre, le style et le corps. Le <title> doit rester dans les premiers Ko,
+ * c'est là qu'il est lu.
+ * @param {any} context @returns {string}
+ */
+function renderArtifact(context) {
+  return `<title>${context.title || TITLE}</title>\n${STYLE}\n${renderBody(context)}\n`;
+}
+
+/** @param {number} bytes @returns {string} */
+const humanSize = (bytes) => (bytes < 1048576 ? `${Math.round(bytes / 1024)} Ko` : `${(bytes / 1048576).toFixed(1)} Mo`);
+
+/** @type {Record<string, string|undefined>} */
+const IMAGE_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' };
+
+/**
+ * Charge les captures de preuve en data URI, des findings les plus graves aux
+ * moins graves, sous un plafond de taille.
+ *
+ * ⚠️ Ce qui ne rentre pas — ou ne se lit pas — est COMPTÉ et rendu à
+ * l'appelant, qui l'affiche. Une preuve absente sans un mot se lit « il n'y
+ * avait pas de preuve », c'est-à-dire l'inverse de ce qui s'est passé.
+ *
+ * @param {any[]} findings
+ * @param {{evidence:string, maxMb:number}} options
+ */
+function embedEvidence(findings, options) {
+  /** @type {Map<string,string>} */
+  const shots = new Map();
+  const result = { shots, embedded: 0, tooBig: 0, missing: 0, bytes: 0 };
+  if (options.evidence === 'none') return result;
+
+  const keep = options.evidence === 'major'
+    ? new Set(['blocker', 'critical', 'major'])
+    : new Set(SEVERITIES);
+  const budget = options.maxMb * 1024 * 1024;
+
+  for (const severity of SEVERITIES) {
+    if (!keep.has(severity)) continue;
+    for (const finding of findings.filter((f) => f.severity === severity)) {
+      for (const rel of finding.evidence ?? []) {
+        if (shots.has(rel)) continue;
+        const mime = IMAGE_MIME[extname(rel).toLowerCase()];
+        if (!mime) continue;                       // dumps, journaux : le chemin suffit
+        const full = resolve(process.cwd(), rel);
+        if (!existsSync(full)) { result.missing += 1; continue; }
+        const uri = `data:${mime};base64,${readFileSync(full).toString('base64')}`;
+        if (result.bytes + uri.length > budget) { result.tooBig += 1; continue; }
+        shots.set(rel, uri);
+        result.bytes += uri.length;
+        result.embedded += 1;
+      }
+    }
+  }
+  return result;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -231,11 +307,34 @@ function main() {
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   const htmlPath = join(dir, 'report.html');
+  const context = { run, counts, gate, parts, findings, coverage, perf, generatedAt };
   writeJson(join(dir, 'summary.json'), {
     generatedAt, gate, counts, findings: findings.length,
     dimensions: parts.map((p) => ({ source: p.file, state: p.state, reason: p.reason, findings: p.findings.length })),
   });
-  writeFileSync(htmlPath, render({ run, counts, gate, parts, findings, coverage, perf, generatedAt }), 'utf8');
+  writeFileSync(htmlPath, render(context), 'utf8');
+
+  // Page publiable, EN PLUS des fichiers. Les scripts ne publient pas : seul
+  // l'agent en a le moyen (voir SKILL.md), et une CI n'a pas d'agent — un job
+  // produira donc toujours ce fichier, jamais une URL.
+  if (config.artifact?.enabled) {
+    const evidence = config.artifact.evidence ?? 'all';
+    const maxMb = config.artifact.maxMb ?? 12;
+    const shot = embedEvidence(findings, { evidence, maxMb });
+    const notes = [];
+    if (evidence === 'none') notes.push('captures laissées en chemin (artifact.evidence: none)');
+    if (shot.embedded) notes.push(`${shot.embedded} capture(s) embarquée(s), ${humanSize(shot.bytes)}`);
+    if (shot.tooBig) notes.push(`${shot.tooBig} au-delà du plafond de ${maxMb} Mo, laissée(s) en chemin`);
+    if (shot.missing) notes.push(`${shot.missing} introuvable(s) sur le disque`);
+    const evidenceNote = notes.length ? `<p class="muted">Preuves : ${esc(notes.join(' · '))}</p>` : '';
+    const artifactPath = join(dir, 'report.artifact.html');
+    writeFileSync(artifactPath, renderArtifact({ ...context, shots: shot.shots, evidenceNote, title: config.artifact.title }), 'utf8');
+    log(`page publiable : ${artifactPath}`);
+    for (const note of notes) log(`  · ${note}`);
+    log(config.artifact.url
+      ? `  à REPUBLIER sur ${config.artifact.url} — publier sans cette URL crée un doublon`
+      : '  première publication : reporte ensuite l\'URL dans argus.mobile.yaml → artifact.url');
+  }
 
   const notRun = parts.filter((p) => p.state !== 'ok');
   log(`${findings.length} finding(s) · gate ${gate} · ${parts.length - notRun.length}/${parts.length} dimension(s) exécutée(s)`);
