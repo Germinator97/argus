@@ -65,6 +65,12 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
    make argus-report                      # rapport HTML
    ```
 
+   Le rapport reste sur la machine du run. Pour en donner le lien, passe
+   `artifact.enabled: true` dans `argus.mobile.yaml` : `make argus-report`
+   écrit alors une page publiable en plus, que l'agent publie et met à jour à
+   chaque run sous la même URL. Désactivé par défaut — publier envoie le
+   rapport, captures comprises, à un service tiers.
+
 ### Le harness a deux étages
 
 | | Ce qui tourne | Coût | Couvre |

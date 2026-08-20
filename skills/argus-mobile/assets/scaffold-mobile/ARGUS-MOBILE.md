@@ -109,6 +109,39 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 Si le projet a un `package.json`, `package.snippet.json` expose les mêmes cibles
 en scripts npm.
 
+## Publier le rapport
+
+Les fichiers du dossier de rapport restent sur la machine qui a lancé le run.
+Pour donner un lien à quelqu'un, `argus.mobile.yaml` → `artifact.enabled: true` :
+`make argus-report` écrit alors, en plus, `report.artifact.html` — le même
+rapport, débarrassé de l'enveloppe `<html>` que le format de page fournit
+lui-même. C'est **l'agent** qui la publie ; les scripts n'en ont pas le moyen.
+
+```yaml
+artifact:
+  enabled: true
+  url: ''          # rempli à la première publication, puis réutilisé
+  evidence: all    # all | major | none — captures embarquées dans la page
+  maxMb: 12
+```
+
+`url` n'est pas décoratif : sans elle, chaque run publie une page de plus au
+lieu de mettre la sienne à jour, et le lien déjà distribué cesse de suivre.
+
+Les captures embarquées rendent la page autonome — on **voit** l'écran cassé
+sans accès à la machine du run. Celles qui ne rentrent pas sous `maxMb`, ou qui
+ont disparu du disque, sont comptées et annoncées dans le rapport : une preuve
+absente sans un mot se lirait « il n'y avait pas de preuve ».
+
+⚠️ **Publier envoie le rapport à un service tiers.** La page est privée par
+défaut — non partagée, ce qui n'est pas la même chose que restée chez toi : le
+contenu est hébergé ailleurs, et une page privée se partage d'un clic. Sur une
+application sous contrat, vérifie que c'est permis avant d'activer, et pense à
+`evidence: none` si seul le verdict doit sortir.
+
+⚠️ **En CI, rien n'est publié** : un job n'a pas d'agent. Il produit le fichier,
+comme les autres artefacts, et c'est tout.
+
 ## Variables d'environnement
 
 | Variable | Rôle |

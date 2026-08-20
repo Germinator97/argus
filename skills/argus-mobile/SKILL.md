@@ -126,6 +126,29 @@ make argus-baselines   # références visuelles (1re fois, sur le device de la C
 make argus-report      # rapport HTML
 ```
 
+**g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
+`argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et
+n'en parle pas à chaque run. Quand il vaut `true`, `make argus-report` écrit en
+plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
+
+1. **Avant la toute première publication, demande.** Publier envoie le rapport
+   — captures d'écran comprises — à un service tiers. La page est privée par
+   défaut, ce qui veut dire « non partagée », pas « restée sur la machine ».
+   Sur une app sous contrat, ce n'est pas à toi d'en décider.
+2. **`artifact.url` renseignée → republie DESSUS**, en la passant en `url`.
+   Publier sans elle ne met pas la page à jour : ça en crée une seconde, et
+   le lien déjà distribué devient celui d'un rapport figé.
+3. **Sinon**, publie, puis **reporte l'URL obtenue dans `argus.mobile.yaml` →
+   `artifact.url`**. C'est toi qui édites ce fichier, pas le script : il
+   t'appartient, il porte des commentaires, et un script qui réécrit du YAML
+   les perd.
+4. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
+   ou « Rapport Argus Mobile » s'il est vide. C'est ainsi qu'on retrouve la
+   page ; la renommer à chaque run donne l'impression d'une page différente.
+
+⚠️ **En CI, personne ne publie** : le job n'a pas d'agent. Il produit le
+fichier et s'arrête là. Ne promets pas une URL dans un contexte automatisé.
+
 **h. Récapitule** : fichiers ajoutés, commandes, et les 1–2 prochaines étapes
 (remplir `journey-critical.yaml`, brancher la CI). **Ne prétends pas que la suite
 passe tant que tu ne l'as pas exécutée.**
