@@ -109,6 +109,12 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 Si le projet a un `package.json`, `package.snippet.json` expose les mêmes cibles
 en scripts npm.
 
+**FVM** : si le projet porte un `.fvmrc` ou un `.fvm/`, les cibles passent d'elles-mêmes
+par `fvm flutter` — sans quoi la contrainte de SDK du `pubspec.yaml` rejette la
+version globale et tout échoue. `make argus-doctor` affiche la commande retenue
+en première ligne. En CI, la version est lue dans `.fvmrc` et installée
+directement : FVM n'y est pas nécessaire.
+
 ## Publier le rapport
 
 Les fichiers du dossier de rapport restent sur la machine qui a lancé le run.

@@ -8,6 +8,12 @@
 # optionnels : leur absence donne une dimension SAUTÉE et mentionnée, jamais un
 # faux vert.
 
+# Un projet qui épingle son SDK par FVM ne se construit PAS avec le `flutter` du
+# PATH : la contrainte du pubspec rejette la version globale, et toutes les
+# cibles ci-dessous échouent. On dérive donc la commande du projet lui-même
+# plutôt que de demander à chacun d'éditer ce fichier.
+FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo flutter)
+
 .PHONY: argus-help argus argus-lint argus-guards argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-doctor argus-build
@@ -16,10 +22,11 @@ argus-help: ## Liste les cibles
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
 argus-doctor: ## Config résolue + outillage détecté
+	@echo "flutter : $(FLUTTER)"
 	@node scripts/argus/config.mjs
 
 argus-build: ## Construit l'APK debug
-	@flutter build apk --debug
+	@$(FLUTTER) build apk --debug
 
 argus-lint: ## Syntaxe des flows Maestro, sans device
 	@set -e; for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do \
@@ -29,7 +36,7 @@ argus-lint: ## Syntaxe des flows Maestro, sans device
 	@echo "✔ tous les flows parsent"
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
-	@flutter test test/argus
+	@$(FLUTTER) test test/argus
 
 argus-run: ## Étage 2 — suite Maestro sur device
 	@node scripts/argus/run.mjs

@@ -56,6 +56,14 @@ l'app expose à la couche d'accessibilité.
 **a. Le projet.** `pubspec.yaml`, `flutter --version` ≥ **3.19**
 (`Semantics(identifier:)` y est apparu), flavors, plateformes présentes.
 
+⚠️ **Cherche `.fvmrc` ou `.fvm/` avant de lancer la moindre commande Flutter.**
+Un projet épinglé par FVM ne se construit PAS avec le `flutter` du PATH : la
+contrainte du `pubspec.yaml` rejette la version globale et **tout** échoue, de
+`pub get` au build. Le Makefile fourni le détecte seul, mais les commandes que
+tu tapes, non — utilise `fvm flutter` partout dès que l'un des deux existe. En
+CI, c'est l'inverse : l'action installe la version demandée dans le PATH du
+runner, donc pas de `fvm` là-bas (il n'y est pas installé).
+
 **b. Audit d'instrumentation Semantics.** C'est le livrable de cette étape.
 Cherche dans `lib/` les `Semantics(identifier:` et `semanticLabel:` déjà posés,
 puis les widgets interactifs qui n'en ont pas : `ElevatedButton`, `TextButton`,

@@ -34,8 +34,25 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - name: Version de Flutter attendue par le projet
+        id: sdk
+        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et
+        # « channel: stable » dérive tout seul : la CI passe au vert un jour et
+        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la
+        # version dans le projet. Absente, la sortie est vide et l'action
+        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
+        run: |
+          if [ -f .fvmrc ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+            echo "Version épinglée : ${v:-aucune}"
+          fi
+      # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
+      # version demandée directement dans le PATH du runner. Préfixer les
+      # commandes par `fvm` échouerait — il n'est pas installé sur un runner.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.sdk.outputs.version }}
           channel: stable
       - run: flutter pub get
       - name: Analyse
@@ -54,8 +71,25 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - name: Version de Flutter attendue par le projet
+        id: sdk
+        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et
+        # « channel: stable » dérive tout seul : la CI passe au vert un jour et
+        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la
+        # version dans le projet. Absente, la sortie est vide et l'action
+        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
+        run: |
+          if [ -f .fvmrc ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+            echo "Version épinglée : ${v:-aucune}"
+          fi
+      # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
+      # version demandée directement dans le PATH du runner. Préfixer les
+      # commandes par `fvm` échouerait — il n'est pas installé sur un runner.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.sdk.outputs.version }}
           channel: stable
       - uses: actions/setup-node@v7
         with:
@@ -107,8 +141,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '17' # Maestro exige Java 17+
+      - name: Version de Flutter attendue par le projet
+        id: sdk
+        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et
+        # « channel: stable » dérive tout seul : la CI passe au vert un jour et
+        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la
+        # version dans le projet. Absente, la sortie est vide et l'action
+        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
+        run: |
+          if [ -f .fvmrc ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+            echo "Version épinglée : ${v:-aucune}"
+          fi
+      # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
+      # version demandée directement dans le PATH du runner. Préfixer les
+      # commandes par `fvm` échouerait — il n'est pas installé sur un runner.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.sdk.outputs.version }}
           channel: stable
       - uses: actions/setup-node@v7
         with:
@@ -188,8 +239,25 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Version de Flutter attendue par le projet
+        id: sdk
+        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et
+        # « channel: stable » dérive tout seul : la CI passe au vert un jour et
+        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la
+        # version dans le projet. Absente, la sortie est vide et l'action
+        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
+        run: |
+          if [ -f .fvmrc ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+            echo "version=$v" >> "$GITHUB_OUTPUT"
+            echo "Version épinglée : ${v:-aucune}"
+          fi
+      # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
+      # version demandée directement dans le PATH du runner. Préfixer les
+      # commandes par `fvm` échouerait — il n'est pas installé sur un runner.
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: ${{ steps.sdk.outputs.version }}
           channel: stable
       - uses: actions/setup-node@v7
         with:

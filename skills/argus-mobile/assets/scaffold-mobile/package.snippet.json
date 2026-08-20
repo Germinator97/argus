@@ -3,7 +3,7 @@
   "scripts": {
     "argus:doctor": "node scripts/argus/config.mjs",
     "argus:lint": "for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do [ \"$(basename $f)\" = config.yaml ] || maestro check-syntax \"$f\"; done",
-    "argus:guards": "flutter test test/argus",
+    "argus:guards": "if [ -f .fvmrc ] || [ -d .fvm ]; then fvm flutter test test/argus; else flutter test test/argus; fi",
     "argus:run": "node scripts/argus/run.mjs",
     "argus:smoke": "node scripts/argus/run.mjs --tags=smoke",
     "argus:visual": "node scripts/argus/run.mjs --tags=visual",
