@@ -79,6 +79,37 @@ prix d'entrée de l'automatisation, et qu'il améliore l'accessibilité réelle 
 passage. **Demande confirmation avant d'éditer du code applicatif** — c'est le
 code de production de quelqu'un.
 
+⚠️ **Une ancre ne se dérive JAMAIS d'un texte affiché.** Un libellé est traduit,
+et une ancre bâtie dessus (`'nav_${label}'`, `id: 'onglet_$titre'`) change avec
+la langue : le flow qui la cible cesse de trouver son élément, l'étape échoue, et
+c'est l'app qu'on accuse. Rien ne signale la cause, puisque du point de vue de
+Maestro l'élément a simplement disparu. Même piège pour tout ce qui se dérive
+d'une donnée rendue — date formatée, montant, pluriel.
+
+L'ancre doit venir d'une **clé stable portée par le modèle**. Quand la liste est
+construite depuis une collection dont les éléments n'ont pas d'identité propre
+(onglets, cartes, items d'un menu), ajoute un champ `id` au type qui les décrit
+et dérive l'ancre de lui :
+
+```dart
+// AVANT — l'ancre suit la langue
+Semantics(identifier: 'nav_${item.label}', …)
+
+// APRÈS — le libellé reste traduit, l'ancre ne bouge plus
+class ItemOnglet {
+  const ItemOnglet({required this.id, required this.label, required this.icone});
+  final String id;      // clé stable, jamais affichée
+  final String label;   // traduit
+  final IconData icone;
+}
+Semantics(identifier: 'nav_${item.id}', …)
+```
+
+C'est le **seul** cas où l'instrumentation touche autre chose qu'un `Semantics`,
+et il vaut d'être signalé comme tel à l'utilisateur : un champ requis ajouté à
+un de ses types n'est plus un patch minimal, c'est une modification de son
+modèle.
+
 **d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
 `flutter build ios --debug --simulator`.
 
