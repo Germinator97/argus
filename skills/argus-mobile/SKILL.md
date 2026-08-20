@@ -70,6 +70,13 @@ puis les widgets interactifs qui n'en ont pas : `ElevatedButton`, `TextButton`,
 `OutlinedButton`, `IconButton`, `FloatingActionButton`, `InkWell`, `GestureDetector`,
 `TextField`, `Checkbox`, `Switch`, `BottomNavigationBar`, `ListTile`, `Card` cliquable.
 
+⚠️ Cette liste est un **point de départ, pas l'inventaire**. Un projet mature a
+son design system : `ElevatedButton` et `ListTile` n'y apparaissent nulle part,
+remplacés par des composants maison qui les encapsulent. Un grep littéral y rend
+un rapport quasi vide. Remonte donc aux widgets du projet qui tiennent ce rôle —
+c'est en général là que l'instrumentation est la plus rentable, un composant
+partagé couvrant tous ses call-sites d'un coup.
+
 Produis un **rapport d'instrumentation** : « X widgets interactifs, Y instrumentés,
 Z à instrumenter », avec la liste `fichier:ligne` des manquants **sur les parcours
 critiques uniquement** — pas les 300 du projet.
@@ -94,6 +101,13 @@ c'est l'app qu'on accuse. Rien ne signale la cause, puisque du point de vue de
 Maestro l'élément a simplement disparu. Même piège pour tout ce qui se dérive
 d'une donnée rendue — date formatée, montant, pluriel.
 
+**Nomme les ancres de la même façon partout** : `<domaine>_<élément>` en
+snake_case **anglais**, minuscules, sans accent — `home_start_session`,
+`settings_back`, `confirm_sheet_cancel`. Le suffixe **`_root` est réservé aux
+racines** d'écran ou d'état. Sans convention explicite, deux projets instrumentés
+par ce skill en auront deux différentes, et leurs sous-flows cesseront d'être
+partageables.
+
 L'ancre doit venir d'une **clé stable portée par le modèle**. Quand la liste est
 construite depuis une collection dont les éléments n'ont pas d'identité propre
 (onglets, cartes, items d'un menu), ajoute un champ `id` au type qui les décrit
@@ -113,10 +127,47 @@ class ItemOnglet {
 Semantics(identifier: 'nav_${item.id}', …)
 ```
 
-C'est le **seul** cas où l'instrumentation touche autre chose qu'un `Semantics`,
-et il vaut d'être signalé comme tel à l'utilisateur : un champ requis ajouté à
-un de ses types n'est plus un patch minimal, c'est une modification de son
-modèle.
+⚠️ **Une clé stable n'est pas toujours utilisable — le cas des listes.** Sur une
+collection chargée à l'exécution, l'identité existe (`entity.id`) mais c'est
+souvent un UUID : parfaitement stable, et parfaitement inconnu d'un flow YAML
+écrit à l'avance. Dériver l'ancre de lui donne un identifiant que personne ne
+peut cibler. La règle ci-dessus ne vaut donc que pour un ensemble **fini et
+connu à l'écriture** — onglets, presets, sections. Pour une liste dynamique,
+pose **la même ancre sur chaque ligne** et laisse le flow choisir par rang
+(`index:` côté Maestro). Une ancre répétée n'est pas un défaut ici, c'est le
+seul moyen d'adresser des éléments dont on ignore le contenu.
+
+⚠️ **Certains widgets ne peuvent PAS être enveloppés.** La consigne « pose
+l'ancre sur le nœud qui porte déjà le rôle » suppose qu'il y ait un nœud, ou à
+défaut qu'une enveloppe soit légale. Ni l'un ni l'autre n'est garanti : un
+widget qui rend un `Expanded`, un `Flexible` ou un `Positioned` doit rester
+enfant direct de son `Flex`/`Stack`, et l'entourer d'un `Semantics` lève un
+`ParentDataWidget` **à l'exécution** — pas à la compilation. Même famille de
+problème pour `TableRow` et pour les slivers. Repli prescrit, dans l'ordre : (1)
+le widget expose-t-il déjà un paramètre pour son libellé ou son identifiant ?
+(2) peut-on envelopper son **enfant** plutôt que lui ? (3) sinon, laisse-le non
+instrumenté, **écris-le en commentaire à l'endroit concerné**, et signale que ce
+parcours restera ciblé par son texte — donc fragile à la traduction.
+
+⚠️ **Un écran a souvent plusieurs états**, et une seule ancre ne permet pas
+d'affirmer lequel est affiché — or « la liste est vide » est l'une des captures
+de régression les plus utiles. Pose **une racine par état** (`home_empty_root`,
+`home_filled_root`) et déclare-les comme autant d'entrées de `screens[]`. Quand
+une commande existe dans plusieurs états, donne-lui **la même ancre** partout :
+le flow n'a alors pas à savoir dans quel état il est tombé.
+
+Ces cas ne sont pas les seuls où l'instrumentation touche autre chose qu'un
+`Semantics`, et chacun vaut d'être signalé à l'utilisateur. Sur un projet doté
+d'un design system, le cas dominant n'est pas le champ ajouté à un modèle mais
+le **paramètre optionnel ajouté à un widget partagé** — conséquence directe de
+l'interdiction d'envelopper, puisque le nœud `Semantics` est à l'intérieur du
+composant. Il est peu intrusif (optionnel, non cassant, ancre lisible au
+call-site) mais reste une modification d'API partagée. Un champ **requis** ajouté
+à un type, lui, n'est plus un patch minimal du tout : dis-le franchement.
+
+⚠️ `Semantics` **n'a pas de constructeur `const`** : envelopper un sous-arbre
+`const` casse le build sous `flutter_lints` (`const_with_non_const`). Descends le
+`const` d'un cran, sur l'enfant.
 
 ⚠️ **La portée de ce patch dépend de l'intention cadrée en §1.** En REGRESS,
 l'instrumentation RESTE : c'est le prix d'entrée d'une garde qui doit tourner à
@@ -237,11 +288,23 @@ de bord d'un outil de passage.
 
 ```bash
 git status --porcelain lib/   # DOIT être vide avant de commencer
-# … instrumenter · flutter build apk --debug · mesurer …
+# … instrumenter …
+fvm dart format $(git diff --name-only lib/)   # les fichiers TOUCHÉS, pas tout lib/
+# … construire le binaire · mesurer …
 git diff lib/ > argus-mobile-report/instrumentation.patch
 git apply --reverse argus-mobile-report/instrumentation.patch
 git status --porcelain lib/   # vide à nouveau : le retrait est PROUVÉ, pas supposé
 ```
+
+⚠️ **Ce patch est bien plus gros que ce qu'il fait, et il faut le dire.**
+Envelopper réindente tout le sous-arbre : après formatage, le diff peut tripler.
+Mesuré sur un projet réel : **1268 lignes ajoutées pour 373 réellement neuves**,
+le reste n'étant que de l'indentation déplacée. Un patch de mille lignes tombé
+dans un rapport se lit comme une réécriture, et personne ne l'applique. Donne
+donc les **deux** mesures dans le finding — `git diff --shortstat` et
+`git diff -w --shortstat` — et dis laquelle compte. Formate uniquement les
+fichiers que tu as touchés : passer le formateur sur tout `lib/` embarquerait
+dans le patch des fichiers auxquels tu n'as jamais touché.
 
 ⚠️ **Trois précautions, chacune pour un dégât déjà vu ailleurs :**
 - **Exige `lib/` propre avant de poser quoi que ce soit.** Sur un arbre déjà
