@@ -301,6 +301,35 @@ la première chose à faire après l'installation, avant même le premier run. T
 qu'elle n'a pas tourné, dis que l'instrumentation est *proposée*, jamais
 *validée*.
 
+**c-bis. Rends la table des ancres — c'est elle qui passe à §3.** Les ancres que
+tu viens de poser sont exactement ce qui doit remplir `screens[]` à l'étape
+suivante. Tant qu'une seule session fait les deux, ça se passe de commentaire ;
+dès que le chantier dure — et il dure toujours —, §3 est repris par quelqu'un qui
+n'a pas le code sous les yeux et qui doit **relire tout `lib/` pour reconstituer
+une liste qui existait déjà**. Termine donc §2 par ce bloc, prêt à coller :
+
+```yaml
+# Racines → argus.mobile.yaml › screens[]
+screens:
+  - id: home-empty          # une entrée PAR ÉTAT, pas par écran
+    anchor: home_empty_root
+    priority: p0
+    visual: true
+  - id: home-filled
+    anchor: home_filled_root
+    priority: p0
+    visual: true
+
+# Commandes → consommées par les flows, PAS par screens[]
+#   home_start_session   lancer une session      (présente dans les deux états)
+#   settings_back        retour depuis Réglages
+```
+
+Deux moitiés, parce qu'elles ne vont pas au même endroit : les racines peuplent
+`screens[]`, les commandes ne servent qu'aux flows. Et note en regard les ancres
+présentes **dans plusieurs états** — c'est ce qui permet à un flow de ne pas avoir
+à savoir dans quel état il est tombé.
+
 **d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
 `flutter build ios --debug --simulator`.
 
@@ -323,6 +352,13 @@ signale-le avant.
 éditer : identifiants d'app, chemins de binaire, matrice de devices, `screens[]`
 et leurs ancres, seuils, règles de sécurité, gate. Puis `test/argus/harness.dart`
 pour l'étage 1 (écrans à monter, famille de police).
+
+⚠️ **`screens[]` se remplit avec la table d'ancres de §2c-bis, pas en relisant le
+code.** Si tu reprends un chantier commencé ailleurs et que cette table n'existe
+nulle part, c'est un livrable manquant : réclame-la, ou reconstitue-la et rends-la,
+plutôt que de peupler `screens[]` de mémoire. Une ancre oubliée ici ne casse rien —
+l'écran est simplement absent du rapport, et `coverage.notConfigured` le liste sans
+que personne ne sache que la ligne devait y être.
 
 **d. Vérifier avant de lancer** : `node scripts/argus/config.mjs` (config
 résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
