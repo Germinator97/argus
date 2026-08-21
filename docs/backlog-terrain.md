@@ -10,44 +10,33 @@ ici, marqué ✅, avec la mesure qui l'a établi. Le retirer effacerait ce qui a
 plus de valeur : pas le correctif, mais la raison pour laquelle on cherchait au
 mauvais endroit.
 
+⚠️ **Les numéros ne se réutilisent pas et ne se resserrent pas.** Ils sont cités
+par des messages de commit et par la page publiée du chantier ; renuméroter après
+une clôture ferait pointer ces renvois sur autre chose. Un point qui sort laisse
+son numéro vide.
+
 Formulé sans jamais nommer les projets d'essai : ce dépôt est public.
 
-## Écrit par un agent qui découvrait le skill
+## Écrit par un agent qui découvrait le skill — clos
 
 Un agent sans connaissance du projet cible a appliqué l'étape 2 à partir du
 skill seul. Il a produit une instrumentation plus complète que celle écrite à la
 main auparavant — 49 ancres contre 7, 16 racines d'état contre 7 racines
-d'écran — et a rendu 14 points de friction. Neuf sont clos ; voici les cinq qui
-restent.
+d'écran — et a rendu **14 points de friction. Les quatorze sont clos**, les cinq
+derniers le 21/08/2026 :
 
-### 1. Une racine d'écran qui est AUSSI une commande
-La méthodologie exige une racine « inerte », et n'envisage pas l'écran dont
-toute la surface est un contrôle : tap-to-pause, tap-to-dismiss,
-pull-to-refresh. Le repli retenu sur le terrain — deux nœuds, une racine inerte
-plus un nœud de commande — n'est écrit nulle part.
+| # | Ce qu'il avait signalé | Ce qui l'a fermé |
+|---|---|---|
+| 1 | Une racine d'écran qui est aussi une commande | Recette à deux nœuds, mesurée sur Flutter 3.32 — plus la précision sur ce que l'absorption avale (le texte) et ce qui y survit (les commandes) |
+| 2 | Le rapport d'instrumentation n'a pas de format | Forme littérale en §2b, et son sort tranché par mode : un finding `a11y` en EXPLORE/DEMO, un reste-à-faire bloquant en REGRESS |
+| 3 | Le passage de témoin entre §2 et §3 | La table d'ancres devient un livrable de §2c-bis, réclamé par §3c |
+| 4 | Cohabitation avec les autres producteurs de sémantique | Table mesurée : `ExcludeSemantics` fait disparaître l'ancre, `MergeSemantics` lui rétrécit le `rect` |
+| 5 | La géométrie de la racine, pas seulement son absorption | 216 px d'écart selon le côté du `SafeArea` — soit l'horloge système dans la référence visuelle |
 
-### 2. Le rapport d'instrumentation n'a pas de format
-§2b demande « X widgets, Y instrumentés, Z à instrumenter » avec les
-`fichier:ligne`. Le contrat de sortie n'est convoqué qu'en §4, et la
-méthodologie affirme que ce rapport « EST une métrique a11y » — ce qui suggère
-un finding de dimension `a11y` que §2 ne demande pas. Deux agents rendront deux
-formats.
-
-### 3. Le passage de témoin entre l'instrumentation et la configuration
-Les ancres posées en §2 sont exactement ce qui doit remplir `screens[]` en §3.
-Ni l'une ni l'autre étape ne le dit. Quand les deux sont faites par deux
-sessions — le cas dès que le chantier dure —, la liste d'ancres EST l'artefact
-de passation et personne n'a demandé de la produire.
-
-### 4. Cohabitation avec les autres producteurs de sémantique
-`Tooltip`, `MergeSemantics`, `ExcludeSemantics`, `Hero` contribuent eux aussi à
-l'arbre. Poser l'ancre dedans ou dehors change le résultat, et le skill n'en
-parle pas.
-
-### 5. La géométrie de la racine, pas seulement son absorption
-Le skill traite la racine pour ce qu'elle absorbe. Or ses *bounds* alimentent la
-dimension visuelle : posée à l'intérieur ou à l'extérieur du `SafeArea`, elle ne
-cadre pas la même surface. Jamais discuté.
+Ce que ces cinq-là avaient en commun : **aucun ne produit d'erreur**. Pas de
+compilation cassée, pas d'avertissement d'analyse, pas d'exception. Ils
+déplacent un `rect`, vident un nœud, ou perdent une liste — et le résultat est
+toujours un rapport qui a l'air normal.
 
 ## Trouvé en exécutant l'étage 2 sur un device
 
@@ -96,6 +85,11 @@ sa raison. Elle reste à éprouver au moins une fois.
 liées au couple device + OS, et un `udid` d'émulateur est un numéro de port qui
 change d'AVD entre deux sessions (voir `device-matrix.md`).
 
+⚠️ Et vérifier d'abord de quel côté du `SafeArea` la racine servant de
+`visualCropOn` a été posée — sinon la barre d'état entre dans la référence, et la
+dimension est rouge à chaque minute qui passe (point 5, clos, mais c'est ici que
+sa conséquence se paie).
+
 ## Ouvert par la séance du 21/08/2026
 
 ### 9. `waitForAnimationToEnd` expire à presque tous les flows
@@ -112,3 +106,13 @@ Les flows portent `timeout: 20000` en dur, un nombre deviné. Le dériver de
 numérique : la doc ne le dit nulle part, et ça n'a pas été éprouvé sur device.
 Une injection a été écrite puis **retirée** pour cette raison — livrer une
 variable dont on ignore si elle est consommée, c'est livrer une branche morte.
+
+## Comment ce qui reste se regroupe
+
+Trois lots, et ils ne demandent pas la même chose :
+
+- **8, 9 et 10 tiennent dans une seule session sur émulateur** — même montage,
+  même démarrage. Les faire séparément paierait trois fois le même coût.
+- **6 demande un arbitrage**, pas du travail : ajouter une clé de config est
+  visible par tous les projets consommateurs.
+- **7 ne demande plus rien** — il est là pour être relu.
