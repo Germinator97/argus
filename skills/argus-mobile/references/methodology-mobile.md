@@ -434,6 +434,26 @@ analyse de sécurité qui n'a rien analysé.
   `disableAnimations` du `config.yaml` est une option **Maestro Cloud uniquement**.
   C'est le runner qui s'en charge, en `adb`, et qui **relit la valeur** pour le
   prouver.
+- **`waitForAnimationToEnd` n'est JAMAIS gratuit, et son `timeout` ne borne pas
+  son coût.** Il compare deux captures successives — sur un émulateur une capture
+  coûte ~2 s, donc l'appel coûte ~3 s **même sur un écran où rien ne bouge**, et
+  le timeout ne coupe qu'*entre* deux captures : réglé à 5 000 ms, il rend 7,3 s
+  face à une animation perpétuelle. Mesuré sur Maestro 2.8.0, trois répétitions
+  par cas :
+
+  | Écran | `waitForAnimationToEnd` |
+  |---|---|
+  | statique, rien ne bouge | 3084 · 3303 · 2991 ms |
+  | indicateur perpétuel (`CircularProgressIndicator`) | 7330 · 7035 · 7642 ms |
+  | *(coût d'une capture seule, pour comparaison)* | 3,0 · 2,0 · 2,1 s |
+
+  Le scaffold l'appelle une dizaine de fois par suite complète — `launch-clean`
+  est inclus par sept flows —, soit **une trentaine de secondes de plancher** sur
+  une app parfaitement immobile. Deux conséquences : ne l'appelle pas « au cas
+  où », et **ne baisse pas son timeout en espérant gagner du temps** — le plancher
+  est fait de deux captures, pas du timeout. Ce qui se gagne vraiment est ailleurs :
+  une animation perpétuelle à l'écran (halo, indicateur de chargement, pulsation)
+  paie le plafond à chaque appel, et c'est elle qu'il faut figer.
 - **Figer l'horloge, la locale et le fuseau** au démarrage du device.
 - **Émulateur à snapshot connu** ; en CI, image et API level épinglés.
 - **Baselines visuelles sur le même device/OS que la CI** — piège identique à
