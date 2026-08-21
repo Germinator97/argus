@@ -195,6 +195,33 @@ le widget expose-t-il déjà un paramètre pour son libellé ou son identifiant 
 instrumenté, **écris-le en commentaire à l'endroit concerné**, et signale que ce
 parcours restera ciblé par son texte — donc fragile à la traduction.
 
+⚠️ **Ton ancre n'est pas seule à produire de la sémantique.** `Tooltip`,
+`MergeSemantics`, `ExcludeSemantics` et `Hero` écrivent eux aussi dans l'arbre, et
+le côté où tu poses l'ancre change le résultat. Mesuré sur Flutter 3.32 :
+
+| Voisin | Ancre **dedans** | Ancre **dehors** |
+|---|---|---|
+| `ExcludeSemantics` | **elle disparaît** — nœud absent de l'arbre | intacte |
+| `MergeSemantics` | survit, mais son `rect` ne couvre plus que le **fragment** enveloppé (72×72 px sur une rangée de 371) | porte le rect **complet** de la rangée |
+| `Tooltip` | survit, un niveau plus bas | survit, arbre plus plat |
+| `Hero` | intacte (au repos) | intacte |
+
+Deux conséquences pratiques :
+
+- **`ExcludeSemantics` est le seul qui fasse disparaître l'ancre**, et il ne
+  produit aucune erreur — ni compilation, ni analyse, ni exécution. Une ancre
+  posée sous lui est simplement introuvable. C'est le cas que `make argus-anchors`
+  est là pour attraper avant le premier run sur device.
+- **Enveloppe par l'extérieur** dès qu'il y a un `MergeSemantics` : à l'intérieur,
+  l'ancre existe mais cadre un morceau. Ça ne casse aucun `tapOn`, et ça fausse la
+  dimension visuelle et la mesure de cible tactile, qui lisent toutes deux ce rect.
+
+⚠️ Sur un `Tooltip` autour d'un bouton, l'ancre atterrit sur un nœud **qui ne
+porte pas l'action** — le `tap` reste sur le nœud du bouton, en dessous. Le
+`tapOn` fonctionne quand même (Maestro tape au centre du rect), mais la consigne
+« pose l'ancre sur le nœud qui porte déjà le rôle » n'est ici pas tenable par
+enveloppe : préfère un paramètre du widget quand il en offre un.
+
 ⚠️ **Un écran a souvent plusieurs états**, et une seule ancre ne permet pas
 d'affirmer lequel est affiché — or « la liste est vide » est l'une des captures
 de régression les plus utiles. Pose **une racine par état** (`home_empty_root`,
