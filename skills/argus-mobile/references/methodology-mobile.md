@@ -232,6 +232,30 @@ comparaison conforme, puis détection d'une référence corrompue.
 Ce qu'il ne faut **pas** faire : relâcher `visualMatchPercentage`. Ça masque les
 zones dynamiques **et** les vraies régressions, sans distinction.
 
+⚠️ **Et il ne faut pas non plus le monter à 100.** Aucun écran n'est
+pixel-parfait d'un run à l'autre. Mesuré sur émulateur, deux écrans capturés puis
+recomparés sans qu'une ligne de code ne change : **99,949 %** et **99,870 %** de
+correspondance. À 100, la suite est rouge en permanence pour du bruit de rendu ;
+c'est le défaut symétrique de relâcher le seuil, et il coûte la même chose — un
+rapport qu'on cesse de lire.
+
+⚠️ **Une comparaison verte ne prouve PAS que l'écran est déterministe.** Elle
+prouve que ce qui bouge pèse moins que le seuil. Sur le même relevé, un écran
+portant un `CircularProgressIndicator` **qui tourne sans fin** passe au seuil
+recommandé de 99 : l'indicateur ne représente que ~0,13 % des pixels. Le
+non-déterminisme est là, il est simplement sous le radar — et il ressortira le
+jour où l'élément grossira, où un autre device le rendra autrement, ou où un
+second élément animé s'ajoutera. Autrement dit, on ne peut pas **découvrir** les
+zones dynamiques en regardant la dimension passer au vert : il faut les
+connaître, les déclarer, et poser `visual: false` sur les écrans qui en portent
+de structurelles (un chronomètre, un solde qui s'anime, un carrousel).
+
+Le cycle complet a été éprouvé sur device : génération de deux références,
+comparaison conforme (0 finding), référence remplacée par un aplat → un finding
+`visual`/`major` (« threshold not met, current: 0.0% »), restauration → retour au
+vert. Sans cette troisième étape, le « 0 finding » de la deuxième ne prouverait
+pas que la comparaison a eu lieu.
+
 ⚠️ **Une baseline est liée au couple device + version d'OS.** Générée ailleurs
 que sur la configuration de la CI, elle rend la dimension rouge en permanence.
 Et `--update-baselines` ne se lance **jamais** en CI : une référence régénérée
