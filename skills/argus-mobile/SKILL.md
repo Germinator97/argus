@@ -222,6 +222,13 @@ porte pas l'action** — le `tap` reste sur le nœud du bouton, en dessous. Le
 « pose l'ancre sur le nœud qui porte déjà le rôle » n'est ici pas tenable par
 enveloppe : préfère un paramètre du widget quand il en offre un.
 
+⚠️ **Une racine ne fait pas qu'absorber : elle CADRE.** Son `rect` alimente la
+dimension visuelle (`visualCropOn`) et la mesure de cible tactile. Posée autour
+d'un `SafeArea` elle prend l'écran entier, posée dedans la zone utile — 216 px
+d'écart sur un téléphone courant, soit les deux barres système. Recadrer sur une
+racine extérieure fait entrer **l'horloge du système** dans la référence visuelle,
+donc un diff à chaque minute. Détail et chiffres : `methodology-mobile.md` §VISUAL.
+
 ⚠️ **Un écran a souvent plusieurs états**, et une seule ancre ne permet pas
 d'affirmer lequel est affiché — or « la liste est vide » est l'une des captures
 de régression les plus utiles. Pose **une racine par état** (`home_empty_root`,

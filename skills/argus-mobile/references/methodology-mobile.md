@@ -203,6 +203,27 @@ réels, du plus fiable au moins fiable :
 2. **Fermer ce qui flotte** — bannières, toasts, tooltips (`optional: true`) ;
 3. **Recadrer** sur un conteneur stable (`visualCropOn`).
 
+⚠️ **Ce que `visualCropOn` recadre dépend de l'endroit où la racine a été posée**,
+et ça ne se voit pas dans le code d'instrumentation. Une racine d'écran cadre la
+surface de son sous-arbre : posée **autour** d'un `SafeArea`, elle prend l'écran
+entier ; posée **dedans**, la zone utile. Mesuré sur Flutter 3.32, écran 360×800 dp,
+insets 48 dp en haut et 24 dp en bas :
+
+| Où est la racine | `rect` du nœud |
+|---|---|
+| **autour** du `SafeArea` | `0,0` — 1080 × **2400** px *(écran entier)* |
+| **dedans** le `SafeArea` | `0,144` — 1080 × **2184** px *(zone utile)* |
+
+216 px d'écart, soit exactement les deux insets. Poser la racine à l'extérieur
+fait donc entrer la **barre d'état dans la référence visuelle** — donc l'horloge
+du système, qui change à chaque minute. La dimension devient rouge en permanence,
+pour une raison qui n'apparaît nulle part dans le diff d'instrumentation : ce
+n'est ni un seuil mal réglé ni une régression, c'est un cadrage.
+
+Poser la racine **à l'intérieur** du `SafeArea` quand elle sert de `visualCropOn`.
+Et si elle doit rester à l'extérieur pour une autre raison, recadrer sur un
+conteneur intérieur plutôt que sur elle.
+
 La racine de résolution d'un chemin **relatif** de `assertScreenshot` n'est
 documentée nulle part. Le harness n'essaie pas de la deviner : il injecte un
 chemin **absolu**, ce qui a été éprouvé sur device — génération de la référence,
