@@ -94,6 +94,52 @@ prix d'entrée de l'automatisation, et qu'il améliore l'accessibilité réelle 
 passage. **Demande confirmation avant d'éditer du code applicatif** — c'est le
 code de production de quelqu'un.
 
+⚠️ **L'absorption avale le texte, pas les commandes** — et c'est ce qui la rend
+difficile à voir. Mesuré sur Flutter 3.32, même écran, seul le drapeau change :
+
+| `explicitChildNodes` | enfants de la racine | label de la racine |
+|---|---|---|
+| `true` | 2 | *(vide)* |
+| `false` | **0** | `"Titre\nSous-titre"` |
+| `false`, l'écran ayant un bouton | 1 — *le bouton seul* | `"Titre\nSous-titre"` |
+
+Un descendant qui porte déjà une action **survit** à l'absorption. L'écran a donc
+l'air correct tant qu'on regarde ses commandes, pendant que tout son contenu
+textuel a fusionné dans le label de la racine. C'est pour ça que
+`make argus-anchors` juge sur le **label** de la racine et jamais sur son nombre
+d'enfants : des deux mesures, une seule voit le défaut.
+
+⚠️ **Une racine d'écran qui est AUSSI une commande.** Tap-to-pause, tap-to-dismiss,
+pull-to-refresh : toute la surface réagit, et la consigne « une racine inerte » n'a
+pas prévu ce cas. **Ne pose pas l'ancre et l'action sur le même nœud.** Ça marche
+pour Maestro — mesuré, `identifier` et action `tap` coexistent sans problème — mais
+ça fabrique un **contrôle de la taille de l'écran et sans libellé** : la dimension
+a11y le comptera comme tel, et TalkBack l'annoncera comme un bouton anonyme.
+
+Deux nœuds, la racine gardant exactement la forme qu'elle a partout ailleurs :
+
+```dart
+Semantics(                            // la racine — inerte, comme sur les autres écrans
+  identifier: 'player_root',
+  container: true,
+  explicitChildNodes: true,
+  child: Semantics(                   // la commande — son rôle, son libellé
+    identifier: 'player_toggle',
+    container: true,
+    button: true,
+    label: 'Lecture ou pause',
+    child: GestureDetector(onTap: _basculer, child: …),
+  ),
+)
+```
+
+Relevé de cette forme exacte : `player_root` rend `actions=` *(aucune)* et un
+label vide, `player_toggle` rend `actions=tap`. Le flow garde donc deux cibles qui
+ne disent pas la même chose — « je suis sur le lecteur » et « j'actionne le
+lecteur » — et l'écran reste comparable aux autres. Ne mets pas `onTap:` sur ce
+`Semantics` : le `GestureDetector` fournit déjà l'action, et le doubler crée deux
+nœuds tapables superposés.
+
 ⚠️ **Une ancre ne se dérive JAMAIS d'un texte affiché.** Un libellé est traduit,
 et une ancre bâtie dessus (`'nav_${label}'`, `id: 'onglet_$titre'`) change avec
 la langue : le flow qui la cible cesse de trouver son élément, l'étape échoue, et
