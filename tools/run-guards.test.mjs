@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
-  avdNameFrom, resolveByAvd, resolveNamedDevice,
+  avdNameFrom, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
@@ -138,6 +138,19 @@ test('aucun échec à signaler : la phrase sur le budget d\'attente disparaît',
   const findings = startupFindings(samples, DEVICE, 'android', CONFIG);
   assert.equal(findings.length, 1);
   assert.doesNotMatch(findings[0].actual, /budget d'attente/);
+});
+
+test('le budget d\'attente reste LARGEMENT au-dessus du seuil de perf', () => {
+  // La règle, pas la valeur : confondre les deux fait sortir un écran lent en
+  // « ancre introuvable » — le diagnostic faux qui a coûté un run entier.
+  for (const coldStartMs of [500, 2000, 4000, 8000, 30000]) {
+    const budget = startTimeoutMs({ thresholds: { coldStartMs } });
+    assert.ok(budget > coldStartMs * 2,
+      `budget ${budget} ms trop proche du seuil ${coldStartMs} ms : un écran lent sortirait en échec fonctionnel`);
+  }
+  // Un plancher, pour que le cas nominal ne dépende pas d'un seuil minuscule.
+  assert.ok(startTimeoutMs({ thresholds: { coldStartMs: 100 } }) >= 20000);
+  assert.ok(startTimeoutMs({}) >= 20000, 'une config sans seuil doit rester utilisable');
 });
 
 test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {

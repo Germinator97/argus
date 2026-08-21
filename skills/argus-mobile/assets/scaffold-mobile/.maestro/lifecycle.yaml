@@ -46,7 +46,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_ANCHOR_HOME}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           label: L'app repart proprement après mort du processus
       # TODO(argus): asserte ici la DONNÉE restaurée, pas seulement l'écran.
       # Un écran qui revient vide après une mort de processus est un défaut que

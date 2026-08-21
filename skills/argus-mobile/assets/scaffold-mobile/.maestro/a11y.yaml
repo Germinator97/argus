@@ -32,7 +32,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_ANCHOR_HOME}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Ancre d'accueil exposée à la couche d'accessibilité
 
       # TODO(argus): une assertion par ancre déclarée dans screens[], atteinte

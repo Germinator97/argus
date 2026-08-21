@@ -24,7 +24,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_ANCHOR_HOME}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Écran d'accueil affiché (ancre sémantique)
 
 - runFlow:

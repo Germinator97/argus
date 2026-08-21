@@ -20,7 +20,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 CIBLE = ROOT / "skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs"
 REL = str(CIBLE.relative_to(ROOT))
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 15
+NB_TESTS = 16
 
 MUTATIONS = [
     ("l'AVD absent retombe sur un autre émulateur",
@@ -44,6 +44,9 @@ MUTATIONS = [
     ("un finding même sous le seuil",
      "  const over = samples.filter((s) => s.ms > budget);",
      "  const over = samples.filter((s) => s.ms >= 0);"),
+    ("le budget d'attente colle au seuil de perf",
+     "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);",
+     "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000));"),
     ("l'indice s'affiche sur n'importe quel échec",
      "  if (!startupAnchor || selector !== `id=${startupAnchor}`) return '';",
      "  if (false) return '';"),

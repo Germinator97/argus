@@ -386,6 +386,29 @@ function disableAnimations(platform, udid, dryRun) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Budget d'attente de l'écran de départ, injecté aux flows.
+ *
+ * ⚠️ Ce n'est PAS `coldStartMs`, et les confondre produit le pire verdict qui
+ * soit : un écran simplement lent sort alors en « ancre introuvable », ce qui
+ * envoie chercher un défaut d'instrumentation là où il n'y en a pas. Vécu sur un
+ * projet réel, deux flows sur six. Les deux verdicts restent donc séparés — on
+ * abandonne LARGEMENT après le seuil de performance, pour qu'un démarrage trop
+ * lent sorte en finding de lenteur, chiffré, et non en échec fonctionnel.
+ *
+ * Le facteur 5 et le plancher de 20 s sont des choix, pas des mesures : ils
+ * disent seulement « bien après le seuil ». Ce qui est mesuré, c'est que Maestro
+ * SUBSTITUE cette variable dans un champ `timeout:` — éprouvé sur 2.8.0, en
+ * faisant varier la valeur : 15 000 rend 15 192 ms d'attente, 1 000 en rend
+ * 2 570. ⚠️ Ne pas chercher à le vérifier dans `commands.json` : le champ y
+ * garde le texte SOURCE (`"${ARGUS_START_TIMEOUT_MS}"`), et le lire donnerait la
+ * conclusion inverse. Seule la durée le dit.
+ * @param {any} config @returns {number}
+ */
+function startTimeoutMs(config) {
+  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);
+}
+
+/**
  * Écran d'où partent tous les flows : celui d'`id: home`, sinon le premier
  * écran configuré.
  *
@@ -422,6 +445,7 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_AUTH_SUCCESS: anchors.success ?? '',
     ARGUS_DEEPLINK: (config.deepLinks ?? [])[0] ?? '',
     ARGUS_VISUAL_THRESHOLD: String(config.thresholds?.visualMatchPercentage ?? 99),
+    ARGUS_START_TIMEOUT_MS: String(startTimeoutMs(config)),
     ARGUS_SCREEN_ID: '',
     ARGUS_SCREEN_ANCHOR: '',
     ARGUS_BASELINE_DIR: '',
@@ -982,6 +1006,7 @@ async function main() {
       anchor: home?.anchor ?? '',
       declaredAsHome: home?.id === 'home',
       budgetMs: config.thresholds?.coldStartMs ?? 2000,
+      timeoutMs: startTimeoutMs(config),
       samples: startup,
     },
   };
@@ -1032,5 +1057,5 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, findingsFrom, resolveByAvd, resolveNamedDevice,
-  startScreen, startupFindings, startupHint, startupSamples,
+  startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples,
 };

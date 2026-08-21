@@ -27,7 +27,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_ANCHOR_HOME}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           # Sans label, Maestro rapporte « Assert that id: ${…} is visible » —
           # la variable NON substituée, et aucune idée de ce qu'on attendait.
           label: Écran de départ affiché avant de juger la locale
