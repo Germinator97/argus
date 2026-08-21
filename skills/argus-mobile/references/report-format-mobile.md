@@ -41,11 +41,17 @@ mesuré pour que la comparaison soit une lecture. Voir `device-matrix.md`.
 ```jsonc
 "startup": {
   "screen": "home", "anchor": "home_root",
-  "declaredAsHome": true,        // false = repli sur screens[0], convention muette
+  "origin": "declared",          // declared | home | first — voir ci-dessous
   "budgetMs": 2000,              // thresholds.coldStartMs
   "samples": [ { "flow": "smoke", "ms": 19329, "status": "COMPLETED" } ]
 }
 ```
+`origin` dit COMMENT l'écran de départ a été choisi, et les trois valeurs ne se
+valent pas : `declared` — un écran porte `start: true`, c'est le seul cas où
+quelqu'un a décidé ; `home` — convention historique sur l'identifiant ; `first` —
+repli sur le premier écran déclaré, qui est un pari. Un booléen ne pouvait pas
+distinguer « on me l'a dit » de « j'ai deviné et ça tombait bien ».
+
 La suite chronométrait déjà ce temps sans le savoir : la **première** attente
 d'ancre de chaque flow n'est pas une assertion, c'est le démarrage à froid de
 l'app. Relevé sur un projet réel — la même assertion, sur la même ancre, dans le

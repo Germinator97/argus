@@ -96,6 +96,17 @@ devices:
 #
 # Un écran dont `anchor` est vide est IGNORÉ par les flows (skip propre), et
 # compté dans `coverage.notConfigured` du rapport. Il n'est jamais vert.
+#
+# `start: true` désigne l'écran d'où partent TOUS les flows, après `clearState`.
+# Un seul écran peut le porter, et il lui faut une ancre — les deux sont vérifiés
+# par `make argus-doctor`, sans device.
+#
+# ⚠️ Renseigne-le dès que tu déclares plusieurs ÉTATS d'un même écran. Sans lui,
+# le runner prend l'écran d'`id: home`, et à défaut le PREMIER de la liste : si
+# c'est l'état « liste pleine », son ancre n'existe pas au lancement et tous les
+# flows partent de travers — par intermittence, donc en accusant autre chose. Le
+# repli reste en place pour ne casser aucune config, mais il s'annonce dans la
+# sortie du runner et dans `startup.origin` du rapport.
 screens:
   - id: home
     anchor: ''         # TODO(argus): Semantics(identifier: '…') de l'écran d'accueil

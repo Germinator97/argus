@@ -313,7 +313,8 @@ une liste qui existait déjà**. Termine donc §2 par ce bloc, prêt à coller :
 screens:
   - id: home-empty          # une entrée PAR ÉTAT, pas par écran
     anchor: home_empty_root
-    priority: p0
+    start: true             # d'ici partent tous les flows — après clearState,
+    priority: p0            #   c'est l'état vide, pas l'état plein
     visual: true
   - id: home-filled
     anchor: home_filled_root
@@ -326,7 +327,9 @@ screens:
 ```
 
 Deux moitiés, parce qu'elles ne vont pas au même endroit : les racines peuplent
-`screens[]`, les commandes ne servent qu'aux flows. Et note en regard les ancres
+`screens[]`, les commandes ne servent qu'aux flows. **Marque `start: true`** sur
+l'état où l'app se trouve après un `clearState` : sans lui le runner devine, et
+il devine mal dès que le premier écran déclaré est l'état plein. Et note en regard les ancres
 présentes **dans plusieurs états** — c'est ce qui permet à un flow de ne pas avoir
 à savoir dans quel état il est tombé.
 
