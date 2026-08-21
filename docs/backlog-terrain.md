@@ -40,18 +40,6 @@ toujours un rapport qui a l'air normal.
 
 ## Trouvé en exécutant l'étage 2 sur un device
 
-### 6. Le point de départ des flows est dérivé d'une convention muette
-`run.mjs` choisit l'écran de départ par `screens.find(s => s.id === 'home')`,
-avec repli sur `screens[0]`. Rien ne documente que l'identifiant `home` a un
-sens particulier, et le repli est piégeux : si le premier écran déclaré est un
-ÉTAT (liste vide), son ancre n'existe pas dans l'autre état.
-
-⚠️ **Déclassé le 21/08/2026 : ce n'était PAS la cause des échecs du point 7.**
-Le défaut de conception reste réel, mais il n'a rien produit sur le terrain — la
-convention porte désormais un nom (`startScreen`) et le rapport dit lequel a
-servi et par quelle voie (`startup.declaredAsHome`). Ce qui manque encore est un
-point de départ *déclaré*, ce qui suppose une clé de config à arbitrer.
-
 ### 7. ✅ Tranché le 21/08/2026 — l'app démarrait, le message accusait l'ancre
 Deux flows sur six échouaient sur « l'ancre de départ n'est pas visible » alors
 que le dump montrait l'ancre présente. Résolu **sans device**, en relisant les
@@ -106,8 +94,11 @@ passe à 99, en ne pesant que 0,13 % des pixels.
 
 ## Ce qui reste
 
-**Un seul point, et il demande une décision, pas du travail** : le 6. Déclarer le
-point de départ des flows suppose une clé de config de plus, donc un changement
-visible par tous les projets consommateurs — ça ne se tranche pas en passant.
+**Rien.** Les dix points sont clos, le dernier — le 6, le point de départ des
+flows — le 21/08/2026 : un écran porte `start: true`, les deux replis restent
+pour ne casser aucune config mais s'annoncent, et le rapport dit par quelle voie
+il a choisi (`startup.origin`).
 
-Le 7 ne demande plus rien : il est là pour être relu.
+Le 7 est gardé au-dessus, tranché : il est là pour être relu, pas pour être
+traité. Ce fichier reste ouvert pour le prochain terrain — son intérêt est
+d'être un projet que personne ici n'a vu.
