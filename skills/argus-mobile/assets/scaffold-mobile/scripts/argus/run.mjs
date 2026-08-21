@@ -77,9 +77,47 @@ function printHelp() {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
- * Devices Android connectés. `physical` distingue un vrai téléphone d'un
- * émulateur : la distinction pilote un garde-fou, pas seulement un affichage.
- * @returns {Array<{udid:string, physical:boolean}>}
+ * @typedef {{udid:string, physical:boolean, avd:string, model:string, os:string}} ListedDevice
+ * @typedef {ListedDevice & {measured:boolean}} ResolvedDevice
+ *
+ * `measured` dit si l'identité vient de l'APPAREIL ou de la config. Le rapport
+ * a besoin de la distinction : en `--dry-run` aucun device n'est interrogé, et
+ * publier « modèle X » sans l'avoir lu est exactement le défaut qu'on corrige.
+ */
+
+/**
+ * Identité RÉELLE d'un device Android, lue sur l'appareil.
+ *
+ * ⚠️ `emulator-5554` n'est pas une identité : c'est un NUMÉRO DE PORT, attribué
+ * dans l'ordre de démarrage (5554, 5556, 5558…). Le même udid désigne un AVD
+ * différent d'une session à l'autre, selon ce qui a démarré en premier. Cibler
+ * « par udid explicite » ne fixe donc pas l'appareil — ça déplace seulement le
+ * choix, du runner vers l'ordre de démarrage. Mesuré sur un cas réel : un
+ * rapport annonçait un modèle que le port ne portait plus.
+ *
+ * Le nom d'AVD, lui, est stable. C'est la seule identité qu'on puisse comparer.
+ * @param {string} udid @returns {{avd:string, model:string, os:string}}
+ */
+function probeAndroidIdentity(udid) {
+  // `adb emu avd name` rend le nom puis une ligne « OK » ; un appareil physique
+  // n'a pas de console émulateur et la commande échoue — d'où le repli vide.
+  const avdRes = sh('adb', ['-s', udid, 'emu', 'avd', 'name']);
+  const avd = avdRes.ok
+    ? (avdRes.stdout.split('\n').map((l) => l.trim()).find((l) => l !== '' && l !== 'OK') ?? '')
+    : '';
+  const prop = (/** @type {string} */ name) => {
+    const res = sh('adb', ['-s', udid, 'shell', 'getprop', name]);
+    return res.ok ? res.stdout.trim() : '';
+  };
+  const sdk = prop('ro.build.version.sdk');
+  return { avd, model: prop('ro.product.model'), os: sdk ? `android-${sdk}` : '' };
+}
+
+/**
+ * Devices Android connectés, avec leur identité mesurée. `physical` distingue
+ * un vrai téléphone d'un émulateur : la distinction pilote un garde-fou, pas
+ * seulement un affichage.
+ * @returns {Array<{udid:string, physical:boolean, avd:string, model:string, os:string}>}
  */
 function listAndroidDevices() {
   const res = sh('adb', ['devices']);
@@ -89,18 +127,35 @@ function listAndroidDevices() {
     .slice(1)
     .map((line) => line.trim().split(/\s+/))
     .filter((parts) => parts.length >= 2 && parts[1] === 'device')
-    .map((parts) => ({ udid: parts[0], physical: !parts[0].startsWith('emulator-') }));
+    .map((parts) => ({
+      udid: parts[0],
+      physical: !parts[0].startsWith('emulator-'),
+      ...probeAndroidIdentity(parts[0]),
+    }));
 }
 
-/** @returns {Array<{udid:string, physical:boolean, name:string}>} */
+/**
+ * Simulateurs iOS démarrés.
+ *
+ * Pas d'équivalent d'`avd` ici, et ce n'est pas un oubli : l'udid d'un
+ * simulateur est un UUID attribué à sa CRÉATION et stable à vie. Le piège du
+ * port réattribué (voir `probeAndroidIdentity`) est propre à Android.
+ * @returns {Array<{udid:string, physical:boolean, avd:string, model:string, os:string}>}
+ */
 function listIosBooted() {
   const res = sh('xcrun', ['simctl', 'list', '-j', 'devices', 'booted']);
   if (!res.ok) return [];
   try {
     const data = JSON.parse(res.stdout);
-    return Object.values(data.devices ?? {})
-      .flat()
-      .map((/** @type {any} */ d) => ({ udid: d.udid, physical: false, name: d.name ?? '' }));
+    return Object.entries(data.devices ?? {}).flatMap(([runtime, list]) =>
+      (/** @type {any[]} */ (list)).map((/** @type {any} */ d) => ({
+        udid: d.udid,
+        physical: false,
+        avd: '',
+        model: d.name ?? '',
+        // « com.apple.CoreSimulator.SimRuntime.iOS-18-2 » → « iOS-18-2 »
+        os: String(runtime).split('.').pop() ?? '',
+      })));
   } catch {
     return [];
   }
@@ -116,14 +171,19 @@ function listIosBooted() {
  * Le résultat distingue « absent » de « refusé » : démarrer un émulateur a du
  * sens dans le premier cas, jamais dans le second — un refus délibéré ne change
  * pas d'avis, et réessayer ne ferait que répéter le message deux fois.
+ *
+ * Ordre de priorité : `avd` (identité stable, émulateurs Android) puis `udid`
+ * (identité stable côté iOS, et seule désignation possible d'un téléphone
+ * physique) puis auto-détection.
  * @param {any} spec @param {boolean} dryRun
- * @returns {{status:'ok'|'absent'|'refused', device?:{udid:string, physical:boolean}}}
+ * @returns {{status:'ok'|'absent'|'refused', device?:ResolvedDevice}}
  */
 function resolveDevice(spec, dryRun) {
   const listed = spec.platform === 'ios' ? listIosBooted() : listAndroidDevices();
+  if (spec.avd) return resolveByAvd(spec, listed, dryRun);
   if (spec.udid) return resolveNamedDevice(spec, listed, dryRun);
   const auto = listed.find((d) => !d.physical);
-  if (auto) return { status: 'ok', device: auto };
+  if (auto) return { status: 'ok', device: { ...auto, measured: true } };
   if (listed.length > 0) {
     err(`aucun émulateur/simulateur pour « ${spec.platform} » — seuls des appareils réels sont branchés.`);
     err('  Argus ne les cible jamais automatiquement. Démarre un émulateur, ou nomme');
@@ -134,12 +194,51 @@ function resolveDevice(spec, dryRun) {
 }
 
 /**
- * @param {any} spec @param {Array<{udid:string, physical:boolean}>} listed @param {boolean} dryRun
- * @returns {{status:'ok'|'absent'|'refused', device?:{udid:string, physical:boolean}}}
+ * Résout un émulateur Android par son NOM D'AVD, en interrogeant chaque device
+ * connecté. C'est la seule désignation qui survive à un redémarrage : le port
+ * change, l'AVD non.
+ *
+ * ⚠️ On ne compare QUE l'AVD. Confronter `spec.model` au `ro.product.model`
+ * mesuré serait un faux positif à chaque run : la config porte un nom de modèle
+ * MAESTRO (`pixel_6`, consommé par `start-device`), l'appareil rend un nom de
+ * produit ANDROID (`sdk_gphone64_arm64`). Deux vocabulaires, jamais égaux.
+ * @param {any} spec @param {ListedDevice[]} listed @param {boolean} dryRun
+ * @returns {{status:'ok'|'absent'|'refused', device?:ResolvedDevice}}
+ */
+function resolveByAvd(spec, listed, dryRun) {
+  if (spec.platform === 'ios') {
+    err(`« ${spec.id} » déclare « avd », qui n'existe que sur Android.`);
+    err('  Un simulateur iOS se désigne par son udid : c\'est un UUID stable,');
+    err('  pas un numéro de port réattribué (xcrun simctl list devices booted).');
+    return { status: 'refused' };
+  }
+  const found = listed.find((d) => d.avd === spec.avd);
+  if (found) return { status: 'ok', device: { ...found, measured: true } };
+  if (dryRun) {
+    return { status: 'ok', device: { udid: spec.udid ?? '', physical: false, avd: spec.avd, model: '', os: '', measured: false } };
+  }
+  // Nommer ce qu'on cherchait ET ce qu'on a trouvé : sans la seconde moitié, le
+  // message envoie vérifier une configuration qui est déjà juste.
+  const others = listed.filter((d) => !d.physical);
+  err(`l'AVD « ${spec.avd} » n'est pas démarré (device « ${spec.id} »).`);
+  err(others.length > 0
+    ? `  Émulateurs trouvés : ${others.map((d) => `${d.avd || '?'} (${d.udid})`).join(', ')}.`
+    : '  Aucun émulateur Android n\'est démarré.');
+  err(`  Démarre-le : emulator -avd ${spec.avd}   (liste : emulator -list-avds)`);
+  return { status: 'absent' };
+}
+
+/**
+ * @param {any} spec @param {ListedDevice[]} listed @param {boolean} dryRun
+ * @returns {{status:'ok'|'absent'|'refused', device?:ResolvedDevice}}
  */
 function resolveNamedDevice(spec, listed, dryRun) {
   const found = listed.find((d) => d.udid === spec.udid);
-  if (!found) return dryRun ? { status: 'ok', device: { udid: spec.udid, physical: false } } : { status: 'absent' };
+  if (!found) {
+    return dryRun
+      ? { status: 'ok', device: { udid: spec.udid, physical: false, avd: '', model: '', os: '', measured: false } }
+      : { status: 'absent' };
+  }
   if (found.physical && spec.physical !== true) {
     err(`« ${spec.id} » désigne un appareil RÉEL (${spec.udid}) sans « physical: true ».`);
     err('  Argus installe le binaire et efface les données de l\'app (clearState).');
@@ -147,7 +246,14 @@ function resolveNamedDevice(spec, listed, dryRun) {
     return { status: 'refused' };
   }
   if (found.physical) warn(`appareil RÉEL ciblé (${spec.udid}) — vérifie qu'il ne porte aucune donnée personnelle.`);
-  return { status: 'ok', device: found };
+  // Un émulateur nommé par son port : ça marche aujourd'hui et désignera peut-être
+  // un autre AVD demain. On le dit sans bloquer — le run reste valable, c'est sa
+  // REPRODUCTIBILITÉ qui ne l'est pas, et les baselines visuelles en dépendent.
+  if (!found.physical && spec.platform !== 'ios') {
+    warn(`« ${spec.id} » cible le port ${spec.udid}, qui porte actuellement l'AVD « ${found.avd || '?'} ».`);
+    warn(`  Un port est réattribué à l'ordre de démarrage. Écris plutôt « avd: ${found.avd || '<nom>'} ».`);
+  }
+  return { status: 'ok', device: { ...found, measured: true } };
 }
 
 /**
@@ -155,6 +261,16 @@ function resolveNamedDevice(spec, listed, dryRun) {
  * @param {any} spec @param {string} locale @param {boolean} dryRun @returns {boolean}
  */
 function startDevice(spec, locale, dryRun) {
+  if (spec.avd) {
+    // `maestro start-device` CRÉE son propre AVD (maestro_android_…) : il ne
+    // sait pas démarrer un AVD existant. Le faire nous-mêmes demanderait de
+    // détacher un processus et d'attendre son apparition dans `adb devices` —
+    // du code que rien ici n'exercerait. Autant le dire que le promettre.
+    err(`« ${spec.id} » nomme l'AVD « ${spec.avd} » : autoStart ne sait pas le démarrer.`);
+    err(`  Lance-le d'abord :  emulator -avd ${spec.avd} &`);
+    err('  (maestro start-device crée un AVD à lui, il ne réutilise pas le tien.)');
+    return false;
+  }
   const args = ['start-device', '--platform', spec.platform];
   if (spec.model) args.push('--device-model', spec.model);
   if (spec.os) args.push('--device-os', spec.os);

@@ -53,13 +53,28 @@ platforms:
 
 # ── Matrice de devices ─────────────────────────────────────────────────────
 # Comment la choisir sous budget : references/device-matrix.md.
-# `udid` vide  → le runner prend le premier device de cette plateforme.
+#
+# ⚠️ NE CIBLE PAS UN ÉMULATEUR ANDROID PAR SON udid. « emulator-5554 » est un
+# NUMÉRO DE PORT, attribué dans l'ordre de démarrage : le même udid désigne un
+# autre AVD dès que les émulateurs ont démarré dans un ordre différent. Ça se
+# voit d'autant moins que le run se déroule normalement — sur l'app d'à côté.
+# Utilise `avd`, qui est stable (liste : emulator -list-avds).
+#
+# `avd`        → nom d'AVD Android, la seule identité stable. Prioritaire.
+# `udid`       → iOS (UUID stable) et téléphones physiques (avec physical: true).
+# les deux vides → le runner prend le premier ÉMULATEUR, jamais un physique.
 # `autoStart`  → démarre le device s'il n'est pas déjà là
 #                (maestro start-device --device-model … --device-os …).
+#                ⚠️ Incompatible avec `avd` : start-device CRÉE son propre AVD,
+#                il ne sait pas démarrer le tien. Lance-le toi-même.
+# `model`/`os` → consommés par autoStart uniquement. Ce sont des noms MAESTRO
+#                (`pixel_6`), pas ce que l'appareil rend (`sdk_gphone64_arm64`) :
+#                le rapport, lui, écrit ce qu'il a MESURÉ sur le device.
 # `role: primary` → device qui porte les baselines visuelles et les mesures perf.
 devices:
   - id: android-emu
     platform: android
+    avd: ''
     udid: ''
     model: pixel_6
     os: android-33

@@ -50,6 +50,47 @@ sélectionne que des émulateurs et simulateurs. Viser un téléphone demande so
 binaire et efface les données de l'app (`clearState`). Ne branche jamais un
 téléphone personnel portant de vraies données.
 
+## Désigner un device : `avd`, pas `udid`
+
+⚠️ **`emulator-5554` n'est pas une identité, c'est un numéro de port.** Android
+les attribue dans l'ordre de démarrage — 5554, 5556, 5558. Le même udid désigne
+donc un AVD différent d'une session à l'autre, selon ce qui a démarré en
+premier.
+
+Ce piège ne se signale par aucune erreur : le run se déroule normalement, sur
+l'application d'à côté. Relevé sur un cas réel — un rapport annonçait
+`model: Medium_Phone` alors que le port portait un tout autre AVD, sur lequel
+l'app testée n'était même pas installée. Ce que le rapport nommait « modèle »
+était **recopié depuis la config**, jamais lu sur l'appareil : rien, dans la
+chaîne, ne pouvait voir l'écart.
+
+Deux conséquences, dont la seconde est la plus coûteuse :
+
+- les **baselines visuelles** sont liées au couple device + OS. Générées sur un
+  port qui change d'AVD, elles produisent des diffs qu'on met des heures à
+  expliquer ;
+- un run « vert » peut l'être **sur le mauvais appareil**.
+
+| Ce que tu cibles | Ce que tu déclares | Pourquoi |
+|---|---|---|
+| Émulateur Android | `avd: Medium_Phone_API_36` | seule identité stable (`emulator -list-avds`) |
+| Simulateur iOS | `udid: <UUID>` | l'UUID est attribué à la création, stable à vie |
+| Téléphone physique | `udid: <série>` + `physical: true` | deux gestes délibérés, voir ci-dessus |
+| N'importe quel émulateur | les deux vides | le runner prend le premier — jamais un physique |
+
+`avd` est prioritaire sur `udid`. Le rapport écrit ensuite l'identité qu'il a
+**mesurée** (`avd`, `model`, `os` lus sur l'appareil) à côté de celle qui était
+`declared` — les comparer est alors une lecture, plus une enquête.
+
+⚠️ `avd` et `autoStart: true` ne se combinent pas : `maestro start-device`
+**crée son propre AVD** et ne sait pas démarrer le tien. Lance-le toi-même
+(`emulator -avd <nom> &`) ; le runner te le dira plutôt que de faire semblant.
+
+⚠️ Et `model` n'est pas comparable : la config porte un nom **Maestro**
+(`pixel_6`, consommé par `start-device`), l'appareil rend un nom **produit
+Android** (`sdk_gphone64_arm64`). Deux vocabulaires — les confronter ferait
+crier au loup à chaque run.
+
 ## Créer les devices
 
 ```bash
@@ -60,23 +101,26 @@ maestro start-device --platform ios --device-model iPhone-16 --device-os iOS-18-
 # La locale se fige ICI : `maestro test` n'a pas de --device-locale, et aucun
 # flow ne peut la changer.
 
-adb devices                          # udid Android
-xcrun simctl list devices booted     # udid iOS
+emulator -list-avds                  # noms d'AVD Android — ce qu'il faut déclarer
+adb -s emulator-5554 emu avd name    # quel AVD occupe CE port, à l'instant t
+xcrun simctl list devices booted     # udid iOS (UUID stable)
 ```
 
 ## Matrice type, prête à copier
 
 ```yaml
 devices:
+  # AVD que tu gères toi-même : identité stable, à démarrer à la main.
   - id: android-lowend
     platform: android
-    udid: ''
-    model: pixel_6
-    os: android-30
-    autoStart: true
+    avd: Pixel_6_API_30   # emulator -list-avds
+    autoStart: false
     role: primary        # porte les baselines visuelles et les mesures perf
+  # Laissé à Maestro, qui crée son AVD : pas d'identité stable à déclarer, mais
+  # le rapport écrira quand même celle qu'il aura mesurée.
   - id: android-recent
     platform: android
+    avd: ''
     udid: ''
     model: pixel_7
     os: android-34

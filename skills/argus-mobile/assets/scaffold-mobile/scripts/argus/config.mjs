@@ -413,6 +413,29 @@ export function validateConfig(config) {
       problems.push({ level: 'error', message: `aucun device déclaré pour la plateforme « ${platform} ».` });
     }
   }
+
+  // Un émulateur Android désigné par son PORT. Ça marche, jusqu'au jour où les
+  // émulateurs démarrent dans un autre ordre : le port pointe alors un autre
+  // AVD, le run se déroule normalement sur la mauvaise machine, et les
+  // baselines visuelles — liées au couple device+OS — deviennent fausses sans
+  // qu'aucun test ne rougisse. Le dire ici permet de le voir sans device.
+  for (const device of config.devices ?? []) {
+    if (device?.platform === 'android' && device.udid && !device.avd && device.physical !== true) {
+      problems.push({
+        level: 'warn',
+        message: `device « ${device.id} » : « ${device.udid} » est un numéro de port, pas une identité — `
+          + 'il désignera un autre AVD si l\'ordre de démarrage change. Utilise « avd: <nom> » '
+          + '(emulator -list-avds), ou « physical: true » si c\'est un vrai téléphone.',
+      });
+    }
+    if (device?.platform === 'ios' && device.avd) {
+      problems.push({
+        level: 'error',
+        message: `device « ${device.id} » : « avd » n'existe que sur Android. Un simulateur iOS se `
+          + 'désigne par son udid, qui est un UUID stable.',
+      });
+    }
+  }
   const evidence = config.artifact?.evidence ?? 'all';
   if (!['all', 'major', 'none'].includes(evidence)) {
     problems.push({ level: 'error', message: `artifact.evidence vaut « ${evidence} » : attendu all, major ou none.` });
