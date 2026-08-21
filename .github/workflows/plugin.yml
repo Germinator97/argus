@@ -53,3 +53,10 @@ jobs:
       # l'ancre quand l'app démarrait trop lentement.
       - name: Les décisions du runner
         run: node --test tools/run-guards.test.mjs
+
+      # Et l'étage au-dessus : un garde vert ne prouve rien tant qu'on ne l'a
+      # pas vu rougir. Celui-ci réintroduit chaque défaut et exige que le garde
+      # correspondant tombe — sinon les quinze au-dessus pourraient se vider en
+      # silence, ce qui est le seul mode de panne qu'une suite verte ne dit pas.
+      - name: Les gardes du runner gardent encore
+        run: python3 tools/mutate-run-guards.py
