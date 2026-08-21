@@ -26,6 +26,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import {
   activeDevices, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
@@ -86,6 +87,19 @@ function printHelp() {
  */
 
 /**
+ * Nom d'AVD extrait de la sortie d'`adb emu avd name`.
+ *
+ * ⚠️ Cette commande rend DEUX lignes : le nom, puis un « OK » de la console
+ * émulateur. Prendre la première ligne donne le nom ; prendre la dernière, ou
+ * trimmer le tout, donne « OK » — un nom d'AVD qui ne correspondra à rien et
+ * fera échouer la résolution en désignant un coupable inexistant.
+ * @param {string} stdout @returns {string}
+ */
+function avdNameFrom(stdout) {
+  return String(stdout).split('\n').map((l) => l.trim()).find((l) => l !== '' && l !== 'OK') ?? '';
+}
+
+/**
  * Identité RÉELLE d'un device Android, lue sur l'appareil.
  *
  * ⚠️ `emulator-5554` n'est pas une identité : c'est un NUMÉRO DE PORT, attribué
@@ -99,12 +113,8 @@ function printHelp() {
  * @param {string} udid @returns {{avd:string, model:string, os:string}}
  */
 function probeAndroidIdentity(udid) {
-  // `adb emu avd name` rend le nom puis une ligne « OK » ; un appareil physique
-  // n'a pas de console émulateur et la commande échoue — d'où le repli vide.
   const avdRes = sh('adb', ['-s', udid, 'emu', 'avd', 'name']);
-  const avd = avdRes.ok
-    ? (avdRes.stdout.split('\n').map((l) => l.trim()).find((l) => l !== '' && l !== 'OK') ?? '')
-    : '';
+  const avd = avdRes.ok ? avdNameFrom(avdRes.stdout) : '';
   const prop = (/** @type {string} */ name) => {
     const res = sh('adb', ['-s', udid, 'shell', 'getprop', name]);
     return res.ok ? res.stdout.trim() : '';
@@ -1004,7 +1014,23 @@ async function main() {
   process.exit(code);
 }
 
-main().catch((e) => {
-  err(e instanceof Error ? e.stack ?? e.message : String(e));
-  process.exit(2);
-});
+// On ne lance la suite que si CE fichier est le point d'entrée. Sans ce garde,
+// l'importer pour en tester une fonction déclencherait un vrai run : install
+// du binaire, clearState sur le device, la totale. C'est ce qui rendait le
+// runner intestable, et donc non testé.
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+
+if (invokedDirectly) {
+  main().catch((e) => {
+    err(e instanceof Error ? e.stack ?? e.message : String(e));
+    process.exit(2);
+  });
+}
+
+// Surface exposée aux gardes de tools/. Ce sont les fonctions qui décident
+// — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
+export {
+  avdNameFrom, findingsFrom, resolveByAvd, resolveNamedDevice,
+  startScreen, startupFindings, startupHint, startupSamples,
+};

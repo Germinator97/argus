@@ -46,3 +46,10 @@ jobs:
           for f in skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
             node --check "$f"
           done
+
+      # `node --check` prouve qu'un fichier parse, jamais qu'il décide juste.
+      # Deux défauts ont vécu sous cette seule étape : un rapport qui recopiait
+      # l'identité du device au lieu de la lire, et un échec qui accusait
+      # l'ancre quand l'app démarrait trop lentement.
+      - name: Les décisions du runner
+        run: node --test tools/run-guards.test.mjs
