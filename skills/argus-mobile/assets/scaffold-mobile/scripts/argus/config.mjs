@@ -456,6 +456,28 @@ export function validateConfig(config) {
     });
   }
 
+  // ── D'où partent les flows ────────────────────────────────────────────────
+  const declares = (config.screens ?? []).filter((/** @type {any} */ s) => s?.start === true);
+  if (declares.length > 1) {
+    problems.push({
+      level: 'error',
+      message: `${declares.length} écrans portent « start: true » (${declares.map((/** @type {any} */ s) => s.id).join(', ')}) : `
+        + 'les flows ne peuvent partir que d\'un seul endroit. Garde-en un.',
+    });
+  }
+  // Un « start: true » sur un écran SANS ancre ne déclenche rien : l'écran est
+  // écarté avant même d'être considéré, et le runner repart en repli. On croit
+  // avoir choisi, et le choix n'a jamais été lu.
+  for (const s of declares) {
+    if (typeof s.anchor !== 'string' || s.anchor.trim() === '') {
+      problems.push({
+        level: 'error',
+        message: `l'écran « ${s.id} » porte « start: true » mais n'a pas d'ancre : il est ignoré, `
+          + 'et le point de départ retombe silencieusement sur un autre écran.',
+      });
+    }
+  }
+
   const configured = configuredScreens(config);
   if (configured.length === 0) {
     problems.push({

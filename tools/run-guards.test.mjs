@@ -17,8 +17,9 @@ import { test } from 'node:test';
 
 import {
   avdNameFrom, resolveByAvd, resolveNamedDevice, startTimeoutMs,
-  startupFindings, startupHint, startupSamples,
+  startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -138,6 +139,71 @@ test('aucun échec à signaler : la phrase sur le budget d\'attente disparaît',
   const findings = startupFindings(samples, DEVICE, 'android', CONFIG);
   assert.equal(findings.length, 1);
   assert.doesNotMatch(findings[0].actual, /budget d'attente/);
+});
+
+// ── D'où partent les flows ──────────────────────────────────────────────────
+
+/** Deux états du même écran, dans l'ordre PIÉGEUX : l'état plein d'abord. */
+const DEUX_ETATS = {
+  screens: [
+    { id: 'home-filled', anchor: 'home_filled_root' },
+    { id: 'home-empty', anchor: 'home_empty_root' },
+  ],
+};
+
+test('« start: true » gagne sur l\'ordre de déclaration', () => {
+  const config = { screens: DEUX_ETATS.screens.map((s) => ({ ...s, start: s.id === 'home-empty' })) };
+  const { screen, origin } = startScreen(config);
+  assert.equal(screen.id, 'home-empty', 'c\'est tout l\'objet de la clé : ne plus dépendre du rang');
+  assert.equal(origin, 'declared');
+});
+
+test('sans déclaration, la convention « home » s\'applique encore', () => {
+  // Rétrocompatibilité : casser ce chemin casserait toutes les configs posées.
+  const { screen, origin } = startScreen({
+    screens: [{ id: 'autre', anchor: 'autre_root' }, { id: 'home', anchor: 'home_root' }],
+  });
+  assert.equal(screen.id, 'home');
+  assert.equal(origin, 'home');
+});
+
+test('sans rien, le repli est signalé COMME tel', () => {
+  const { screen, origin } = startScreen(DEUX_ETATS);
+  assert.equal(screen.id, 'home-filled', 'le premier déclaré — le comportement historique');
+  assert.equal(origin, 'first', 'et le rapport doit pouvoir dire que c\'était une DEVINETTE');
+});
+
+test('un écran sans ancre ne peut pas être le point de départ', () => {
+  // configuredScreens l'écarte : le retenir ici injecterait une ancre vide.
+  const { screen } = startScreen({
+    screens: [{ id: 'vide', anchor: '', start: true }, { id: 'reel', anchor: 'reel_root' }],
+  });
+  assert.equal(screen.id, 'reel');
+});
+
+test('deux « start: true » sont refusés, un seul passe', () => {
+  const base = {
+    app: { name: 'x', androidPackage: 'com.x', iosBundleId: '', flavor: '' },
+    platforms: ['android'], devices: [{ id: 'd', platform: 'android' }],
+    thresholds: { visualMatchPercentage: 99, coldStartMs: 2000 },
+    artifact: { evidence: 'all', maxMb: 12, enabled: false },
+  };
+  const erreurs = (screens) => validateConfig({ ...base, screens })
+    .filter((p) => p.level === 'error' && /start: true/.test(p.message));
+
+  assert.equal(erreurs([
+    { id: 'a', anchor: 'a_root', start: true },
+    { id: 'b', anchor: 'b_root', start: true },
+  ]).length, 1, 'deux points de départ, c\'est une config qui ne veut rien dire');
+
+  assert.equal(erreurs([
+    { id: 'a', anchor: 'a_root', start: true },
+    { id: 'b', anchor: 'b_root' },
+  ]).length, 0, 'un seul doit passer sans bruit');
+
+  // Le piège : déclaré sur un écran qu'aucune ancre ne rend exploitable.
+  assert.equal(erreurs([{ id: 'a', anchor: '', start: true }]).length, 1,
+    'sinon le choix est écrit, jamais lu, et le départ retombe ailleurs en silence');
 });
 
 test('le budget d\'attente reste LARGEMENT au-dessus du seuil de perf', () => {

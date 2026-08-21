@@ -409,19 +409,31 @@ function startTimeoutMs(config) {
 }
 
 /**
- * Écran d'où partent tous les flows : celui d'`id: home`, sinon le premier
- * écran configuré.
+ * Écran d'où partent tous les flows, et par quelle voie il a été choisi.
  *
- * ⚠️ Ce repli est un piège connu, laissé en place faute de mieux : si le premier
- * écran déclaré est un ÉTAT (« liste vide ») plutôt qu'un écran, son ancre
- * n'existe pas dans l'autre état et tout part de travers. Le rapport dit donc
- * lequel a servi, et par quelle voie — une convention muette qui se voit vaut
- * mieux qu'une convention muette qui ne se voit pas.
- * @param {any} config @returns {any}
+ * Trois voies, dans cet ordre :
+ *   `declared` — un écran porte `start: true`. C'est la seule qui soit un CHOIX ;
+ *   `home`     — convention historique sur l'identifiant `home` ;
+ *   `first`    — repli sur le premier écran configuré.
+ *
+ * ⚠️ `first` est un piège, et c'est pour lui que `start:` existe. Un écran a
+ * souvent plusieurs ÉTATS (« liste vide », « liste pleine »), chacun déclaré
+ * séparément ; si le premier de la liste est l'état plein, son ancre n'existe pas
+ * après un `clearState` et TOUS les flows partent de travers — par intermittence,
+ * donc en accusant autre chose. Les deux voies de repli restent pour ne casser
+ * aucune config existante, mais elles se signalent.
+ *
+ * Le contrat de retour porte `origin` plutôt qu'un booléen : le rapport doit
+ * pouvoir distinguer « on me l'a dit » de « je l'ai deviné et ça tombait bien ».
+ * @param {any} config @returns {{screen:any, origin:'declared'|'home'|'first'}}
  */
 function startScreen(config) {
   const screens = configuredScreens(config);
-  return screens.find((/** @type {any} */ s) => s.id === 'home') ?? screens[0];
+  const declares = screens.filter((/** @type {any} */ s) => s.start === true);
+  if (declares.length > 0) return { screen: declares[0], origin: 'declared' };
+  const home = screens.find((/** @type {any} */ s) => s.id === 'home');
+  if (home) return { screen: home, origin: 'home' };
+  return { screen: screens[0], origin: 'first' };
 }
 
 /**
@@ -432,7 +444,7 @@ function startScreen(config) {
  * @returns {Record<string,string>}
  */
 function buildEnv(config, appId, extra = {}) {
-  const home = startScreen(config);
+  const home = startScreen(config).screen;
   const anchors = config.auth?.anchors ?? {};
   /** @type {Record<string,string>} */
   const env = {
@@ -958,7 +970,8 @@ async function main() {
   }
 
   const reportDevice = { ...spec, udid: resolved.udid, os: resolved.os || spec.os };
-  const home = startScreen(config);
+  const start = startScreen(config);
+  const home = start.screen;
   const startup = startupSamples(bundles, home?.anchor ?? '');
   const findings = [
     ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
@@ -1004,7 +1017,7 @@ async function main() {
     startup: {
       screen: home?.id ?? '',
       anchor: home?.anchor ?? '',
-      declaredAsHome: home?.id === 'home',
+      origin: start.origin,   // declared | home | first — voir startScreen()
       budgetMs: config.thresholds?.coldStartMs ?? 2000,
       timeoutMs: startTimeoutMs(config),
       samples: startup,
@@ -1018,7 +1031,13 @@ async function main() {
   if (startup.length === 0 && bundles.length > 0) {
     warn(`aucune mesure d'apparition de l'écran de départ (ancre « ${home?.anchor ?? '—'} »).`);
     warn('  Les flows ne l\'attendent donc pas explicitement : leur verdict dépend d\'un timeout implicite.');
-  } else if (startup.length > 0) {
+  }
+  if (start.origin === 'first') {
+    warn(`écran de départ « ${home?.id} » — choisi par REPLI : aucun écran ne porte « start: true »`);
+    warn('  et aucun n\'a l\'identifiant « home ». Si c\'est un ÉTAT (liste vide/pleine), son ancre');
+    warn('  peut ne pas exister au lancement, et les flows échoueront par intermittence.');
+  }
+  if (startup.length > 0) {
     const worst = Math.round(Math.max(...startup.map((s) => s.ms)));
     log(`écran de départ « ${home?.id} » : ${worst} ms au pire sur ${startup.length} flow(s), budget ${report.startup.budgetMs} ms`);
   }
