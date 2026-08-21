@@ -251,7 +251,10 @@ Trois mesures, trois outils, parce qu'aucun ne couvre les trois :
 | Cibles tactiles sur le rendu réel | `scripts/argus/a11y.mjs` | croise `uiautomator dump` et `wm density` |
 
 Le **rapport d'instrumentation** de SKILL.md §2 EST une métrique a11y : un widget
-que Maestro ne trouve pas est un widget que TalkBack n'annonce pas.
+que Maestro ne trouve pas est un widget que TalkBack n'annonce pas. Son format est
+fixé là-bas, et ce qu'il devient dépend du mode : **un** finding `a11y`/`major` en
+EXPLORE/DEMO — jamais un par widget —, un reste-à-faire bloquant avant
+l'installation en REGRESS, où l'instrumentation ne repart pas.
 
 ⚠️ `MinimumTapTargetGuideline` **ignore les nœuds qui touchent le bord de la vue**
 (pour ne pas accuser un élément partiellement sorti de l'écran). Une cible collée

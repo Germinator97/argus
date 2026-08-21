@@ -77,9 +77,42 @@ un rapport quasi vide. Remonte donc aux widgets du projet qui tiennent ce rôle 
 c'est en général là que l'instrumentation est la plus rentable, un composant
 partagé couvrant tous ses call-sites d'un coup.
 
-Produis un **rapport d'instrumentation** : « X widgets interactifs, Y instrumentés,
-Z à instrumenter », avec la liste `fichier:ligne` des manquants **sur les parcours
-critiques uniquement** — pas les 300 du projet.
+Produis un **rapport d'instrumentation**, dans cette forme exacte — sans quoi deux
+agents en rendent deux, et aucun des deux ne se compare à l'autre :
+
+```
+Instrumentation Semantics — <N> widgets interactifs sur les parcours critiques
+  instrumentés     : <Y>  (<Y/N> %)
+  à instrumenter   : <Z>
+  non enveloppables: <W>  (ParentDataWidget, slivers — voir plus bas)
+
+À instrumenter, par fichier :
+  lib/…/panier_page.dart:142   ElevatedButton « Valider »      → panier_valider
+  lib/…/panier_page.dart:167   InkWell (carte article)         → panier_article
+  lib/…/shared/bouton.dart:38  composant partagé, 14 call-sites → <param d'ancre>
+
+Non enveloppables :
+  lib/…/entete.dart:22         Expanded — ciblé par texte, fragile à la traduction
+```
+
+Trois règles qui font la valeur du relevé : **les parcours critiques uniquement**
+— pas les 300 widgets du projet ; l'**ancre proposée** en regard de chaque ligne,
+parce que c'est elle qui remplira `screens[]` en §3 et que la retrouver plus tard
+coûte le double ; et les **composants partagés comptés une fois**, avec leur nombre
+de call-sites, puisque les instrumenter est ce qui rapporte le plus.
+
+**Ce relevé est une métrique d'accessibilité, pas une note de travail** — un widget
+que Maestro ne trouve pas est un widget que TalkBack n'annonce pas. Son sort
+dépend donc de l'intention cadrée en §1 :
+
+- **EXPLORE / DEMO** — l'instrumentation est temporaire, et `Z > 0` est un état de
+  l'app : rends **un** finding de dimension `a11y`, sévérité `major`, dont
+  l'`actual` porte les trois compteurs et l'`evidence` le patch (§4). Un seul pour
+  le lot, jamais un par widget.
+- **REGRESS** — l'instrumentation reste, donc `Z` doit tomber à zéro avant
+  l'installation. Ce n'est pas un finding, c'est un **reste-à-faire bloquant** :
+  tant que `Z > 0` sur un parcours critique, la garde installée ne couvrira pas ce
+  parcours, et le dire après coup ne sert plus à rien.
 
 ⚠️ **Écris noir sur blanc le piège n°1** : les **`Key` Flutter ne sont PAS
 exposées** à la couche d'accessibilité. Un flow qui cible une Key échoue,
