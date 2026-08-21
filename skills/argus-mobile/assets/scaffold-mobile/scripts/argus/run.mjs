@@ -376,6 +376,22 @@ function disableAnimations(platform, udid, dryRun) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Écran d'où partent tous les flows : celui d'`id: home`, sinon le premier
+ * écran configuré.
+ *
+ * ⚠️ Ce repli est un piège connu, laissé en place faute de mieux : si le premier
+ * écran déclaré est un ÉTAT (« liste vide ») plutôt qu'un écran, son ancre
+ * n'existe pas dans l'autre état et tout part de travers. Le rapport dit donc
+ * lequel a servi, et par quelle voie — une convention muette qui se voit vaut
+ * mieux qu'une convention muette qui ne se voit pas.
+ * @param {any} config @returns {any}
+ */
+function startScreen(config) {
+  const screens = configuredScreens(config);
+  return screens.find((/** @type {any} */ s) => s.id === 'home') ?? screens[0];
+}
+
+/**
  * Contrat d'injection consommé par les flows (`${…}`). Toutes les clés sont
  * toujours présentes, même vides : un flow doit pouvoir se garder sur une valeur
  * vide plutôt que sur une variable absente.
@@ -383,8 +399,7 @@ function disableAnimations(platform, udid, dryRun) {
  * @returns {Record<string,string>}
  */
 function buildEnv(config, appId, extra = {}) {
-  const screens = configuredScreens(config);
-  const home = screens.find((s) => s.id === 'home') ?? screens[0];
+  const home = startScreen(config);
   const anchors = config.auth?.anchors ?? {};
   /** @type {Record<string,string>} */
   const env = {
@@ -580,9 +595,12 @@ function readJsonSafe(path) {
  * finding sur une suite pourtant rouge, soit exactement le faux vert que tout
  * le reste du harness s'emploie à empêcher.
  * @param {Array<{flow:string, name:string, dir:string, steps:any[]}>} bundles
- * @param {any} device @param {string} platform @param {any} config @returns {any[]}
+ * @param {any} device @param {string} platform @param {any} config
+ * @param {string} [startupAnchor] ancre de l'écran de départ, pour reconnaître
+ *   l'échec qui n'accuse pas la bonne chose (voir `startupHint`)
+ * @returns {any[]}
  */
-function findingsFrom(bundles, device, platform, config) {
+function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
   /** @type {any[]} */
   const findings = [];
   for (const bundle of bundles) {
@@ -605,7 +623,14 @@ function findingsFrom(bundles, device, platform, config) {
         platform,
         osVersion: device.os ?? '',
         expected: 'étape réussie',
-        actual: String(meta.error?.message ?? 'échec sans message'),
+        // ⚠️ Le message de Maestro nomme le SÉLECTEUR, jamais la cause. Sur
+        // l'attente de l'écran de départ, « id=X n'est pas visible » se lit
+        // « l'ancre est mauvaise » alors que l'ancre est bonne et que l'app
+        // n'avait pas fini de démarrer. Vécu : deux flows sur six, et le
+        // diagnostic est parti dans l'instrumentation pour rien. On rattache
+        // donc la mesure au message, là où quelqu'un la lira.
+        actual: String(meta.error?.message ?? 'échec sans message')
+          + startupHint(selector, startupAnchor, config),
         // Les preuves de L'ÉTAPE (capture et dump de hiérarchie du moment où ça
         // casse) valent bien mieux que l'index global du bundle.
         evidence: (meta.artifacts ?? []).map((/** @type {any} */ a) => join(bundle.dir, a.path ?? '')).filter(Boolean),
@@ -615,6 +640,90 @@ function findingsFrom(bundles, device, platform, config) {
     }
   }
   return findings;
+}
+
+/** Commandes qui ATTENDENT une ancre au lieu de la lire tout de suite. */
+const WAIT_COMMANDS = new Set(['assertConditionCommand', 'extendedWaitUntilCommand', 'waitUntilVisibleCommand']);
+
+/**
+ * Phrase à coller au message d'échec quand ce qui a échoué est l'attente de
+ * l'écran de départ. Vide dans tous les autres cas — un indice affiché partout
+ * ne serait plus un indice.
+ * @param {string} selector @param {string} startupAnchor @param {any} config
+ * @returns {string}
+ */
+function startupHint(selector, startupAnchor, config) {
+  if (!startupAnchor || selector !== `id=${startupAnchor}`) return '';
+  return ` — c'est l'écran de DÉPART qui n'est pas arrivé à temps, pas forcément`
+    + ` l'ancre qui est fausse. Vérifie d'abord le temps de démarrage`
+    + ` (thresholds.coldStartMs = ${config.thresholds?.coldStartMs ?? 2000} ms,`
+    + ` relevé dans startup.samples du rapport) avant de soupçonner l'instrumentation.`;
+}
+
+/**
+ * Temps que l'écran de départ met à APPARAÎTRE, relevé par flow.
+ *
+ * La suite chronométrait déjà ce temps sans le savoir, et le jetait : la
+ * première assertion d'ancre de chaque flow n'est pas une assertion, c'est le
+ * démarrage à froid de l'app. Mesuré sur un projet réel : la MÊME assertion, sur
+ * la MÊME ancre, dans le MÊME flow, coûtait 16 645 ms en première position et
+ * 79 ms en seconde. L'écart n'est pas de la lecture d'arbre — c'est l'app qui
+ * démarre. Deux flows sur six mouraient dessus, en accusant l'ancre.
+ *
+ * D'où ce relevé : il rend visible ce que le harnais payait déjà.
+ * @param {Array<{flow:string, steps:any[]}>} bundles @param {string} anchor
+ * @returns {Array<{flow:string, ms:number, status:string}>}
+ */
+function startupSamples(bundles, anchor) {
+  /** @type {Array<{flow:string, ms:number, status:string}>} */
+  const samples = [];
+  if (!anchor) return samples;
+  for (const bundle of bundles) {
+    // La PREMIÈRE seulement : les suivantes portent une app déjà chaude.
+    const step = (bundle.steps ?? []).find((s) => WAIT_COMMANDS.has(Object.keys(s?.command ?? {})[0] ?? '')
+      && selectorOf(s) === `id=${anchor}`);
+    const ms = Number(step?.metadata?.duration ?? NaN);
+    if (!Number.isFinite(ms) || ms <= 0) continue;
+    samples.push({ flow: bundle.flow, ms, status: String(step.metadata?.status ?? '') });
+  }
+  return samples;
+}
+
+/**
+ * Le démarrage à froid dépasse-t-il le seuil déclaré ? Un seul finding pour le
+ * lot : six lignes disant la même chose sur six flows, c'est du bruit qui fait
+ * cesser de lire les rapports.
+ * @param {Array<{flow:string, ms:number, status:string}>} samples
+ * @param {any} device @param {string} platform @param {any} config
+ * @returns {any[]}
+ */
+function startupFindings(samples, device, platform, config) {
+  const budget = config.thresholds?.coldStartMs ?? 2000;
+  const over = samples.filter((s) => s.ms > budget);
+  if (over.length === 0) return [];
+  const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
+  const timedOut = samples.filter((s) => s.status.toUpperCase() === 'FAILED').length;
+  return [{
+    id: 'QAM-START',
+    title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître (seuil ${budget} ms)`,
+    severity: 'major',
+    dimension: 'performance',
+    screen: 'démarrage',
+    step: 0,
+    selector: '',
+    device: device.id,
+    platform,
+    osVersion: device.os ?? '',
+    expected: `écran de départ visible sous ${budget} ms (thresholds.coldStartMs)`,
+    actual: `${over.length}/${samples.length} flows au-dessus du seuil : `
+      + over.map((s) => `${s.flow} ${Math.round(s.ms)} ms`).join(', ')
+      + (timedOut > 0
+        ? `. ${timedOut} y ont épuisé leur budget d'attente — l'échec rapporté nomme l'ancre, mais la cause est ce temps-ci.`
+        : ''),
+    evidence: [],
+    repro: [`maestro --device=${device.udid} test .maestro/${worst.flow}.yaml`],
+    status: 'open',
+  }];
 }
 
 /**
@@ -814,12 +923,32 @@ async function main() {
     log(`${written} référence(s) visuelle(s) écrite(s) dans ${baselineDir}`);
   }
 
-  const findings = findingsFrom(bundles, { ...spec, udid: resolved.udid }, platform, config);
+  const reportDevice = { ...spec, udid: resolved.udid, os: resolved.os || spec.os };
+  const home = startScreen(config);
+  const startup = startupSamples(bundles, home?.anchor ?? '');
+  const findings = [
+    ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
+    ...startupFindings(startup, reportDevice, platform, config),
+  ];
   const report = {
     run: {
       startedAt: new Date().toISOString(), platform, appVersion: config.app.name,
       flavor: config.app.flavor, appId,
-      devices: [{ id: spec.id, udid: resolved.udid, model: spec.model ?? '', os: spec.os ?? '', physical: resolved.physical }],
+      // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
+      // la config ici ferait dire au rapport « Medium_Phone » quel que soit le
+      // device qui a réellement tourné : il décrirait l'intention en ayant l'air
+      // de décrire un fait, et aucune relecture ne pourrait voir l'écart.
+      // `declared` reste à côté pour qu'on puisse les comparer d'un coup d'œil.
+      devices: [{
+        id: spec.id,
+        udid: resolved.udid,
+        avd: resolved.avd,
+        model: resolved.model,
+        os: resolved.os,
+        physical: resolved.physical,
+        identityMeasured: resolved.measured,
+        declared: { avd: spec.avd ?? '', model: spec.model ?? '', os: spec.os ?? '' },
+      }],
       animationsDisabled: animations.ok, installProof: install.proof,
     },
     summary: {
@@ -836,9 +965,28 @@ async function main() {
       visualScreens: visualScreens.map((s) => s.id),
       visualMode,
     },
+    // Ce que l'écran de départ a coûté, flow par flow. Le harnais payait déjà
+    // ce temps ; il ne le disait pas.
+    startup: {
+      screen: home?.id ?? '',
+      anchor: home?.anchor ?? '',
+      declaredAsHome: home?.id === 'home',
+      budgetMs: config.thresholds?.coldStartMs ?? 2000,
+      samples: startup,
+    },
   };
   writeJson(join(reportDir, 'report.json'), report);
   log(`rapport : ${join(reportDir, 'report.json')}`);
+
+  // Dire ce qu'on n'a PAS pu mesurer vaut mieux que rendre un relevé vide qui
+  // se lira « tout va bien ».
+  if (startup.length === 0 && bundles.length > 0) {
+    warn(`aucune mesure d'apparition de l'écran de départ (ancre « ${home?.anchor ?? '—'} »).`);
+    warn('  Les flows ne l\'attendent donc pas explicitement : leur verdict dépend d\'un timeout implicite.');
+  } else if (startup.length > 0) {
+    const worst = Math.round(Math.max(...startup.map((s) => s.ms)));
+    log(`écran de départ « ${home?.id} » : ${worst} ms au pire sur ${startup.length} flow(s), budget ${report.startup.budgetMs} ms`);
+  }
 
   if (report.coverage.notConfigured.length) {
     warn(`écrans déclarés mais sans ancre, donc non testés : ${report.coverage.notConfigured.join(', ')}`);

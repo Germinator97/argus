@@ -11,7 +11,16 @@
   "platform": "android | ios",
   "appId": "com.exemple.app",          // package Android ou bundle iOS
   "appVersion": "…", "flavor": "…", "buildId": "…",
-  "devices": [ { "id", "udid", "model", "os", "physical": false } ],
+  "devices": [ {
+    "id": "android-emu",
+    "udid": "emulator-5558",           // ⚠️ un PORT sur Android, pas une identité
+    "avd": "Pixel_6_API_30",           // MESURÉ (adb emu avd name) — l'identité stable
+    "model": "sdk_gphone64_arm64",     // MESURÉ (ro.product.model)
+    "os": "android-36",                // MESURÉ (ro.build.version.sdk)
+    "physical": false,
+    "identityMeasured": true,          // false en --dry-run : rien n'a été interrogé
+    "declared": { "avd": "…", "model": "pixel_6", "os": "android-33" }
+  } ],
   "animationsDisabled": true,          // déterminisme effectivement appliqué
   "installProof": "pm list packages confirme com.exemple.app"
 }
@@ -20,6 +29,34 @@
 `installProof` n'est pas décoratif : Maestro n'installe pas l'app, et une
 installation ratée laisse tourner la version précédente. Sans cette trace, un
 rapport peut décrire le comportement d'un binaire qui n'est pas celui qu'on croit.
+
+⚠️ **L'identité du device est MESURÉE, jamais recopiée de `argus.mobile.yaml`.**
+Une version antérieure écrivait `model`/`os` depuis la config : le rapport
+décrivait alors l'appareil *voulu* en ayant l'air de décrire celui *obtenu*, et
+aucune relecture ne pouvait voir l'écart — d'autant que sur Android l'udid est un
+numéro de port réattribué à l'ordre de démarrage. `declared` reste à côté du
+mesuré pour que la comparaison soit une lecture. Voir `device-matrix.md`.
+
+**`startup`** — ce que l'écran de départ a coûté, flow par flow :
+```jsonc
+"startup": {
+  "screen": "home", "anchor": "home_root",
+  "declaredAsHome": true,        // false = repli sur screens[0], convention muette
+  "budgetMs": 2000,              // thresholds.coldStartMs
+  "samples": [ { "flow": "smoke", "ms": 19329, "status": "COMPLETED" } ]
+}
+```
+La suite chronométrait déjà ce temps sans le savoir : la **première** attente
+d'ancre de chaque flow n'est pas une assertion, c'est le démarrage à froid de
+l'app. Relevé sur un projet réel — la même assertion, sur la même ancre, dans le
+même flow : **16 645 ms** en première position, **79 ms** en seconde. L'écart
+n'est pas de la lecture d'arbre.
+
+⚠️ Deux flows y mouraient, et Maestro rapportait « `id: home_root` n'est pas
+visible » : un message exact et un **diagnostic faux**, qui envoie chercher un
+défaut d'instrumentation là où l'ancre était bonne et l'app simplement lente. Un
+finding `QAM-START` porte désormais la mesure, et le message d'échec renvoie
+vers elle.
 
 **`finding` — les correspondances avec le web :**
 
