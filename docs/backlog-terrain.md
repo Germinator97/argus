@@ -77,42 +77,37 @@ lieu de laisser accuser l'instrumentation.
 donc il désignait un coupable — et c'était le mauvais.** Un rapport qui n'a que
 le symptôme envoie chercher là où il n'y a rien.
 
-### 8. Les références visuelles n'ont jamais été générées
-La dimension visuelle s'est donc marquée « non exécutée » — correctement, avec
-sa raison. Elle reste à éprouver au moins une fois.
+## Éprouvé sur device le 21/08/2026 — clos
 
-⚠️ Ne pas les générer avant d'avoir déclaré le device par `avd` : elles sont
-liées au couple device + OS, et un `udid` d'émulateur est un numéro de port qui
-change d'AVD entre deux sessions (voir `device-matrix.md`).
+Les trois derniers points ouverts demandaient tous un émulateur, et ont été
+traités dans une seule session, sur un projet Flutter jetable — même montage,
+même démarrage.
 
-⚠️ Et vérifier d'abord de quel côté du `SafeArea` la racine servant de
-`visualCropOn` a été posée — sinon la barre d'état entre dans la référence, et la
-dimension est rouge à chaque minute qui passe (point 5, clos, mais c'est ici que
-sa conséquence se paie).
+| # | Ce qu'on ne savait pas | Ce que la mesure a répondu |
+|---|---|---|
+| 8 | Les références visuelles n'avaient jamais été générées | Cycle complet éprouvé — génération, comparaison conforme, référence remplacée par un aplat (finding `visual`/`major`), restauration, retour au vert |
+| 9 | `waitForAnimationToEnd` expire presque toujours : animation perpétuelle, ou critère trop strict ? | **Les deux.** ~3,1 s sur un écran où rien ne bouge (c'est le prix de deux captures), ~7,3 s avec un indicateur perpétuel — au-delà de son propre timeout de 5 s |
+| 10 | Maestro interpole-t-il `${…}` dans `timeout:` ? | **Oui**, prouvé en faisant varier la valeur : 15 000 rend 15 192 ms, 1 000 rend 2 570 ms. L'injection retirée faute de preuve est rétablie |
 
-## Ouvert par la séance du 21/08/2026
+⚠️ Deux instruments ont failli donner la réponse inverse, et c'est la partie à
+retenir. `check-syntax` **accepte** `timeout: ${VAR}` — ce qui prouve que le
+fichier parse, rien de plus. Et `commands.json` enregistre le texte **source**,
+non substitué : le lire pour savoir si l'interpolation a eu lieu conclut qu'elle
+n'a pas eu lieu. Seule la durée le dit, et seulement en faisant varier la valeur
+entre deux runs — une mesure isolée à 1 000 ms a rendu 414 ms, sous la cible,
+et se serait lue comme un succès.
 
-### 9. `waitForAnimationToEnd` expire à presque tous les flows
-Médiane relevée : **5 222 ms** pour un timeout de 5 000. L'écran n'est donc
-quasiment jamais jugé stable, et chaque flow paie ce plein timeout sans que rien
-ne le signale. Deux causes possibles, non départagées : une animation perpétuelle
-côté app (halo, indicateur), ou un critère de stabilité trop strict pour un
-émulateur chargé. À mesurer avant de toucher au timeout — le chiffre ne dit pas
-encore laquelle des deux.
+⚠️ Le point 8 a rendu deux choses qu'on ne cherchait pas : le seuil visuel ne
+peut pas monter à 100 (deux écrans recomparés sans changement de code
+correspondent à 99,949 % et 99,870 % — aucun écran n'est pixel-parfait), et une
+comparaison verte **ne prouve pas** que l'écran est déterministe : elle prouve
+que ce qui bouge pèse moins que le seuil. Un indicateur qui tourne sans fin
+passe à 99, en ne pesant que 0,13 % des pixels.
 
-### 10. Interpoler une variable dans `timeout:` n'est pas prouvé
-Les flows portent `timeout: 20000` en dur, un nombre deviné. Le dériver de
-`thresholds.coldStartMs` supposerait que Maestro interpole `${…}` dans un champ
-numérique : la doc ne le dit nulle part, et ça n'a pas été éprouvé sur device.
-Une injection a été écrite puis **retirée** pour cette raison — livrer une
-variable dont on ignore si elle est consommée, c'est livrer une branche morte.
+## Ce qui reste
 
-## Comment ce qui reste se regroupe
+**Un seul point, et il demande une décision, pas du travail** : le 6. Déclarer le
+point de départ des flows suppose une clé de config de plus, donc un changement
+visible par tous les projets consommateurs — ça ne se tranche pas en passant.
 
-Trois lots, et ils ne demandent pas la même chose :
-
-- **8, 9 et 10 tiennent dans une seule session sur émulateur** — même montage,
-  même démarrage. Les faire séparément paierait trois fois le même coût.
-- **6 demande un arbitrage**, pas du travail : ajouter une clé de config est
-  visible par tous les projets consommateurs.
-- **7 ne demande plus rien** — il est là pour être relu.
+Le 7 ne demande plus rien : il est là pour être relu.
