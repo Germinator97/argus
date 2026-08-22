@@ -52,6 +52,7 @@ void main() {
               screen.build(),
               viewport: viewport,
               textScale: scale,
+              debugLabel: screen.id,
             );
             final Object? thrown = tester.takeException();
             expect(
@@ -72,6 +73,7 @@ void main() {
               screen.build(),
               viewport: viewport,
               textScale: scale,
+              debugLabel: screen.id,
             );
             // Une exception pendant le montage laisse un arbre à moitié
             // construit : ce qui suit mesurerait alors autre chose. On la

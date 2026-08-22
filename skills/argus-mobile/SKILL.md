@@ -383,6 +383,43 @@ la première chose à faire après l'installation, avant même le premier run. T
 qu'elle n'a pas tourné, dis que l'instrumentation est *proposée*, jamais
 *validée*.
 
+⚠️ **`argusScreens` et `screens[]` ne se correspondent PAS un pour un**, et
+vouloir les aligner casse les deux. Trois écarts légitimes, dans les deux sens :
+
+| Cas | `screens[]` (étage 2) | `argusScreens` (étage 1) |
+|---|---|---|
+| Coquille : barre, onglets, conteneur de navigation | non — ce n'est pas un écran | **oui**, sans `anchor:` |
+| État qui ne se monte pas seul (voir ci-dessous) | oui | non, et on dit pourquoi |
+| État atteignable seulement après un parcours | oui | oui, monté avec ses doubles |
+
+La coquille est le cas qu'on oublie, et c'est souvent le plus rentable : sur un
+projet réel, c'est elle qui portait le seul débordement visible à taille de
+texte **nominale** — celui que personne ne voit parce qu'on ne pense à regarder
+qu'aux grandes polices.
+
+⚠️ **L'état qui ne se monte pas seul.** Le contenu d'un `showModalBottomSheet`,
+d'un `showDialog` ou d'un `PopupMenu` est très souvent un widget **privé**
+(`class _ConfirmSheet`) : le fichier de test ne peut pas le nommer, donc pas le
+construire. Deux issues, dans cet ordre :
+
+1. **Rendre le contenu public.** `_ConfirmSheet` → `ConfirmSheet`, et la
+   fonction qui l'ouvre le passe en `builder:`. C'est un changement d'une ligne,
+   non cassant, qui n'expose rien de plus que ce que l'écran affiche déjà — et
+   c'est ce qui rend l'état mesurable à l'étage 1, donc à chaque PR.
+2. **Le laisser à l'étage 2, et l'écrire.** Il reste dans `screens[]`, il sort
+   d'`argusScreens`, et le rapport d'instrumentation le mentionne en clair. Ce
+   qu'il faut éviter est le troisième chemin — le déclarer à l'étage 1 en le
+   remplaçant par un ersatz monté à la main : on mesurerait alors un widget que
+   personne n'affiche.
+
+⚠️ **L'écran à animation perpétuelle se déclare comme les autres.** Halo qui
+respire, indicateur, point pulsé : `pumpArgus` ne dépend plus de la stabilisation
+pour ces écrans-là — il attend un temps borné, puis avance d'une durée fixe et
+mesure là, en disant lequel n'a pas pu se poser. Ne les écarte pas du harnais :
+ce sont souvent les écrans les plus travaillés, donc ceux qui ont le plus à
+cacher. Retiens en revanche que `waitForAnimationToEnd` expirera sur eux à
+l'étage 2 — mesuré ~7,3 s, au-delà de son propre timeout de 5 s.
+
 **c-bis. Rends la table des ancres — c'est elle qui passe à §3.** Les ancres que
 tu viens de poser sont exactement ce qui doit remplir `screens[]` à l'étape
 suivante. Tant qu'une seule session fait les deux, ça se passe de commentaire ;

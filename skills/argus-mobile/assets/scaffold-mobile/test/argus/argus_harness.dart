@@ -97,13 +97,34 @@ String? argusSkipReason() {
   return null;
 }
 
+/// Écrans où l'on a constaté une animation qui ne s'arrête jamais.
+///
+/// Un `Set` plutôt qu'un message par montage : chaque écran est monté trois
+/// fois par gabarit et trois fois par échelle de texte, et neuf lignes
+/// identiques noieraient le reste.
+final Set<String> argusPerpetualAnimations = <String>{};
+
+/// Combien de temps SIMULÉ on attend qu'un écran se pose avant de conclure
+/// qu'il ne se posera pas.
+///
+/// ⚠️ Le défaut de `pumpAndSettle` est de DIX MINUTES simulées, soit six mille
+/// itérations de 100 ms. Sur un écran qui porte une animation perpétuelle —
+/// halo qui respire, indicateur, point pulsé, et tout écran soigné en a — il
+/// les fait toutes avant de lever, et ce que l'on voit ressemble à un test lent,
+/// pas à un montage qui n'aboutit pas.
+const Duration argusSettleTimeout = Duration(seconds: 5);
+
 /// Monte [child] sur une surface de mesure honnête : vraie taille, vraies
 /// marges système, vraie police, échelle de texte imposée.
+///
+/// [debugLabel] sert uniquement aux messages — donne l'`id` de l'écran, sinon
+/// un avertissement d'animation perpétuelle ne dira pas de qui il parle.
 Future<void> pumpArgus(
   WidgetTester tester,
   Widget child, {
   required ArgusViewport viewport,
   double textScale = 1.0,
+  String debugLabel = '',
 }) async {
   tester.view.devicePixelRatio = viewport.devicePixelRatio;
   tester.view.physicalSize = viewport.physicalSize;
@@ -142,7 +163,35 @@ Future<void> pumpArgus(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+
+  // ⚠️ Un écran qui ne se pose JAMAIS n'est pas une erreur de l'écran, et
+  // l'exclure du harnais serait le pire remède : ce sont souvent les plus
+  // travaillés, donc ceux qui ont le plus à cacher. On lui laisse le temps de
+  // finir son animation d'ENTRÉE — mesurer pendant qu'un écran entre rend des
+  // rectangles exacts qui décrivent un état qui n'existera plus — puis on
+  // avance d'une durée fixe et on mesure là.
+  //
+  // Deux avancées plutôt qu'une : la première laisse retomber ce qui était en
+  // vol, la seconde donne un état comparable à lui-même.
+  try {
+    await tester.pumpAndSettle(
+      const Duration(milliseconds: 100),
+      EnginePhase.sendSemanticsUpdate,
+      argusSettleTimeout,
+    );
+  } on FlutterError {
+    if (debugLabel.isNotEmpty && argusPerpetualAnimations.add(debugLabel)) {
+      debugPrint(
+        "⚠️  « $debugLabel » ne se stabilise pas en ${argusSettleTimeout.inSeconds} s : "
+        'il porte une animation perpétuelle. La mesure est prise après une '
+        "avance d'horloge fixe, ce qui reste valable — mais note que "
+        '`waitForAnimationToEnd` expirera aussi sur cet écran à l\'étage 2 '
+        '(mesuré : ~7,3 s, au-delà de son propre timeout de 5 s).',
+      );
+    }
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+  }
 }
 
 /// `true` quand les gardes ne sont pas exploitables.

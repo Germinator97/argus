@@ -121,14 +121,6 @@ ancre. Compté d'une façon : 0/24. De l'autre : 5/24 et un rapport flatteur.
 
 ### Cas que le skill ne couvre pas
 
-**17. Écrans impossibles à monter seuls.** Contenu de `showModalBottomSheet` porté
-par un widget privé : §2 veut une racine par état, §3f-bis veut prouver chaque
-racine à l'étage 1 — incompatibles.
-
-**18. Écrans à animation perpétuelle.** `pumpArgus` finit par `pumpAndSettle`, qui
-expire sur un point pulsé. Ces écrans ne peuvent pas entrer dans `argusScreens`,
-et l'échec ressemble à un test lent. (Même mécanisme que le point 9, côté étage 1.)
-
 **20. Que faire des défauts PRÉEXISTANTS que les gardes révèlent ?** §2 exige
 `Z = 0` avant d'installer ; rien ne dit quoi faire des 43 échecs que l'étage 1
 lève sur une app existante. Corriger (dérive de périmètre) ? Mettre en

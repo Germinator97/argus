@@ -36,14 +36,16 @@ void main() {
         WidgetTester tester,
       ) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+        await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         handle.dispose();
       }, skip: argusShouldSkip);
 
       testWidgets(argusName('cibles tactiles ≥ 44 dp (iOS)'), (WidgetTester tester) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+        await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
         await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
         handle.dispose();
       }, skip: argusShouldSkip);
@@ -63,7 +65,8 @@ void main() {
         ),
         (WidgetTester tester) async {
           final SemanticsHandle handle = tester.ensureSemantics();
-          await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+          await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
           await expectLater(tester, meetsGuideline(textContrastGuideline));
           handle.dispose();
         },
@@ -77,7 +80,8 @@ void main() {
         WidgetTester tester,
       ) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+        await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
         await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
         handle.dispose();
       }, skip: argusShouldSkip);
@@ -94,6 +98,7 @@ void main() {
           screen.build(),
           viewport: argusViewports.first,
           textScale: 2,
+          debugLabel: screen.id,
         );
         await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
         handle.dispose();

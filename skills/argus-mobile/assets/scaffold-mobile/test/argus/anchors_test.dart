@@ -110,7 +110,8 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+      await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
 
       for (final String commande in screen.commands) {
         final List<ArgusSemanticNode> noeuds = argusNodesById(tester, commande);
@@ -164,7 +165,8 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+      await pumpArgus(tester, screen.build(),
+            viewport: argusViewports.first, debugLabel: screen.id);
 
       expect(
         find.bySemanticsIdentifier(screen.anchor!),
