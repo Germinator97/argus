@@ -298,6 +298,13 @@ security:
   requireCleartextDisabled: true
   requireAllowBackupOff: true
   # Exiger `--obfuscate --split-debug-info` sur les builds release.
+  #
+  # ⚠️ Le contrôle cherche les chemins `package:<name du pubspec>/….dart` dans
+  # libapp.so, et RIEN D'AUTRE. Les chemins du framework (`package:flutter/…`)
+  # survivent à `--obfuscate` : les compter rendait le même verdict sur un
+  # binaire obfusqué et sur un binaire qui ne l'est pas. Ils servent désormais de
+  # contre-épreuve — leur absence dit que la lecture a échoué, et la dimension
+  # se marque « non jugée » plutôt que verte.
   requireObfuscation: true
   # Motifs de secrets cherchés dans le binaire ET dans les sources.
   # Repris du harness web (argus.config.ts) + spécifiques mobile.

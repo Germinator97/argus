@@ -29,7 +29,7 @@ import {
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identifyScreen } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, binaryToScan } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
@@ -731,13 +731,18 @@ test('un sélecteur par TEXTE n\'est pas concerné', () => {
 // Les deux sens sont gardés : un correctif qui ferait sauter la dimension pour
 // TOUT binaire passerait le premier test et rougirait le second.
 
-/** Fabrique un faux APK — un zip suffit, `auditApk` ne lit que le listing. */
-const fauxApk = (/** @type {string[]} */ entrees) => {
+/**
+ * Fabrique un faux APK. Le listing suffit à la plupart des contrôles ; celui de
+ * l'obfuscation LIT le contenu de `libapp.so`, d'où la forme `[chemin, contenu]`.
+ * @param {(string|[string, string])[]} entrees
+ */
+const fauxApk = (entrees) => {
   const dir = mkdtempSync(join(tmpdir(), 'argus-apk-'));
   for (const e of entrees) {
-    const f = join(dir, e);
+    const [chemin, contenu] = typeof e === 'string' ? [e, 'x'] : e;
+    const f = join(dir, chemin);
     mkdirSync(join(f, '..'), { recursive: true });
-    writeFileSync(f, 'x');
+    writeFileSync(f, contenu);
   }
   const apk = join(dir, 'app.apk');
   execFileSync('zip', ['-q', '-r', apk, '.'], { cwd: dir });
@@ -758,6 +763,93 @@ test('un binaire de PUBLICATION est bien scanné — le garde coupe dans un seul
   assert.equal(facts.scanned, true,
     'sans ça, sauter « sur un debug » se serait mué en « ne jamais rien scanner »');
   assert.equal(facts.isDebugBuild, false);
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// sec.mjs — l'obfuscation doit DISCRIMINER, et le prouver dans les deux sens
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le motif d'avant (`package:<n'importe quoi>/….dart`) rendait le MÊME verdict
+// sur un binaire obfusqué et sur un binaire qui ne l'est pas : `--obfuscate`
+// n'efface jamais les chemins du framework. Mesuré sur un projet réel, deux
+// builds release — 42 chemins du projet sans l'option, 0 avec, `QAM-SEC-OBFUS`
+// major dans les deux cas.
+//
+// Ces gardes-ci existent pour qu'un contrôle de sécurité ne puisse plus rendre
+// le même résultat quoi qu'on fasse. Le second est le seul qui aurait rougi.
+
+/** Ce qu'un libapp.so porte TOUJOURS : les chemins du framework y survivent. */
+const FRAMEWORK = 'package:flutter/src/services/platform_channel.dart\n'
+  + 'package:flutter/src/widgets/framework.dart\n';
+const PROJET = 'package:mon_app/features/home/home_page.dart\n'
+  + 'package:mon_app/core/api/client.dart\n';
+const SO = 'lib/arm64-v8a/libapp.so';
+
+test('un binaire NON obfusqué est signalé, et le finding cite ce qu\'il a compté', () => {
+  const { findings, scanned, projectPaths } = auditObfuscation(
+    fauxApk([[SO, FRAMEWORK + PROJET]]), [SO], 'mon_app',
+  );
+  assert.equal(scanned, true);
+  assert.equal(projectPaths, 2, 'deux chemins distincts du projet');
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].actual, /mon_app/,
+    'le verdict doit nommer le paquet mesuré, sinon on ne peut pas le relire');
+});
+
+test('un binaire OBFUSQUÉ ne rend plus rien — c\'est le garde qui manquait', () => {
+  const { findings, scanned, projectPaths } = auditObfuscation(
+    fauxApk([[SO, FRAMEWORK]]), [SO], 'mon_app',
+  );
+  assert.equal(scanned, true, 'il a bien mesuré : les chemins du framework sont là');
+  assert.equal(projectPaths, 0);
+  assert.equal(findings.length, 0,
+    'avec l\'ancien motif, `package:flutter/…` suffisait à rendre le même major');
+});
+
+test('sans chemin de framework, on ne conclut PAS : c\'est l\'instrument qui est muet', () => {
+  const { findings, scanned, why } = auditObfuscation(
+    fauxApk([[SO, 'octets sans le moindre chemin dart']]), [SO], 'mon_app',
+  );
+  assert.equal(scanned, false,
+    'zéro chemin du projet ET zéro du framework = une lecture ratée, pas une obfuscation');
+  assert.equal(findings.length, 0);
+  assert.match(why, /lecture/i, 'et la raison doit désigner la mesure, pas le binaire');
+});
+
+test('sans nom de paquet, on ne conclut pas non plus — un motif nu ne discrimine rien', () => {
+  const { scanned, why } = auditObfuscation(fauxApk([[SO, FRAMEWORK + PROJET]]), [SO], '');
+  assert.equal(scanned, false);
+  assert.match(why, /pubspec/, 'la raison doit dire OÙ le nom se lit');
+});
+
+test('le nom du paquet se lit dans le pubspec, pas dans la config recopiée à la main', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-pubspec-'));
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: vrai_projet\nversion: 1.2.3+4\n');
+  assert.equal(dartPackageName(dir), 'vrai_projet');
+  assert.equal(dartPackageName(mkdtempSync(join(tmpdir(), 'argus-vide-'))), '',
+    'pubspec absent : chaîne vide, donc « non conclu » — jamais un nom deviné');
+});
+
+test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine reviendrait', () => {
+  // ⚠️ Les gardes ci-dessus passent le nom en argument : ils prouvent la
+  // décision, jamais son branchement. Celui-ci ne passe rien et vérifie que la
+  // valeur par défaut va bien LIRE le pubspec du répertoire courant.
+  const projet = mkdtempSync(join(tmpdir(), 'argus-cwd-'));
+  writeFileSync(join(projet, 'pubspec.yaml'), 'name: appli_du_cwd\n');
+  const apk = fauxApk([[SO, FRAMEWORK + 'package:appli_du_cwd/main.dart\n']]);
+  const avant = process.cwd();
+  try {
+    process.chdir(projet);
+    const { findings } = auditApk(apk, { security: { requireObfuscation: true } });
+    // ⚠️ On compte le PHÉNOMÈNE, pas le total : `auditApk` rend aussi un `info`
+    // quand aapt2 manque, et l'assertion sur `findings.length` mesurait ça.
+    const obfus = findings.filter((/** @type {any} */ f) => f.id === 'QAM-SEC-OBFUS');
+    assert.equal(obfus.length, 1, 'le paquet lu dans le pubspec doit être celui qu\'on cherche');
+    assert.match(obfus[0].actual, /appli_du_cwd/);
+  } finally {
+    process.chdir(avant);
+  }
 });
 
 

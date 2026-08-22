@@ -308,7 +308,7 @@ qui rend cette passe utile : deux étaient **incomplets plutôt que faux** — i
 traitaient la moitié visible du problème — et le troisième n'avait jamais été
 remonté du terrain au dépôt.
 
-### 63. Le contrôle d'obfuscation ne discrimine RIEN
+### 63. ✅ Corrigé le 22/08/2026 — Le contrôle d'obfuscation ne discriminait RIEN
 
 `sec.mjs` cherche `/package:[a-z_][a-z0-9_]*\/[a-z0-9_\/]+\.dart/` dans
 `libapp.so`. Or `--obfuscate` n'efface jamais les chemins du **framework** :
@@ -328,6 +328,15 @@ le métier de ne pas rassurer à tort.
 ⚠️ Le commentaire juste au-dessus du motif dit ce que le code ne fait pas : « du
 projet — qui varierait d'un projet à l'autre ». L'intention était juste, le motif
 ne l'a jamais servie. Remède : ancrer sur `package:<nom du pubspec>/`.
+
+**Corrigé.** Le motif est ancré sur `pubspec.yaml → name:` — lu sur le disque, pas
+recopié depuis `app.name`, qui vaut encore `mon_app` sur un projet dont personne
+n'a édité cette ligne. Et la survivance des chemins du framework, qui était la
+cause du défaut, devient la **contre-épreuve d'instrument** : sans un seul
+`package:flutter/…` dans `libapp.so`, on ne conclut pas — c'est la lecture qui a
+échoué, pas le binaire qui est propre. Quatre gardes tiennent les deux sens, plus
+un qui prouve le **câblage** du pubspec : les autres passent le nom en argument,
+donc aucun ne verrait le jour où `auditApk` cesserait d'aller le lire.
 
 ### 64. `make argus` casse encore sa dimension a11y — le correctif du 44 était à moitié fait
 

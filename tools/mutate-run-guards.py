@@ -28,6 +28,7 @@ CIBLES = {
     "visual": FLOWS / "visual.yaml",
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
+    "sec": SCAFFOLD / "sec.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
@@ -142,6 +143,18 @@ MUTATIONS = [
     ("a11y", "mesurer un autre écran que celui demandé ne se signale plus",
      "  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {",
      "  if (false) {"),
+    # ⚠️ Les trois mutations qui suivent visent le défaut mesuré au run 5 : un
+    # contrôle de sécurité qui rendait le MÊME verdict sur un binaire obfusqué
+    # et sur un binaire qui ne l'est pas. La première le réintroduit tel quel.
+    ("sec", "le motif d'obfuscation redevient nu, donc il attrape le framework",
+     "    [...dumped.stdout.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\\\.dart`, 'g'))].map((m) => m[0]),",
+     "      [...dumped.stdout.matchAll(/package:[a-z_][a-z0-9_]*\\/[a-z0-9_/]+\\.dart/g)].map((m) => m[0]),"),
+    ("sec", "la contre-épreuve d'instrument disparaît",
+     "  if (!/package:flutter\\/[a-z0-9_/]+\\.dart/.test(dumped.stdout)) {",
+     "  if (false) {"),
+    ("sec", "le nom du paquet est deviné au lieu d'être lu",
+     "    return m ? m[1] : '';",
+     "    return 'mon_app';"),
     ("visual", "la capture n'est plus recadrée, la comparaison si",
      "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
      "                  id: ${ARGUS_VISUAL_CROP}\n"

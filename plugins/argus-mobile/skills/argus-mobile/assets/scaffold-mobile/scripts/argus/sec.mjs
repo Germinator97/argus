@@ -350,7 +350,7 @@ export function binaryToScan(platform, config, override = '') {
     : (override || b.androidScan || b.android || '');
 }
 
-export function auditApk(apk, config) {
+export function auditApk(apk, config, dartPackage = dartPackageName(process.cwd())) {
   /** @type {any[]} */
   const findings = [];
   const listing = sh('unzip', ['-Z1', apk]);
@@ -387,13 +387,16 @@ export function auditApk(apk, config) {
       },
     };
   }
+  /** @type {any} */
+  let obfuscation = null;
   if (config.security?.requireObfuscation && hasAot) {
-    findings.push(...auditObfuscation(apk, entries));
+    obfuscation = auditObfuscation(apk, entries, dartPackage);
+    findings.push(...obfuscation.findings);
   }
 
   // aapt2 lit le manifeste COMPILÉ, c'est-à-dire l'état réel après fusion.
   const badging = sh('aapt2', ['dump', 'badging', apk]);
-  const facts = { scanned: true, entries: entries.length, isDebugBuild, hasAot, badging: badging.ok };
+  const facts = { scanned: true, entries: entries.length, isDebugBuild, hasAot, badging: badging.ok, obfuscation };
   if (badging.ok) findings.push(...auditBadging(badging.stdout, apk, config));
   else findings.push(finding('QAM-SEC-AAPT2', 'Manifeste compilé non lu', 'info',
     'aapt2 disponible', 'aapt2 absent du PATH (il n\'y est pas par défaut : $ANDROID_HOME/build-tools/<version>/aapt2)',
@@ -405,24 +408,81 @@ export function auditApk(apk, config) {
 }
 
 /**
- * Obfuscation : sans `--obfuscate --split-debug-info`, les noms Dart restent
- * lisibles dans le binaire AOT.
- * @param {string} apk @param {string[]} entries @returns {any[]}
+ * Le nom du paquet Dart, lu dans le `pubspec.yaml` du projet — la seule source
+ * de vérité. `app.name` d'argus.mobile.yaml porte la même chose, mais c'est une
+ * valeur RECOPIÉE à la main : elle vaut encore `mon_app` sur un projet dont
+ * personne n'a édité cette ligne, et un contrôle de sécurité ancré dessus se
+ * tairait pour de bon.
+ *
+ * Rien de lisible → chaîne vide, et l'appelant NE CONCLUT PAS. Un nom deviné
+ * produirait ici un vert silencieux, ce qui est le seul verdict qu'un scan de
+ * sécurité n'a pas le droit de rendre.
+ *
+ * La capture est bornée à `[A-Za-z0-9_]` : le nom ainsi extrait ne porte aucun
+ * métacaractère, et l'interpoler dans une expression régulière est sûr sans
+ * échappement.
+ * @param {string} root @returns {string}
  */
-function auditObfuscation(apk, entries) {
+export function dartPackageName(root) {
+  try {
+    const texte = readFileSync(resolve(root, 'pubspec.yaml'), 'utf8');
+    const m = /^name:\s*['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?\s*$/m.exec(texte);
+    return m ? m[1] : '';
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Obfuscation : sans `--obfuscate --split-debug-info`, les noms des
+ * bibliothèques Dart DU PROJET restent lisibles dans le binaire AOT.
+ *
+ * ⚠️ CE CONTRÔLE A LONGTEMPS RENDU LE MÊME VERDICT DANS LES DEUX SENS. Il
+ * cherchait `package:<n'importe quoi>/….dart`, or `--obfuscate` n'efface JAMAIS
+ * les chemins du framework : `package:flutter/src/services/platform_channel.dart`
+ * survit à tout. Mesuré sur un même projet, deux builds release — 42 chemins du
+ * projet sans l'option, 0 avec, `QAM-SEC-OBFUS` major dans les deux cas. Un
+ * contrôle qui ne discrimine rien ne mesure rien, et celui-ci vit dans la
+ * dimension dont c'est précisément le métier de ne pas rassurer à tort.
+ *
+ * D'où les deux gestes : le motif est ANCRÉ sur le paquet du projet, et la
+ * survivance des chemins du framework sert de CONTRE-ÉPREUVE d'instrument —
+ * leur absence ne signe pas une obfuscation réussie, elle signe une mesure qui
+ * n'a pas eu lieu (mauvaise extraction, binaire non-Flutter, encodage). On rend
+ * alors « non conclu », jamais « rien trouvé ».
+ * @param {string} apk @param {string[]} entries @param {string} dartPackage
+ * @returns {{findings:any[], scanned:boolean, why:string, projectPaths:number}}
+ */
+export function auditObfuscation(apk, entries, dartPackage) {
+  const nope = (/** @type {string} */ why) => ({ findings: [], scanned: false, why, projectPaths: 0 });
   const soEntry = entries.find((e) => /lib\/[^/]+\/libapp\.so$/.test(e));
-  if (!soEntry) return [];
+  if (!soEntry) return nope('aucun lib/<abi>/libapp.so dans l\'APK : rien à lire pour juger l\'obfuscation.');
   const dumped = sh('unzip', ['-p', apk, soEntry], { maxBuffer: 256 * 1024 * 1024, encoding: 'latin1' });
-  if (!dumped.ok) return [];
-  // Repère de non-obfuscation : les noms de bibliothèques Dart du projet restent
-  // en clair. On cherche un marqueur générique et stable, pas un nom de classe
-  // du projet — qui varierait d'un projet à l'autre.
-  const readable = /package:[a-z_][a-z0-9_]*\/[a-z0-9_/]+\.dart/.test(dumped.stdout);
-  if (!readable) return [];
-  return [finding('QAM-SEC-OBFUS', 'Binaire AOT non obfusqué', 'major',
-    'build avec --obfuscate --split-debug-info=<dir>',
-    'chemins `package:…/….dart` lisibles dans libapp.so',
-    'Reconstruis avec --obfuscate --split-debug-info, et conserve la table de symboles hors du dépôt : sans elle les traces de crash deviennent illisibles.', apk)];
+  if (!dumped.ok) return nope(`unzip n'a pas rendu ${soEntry} — obfuscation non jugée.`);
+
+  // La sonde de présence certaine. Elle partage la nature de ce qu'elle
+  // contrôle : même forme de chemin, même encodage, même extraction.
+  if (!/package:flutter\/[a-z0-9_/]+\.dart/.test(dumped.stdout)) {
+    return nope('aucun chemin `package:flutter/…` dans libapp.so — or ceux-là survivent à '
+      + '`--obfuscate`. Leur absence dit que la LECTURE a échoué, pas que le binaire est obfusqué.');
+  }
+  if (!dartPackage) {
+    return nope('nom du paquet Dart introuvable (pubspec.yaml → name:) — sans lui, le motif '
+      + 'attraperait les chemins du framework, qui sont là dans les deux cas.');
+  }
+
+  const trouves = new Set(
+    [...dumped.stdout.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\.dart`, 'g'))].map((m) => m[0]),
+  );
+  if (trouves.size === 0) return { findings: [], scanned: true, why: '', projectPaths: 0 };
+  return {
+    scanned: true, why: '', projectPaths: trouves.size,
+    findings: [finding('QAM-SEC-OBFUS', 'Binaire AOT non obfusqué', 'major',
+      'build avec --obfuscate --split-debug-info=<dir>',
+      `${trouves.size} chemin(s) \`package:${dartPackage}/….dart\` lisibles dans libapp.so `
+        + `(p. ex. ${[...trouves][0]})`,
+      'Reconstruis avec --obfuscate --split-debug-info, et conserve la table de symboles hors du dépôt : sans elle les traces de crash deviennent illisibles.', apk)],
+  };
 }
 
 /**
@@ -482,6 +542,7 @@ function main() {
   ];
 
   let binaryFindings = [];
+  /** @type {any} */
   let binaryFacts = { scanned: false, why: '' };
   // ⚠️ LE BINAIRE QU'ON ANALYSE N'EST PAS CELUI QU'ON INSTALLE, et il ne peut pas
   // l'être. `build.android` décide de ce que le runner POSE sur l'appareil — un
@@ -507,6 +568,12 @@ function main() {
   }
   if (!binaryFacts.scanned) warn(`analyse du binaire non faite — ${binaryFacts.why}`);
 
+  // ⚠️ LE BINAIRE PEUT AVOIR ÉTÉ SCANNÉ SANS QUE L'OBFUSCATION SOIT JUGÉE, et
+  // ce silence-là ressemble trait pour trait à « rien à signaler ». Il se dit,
+  // comme se dit toute dimension qui n'a pas conclu.
+  const obfuscation = binaryFacts.obfuscation;
+  if (obfuscation && !obfuscation.scanned) warn(`obfuscation non jugée — ${obfuscation.why}`);
+
   const findings = [...sourceFindings, ...binaryFindings];
   writeJson(reportPath, {
     platform, root,
@@ -525,6 +592,10 @@ function main() {
   log(`rapport : ${reportPath}`);
   if (opts.requireTools && !binaryFacts.scanned) {
     err(`--require-tools : le binaire livré n'a pas été analysé (${binaryFacts.why}).`);
+    process.exit(2);
+  }
+  if (opts.requireTools && obfuscation && !obfuscation.scanned) {
+    err(`--require-tools : l'obfuscation n'a pas pu être jugée (${obfuscation.why}).`);
     process.exit(2);
   }
   process.exit(exitCodeFor(findings, config.gate));
