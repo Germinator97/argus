@@ -142,9 +142,9 @@ corps du skill web (1 222 mots) n'entre en contexte qu'à l'invocation, donc
 
 ```sh
 # re-mesurer avant de rouvrir — ces chiffres datent du 22/08/2026
-grep -rn 'argus/references\|\.\./\.\./argus' skills/argus-mobile/   # les références
-wc -l skills/argus/references/report-format.md skills/argus/references/methodology.md
-du -sh skills/argus skills/argus-mobile
+grep -rn 'argus/references\|\.\./\.\./argus' plugins/argus-mobile/skills/argus-mobile/   # les références
+wc -l plugins/argus-web/skills/argus/references/report-format.md plugins/argus-web/skills/argus/references/methodology.md
+du -sh plugins/argus-web plugins/argus-mobile/skills/argus-mobile
 ```
 
 ### Les deux voies, et pourquoi la seconde dépend de la première
@@ -262,8 +262,8 @@ exactement ce que les garde-fous §5 interdisent. Elle devrait être gouvernée 
 
 ```sh
 # re-mesurer avant de rouvrir — relevé du 22/08/2026
-grep -rn 'adb .*install\|uninstall\|pm clear' skills/argus-mobile/
-grep -rn 'clearState' skills/argus-mobile/assets/scaffold-mobile/.maestro/
+grep -rn 'adb .*install\|uninstall\|pm clear' plugins/argus-mobile/skills/argus-mobile/
+grep -rn 'clearState' plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/
 ```
 
 ---
@@ -365,11 +365,11 @@ erreurs serveur s'éprouvant alors à l'étage 1, pas à l'étage 2.
 
 ```sh
 # re-mesurer avant de rouvrir — relevé du 22/08/2026 : 0 et 2
-grep -rn -iE '\bmock|\bstub|proxy|intercept' skills/argus-mobile/ | wc -l  # 0 = toujours aucun
-grep -rn 'arguments' skills/argus-mobile/ | wc -l   # 2 = encore cité, pas câblé
+grep -rn -iE '\bmock|\bstub|proxy|intercept' plugins/argus-mobile/skills/argus-mobile/ | wc -l  # 0 = toujours aucun
+grep -rn 'arguments' plugins/argus-mobile/skills/argus-mobile/ | wc -l   # 2 = encore cité, pas câblé
 # ⚠️ CONTRE-ÉPREUVE, à lire AVANT le zéro ci-dessus : un grep qui a échoué rend
 # « 0 » exactement comme une absence réelle. Ce motif-ci est certainement
 # présent ; s'il rend 0 lui aussi, c'est la commande qui est morte, pas le skill
 # qui a changé.
-grep -rn 'clearState' skills/argus-mobile/ | wc -l  # doit être > 0
+grep -rn 'clearState' plugins/argus-mobile/skills/argus-mobile/ | wc -l  # doit être > 0
 ```

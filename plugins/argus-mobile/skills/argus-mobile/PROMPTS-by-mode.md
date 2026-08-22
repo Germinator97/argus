@@ -35,7 +35,7 @@ Le cas le plus courant : brancher une garde permanente sur un projet.
 ```text
 /argus-mobile
 # absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
-# et lis skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
+# et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
 Installe le harness de non-régression sur ce projet Flutter.
@@ -63,7 +63,7 @@ Pour mesurer l'existant sur une app déjà installée.
 ```text
 /argus-mobile
 # absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
-# et lis skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
+# et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
 Audite cette application Flutter et rends-moi un rapport.
@@ -92,7 +92,7 @@ Même audit, avec la mise en scène. À réserver à ce qui sera montré.
 ```text
 /argus-mobile
 # absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
-# et lis skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
+# et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
 Produis une démo vidéo commentée de cette application.
@@ -115,7 +115,7 @@ masque tout ce qui ressemble à une donnée réelle.
 ```text
 /argus-mobile
 # absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
-# et lis skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
+# et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
 Ce projet porte déjà un harness Argus. Vérifie s'il est en retard sur le plugin,

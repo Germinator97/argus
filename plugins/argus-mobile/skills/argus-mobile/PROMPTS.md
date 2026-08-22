@@ -47,7 +47,7 @@ LE SKILL — deux cas, prends celui qui s'applique
 - Si `/argus-mobile` est disponible dans ta session : invoque-le.
 - Sinon, récupère-le et lis-le directement :
       git clone --depth 1 https://github.com/Alexwilfriedo/argus-cc <dossier>/argus-cc
-  puis lis `<dossier>/argus-cc/skills/argus-mobile/SKILL.md` en entier. Le
+  puis lis `<dossier>/argus-cc/plugins/argus-mobile/skills/argus-mobile/SKILL.md` en entier. Le
   scaffold à poser est dans `assets/scaffold-mobile/`, l'installeur est
   `scripts/install-mobile.sh`.
 

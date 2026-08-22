@@ -18,8 +18,8 @@ import sys
 # répertoire courant, et un chemin relatif ne restaurerait rien dès que la
 # commande est lancée d'ailleurs — en laissant l'arbre muté, sans un mot.
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SCAFFOLD = ROOT / "skills/argus-mobile/assets/scaffold-mobile/scripts/argus"
-FLOWS = ROOT / "skills/argus-mobile/assets/scaffold-mobile/.maestro"
+SCAFFOLD = ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus"
+FLOWS = ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro"
 CIBLES = {
     "run": SCAFFOLD / "run.mjs",
     "config": SCAFFOLD / "config.mjs",

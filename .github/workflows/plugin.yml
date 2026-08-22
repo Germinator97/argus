@@ -1,5 +1,5 @@
 # CI du plugin lui-même — à ne pas confondre avec le workflow que le scaffold
-# installe chez le projet d'accueil (skills/argus-mobile/assets/…/argus-mobile.yml).
+# installe chez le projet d'accueil (plugins/argus-mobile/skills/argus-mobile/assets/…/argus-mobile.yml).
 #
 # Elle ne teste pas les harness : elle vérifie que ce que le plugin DISTRIBUE
 # est cohérent. Sans elle, tools/check-scaffold.sh n'aurait aucun lecteur, et
@@ -23,14 +23,14 @@ jobs:
 
       - name: Syntaxe des installeurs
         run: |
-          bash -n skills/argus/scripts/install.sh
-          bash -n skills/argus-mobile/scripts/install-mobile.sh
+          bash -n plugins/argus-web/skills/argus/scripts/install.sh
+          bash -n plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh
 
       - name: Installation à blanc, puis --check
         run: |
           mkdir -p /tmp/host && printf 'name: host\n' > /tmp/host/pubspec.yaml
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host --check
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/host
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/host --check
 
       # Le .gitignore est le seul fichier de l'hôte où l'installeur ÉCRIT. Il
       # ne doit rien dupliquer en se rejouant, et ne rien perdre de ce qui était
@@ -40,9 +40,9 @@ jobs:
         run: |
           mkdir -p /tmp/gi && printf 'name: gi\n' > /tmp/gi/pubspec.yaml
           printf '# a moi\nbuild/\n' > /tmp/gi/.gitignore
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi --update
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/gi --update
           blocs=$(grep -c 'début du bloc géré' /tmp/gi/.gitignore)
           [ "$blocs" = 1 ] || { echo "✖ $blocs blocs au lieu d'un : la fusion duplique"; exit 1; }
           grep -q '# a moi' /tmp/gi/.gitignore \
@@ -54,14 +54,14 @@ jobs:
         run: |
           mkdir -p /tmp/own && printf 'name: own\n' > /tmp/own/pubspec.yaml
           printf 'build:\n\t@echo mine\n' > /tmp/own/Makefile
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/own
-          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/own --update
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/own
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/own --update
           grep -q 'echo mine' /tmp/own/Makefile \
             || { echo "✖ le Makefile du projet a été écrasé"; exit 1; }
 
       - name: Les scripts du harness parsent
         run: |
-          for f in skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
+          for f in plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
             node --check "$f"
           done
 
@@ -72,7 +72,7 @@ jobs:
       # est la condition pour que ses décisions soient testables.
       - name: Les scripts du harness s'importent, sans rien lancer
         run: |
-          for f in skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
+          for f in plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
             node --input-type=module -e "await import('$GITHUB_WORKSPACE/$f')"
           done
 
@@ -116,7 +116,7 @@ jobs:
           cd /tmp/accueil && flutter pub add dev:flutter_test --sdk=flutter
 
       - name: Le scaffold, tel que l'installeur le pose
-        run: bash skills/argus-mobile/scripts/install-mobile.sh /tmp/accueil
+        run: bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/accueil
 
       # Le scaffold est livré NON BRANCHÉ (`argusScreens` vide) : les suites s'y
       # marquent skippées avec leur raison. C'est donc la compilation qu'on

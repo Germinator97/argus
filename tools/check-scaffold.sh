@@ -13,7 +13,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SCAFFOLD="$ROOT/skills/argus-mobile/assets/scaffold-mobile"
+SCAFFOLD="$ROOT/plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile"
 HEADER=20   # même borne que l'installeur
 
 # ── Le relevé attendu. Une ligne par fichier : « catégorie<TAB>chemin ». ──────

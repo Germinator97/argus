@@ -25,13 +25,13 @@ const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
-} from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, binaryToScan } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
-import { jankIfComparable, thresholdFinding } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
-import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { identifyScreen } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { auditApk, binaryToScan } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -262,7 +262,7 @@ test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {
 // aurait vieilli à la première variable ajoutée, et se serait tue précisément
 // là où elle devait parler.
 
-const FLOWS_DIR = fileURLToPath(new URL('../skills/argus-mobile/assets/scaffold-mobile/.maestro/', import.meta.url));
+const FLOWS_DIR = fileURLToPath(new URL('../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/', import.meta.url));
 
 /** Tous les fichiers de flow, sous-flows compris. @returns {string[]} */
 function flowFiles(dir = FLOWS_DIR) {
@@ -351,7 +351,7 @@ test('les deux branches de cadrage existent, en capture comme en comparaison', (
 // d'ailleurs aucune exception, et c'est délibéré : une clé lue par l'agent et
 // non par un script est une instruction, sa place est dans la prose.
 
-const SCRIPTS_DIR = fileURLToPath(new URL('../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/', import.meta.url));
+const SCRIPTS_DIR = fileURLToPath(new URL('../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/', import.meta.url));
 
 /** Le bloc DEFAULTS, lu dans la source — le seul endroit qui l'énumère. */
 function defaultsSource() {
@@ -811,7 +811,7 @@ test('une mesure absente reste absente, sans inventer de raison d\'échantillon'
 // serait rouge pour la documentation de sa propre règle.
 
 test('aucun script de mesure n\'efface les données de l\'app', () => {
-  const dir = join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const dir = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
   const scripts = readdirSync(dir).filter((f) => f.endsWith('.mjs'));
   assert.ok(scripts.length >= 5, `motif introuvable : ${scripts.length} script(s) lus, le garde ne garde rien`);
 
@@ -841,7 +841,7 @@ test('aucun script de mesure n\'efface les données de l\'app', () => {
 
 /** Les clés de premier niveau du littéral `report` de run.mjs. */
 function clesDuRapport() {
-  const src = readFileSync(join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const src = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
   const i = src.indexOf('const report = {');
   assert.notEqual(i, -1, 'le littéral `const report = {` est introuvable — le garde ne garde plus rien');
   let prof = 0; let fin = i;
@@ -862,7 +862,7 @@ function clesDuRapport() {
 
 /** Les clés que le contrat de sortie annonce, dans la phrase qui les liste. */
 function clesDocumentees() {
-  const doc = readFileSync(join(RACINE, 'skills/argus-mobile/references/report-format-mobile.md'), 'utf8');
+  const doc = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/references/report-format-mobile.md'), 'utf8');
   const m = /clés de premier niveau de `report\.json` sont\s*:\s*([^.]+)\./s.exec(doc);
   assert.ok(m, 'la phrase qui liste les clés a disparu de la doc — reformulée ? le garde est vacant');
   return [...m[1].matchAll(/`([a-zA-Z_]+)`/g)].map((x) => x[1]).sort();
@@ -900,7 +900,7 @@ test('le rapport ne promet plus de métriques qu\'il n\'écrit pas', () => {
 
 test('tout marqueur de tâche du scaffold est une directive, ou une mention citée', () => {
   const marqueur = 'TODO' + '(argus)';
-  const racine = join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile');
+  const racine = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
   const fichiers = [];
   const parcourir = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
@@ -960,7 +960,7 @@ test('un cadrage vide n\'est pas un cadrage — il retombe sur le défaut', () =
 // ───────────────────────────────────────────────────────────────────────────
 //
 // Il a longtemps délégué au web la méthodologie de base, les garde-fous
-// transverses et le contrat de sortie. Copier `skills/argus-mobile/` seul — ce
+// transverses et le contrat de sortie. Copier `plugins/argus-mobile/skills/argus-mobile/` seul — ce
 // que propose l'option B du README — cassait donc ces chemins EN SILENCE :
 // l'agent lisait que le format de base vivait ailleurs, ne le trouvait pas, et
 // inventait un format de rapport.
@@ -974,7 +974,7 @@ test('un cadrage vide n\'est pas un cadrage — il retombe sur le défaut', () =
 // Le critère est total et négatif : AUCUN chemin sortant, où que ce soit.
 
 test('le skill mobile ne référence aucun fichier du skill web', () => {
-  const dir = join(RACINE, 'skills/argus-mobile');
+  const dir = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
   const sortants = [];
   let lus = 0;
   const parcourir = (d) => {

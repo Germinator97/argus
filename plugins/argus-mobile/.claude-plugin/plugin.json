@@ -1,0 +1,26 @@
+{
+  "author": {
+    "name": "Alex Wilfried OUATTARA",
+    "email": "alexwilfriedo@gmail.com"
+  },
+  "license": "MIT",
+  "name": "argus-mobile",
+  "version": "1.1.0",
+  "description": "Argus Mobile — agent QA/QE pour applications Flutter (Android et iOS). Parcours E2E Maestro sur le binaire compilé, régression visuelle par device, accessibilité et disposition à grande police sans émulateur, démarrage à froid et jank, sécurité OWASP MASVS. Rapports JSON/JUnit/HTML et gating CI.",
+  "keywords": [
+    "qa",
+    "qe",
+    "maestro",
+    "e2e",
+    "mobile",
+    "flutter",
+    "android",
+    "ios",
+    "non-regression",
+    "visual-regression",
+    "accessibility",
+    "security",
+    "masvs",
+    "ci"
+  ]
+}

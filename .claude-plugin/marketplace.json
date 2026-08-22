@@ -9,12 +9,33 @@
   },
   "plugins": [
     {
-      "name": "argus",
-      "source": "./",
-      "description": "Argus — agents QA/QE (audit live, démo vidéo, non-régression CI) : /argus pour le web avec un scaffold @playwright/test, /argus-mobile pour les apps Flutter Android et iOS avec un harness Maestro.",
+      "name": "argus-mobile",
+      "source": "./plugins/argus-mobile",
+      "description": "Argus Mobile — agent QA/QE pour applications Flutter (Android et iOS). Parcours E2E Maestro sur le binaire compilé, régression visuelle par device, accessibilité et disposition à grande police sans émulateur, démarrage à froid et jank, sécurité OWASP MASVS. Rapports JSON/JUnit/HTML et gating CI.",
       "version": "1.1.0",
       "author": {
-        "name": "Alex Wilfried OUATTARA"
+        "name": "Alex Wilfried OUATTARA",
+        "email": "alexwilfriedo@gmail.com"
+      }
+    },
+    {
+      "name": "argus-web",
+      "source": "./plugins/argus-web",
+      "description": "Argus — agent QA/QE pour applications WEB. Audit live exhaustif (EXPLORE), démo vidéo (DEMO) et harness @playwright/test de non-régression (REGRESS) : régression visuelle, accessibilité axe/WCAG, Core Web Vitals, liens, console et réseau, sécurité (DAST, SCA, en-têtes, authz). Rapports JSON/JUnit/HTML et gating CI.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Alex Wilfried OUATTARA",
+        "email": "alexwilfriedo@gmail.com"
+      }
+    },
+    {
+      "name": "argus",
+      "source": "./plugins/argus",
+      "description": "Argus — les deux agents QA/QE en une installation : `argus-web` pour le web (Playwright) et `argus-mobile` pour Flutter (Maestro). Ce paquet n'apporte rien lui-même : il installe les deux.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Alex Wilfried OUATTARA",
+        "email": "alexwilfriedo@gmail.com"
       }
     }
   ]

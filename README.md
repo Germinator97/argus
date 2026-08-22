@@ -22,6 +22,16 @@ Dans Claude Code :
 /plugin marketplace add https://github.com/Alexwilfriedo/argus-cc
 /plugin install argus@alexwilfriedo
 ```
+
+**Ou seulement celui dont tu as besoin** — les deux skills sont autonomes :
+
+```
+/plugin install argus-mobile@alexwilfriedo   # Flutter seul
+/plugin install argus-web@alexwilfriedo      # web seul
+```
+
+`argus` n'apporte rien lui-même : il déclare les deux autres en dépendances et
+les installe ensemble. La commande ne change donc pas pour qui l'utilisait déjà.
 > En local sans Git : `/plugin marketplace add /chemin/vers/argus`.
 
 Puis, dans n'importe quel projet : `/argus` ou `/argus-mobile`.
@@ -29,8 +39,8 @@ Puis, dans n'importe quel projet : `/argus` ou `/argus-mobile`.
 ### Option B — Copie manuelle du skill
 Chaque skill se suffit à lui-même : copie seulement celui dont tu as besoin.
 ```bash
-cp -R argus-cc/skills/argus        ~/.claude/skills/argus         # web
-cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile  # Flutter
+cp -R argus-cc/plugins/argus-web/skills/argus       ~/.claude/skills/argus         # web
+cp -R argus-cc/plugins/argus-mobile/skills/argus-mobile ~/.claude/skills/argus-mobile  # Flutter
 ```
 > `argus-mobile` a longtemps renvoyé au skill web pour son contrat de sortie et
 > ses garde-fous : copié seul, ces chemins ne résolvaient nulle part et l'agent
@@ -80,9 +90,9 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile  # Flutter
 
 3. **Tu délègues à un agent qui travaillera seul** — tâche de fond, session non
    interactive, CI ? Le dialogue de cadrage n'aura pas lieu, et c'est là qu'il
-   manque le plus. [`skills/argus-mobile/PROMPTS.md`](skills/argus-mobile/PROMPTS.md)
+   manque le plus. [`plugins/argus-mobile/skills/argus-mobile/PROMPTS.md`](plugins/argus-mobile/skills/argus-mobile/PROMPTS.md)
    donne un prompt de mission complet à copier et adapter ;
-   [`PROMPTS-by-mode.md`](skills/argus-mobile/PROMPTS-by-mode.md) quatre gabarits
+   [`PROMPTS-by-mode.md`](plugins/argus-mobile/skills/argus-mobile/PROMPTS-by-mode.md) quatre gabarits
    courts, un par intention.
 
 ### Le harness a deux étages
@@ -130,31 +140,31 @@ Côté mobile, trois refus explicites :
 - **aucune suite verte qui ne teste rien** : sans ancre sémantique configurée, la
   suite sort en `exit 2` plutôt que de rassurer à vide.
 
-Détails : `skills/argus/references/methodology.md` et
-`skills/argus-mobile/references/methodology-mobile.md`.
+Détails : `plugins/argus-web/skills/argus/references/methodology.md` et
+`plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md`.
 
 ---
 
 ## Mises à jour
 
-Bumper `version` dans `.claude-plugin/plugin.json` **et**
+Bumper `version` dans les trois `plugins/*/.claude-plugin/plugin.json` **et**
 `.claude-plugin/marketplace.json`, puis commit/push. Les utilisateurs font
 `/plugin marketplace update alexwilfriedo`.
 
 ## Contenu
 
 ```
-.claude-plugin/{plugin.json, marketplace.json}
+.claude-plugin/marketplace.json    # le catalogue : argus-web, argus-mobile, argus
 .github/workflows/plugin.yml       # CI du plugin : cohérence de ce qu'il distribue
 tools/check-scaffold.sh            # fige la classification lue par l'installeur
 
-skills/argus/                      # WEB — Playwright
+plugins/argus-web/  .claude-plugin/plugin.json + skills/argus/   # WEB — Playwright
   ├── SKILL.md                     # orchestrateur interactif
   ├── references/                  # méthodologie, mode démo, format de rapport
   ├── scripts/install.sh           # copie idempotente du scaffold
   └── assets/scaffold/             # le harness @playwright/test réel
 
-skills/argus-mobile/               # MOBILE — Flutter × Maestro
+plugins/argus-mobile/  .claude-plugin/plugin.json + skills/argus-mobile/   # MOBILE
   ├── SKILL.md                     # orchestrateur interactif
   ├── PROMPTS.md                   # prompt de mission à copier (agent délégué)
   ├── PROMPTS-by-mode.md           # gabarits courts, un par intention

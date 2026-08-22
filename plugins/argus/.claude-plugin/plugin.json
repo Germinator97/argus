@@ -1,0 +1,25 @@
+{
+  "author": {
+    "name": "Alex Wilfried OUATTARA",
+    "email": "alexwilfriedo@gmail.com"
+  },
+  "license": "MIT",
+  "name": "argus",
+  "version": "1.1.0",
+  "description": "Argus — les deux agents QA/QE en une installation : `argus-web` pour le web (Playwright) et `argus-mobile` pour Flutter (Maestro). Ce paquet n'apporte rien lui-même : il installe les deux.",
+  "dependencies": [
+    "argus-web",
+    "argus-mobile"
+  ],
+  "keywords": [
+    "qa",
+    "qe",
+    "playwright",
+    "maestro",
+    "e2e",
+    "web",
+    "mobile",
+    "flutter",
+    "ci"
+  ]
+}
