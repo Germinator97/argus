@@ -206,6 +206,26 @@ class ItemOnglet {
 Semantics(identifier: 'nav_${item.id}', …)
 ```
 
+⚠️ **Quand la clé stable EST la valeur affichée.** Une rangée de préréglages
+(`10`, `20`, `30` minutes) n'a pas d'`id` à côté de son nombre : le nombre EST
+l'identité. L'interdiction de dériver d'un texte affiché ne s'y applique pas —
+ce qu'elle vise est le texte **rendu**, qui suit la langue et le format
+(`« 1 234 »`, `« 1,234 »`, `« 20 min »`). Dérive donc de la **valeur du modèle**,
+jamais de sa chaîne rendue :
+
+```dart
+// ❌ suit le format, donc la locale
+Semantics(identifier: 'preset_${préréglage.libellé}', …)   // « preset_20 min »
+
+// ✅ la valeur, avant tout formatage
+Semantics(identifier: 'preset_${préréglage.minutes}', …)   // « preset_20 »
+```
+
+Ensemble fini et connu à l'écriture ⇒ cette règle. Liste chargée à l'exécution ⇒
+la même ancre sur chaque ligne et le flow choisit par rang. Sur une rangée de
+préréglages les deux se rejoignent sur le même identifiant, ce qui est normal :
+elles disent la même chose, que l'ancre doit venir de ce qui ne bouge pas.
+
 ⚠️ **Une clé stable n'est pas toujours utilisable — le cas des listes.** Sur une
 collection chargée à l'exécution, l'identité existe (`entity.id`) mais c'est
 souvent un UUID : parfaitement stable, et parfaitement inconnu d'un flow YAML
@@ -215,6 +235,68 @@ connu à l'écriture** — onglets, presets, sections. Pour une liste dynamique,
 pose **la même ancre sur chaque ligne** et laisse le flow choisir par rang
 (`index:` côté Maestro). Une ancre répétée n'est pas un défaut ici, c'est le
 seul moyen d'adresser des éléments dont on ignore le contenu.
+
+⚠️ **LE CAS DOMINANT SUR UN PROJET MATURE : le composant construit DÉJÀ son
+propre nœud.** « Pose l'ancre sur le nœud qui porte le rôle » suppose que tu
+puisses l'atteindre ; dans un design system, il est à l'intérieur du composant.
+Envelopper par l'extérieur donne alors deux résultats opposés selon le widget —
+mesuré sur Flutter 3.32, même écran, seule l'enveloppe change :
+
+| Enveloppé par l'extérieur | nœud de l'ancre | ce qui reste en dessous |
+|---|---|---|
+| `InkWell` | `id`, `label`, **`tap`** — un seul nœud | — |
+| `ListTile` avec `onTap` | `id`, `label`, **`tap`** — un seul nœud | — |
+| `TextField` | `id`, **`tap`** — un seul nœud | — |
+| `IconButton` | `id`, label **vide**, **aucune action** | la commande, **anonyme** |
+| `ElevatedButton` | `id`, label **vide**, **aucune action** | la commande, avec son label |
+
+La ligne de partage n'est pas « InkWell contre IconButton » : c'est que les
+composants qui déclarent un **rôle de bouton** posent une frontière sémantique,
+et que ceux qui n'ajoutent qu'un **geste** fusionnent avec l'enveloppe. La
+plupart des boutons Material sont donc du mauvais côté.
+
+Ce que ça produit : une ancre parfaitement trouvable par Maestro — le `tapOn`
+marche, il vise le centre du rect — sur un nœud qui **ne fait rien**, pendant
+que la vraie commande n'a pas d'identifiant. Rien ne lève, rien n'avertit, et
+seul TalkBack en souffre. C'est le défaut exact qui a survécu à un run complet
+sur un projet réel.
+
+⚠️ **Trois remèdes, dont deux sont mauvais** — mesurés côte à côte :
+
+| Remède | Résultat |
+|---|---|
+| `Semantics(container: true, button: true, label:)` autour | ancre **toujours inerte**, commande toujours anonyme — c'est le piège, parce que ça a l'air d'être la recette de la racine-commande |
+| `MergeSemantics` autour de l'enveloppe | l'ancre porte l'action, mais **deux nœuds tapables superposés** — et le label reste celui que l'enfant avait, s'il en avait un |
+| **ancre sur l'ENFANT que le composant reçoit** (`icon:`, `child:`) | **un seul nœud**, qui porte l'ancre, l'action, et le label quand l'enfant en a un |
+
+```dart
+// ❌ l'ancre reste au-dessus, inerte
+Semantics(identifier: 'panier_ajouter',
+  child: IconButton(onPressed: _ajouter, icon: const Icon(Icons.add)))
+
+// ✅ un seul nœud : ancre + action + libellé
+IconButton(
+  onPressed: _ajouter,
+  icon: Semantics(
+    identifier: 'panier_ajouter',
+    label: 'Ajouter au panier',
+    child: const Icon(Icons.add),
+  ),
+)
+```
+
+⚠️ `tooltip:` ne remplace pas le libellé — mesuré : il remplit le champ
+`tooltip` du nœud et laisse `label` **vide**. Un bouton icône avec tooltip reste
+donc anonyme pour TalkBack. Pose `label:` sur le même `Semantics`.
+
+Sur un composant **partagé**, la voie propre est le paramètre : le composant
+place lui-même l'ancre sur son enfant, et le call-site n'écrit qu'une chaîne.
+C'est une modification d'API partagée, mais optionnelle et non cassante — dis-le,
+puis fais-la ; c'est ce qui rapporte le plus, un composant couvrant tous ses
+call-sites d'un coup.
+
+`make argus-anchors` attrape ce défaut à condition que l'ancre soit déclarée en
+`commands:` sur l'`ArgusScreen`. C'est la moitié de son intérêt.
 
 ⚠️ **Certains widgets ne peuvent PAS être enveloppés.** La consigne « pose
 l'ancre sur le nœud qui porte déjà le rôle » suppose qu'il y ait un nœud, ou à

@@ -121,14 +121,6 @@ ancre. Compté d'une façon : 0/24. De l'autre : 5/24 et un rapport flatteur.
 
 ### Cas que le skill ne couvre pas
 
-**16. Le composant qui construit DÉJÀ son propre nœud `Semantics`.** « Pose l'ancre
-sur le nœud qui porte le rôle » est inapplicable dans un design system, et le
-résultat **dépend du widget** — mesuré par lui : autour d'un `InkWell` les nœuds
-fusionnent (un nœud, `id` + `label` + `tap`) ; autour d'un `IconButton` ils ne
-fusionnent pas (l'identifié est inerte, le tapable est anonyme). ⚠️ Et `tooltip:`
-ne corrige pas : il remplit le champ `tooltip`, pas `label`. C'est le cas le plus
-fréquent sur un projet mature, et la table du point 4 ne le couvre pas.
-
 **17. Écrans impossibles à monter seuls.** Contenu de `showModalBottomSheet` porté
 par un widget privé : §2 veut une racine par état, §3f-bis veut prouver chaque
 racine à l'étage 1 — incompatibles.
@@ -141,10 +133,6 @@ et l'échec ressemble à un test lent. (Même mécanisme que le point 9, côté 
 `Z = 0` avant d'installer ; rien ne dit quoi faire des 43 échecs que l'étage 1
 lève sur une app existante. Corriger (dérive de périmètre) ? Mettre en
 quarantaine ? Installer rouge — ce que §3h valide implicitement sans le dire.
-
-**21. Nommer une ancre dont la clé stable EST la valeur affichée** (`QuickChips`
-sur `[10,20,30…]`). Fini et connu ⇒ dériver du modèle ; dynamique ⇒ rang. Ici les
-deux règles se rejoignent sur le même nombre.
 
 **22. Un seuil de démarrage face à un plancher assumé.** L'app impose 2 s de splash
 de marque : le défaut de 2000 ms est rouge par construction. Relever le seuil pour
