@@ -730,7 +730,7 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
         // donc la mesure au message, là où quelqu'un la lira.
         actual: String(meta.error?.message ?? 'échec sans message')
           + startupHint(selector, startupAnchor, config, key)
-          + vanishedHint(bundle.steps, rank, selector),
+          + vanishedHint(bundle.steps, rank, selector, key),
         // Les preuves de L'ÉTAPE (capture et dump de hiérarchie du moment où ça
         // casse) valent bien mieux que l'index global du bundle.
         evidence: (meta.artifacts ?? []).map((/** @type {any} */ a) => join(bundle.dir, a.path ?? '')).filter(Boolean),
@@ -744,6 +744,19 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
 
 /** Commandes qui ATTENDENT une ancre au lieu de la lire tout de suite. */
 const WAIT_COMMANDS = new Set(['assertConditionCommand', 'extendedWaitUntilCommand', 'waitUntilVisibleCommand']);
+
+/**
+ * Commandes dont l'échec parle d'un ÉLÉMENT qu'on n'a pas trouvé.
+ *
+ * ⚠️ Tout indice qui explique une ancre doit être filtré par cet ensemble. La
+ * comparaison d'image (`assertScreenshot`) échoue sur un SEUIL, pas sur un
+ * élément : lui coller une explication d'ancre envoie chercher un défaut
+ * d'instrumentation là où une référence a simplement changé.
+ */
+const SELECTOR_COMMANDS = new Set([
+  ...WAIT_COMMANDS, 'tapOnCommand', 'assertVisibleCommand', 'assertNotVisibleCommand',
+  'inputTextCommand', 'scrollUntilVisibleCommand', 'longPressOnCommand',
+]);
 
 /**
  * Phrase à coller au message d'échec quand ce qui a échoué est l'attente de
@@ -783,7 +796,18 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
  * elle est correctement posée, et ce qui a changé est l'état de l'app.
  * @param {any[]} steps @param {number} index @param {string} selector @returns {string}
  */
-function vanishedHint(steps, index, selector) {
+function vanishedHint(steps, index, selector, commandKey = '') {
+  // ⚠️ COMME `startupHint`, ET POUR LA MÊME RAISON — qui n'avait été appliquée
+  // qu'à lui. Cet indice explique qu'une ancre a existé puis a disparu : c'est
+  // exact pour une commande qui CHERCHE un élément, et faux collé à un
+  // `assertScreenshot`, dont l'échec est un seuil d'image. Observé au huitième
+  // run : un `QAM-001` de comparaison visuelle conseillait de regarder la durée
+  // métier avant de toucher aux Semantics.
+  //
+  // Le point 84 a filtré son voisin dix lignes plus haut et s'est arrêté là. Un
+  // correctif pensé pour UNE fonction laisse l'autre intacte : c'est le motif
+  // que trois runs consécutifs ont fini par nommer.
+  if (commandKey && !SELECTOR_COMMANDS.has(commandKey)) return '';
   if (!selector || !selector.startsWith('id=')) return '';
   const seen = steps.slice(0, index).some((/** @type {any} */ s) =>
     selectorOf(s) === selector

@@ -1248,6 +1248,33 @@ test('écran déjà reconnu : rien à relancer — le garde ne coupe qu\'un sens
 
 const ATTENTE = { matched: false, kind: 'aucune', immobile: false, ecouleMs: 0, splashMs: 2000 };
 
+// ⚠️ CE GARDE EXISTE CONTRE UN MOTIF, PAS CONTRE UN DÉFAUT. Le point 84 a filtré
+// `startupHint` par la commande en échec ; son voisin `vanishedHint`, dix lignes
+// plus bas, est resté tel quel et collait son explication d'ancre sur une
+// comparaison d'image. Trois runs consécutifs ont vu la même chose : le
+// correctif est pensé pour UN endroit, le voisin l'attend en vain.
+//
+// D'où un critère TOTAL, et non une liste : TOUT indice ajouté à un message
+// d'échec doit être filtré. Le jour où un troisième apparaît, il tombera ici
+// sans que personne y pense.
+
+test('tout indice collé à un message d\'échec est filtré par la commande', () => {
+  const source = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const appels = [...source.matchAll(/\+ (\w+Hint)\(([^)]*)\)/g)].map((m) => [m[1], m[2]]);
+
+  // Prouver d'abord que le balayage a trouvé : une regex qui ne matche plus rend
+  // « aucun indice non filtré » avec exactement le même vert.
+  assert.ok(appels.length >= 2,
+    `${appels.length} indice(s) trouvé(s) — c'est la reconnaissance qui est cassée, pas le code`);
+
+  const nus = appels.filter(([, args]) => !/\bkey\b/.test(args)).map(([nom]) => nom);
+  assert.deepEqual(nus, [],
+    'un indice non filtré se colle à un assertScreenshot, dont l\'échec est un SEUIL '
+    + 'd\'image et non un élément introuvable : il envoie chercher un défaut '
+    + 'd\'instrumentation là où une référence a changé');
+});
+
 test('un splash STATIQUE ne fait plus renoncer — c\'est le défaut qui a coûté la dimension', () => {
   assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 900 }), 'attendre',
     'deux dumps identiques pendant le splash déclaré ne prouvent rien : ils prouvent qu\'il est fixe');

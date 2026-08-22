@@ -84,9 +84,17 @@ platforms:
 #                (maestro start-device --device-model … --device-os …).
 #                ⚠️ Incompatible avec `avd` : start-device CRÉE son propre AVD,
 #                il ne sait pas démarrer le tien. Lance-le toi-même.
-# `model`/`os` → consommés par autoStart uniquement. Ce sont des noms MAESTRO
+# `model`/`os` → DEUX consommateurs, et deux vocabulaires. Ce sont des noms MAESTRO
 #                (`pixel_6`), pas ce que l'appareil rend (`sdk_gphone64_arm64`) :
 #                le rapport, lui, écrit ce qu'il a MESURÉ sur le device.
+#                ⚠️ ET LES DEUX CONSOMMATEURS N'ONT PAS LE MÊME VOCABULAIRE.
+#                `autoStart` les passe à `maestro start-device` ; la CI les passe
+#                à `android-emulator-runner`, qui attend un profil `avdmanager`.
+#                Les deux nomenclatures se ressemblent assez pour qu'on ne voie
+#                pas l'écart — `pixel_6` vaut des deux côtés — et assez peu pour
+#                qu'un nom valide ici soit refusé là-bas. En cas de doute :
+#                    avdmanager list device        # ce que la CI acceptera
+#                    maestro start-device --help   # ce qu'autoStart acceptera
 #                ⚠️ Avec `autoStart: false` ils ne servent pas au RUNNER — il
 #                cible l'AVD nommé — mais la CI les LIT pour savoir quel
 #                émulateur démarrer, et c'est ce qui fait qu'elle compare tes

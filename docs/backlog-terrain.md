@@ -947,13 +947,20 @@ rouge en permanence, l'omettre le sort de toute vérification. `form_reps_value`
 est resté non déclaré pour cette seule raison — c'est le seul écart entre les
 72 ancres posées et les 71 prouvées.
 
-### 90. `vanishedHint` colle son diagnostic sur un finding visuel
+### 90. ✅ Corrigé le 22/08/2026 — `vanishedHint` collait son diagnostic sur un finding visuel
 
 Corrigé la veille pour `startupHint` (point 84), pas pour son voisin de dix
 lignes. Un `QAM-001` de seuil visuel porte donc : « cette ancre a été TROUVÉE
 plus tôt puis a disparu : l'instrumentation est bonne, c'est l'ÉTAT de l'app qui
 a changé ». Diagnostic exact pour une autre classe de finding, recollé sur une
 image de référence qui a simplement changé.
+
+**Corrigé — et cette fois par un critère TOTAL plutôt qu'un second correctif
+ponctuel.** `SELECTOR_COMMANDS` nomme les commandes dont l'échec parle d'un
+élément ; les deux indices y sont filtrés. Et un garde balaie **tous** les
+`…Hint(` ajoutés à un message d'échec : le jour où un troisième apparaît, il
+tombera sans que personne y pense. C'est ce garde-là, pas le correctif, qui
+répond au motif que trois runs ont nommé.
 
 ### 91. Le plancher d'attente a11y est le splash, pas le temps d'écran exploitable
 
@@ -965,7 +972,7 @@ a mesuré le splash — l'agent a dû le contourner à la main.
 ⚠️ **J'ai confondu les deux grandeurs que le point 88 m'a fait documenter la
 veille**, dans la même passe. Écrire la distinction ne suffit pas à s'en servir.
 
-### 92. `devices[].model` a deux vocabulaires pour une clé
+### 92. ✅ Corrigé le 22/08/2026 — `devices[].model` avait deux vocabulaires pour une clé
 
 `argus.mobile.yaml` dit « ce sont des noms **MAESTRO**, consommés par `autoStart`
 **uniquement** » ; `ciEmulator()` s'en sert comme **profil `avdmanager`** pour
@@ -973,6 +980,10 @@ veille**, dans la même passe. Écrire la distinction ne suffit pas à s'en serv
 ne voie pas l'écart, et assez peu pour qu'un nom valide d'un côté ne le soit pas
 de l'autre. Le mot « uniquement » est faux depuis le point 67 — c'est le
 commentaire que le 86 a corrigé dans `run.mjs`, et pas ici.
+
+**Corrigé** : « DEUX consommateurs, et deux vocabulaires », avec les deux
+commandes qui tranchent écrites à côté — `avdmanager list device` pour ce que la
+CI acceptera, `maestro start-device --help` pour `autoStart`.
 
 ### 93. §2c-bis prescrit `home-empty`, `goto.yaml` ne connaît que `home`
 
