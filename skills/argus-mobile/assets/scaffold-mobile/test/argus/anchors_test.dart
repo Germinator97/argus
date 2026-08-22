@@ -72,12 +72,14 @@ void main() {
     for (final ArgusScreen s in ancres) {
       vues[s.anchor!] = (vues[s.anchor!] ?? 0) + 1;
     }
-    final Iterable<String> doublons =
-        vues.entries.where((MapEntry<String, int> e) => e.value > 1).map((MapEntry<String, int> e) => e.key);
+    final Iterable<String> doublons = vues.entries
+        .where((MapEntry<String, int> e) => e.value > 1)
+        .map((MapEntry<String, int> e) => e.key);
     expect(
       doublons,
       isEmpty,
-      reason: 'Deux écrans partagent la même ancre de racine : un flow qui la '
+      reason:
+          'Deux écrans partagent la même ancre de racine : un flow qui la '
           'cible ne saura pas où il a atterri. Les ancres de COMMANDE peuvent '
           'se répéter (lignes de liste, bouton présent dans deux états) ; '
           'celles de racine, non.',
@@ -92,15 +94,17 @@ void main() {
   // ancre posée sur l'enveloppe d'un composant, le nœud tapable restant anonyme
   // en dessous. Rien ne rougissait, et le `tapOn` de Maestro marchait quand
   // même (il tape au centre du rect), si bien que seul TalkBack en souffrait.
-  final List<ArgusScreen> avecCommandes =
-      argusScreens.where((ArgusScreen s) => s.commands.isNotEmpty).toList();
+  final List<ArgusScreen> avecCommandes = argusScreens
+      .where((ArgusScreen s) => s.commands.isNotEmpty)
+      .toList();
 
   if (avecCommandes.isEmpty) {
     test(
       'ancres de commande non déclarées — renseigne commands: sur tes ArgusScreen '
       '(${argusScreens.length} écran(s) déclaré(s), 0 avec commandes)',
       () {},
-      skip: 'aucun ArgusScreen ne déclare de commande : les boutons, champs et '
+      skip:
+          'aucun ArgusScreen ne déclare de commande : les boutons, champs et '
           'lignes que ciblent tes flows ne sont vérifiés NULLE PART',
     );
   }
@@ -110,8 +114,12 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
+      await pumpArgus(
+        tester,
+        screen.build(),
+        viewport: argusViewports.first,
+        debugLabel: screen.id,
+      );
 
       for (final String commande in screen.commands) {
         final List<ArgusSemanticNode> noeuds = argusNodesById(tester, commande);
@@ -119,7 +127,8 @@ void main() {
         expect(
           noeuds,
           isNotEmpty,
-          reason: 'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
+          reason:
+              'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
               '« $commande ». Le flow Maestro qui le cible échouera sur device '
               'en disant que l\'élément a disparu — sans nommer la cause. '
               'Vérifie que l\'ancre est posée sur ce sous-arbre, que l\'écran '
@@ -137,12 +146,14 @@ void main() {
         // frontière : l'ancre reste au-dessus, INERTE, et la commande vit en
         // dessous sans identifiant. Les deux se compilent, ne lèvent rien, et
         // ne se distinguent QUE par ce champ.
-        final Iterable<ArgusSemanticNode> commandes =
-            noeuds.where((ArgusSemanticNode n) => n.isCommand);
+        final Iterable<ArgusSemanticNode> commandes = noeuds.where(
+          (ArgusSemanticNode n) => n.isCommand,
+        );
         expect(
           commandes,
           isNotEmpty,
-          reason: 'L\'ancre « $commande » de « ${screen.id} » est posée sur un '
+          reason:
+              'L\'ancre « $commande » de « ${screen.id} » est posée sur un '
               'nœud INERTE : il ne porte aucune action et ne déclare pas d\'état '
               'd\'activation. C\'est la signature d\'une enveloppe autour d\'un '
               'composant qui construit déjà son propre nœud — IconButton, '
@@ -165,13 +176,18 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
-      await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
+      await pumpArgus(
+        tester,
+        screen.build(),
+        viewport: argusViewports.first,
+        debugLabel: screen.id,
+      );
 
       expect(
         find.bySemanticsIdentifier(screen.anchor!),
         findsOneWidget,
-        reason: 'L\'écran « ${screen.id} » se construit, mais aucun nœud '
+        reason:
+            'L\'écran « ${screen.id} » se construit, mais aucun nœud '
             'sémantique ne porte l\'identifiant « ${screen.anchor} ». '
             'Trois causes, par ordre de fréquence : l\'ancre n\'est pas posée '
             'sur ce sous-arbre ; elle est posée sur un widget qui ne construit '
@@ -192,7 +208,8 @@ void main() {
       expect(
         tester.getSemantics(find.bySemanticsIdentifier(screen.anchor!)).label,
         isEmpty,
-        reason: 'La racine « ${screen.anchor} » a avalé le texte de ses '
+        reason:
+            'La racine « ${screen.anchor} » a avalé le texte de ses '
             'descendants : son label devrait être vide, il porte le contenu de '
             'l\'écran. Ajoute `explicitChildNodes: true` à côté de '
             '`container: true`. Sans lui, ce nœud devient un bloc unique — et '

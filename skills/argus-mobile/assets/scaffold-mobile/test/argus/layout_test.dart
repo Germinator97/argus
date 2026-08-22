@@ -33,7 +33,8 @@ void main() {
   });
 
   if (argusScreens.isEmpty) {
-    testWidgets(argusName('gardes de disposition non branchées'),
+    testWidgets(
+      argusName('gardes de disposition non branchées'),
       (WidgetTester tester) async {},
       skip: argusShouldSkip,
     );
@@ -46,7 +47,9 @@ void main() {
         for (final double scale in argusTextScales) {
           final String label = '${viewport.name} · texte ×$scale';
 
-          testWidgets(argusName('$label — rien ne déborde'), (WidgetTester tester) async {
+          testWidgets(argusName('$label — rien ne déborde'), (
+            WidgetTester tester,
+          ) async {
             await pumpArgus(
               tester,
               screen.build(),

@@ -298,6 +298,13 @@ List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
           identifier: data.identifier,
           label: data.label,
           actions: data.actions,
+          // `flagsCollection` remplace `hasFlag` depuis Flutter 3.32, mais ce
+          // harnais annonce fonctionner à partir de **3.19** : migrer casserait
+          // toute la moitié basse de cette plage, où le nouveau symbole n'existe
+          // pas. On garde donc l'ancien, et on tait l'avertissement plutôt que
+          // de le laisser rougir une CI. À rebasculer le jour où le plancher de
+          // version passe au-dessus de 3.32 — pas avant.
+          // ignore: deprecated_member_use
           hasEnabledState: data.hasFlag(SemanticsFlag.hasEnabledState),
         );
       })

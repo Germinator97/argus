@@ -23,7 +23,8 @@ void main() {
   // rien déclarer. Une suite vide se lit « tout va bien » ; une suite qui skippe
   // avec sa raison se lit « personne n'a encore branché ça ».
   if (argusScreens.isEmpty) {
-    testWidgets(argusName('gardes a11y non branchées'),
+    testWidgets(
+      argusName('gardes a11y non branchées'),
       (WidgetTester tester) async {},
       skip: argusShouldSkip,
     );
@@ -36,19 +37,33 @@ void main() {
         WidgetTester tester,
       ) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
-        await argusCheck('${screen.id} · cibles tactiles ≥ 48 dp (Android)',
-            () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)));
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        await argusCheck(
+          '${screen.id} · cibles tactiles ≥ 48 dp (Android)',
+          () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)),
+        );
         handle.dispose();
       }, skip: argusShouldSkip);
 
-      testWidgets(argusName('cibles tactiles ≥ 44 dp (iOS)'), (WidgetTester tester) async {
+      testWidgets(argusName('cibles tactiles ≥ 44 dp (iOS)'), (
+        WidgetTester tester,
+      ) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
-        await argusCheck('${screen.id} · cibles tactiles ≥ 44 dp (iOS)',
-            () => expectLater(tester, meetsGuideline(iOSTapTargetGuideline)));
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        await argusCheck(
+          '${screen.id} · cibles tactiles ≥ 44 dp (iOS)',
+          () => expectLater(tester, meetsGuideline(iOSTapTargetGuideline)),
+        );
         handle.dispose();
       }, skip: argusShouldSkip);
 
@@ -67,10 +82,16 @@ void main() {
         ),
         (WidgetTester tester) async {
           final SemanticsHandle handle = tester.ensureSemantics();
-          await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
-          await argusCheck('${screen.id} · contraste du texte (WCAG AA)',
-              () => expectLater(tester, meetsGuideline(textContrastGuideline)));
+          await pumpArgus(
+            tester,
+            screen.build(),
+            viewport: argusViewports.first,
+            debugLabel: screen.id,
+          );
+          await argusCheck(
+            '${screen.id} · contraste du texte (WCAG AA)',
+            () => expectLater(tester, meetsGuideline(textContrastGuideline)),
+          );
           handle.dispose();
         },
         skip: argusShouldSkip || argusTheme() == null,
@@ -83,31 +104,42 @@ void main() {
         WidgetTester tester,
       ) async {
         final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(tester, screen.build(),
-            viewport: argusViewports.first, debugLabel: screen.id);
-        await argusCheck('${screen.id} · toute cible tactile porte un label',
-            () => expectLater(tester, meetsGuideline(labeledTapTargetGuideline)));
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        await argusCheck(
+          '${screen.id} · toute cible tactile porte un label',
+          () => expectLater(tester, meetsGuideline(labeledTapTargetGuideline)),
+        );
         handle.dispose();
       }, skip: argusShouldSkip);
 
       // À 200 % de taille de texte, une cible dimensionnée « juste » passe sous
       // le seuil parce que son contenu la pousse. C'est le cas que personne ne
       // regarde, et c'est celui des utilisateurs qui en ont le plus besoin.
-      testWidgets(argusName('cibles tactiles tenues à 200 % de taille de texte'), (
-        WidgetTester tester,
-      ) async {
-        final SemanticsHandle handle = tester.ensureSemantics();
-        await pumpArgus(
-          tester,
-          screen.build(),
-          viewport: argusViewports.first,
-          textScale: 2,
-          debugLabel: screen.id,
-        );
-        await argusCheck('${screen.id} · cibles tactiles à 200 % de taille de texte',
-            () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)));
-        handle.dispose();
-      }, skip: argusShouldSkip);
+      testWidgets(
+        argusName('cibles tactiles tenues à 200 % de taille de texte'),
+        (WidgetTester tester) async {
+          final SemanticsHandle handle = tester.ensureSemantics();
+          await pumpArgus(
+            tester,
+            screen.build(),
+            viewport: argusViewports.first,
+            textScale: 2,
+            debugLabel: screen.id,
+          );
+          await argusCheck(
+            '${screen.id} · cibles tactiles à 200 % de taille de texte',
+            () =>
+                expectLater(tester, meetsGuideline(androidTapTargetGuideline)),
+          );
+          handle.dispose();
+        },
+        skip: argusShouldSkip,
+      );
     });
   }
 }
