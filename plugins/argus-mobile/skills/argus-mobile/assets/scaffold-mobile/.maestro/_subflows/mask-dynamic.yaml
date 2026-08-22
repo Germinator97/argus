@@ -36,7 +36,11 @@ appId: ${APP_ID}
 #     id: banner_dismiss
 #     optional: true
 #     label: Ferme la bannière promotionnelle si elle est là
+# ⚠️ Encadre le motif (`(?s).*…​.*`) : le sélecteur matche le nœud ENTIER, et sur
+# Flutter un nœud fusionne le texte qu'il recouvre. Avec `optional: true`, un
+# motif trop étroit échoue en SILENCE : l'invite reste ouverte et pollue toutes
+# les captures, sans une ligne dans le journal.
 # - tapOn:
-#     text: 'Plus tard'
+#     text: '(?s).*Plus tard.*'
 #     optional: true
 #     label: Ferme l'invite de mise à jour si elle est là

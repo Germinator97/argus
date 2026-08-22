@@ -26,6 +26,7 @@ CIBLES = {
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
+    "i18n": FLOWS / "i18n.yaml",
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
     "sec": SCAFFOLD / "sec.mjs",
@@ -143,6 +144,9 @@ MUTATIONS = [
     ("a11y", "mesurer un autre écran que celui demandé ne se signale plus",
      "  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {",
      "  if (false) {"),
+    ("i18n", "le garde des clés non résolues redevient un motif nu, donc toujours vert",
+     "          text: '(?is).*(missing[_ ]translation|\\[\\[.*\\]\\]|__[A-Z_]+__).*'",
+     "          text: '(?i)(missing[_ ]translation|\\[\\[.*\\]\\]|__[A-Z_]+__)'"),
     ("a11y", "la sentinelle « écran courant » revide la condition de relance",
      '  if (requested && requested !== ECRAN_COURANT) {',
      '  if (requested) {'),

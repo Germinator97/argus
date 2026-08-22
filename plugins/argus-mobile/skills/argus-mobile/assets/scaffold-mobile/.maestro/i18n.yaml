@@ -35,8 +35,20 @@ tags:
       # TODO(argus): asserte un libellé qui PROUVE la locale, c'est-à-dire un
       # texte qui serait différent en anglais. Un mot identique dans les deux
       # langues ne prouve rien.
+      #
+      # ⚠️ ENCADRE LE MOTIF, sinon il échoue quoi que tu écrives. Le sélecteur
+      # matche le nœud ENTIER, et sur Flutter un nœud ancré fusionne tout le
+      # texte qu'il recouvre : relevé sur un projet réel, `nav_history` rend
+      # « Historique\nHISTORIQUE ». `text: 'Bienvenue'` ne matche donc que si le
+      # nœud ne contient QUE ce mot — ce qui n'arrive presque jamais.
+      # Le `(?s)` est nécessaire : sans lui, `.` ne franchit pas le saut de ligne.
+      #
+      # ⚠️ L'attribut natif `text` est vide sur toute app Flutter (une seule vue
+      # native — seule l'horloge système en porte un) ; ce que le sélecteur lit
+      # est le libellé d'accessibilité. Regarde ce que ton app rend vraiment :
+      # `maestro hierarchy` (ou `maestro studio`).
       # - assertVisible:
-      #     text: 'Bienvenue'
+      #     text: '(?s).*Bienvenue.*'
       #     label: Interface rendue en français
 
       # TODO(argus): SI ton app affiche des nombres formatés, asserte-en un.
@@ -54,16 +66,20 @@ tags:
       # pourquoi. Les sélecteurs `text` étant des regex, `\s` couvre les deux.
       #
       # - assertVisible:                       # un montant
-      #     text: '1\s?234\s?567\s?FCFA'
+      #     text: '(?s).*1\s?234\s?567\s?FCFA.*'
       #     label: Montant formaté en FCFA (séparateur insécable toléré)
       # - assertVisible:                       # ou une date, ou une durée…
-      #     text: '\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)'
+      #     text: '(?s).*\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre).*'
       #     label: Date rendue en français
 
       # Clés de traduction manquantes : une clé non résolue se rend en clair.
       # Ce garde attrape les formes les plus courantes.
+      # ⚠️ Encadré comme les autres, et ici ça compte double : non encadré, ce
+      # motif ne matcherait jamais rien, donc l'assertion passerait quoi qu'il y
+      # ait à l'écran. Un `assertNotVisible` mal écrit est VERT par construction
+      # — il occupe la place du garde qu'on croyait avoir.
       - assertNotVisible:
-          text: '(?i)(missing[_ ]translation|\[\[.*\]\]|__[A-Z_]+__)'
+          text: '(?is).*(missing[_ ]translation|\[\[.*\]\]|__[A-Z_]+__).*'
           label: Aucune clé de traduction non résolue à l'écran
 
 - runFlow:

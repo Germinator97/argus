@@ -435,7 +435,7 @@ est liée au couple device + version d'OS. Des références nées sur un autre
 émulateur ne correspondront jamais : la dimension visuelle sera rouge en
 permanence en CI, pour une raison qui n'est pas une régression.
 
-### 68. L'exemple d'assertion i18n est intenable sur Flutter
+### 68. ✅ Corrigé le 22/08/2026 — L'exemple d'assertion i18n était intenable sur Flutter
 
 `i18n.yaml` propose `text: 'Bienvenue'`. Sur une app Flutter, l'attribut `text`
 est **vide sur tous les nœuds** — seule l'horloge système en porte un — et le
@@ -443,6 +443,27 @@ libellé vit dans `accessibilityText`, où le sélecteur fait un match **complet
 Un nœud ancré fusionne de surcroît le texte qu'il recouvre : `nav_history` rend
 `'Historique\nHISTORIQUE'`. L'exemple livré échoue donc systématiquement, et
 c'est le premier que quelqu'un copie.
+
+**Corrigé — mais PAS par le remède qui semblait suivre du constat.** Écrire
+`accessibilityText:` était ma première lecture ; `maestro check-syntax` le
+**refuse** (« Unknown Property », mesuré sur 2.8.0, où seuls `text`, `id`, `css`
+et `traits` passent). Livré tel quel, il aurait fait rougir l'étape « Syntaxe des
+flows » du workflow qu'on livre — un remède qui casse la CI pour corriger un
+exemple. Le symptôme était juste, le remède ne l'était pas, et c'est la mesure
+qui les a séparés.
+
+Ce qui casse vraiment est le **match complet** : le sélecteur porte sur le nœud
+entier, donc `text: 'Bienvenue'` ne trouve que si le nœud ne contient QUE ce mot.
+Les cinq sélecteurs du scaffold sont désormais encadrés — `'(?s).*…​.*'`, le
+`(?s)` étant nécessaire pour franchir le saut de ligne du texte fusionné.
+
+⚠️ **Et la même cause vidait un garde, ce que le constat ne disait pas.** Le
+`assertNotVisible` des clés de traduction non résolues portait un motif nu : il
+ne pouvait matcher aucun nœud, donc il **passait quoi qu'il y ait à l'écran**.
+Trois formes muettes au total — `assertNotVisible` toujours vert, `tapOn` +
+`optional: true` qui ne tape rien — contre une seule bruyante, l'`assertVisible`
+qu'on avait sous les yeux. Un garde total exige maintenant l'encadrement de tout
+sélecteur `text:`, exemples commentés compris, puisque c'est ce qu'on décommente.
 
 ### 69. `commands:` n'a aucun moyen de dire « atteignable après défilement »
 

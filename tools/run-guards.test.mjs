@@ -854,6 +854,72 @@ test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine r
 
 
 // ───────────────────────────────────────────────────────────────────────────
+// .maestro — un sélecteur `text:` non encadré ne matche RIEN, parfois en silence
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le sélecteur matche le nœud ENTIER, et sur Flutter un nœud ancré fusionne le
+// texte qu'il recouvre : `nav_history` rend « Historique\nHISTORIQUE ». Un
+// `text: 'Bienvenue'` échoue donc quel que soit le libellé.
+//
+// Les deux sens n'ont pas le même prix. `assertVisible` échoue bruyamment ;
+// `assertNotVisible` PASSE toujours, et `tapOn` + `optional: true` ne fait rien
+// — deux gardes verts par construction, qui occupent la place de ceux qu'on
+// croyait avoir. Le scaffold en livrait un sur les clés de traduction non
+// résolues.
+//
+// ⚠️ Le remède rapporté par le run était `accessibilityText:`. Mesuré :
+// `maestro check-syntax` le REFUSE (« Unknown Property », Maestro 2.8.0) — il
+// aurait fait rougir l'étape « Syntaxe des flows » de la CI livrée. Le symptôme
+// était juste, le remède ne l'était pas.
+//
+// Le critère est TOTAL — tout sélecteur `text:`, y compris dans les exemples
+// commentés, puisque c'est exactement ce qu'on décommente.
+
+/** Les sélecteurs `text:` des flows, commentés compris. */
+function selecteursTexte() {
+  const trouves = [];
+  let lignesLues = 0;
+  for (const chemin of flowFiles()) {
+    const fichier = chemin.slice(FLOWS_DIR.length);
+    const lignes = readFileSync(chemin, 'utf8').split('\n');
+    let precedente = '';
+    for (const [i, brute] of lignes.entries()) {
+      lignesLues += 1;
+      // On retire un éventuel `#` de commentaire ET un `- ` de liste : ce qui
+      // reste est la clé YAML, qu'elle soit active ou en exemple.
+      const nue = brute.replace(/^\s*#?\s*/, '').replace(/^-\s*/, '');
+      const m = /^text:\s*(.+)$/.exec(nue);
+      if (m) {
+        // `inputText:` ouvre un bloc dont `text:` est la valeur SAISIE, pas une
+        // cible : rien à encadrer, et l'encadrer taperait les points au clavier.
+        const parent = precedente.replace(/^\s*#?\s*/, '').replace(/^-\s*/, '');
+        if (!/^inputText:/.test(parent)) trouves.push({ fichier, ligne: i + 1, motif: m[1].trim() });
+      }
+      if (nue.trim()) precedente = brute;
+    }
+  }
+  return { trouves, lignesLues };
+}
+
+test('tout sélecteur `text:` est encadré — sinon il ne matche jamais le nœud fusionné', () => {
+  const { trouves, lignesLues } = selecteursTexte();
+
+  // ⚠️ D'abord prouver que le balayage a mesuré : un `flowFiles()` qui rend une
+  // liste vide, ou une regex qui ne reconnaît plus la clé, rendrait « zéro
+  // sélecteur mal écrit » avec exactement le même vert.
+  assert.ok(lignesLues > 100, `${lignesLues} lignes lues : le balayage n'a rien ouvert`);
+  assert.ok(trouves.length > 0,
+    'aucun sélecteur `text:` reconnu dans les flows — c\'est la reconnaissance qui est cassée, pas les flows');
+
+  const nus = trouves.filter((t) => !/^'\(\?[a-z]*s[a-z]*\)\.\*/.test(t.motif) || !/\.\*'$/.test(t.motif));
+  assert.deepEqual(nus, [],
+    'un sélecteur matche le nœud ENTIER, et un nœud Flutter fusionne le texte qu\'il '
+    + 'recouvre : écris \'(?s).*Libellé.*\'. Le (?s) est nécessaire, sans lui le point '
+    + 'ne franchit pas le saut de ligne.');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
 // a11y.mjs — la relance doit atteindre l'état d'où l'on peut se rattraper
 // ───────────────────────────────────────────────────────────────────────────
 //

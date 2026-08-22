@@ -409,6 +409,27 @@ endroit d'un flow ne permet de la définir. Elle se fige au démarrage du device
 écrit avec une espace normale échoue sans qu'on comprenne pourquoi — les
 sélecteurs `text` étant des regex, `\s` couvre les deux.
 
+⚠️ **UN SÉLECTEUR `text:` MATCHE LE NŒUD ENTIER, ET SUR FLUTTER UN NŒUD FUSIONNE
+CE QU'IL RECOUVRE.** `text: 'Bienvenue'` ne trouve donc son élément que si le
+nœud ne contient QUE ce mot — relevé sur un projet réel, `nav_history` rend
+« Historique\nHISTORIQUE ». Écris `(?s).*Bienvenue.*` : le `(?s)` est nécessaire,
+sans lui `.` ne franchit pas le saut de ligne du texte fusionné.
+
+Les deux sens n'ont pas le même prix, et c'est le second qui coûte :
+
+| Écrit non encadré | Ce qui se passe |
+|---|---|
+| `assertVisible` | échoue toujours — **bruyant**, on le voit tout de suite |
+| `assertNotVisible` | **passe toujours** — muet, et il occupe la place du garde qu'on croyait avoir |
+| `tapOn` + `optional: true` | ne tape rien — muet aussi : l'invite reste ouverte et pollue les captures |
+
+⚠️ **L'attribut natif `text` est vide sur toute app Flutter** — une seule vue
+native, seule l'horloge système en porte un ; ce que le sélecteur lit est le
+libellé d'accessibilité. Ça ne change pas ce qu'on écrit (`text:` est le seul
+sélecteur de texte que Maestro 2.8 connaît — `accessibilityText:` est refusé par
+`check-syntax`, mesuré), mais ça change **où regarder** quand rien ne matche :
+`maestro hierarchy`, et lis le libellé d'accessibilité, pas le texte.
+
 ═══════════════════════════════════════════════════════════════════════════════
 ## 7. Outillage + arborescence du scaffold
 ═══════════════════════════════════════════════════════════════════════════════
