@@ -73,6 +73,13 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
    chaque run sous la même URL. Désactivé par défaut — publier envoie le
    rapport, captures comprises, à un service tiers.
 
+3. **Tu délègues à un agent qui travaillera seul** — tâche de fond, session non
+   interactive, CI ? Le dialogue de cadrage n'aura pas lieu, et c'est là qu'il
+   manque le plus. [`skills/argus-mobile/PROMPTS.md`](skills/argus-mobile/PROMPTS.md)
+   donne un prompt de mission complet à copier et adapter ;
+   [`PROMPTS-by-mode.md`](skills/argus-mobile/PROMPTS-by-mode.md) quatre gabarits
+   courts, un par intention.
+
 ### Le harness a deux étages
 
 | | Ce qui tourne | Coût | Couvre |
@@ -144,6 +151,8 @@ skills/argus/                      # WEB — Playwright
 
 skills/argus-mobile/               # MOBILE — Flutter × Maestro
   ├── SKILL.md                     # orchestrateur interactif
+  ├── PROMPTS.md                   # prompt de mission à copier (agent délégué)
+  ├── PROMPTS-by-mode.md           # gabarits courts, un par intention
   ├── references/
   │   ├── methodology-mobile.md    # le cerveau : dimensions, sévérité, anti-flake
   │   ├── device-matrix.md         # choisir sa matrice de devices sous budget
