@@ -428,3 +428,64 @@ grep -c "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id" \
 # est certainement présent tant que ce fichier est un runner (relevé : 3).
 grep -c 'runMaestro' plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs  # > 0
 ```
+
+═══════════════════════════════════════════════════════════════════════════════
+## E. L'APK installé embarque quatre ABI, l'appareil n'en lit qu'une
+═══════════════════════════════════════════════════════════════════════════════
+
+Ouvert le 22/08/2026, sur une question de Germinator pendant le run 7 : puisqu'on
+connaît l'émulateur, pourquoi ne pas construire l'APK de son ABI ?
+
+**Mesuré sur le banc, `flutter clean` avant chaque build :**
+
+| build | décompressé | fichier |
+|---|---|---|
+| `flutter build apk --debug` (défaut du scaffold) | 221,4 Mo | **84,9 Mo** |
+| `--debug --target-platform android-arm64` | 109,4 Mo | **39,7 Mo** |
+
+**−53 %.** Les trois `libflutter.so` retirées pèsent 45,2 Mo **stockées** dans le
+zip (33 + 39 + 39 Mo décompressées).
+
+⚠️ **Ce n'est pas qu'une optimisation, c'est plus JUSTE** : le Play Store livre un
+APK découpé par ABI, donc l'utilisateur reçoit déjà du mono-ABI. C'est le fat APK
+qui ne correspond à ce que personne n'installe. Aucune perte de fidélité — les
+autres ABI ne sont jamais chargées sur l'appareil visé.
+
+Et ça ferme la panne rencontrée au run 6 : `INSTALL_FAILED_INSUFFICIENT_STORAGE`
+sur un émulateur dont `/data` est à 85 % dès le boot.
+
+### Trois points à traiter dans le même geste
+
+1. **Dériver l'ABI, jamais la figer** — `adb shell getprop ro.product.cpu.abi`.
+   Un émulateur sur Apple Silicon rend `arm64-v8a`, sur Intel `x86_64`, un vieux
+   téléphone `armeabi-v7a`. Le runner a déjà résolu le device : il peut
+   **proposer** la commande juste, là où il affiche aujourd'hui un défaut figé.
+2. ⚠️ **Le finding `binarySizeMb` mesurerait autre chose.** Passer de 85 à 40 Mo
+   améliore le verdict sans que l'app ait changé — le piège exact du point 61
+   (budgets de release appliqués à un build debug). Redocumenter le budget comme
+   portant sur du mono-ABI, dans le même commit.
+3. **`build.androidBuildCmd` est une clé OWNED** : changer le défaut ne descend
+   pas chez les projets déjà installés. Le remède doit vivre dans ce que le
+   runner PROPOSE, pas seulement dans le scaffold livré.
+
+### ⚠️ Ce que la mesure a failli dire de faux
+
+La première mesure rendait « aucun gain, 14 Ko d'écart ». Le build mono-ABI avait
+pris **6,8 s au lieu de 24,8** : Gradle avait **patché l'APK existant**, retirant
+les entrées du catalogue sans recompacter le fichier — les 45 Mo d'ABI orphelines
+étaient encore physiquement dedans. C'est le piège du binaire périmé décrit dans
+CLAUDE.md § 1.3, et seul `flutter clean` a donné un chiffre honnête.
+
+Deuxième instrument fautif dans la même mesure : la colonne 2 d'`unzip -v` est la
+**méthode** de compression, pas une taille. La lire comme telle rendait
+« 0,00 Mo » pour chaque lib — un zéro parfaitement plausible.
+
+```sh
+# re-mesurer avant de rouvrir — relevé du 22/08/2026 : 84,9 Mo et 39,7 Mo
+cd <projet> && flutter clean && flutter build apk --debug
+wc -c build/app/outputs/flutter-apk/app-debug.apk
+cd <projet> && flutter clean && flutter build apk --debug --target-platform android-arm64
+wc -c build/app/outputs/flutter-apk/app-debug.apk
+# ⚠️ Le `flutter clean` n'est PAS une précaution : sans lui les deux chiffres sont
+# égaux, et la conclusion s'inverse.
+```
