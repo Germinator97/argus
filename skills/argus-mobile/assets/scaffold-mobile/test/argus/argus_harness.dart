@@ -311,6 +311,25 @@ List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
       .toList();
 }
 
+/// Consomme l'exception qu'un montage a pu laisser en attente, sans la juger.
+///
+/// ⚠️ **Ce n'est pas une mise sous le tapis, et ça ne le reste que sous une
+/// condition.** Une exception laissée en attente fait tomber le test AVANT
+/// qu'[argusCheck] n'ait produit un verdict : le message devient générique,
+/// aucune clé n'est émise, et `known_issues.dart` — dont c'est précisément le
+/// rôle — ne peut plus rien absorber. Mesuré sur un projet réel : onze écrans
+/// sur quatorze, donc une suite rouge en permanence et irrécupérable par la
+/// dette.
+///
+/// La condition est qu'un AUTRE garde rapporte ce qui est drainé ici.
+/// `layout_test.dart` monte les mêmes écrans sur tous les gabarits et toutes
+/// les échelles, et asserte que rien n'a été levé : c'est lui le rapporteur.
+/// Le jour où il cesserait de couvrir les mêmes écrans, tout appel à cette
+/// fonction deviendrait un silence — et rien ne le signalerait.
+void argusDrainMountException(WidgetTester tester) {
+  tester.takeException();
+}
+
 // ───────────────────────────────────────────────────────────────────────────
 // 5. La dette assumée
 // ───────────────────────────────────────────────────────────────────────────

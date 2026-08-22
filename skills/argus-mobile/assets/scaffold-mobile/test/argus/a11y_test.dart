@@ -1,5 +1,18 @@
 // Argus Mobile — gardes d'accessibilité, sans device.
 //
+// ⚠️ CHAQUE MONTAGE DRAINE SON EXCEPTION, ET CE N'EST PAS UNE MISE SOUS LE
+// TAPIS. Une exception laissée en attente fait tomber le test AVANT
+// qu'`argusCheck` n'ait produit un verdict : le message est générique, aucune
+// clé n'est émise, et `known_issues.dart` — qui existe précisément pour
+// absorber un défaut assumé — ne peut alors rien. Mesuré sur un projet réel :
+// onze écrans sur quatorze, donc une suite rouge en permanence et
+// irrécupérable.
+//
+// Drainer ici est légitime pour une seule raison : `layout_test.dart` monte les
+// MÊMES écrans sur tous les gabarits et toutes les échelles, et asserte que
+// rien n'a été levé. C'est LUI qui rapporte. Le jour où cette suite cesserait
+// de couvrir les mêmes écrans, ce drain deviendrait un silence.
+//
 // Couvre exactement ce qu'un flow Maestro ne sait pas exprimer : la taille des
 // cibles tactiles et le contraste. Les sélecteurs `width`/`height` de Maestro
 // sont des égalités en pixels ; « ≥ 48 dp » ne s'y écrit pas.
@@ -43,6 +56,7 @@ void main() {
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
+        argusDrainMountException(tester);
         await argusCheck(
           '${screen.id} · cibles tactiles ≥ 48 dp (Android)',
           () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)),
@@ -60,6 +74,7 @@ void main() {
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
+        argusDrainMountException(tester);
         await argusCheck(
           '${screen.id} · cibles tactiles ≥ 44 dp (iOS)',
           () => expectLater(tester, meetsGuideline(iOSTapTargetGuideline)),
@@ -88,6 +103,7 @@ void main() {
             viewport: argusViewports.first,
             debugLabel: screen.id,
           );
+          argusDrainMountException(tester);
           await argusCheck(
             '${screen.id} · contraste du texte (WCAG AA)',
             () => expectLater(tester, meetsGuideline(textContrastGuideline)),
@@ -110,6 +126,7 @@ void main() {
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
+        argusDrainMountException(tester);
         await argusCheck(
           '${screen.id} · toute cible tactile porte un label',
           () => expectLater(tester, meetsGuideline(labeledTapTargetGuideline)),
@@ -131,6 +148,7 @@ void main() {
             textScale: 2,
             debugLabel: screen.id,
           );
+          argusDrainMountException(tester);
           await argusCheck(
             '${screen.id} · cibles tactiles à 200 % de taille de texte',
             () =>
