@@ -26,7 +26,7 @@ import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { ciEmulator, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -850,6 +850,60 @@ test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine r
   } finally {
     process.chdir(avant);
   }
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// config.mjs — VIDE n'est pas ILLISIBLE, et les confondre casse un projet sain
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Dériver l'émulateur de CI depuis `devices[]` a introduit un défaut le jour
+// même : le scaffold dit lui-même de laisser `model`/`os` VIDES dès qu'on cible
+// un `avd` nommé — le cas recommandé, donc le plus fréquent — et la première
+// version échouait dessus. Le job serait devenu rouge sur une config que le
+// skill venait de produire.
+//
+// Trouvé en préparant un run, pas par un test : la config d'un run précédent
+// portait `os: ''` avec le commentaire qui explique pourquoi.
+
+const AVEC = (/** @type {any} */ device) => ({ platforms: ['android'], devices: [device] });
+
+test('os renseigné : la CI démarre l\'appareil du projet', () => {
+  const r = ciEmulator(AVEC({ platform: 'android', model: 'pixel_9a', os: 'android-36' }));
+  assert.equal(r.ok, true);
+  assert.equal(r.apiLevel, '36');
+  assert.equal(r.profile, 'pixel_9a');
+  assert.equal(r.source, 'argus.mobile.yaml');
+});
+
+test('avd nommé, os et model vides : ça PASSE, et le journal le dit', () => {
+  const r = ciEmulator(AVEC({ platform: 'android', avd: 'Medium_Phone_API_36.1', model: '', os: '' }));
+  assert.equal(r.ok, true,
+    'le scaffold prescrit lui-même de les laisser vides avec un avd nommé : échouer '
+    + 'ici rendait le job rouge sur une config saine');
+  assert.equal(r.apiLevel, '33', 'les défauts du workflow, inchangés');
+  assert.match(r.why, /vides/, 'et le silence ne suffit pas : le journal doit dire d\'où viennent ces valeurs');
+});
+
+test('os mal formé : on échoue, plutôt que de deviner', () => {
+  const r = ciEmulator(AVEC({ platform: 'android', model: 'pixel_6', os: 'pixel-33' }));
+  assert.equal(r.ok, false, 'une faute de frappe n\'est pas un choix documenté');
+  assert.match(r.why, /pixel-33/, 'le message doit citer ce qu\'il a lu');
+});
+
+test('aucun device android actif : on échoue en nommant les deux clés', () => {
+  const r = ciEmulator({ platforms: ['ios'], devices: [{ platform: 'ios' }] });
+  assert.equal(r.ok, false);
+  assert.match(r.why, /platforms/);
+});
+
+test('model seul renseigné : on ne le jette pas, mais l\'os reste un défaut', () => {
+  // Une moitié renseignée est une config en cours d'écriture, pas une faute.
+  const r = ciEmulator(AVEC({ platform: 'android', model: 'pixel_9a', os: '' }));
+  assert.equal(r.ok, false,
+    'os vide ET model rempli : on ne peut pas deviner l\'api-level, et un défaut '
+    + 'silencieux ferait comparer les références sur un autre appareil');
+  assert.match(r.why, /android-33/, 'le message doit montrer la forme attendue');
 });
 
 

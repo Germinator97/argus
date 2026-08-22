@@ -201,13 +201,13 @@ jobs:
           # sur une config illisible comme sur une config saine.
           set -euo pipefail
           node -e "
-            import('./scripts/argus/config.mjs').then(({ loadConfig, activeDevices }) => {
-              const d = activeDevices(loadConfig()).find((x) => x.platform === 'android');
-              if (!d) { console.error('aucun device android actif dans argus.mobile.yaml'); process.exit(2); }
-              const api = String(d.os ?? '').replace(/^android-/, '');
-              if (!/^[0-9]+$/.test(api)) { console.error(\`devices[].os illisible : « \${d.os} » (attendu : android-33)\`); process.exit(2); }
-              console.log(\`api-level=\${api}\`);
-              console.log(\`profile=\${d.model || 'pixel_6'}\`);
+            import('./scripts/argus/config.mjs').then(({ loadConfig, ciEmulator }) => {
+              const r = ciEmulator(loadConfig());
+              if (r.why) console.error('[argus-mobile] ' + r.why);
+              if (!r.ok) process.exit(2);
+              console.error('[argus-mobile] émulateur : ' + r.source);
+              console.log('api-level=' + r.apiLevel);
+              console.log('profile=' + r.profile);
             });
           " >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"

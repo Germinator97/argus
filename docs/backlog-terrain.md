@@ -458,6 +458,17 @@ le `cat` final avalait l'échec du `node`. Mesuré en extrayant le step du YAML 
 en le jouant tel que GitHub le lira, sur trois configs — nominale, `os` vide,
 aucun device Android. Avec `set -euo pipefail` : 0, 2, 2.
 
+⚠️ **Et ce correctif a cassé une heure plus tard, sur la config que le skill
+produit LUI-MÊME.** Le scaffold prescrit de laisser `model`/`os` **vides** dès
+qu'on cible un `avd` nommé — le cas recommandé, donc le plus fréquent — et le
+step échouait dessus : job rouge sur une config saine. Trouvé en préparant le run
+6, en relisant la config du run 5, jamais par un test. `ciEmulator()` distingue
+maintenant trois issues au lieu de deux : renseigné → dérivé ; **vide → défauts
+du workflow, et le journal le dit** ; mal formé → échec. Cinq gardes, et le
+commentaire de `argus.mobile.yaml` qui conseillait de les laisser vides a été
+réécrit — il craignait un rapport comparant du déclaré à du mesuré, ce que
+`deviceStamp` a rendu caduc le jour même.
+
 ⚠️ **Reste ouvert, et c'est un constat NEUF** : `.maestro/_baselines/<id>` est
 indexé par l'`id` DÉCLARÉ du device (`android-emu`), pas par l'appareil réel.
 Deux appareils différents partagent donc le même dossier — l'avertissement du

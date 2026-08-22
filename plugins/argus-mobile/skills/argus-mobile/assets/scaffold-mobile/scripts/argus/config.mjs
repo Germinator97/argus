@@ -507,6 +507,45 @@ export function configuredScreens(config) {
  * Devices déclarés pour les plateformes activées.
  * @param {any} config @returns {any[]}
  */
+/**
+ * L'émulateur que la CI doit démarrer, dérivé de `devices[]`.
+ *
+ * ⚠️ VIDE N'EST PAS ILLISIBLE, et les confondre casse un projet sain. Le
+ * scaffold dit lui-même de laisser `model`/`os` vides dès qu'on cible un `avd`
+ * nommé — c'est le cas recommandé, donc le plus fréquent. Les traiter comme une
+ * faute rendait le job rouge sur une config que le skill venait de produire.
+ *
+ * Trois issues, et c'est la distinction qui compte :
+ *   renseigné       → on dérive, la CI et les références parlent du même appareil
+ *   vide            → choix documenté : les défauts du workflow, et on le DIT
+ *   mal formé       → faute de frappe : on échoue, plutôt que de deviner
+ * @param {any} config @param {{apiLevel:string, profile:string}} [defauts]
+ * @returns {{ok:boolean, apiLevel?:string, profile?:string, source?:string, why:string}}
+ */
+export function ciEmulator(config, defauts = { apiLevel: '33', profile: 'pixel_6' }) {
+  const device = activeDevices(config).find((/** @type {any} */ d) => d?.platform === 'android');
+  if (!device) {
+    return { ok: false, why: 'aucun device android actif dans argus.mobile.yaml (platforms + devices[].platform)' };
+  }
+  const os = String(device.os ?? '').trim();
+  const model = String(device.model ?? '').trim();
+  if (!os && !model) {
+    return {
+      ok: true, ...defauts, source: 'défaut du workflow',
+      why: `devices[].os et model sont vides (normal avec un avd nommé) — l'émulateur de CI reste `
+        + `api-level ${defauts.apiLevel} / ${defauts.profile}. Renseigne-les pour que la CI démarre `
+        + `l'appareil de tes références visuelles : ils ne gênent plus, l'empreinte des baselines est MESURÉE.`,
+    };
+  }
+  if (!/^android-\d+$/.test(os)) {
+    return { ok: false, why: `devices[].os illisible : « ${device.os} » (attendu : android-33)` };
+  }
+  return {
+    ok: true, apiLevel: os.slice('android-'.length), profile: model || defauts.profile,
+    source: 'argus.mobile.yaml', why: '',
+  };
+}
+
 export function activeDevices(config) {
   return (config.devices ?? []).filter((/** @type {any} */ d) => (config.platforms ?? []).includes(d?.platform));
 }
