@@ -714,11 +714,141 @@ l'appui) et tort sur ce qu'il en a **déduit** sans mesurer. Reproduire reste la
 seule façon de les séparer — d'autant qu'ici le raisonnement était plausible et
 que le dartdoc du prédicat semblait lui donner raison.
 
+## Run 7 — troisième vérification, et six correctifs exercés sur sept
+
+**10 flows sur 10 `COMPLETED`**, 30 tests d'ancres, 352 gardes d'étage 1,
+527 tests verts au total, `analyze` sans issue, `coverage.notConfigured` vide.
+Le cycle visuel est prouvé en **trois** temps — génération, comparaison verte,
+puis référence remplacée par un aplat : **un seul** finding, et les trois autres
+restent vertes.
+
+⚠️ **Six des sept correctifs de la passe 70–77 ont été exercés, et ils tiennent :**
+
+- **70 + 77** — aucune erreur `integer expression expected` dans un run qui a
+  pourtant rempli tous les `TODO(argus)`.
+- **71** — 10/10 flows, aucun échec sur le sas de démarrage, là où le run 6 en
+  perdait deux sur ce seul motif.
+- **73** — allowlist vide, aucun avertissement d'entrée inerte.
+- **74** — la sous-ligne a servi telle quelle : *« dont partagées : 8 composant(s)
+  couvrant 25 call-sites »*.
+- **75** — le quatrième cas de la table a été employé nommément pour trois
+  écrans : *« cas 4 de la table (pas atteignables deux fois de suite) »*.
+- **76** — le cadrage a été écrit en tête d'`argus.mobile.yaml` **et à côté de
+  chaque clé qu'il gouverne**, exactement comme le §1 le prescrit désormais.
+
+Le **72** n'a pas été exercé (aucun flake de démarrage à arbitrer).
+
+⚠️ Et `commandsAfterScroll` a servi une seconde fois : deux ancres rouges au
+premier passage, l'indice de pli les a nommées, elles sont passées dans le
+troisième état — 30/30.
+
+### 79. La relance a11y sort sur un splash STATIQUE — le correctif du 64 à moitié
+
+Ma boucle de rattrapage s'arrête dès que deux lectures de l'arbre coïncident,
+sous le commentaire : *« ce n'est un splash QUE s'il bouge encore »*. **C'est
+faux.** Un splash statique — une image de marque immobile pendant deux secondes —
+rend deux dumps identiques à 500 ms d'intervalle : la boucle sort au bout d'une
+seconde, en plein sas, et la dimension ne mesure rien.
+
+⚠️ **C'est mot pour mot l'erreur du point 71**, corrigée la veille dans
+`launch-clean.yaml` : « rien ne bouge » ne veut pas dire « prêt ». J'ai corrigé le
+flow et laissé le script avec le même raisonnement, à deux fichiers de distance.
+
+Ce que le harnais sait déjà et qui tranche : `identifyScreen` distingue
+`sans-declaration` (rien n'est déclaré, attendre ne servira JAMAIS) de `aucune`
+(des écrans sont déclarés, celui-ci peut encore arriver). Et `brandedSplashMs`
+donne la durée du sas, déclarée par le projet.
+
+### 80. Le taux de couverture de §2b est faux — `Y/N` au lieu de `Y/(Y+N)`
+
+`Commandes : <Y> posées / <N> à poser  (<Y/N> %)`. Si `N` est le reste à poser,
+le taux est `Y/(Y+N)`. Sur 41 posées et 3 restantes, la formule écrite rend
+**1367 %**. Même flou sur `<R> posées / <RT> à poser` : le jeton `RT` se lit
+« Racines Total » quand la légende dit « à poser ».
+
+⚠️ **Ce bloc a été relu la veille**, en y ajoutant la sous-ligne du point 74 — et
+la formule d'à côté n'a pas été vue. Deuxième fois en deux passes qu'une ligne
+fautive survit à l'édition de sa voisine (cf. 70).
+
+### 81. Une ancre d'affichage n'a de case nulle part
+
+`session_form_reps_value` est un nœud de VALEUR, ciblé par `journey-critical.yaml`
+pour vérifier ce qui est affiché. La déclarer en `commands:` la fait échouer sur
+« ancre posée sur un nœud INERTE » — un message qui décrit un défaut, alors
+qu'ici l'inertie **est le comportement voulu**. La retirer, et plus rien ne
+prouve qu'elle existe, alors qu'un flow la cible.
+
+C'est exactement la forme du point 69 (`commandsAfterScroll`), sur un autre axe :
+deux mauvaises issues, pas de troisième état.
+
+### 82. `report.json` survit à un run qui n'a jamais atteint Maestro
+
+Quand le runner s'arrête avant la suite — installation refusée, par exemple — le
+rapport du run PRÉCÉDENT reste sur le disque et se lit comme frais. L'agent s'y
+est fait prendre et a failli conclure que la comparaison visuelle ne mesurait
+rien ; c'est le journal qui l'a détrompé, pas le rapport.
+
+⚠️ Un `0` rendu par une commande qui a échoué n'est pas un `0` de mesure — et ici
+c'est le harnais lui-même qui fabrique le piège.
+
+### 83. Une ligne de tableau orpheline en §3c
+
+La table `Config / Étage 1 / Étage 2` est coupée : deux lignes, puis douze lignes
+de prose, puis la ligne « Étage 2 » — qui ne rejoindra jamais son tableau au
+rendu Markdown et s'affichera comme du texte brut avec ses barres verticales.
+
+### 84. `startupHint` colle une hypothèse fausse sur un finding visuel
+
+L'indice « c'est l'écran de DÉPART qui n'est pas arrivé à temps » est le bon
+conseil pour un `extendedWaitUntil` qui expire. Il s'ajoute aujourd'hui à **toute**
+étape en échec dont le sélecteur vaut l'ancre de départ — `assertScreenshot`
+compris. Observé sur une vraie divergence d'image (5,04 % de correspondance) :
+le message conseille de vérifier le temps de démarrage alors que la comparaison a
+parfaitement eu lieu.
+
+Le code porte déjà `WAIT_COMMANDS`, juste au-dessus, et ne s'en sert pas ici.
+
+### 85. `perf` dit « jank non conclu » puis « jank 0 % », à vingt-cinq lignes
+
+`warn('jank non conclu — 0 frame(s)')` en ligne 360, puis
+`log('jank ${jank.jankFramesPct ?? '?'} %')` en ligne 385 — la valeur **brute**,
+pas la valeur comparable. Et `perf.json` reçoit `jankFramesPct` sans marqueur de
+non-conclusion : seul `framesRendered: 0` à côté permet de ne pas le lire comme
+une mesure.
+
+### 86. `declared.model` / `declared.os` sont `null` — et ce n'est plus vrai
+
+Le rapport les met à `null` hors `autoStart`, avec sept lignes de commentaire
+expliquant qu'ils « ne servent QU'À `autoStart` ». **Ce n'est plus le cas depuis
+le point 67** : `ciEmulator()` les lit pour choisir l'émulateur de la CI. Le
+commentaire est périmé par mon propre correctif, et le rapport tait deux clés qui
+gouvernent désormais quelque chose.
+
+⚠️ Le constat de l'agent était juste, son diagnostic incomplet : il y voyait un
+champ vide, c'est une décision devenue fausse.
+
+### 87. §3g fait générer les références APRÈS le premier run
+
+Ce qui garantit une première passe visuelle non exécutée. C'est défendable — on
+prouve d'abord que les flows tournent — mais rien ne le dit, et l'ordre se lit
+comme une erreur.
+
+### 88. Deux temps de démarrage présentés côte à côte sans dire qu'ils diffèrent
+
+`am start -W` mesure 1,2 s (première frame) quand l'écran d'accueil réel met ~6 s
+(splash imposé + init). Les deux chiffres sont justes et ne mesurent pas la même
+chose ; le rapport les affiche l'un près de l'autre sans le dire. Un lecteur
+pressé y voit une contradiction. `brandedSplashMs` existe et fonctionne, mais il
+n'explique pas cet écart-là.
+
 ## Ce qui reste
 
-**Les points 70 à 77**, rendus par le run 6 et tous reproduits avant d'être
-inscrits. Le 78 est clos d'avance : il est faux, et la mesure qui le dit vaut
-d'être gardée.
+**Les points 79 à 88**, rendus par le run 7 et tous reproduits avant d'être
+inscrits — dont le **79**, qui est un correctif de la veille resté à moitié, et
+le **80**, une ligne fautive que l'édition de sa voisine n'a pas vue.
+
+Et le chantier **§ E** de `docs/chantiers-differes.md` : l'APK installé embarque
+quatre ABI quand l'appareil n'en lit qu'une — 84,9 Mo contre 39,7.
 
 Et ce que cinq runs ont établi, qui ne se périme pas : une passe trouve ce qui
 manque, la suivante trouve ce que la correction a introduit **ou n'a pas
