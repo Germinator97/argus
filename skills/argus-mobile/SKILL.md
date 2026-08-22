@@ -183,8 +183,22 @@ tout ce qu'il recouvre** — le libellé de phase, le chronomètre, ce que
 l'utilisateur devait entendre. Le flow marche, TalkBack annonce un seul
 bouton dont le label est la page. Sur ce cas-là, l'ancre de commande se pose
 sur le CONTRÔLE (le bouton, la zone tapable réelle), pas sur le conteneur qui
-s'étend jusqu'aux bords ; à défaut, `explicitChildNodes: true` sur le nœud
-commande garde ses descendants distincts.
+s'étend jusqu'aux bords.
+
+⚠️ **`explicitChildNodes: true` sur le nœud commande ne suffit PAS — seul, il
+rend l'ancre INERTE.** Mesuré sur deux écrans d'un projet réel, les trois
+réglages :
+
+| Sur le nœud commande | Ce qu'on obtient |
+|---|---|
+| `explicitChildNodes: false` *(le défaut)* | le nœud porte le tap, **mais avale tout le texte qu'il recouvre** |
+| `explicitChildNodes: true` seul | descendants distincts, **ancre inerte** — `make argus-anchors` rougit |
+| `true` **+ `onTap:` sur le `Semantics` + `excludeFromSemantics: true` sur le geste** | un seul nœud : ancré, actif, libellé ✅ |
+
+C'est la troisième ligne qu'il faut quand la surface tapable est l'écran entier.
+Poser `explicitChildNodes` coupe la fusion, donc l'action du `GestureDetector` ne
+remonte plus au nœud ancré : il faut la lui donner, et faire taire celle d'en
+dessous pour ne pas en avoir deux.
 
 ⚠️ **Une racine d'écran qui est AUSSI une commande.** Tap-to-pause, tap-to-dismiss,
 pull-to-refresh : toute la surface réagit, et la consigne « une racine inerte » n'a
@@ -213,9 +227,14 @@ Semantics(                            // la racine — inerte, comme sur les aut
 Relevé de cette forme exacte : `player_root` rend `actions=` *(aucune)* et un
 label vide, `player_toggle` rend `actions=tap`. Le flow garde donc deux cibles qui
 ne disent pas la même chose — « je suis sur le lecteur » et « j'actionne le
-lecteur » — et l'écran reste comparable aux autres. Ne mets pas `onTap:` sur ce
-`Semantics` : le `GestureDetector` fournit déjà l'action, et le doubler crée deux
-nœuds tapables superposés.
+lecteur » — et l'écran reste comparable aux autres.
+
+⚠️ **Dans CETTE forme, ne mets pas `onTap:` sur le `Semantics` de commande** : il
+fusionne avec le `GestureDetector`, qui fournit déjà l'action, et doubler créerait
+deux nœuds tapables superposés. La règle vaut tant que le nœud fusionne — elle
+s'inverse dès qu'on pose `explicitChildNodes: true`, qui coupe précisément cette
+fusion (voir la table plus haut). Les deux phrases se sont contredites pendant une
+journée, et c'est un run en aveugle qui l'a relevé, pas une relecture.
 
 ⚠️ **Une ancre ne se dérive JAMAIS d'un texte affiché.** Un libellé est traduit,
 et une ancre bâtie dessus (`'nav_${label}'`, `id: 'onglet_$titre'`) change avec

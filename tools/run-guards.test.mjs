@@ -29,8 +29,8 @@ import {
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
-import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { auditApk, binaryToScan } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { jankIfComparable, thresholdFinding } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
@@ -1091,4 +1091,46 @@ test('une empreinte de l\'ancien format vaut pour tous les écrans', () => {
   rmSync(dir, { recursive: true, force: true });
   assert.equal(baselineCropFor(null, 'home'), null, 'pas de références : rien à comparer');
   assert.equal(baselineCrops(dir), null, 'dossier absent : pas d\'empreinte');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Ce qu'on installe n'est pas ce qu'on analyse
+// ───────────────────────────────────────────────────────────────────────────
+
+test('le binaire scanné suit son propre chemin, sans toucher à celui qu\'on installe', () => {
+  const config = { build: { android: 'app-debug.apk', androidScan: 'app-release.apk' } };
+  assert.equal(binaryToScan('android', config), 'app-release.apk');
+  assert.equal(binaryToScan('android', config, 'ponctuel.apk'), 'ponctuel.apk',
+    'l\'option doit primer sur la clé durable');
+  assert.equal(config.build.android, 'app-debug.apk',
+    'et l\'installation ne doit pas avoir bougé — c\'est tout l\'objet de la séparation');
+});
+
+test('sans clé dédiée, le comportement d\'avant est conservé', () => {
+  assert.equal(binaryToScan('android', { build: { android: 'app-debug.apk' } }), 'app-debug.apk',
+    'sinon une config existante cesserait de scanner quoi que ce soit');
+  assert.equal(binaryToScan('ios', { build: { ios: 'Runner.app' } }), 'Runner.app');
+  assert.equal(binaryToScan('android', {}), '', 'rien de déclaré : rien à scanner, pas de plantage');
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Un budget de publication appliqué à un debug le DIT
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Mesuré sur un projet réel : 117,5 Mo contre un budget de 60 — la release du
+// même projet fait 32,1. Le finding ne disait pas sur quoi il avait mesuré.
+
+test('un dépassement mesuré sur un debug nomme le variant', () => {
+  const f = thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', 117.5, 60, 'Mo', 'performance', 'debug');
+  assert.match(f.title, /debug/, 'le titre doit dire sur quoi la mesure a été prise');
+  assert.match(f.suggestedFix, /release/i, 'et renvoyer à la comparaison qui tranche');
+});
+
+test('sur un binaire de publication, le finding reste ce qu\'il était', () => {
+  const f = thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', 117.5, 60, 'Mo', 'performance', '');
+  assert.ok(!/debug/.test(f.title), 'pas de mention parasite quand il n\'y a rien à nuancer');
+  assert.ok(!/DEBUG/.test(f.suggestedFix));
+  assert.equal(thresholdFinding('QAM-PERF-SIZE', 'x', 30, 60, 'Mo'), null,
+    'et sous le budget, toujours aucun finding');
 });

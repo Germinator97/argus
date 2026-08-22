@@ -53,12 +53,13 @@ const MAX_SCAN_BYTES = 2 * 1024 * 1024;
 
 /** @param {string[]} argv */
 function parseArgs(argv) {
-  const opts = { platform: '', requireTools: false };
+  const opts = { platform: '', requireTools: false, binary: '' };
   for (const arg of argv) {
     const [key, value] = arg.split('=');
     if (key === '--platform') opts.platform = value ?? '';
+    else if (key === '--binary') opts.binary = value ?? '';
     else if (key === '--require-tools') opts.requireTools = true;
-    else if (key === '--help' || key === '-h') { console.log('Argus Mobile — MASVS statique\n  --platform=android|ios'); process.exit(0); }
+    else if (key === '--help' || key === '-h') { console.log('Argus Mobile — MASVS statique\n  --platform=android|ios\n  --binary=<chemin>   le binaire à ANALYSER (défaut : build.androidScan, sinon build.android)'); process.exit(0); }
     else { err(`option inconnue : ${arg}`); process.exit(2); }
   }
   return opts;
@@ -330,6 +331,25 @@ function auditSecrets(root, config) {
  * souvent des sources : les dépendances y ajoutent leurs propres permissions.
  * @param {string} apk @param {any} config @returns {{findings:any[], facts:any}}
  */
+/**
+ * Le binaire à ANALYSER — qui n'est pas celui qu'on installe, et ne peut pas l'être.
+ *
+ * `build.android` décide de ce que le runner POSE sur l'appareil : un debug,
+ * presque toujours. Le scan, lui, ne conclut que sur la publication — depuis
+ * qu'un binaire debug fait sauter la dimension, lire la même clé obligeait à
+ * éditer la config entre deux runs.
+ *
+ * Ordre : l'option ponctuelle, puis la clé durable, puis le comportement d'avant.
+ * @param {string} platform @param {any} config @param {string} override
+ * @returns {string}
+ */
+export function binaryToScan(platform, config, override = '') {
+  const b = config?.build ?? {};
+  return platform === 'ios'
+    ? (override || b.iosScan || b.ios || '')
+    : (override || b.androidScan || b.android || '');
+}
+
 export function auditApk(apk, config) {
   /** @type {any[]} */
   const findings = [];
@@ -463,7 +483,16 @@ function main() {
 
   let binaryFindings = [];
   let binaryFacts = { scanned: false, why: '' };
-  const binary = resolve(root, platform === 'ios' ? config.build.ios : config.build.android);
+  // ⚠️ LE BINAIRE QU'ON ANALYSE N'EST PAS CELUI QU'ON INSTALLE, et il ne peut pas
+  // l'être. `build.android` décide de ce que le runner POSE sur l'appareil — un
+  // debug, presque toujours. Le scan, lui, ne conclut que sur la publication :
+  // depuis qu'un binaire debug fait sauter la dimension, lire la même clé
+  // obligeait à éditer la config entre deux runs, c'est-à-dire à faire à la main
+  // ce que deux clés séparées font sans y penser.
+  //
+  // Ordre : `--binary=` (ponctuel) › `build.androidScan` (durable) ›
+  // `build.android` (le comportement d'avant, pour ne rien casser).
+  const binary = resolve(root, binaryToScan(platform, config, opts.binary));
   const tools = detectTools(['unzip', 'aapt2']);
   if (platform !== 'android') {
     binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur n\'est pas le binaire signé de l\'App Store. Utilise MobSF sur l\'IPA.' };

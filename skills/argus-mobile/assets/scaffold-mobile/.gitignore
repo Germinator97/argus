@@ -20,3 +20,11 @@
 # visuelle n'a aucune référence et se saute à chaque run — un harness de
 # non-régression visuelle sans référence versionnée ne garde rien.
 !/.maestro/_baselines/
+
+# ...MAIS PAS les images de diff. Une comparaison en échec écrit
+# `<écran>_diff.png` À CÔTÉ des références, dans le dossier qu'on vient
+# justement d'exclure de l'exclusion. Sans cette ligne, `git status` les montre
+# après chaque run rouge, et l'une d'elles finit commitée — une capture de
+# l'app, en session authentifiée, arrivée là parce qu'elle ressemblait à une
+# référence.
+/.maestro/_baselines/**/*_diff.png

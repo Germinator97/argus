@@ -260,13 +260,24 @@ function binarySizeMb(path) {
  * @param {number} budget @param {string} unit @param {string} [dimension]
  * @returns {any}
  */
-function thresholdFinding(id, label, value, budget, unit, dimension = 'performance') {
+export function thresholdFinding(id, label, value, budget, unit, dimension = 'performance', variante = '') {
   if (value === null || value === undefined || value <= budget) return null;
+  // ⚠️ Un budget est écrit pour la PUBLICATION. Appliqué à un build debug, il
+  // rend un `major` sur une valeur qui n'a aucun rapport avec ce que les
+  // utilisateurs reçoivent : mesuré sur un projet réel, 117,5 Mo contre un
+  // budget de 60, quand la release du même projet fait 32,1. La config avertit
+  // déjà pour les permissions ; ces deux métriques-ci sont encore plus
+  // sensibles au variant, et le finding le disait nulle part.
+  const misePlusieurs = variante === 'debug'
+    ? '\n⚠️ Mesuré sur un binaire DEBUG : ce budget décrit la publication. '
+      + 'Compare-le à la release avant de conclure — l\'écart est couramment d\'un facteur trois.'
+    : '';
   return {
-    id, title: `${label} au-dessus du budget`, dimension,
+    id, title: `${label} au-dessus du budget${variante === 'debug' ? ' (mesuré sur un debug)' : ''}`, dimension,
     severity: value > budget * 2 ? 'critical' : 'major',
-    expected: `≤ ${budget} ${unit}`, actual: `${value} ${unit}`,
-    suggestedFix: 'Profiler le chemin concerné avant d\'optimiser : un mécanisme plausible mais non isolé fait optimiser à côté.',
+    expected: `≤ ${budget} ${unit}`, actual: `${value} ${unit}${variante ? ` (${variante})` : ''}`,
+    suggestedFix: 'Profiler le chemin concerné avant d\'optimiser : un mécanisme plausible mais non isolé fait optimiser à côté.'
+      + misePlusieurs,
     status: 'open',
   };
 }
@@ -342,6 +353,9 @@ function main() {
     process.exit(2);
   }
 
+  // Le variant du binaire mesuré : `-debug.apk` dans le chemin suffit à le dire,
+  // et c'est ce que le scaffold pointe par défaut.
+  const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';
   const comparableJank = jankIfComparable(jank, thresholds.jankFramesPct);
   if (comparableJank.value === null && comparableJank.why) warn(`jank non conclu — ${comparableJank.why}`);
 
@@ -349,8 +363,8 @@ function main() {
     thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
     thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
     thresholdFinding('QAM-PERF-JANK', 'Frames en retard', comparableJank.value, thresholds.jankFramesPct, '%'),
-    thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo'),
-    thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo'),
+    thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo', 'performance', variante),
+    thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo', 'performance', variante),
   ].filter(Boolean);
 
   const report = {

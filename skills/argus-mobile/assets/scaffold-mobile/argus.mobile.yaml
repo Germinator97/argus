@@ -46,6 +46,13 @@ app:
 # silence et laisser tourner la version précédente.
 build:
   android: build/app/outputs/flutter-apk/app-debug.apk
+  # ⚠️ CE QU'ON INSTALLE ≠ CE QU'ON ANALYSE. La clé ci-dessus décide de ce que le
+  # runner POSE sur l'appareil — un debug, presque toujours. Le scan de sécurité,
+  # lui, ne conclut que sur la PUBLICATION : sur un debug il se saute, avec sa
+  # raison. Renseigne alors le binaire de release ici, une fois pour toutes,
+  # plutôt que d'éditer la ligne du dessus entre deux runs :
+  # androidScan: build/app/outputs/flutter-apk/app-release.apk
+  # (ponctuellement : `node scripts/argus/sec.mjs --binary=<chemin>`)
   ios: build/ios/iphonesimulator/Runner.app
   # Commandes de build proposées quand le binaire est absent. Jamais lancées
   # ⚠️ Elles ne sont JAMAIS lancées par le harnais — ni avec, ni sans
