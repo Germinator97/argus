@@ -146,3 +146,84 @@ exactement ce que les garde-fous §5 interdisent. Elle devrait être gouvernée 
 grep -rn 'adb .*install\|uninstall\|pm clear' skills/argus-mobile/
 grep -rn 'clearState' skills/argus-mobile/assets/scaffold-mobile/.maestro/
 ```
+
+---
+
+## C. Un projet qui consomme une API
+
+**Ouvert le 22/08/2026. Condition de reprise : le prochain terrain, qui devra
+consommer une API — voir l'angle mort ci-dessous.**
+
+### Pourquoi trois runs en aveugle n'ont rien trouvé ici
+
+Le terrain des trois premiers runs **n'appelle aucun backend**. Tout ce que le
+skill prévoit face à une API n'a donc jamais été exercé, et aucun des 35 points
+rendus par les deux premiers runs ne porte sur cette dimension.
+
+⚠️ **Ce n'est pas un défaut du skill, c'est une limite de la méthode** : rejouer
+en aveugle sur le même terrain trouve ce que la correction a introduit, jamais ce
+que le terrain ne contient pas. Deux agents vierges partagent l'angle mort du
+projet qu'on leur donne. **La majorité des applications consomment une API** — le
+prochain terrain doit donc en consommer une, et ce critère prime sur « un projet
+que je n'ai jamais vu ».
+
+### Les deux étages font l'inverse l'un de l'autre
+
+**Étage 1 — l'API n'existe pas.** Le harnais monte chaque écran par une closure
+et le projet y injecte ses doubles (`HomeBloc(repository: FakeHomeRepository())`) :
+« le harnais ne devine pas tes dépendances ». C'est là que se paie le coût
+d'entrée : un écran qui instancie son repository en dur, passe par un singleton
+ou appelle HTTP dans `initState` n'est pas montable. Le garde-fou tient — la
+suite se marque SKIPPÉE avec la raison, jamais verte.
+
+**Étage 2 — l'API est bien réelle.** Aucun mock, aucun proxy, aucune
+interception : Maestro pilote le binaire, qui tape le backend que son build
+pointe. C'est `ENV` qui décide de ce qu'on a le droit d'y faire (§3 de la
+méthodologie : écriture interdite en `prod`, données `qa_` en `staging`).
+
+### Ce qui est déjà prévu — à ne pas re-chercher
+
+- `resilience.yaml` coupe le réseau, **avec le piège documenté** :
+  `setAirplaneMode` est Android seulement et « passe sans effet » sur iOS, donc
+  un test non gardé y passerait au vert sans rien tester.
+- `mask-dynamic.yaml` donne trois leviers contre les données qui bougent, et
+  l'interdit qui va avec : ne pas relâcher `visualMatchPercentage`, qui masquerait
+  les vraies régressions en même temps.
+
+### Les quatre trous, par rentabilité décroissante
+
+**1. Le levier n°1 du déterminisme n'est pas câblé.** `launchApp.arguments` —
+passer un mode de test à l'app pour figer horloge, solde, jeu de données — est
+**mentionné deux fois dans la doc et implémenté nulle part**. C'est la réponse
+pratique pour un projet à API, et c'est le moins cher des quatre.
+
+**2. Rien ne contrôle l'état du backend.** `clearState` purge l'app, pas le
+serveur : un parcours qui crée une ressource la retrouve au run suivant. La
+méthodologie fige l'horloge, la locale, le snapshot d'émulateur — rien sur le
+seeding backend.
+
+**3. Les réponses d'erreur du serveur ne sont pas éprouvables** à l'étage 2.
+`setAirplaneMode` couvre « pas de réseau », jamais « le serveur répond mal »
+(500, 429, timeout, payload malformé) — or c'est là que les apps cassent. Ces
+chemins se testent aujourd'hui à l'étage 1, par un double qui rend un échec.
+
+**4. La latence backend entre dans `coldStartMs`.** Seule la durée de splash
+imposée par le produit est soustraite. Sur un backend lent ou distant, le seuil
+mesure le réseau et le rapport accuse l'app.
+
+### La voie qui marche aujourd'hui, sans rien changer
+
+Un flavor pointant un backend de staging, `ENV: staging`, un compte de test aux
+données inventées, et l'étage 1 qui couvre les écrans par des doubles — les
+erreurs serveur s'éprouvant alors à l'étage 1, pas à l'étage 2.
+
+```sh
+# re-mesurer avant de rouvrir — relevé du 22/08/2026 : 0 et 2
+grep -rn -iE '\bmock|\bstub|proxy|intercept' skills/argus-mobile/ | wc -l  # 0 = toujours aucun
+grep -rn 'arguments' skills/argus-mobile/ | wc -l   # 2 = encore cité, pas câblé
+# ⚠️ CONTRE-ÉPREUVE, à lire AVANT le zéro ci-dessus : un grep qui a échoué rend
+# « 0 » exactement comme une absence réelle. Ce motif-ci est certainement
+# présent ; s'il rend 0 lui aussi, c'est la commande qui est morte, pas le skill
+# qui a changé.
+grep -rn 'clearState' skills/argus-mobile/ | wc -l  # doit être > 0
+```
