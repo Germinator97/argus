@@ -126,11 +126,6 @@ n'a pas de règle d'arrêt : 13 états × visuel ≈ 9 min de CI. Et il n'existe
 « déclaré mais pas encore atteignable », si bien que `screensConfigured`
 **surestime** ce qui est réellement exercé.
 
-**24. Un message d'instrumentation pour un défaut de SCÉNARIO.** Sa session de test
-durait 10 s et se terminait avant les étapes d'abandon ; Maestro rapportait
-« `confirm_sheet_root` n'est pas visible ». Même famille que le point 7, jamais
-signalée pour la durée métier.
-
 ### Outillage
 
 **25. ✅ Tranché le 22/08/2026 — la boucle visuelle tournait, le message disait

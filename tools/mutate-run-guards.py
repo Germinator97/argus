@@ -29,7 +29,7 @@ CIBLES = {
     "a11y": SCAFFOLD / "a11y.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 50
+NB_TESTS = 54
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -108,6 +108,12 @@ MUTATIONS = [
     ("config", "le dossier .fvm cesse de compter comme un épinglage",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc'));"),
+    ("run", "l'indice « ancre disparue » s'affiche partout",
+     "  if (!seen) return '';",
+     "  if (false) return '';"),
+    ("run", "un échec antérieur compte comme une présence",
+     "    && String(s?.metadata?.status ?? '').toUpperCase() === 'COMPLETED');",
+     "    && String(s?.metadata?.status ?? '').toUpperCase() !== '@@jamais@@');"),
     ("run", "le plancher de splash cesse d'être déduit",
      "  const over = samples.filter((s) => net(s) > budget);",
      "  const over = samples.filter((s) => s.ms > budget);"),

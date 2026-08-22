@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
-  startScreen, startupFindings, startupHint, startupSamples,
+  startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -670,4 +670,44 @@ test('sans plancher déclaré, rien ne change — et le message ne parle pas de 
 test('un plancher plus grand que la mesure ne rend pas un temps négatif', () => {
   const samples = [{ flow: 'smoke', ms: 500, status: 'COMPLETED' }];
   assert.deepEqual(startupFindings(samples, DEVICE, 'android', SPLASH), []);
+});
+
+// ── L'ancre était là, puis elle n'y était plus ──────────────────────────────
+//
+// Même famille que l'indice de démarrage, sur un autre défaut : le message de
+// Maestro nomme le sélecteur, donc il désigne un coupable, et c'est le mauvais.
+// Vécu : une session de test de 10 s se terminait avant les étapes d'abandon, et
+// le rapport disait « confirm_sheet_root n'est pas visible ». On part alors
+// chercher une ancre qui n'a jamais eu de problème.
+
+const etape = (/** @type {string} */ id, /** @type {string} */ status) => ({
+  command: { assertConditionCommand: { condition: { visible: { idRegex: id } } } },
+  metadata: {
+    status,
+    evaluatedCommand: { c: { condition: { visible: { idRegex: id } } } },
+  },
+});
+
+test('une ancre vue puis perdue accuse l\'ÉTAT, pas l\'instrumentation', () => {
+  const steps = [etape('sheet_root', 'COMPLETED'), etape('autre', 'COMPLETED'), etape('sheet_root', 'FAILED')];
+  const hint = vanishedHint(steps, 2, 'id=sheet_root');
+  assert.match(hint, /TROUVÉE plus tôt/);
+  assert.match(hint, /durée métier/, 'et il doit dire où regarder');
+});
+
+test('une ancre jamais vue ne déclenche rien — sinon l\'indice est partout', () => {
+  const steps = [etape('autre', 'COMPLETED'), etape('sheet_root', 'FAILED')];
+  assert.equal(vanishedHint(steps, 1, 'id=sheet_root'), '');
+});
+
+test('une ancre vue en ÉCHEC plus tôt ne prouve pas qu\'elle a existé', () => {
+  const steps = [etape('sheet_root', 'FAILED'), etape('sheet_root', 'FAILED')];
+  assert.equal(vanishedHint(steps, 1, 'id=sheet_root'), '',
+    'deux échecs de suite sur la même ancre, c\'est l\'instrumentation qu\'il faut suspecter');
+});
+
+test('un sélecteur par TEXTE n\'est pas concerné', () => {
+  const steps = [etape('x', 'COMPLETED')];
+  assert.equal(vanishedHint(steps, 0, 'text=Bienvenue'), '');
+  assert.equal(vanishedHint(steps, 0, ''), '');
 });

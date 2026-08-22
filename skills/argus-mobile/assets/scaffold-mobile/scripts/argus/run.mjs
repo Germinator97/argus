@@ -660,6 +660,9 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
       .filter((s) => String(s?.metadata?.status ?? '').toUpperCase() === 'FAILED')
       .filter((s) => !CONTAINER_COMMANDS.has(Object.keys(s?.command ?? {})[0] ?? ''));
     for (const [index, step] of failed.entries()) {
+      // Rang dans le flow ENTIER, pas dans les seuls échecs : c'est ce qui
+      // permet de savoir ce qui s'est passé AVANT.
+      const rank = bundle.steps.indexOf(step);
       const meta = step.metadata ?? {};
       const { key, body } = commandBody(step);
       const selector = selectorOf(step);
@@ -682,7 +685,8 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
         // diagnostic est parti dans l'instrumentation pour rien. On rattache
         // donc la mesure au message, là où quelqu'un la lira.
         actual: String(meta.error?.message ?? 'échec sans message')
-          + startupHint(selector, startupAnchor, config),
+          + startupHint(selector, startupAnchor, config)
+          + vanishedHint(bundle.steps, rank, selector),
         // Les preuves de L'ÉTAPE (capture et dump de hiérarchie du moment où ça
         // casse) valent bien mieux que l'index global du bundle.
         evidence: (meta.artifacts ?? []).map((/** @type {any} */ a) => join(bundle.dir, a.path ?? '')).filter(Boolean),
@@ -710,6 +714,34 @@ function startupHint(selector, startupAnchor, config) {
     + ` l'ancre qui est fausse. Vérifie d'abord le temps de démarrage`
     + ` (thresholds.coldStartMs = ${config.thresholds?.coldStartMs ?? 2000} ms,`
     + ` relevé dans startup.samples du rapport) avant de soupçonner l'instrumentation.`;
+}
+
+/**
+ * Phrase à coller quand l'ancre qui manque a été TROUVÉE plus tôt dans le même
+ * flow. Vide sinon — un indice affiché partout n'est plus un indice.
+ *
+ * ⚠️ C'est la même famille que `startupHint`, sur un autre défaut : le message
+ * de Maestro nomme le sélecteur, donc il désigne un coupable, et c'est le
+ * mauvais. Ici l'élément a EXISTÉ puis a disparu — l'app a changé d'écran toute
+ * seule pendant que le flow continuait. Vécu sur un projet réel : une session
+ * de test de 10 s se terminait avant les étapes d'abandon, et le rapport disait
+ * « confirm_sheet_root n'est pas visible ». On cherche alors une ancre qui n'a
+ * jamais eu de problème.
+ *
+ * Le signal est sûr : si la même ancre a été satisfaite plus tôt dans CE flow,
+ * elle est correctement posée, et ce qui a changé est l'état de l'app.
+ * @param {any[]} steps @param {number} index @param {string} selector @returns {string}
+ */
+function vanishedHint(steps, index, selector) {
+  if (!selector || !selector.startsWith('id=')) return '';
+  const seen = steps.slice(0, index).some((/** @type {any} */ s) =>
+    selectorOf(s) === selector
+    && String(s?.metadata?.status ?? '').toUpperCase() === 'COMPLETED');
+  if (!seen) return '';
+  return ` — cette ancre a été TROUVÉE plus tôt dans ce flow, puis a disparu :`
+    + ` l'instrumentation est donc bonne, c'est l'ÉTAT de l'app qui a changé`
+    + ` pendant que le flow continuait (session terminée d'elle-même, redirection,`
+    + ` écran refermé). Regarde la durée métier avant de toucher aux Semantics.`;
 }
 
 /**
@@ -1207,5 +1239,5 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
-  startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples,
+  startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };
