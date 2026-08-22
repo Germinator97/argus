@@ -214,6 +214,73 @@ void main() {
     });
   }
 
+  // ── Les ancres d'AFFICHAGE : présentes, et légitimement inertes ───────────
+  //
+  // Un compteur, une valeur, un état lus par un flow sans être touchés. Déclarés
+  // en `commands:`, ils échouent sur « nœud INERTE » — un message qui décrit un
+  // défaut là où l'inertie est voulue. Retirés, plus rien ne prouve qu'ils
+  // existent. On prouve donc leur PRÉSENCE, et rien d'autre.
+  final List<ArgusScreen> avecAffichages = argusScreens
+      .where((ArgusScreen s) => s.displays.isNotEmpty)
+      .toList();
+
+  for (final ArgusScreen screen in avecAffichages) {
+    testWidgets(
+      'affichages de « ${screen.id} » — ${screen.displays.length} ancre(s)',
+      (WidgetTester tester) async {
+        final SemanticsHandle handle = tester.ensureSemantics();
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        argusDrainMountException(tester);
+
+        for (final String affichage in screen.displays) {
+          final List<ArgusSemanticNode> noeuds = argusNodesById(
+            tester,
+            affichage,
+          );
+
+          await argusCheck(
+            '${screen.id} · affichage « $affichage » présent',
+            () async {
+              expect(
+                noeuds,
+                isNotEmpty,
+                reason:
+                    'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
+                    '« $affichage ». Un flow qui le LIT échouera sur device en '
+                    'disant que l\'élément a disparu, sans nommer la cause.',
+              );
+            },
+          );
+
+          // ⚠️ L'AUTRE MOITIÉ. Sans elle, `displays:` deviendrait l'endroit où
+          // l'on range les ancres qui rougissent — une permission permanente
+          // sous un autre nom.
+          await argusCheck(
+            '${screen.id} · « $affichage » est bien un AFFICHAGE',
+            () async {
+              expect(
+                noeuds.where((ArgusSemanticNode n) => n.isCommand),
+                isEmpty,
+                reason:
+                    'L\'ancre « $affichage » de « ${screen.id} » est déclarée comme un '
+                    'affichage, mais elle porte une action ou un état d\'activation. '
+                    'Remonte-la dans `commands:`, où sa présence ET son activité '
+                    'seront prouvées.',
+              );
+            },
+          );
+        }
+
+        handle.dispose();
+      },
+    );
+  }
+
   // ── Le troisième état : atteignable APRÈS défilement ──────────────────────
   //
   // Une ancre au bas d'une liste paresseuse n'existe pas au gabarit de

@@ -27,6 +27,7 @@ class ArgusScreen {
     this.anchor,
     this.commands = const <String>[],
     this.commandsAfterScroll = const <String>[],
+    this.displays = const <String>[],
     this.priority = 'p0',
   });
 
@@ -84,6 +85,23 @@ class ArgusScreen {
   /// deviendrait une permission permanente — la forme la plus courante de dette
   /// qui s'installe.
   final List<String> commandsAfterScroll;
+
+  /// Les ancres d'AFFICHAGE — un compteur, une valeur, un état — que des flows
+  /// lisent sans jamais les toucher.
+  ///
+  /// ⚠️ Elles n'avaient de case NULLE PART, et les deux issues étaient mauvaises.
+  /// Déclarée en [commands], une telle ancre échoue sur « nœud INERTE » — un
+  /// message qui décrit un défaut alors qu'ici l'inertie **est le comportement
+  /// voulu**. Retirée, plus rien ne prouve qu'elle existe, alors qu'un flow la
+  /// cible : le jour où elle disparaît, c'est l'étage 2 qui le découvre, sur
+  /// device, en accusant l'instrumentation.
+  ///
+  /// Ce qui est prouvé ici est donc la PRÉSENCE, jamais l'activité.
+  ///
+  /// ⚠️ Et l'autre moitié : une ancre déclarée ici qui se révèle **interactive**
+  /// fait échouer le test, avec la consigne de la remonter dans [commands].
+  /// Sans quoi cette liste deviendrait l'endroit où l'on range ce qui rougit.
+  final List<String> displays;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
   /// pose lui-même la surface, la police et les marges système.

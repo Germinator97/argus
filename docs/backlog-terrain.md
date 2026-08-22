@@ -788,7 +788,7 @@ s'appelle `RESTE` — `N` et `RT` se lisaient « Nombre total » et « Racines T
 quand la légende disait « à poser », si bien que le même gabarit produisait deux
 relevés incomparables selon comment on l'avait lu.
 
-### 81. Une ancre d'affichage n'a de case nulle part
+### 81. ✅ Corrigé le 22/08/2026 — Une ancre d'affichage n'avait de case nulle part
 
 `session_form_reps_value` est un nœud de VALEUR, ciblé par `journey-critical.yaml`
 pour vérifier ce qui est affiché. La déclarer en `commands:` la fait échouer sur
@@ -798,6 +798,15 @@ prouve qu'elle existe, alors qu'un flow la cible.
 
 C'est exactement la forme du point 69 (`commandsAfterScroll`), sur un autre axe :
 deux mauvaises issues, pas de troisième état.
+
+**Corrigé : `displays:` prouve la PRÉSENCE, jamais l'activité.** Et l'autre
+moitié, sans laquelle cette liste serait devenue l'endroit où l'on range ce qui
+rougit : une ancre déclarée en affichage qui se révèle **interactive** fait
+échouer le test, avec la consigne de la remonter dans `commands:`.
+
+Armé par une sonde jetable et vérifié dans les trois sens : un nœud inerte passe,
+un nœud tapable échoue sur « est bien un AFFICHAGE », un absent échoue sur
+« présent ».
 
 ### 82. `report.json` survit à un run qui n'a jamais atteint Maestro
 

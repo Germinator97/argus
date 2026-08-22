@@ -24,6 +24,9 @@ import 'argus_types.dart';
 ///         id: 'home',
 ///         anchor: 'home_root',
 ///         commands: <String>['home_start_session', 'home_settings'],
+///         // Ce qu'un flow LIT sans y toucher : un compteur, une valeur. Le
+///         // déclarer ici prouve sa présence sans exiger qu'il soit tapable.
+///         displays: <String>['home_streak_value'],
 ///         // Le bas d'une liste paresseuse : présent sur device après un
 ///         // défilement, jamais construit au gabarit de référence. Le déclarer
 ///         // ici le fait éprouver sur le plus grand gabarit, au lieu de le
