@@ -512,13 +512,27 @@ figure comme les autres. Lis-le en regard de `coverage.visualScreens` et du
 relevé `startup`, qui eux nomment ce qui a réellement été affiché.
 
 ⚠️ **`argusScreens` et `screens[]` ne se correspondent PAS un pour un**, et
-vouloir les aligner casse les deux. Trois écarts légitimes, dans les deux sens :
+vouloir les aligner casse les deux. **Quatre** écarts légitimes, dans les deux
+sens :
 
 | Cas | `screens[]` (étage 2) | `argusScreens` (étage 1) |
 |---|---|---|
 | Coquille : barre, onglets, conteneur de navigation | non — ce n'est pas un écran | **oui**, sans `anchor:` |
 | État qui ne se monte pas seul (voir ci-dessous) | oui | non, et on dit pourquoi |
 | État atteignable seulement après un parcours | oui | oui, monté avec ses doubles |
+| État **non atteignable de façon déterministe** (voir ci-dessous) | **non** | **oui**, monté seul |
+
+⚠️ **Le quatrième est le symétrique du deuxième, et il manquait.** Un écran peut
+se monter parfaitement à l'étage 1 tout en étant **impossible à atteindre à
+coup sûr** depuis un flow : un splash qui s'auto-remplace en deux secondes, un
+écran d'échec qui demande d'injecter une panne réseau, un état qui dépend d'une
+horloge ou d'un tirage. Le mettre dans `screens[]` produit un flow qui échoue par
+intermittence — la pire des suites, celle qu'on finit par ignorer. L'en sortir ne
+coûte rien puisque l'étage 1 le mesure : disposition, contraste, cibles tactiles
+et débordements y sont vus sans device.
+
+Le critère n'est pas « est-ce un écran » mais **« un flow peut-il y arriver deux
+fois de suite ? »**. Si la réponse demande un « en général », c'est ce cas-ci.
 
 La coquille est le cas qu'on oublie, et c'est souvent le plus rentable : sur un
 projet réel, c'est elle qui portait le seul débordement visible à taille de

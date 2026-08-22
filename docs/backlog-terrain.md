@@ -632,13 +632,24 @@ plus tôt — **un format qui prescrit une information sans lui donner de case l
 fait inventer**, et deux rapports cessent alors d'être comparables. C'est la
 deuxième fois que ce bloc se corrige par la même leçon.
 
-### 75. La table `argusScreens` / `screens[]` a un quatrième écart légitime
+### 75. ✅ Corrigé le 22/08/2026 — La table `argusScreens` / `screens[]` avait un quatrième écart légitime
 
 Elle en couvre trois : la coquille, l'état qui ne se monte pas seul, l'état
 atteignable après un parcours. Manque : **montable à l'étage 1, inatteignable de
 façon déterministe à l'étage 2** — un splash qui s'auto-remplace en 2 s, un écran
 d'échec qui demande une injection de panne. Choix fait sans instruction :
 `argusScreens` seul.
+
+**Corrigé : la table a quatre lignes**, et le choix que l'agent a fait sans
+instruction est celui qu'elle prescrit. C'est le **symétrique** du deuxième cas —
+l'un ne se monte pas seul, l'autre ne s'atteint pas seul — ce qui explique qu'il
+manquait : on avait vu la moitié qui gêne à l'étage 1, pas celle qui gêne à
+l'étage 2.
+
+⚠️ Le critère écrit n'est pas « est-ce un écran » mais **« un flow peut-il y
+arriver deux fois de suite ? »**. Si la réponse demande un « en général », c'est
+ce cas-ci — et le mettre dans `screens[]` produirait un flow qui échoue par
+intermittence, la pire des suites, celle qu'on finit par ignorer.
 
 ### 76. §1 demande une ligne de cadrage « avant d'agir », qu'un sous-agent ne peut pas rendre
 
