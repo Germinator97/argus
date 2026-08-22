@@ -880,11 +880,25 @@ gouvernent.** C'est ce champ-là qui empêche de les lire comme une description 
 l'appareil — le danger d'origine, qui reste réel. Les taire protégeait d'une
 lecture fausse en en cachant une vraie.
 
-### 87. §3g fait générer les références APRÈS le premier run
+### 87. ✅ Corrigé le 22/08/2026 — §3g faisait générer les références APRÈS le premier run, sans le dire
 
 Ce qui garantit une première passe visuelle non exécutée. C'est défendable — on
 prouve d'abord que les flows tournent — mais rien ne le dit, et l'ordre se lit
 comme une erreur.
+
+**Corrigé, et il manquait une ligne au bloc.** La raison est écrite : une
+référence prise sur une suite dont on n'a pas prouvé qu'elle tourne fige un écran
+qu'on n'a jamais vu arriver, et une baseline fausse est pire qu'une baseline
+absente — elle rend vert pour toujours ce qu'elle a photographié de travers.
+
+⚠️ **Et le bloc oubliait le second `argus-run`** : sans lui, le premier run ne
+compare rien (pas de références) et le suivant n'existe pas. On livrait donc une
+séquence au terme de laquelle la boucle visuelle **n'a jamais tourné une seule
+fois**. C'est le run 7 qui l'a fait sans qu'on le lui dise, et ses 10/10 en
+dépendent.
+
+La preuve en trois temps est écrite au même endroit : générer, comparer vert,
+puis remplacer une référence par un aplat et vérifier que celle-là seule rougit.
 
 ### 88. ✅ Corrigé le 22/08/2026 — Deux temps de démarrage côte à côte, sans dire qu'ils diffèrent
 

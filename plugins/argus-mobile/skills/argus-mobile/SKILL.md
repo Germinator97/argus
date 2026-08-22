@@ -746,8 +746,25 @@ make argus-guards      # étage 1, sans device, quelques secondes
 make argus-build       # `fvm flutter` si le projet l'épingle — ne l'écris pas à la main
 make argus-run         # étage 2, sur émulateur
 make argus-baselines   # références visuelles (1re fois, sur le device de la CI)
+make argus-run         # et RELANCE : c'est ce passage-là qui compare
 make argus-report      # rapport HTML
 ```
+
+⚠️ **L'ordre est délibéré, et il coûte un run de plus — dis-le plutôt que de le
+laisser passer pour une erreur.** Un premier `argus-run` sans références ne
+compare rien : la dimension visuelle s'y annonce non exécutée, ce qui est honnête
+mais se lit comme un oubli. On génère APRÈS, parce qu'une référence prise sur une
+suite dont on n'a pas encore prouvé qu'elle tourne fige un écran qu'on n'a jamais
+vu arriver — et une baseline fausse est pire qu'une baseline absente : elle rend
+vert pour toujours ce qu'elle a photographié de travers.
+
+D'où le second `argus-run` : c'est le seul qui **compare**. Sans lui, on livre un
+harnais dont la boucle visuelle n'a jamais tourné une seule fois.
+
+⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
+puis **remplacer une référence par un aplat** et vérifier que celle-là seule
+rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
+mesure ou si elle dort.
 
 **g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
 `argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et
