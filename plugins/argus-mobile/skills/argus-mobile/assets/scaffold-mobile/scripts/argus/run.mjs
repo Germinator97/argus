@@ -729,7 +729,7 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
         // diagnostic est parti dans l'instrumentation pour rien. On rattache
         // donc la mesure au message, là où quelqu'un la lira.
         actual: String(meta.error?.message ?? 'échec sans message')
-          + startupHint(selector, startupAnchor, config)
+          + startupHint(selector, startupAnchor, config, key)
           + vanishedHint(bundle.steps, rank, selector),
         // Les preuves de L'ÉTAPE (capture et dump de hiérarchie du moment où ça
         // casse) valent bien mieux que l'index global du bundle.
@@ -752,8 +752,15 @@ const WAIT_COMMANDS = new Set(['assertConditionCommand', 'extendedWaitUntilComma
  * @param {string} selector @param {string} startupAnchor @param {any} config
  * @returns {string}
  */
-function startupHint(selector, startupAnchor, config) {
+function startupHint(selector, startupAnchor, config, commandKey = '') {
   if (!startupAnchor || selector !== `id=${startupAnchor}`) return '';
+  // ⚠️ ET SEULEMENT SI L'ÉTAPE ATTENDAIT. Collé à n'importe quelle étape portant
+  // ce sélecteur, l'indice se retrouve sur un `assertScreenshot` — qui a bien
+  // comparé, sur un écran bien arrivé — et conseille alors de vérifier le temps
+  // de démarrage devant une vraie divergence d'image. Observé au septième run
+  // sur une divergence de 5,04 %. `WAIT_COMMANDS` est défini vingt lignes plus
+  // haut et n'était pas consulté ici.
+  if (commandKey && !WAIT_COMMANDS.has(commandKey)) return '';
   return ` — c'est l'écran de DÉPART qui n'est pas arrivé à temps, pas forcément`
     + ` l'ancre qui est fausse. Vérifie d'abord le temps de démarrage`
     + ` (thresholds.coldStartMs = ${config.thresholds?.coldStartMs ?? 2000} ms,`
@@ -1230,6 +1237,25 @@ async function main() {
   const reportDir = artifactsDir(config);
   const outputDir = join(reportDir, 'maestro');
   mkdirSync(outputDir, { recursive: true });
+
+  // ⚠️ LE RAPPORT DU RUN PRÉCÉDENT NE DOIT PAS SURVIVRE À CELUI-CI. Quand le
+  // runner s'arrête avant Maestro — installation refusée, device absent, budget
+  // épuisé —, l'ancien `report.json` restait sur le disque et se lisait comme
+  // frais : mêmes findings, même horodatage plausible, rien pour dire qu'il
+  // décrit un autre run. Vécu au septième run en aveugle, où l'agent a failli
+  // conclure que la comparaison visuelle ne mesurait rien ; c'est le journal qui
+  // l'a détrompé, pas le rapport.
+  //
+  // On le remplace donc TOUT DE SUITE par un rapport « en cours », qui dit ce
+  // qu'il est. S'il survit, il dénonce lui-même le run interrompu au lieu de se
+  // faire passer pour son résultat.
+  writeJson(join(reportDir, 'report.json'), {
+    run: { startedAt: startedAt.toISOString(), platform, status: 'interrompu' },
+    incomplete: true,
+    why: 'ce run s\'est arrêté avant d\'écrire son rapport — relis le journal du runner. '
+      + 'Aucun chiffre de ce fichier ne décrit une exécution complète.',
+    summary: {}, findings: [],
+  });
   const baselineDir = resolve(process.cwd(), config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);
 
   // ── Installation ────────────────────────────────────────────────────────

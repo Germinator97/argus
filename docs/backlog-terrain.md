@@ -808,7 +808,7 @@ Armé par une sonde jetable et vérifié dans les trois sens : un nœud inerte p
 un nœud tapable échoue sur « est bien un AFFICHAGE », un absent échoue sur
 « présent ».
 
-### 82. `report.json` survit à un run qui n'a jamais atteint Maestro
+### 82. ✅ Corrigé le 22/08/2026 — `report.json` survivait à un run qui n'avait jamais atteint Maestro
 
 Quand le runner s'arrête avant la suite — installation refusée, par exemple — le
 rapport du run PRÉCÉDENT reste sur le disque et se lit comme frais. L'agent s'y
@@ -817,6 +817,10 @@ rien ; c'est le journal qui l'a détrompé, pas le rapport.
 
 ⚠️ Un `0` rendu par une commande qui a échoué n'est pas un `0` de mesure — et ici
 c'est le harnais lui-même qui fabrique le piège.
+
+**Corrigé : le rapport est PÉRIMÉ dès l'ouverture du run**, remplacé par un
+`{incomplete: true}` qui dit ce qu'il est. S'il survit, il dénonce lui-même le
+run interrompu au lieu de se faire passer pour son résultat.
 
 ### 83. ✅ Corrigé le 22/08/2026 — Une ligne de tableau orpheline en §3c
 
@@ -833,7 +837,7 @@ non à ce qui la précède.
 prenait chaque en-tête de tableau pour une orpheline. Un contrôle qui accuse
 partout ne mesure rien de plus qu'un contrôle qui se tait.
 
-### 84. `startupHint` colle une hypothèse fausse sur un finding visuel
+### 84. ✅ Corrigé le 22/08/2026 — `startupHint` collait une hypothèse fausse sur un finding visuel
 
 L'indice « c'est l'écran de DÉPART qui n'est pas arrivé à temps » est le bon
 conseil pour un `extendedWaitUntil` qui expire. Il s'ajoute aujourd'hui à **toute**
@@ -844,13 +848,21 @@ parfaitement eu lieu.
 
 Le code porte déjà `WAIT_COMMANDS`, juste au-dessus, et ne s'en sert pas ici.
 
-### 85. `perf` dit « jank non conclu » puis « jank 0 % », à vingt-cinq lignes
+**Corrigé** : l'indice exige désormais que l'étape ait ATTENDU. Vérifié dans les
+deux sens — `extendedWaitUntil` le reçoit, `assertScreenshot` et `tapOn` ne le
+reçoivent plus.
+
+### 85. ✅ Corrigé le 22/08/2026 — `perf` disait « jank non conclu » puis « jank 0 % »
 
 `warn('jank non conclu — 0 frame(s)')` en ligne 360, puis
 `log('jank ${jank.jankFramesPct ?? '?'} %')` en ligne 385 — la valeur **brute**,
 pas la valeur comparable. Et `perf.json` reçoit `jankFramesPct` sans marqueur de
 non-conclusion : seul `framesRendered: 0` à côté permet de ne pas le lire comme
 une mesure.
+
+**Corrigé** : la ligne de log affiche la valeur **comparable** (« jank non
+conclu ») et non plus la brute, et `perf.json` porte `jankComparable` + `jankWhy`
+à côté du relevé. Les deux chiffres restent lisibles ; un seul porte un verdict.
 
 ### 86. `declared.model` / `declared.os` sont `null` — et ce n'est plus vrai
 

@@ -374,7 +374,12 @@ function main() {
       firstLaunchMs: cold.firstLaunchMs,
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
       warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
+      // ⚠️ `jankComparable` porte le verdict, `jankFramesPct` le relevé brut. Les
+      // confondre faisait lire « 0 % » comme une mesure alors que zéro frame
+      // avait été rendue — seul `framesRendered` à côté permettait de s'en
+      // apercevoir, et rien n'obligeait à le regarder.
       jankFramesPct: jank.jankFramesPct, framesRendered: jank.totalFrames,
+      jankComparable: comparableJank.value, jankWhy: comparableJank.why,
       memoryMb, binarySizeMb: sizeMb,
     },
     thresholds, findings,
@@ -382,7 +387,13 @@ function main() {
   writeJson(reportPath, report);
 
   log(`premier lancement ${cold.firstLaunchMs ?? '?'} ms · à froid ${cold.medianMs ?? '?'} ms · à chaud ${warm.medianMs ?? '?'} ms`);
-  log(`jank ${jank.jankFramesPct ?? '?'} % · mémoire ${memoryMb ?? '?'} Mo · binaire ${sizeMb ?? '?'} Mo`);
+  // ⚠️ LA VALEUR COMPARABLE, PAS LA BRUTE. Cette ligne affichait
+  // `jank.jankFramesPct` — donc « jank 0 % » vingt-cinq lignes après un
+  // « jank non conclu — 0 frame(s) rendue(s) ». Les deux étaient vrais et se
+  // contredisaient : l'un disait qu'on ne peut pas juger, l'autre donnait un
+  // verdict. Sur une sortie de terminal, c'est le second qu'on retient.
+  const jankLu = comparableJank.value === null ? 'non conclu' : `${comparableJank.value} %`;
+  log(`jank ${jankLu} · mémoire ${memoryMb ?? '?'} Mo · binaire ${sizeMb ?? '?'} Mo`);
   if (cold.firstLaunchMs && cold.medianMs && cold.firstLaunchMs > cold.medianMs * 1.5) {
     warn(`premier lancement ${Math.round((cold.firstLaunchMs / cold.medianMs) * 10) / 10}× plus lent que le régime stabilisé — chaque utilisateur le vit une fois.`);
   }
