@@ -2,9 +2,16 @@
 # argus.mobile.yaml — réglages du harness QA mobile, spécifiques à l'application.
 # ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
 #
-# C'EST LE SEUL FICHIER À ÉDITER pour brancher Argus Mobile sur une app Flutter.
-# Tous les scripts (`scripts/argus/*.mjs`) et tous les flows Maestro lisent
-# depuis ici : source unique.
+# C'est la SOURCE UNIQUE DE LA CONFIGURATION : tous les scripts
+# (`scripts/argus/*.mjs`) et tous les flows Maestro lisent depuis ici.
+#
+# Ce n'est pas pour autant le seul fichier à éditer, et le prétendre fait
+# chercher ailleurs ce qu'on ne trouve pas. Les autres portent du CODE et des
+# PARCOURS, qui n'ont pas leur place dans du YAML :
+#   test/argus/harness.dart       les écrans à monter, les polices, le thème
+#   test/argus/known_issues.dart  la dette que les gardes révèlent
+#   .maestro/*.yaml marqués OWNED les parcours métier
+# `install-mobile.sh` te les liste en sortant, avec les TODO(argus) restants.
 #
 # Les valeurs sensibles n'ont RIEN à faire dans ce fichier. Les identifiants de
 # test viennent de l'environnement (voir `auth.secretsFromEnv`) et sont injectés

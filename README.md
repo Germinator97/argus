@@ -54,8 +54,10 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
 1. Tape `/argus-mobile`. Il commence par **reconnaître le projet Flutter** et
    produire un rapport d'instrumentation Semantics : c'est le prix d'entrée de
    l'automatisation mobile, et il est explicite.
-2. Pour le harness : il copie le scaffold, tu édites **`argus.mobile.yaml`** (le
-   seul fichier de configuration) et **`test/argus/harness.dart`**, puis :
+2. Pour le harness : il copie le scaffold, puis **te liste les fichiers qui
+   t'appartiennent** — `argus.mobile.yaml` (la configuration),
+   `test/argus/harness.dart` et `test/argus/known_issues.dart` (l'étage 1), et
+   les flows métier — avec les `TODO(argus)` qui restent dans chacun. Ensuite :
    ```bash
    node scripts/argus/config.mjs   # config résolue + outillage détecté
    make argus-guards                      # étage 1 : a11y + disposition, sans device

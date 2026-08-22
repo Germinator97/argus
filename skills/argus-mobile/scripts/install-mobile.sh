@@ -248,6 +248,23 @@ if [ "$foreign" -gt 0 ]; then
   echo
 fi
 
+# ── Ce qui est À TOI, dérivé plutôt qu'annoncé ──────────────────────────────
+# « argus.mobile.yaml est le SEUL fichier à éditer » était faux, et le dire deux
+# lignes avant de nommer harness.dart n'aidait personne. La liste se dérive des
+# marqueurs, donc elle ne peut pas vieillir.
+echo "Les fichiers qui t'appartiennent (jamais écrasés, jamais mis à jour) :"
+while IFS= read -r src; do
+  head -20 "$src" | grep -qF 'ARGUS:OWNED' || continue
+  rel="${src#"$SCAFFOLD_DIR"/}"
+  restant="$(grep -c 'TODO(argus)' "$TARGET/$rel" 2>/dev/null || echo 0)"
+  if [ "$restant" -gt 0 ]; then
+    echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
+  else
+    echo "  ✔  $rel"
+  fi
+done < <(find "$SCAFFOLD_DIR" -type f | sort)
+echo
+
 echo "Prochaines étapes :"
 echo "  1. Édite argus.mobile.yaml (identifiants d'app, devices, écrans, seuils)."
 echo "  2. Instrumente l'app : Semantics(identifier: 'home_root', child: …) sur"

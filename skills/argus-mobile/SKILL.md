@@ -47,6 +47,26 @@ SDK), `android/app/build.gradle(.kts)` (`applicationId`, flavors),
 dossiers `android/` et `ios/`. **N'invente jamais de bundleId** : s'il ne se
 déduit pas, demande-le.
 
+⚠️ **QUAND LA MISSION A DÉJÀ TRANCHÉ, CE DIALOGUE N'A PAS LIEU — et c'est là
+qu'il manque le plus.** Une consigne du type « installe le harness sur ce
+projet » fixe le MODE et rien d'autre : restent `ENV`, les plateformes, le
+device, les seuils, et personne ne dit qu'ils sont désormais à toi. Tu les
+choisiras donc, en silence, et deux d'entre eux commandent les garde-fous de
+§5 — `ENV` décide de ce que tu as le droit de faire sur l'app, le device décide
+sur QUEL appareil. Sur un projet réel, un agent a tout tranché seul sans que rien
+ne le lui signale.
+
+Ce qui est demandé alors n'est pas de reposer les questions déjà tranchées, c'est
+de **rendre visibles celles qui restent** :
+
+> Cadrage retenu, faute d'instruction : `ENV=local`, plateforme `android`,
+> device = émulateur `<AVD>` (jamais un appareil réel), seuils par défaut.
+> ⚠️ `ENV=local` autorise les écritures et `clearState` — dis-le si l'app pointe
+> vers autre chose que des données jetables.
+
+Une ligne, avant d'agir. Elle ne coûte rien et elle transforme un choix invisible
+en décision que quelqu'un peut démentir.
+
 ═══════════════════════════════════════════════════════════════════════════════
 ## 2. Reconnaissance du projet Flutter (AVANT tout le reste)
 ═══════════════════════════════════════════════════════════════════════════════
@@ -81,12 +101,13 @@ Produis un **rapport d'instrumentation**, dans cette forme exacte — sans quoi 
 agents en rendent deux, et aucun des deux ne se compare à l'autre :
 
 ```
-Instrumentation Semantics — <N> widgets interactifs sur les parcours critiques
-  instrumentés     : <Y>  (<Y/N> %)
-  à instrumenter   : <Z>
-  non enveloppables: <W>  (ParentDataWidget, slivers — voir plus bas)
+Instrumentation Semantics — parcours critiques
+  Racines d'état     : <R> posées / <RT> à poser     ← l'essentiel de la production
+  Commandes          : <Y> posées / <N> à poser  (<Y/N> %)
+  Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
 
 À instrumenter, par fichier :
+  lib/…/panier_page.dart:88    racine d'état « panier vide »   → panier_empty_root
   lib/…/panier_page.dart:142   ElevatedButton « Valider »      → panier_valider
   lib/…/panier_page.dart:167   InkWell (carte article)         → panier_article
   lib/…/shared/bouton.dart:38  composant partagé, 14 call-sites → <param d'ancre>
@@ -94,6 +115,21 @@ Instrumentation Semantics — <N> widgets interactifs sur les parcours critiques
 Non enveloppables :
   lib/…/entete.dart:22         Expanded — ciblé par texte, fragile à la traduction
 ```
+
+⚠️ **Deux lignes de compteurs, pas une** — et c'est la première qui compte le
+plus. Un bloc qui ne comptait que les « widgets interactifs » n'avait pas de case
+pour les **racines d'état**, qui n'en sont pas et qui sont pourtant l'essentiel
+de ce qu'on pose. Un agent y a ajouté sa propre ligne entre crochets : soit
+exactement les deux formats différents que ce bloc existe pour empêcher.
+
+⚠️ **« Instrumenté » a une définition, une seule.** Un widget est instrumenté
+quand il porte un **`Semantics(identifier:)`**. Un `semanticLabel:` n'en est PAS
+un : c'est un libellé, il est traduit, et une ancre bâtie dessus change avec la
+langue. Compter les deux ensemble sur un projet réel donnait 5/24 et un rapport
+flatteur là où le compte juste était 0/24 — l'écart n'est pas une nuance, c'est
+la différence entre « ça va » et « rien n'est fait ». Grep donc
+`Semantics(identifier:` et lui seul pour le numérateur ; les `semanticLabel:` se
+mentionnent à part, comme un acquis d'accessibilité qui ne rend rien ciblable.
 
 Trois règles qui font la valeur du relevé : **les parcours critiques uniquement**
 — pas les 300 widgets du projet ; l'**ancre proposée** en regard de chaque ligne,
@@ -383,6 +419,25 @@ la première chose à faire après l'installation, avant même le premier run. T
 qu'elle n'a pas tourné, dis que l'instrumentation est *proposée*, jamais
 *validée*.
 
+⚠️ **Combien d'états déclarer — la règle d'arrêt.** « Une racine par état » n'en
+a pas, et sans elle on en déclare treize. Le coût n'est pas nul : chaque état
+`visual: true` ajoute un passage Maestro complet, soit ~40 s de CI, et treize
+états font neuf minutes pour une seule dimension. Deux critères, dans cet ordre :
+
+1. **Un état se déclare s'il change ce qu'on peut CASSER** — vide contre plein,
+   connecté contre déconnecté, erreur contre succès. Deux états qui rendent la
+   même disposition avec d'autres données n'en font qu'un.
+2. **`visual: true` se réserve aux états qu'on saurait relire.** Une régression
+   visuelle se juge à l'œil sur un diff ; sur un état que personne ne sait
+   décrire, le diff se ferme sans être lu. `p0` en visuel, le reste en
+   fonctionnel — et on ajoute au coup par coup, quand une régression est passée.
+
+⚠️ Et ce que le rapport compte n'est pas ce que la suite a EXERCÉ.
+`coverage.screensConfigured` compte les écrans **déclarés avec une ancre**, ce
+qui est autre chose qu'atteint : un état déclaré mais qu'aucun flow ne visite y
+figure comme les autres. Lis-le en regard de `coverage.visualScreens` et du
+relevé `startup`, qui eux nomment ce qui a réellement été affiché.
+
 ⚠️ **`argusScreens` et `screens[]` ne se correspondent PAS un pour un**, et
 vouloir les aligner casse les deux. Trois écarts légitimes, dans les deux sens :
 
@@ -473,10 +528,21 @@ signale-le avant.
 **b. Copier le scaffold** (idempotent, n'écrase JAMAIS un fichier existant) :
 `bash <SKILL_DIR>/scripts/install-mobile.sh <TARGET_PROJECT_DIR>`
 
-**c. Paramétrer.** Édite **`argus.mobile.yaml`** — c'est le **seul** fichier à
-éditer : identifiants d'app, chemins de binaire, matrice de devices, `screens[]`
-et leurs ancres, seuils, règles de sécurité, gate. Puis `test/argus/harness.dart`
-pour l'étage 1 (écrans à monter, famille de police).
+**c. Paramétrer.** Il n'y a pas UN fichier à éditer, il y en a une dizaine, et
+prétendre le contraire fait chercher ailleurs ce qu'on ne trouve pas. Ils portent
+tous le marqueur `ARGUS:OWNED` et **l'installeur te les liste en sortant**, avec
+le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
+
+| | Fichier | Ce qu'on y met |
+|---|---|---|
+| **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
+| **Étage 1** | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
+| | `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
+| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — sept fichiers, tous porteurs de `TODO(argus)` |
+
+`argus.mobile.yaml` reste la **source unique de la configuration** — c'est là que
+les scripts et les flows lisent. Les autres portent du CODE et des PARCOURS, ce
+qui n'est pas la même chose et ne pouvait pas y tenir.
 
 ⚠️ **`screens[]` se remplit avec la table d'ancres de §2c-bis, pas en relisant le
 code.** Si tu reprends un chantier commencé ailleurs et que cette table n'existe

@@ -92,7 +92,7 @@ comparaison verte **ne prouve pas** que l'écran est déterministe : elle prouve
 que ce qui bouge pèse moins que le seuil. Un indicateur qui tourne sans fin
 passe à 99, en ne pesant que 0,13 % des pixels.
 
-## Rendu par le run 2 — un second agent vierge, 21/08/2026
+## Rendu par le run 2 — un second agent vierge, 21/08/2026 — clos
 
 Le terrain a été **remis à neuf** (production du run 1 sauvegardée hors dépôt) et
 le skill ré-appliqué de zéro par un agent sans contexte, quelques heures après la
@@ -104,29 +104,36 @@ Les numéros repartent à 11 : ils ne se réutilisent pas.
 de les croire. Six sur six l'étaient. Les autres viennent de son rapport et
 restent à confirmer.
 
-### Ce que le harnais promet et ne tient pas
+Les vingt-cinq sont clos, le 22/08/2026, en dix passes. Un seul reste ici, parce
+qu'il a été tranché **contre** l'hypothèse qu'on en avait.
 
-**13. `argus.mobile.yaml` n'est pas « le SEUL fichier à éditer ».** §3c le dit puis
-nomme `harness.dart` dans la phrase suivante, et sept flows portent des
-`TODO(argus)` en `ARGUS:OWNED`.
-
-**14. Le format du rapport d'instrumentation n'a pas de case pour les racines.**
-Le bloc de §2b compte des « widgets interactifs » ; l'essentiel de la production,
-ce sont les racines d'état, qui n'en sont pas. Il a ajouté une ligne entre
-crochets — soit exactement les deux formats que ce bloc devait empêcher.
-
-**15. Aucun critère pour « instrumenté ».** §2b fait chercher `identifier:` **et**
-`semanticLabel:`. Un `semanticLabel:` traduit s'annonce bien mais n'est pas une
-ancre. Compté d'une façon : 0/24. De l'autre : 5/24 et un rapport flatteur.
-
-### Cas que le skill ne couvre pas
-
-**23. Combien d'états déclarer, et lesquels en visuel.** « Une racine par état »
-n'a pas de règle d'arrêt : 13 états × visuel ≈ 9 min de CI. Et il n'existe pas de
-« déclaré mais pas encore atteignable », si bien que `screensConfigured`
-**surestime** ce qui est réellement exercé.
-
-### Outillage
+| # | Ce qu'il avait signalé | Ce qui l'a fermé |
+|---|---|---|
+| 11 | `visualCropOn` et `dynamicRegions` : configuration morte | `visualCropOn` branché de bout en bout (`cropOn` sur la capture ET la comparaison) ; `dynamicRegions` retiré — Maestro n'a aucun masquage de pixels |
+| 12 | `argus-anchors` ne prouve que les racines | `ArgusScreen.commands`, avec un critère mesuré : le nœud doit porter une action, ou déclarer un état d'activation |
+| 13 | « le SEUL fichier à éditer » en nommait trois | La liste est **dérivée** des marqueurs et imprimée par l'installeur, avec les TODO restants |
+| 14 | Le rapport d'instrumentation n'a pas de case pour les racines | Deux lignes de compteurs, la première pour les racines d'état |
+| 15 | Aucun critère pour « instrumenté » | `Semantics(identifier:)` et lui seul. Un `semanticLabel:` n'est pas une ancre |
+| 16 | Le composant qui porte déjà son `Semantics` | Table mesurée : qui fusionne, qui pose une frontière, et le seul remède qui donne un nœud unique |
+| 17 | Écrans impossibles à monter seuls | `argusScreens` et `screens[]` ne sont pas en bijection — et le contenu d'une feuille modale se rend public |
+| 18 | Écrans à animation perpétuelle | `pumpArgus` n'attend plus la stabilisation : durée bornée, puis avance fixe, en nommant l'écran |
+| 19 | Un `ArgusScreen` sans ancre | Légitime, documenté, et la suite ne sort plus avant de l'atteindre |
+| 20 | Que faire des défauts préexistants | `known_issues.dart`, assertée **dans les deux sens** |
+| 21 | L'ancre dont la clé stable est la valeur affichée | Dériver de la valeur du modèle, jamais de la chaîne rendue |
+| 22 | Un seuil face à un plancher assumé | `brandedSplashMs`, soustrait — pas un seuil relevé |
+| 23 | Combien d'états déclarer | Règle d'arrêt en deux critères, et ce que `screensConfigured` compte vraiment |
+| 24 | Un message d'instrumentation pour un défaut de scénario | L'ancre vue puis perdue est reconnue et le dit |
+| 26 | `make argus` n'atteint jamais `argus-report` | Les dimensions sont enchaînées, le pire code retenu, le rapport toujours produit |
+| 27 | `argus-doctor` sonde le mauvais `flutter` | La détection passe par le SDK du projet |
+| 28 | `flutter build` sans `fvm` | Les docs pointent `make argus-build`, qui le dérive |
+| 29 | `argus-a11y` mesure ce qui traîne | L'écran est **reconnu** par ses ancres, en quatre verdicts distincts |
+| 30 | `argus-report` agrège des JSON périmés | Chaque part porte sa date, l'écart au-delà du budget est marqué |
+| 31 | `model`/`os` déclarés sans objet | `null` quand `autoStart: false` |
+| 32 | Le bloc i18n présume une app monétaire | Il vérifie un FORMAT dépendant de la locale, quel qu'il soit |
+| 33 | Fusion du `.gitignore` sans règle | L'installeur écrit un bloc délimité et signé, idempotent |
+| 34 | `allowSecretsIn` et les fichiers gitignorés | Une entrée qui ne dispense rien est signalée |
+| 35 | `expectedPermissions` sur le manifeste fusionné | L'ordre est écrit là où la liste se remplit |
+| §1 | Le dialogue de cadrage n'a pas eu lieu | Ce qui reste à trancher se **déclare** avant d'agir, garde-fous nommés |
 
 **25. ✅ Tranché le 22/08/2026 — la boucle visuelle tournait, le message disait
 le contraire.** Le relevé concluait que `make argus-visual` « ne fait pas de
@@ -144,23 +151,22 @@ ajouter une boucle qui existait déjà. Et corriger le vrai défaut a immédiate
 révélé son symétrique, que personne n'avait signalé : `--tags=smoke`, annoncé
 comme le plus rapide, lançait la boucle visuelle entière.
 
-**32. Le bloc `i18n` présume une app monétaire** (`currencySample`, TODO XOF), sans
-objet pour une app qui n'affiche aucun montant.
-
-### Et le dialogue de cadrage (§1) n'a pas eu lieu
-
-Le skill ouvre sur un dialogue « OBLIGATOIRE ». La mission ayant pré-tranché le
-mode, il a décidé seul de `ENV`, des plateformes, du device et des seuils — sans
-que rien ne lui dise que c'était à lui de le faire, ni que ces choix engageaient
-les garde-fous de sécurité.
-
 ## Ce qui reste
 
-**Les dix premiers points sont clos. Vingt-cinq nouveaux les remplacent**, rendus
-par un second agent vierge sur un terrain remis à neuf. C'est le résultat le plus
-utile de la journée : un skill qu'on venait de déclarer sans dette en portait
-vingt-cinq, dont une qui rendait fausse une doc écrite le matin même.
+**Rien — et ça ne veut pas dire grand-chose.** Le 21/08 au matin, le backlog était
+vide aussi ; le soir, un second agent vierge en rendait vingt-cinq. C'est le
+résultat le plus utile de ces deux journées, et il porte sur la méthode plus que
+sur le skill : une passe trouve ce qui manque, la suivante trouve ce que la
+correction a introduit ou n'a pas branché.
 
-Priorité claire : le **11** d'abord. Tant qu'il tient, le skill demande de soigner
-un réglage qui ne fait rien, et le dit avec des chiffres mesurés — ce qui le rend
-d'autant plus crédible.
+Deux choses valent d'être notées pour la prochaine remise à neuf du terrain :
+
+- **Onze réglages de configuration n'avaient aucun lecteur**, et non deux. Le
+  point 11 en nommait le seul dont quelqu'un s'était aperçu ; c'est un garde
+  dérivé — « aucune feuille de `DEFAULTS` sans lecteur » — qui a trouvé les dix
+  autres, dont deux se lisaient comme des garanties. Chercher la classe d'un
+  défaut plutôt que le défaut a rapporté cinq fois plus que le corriger.
+- **Trois gardes écrits pendant cette passe sont nés vacants ou trop faibles**, et
+  c'est le harnais de mutation qui l'a dit à chaque fois — jamais la relecture.
+  Un comptait sa propre mention, un exerçait une branche inatteignable dans ce
+  dépôt, un confondait deux causes sous le même verdict.

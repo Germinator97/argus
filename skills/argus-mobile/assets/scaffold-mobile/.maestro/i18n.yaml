@@ -39,14 +39,26 @@ tags:
       #     text: 'Bienvenue'
       #     label: Interface rendue en français
 
-      # TODO(argus): asserte le format monétaire XOF tel que ton app le rend.
+      # TODO(argus): SI ton app affiche des nombres formatés, asserte-en un.
+      #
+      # ⚠️ Ce bloc a longtemps présumé une app monétaire — devise, montant
+      # d'exemple en FCFA — et il n'y a rien à y écrire pour une app qui
+      # n'affiche aucun prix. Ce qui se vérifie ici, c'est un FORMAT dépendant
+      # de la locale, quel qu'il soit : montant, date, durée, pourcentage,
+      # pluriel. Si ton app n'en affiche aucun, laisse ce bloc commenté et note
+      # dans le rapport que la dimension i18n se limite à la langue.
+      #
       # Le séparateur de milliers du français est une espace insécable étroite
       # (U+202F) sur les Flutter récents, PAS une espace ordinaire : un
       # `assertVisible` écrit avec une espace normale échoue sans qu'on comprenne
       # pourquoi. Les sélecteurs `text` étant des regex, `\s` couvre les deux.
-      # - assertVisible:
+      #
+      # - assertVisible:                       # un montant
       #     text: '1\s?234\s?567\s?FCFA'
       #     label: Montant formaté en FCFA (séparateur insécable toléré)
+      # - assertVisible:                       # ou une date, ou une durée…
+      #     text: '\d{1,2} (janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)'
+      #     label: Date rendue en français
 
       # Clés de traduction manquantes : une clé non résolue se rend en clair.
       # Ce garde attrape les formes les plus courantes.

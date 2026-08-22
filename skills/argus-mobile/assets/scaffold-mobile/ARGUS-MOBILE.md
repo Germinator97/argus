@@ -25,8 +25,9 @@ et atteigne l'OS.
 curl -fsSL "https://get.maestro.mobile.dev" | bash
 make argus-doctor          # config résolue + outillage détecté
 
-# 2. Configurer — un SEUL fichier
-#    argus.mobile.yaml : app.androidPackage, devices, screens[].anchor, seuils
+# 2. Configurer — argus.mobile.yaml d'abord
+#    app.androidPackage, devices, screens[].anchor, seuils
+#    (l'installeur liste les autres fichiers qui t'appartiennent)
 
 # 3. Instrumenter l'app (le prix d'entrée)
 #    Semantics(identifier: 'home_root', child: …) sur chaque écran clé
@@ -37,11 +38,24 @@ make argus-run
 make argus-report          # rapport HTML
 ```
 
-## Le fichier à éditer : `argus.mobile.yaml`
+## Les fichiers à éditer
 
-Source unique : identifiants d'app, chemins de binaire, matrice de devices,
-écrans et leurs ancres sémantiques, seuils, règles de sécurité, gate. Les scripts
-et les flows lisent tous depuis là.
+`argus.mobile.yaml` est la source unique de la **configuration** : identifiants
+d'app, chemins de binaire, matrice de devices, écrans et leurs ancres
+sémantiques, seuils, règles de sécurité, gate. Les scripts et les flows lisent
+tous depuis là.
+
+Ce n'est pas le seul fichier à toi, et faire croire l'inverse fait chercher
+ailleurs. Les autres portent du code et des parcours :
+
+| Fichier | Ce qu'on y met |
+|---|---|
+| `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
+| `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
+| `.maestro/*.yaml` marqués `ARGUS:OWNED` | les parcours métier |
+
+Tous portent le marqueur `ARGUS:OWNED` : l'installeur ne les écrase jamais, et
+il te les liste en sortant avec les `TODO(argus)` qui restent dans chacun.
 
 Il est parsé par un **sous-ensemble strict de YAML** (`scripts/argus/config.mjs`)
 plutôt que par une dépendance : un projet Flutter n'a ni `package.json` ni
@@ -224,9 +238,10 @@ argus.mobile.yaml            # LE fichier à éditer
   i18n.yaml                  # fr-FR, format XOF, clés manquantes          [i18n]
 test/
   argus/                     # tout le harness ici : un seul dossier à retirer
-    harness.dart             # étage 1 : LE fichier à éditer
-    argus_types.dart         #   les types — au plugin
-    argus_harness.dart       #   la mécanique — au plugin, seul import des suites
+    harness.dart             # étage 1 : à toi — écrans, polices, thème
+    known_issues.dart        #   à toi — la dette assumée, assertée par égalité
+    argus_types.dart         #   au plugin — les types
+    argus_harness.dart       #   au plugin — la mécanique, seul import des suites
     a11y_test.dart           # cibles tactiles, contrastes, labels
     layout_test.dart         # 3 gabarits × 3 échelles de texte
 scripts/
