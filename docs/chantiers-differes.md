@@ -211,6 +211,33 @@ chemins se testent aujourd'hui à l'étage 1, par un double qui rend un échec.
 imposée par le produit est soustraite. Sur un backend lent ou distant, le seuil
 mesure le réseau et le rapport accuse l'app.
 
+**5. L'état de CHARGEMENT est listé comme dimension et prescrit nulle part.**
+`methodology-mobile.md` cite « états vide / chargement / erreur » parmi les
+dimensions, et §2c dit de poser **une racine par état** — mais tous ses exemples
+sont vide/plein. Or l'étage 2 **ne peut pas** capturer un chargement : `visual.yaml`
+fait `extendedWaitUntil visible: <ancre>` avant de photographier, donc il attend
+par construction que le chargement soit FINI. Il ne se teste qu'à l'étage 1, par
+un double qui ne répond jamais.
+
+⚠️ **Et le coût technique est déjà payé** — c'est ce qui rend ce trou peu cher.
+`pumpArgus` ne finit plus sur un `pumpAndSettle` nu : il plafonne à cinq secondes
+simulées, rattrape le `FlutterError` et note l'écran dans
+`argusPerpetualAnimations`. Un écran qui porte un indicateur EST donc montable
+depuis le commit `629adcf`, qui l'a débloqué explicitement (« those screens could
+not be declared at all »). Le mécanisme existe et fonctionne ; **rien ne dit de
+s'en servir pour l'état de chargement.** Le remède est documentaire : un exemple
+dans le dartdoc de `harness.dart` et une ligne dans §2c à côté de « une racine
+par état ».
+
+⚠️ Vérifier d'abord que l'écran de chargement porte une racine **ancrable** :
+souvent ce n'est qu'un indicateur nu, et poser une ancre sur un état transitoire
+n'est pas gratuit.
+
+**Pourquoi ce trou appartient à ce chantier** : un état de chargement est un
+artefact de l'attente réseau. Sur un projet sans API il n'existe presque pas —
+d'où le fait qu'aucun des trois runs en aveugle ne l'ait signalé. Même angle mort
+que les quatre autres.
+
 ### La voie qui marche aujourd'hui, sans rien changer
 
 Un flavor pointant un backend de staging, `ENV: staging`, un compte de test aux
