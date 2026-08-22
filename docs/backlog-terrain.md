@@ -158,18 +158,6 @@ ajouter une boucle qui existait déjà. Et corriger le vrai défaut a immédiate
 révélé son symétrique, que personne n'avait signalé : `--tags=smoke`, annoncé
 comme le plus rapide, lançait la boucle visuelle entière.
 
-**29. `make argus-a11y` mesure ce qui traîne à l'écran**, sans pouvoir désigner
-l'écran. Lancé après une suite, il a mesuré le **splash** et rendu « rien à
-mesurer » — honnête et vide. Piège sur toute app à splash.
-
-**30. `make argus-report` agrège les JSON présents, quel que soit leur âge.** Après
-sa preuve par corruption de baseline, le HTML décrivait un état qui n'existait
-plus. Rien ne dit que le rapport est un instantané de fichiers périmés.
-
-**31. `model`/`os` avec `autoStart: false`** sont purement documentaires, mais le
-rapport les imprime en `declared` face au modèle mesuré — une comparaison sans
-objet. Le schéma ne permet pas de dire « inconnu ».
-
 **32. Le bloc `i18n` présume une app monétaire** (`currencySample`, TODO XOF), sans
 objet pour une app qui n'affiche aucun montant.
 
