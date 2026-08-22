@@ -28,7 +28,7 @@ import {
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { identifyScreen } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -850,6 +850,68 @@ test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine r
   } finally {
     process.chdir(avant);
   }
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// a11y.mjs — la relance doit atteindre l'état d'où l'on peut se rattraper
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le rattrapage posé au point 44 ne se déclenchait dans AUCUN cas nominal : sa
+// condition testait `!opts.screen`, alors que le défaut de `--screen` n'est pas
+// la chaîne vide mais « écran courant ». Et le seul état d'où l'on avait
+// vraiment besoin de se rattraper — l'app pas au premier plan, ce que
+// `argus-perf` laisse derrière lui — sortait plus haut en `process.exit(2)`,
+// avant même d'y arriver.
+//
+// D'où une décision extraite, et un garde qui la branche sur la valeur que
+// `parseArgs` produit VRAIMENT : la tester sur '' aurait re-signé le défaut.
+
+test('sans --screen, la relance a lieu — c\'est la condition qui était morte', () => {
+  const defaut = parseArgs([]).screen;
+  assert.equal(defaut, ECRAN_COURANT,
+    'si ce défaut change, la décision ci-dessous doit changer avec lui');
+  assert.equal(relaunchDecision({ foreground: true, matched: false, requested: defaut }).relaunch, true,
+    '`!opts.screen` valait false sur cette valeur : la relance ne partait jamais');
+});
+
+test('app absente du premier plan : on relance, au lieu de sortir en erreur', () => {
+  const { relaunch, why } = relaunchDecision({ foreground: false, matched: false, requested: ECRAN_COURANT });
+  assert.equal(relaunch, true);
+  assert.match(why, /premier plan/, 'et la raison doit nommer l\'état, pas seulement le geste');
+});
+
+test('un --screen explicite interdit la relance — l\'état vient de l\'utilisateur', () => {
+  const { relaunch, why } = relaunchDecision({ foreground: true, matched: false, requested: 'profil' });
+  assert.equal(relaunch, false,
+    'relancer mesurerait l\'écran de départ tout en le rapportant sous « profil »');
+  assert.match(why, /profil/);
+});
+
+test('écran déjà reconnu : rien à relancer — le garde ne coupe qu\'un sens', () => {
+  assert.equal(
+    relaunchDecision({ foreground: true, matched: true, requested: ECRAN_COURANT }).relaunch, false,
+    'sans ça, « relancer quand il le faut » deviendrait « relancer toujours », et chaque '
+    + 'mesure repartirait de l\'écran d\'accueil',
+  );
+});
+
+test('la relance est CÂBLÉE avant le refus, pas seulement décidée', () => {
+  // ⚠️ Les quatre gardes ci-dessus prouvent la décision ; aucun ne verrait le
+  // jour où main() cesserait de l'appeler, ou la rappellerait après le
+  // `process.exit(2)` — c'est-à-dire le défaut d'origine, à l'identique.
+  const source = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs'), 'utf8');
+  // ⚠️ Ancré sur l'APPEL, jamais sur le nom nu : `relaunchDecision({` matche
+  // aussi sa propre DÉFINITION, tout en haut du fichier — le garde comparait
+  // donc la position d'une déclaration à celle du refus, et restait vert quelle
+  // que soit la place de l'appel. Trouvé par mutation, pas par relecture.
+  const appel = source.indexOf('const decision = relaunchDecision(');
+  const refus = source.indexOf('if (appNodes.length === 0) {');
+  assert.ok(appel > 0, 'main() n\'appelle plus relaunchDecision — le garde ci-dessus est devenu décoratif');
+  assert.ok(refus > 0, 'le refus « pas au premier plan » a disparu ou changé de forme : relis ce garde');
+  assert.ok(appel < refus,
+    'le refus repasse AVANT la relance : l\'app arrêtée redevient le seul état qu\'on ne rattrape pas');
 });
 
 

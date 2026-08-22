@@ -143,6 +143,12 @@ MUTATIONS = [
     ("a11y", "mesurer un autre écran que celui demandé ne se signale plus",
      "  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {",
      "  if (false) {"),
+    ("a11y", "la sentinelle « écran courant » revide la condition de relance",
+     '  if (requested && requested !== ECRAN_COURANT) {',
+     '  if (requested) {'),
+    ("a11y", "le refus « pas au premier plan » repasse avant la relance",
+     '  const decision = relaunchDecision({',
+     '  if (appNodes.length === 0) { process.exit(2); }\n  const decision = relaunchDecision({'),
     # ⚠️ Les trois mutations qui suivent visent le défaut mesuré au run 5 : un
     # contrôle de sécurité qui rendait le MÊME verdict sur un binaire obfusqué
     # et sur un binaire qui ne l'est pas. La première le réintroduit tel quel.

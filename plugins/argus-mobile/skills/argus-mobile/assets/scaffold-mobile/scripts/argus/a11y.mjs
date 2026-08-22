@@ -34,14 +34,29 @@ import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
   missingToolMessage, sh, warn, writeJson,
 } from './config.mjs';
+// Le budget d'attente d'un démarrage vit dans run.mjs, avec sa doctrine : il est
+// LARGEMENT au-dessus de `coldStartMs`, pour qu'un écran lent sorte en finding
+// de lenteur et non en « ancre introuvable ». Le redériver ici en dupliquerait
+// la règle, donc la ferait diverger au premier ajustement.
+import { startTimeoutMs } from './run.mjs';
 
 const DUMP_PATH = '/sdcard/argus-a11y-dump.xml';
+
+/**
+ * L'étiquette que `--screen` porte quand personne ne l'a passé.
+ *
+ * ⚠️ Elle est EXPORTÉE et lue par le garde, parce que c'est elle qui a vidé le
+ * correctif d'avant : la relance testait `!opts.screen`, or ce défaut-ci n'est
+ * pas la chaîne vide. La condition était donc fausse à chaque `make argus-a11y`,
+ * et la relance ne se déclenchait dans AUCUN cas nominal.
+ */
+export const ECRAN_COURANT = 'écran courant';
 /** Densité de référence Android : 1 dp = 1 px à 160 dpi. */
 const BASELINE_DPI = 160;
 
 /** @param {string[]} argv */
-function parseArgs(argv) {
-  const opts = { device: '', screen: 'écran courant', platform: '' };
+export function parseArgs(argv) {
+  const opts = { device: '', screen: ECRAN_COURANT, platform: '' };
   for (const arg of argv) {
     const [key, value] = arg.split('=');
     if (key === '--device') opts.device = value ?? '';
@@ -81,6 +96,47 @@ const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
  * @param {Array<Record<string,string>>} nodes @param {any} config @param {string} requested
  * @returns {{id:string, matched:boolean, kind:'reconnu'|'autre'|'aucune'|'sans-declaration', detail:string}}
  */
+/**
+ * Faut-il relancer l'app avant de mesurer ?
+ *
+ * ⚠️ CETTE DÉCISION EST EXTRAITE POUR ÊTRE MESURABLE. Elle vivait en ligne dans
+ * `main()`, sous la forme `!identity.matched && !opts.screen`, et elle portait
+ * DEUX défauts qu'aucune relecture n'a vus :
+ *
+ *   — `!opts.screen` est faux dès que personne ne passe `--screen`, puisque le
+ *     défaut vaut alors `ECRAN_COURANT` et non la chaîne vide. La relance ne se
+ *     déclenchait donc jamais en usage nominal ;
+ *   — et le cas « l'app n'est pas au premier plan DU TOUT » sortait plus haut,
+ *     en `process.exit(2)`, sans jamais l'atteindre. C'est précisément ce que
+ *     `argus-perf` produit en laissant l'app arrêtée, donc ce que la chaîne
+ *     `make argus` rencontre.
+ *
+ * Un `--screen` explicite interdit la relance, et c'est le seul cas : l'état a
+ * été posé à la main, le relancer mesurerait un autre écran tout en le
+ * rapportant sous le nom demandé.
+ * @param {{foreground:boolean, matched:boolean, requested:string}} etat
+ * @returns {{relaunch:boolean, why:string}}
+ */
+export function relaunchDecision({ foreground, matched, requested }) {
+  if (requested && requested !== ECRAN_COURANT) {
+    return {
+      relaunch: false,
+      why: `« ${requested} » a été demandé explicitement : l'état vient de toi, on ne le défait pas.`,
+    };
+  }
+  if (!foreground) {
+    return {
+      relaunch: true,
+      why: 'l\'application n\'est pas au premier plan — c\'est l\'état dans lequel '
+        + '`argus-perf` la laisse, donc celui que la chaîne `make argus` rencontre.',
+    };
+  }
+  if (!matched) {
+    return { relaunch: true, why: 'l\'app est là, mais sur un écran qu\'aucune ancre déclarée ne reconnaît.' };
+  }
+  return { relaunch: false, why: '' };
+}
+
 export function identifyScreen(nodes, config, requested) {
   const declared = (config.screens ?? []).filter((/** @type {any} */ s) => (s.anchor ?? '').trim());
   if (declared.length === 0) {
@@ -288,19 +344,8 @@ function main() {
   // sans filtrer reviendrait à noter l'accessibilité de l'app qui se trouve
   // devant — et à la publier sous le nom de la nôtre.
   const packageName = config.app.androidPackage;
-  const appNodes = nodes.filter((n) => n.package === packageName);
-  if (appNodes.length === 0) {
-    const seen = [...new Set(nodes.map((n) => n.package).filter(Boolean))];
-    const why = `« ${packageName} » n'est pas au premier plan sur ${udid} `
-      + `(paquets vus : ${seen.join(', ') || 'aucun'}). Lance l'app avant de mesurer.`;
-    err(why);
-    writeJson(reportPath, {
-      platform, device: { udid, dpi },
-      screen: { requested: opts.screen, identified: '', matched: false },
-      skipped: true, skipReason: why, findings: [],
-    });
-    process.exit(2);
-  }
+  let dernierDump = nodes;
+  let appNodes = nodes.filter((n) => n.package === packageName);
 
   // ⚠️ Quel écran est-on en train de mesurer ? `--screen` n'était qu'une
   // ÉTIQUETTE : on écrivait dans le rapport le nom qu'on avait tapé, pas celui
@@ -310,9 +355,11 @@ function main() {
   //
   // On le RECONNAÎT donc, en croisant le dump avec les ancres déclarées. C'est
   // le seul moyen d'affirmer quoi que ce soit sur l'écran mesuré.
-  let identity = identifyScreen(appNodes, config, opts.screen);
+  let identity = appNodes.length > 0
+    ? identifyScreen(appNodes, config, opts.screen)
+    : { id: '', matched: false, kind: /** @type {const} */ ('aucune'), detail: `« ${packageName} » n'est pas au premier plan sur ${udid}.` };
 
-  // ⚠️ UNE SEULE TENTATIVE DE RATTRAPAGE, ET ELLE EST DITE.
+  // ⚠️ UNE SEULE RELANCE, PLUSIEURS LECTURES, ET C'EST DIT.
   //
   // La cible `argus` enchaîne ce script APRÈS la suite Maestro, qui laisse
   // l'app là où son dernier flow s'est arrêté — personne ne sait où. Mesuré
@@ -321,26 +368,70 @@ function main() {
   // conclure ; c'était l'ordonnancement qui le mettait en position de ne rien
   // mesurer.
   //
-  // On relance donc l'app une fois, et on regarde à nouveau. Un `am force-stop`
-  // suivi du lanceur suffit à revenir à l'écran de départ.
+  // On relance donc l'app une fois — `am force-stop` puis le lanceur suffit à
+  // revenir à l'écran de départ — et on relit jusqu'à ce que l'écran soit posé.
   //
   // ⚠️ PAS de `pm clear` ici, et c'est délibéré : effacer les données de l'app
   // est une ÉCRITURE, que la matrice de garde-fous gouverne par `ENV`. Un
   // simple redémarrage obtient le même écran sans rien détruire — le faire au
   // passage, dans un script de mesure, serait exactement le genre d'effet de
   // bord qu'aucun ENV n'a autorisé.
-  if (!identity.matched && !opts.screen) {
-    warn(`${identity.detail}\n  → relance de l'app pour mesurer un écran connu, puis seconde lecture.`);
+  const decision = relaunchDecision({
+    foreground: appNodes.length > 0, matched: identity.matched, requested: opts.screen,
+  });
+  if (decision.relaunch) {
+    warn(`${decision.why}\n  → relance de l'app pour mesurer un écran connu, puis seconde lecture.`);
     adb(udid, ['shell', 'am', 'force-stop', packageName]);
     adb(udid, ['shell', 'monkey', '-p', packageName, '-c', 'android.intent.category.LAUNCHER', '1']);
-    const relu = dumpHierarchy(udid);
-    if (relu.xml) {
-      const encore = parseNodes(relu.xml).filter((n) => n.package === packageName);
-      if (encore.length > 0) {
-        appNodes.splice(0, appNodes.length, ...encore);
-        identity = identifyScreen(appNodes, config, opts.screen);
+
+    // ⚠️ UN SEUL DUMP NE SUFFIT PLUS DEPUIS QUE L'APP PEUT ÊTRE ARRÊTÉE. Une
+    // app qu'on ramène au premier plan est là tout de suite ; une app qu'on
+    // DÉMARRE traverse son splash, et le dump pris pendant montre un écran que
+    // personne ne verra — le relevé porterait alors sur l'entrée, pas sur
+    // l'écran. On relit donc jusqu'à reconnaître un écran déclaré, dans le
+    // budget d'attente du harnais et pas une seconde de plus.
+    const limite = Date.now() + startTimeoutMs(config);
+    const pause = new Int32Array(new SharedArrayBuffer(4));
+    let empreinte = '';
+    do {
+      const relu = dumpHierarchy(udid);
+      if (relu.xml) {
+        dernierDump = parseNodes(relu.xml);
+        const encore = dernierDump.filter((n) => n.package === packageName);
+        if (encore.length > 0) {
+          appNodes = encore;
+          identity = identifyScreen(appNodes, config, opts.screen);
+          if (identity.matched) break;
+          // Écran non reconnu : ce n'est un splash QUE s'il bouge encore. Deux
+          // lectures identiques disent qu'il est posé, et attendre davantage n'y
+          // changerait rien — ça coûterait le budget entier à chaque run d'un
+          // projet dont les ancres ne sont pas encore déclarées, c'est-à-dire
+          // exactement au moment où l'on découvre le harnais.
+          const vu = `${encore.length}·${encore.map((n) => n['resource-id'] ?? '').sort().join('|')}`;
+          if (vu === empreinte) break;
+          empreinte = vu;
+        }
       }
-    }
+      Atomics.wait(pause, 0, 0, 500);
+    } while (Date.now() < limite);
+  }
+
+  // ⚠️ CE REFUS VIENT APRÈS LA RELANCE, ET C'ÉTAIT TOUT LE DÉFAUT. Il sortait
+  // plus haut, si bien que le seul état d'où l'on pouvait se rattraper — l'app
+  // arrêtée — était le seul qui n'atteignait jamais le rattrapage.
+  if (appNodes.length === 0) {
+    const seen = [...new Set(dernierDump.map((n) => n.package).filter(Boolean))];
+    const why = `« ${packageName} » n'est pas au premier plan sur ${udid} `
+      + `(paquets vus : ${seen.join(', ') || 'aucun'}) — ${decision.relaunch
+        ? 'et la relance n\'y a rien changé. Vérifie que le paquet est bien installé (adb shell pm list packages | grep …).'
+        : 'lance l\'app avant de mesurer.'}`;
+    err(why);
+    writeJson(reportPath, {
+      platform, device: { udid, dpi },
+      screen: { requested: opts.screen, identified: '', matched: false },
+      skipped: true, skipReason: why, findings: [],
+    });
+    process.exit(2);
   }
 
   (identity.matched ? log : warn)(identity.detail);

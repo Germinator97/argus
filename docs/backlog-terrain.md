@@ -338,7 +338,7 @@ cause du défaut, devient la **contre-épreuve d'instrument** : sans un seul
 un qui prouve le **câblage** du pubspec : les autres passent le nom en argument,
 donc aucun ne verrait le jour où `auditApk` cesserait d'aller le lire.
 
-### 64. `make argus` casse encore sa dimension a11y — le correctif du 44 était à moitié fait
+### 64. ✅ Corrigé le 22/08/2026 — `make argus` cassait sa dimension a11y : le correctif du 44 ne partait JAMAIS
 
 La relance auto-correctrice posée au point 44 ne couvre que le cas « l'app est là
 mais sur un écran inconnu ». Quand le paquet n'est **pas au premier plan du tout**
@@ -349,6 +349,27 @@ sort **avant** de l'atteindre.
 qu'on avait sous les yeux, et rien ne signalait l'autre : le script refusait de
 conclure, ce qui est le bon comportement, et masquait donc que la dimension ne
 rendait rien dans le run agrégé.
+
+**Corrigé — et le constat était en dessous de la vérité.** La relance ne couvrait
+pas « un cas sur deux » : elle ne partait **jamais**. Sa condition testait
+`!opts.screen`, or le défaut de `--screen` n'est pas la chaîne vide mais
+`'écran courant'` — donc `!opts.screen` valait `false` à chaque `make argus-a11y`,
+qui ne la passe pas. Une valeur sentinelle non vide avait vidé la condition
+au moment même où on l'écrivait, et rien ne pouvait le dire : le script sortait
+avec le message honnête d'une dimension qui ne conclut pas.
+
+Trois gestes : la décision est **extraite et exportée** (`relaunchDecision`) au
+lieu de vivre en ligne dans `main()` ; le refus « pas au premier plan » passe
+**après** la relance, si bien que le seul état d'où l'on pouvait se rattraper
+cesse d'être le seul qui n'y arrivait pas ; et la seconde lecture devient une
+boucle bornée par le budget d'attente du harnais, parce qu'une app qu'on
+**démarre** traverse son splash — un dump pris pendant décrirait l'entrée, pas
+l'écran. Elle s'arrête dès que deux lectures coïncident, pour ne pas coûter le
+budget entier à un projet dont les ancres ne sont pas encore posées.
+
+Six gardes, dont un qui branche la décision sur la valeur que `parseArgs` produit
+**vraiment** — la tester sur `''` aurait re-signé le défaut — et un qui vérifie
+l'**ordre** des deux blocs dans la source.
 
 ### 65. Le correctif du 58 a CRÉÉ une contradiction dans le même paragraphe
 
