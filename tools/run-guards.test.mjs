@@ -13,7 +13,8 @@
 //
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,7 @@ import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { flutterCommand, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -476,11 +477,41 @@ test('un tag exclu ne suffit pas à faire tourner la suite principale', () => {
 // ── La commande Flutter est celle du PROJET ─────────────────────────────────
 
 test('une commande flutter n\'est préfixée que si le projet épingle son SDK', () => {
-  // Ce dépôt n'est pas un projet Flutter : pas de .fvmrc, donc pas de préfixe.
-  assert.equal(flutterCommand('flutter build apk --debug'), 'flutter build apk --debug');
-  // Et ce qui n'est pas une commande flutter n'est jamais touché.
-  assert.equal(flutterCommand('make argus-build'), 'make argus-build');
-  assert.equal(flutterCommand('fvm flutter build apk --debug'), 'fvm flutter build apk --debug');
-  assert.equal(flutterCommand(''), '');
-  assert.equal(flutterCommand(undefined), '');
+  // ⚠️ Les DEUX valeurs de `pinned`, et c'est tout l'objet. La première version
+  // de ce garde appelait `flutterCommand`, qui lit le disque : dans un dépôt
+  // sans `.fvmrc` la branche qui préfixe est INATTEIGNABLE, si bien que le test
+  // restait vert en la cassant. Une mutation l'a dit ; aucune relecture ne
+  // l'aurait vu.
+  assert.equal(flutterCommandIn('flutter build apk --debug', true), 'fvm flutter build apk --debug');
+  assert.equal(flutterCommandIn('flutter build apk --debug', false), 'flutter build apk --debug');
+
+  // Ce qui n'est pas une commande flutter n'est jamais touché, épinglé ou non.
+  for (const pinned of [true, false]) {
+    assert.equal(flutterCommandIn('make argus-build', pinned), 'make argus-build');
+    assert.equal(flutterCommandIn('fvm flutter build apk --debug', pinned), 'fvm flutter build apk --debug');
+    assert.equal(flutterCommandIn('', pinned), '');
+    assert.equal(flutterCommandIn(undefined, pinned), '');
+  }
+});
+
+test('l\'épinglage se lit sur le disque, et les deux marqueurs comptent', () => {
+  // Le CÂBLAGE, pas la décision : sans lui, `usesFvm` pourrait rendre `false`
+  // partout et les tests ci-dessus resteraient verts.
+  const base = mkdtempSync(join(tmpdir(), 'argus-fvm-'));
+  const avant = process.cwd();
+  try {
+    process.chdir(base);
+    assert.equal(usesFvm(), false, 'un dossier nu n\'épingle rien');
+
+    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.32.0"}\n');
+    assert.equal(usesFvm(), true, '.fvmrc suffit');
+    assert.equal(flutterCommand('flutter test'), 'fvm flutter test');
+
+    rmSync(join(base, '.fvmrc'));
+    mkdirSync(join(base, '.fvm'));
+    assert.equal(usesFvm(), true, 'le dossier .fvm aussi — un projet peut n\'avoir que lui');
+  } finally {
+    process.chdir(avant);
+    rmSync(base, { recursive: true, force: true });
+  }
 });

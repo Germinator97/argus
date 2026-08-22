@@ -27,7 +27,7 @@ CIBLES = {
     "visual": FLOWS / "visual.yaml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 34
+NB_TESTS = 35
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -98,8 +98,14 @@ MUTATIONS = [
      "    visual: includeTags.includes('visual') && !exclus.has('visual'),",
      "    visual: !exclus.has('visual'),"),
     ("config", "flutterCommand préfixe ce qui n'est pas du flutter",
-     "  if (!usesFvm() || !text.startsWith('flutter ')) return text;",
-     "  if (!usesFvm()) return text;"),
+     "  if (!pinned || !text.startsWith('flutter ')) return text;",
+     "  if (!pinned) return text;"),
+    ("config", "flutterCommand ne préfixe plus rien",
+     "  return `fvm ${text}`;",
+     "  return text;"),
+    ("config", "le dossier .fvm cesse de compter comme un épinglage",
+     "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));",
+     "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc'));"),
     ("visual", "la capture n'est plus recadrée, la comparaison si",
      "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
      "                  id: ${ARGUS_VISUAL_CROP}\n"

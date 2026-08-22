@@ -550,17 +550,29 @@ export function sh(bin, args = [], opts = {}) {
 export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));
 
 /**
- * Une commande Flutter telle qu'il faut la TAPER dans ce projet.
+ * La décision, séparée de sa mesure.
  *
  * Ne préfixe que ce qui commence par `flutter ` : une commande déjà écrite
  * `fvm flutter …`, ou qui passe par un script maison, est rendue intacte.
- * @param {string} command @returns {string}
+ *
+ * ⚠️ `pinned` est un paramètre, et pas un appel à [usesFvm], POUR POUVOIR ÊTRE
+ * TESTÉ. Tant que la fonction lisait le disque elle-même, un garde écrit dans un
+ * dépôt sans `.fvmrc` n'atteignait jamais la branche qui préfixe : il vérifiait
+ * la cohérence de la logique sans jamais l'exercer, et restait vert quand on la
+ * cassait. Découvert par mutation, pas par relecture.
+ * @param {string} command @param {boolean} pinned @returns {string}
  */
-export function flutterCommand(command) {
+export function flutterCommandIn(command, pinned) {
   const text = String(command ?? '').trim();
-  if (!usesFvm() || !text.startsWith('flutter ')) return text;
+  if (!pinned || !text.startsWith('flutter ')) return text;
   return `fvm ${text}`;
 }
+
+/**
+ * Une commande Flutter telle qu'il faut la TAPER dans ce projet.
+ * @param {string} command @returns {string}
+ */
+export const flutterCommand = (command) => flutterCommandIn(command, usesFvm());
 
 /**
  * Outils optionnels, avec la raison de leur présence et comment les installer.
