@@ -603,12 +603,20 @@ qu'on y pense — c'est l'autre moitié, sans laquelle « ajouter un levier » s
 devenu « ne plus suivre le projet ». Une valeur explicite peut être **plus basse**
 que la dérivation, sinon elle ne découplerait rien.
 
-### 73. `allowSecretsIn` livre deux entrées Firebase, et le scanner crie dessus
+### 73. ✅ Corrigé le 22/08/2026 — `allowSecretsIn` livrait deux entrées Firebase, et le scanner criait dessus
 
 Le défaut du scaffold cite `google-services.json` et `GoogleService-Info.plist`.
 Sur un projet sans Firebase, elles ne dispensent aucun fichier — et `sec.mjs:298`
 **avertit** précisément dans ce cas. Le skill crie donc pour sa propre valeur par
 défaut, ce qu'il reproche ailleurs aux rapports.
+
+**Corrigé : la liste est vide par défaut**, et les deux entrées Firebase sont
+écrites en commentaire, à recopier quand le projet en a l'usage. Une dispense
+s'ajoute quand un run remonte un faux positif, pas avant.
+
+Mesuré dans les deux sens sur le banc : liste vide → aucun avertissement ;
+l'ancienne valeur par défaut remise → « 2 entrée(s) ne dispensent aucun fichier
+scanné ». L'instrument mesure, donc son silence vaut quelque chose.
 
 ### 74. Le bloc de compteurs de §2b n'a pas de case pour le cas qu'il prescrit
 

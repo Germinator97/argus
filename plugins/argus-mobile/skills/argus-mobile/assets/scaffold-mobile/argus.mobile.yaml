@@ -349,9 +349,18 @@ security:
   # regardé, donc l'inscrire ne dispense rien — mais ressemble à une décision de
   # sécurité, et plus personne ne la remet en cause. `make argus-sec` signale
   # désormais les entrées qui ne dispensent aucun fichier scanné.
-  allowSecretsIn:
-    - android/app/google-services.json
-    - ios/Runner/GoogleService-Info.plist
+  #
+  # ⚠️ CETTE LISTE EST VIDE PAR DÉFAUT, ET C'EST VOULU. Elle a livré pendant un
+  # temps les deux fichiers Firebase ci-dessous, qui n'existent pas sur un projet
+  # qui n'utilise pas Firebase — le scan signalait donc deux entrées inertes dès
+  # la première exécution, c'est-à-dire que le harnais criait au loup pour sa
+  # propre valeur par défaut, ce qu'il reproche justement aux rapports.
+  #
+  # Ajoute une ligne quand un run remonte un faux positif, pas avant. Si tu
+  # utilises Firebase, les deux entrées à écrire sont :
+  #     - android/app/google-services.json
+  #     - ios/Runner/GoogleService-Info.plist
+  allowSecretsIn: []
   # Sévérité SCA (osv-scanner) qui fait échouer.
   scaFailOn: high
 
