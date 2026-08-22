@@ -63,13 +63,31 @@ const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
  *
  * Rend toujours un verdict lisible, y compris « aucun » : une mesure qui ne
  * sait pas de quel écran elle parle vaut mieux si elle le dit.
+ *
+ * ⚠️ `kind` porte la NATURE du verdict, et pas seulement son échec. Quatre
+ * situations, dont deux qu'un simple booléen confondait :
+ *
+ *   `reconnu`          l'écran affiché est celui qu'on visait
+ *   `autre`            un écran du harnais, mais pas celui demandé
+ *   `aucune`           aucune ancre déclarée à l'écran — splash, système, état
+ *                      non déclaré : le relevé ne dit RIEN de ta couverture
+ *   `sans-declaration` rien n'est déclaré : on ne peut reconnaître quoi que ce soit
+ *
+ * `aucune` et `autre` ne veulent pas dire la même chose et n'appellent pas le
+ * même geste — le premier dit que la mesure est hors sujet, le second qu'elle
+ * porte sur un écran réel qu'on n'avait pas demandé. Les avoir tous deux en
+ * `matched: false` rendait le garde incapable de les distinguer, ce qu'une
+ * mutation a montré et qu'aucune relecture n'avait vu.
  * @param {Array<Record<string,string>>} nodes @param {any} config @param {string} requested
- * @returns {{id:string, matched:boolean, detail:string}}
+ * @returns {{id:string, matched:boolean, kind:'reconnu'|'autre'|'aucune'|'sans-declaration', detail:string}}
  */
 export function identifyScreen(nodes, config, requested) {
   const declared = (config.screens ?? []).filter((/** @type {any} */ s) => (s.anchor ?? '').trim());
   if (declared.length === 0) {
-    return { id: '', matched: false, detail: 'aucun écran déclaré avec une ancre : impossible de reconnaître ce qui est affiché.' };
+    return {
+      id: '', matched: false, kind: 'sans-declaration',
+      detail: 'aucun écran déclaré avec une ancre : impossible de reconnaître ce qui est affiché.',
+    };
   }
   // L'ancre apparaît dans `resource-id` sur les dumps Android ; on balaie aussi
   // les autres attributs textuels, parce que le dump n'a pas de forme garantie
@@ -82,15 +100,16 @@ export function identifyScreen(nodes, config, requested) {
     return {
       id: '',
       matched: false,
+      kind: 'aucune',
       detail: `aucune ancre déclarée n'est présente à l'écran${attendu} — ce qui est mesuré n'est PAS un écran du harnais.`
         + ' Splash, écran système, ou état non déclaré : le relevé ne dit rien de ta couverture.',
     };
   }
   const id = found.map((/** @type {any} */ s) => s.id).join('+');
   if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {
-    return { id, matched: false, detail: `écran affiché « ${id} », qui n'est pas « ${requested} » — la mesure ne porte pas sur ce que tu as demandé.` };
+    return { id, matched: false, kind: 'autre', detail: `écran affiché « ${id} », qui n'est pas « ${requested} » — la mesure ne porte pas sur ce que tu as demandé.` };
   }
-  return { id, matched: true, detail: `écran reconnu : « ${id} ».` };
+  return { id, matched: true, kind: 'reconnu', detail: `écran reconnu : « ${id} ».` };
 }
 
 /**
@@ -316,7 +335,10 @@ function main() {
     err(reasonEmpty);
     writeJson(reportPath, {
       platform, device: { udid, dpi },
-      screen: { requested: opts.screen, identified: identifyScreen(appNodes, config, opts.screen).id, matched: false },
+      screen: (() => {
+        const id = identifyScreen(appNodes, config, opts.screen);
+        return { requested: opts.screen, identified: id.id, matched: false, kind: id.kind };
+      })(),
       skipped: true,
       skipReason: reasonEmpty, nodesSeen: appNodes.length, nodesWithSemantics: labelled, findings: [],
     });
@@ -333,7 +355,10 @@ function main() {
     // Ce qui a été demandé et ce qui a été RECONNU, côte à côte : les
     // confondre est précisément ce qui a fait publier une mesure de splash
     // sous le nom d'un écran métier.
-    screen: { requested: opts.screen, identified: identity.id, matched: identity.matched },
+    screen: {
+      requested: opts.screen, identified: identity.id,
+      matched: identity.matched, kind: identity.kind,
+    },
     metrics: {
       nodesSeen: appNodes.length,
       nodesTotalOnScreen: nodes.length,

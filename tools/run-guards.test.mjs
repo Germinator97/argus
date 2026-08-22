@@ -586,21 +586,40 @@ test('l\'écran affiché est reconnu par son ancre, pas par ce qu\'on a tapé', 
 
 test('un splash ne se fait pas passer pour un écran du harnais', () => {
   const v = identifyScreen(dump(['io.flutter.splash', 'decor_view']), CONFIG_ECRANS, 'home');
+  // ⚠️ `kind`, pas `matched`. Une mutation a montré que ce garde restait vert
+  // en supprimant cette branche : « aucune ancre à l'écran » retombait alors
+  // dans « pas l'écran demandé », qui rend lui aussi matched:false. Les deux
+  // n'appellent pourtant pas le même geste, et un booléen ne les sépare pas.
+  assert.equal(v.kind, 'aucune', 'ce qui est mesuré n\'est aucun écran du harnais');
   assert.equal(v.matched, false);
-  assert.equal(v.id, '', 'aucune ancre déclarée n\'est là : le relevé ne porte sur aucun écran connu');
+  assert.equal(v.id, '');
   assert.match(v.detail, /home/, 'et il doit dire ce qu\'on attendait');
 });
 
-test('mesurer login en croyant mesurer home est signalé', () => {
+test('mesurer login en croyant mesurer home est signalé, et distinctement', () => {
   const v = identifyScreen(dump(['login_root']), CONFIG_ECRANS, 'login');
+  assert.equal(v.kind, 'reconnu');
   assert.equal(v.matched, true);
+
   const faux = identifyScreen(dump(['login_root']), CONFIG_ECRANS, 'home');
-  assert.equal(faux.matched, false, 'le bon écran, mais pas celui qu\'on a demandé');
+  assert.equal(faux.kind, 'autre', 'un vrai écran du harnais, mais pas celui demandé');
+  assert.equal(faux.matched, false);
   assert.equal(faux.id, 'login', 'et on doit quand même savoir lequel c\'était');
 });
 
 test('sans ancre déclarée nulle part, on le DIT plutôt que d\'affirmer', () => {
   const v = identifyScreen(dump(['quoi']), { screens: [{ id: 'home', anchor: '' }] }, '');
+  assert.equal(v.kind, 'sans-declaration');
   assert.equal(v.matched, false);
   assert.match(v.detail, /aucun écran déclaré/);
+});
+
+test('les quatre verdicts sont bien quatre — sinon deux causes se confondent', () => {
+  const rendus = [
+    identifyScreen(dump(['home_root']), CONFIG_ECRANS, 'home').kind,
+    identifyScreen(dump(['login_root']), CONFIG_ECRANS, 'home').kind,
+    identifyScreen(dump(['splash']), CONFIG_ECRANS, 'home').kind,
+    identifyScreen(dump(['splash']), { screens: [] }, 'home').kind,
+  ];
+  assert.deepEqual(rendus, ['reconnu', 'autre', 'aucune', 'sans-declaration']);
 });

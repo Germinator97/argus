@@ -29,7 +29,7 @@ CIBLES = {
     "a11y": SCAFFOLD / "a11y.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 44
+NB_TESTS = 45
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
