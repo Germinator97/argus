@@ -11,7 +11,7 @@
 #   test/argus/harness.dart       les écrans à monter, les polices, le thème
 #   test/argus/known_issues.dart  la dette que les gardes révèlent
 #   .maestro/*.yaml marqués OWNED les parcours métier
-# `install-mobile.sh` te les liste en sortant, avec les TODO(argus) restants.
+# `install-mobile.sh` te les liste en sortant, avec les `TODO(argus)` restants.
 #
 # Les valeurs sensibles n'ont RIEN à faire dans ce fichier. Les identifiants de
 # test viennent de l'environnement (voir `auth.secretsFromEnv`) et sont injectés
@@ -124,7 +124,7 @@ screens:
     priority: p0
     visual: true
   - id: login
-    anchor: ''         # TODO(argus)
+    anchor: ''         # TODO(argus): l'ancre de racine de cet écran
     priority: p0
     visual: true
   # - id: profile

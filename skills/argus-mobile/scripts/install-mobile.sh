@@ -256,7 +256,13 @@ echo "Les fichiers qui t'appartiennent (jamais écrasés, jamais mis à jour) :"
 while IFS= read -r src; do
   head -20 "$src" | grep -qF 'ARGUS:OWNED' || continue
   rel="${src#"$SCAFFOLD_DIR"/}"
-  restant="$(grep -c 'TODO(argus)' "$TARGET/$rel" 2>/dev/null || echo 0)"
+  # ⚠️ Le deux-points est ce qui sépare une DIRECTIVE d'une MENTION. Sans lui,
+  # ce compteur additionnait la ligne de `argus.mobile.yaml` qui EXPLIQUE le
+  # mécanisme : ce fichier rapportait « 1 TODO à traiter » pour l'éternité, même
+  # entièrement rempli. C'est le défaut que l'en-tête de ce script décrit pour
+  # ARGUS:OWNED — un fichier doit pouvoir PARLER d'un marqueur sans être compté
+  # par ce qu'il en dit — et dont la protection n'avait pas été étendue ici.
+  restant="$(grep -c 'TODO(argus):' "$TARGET/$rel" 2>/dev/null || echo 0)"
   if [ "$restant" -gt 0 ]; then
     echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
   else

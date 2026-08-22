@@ -878,3 +878,54 @@ test('le rapport ne promet plus de métriques qu\'il n\'écrit pas', () => {
   assert.ok(!clesDuRapport().includes('metrics'),
     'si report.json porte enfin `metrics`, c\'est la doc qu\'il faut rouvrir : elle explique pourquoi il ne le pouvait pas');
 });
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Un marqueur ne doit pas compter les fichiers qui en PARLENT
+// ───────────────────────────────────────────────────────────────────────────
+//
+// L'installeur comptait les marqueurs de tâche avec un grep nu, si bien que la
+// ligne d'argus.mobile.yaml qui EXPLIQUE le mécanisme était comptée comme une
+// tâche : ce fichier rapportait « 1 à traiter » pour l'éternité, même
+// entièrement rempli. C'est exactement ce que l'en-tête de install-mobile.sh
+// décrit pour ARGUS:OWNED, et dont la protection n'avait pas été étendue.
+//
+// Le deux-points sépare la DIRECTIVE de la MENTION. Une mention en prose reste
+// permise entre backticks — sans quoi la doc du mécanisme deviendrait
+// impossible à écrire, ce qui est l'autre moitié du même piège.
+//
+// ⚠️ Le motif est CONCATÉNÉ : écrit en clair, ce garde compterait sa propre
+// mention et rougirait sur lui-même.
+
+test('tout marqueur de tâche du scaffold est une directive, ou une mention citée', () => {
+  const marqueur = 'TODO' + '(argus)';
+  const racine = join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile');
+  const fichiers = [];
+  const parcourir = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const chemin = join(d, e.name);
+      if (e.isDirectory()) parcourir(chemin);
+      else fichiers.push(chemin);
+    }
+  };
+  parcourir(racine);
+  assert.ok(fichiers.length >= 30, `motif introuvable : ${fichiers.length} fichier(s) lus`);
+
+  let vus = 0;
+  for (const f of fichiers) {
+    let texte;
+    try { texte = readFileSync(f, 'utf8'); } catch { continue; }
+    for (const ligne of texte.split('\n')) {
+      const i = ligne.indexOf(marqueur);
+      if (i === -1) continue;
+      vus++;
+      const suite = ligne.slice(i + marqueur.length);
+      const cite = ligne[i - 1] === '`' || suite.startsWith('`');
+      assert.ok(suite.startsWith(':') || cite,
+        `${f.slice(racine.length + 1)} : « ${ligne.trim()} » — un marqueur doit dire quoi faire `
+        + '(deux-points) ou être cité entre backticks. Sans ça, un fichier qui PARLE du mécanisme '
+        + 'est compté comme ayant du travail en attente, pour toujours.');
+    }
+  }
+  assert.ok(vus >= 10, `garde vacant : ${vus} marqueur(s) rencontré(s) dans tout le scaffold`);
+});
