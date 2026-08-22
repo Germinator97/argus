@@ -623,3 +623,51 @@ test('les quatre verdicts sont bien quatre — sinon deux causes se confondent',
   ];
   assert.deepEqual(rendus, ['reconnu', 'autre', 'aucune', 'sans-declaration']);
 });
+
+// ── Le plancher de splash n'est pas un seuil relevé ──────────────────────────
+//
+// Une app qui s'impose 2 s de splash de marque rend `coldStartMs: 2000` rouge
+// par construction. La seule issue offerte était de relever le seuil — ce qui
+// efface d'un coup le plancher assumé ET ce qui a dérivé. Soustraire garde les
+// deux lisibles.
+
+const SPLASH = { thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } };
+
+test('sous le seuil UNE FOIS le splash déduit : aucun finding', () => {
+  // 3,5 s bruts, 1,5 s hors splash : conforme, et un seuil relevé à 4000 aurait
+  // dit la même chose — la différence se voit au cas suivant.
+  const samples = [{ flow: 'smoke', ms: 3500, status: 'COMPLETED' }];
+  assert.deepEqual(startupFindings(samples, DEVICE, 'android', SPLASH), []);
+});
+
+test('un seuil RELEVÉ laisserait passer ce que le plancher attrape', () => {
+  const samples = [{ flow: 'smoke', ms: 4200, status: 'COMPLETED' }];
+  // Avec le plancher : 2200 ms hors splash, au-dessus de 2000 → finding.
+  assert.equal(startupFindings(samples, DEVICE, 'android', SPLASH).length, 1);
+  // Avec un seuil simplement relevé à 4500 : rien. C'est exactement ce qu'on
+  // refuse — la dérive disparaît en même temps que le plancher.
+  assert.deepEqual(
+    startupFindings(samples, DEVICE, 'android', { thresholds: { coldStartMs: 4500 } }),
+    [],
+  );
+});
+
+test('le finding dit les DEUX chiffres, sinon on ne peut pas relire le verdict', () => {
+  const samples = [{ flow: 'smoke', ms: 6200, status: 'COMPLETED' }];
+  const f = startupFindings(samples, DEVICE, 'android', SPLASH)[0];
+  assert.match(f.title, /6 s/);
+  assert.match(f.title, /2000 ms de splash assumés/);
+  assert.match(f.actual, /6200 ms \(4200 hors splash\)/);
+});
+
+test('sans plancher déclaré, rien ne change — et le message ne parle pas de splash', () => {
+  const samples = [{ flow: 'smoke', ms: 9000, status: 'COMPLETED' }];
+  const f = startupFindings(samples, DEVICE, 'android', CONFIG)[0];
+  assert.doesNotMatch(f.title, /splash/, 'une app sans splash n\'a pas à lire ce mot');
+  assert.doesNotMatch(f.actual, /hors splash/);
+});
+
+test('un plancher plus grand que la mesure ne rend pas un temps négatif', () => {
+  const samples = [{ flow: 'smoke', ms: 500, status: 'COMPLETED' }];
+  assert.deepEqual(startupFindings(samples, DEVICE, 'android', SPLASH), []);
+});

@@ -49,6 +49,7 @@ cadre	test/argus/anchors_test.dart
 cadre	test/argus/argus_harness.dart
 cadre	test/argus/argus_types.dart
 owned	test/argus/harness.dart
+owned	test/argus/known_issues.dart
 cadre	test/argus/layout_test.dart
 EOF
 )

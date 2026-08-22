@@ -161,6 +161,18 @@ deepLinks: []
 thresholds:
   # Démarrage à froid / à chaud, en ms (Android : `adb shell am start -W`).
   coldStartMs: 2000
+  # Durée de splash que le PRODUIT impose — une marque qui doit rester à l'écran
+  # un temps minimum. Elle est SOUSTRAITE avant de juger `coldStartMs`.
+  #
+  # ⚠️ Ce n'est pas un assouplissement du seuil, et c'est toute la différence :
+  # une app qui s'impose 2 s de splash rend `coldStartMs: 2000` rouge par
+  # construction, et relever le seuil à 4000 effacerait D'UN COUP le plancher
+  # assumé et ce qui a dérivé. Ici les deux restent lisibles — le rapport écrit
+  # « 6200 ms dont 2000 assumés » — et le verdict porte sur ce qui reste.
+  #
+  # Ne mets ici que ce que tu as MESURÉ et décidé, jamais un nombre choisi pour
+  # verdir : ce serait le contraire d'un garde.
+  brandedSplashMs: 0
   warmStartMs: 1000
   # % de frames au-delà du budget de 16 ms (`dumpsys gfxinfo … framestats`).
   jankFramesPct: 1

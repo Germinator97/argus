@@ -38,7 +38,8 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(tester, screen.build(),
             viewport: argusViewports.first, debugLabel: screen.id);
-        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await argusCheck('${screen.id} · cibles tactiles ≥ 48 dp (Android)',
+            () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)));
         handle.dispose();
       }, skip: argusShouldSkip);
 
@@ -46,7 +47,8 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(tester, screen.build(),
             viewport: argusViewports.first, debugLabel: screen.id);
-        await expectLater(tester, meetsGuideline(iOSTapTargetGuideline));
+        await argusCheck('${screen.id} · cibles tactiles ≥ 44 dp (iOS)',
+            () => expectLater(tester, meetsGuideline(iOSTapTargetGuideline)));
         handle.dispose();
       }, skip: argusShouldSkip);
 
@@ -67,7 +69,8 @@ void main() {
           final SemanticsHandle handle = tester.ensureSemantics();
           await pumpArgus(tester, screen.build(),
             viewport: argusViewports.first, debugLabel: screen.id);
-          await expectLater(tester, meetsGuideline(textContrastGuideline));
+          await argusCheck('${screen.id} · contraste du texte (WCAG AA)',
+              () => expectLater(tester, meetsGuideline(textContrastGuideline)));
           handle.dispose();
         },
         skip: argusShouldSkip || argusTheme() == null,
@@ -82,7 +85,8 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(tester, screen.build(),
             viewport: argusViewports.first, debugLabel: screen.id);
-        await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+        await argusCheck('${screen.id} · toute cible tactile porte un label',
+            () => expectLater(tester, meetsGuideline(labeledTapTargetGuideline)));
         handle.dispose();
       }, skip: argusShouldSkip);
 
@@ -100,7 +104,8 @@ void main() {
           textScale: 2,
           debugLabel: screen.id,
         );
-        await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+        await argusCheck('${screen.id} · cibles tactiles à 200 % de taille de texte',
+            () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)));
         handle.dispose();
       }, skip: argusShouldSkip);
     });

@@ -121,15 +121,6 @@ ancre. Compté d'une façon : 0/24. De l'autre : 5/24 et un rapport flatteur.
 
 ### Cas que le skill ne couvre pas
 
-**20. Que faire des défauts PRÉEXISTANTS que les gardes révèlent ?** §2 exige
-`Z = 0` avant d'installer ; rien ne dit quoi faire des 43 échecs que l'étage 1
-lève sur une app existante. Corriger (dérive de périmètre) ? Mettre en
-quarantaine ? Installer rouge — ce que §3h valide implicitement sans le dire.
-
-**22. Un seuil de démarrage face à un plancher assumé.** L'app impose 2 s de splash
-de marque : le défaut de 2000 ms est rouge par construction. Relever le seuil pour
-verdir serait le contraire d'un garde — mais le skill ne dit pas quoi faire.
-
 **23. Combien d'états déclarer, et lesquels en visuel.** « Une racine par état »
 n'a pas de règle d'arrêt : 13 états × visuel ≈ 9 min de CI. Et il n'existe pas de
 « déclaré mais pas encore atteignable », si bien que `screensConfigured`

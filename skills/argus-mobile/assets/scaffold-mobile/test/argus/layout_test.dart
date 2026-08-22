@@ -55,14 +55,16 @@ void main() {
               debugLabel: screen.id,
             );
             final Object? thrown = tester.takeException();
-            expect(
-              thrown,
-              isNull,
-              reason:
-                  'Débordement sur ${screen.id} en $label.\n'
-                  'Cherche « The relevant error-causing widget was » dans la sortie : '
-                  "le widget fautif n'est presque jamais celui de l'écran.\n\$thrown",
-            );
+            await argusCheck('${screen.id} · $label · rien ne déborde', () async {
+              expect(
+                thrown,
+                isNull,
+                reason:
+                    'Débordement sur ${screen.id} en $label.\n'
+                    'Cherche « The relevant error-causing widget was » dans la sortie : '
+                    "le widget fautif n'est presque jamais celui de l'écran.\n\$thrown",
+              );
+            });
           }, skip: argusShouldSkip);
 
           testWidgets(argusName('$label — aucun texte tronqué'), (
@@ -80,16 +82,18 @@ void main() {
             // consomme d'abord — le garde ci-dessus est celui qui la rapporte.
             tester.takeException();
             final List<String> truncated = argusTruncatedTexts(tester);
-            expect(
-              truncated,
-              isEmpty,
-              reason:
-                  'Texte(s) tronqué(s) sur ${screen.id} en $label :\n'
-                  '  ${truncated.join('\n  ')}\n'
-                  'Un libellé se raccourcit, un NOMBRE ne se tronque pas : « 12 340 XP » '
-                  "coupé en « 1234… » affiche un montant qui n'existe pas. Fais rétrécir "
-                  'les valeurs (FittedBox scaleDown) et raccourcis le libellé.',
-            );
+            await argusCheck('${screen.id} · $label · aucun texte tronqué', () async {
+              expect(
+                truncated,
+                isEmpty,
+                reason:
+                    'Texte(s) tronqué(s) sur ${screen.id} en $label :\n'
+                    '  ${truncated.join('\n  ')}\n'
+                    'Un libellé se raccourcit, un NOMBRE ne se tronque pas : « 12 340 XP » '
+                    "coupé en « 1234… » affiche un montant qui n'existe pas. Fais rétrécir "
+                    'les valeurs (FittedBox scaleDown) et raccourcis le libellé.',
+              );
+            });
           }, skip: argusShouldSkip);
         }
       }

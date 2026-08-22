@@ -29,9 +29,11 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'argus_types.dart';
 import 'harness.dart';
+import 'known_issues.dart';
 
 export 'argus_types.dart';
 export 'harness.dart';
+export 'known_issues.dart';
 
 // ───────────────────────────────────────────────────────────────────────────
 // 3. Mécanique
@@ -300,4 +302,54 @@ List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
         );
       })
       .toList();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 5. La dette assumée
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Exerce [verifier] en tenant compte du relevé figé de [argusKnownIssues].
+///
+/// Deux sens, et c'est ce qui distingue un relevé d'une liste d'exceptions :
+///
+///   clé ABSENTE du relevé  → le défaut doit être absent. Sinon, échec, avec la
+///                            ligne exacte à inscrire si on l'assume.
+///   clé PRÉSENTE           → le défaut doit être ENCORE LÀ. S'il a disparu,
+///                            échec aussi : la ligne doit sortir.
+///
+/// Le second sens est celui qu'on oublie, et sans lui la liste se transforme en
+/// permission permanente — elle survit à ce qu'elle décrit, et le garde cesse
+/// de garder sans rien dire.
+Future<void> argusCheck(String key, Future<void> Function() verifier) async {
+  Object? echec;
+  try {
+    await verifier();
+  } catch (e) {
+    echec = e;
+  }
+
+  if (!argusKnownIssues.contains(key)) {
+    if (echec != null) {
+      fail(
+        '$echec\n\n'
+        '── Défaut PRÉEXISTANT ? ────────────────────────────────────────────\n'
+        'Si celui-ci appartient à l\'application et ne se corrige pas maintenant, '
+        'inscris-le TEL QUEL dans test/argus/known_issues.dart :\n\n'
+        "      '$key',\n\n"
+        'La suite repassera au vert — et rougira à nouveau le jour où il sera '
+        'corrigé, pour te demander de retirer la ligne. Ce n\'est pas une '
+        'exception, c\'est un relevé.',
+      );
+    }
+    return;
+  }
+
+  if (echec == null) {
+    fail(
+      '« $key » figure dans test/argus/known_issues.dart, mais l\'écran PASSE.\n'
+      'Retire cette ligne. Une dette corrigée qui reste inscrite devient une '
+      'permission permanente : la liste survit à ce qu\'elle décrit, et plus '
+      'rien ne mesure ce défaut-là.',
+    );
+  }
 }

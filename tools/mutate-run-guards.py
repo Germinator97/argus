@@ -29,7 +29,7 @@ CIBLES = {
     "a11y": SCAFFOLD / "a11y.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 45
+NB_TESTS = 50
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -108,6 +108,15 @@ MUTATIONS = [
     ("config", "le dossier .fvm cesse de compter comme un épinglage",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc'));"),
+    ("run", "le plancher de splash cesse d'être déduit",
+     "  const over = samples.filter((s) => net(s) > budget);",
+     "  const over = samples.filter((s) => s.ms > budget);"),
+    ("run", "le plancher devient un seuil relevé, donc il efface la dérive",
+     "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0));",
+     "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0) * 10);"),
+    ("run", "le finding cache le temps brut",
+     "        ? `${s.flow} ${Math.round(s.ms)} ms (${Math.round(net(s))} hors splash)`",
+     "        ? `${s.flow} ${Math.round(net(s))} ms`"),
     ("report", "un relevé périmé n'est plus signalé",
      "    .filter((/** @type {any} */ p) => (newest.getTime() - p.at.getTime()) / 60000 > budgetMin)",
      "    .filter((/** @type {any} */ p) => (newest.getTime() - p.at.getTime()) / 60000 > budgetMin * 1000)"),

@@ -751,13 +751,23 @@ function startupSamples(bundles, anchor) {
  */
 function startupFindings(samples, device, platform, config) {
   const budget = config.thresholds?.coldStartMs ?? 2000;
-  const over = samples.filter((s) => s.ms > budget);
+  // ⚠️ Le plancher de marque n'est PAS un assouplissement du seuil : c'est une
+  // durée que le produit a DÉCIDÉ d'imposer, et qui n'a donc rien à voir avec
+  // une régression. Une app à splash de 2 s rendait `coldStartMs: 2000` rouge
+  // par construction, et la seule issue offerte était de relever le seuil — ce
+  // qui efface les deux à la fois, le plancher assumé et ce qui a dérivé.
+  // Ici on soustrait, on compare ce qui reste, et le rapport dit les deux
+  // chiffres : « 6200 ms dont 2000 assumés ».
+  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0));
+  const net = (/** @type {any} */ s) => Math.max(0, s.ms - floor);
+  const over = samples.filter((s) => net(s) > budget);
   if (over.length === 0) return [];
   const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
   const timedOut = samples.filter((s) => s.status.toUpperCase() === 'FAILED').length;
+  const dont = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
   return [{
     id: 'QAM-START',
-    title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître (seuil ${budget} ms)`,
+    title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître${dont} (seuil ${budget} ms)`,
     severity: 'major',
     dimension: 'performance',
     screen: 'démarrage',
@@ -766,9 +776,13 @@ function startupFindings(samples, device, platform, config) {
     device: device.id,
     platform,
     osVersion: device.os ?? '',
-    expected: `écran de départ visible sous ${budget} ms (thresholds.coldStartMs)`,
+    expected: floor > 0
+      ? `écran de départ visible sous ${budget} ms hors splash de marque (thresholds.coldStartMs + brandedSplashMs)`
+      : `écran de départ visible sous ${budget} ms (thresholds.coldStartMs)`,
     actual: `${over.length}/${samples.length} flows au-dessus du seuil : `
-      + over.map((s) => `${s.flow} ${Math.round(s.ms)} ms`).join(', ')
+      + over.map((s) => (floor > 0
+        ? `${s.flow} ${Math.round(s.ms)} ms (${Math.round(net(s))} hors splash)`
+        : `${s.flow} ${Math.round(s.ms)} ms`)).join(', ')
       + (timedOut > 0
         ? `. ${timedOut} y ont épuisé leur budget d'attente — l'échec rapporté nomme l'ancre, mais la cause est ce temps-ci.`
         : ''),
@@ -1135,6 +1149,7 @@ async function main() {
       anchor: home?.anchor ?? '',
       origin: start.origin,   // declared | home | first — voir startScreen()
       budgetMs: config.thresholds?.coldStartMs ?? 2000,
+      brandedSplashMs: Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0)),
       timeoutMs: startTimeoutMs(config),
       samples: startup,
     },
