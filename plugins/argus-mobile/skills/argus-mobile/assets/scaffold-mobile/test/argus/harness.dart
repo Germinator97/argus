@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 
 import 'argus_types.dart';
 
-/// TODO(argus): déclare les écrans à éprouver.
+/// déclare les écrans à éprouver.
 ///
 /// Un écran qui a besoin d'un BlocProvider, d'un repository ou d'un Provider se
 /// construit ici avec ses doubles de test — le harnais ne devine pas tes
@@ -49,9 +49,10 @@ import 'argus_types.dart';
 /// Tant que cette liste est vide, les suites se marquent SKIPPÉES avec la
 /// raison. Elles ne passent pas au vert : un garde qui ne garde rien est pire
 /// qu'un garde absent, parce qu'il rassure.
-final List<ArgusScreen> argusScreens = <ArgusScreen>[];
+final List<ArgusScreen> argusScreens =
+    <ArgusScreen>[]; // TODO(argus): tes écrans
 
-/// TODO(argus): les polices du projet, recopiées de la section `fonts:` du
+/// les polices du projet, recopiées de la section `fonts:` du
 /// `pubspec.yaml` — une entrée par FAMILLE, avec ses fichiers.
 ///
 /// ⚠️ SANS ELLES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
@@ -73,14 +74,15 @@ final List<ArgusScreen> argusScreens = <ArgusScreen>[];
 ///       'FamilleTexte': <String>['assets/fonts/texte/Texte-Variable.ttf'],
 ///       'FamilleChiffres': <String>['assets/fonts/chiffres/Chiffres-Variable.ttf'],
 ///     };
-const Map<String, List<String>> argusFonts = <String, List<String>>{};
+const Map<String, List<String>> argusFonts =
+    <String, List<String>>{}; // TODO(argus): tes polices
 
-/// TODO(argus): la famille appliquée par défaut au thème de test — celle que
+/// la famille appliquée par défaut au thème de test — celle que
 /// `ThemeData.fontFamily` porte dans l'app. DOIT être une clé de [argusFonts] :
 /// un nom qui n'y figure pas retombe en silence sur la police de test.
-const String argusFontFamily = '';
+const String argusFontFamily = ''; // TODO(argus): la famille par défaut
 
-/// TODO(argus): si ton app formate des dates ou des nombres localisés
+/// si ton app formate des dates ou des nombres localisés
 /// (`DateFormat(…, 'fr_FR')`, pluriels `intl`), ajoute ici les delegates —
 /// `flutter_localizations` doit alors être une dépendance du projet.
 ///
@@ -94,7 +96,7 @@ const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =
 /// Locale imposée à la surface de test.
 const Locale argusLocale = Locale('fr', 'FR');
 
-/// TODO(argus): le thème RÉEL de l'application.
+/// le thème RÉEL de l'application.
 ///
 /// ⚠️ SANS LUI, LE CONTRASTE NE PEUT PAS ÊTRE MESURÉ. Les widgets seraient
 /// montés sur le thème Material par défaut, dont le fond est BLANC : sur une
@@ -112,4 +114,4 @@ const Locale argusLocale = Locale('fr', 'FR');
 /// ⚠️ Si ton app propose les DEUX thèmes, duplique le garde de contraste :
 /// une couleur née sur les fonds sombres passe en sombre et échoue en clair,
 /// et l'inverse est tout aussi vrai.
-ThemeData? argusTheme() => null;
+ThemeData? argusTheme() => null; // TODO(argus): le thème réel de l'app

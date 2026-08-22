@@ -271,7 +271,22 @@ while IFS= read -r src; do
   #
   # `|| true` garde ce que grep a imprimé ; le `:-0` couvre le seul cas où il
   # n'imprime rien (fichier absent, exit 2).
-  restant="$(grep -c 'TODO(argus):' "$TARGET/$rel" 2>/dev/null || true)"
+  # ⚠️ ON NE COMPTE PAS LES LIGNES DE DOCUMENTATION. Un dartdoc `///` qui commence
+  # par le marqueur EXPLIQUE quoi mettre dans le champ d'en dessous : rempli, il
+  # reste — c'est de la doc — et le fichier rapportait « 5 TODO à traiter » pour
+  # l'éternité. Le marqueur appartient à la ligne qu'on ÉDITE, jamais à celle qui
+  # la décrit ; c'est le même principe que pour ARGUS:OWNED, un fichier doit
+  # pouvoir PARLER d'un marqueur sans être compté par ce qu'il en dit.
+  #
+  # Deuxième défaut de ce compteur en deux runs (cf. le `|| echo 0` plus haut) :
+  # il compte quelque chose de simple, et se trompe sur ce que « quelque chose »
+  # veut dire.
+  # ⚠️ On EXCLUT les lignes de dartdoc, pas tous les commentaires : le marqueur
+  # est légitime en fin de ligne de code (`final x = []; // TODO(argus): …`), et
+  # un premier motif `^[^/]*TODO` avait fait tomber le compte à zéro sur un
+  # fichier qui en portait quatre. Deux instruments successifs pour un compteur
+  # de quatre lignes.
+  restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep -c 'TODO(argus):' || true)"
   restant="${restant:-0}"
   if [ "$restant" -gt 0 ]; then
     echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"

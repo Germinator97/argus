@@ -1038,7 +1038,7 @@ désinstaller (réinstaller par-dessus demande PLUS de place) puis rebâtir avec
 commande ciblée sur l'ABI. Et il dit où reprendre la séquence, plutôt que de la
 laisser recommencer au début.
 
-### 96. Le compteur de l'installeur compte les `TODO(argus):` qui EXPLIQUENT
+### 96. ✅ Corrigé le 22/08/2026 — Le compteur de l'installeur comptait les `TODO(argus):` qui EXPLIQUENT
 
 Les cinq champs de `harness.dart` portent leur consigne dans un **dartdoc** qui
 commence par `TODO(argus):`. Remplis, ils restent comptés : le fichier rapporte
@@ -1048,6 +1048,18 @@ commence par `TODO(argus):`. Remplis, ils restent comptés : le fichier rapporte
 `ARGUS:OWNED` — un fichier classé par ce qu'il **dit** — et dont la protection
 n'a jamais été étendue au compteur. Deuxième défaut de ce compteur en deux runs
 (cf. 70).
+
+**Corrigé des deux côtés.** Le marqueur descend du dartdoc vers **la ligne qu'on
+édite** (`final … = <ArgusScreen>[]; // TODO(argus): tes écrans`) : il disparaît
+quand on remplit, ce qui est son seul travail. Et le compteur **exclut les
+dartdoc**, pour qu'un projet qui documente son champ ne retombe pas dans le
+piège.
+
+⚠️ **Mon premier motif était faux** : `^[^/]*TODO(argus):` excluait TOUS les
+commentaires, donc les directives légitimes en fin de ligne — `harness.dart`
+tombait à zéro alors qu'il en portait quatre. Deux instruments successifs pour un
+compteur de quatre lignes, et c'est la mesure dans les deux sens qui l'a dit :
+4 à traiter, 3 après avoir rempli la liste des écrans.
 
 ### 97. ✅ Corrigé le 22/08/2026 — Une phrase interrompue en tête de `methodology-mobile.md`
 

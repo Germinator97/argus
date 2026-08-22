@@ -27,7 +27,7 @@
 // rouge en donnant l'impression que la ligne a été prise en compte.
 // ═══════════════════════════════════════════════════════════════════════════
 
-/// TODO(argus): la dette que tu assumes, une ligne par défaut, telle que le
+/// la dette que tu assumes, une ligne par défaut, telle que le
 /// message d'échec te la donne.
 ///
 ///     const Set<String> argusKnownIssues = <String>{
@@ -37,4 +37,5 @@
 ///
 /// Vide est le bon état par défaut : sur un projet neuf il n'y a rien à
 /// assumer, et le premier défaut doit se corriger, pas s'inscrire.
-const Set<String> argusKnownIssues = <String>{};
+const Set<String> argusKnownIssues =
+    <String>{}; // TODO(argus): la dette assumée
