@@ -939,13 +939,22 @@ C'est la **troisième passe consécutive** où ce motif sort, et la deuxième o�
 sort trois fois. Ce n'est plus un oubli, c'est la façon dont les correctifs sont
 pensés : locaux, alors que les défauts sont des manières de raisonner.
 
-### 89. `displays:` n'a pas de troisième état — le 81 s'arrête où le 69 continuait
+### 89. ✅ Corrigé le 22/08/2026 — `displays:` n'avait pas de troisième état
 
 Un affichage sous le pli a **exactement** les deux mauvaises issues que
 `commandsAfterScroll` a fermées pour les commandes : le déclarer rend la suite
 rouge en permanence, l'omettre le sort de toute vérification. `form_reps_value`
 est resté non déclaré pour cette seule raison — c'est le seul écart entre les
 72 ancres posées et les 71 prouvées.
+
+**Corrigé : `displaysAfterScroll:`**, avec les deux mêmes moitiés que son pendant
+— présent au grand gabarit, **absent** au gabarit de référence, sinon la
+déclaration est périmée et le test le dit. Armé par une sonde, vérifié dans les
+trois sens.
+
+⚠️ **Le 81 avait ouvert le troisième état d'un seul côté** : je l'ai écrit en
+regardant `commandsAfterScroll` — dont le dartdoc explique exactement pourquoi il
+existe — sans voir que je créais la même impasse à côté. Le voisin, encore.
 
 ### 90. ✅ Corrigé le 22/08/2026 — `vanishedHint` collait son diagnostic sur un finding visuel
 

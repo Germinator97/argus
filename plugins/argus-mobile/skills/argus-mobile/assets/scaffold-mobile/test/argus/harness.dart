@@ -27,6 +27,8 @@ import 'argus_types.dart';
 ///         // Ce qu'un flow LIT sans y toucher : un compteur, une valeur. Le
 ///         // déclarer ici prouve sa présence sans exiger qu'il soit tapable.
 ///         displays: <String>['home_streak_value'],
+///         // Et son pendant sous le pli, même règle que commandsAfterScroll.
+///         displaysAfterScroll: <String>['home_footer_total'],
 ///         // Le bas d'une liste paresseuse : présent sur device après un
 ///         // défilement, jamais construit au gabarit de référence. Le déclarer
 ///         // ici le fait éprouver sur le plus grand gabarit, au lieu de le

@@ -28,6 +28,7 @@ class ArgusScreen {
     this.commands = const <String>[],
     this.commandsAfterScroll = const <String>[],
     this.displays = const <String>[],
+    this.displaysAfterScroll = const <String>[],
     this.priority = 'p0',
   });
 
@@ -102,6 +103,19 @@ class ArgusScreen {
   /// fait échouer le test, avec la consigne de la remonter dans [commands].
   /// Sans quoi cette liste deviendrait l'endroit où l'on range ce qui rougit.
   final List<String> displays;
+
+  /// Les affichages que cet écran n'expose qu'APRÈS un défilement.
+  ///
+  /// ⚠️ Le pendant exact de [commandsAfterScroll], et il a manqué une passe
+  /// entière. Un affichage sous le pli avait les deux mêmes mauvaises issues
+  /// qu'une commande sous le pli — rouge en permanence, ou plus vérifié du
+  /// tout —, et le troisième état n'avait été ouvert que d'un côté. Un projet
+  /// réel a donc laissé une ancre posée dans le code, déclarée nulle part.
+  ///
+  /// Mêmes deux moitiés que [commandsAfterScroll] : prouvé présent au plus grand
+  /// gabarit, et **absent** au gabarit de référence — sinon la déclaration est
+  /// périmée et le test le dit.
+  final List<String> displaysAfterScroll;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
   /// pose lui-même la surface, la police et les marges système.

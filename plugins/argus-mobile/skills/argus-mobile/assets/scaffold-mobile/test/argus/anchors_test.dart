@@ -281,6 +281,79 @@ void main() {
     );
   }
 
+  // ── Les affichages sous le pli — même forme, autre axe ────────────────────
+  final List<ArgusScreen> affichagesApres = argusScreens
+      .where((ArgusScreen s) => s.displaysAfterScroll.isNotEmpty)
+      .toList();
+
+  if (affichagesApres.isNotEmpty && argusViewports.length < 2) {
+    test(
+      'displaysAfterScroll déclaré, mais un seul gabarit pour en juger',
+      () {},
+      skip:
+          'ce troisième état se mesure en comparant deux gabarits : sans un second, '
+          '« absent ici » et « absent partout » se confondent',
+    );
+  }
+
+  for (final ArgusScreen screen
+      in argusViewports.length < 2 ? <ArgusScreen>[] : affichagesApres) {
+    testWidgets('affichages après défilement de « ${screen.id} » — '
+        '${screen.displaysAfterScroll.length} ancre(s)', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      for (final String ancre in screen.displaysAfterScroll) {
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.last,
+          debugLabel: screen.id,
+        );
+        argusDrainMountException(tester);
+        final bool enGrand = argusNodesById(tester, ancre).isNotEmpty;
+
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        argusDrainMountException(tester);
+        final bool enPetit = argusNodesById(tester, ancre).isNotEmpty;
+
+        await argusCheck(
+          '${screen.id} · affichage « $ancre » présent après défilement',
+          () async {
+            expect(
+              enGrand,
+              isTrue,
+              reason:
+                  'L\'affichage « $ancre » de « ${screen.id} » est déclaré atteignable après '
+                  'défilement, mais il n\'existe sur AUCUN gabarit — pas même '
+                  '${argusViewports.last.name}. Ce n\'est donc pas un pli.',
+            );
+          },
+        );
+
+        // L'autre moitié, sans quoi la liste survit à ce qu'elle décrit.
+        await argusCheck(
+          '${screen.id} · « $ancre » est bien SOUS le pli',
+          () async {
+            expect(
+              enPetit,
+              isFalse,
+              reason:
+                  'L\'affichage « $ancre » est construit dès ${argusViewports.first.name} : '
+                  'la déclaration est périmée, remonte-le dans `displays:`.',
+            );
+          },
+        );
+      }
+      handle.dispose();
+    });
+  }
+
   // ── Le troisième état : atteignable APRÈS défilement ──────────────────────
   //
   // Une ancre au bas d'une liste paresseuse n'existe pas au gabarit de
