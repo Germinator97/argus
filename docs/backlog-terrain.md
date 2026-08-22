@@ -618,13 +618,19 @@ Mesuré dans les deux sens sur le banc : liste vide → aucun avertissement ;
 l'ancienne valeur par défaut remise → « 2 entrée(s) ne dispensent aucun fichier
 scanné ». L'instrument mesure, donc son silence vaut quelque chose.
 
-### 74. Le bloc de compteurs de §2b n'a pas de case pour le cas qu'il prescrit
+### 74. ✅ Corrigé le 22/08/2026 — Le bloc de compteurs de §2b n'avait pas de case pour ce qu'il prescrit
 
 Le format impose une ligne `Commandes : <Y> posées / <N> à poser (<Y/N> %)`, et le
 texte cinq lignes plus bas demande de compter « les composants partagés **une
 fois**, avec leur nombre de call-sites ». Les deux ne tiennent pas dans la même
 ligne. Le skill avertit pourtant qu'un agent qui improvise sa propre forme produit
 exactement ce que ce bloc existe pour empêcher — et il a fallu improviser.
+
+**Corrigé : une sous-ligne `dont partagées : <C> composant(s) couvrant <S>
+call-sites`.** Elle naît du même défaut que la ligne `Racines d'état` deux runs
+plus tôt — **un format qui prescrit une information sans lui donner de case la
+fait inventer**, et deux rapports cessent alors d'être comparables. C'est la
+deuxième fois que ce bloc se corrige par la même leçon.
 
 ### 75. La table `argusScreens` / `screens[]` a un quatrième écart légitime
 

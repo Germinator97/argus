@@ -104,6 +104,7 @@ agents en rendent deux, et aucun des deux ne se compare à l'autre :
 Instrumentation Semantics — parcours critiques
   Racines d'état     : <R> posées / <RT> à poser     ← l'essentiel de la production
   Commandes          : <Y> posées / <N> à poser  (<Y/N> %)
+    dont partagées   : <C> composant(s) couvrant <S> call-sites
   Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
 
 À instrumenter, par fichier :
@@ -121,6 +122,19 @@ plus. Un bloc qui ne comptait que les « widgets interactifs » n'avait pas de c
 pour les **racines d'état**, qui n'en sont pas et qui sont pourtant l'essentiel
 de ce qu'on pose. Un agent y a ajouté sa propre ligne entre crochets : soit
 exactement les deux formats différents que ce bloc existe pour empêcher.
+
+⚠️ **La sous-ligne « dont partagées » existe pour la même raison, et elle est née
+du même défaut.** Trois paragraphes plus bas, ce §2b demande de compter « les
+composants partagés une fois, avec leur nombre de call-sites » — ce que la ligne
+`Commandes` seule ne peut pas porter, puisqu'elle n'a que deux nombres. Un agent
+a donc dû improviser sa propre forme pour obéir aux deux consignes à la fois,
+c'est-à-dire faire exactement ce que le bloc interdit. Un format qui prescrit une
+information sans lui donner de case la fait inventer.
+
+Les deux nombres de la sous-ligne ne se recouvrent pas : `<C>` compte les
+composants qu'on instrumente, `<S>` ce que ça couvre. Sept composants pour
+trente-cinq call-sites est le relevé qui dit le mieux pourquoi c'est ce
+travail-là qui rapporte le plus.
 
 ⚠️ **« Instrumenté » a une définition, une seule.** Un widget est instrumenté
 quand il porte un **`Semantics(identifier:)`**. Un `semanticLabel:` n'en est PAS
