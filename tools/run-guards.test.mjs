@@ -13,6 +13,7 @@
 //
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +27,7 @@ import {
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -710,4 +712,46 @@ test('un sélecteur par TEXTE n\'est pas concerné', () => {
   const steps = [etape('x', 'COMPLETED')];
   assert.equal(vanishedHint(steps, 0, 'text=Bienvenue'), '');
   assert.equal(vanishedHint(steps, 0, ''), '');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// sec.mjs — ce qu'un binaire DEBUG doit produire, et ce qu'il ne doit pas
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Un scan de sécurité sur un build debug ne dit rien de ce que reçoivent les
+// utilisateurs : il se marque donc SAUTÉ, avec sa raison. Le rendre en `major`
+// et `blocker` faisait échouer le gate d'emblée, sur le binaire même que le
+// scaffold prescrit d'analyser par défaut.
+//
+// Les deux sens sont gardés : un correctif qui ferait sauter la dimension pour
+// TOUT binaire passerait le premier test et rougirait le second.
+
+/** Fabrique un faux APK — un zip suffit, `auditApk` ne lit que le listing. */
+const fauxApk = (/** @type {string[]} */ entrees) => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-apk-'));
+  for (const e of entrees) {
+    const f = join(dir, e);
+    mkdirSync(join(f, '..'), { recursive: true });
+    writeFileSync(f, 'x');
+  }
+  const apk = join(dir, 'app.apk');
+  execFileSync('zip', ['-q', '-r', apk, '.'], { cwd: dir });
+  return apk;
+};
+
+test('un binaire DEBUG fait sauter la dimension, sans rendre un seul finding', () => {
+  const { findings, facts } = auditApk(fauxApk(['assets/flutter_assets/kernel_blob.bin']), {});
+  assert.equal(facts.scanned, false, 'un debug ne se scanne pas : il se saute');
+  assert.equal(findings.length, 0,
+    'aucun finding — sinon le gate échoue sur le binaire que le scaffold pointe par défaut');
+  assert.match(facts.why, /debug/i, 'et la raison doit nommer le variant');
+  assert.match(facts.why, /release/i, 'et dire quoi faire pour conclure');
+});
+
+test('un binaire de PUBLICATION est bien scanné — le garde coupe dans un seul sens', () => {
+  const { facts } = auditApk(fauxApk(['lib/arm64-v8a/libapp.so']), {});
+  assert.equal(facts.scanned, true,
+    'sans ça, sauter « sur un debug » se serait mué en « ne jamais rien scanner »');
+  assert.equal(facts.isDebugBuild, false);
 });

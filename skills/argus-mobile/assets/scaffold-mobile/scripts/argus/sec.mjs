@@ -330,7 +330,7 @@ function auditSecrets(root, config) {
  * souvent des sources : les dépendances y ajoutent leurs propres permissions.
  * @param {string} apk @param {any} config @returns {{findings:any[], facts:any}}
  */
-function auditApk(apk, config) {
+export function auditApk(apk, config) {
   /** @type {any[]} */
   const findings = [];
   const listing = sh('unzip', ['-Z1', apk]);
@@ -338,15 +338,36 @@ function auditApk(apk, config) {
   const entries = listing.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
 
   // Un `kernel_blob.bin` signe un build DEBUG : le Dart y est interprété et
-  // lisible. Le retrouver dans ce qu'on croit livrer est un défaut majeur.
+  // lisible.
   const isDebugBuild = entries.some((e) => e.includes('flutter_assets/kernel_blob.bin'));
   const hasAot = entries.some((e) => /lib\/[^/]+\/libapp\.so$/.test(e));
+
+  // ⚠️ SUR UN BUILD DEBUG, RIEN DE CE QUI SUIT NE CONCLUT — la dimension se
+  // marque donc SAUTÉE, avec sa raison, plutôt que de rendre des findings.
+  //
+  // Un debug n'est ni obfusqué, ni signé comme la release, et Gradle y pose
+  // lui-même `debuggable`. Les verdicts qu'on en tirerait ne disent rien de ce
+  // que reçoivent les utilisateurs : les rendre en `major` et `blocker` faisait
+  // échouer le gate d'emblée — sur le binaire que le scaffold prescrit par
+  // défaut d'analyser. C'est le même traitement que pour un outil absent, et
+  // pour la même raison : un scanner qui n'a pas pu conclure et un scanner qui
+  // n'a rien trouvé produisent le même silence, il faut donc les distinguer.
+  //
+  // ⚠️ Ce n'est PAS un adoucissement du garde : en `--require-tools` (la CI),
+  // une dimension non scannée reste un échec. Ce qui change est qu'un poste de
+  // développement cesse d'être rouge pour une raison qui n'est pas un défaut.
   if (isDebugBuild) {
-    findings.push(finding('QAM-SEC-DEBUGBUILD', 'Build debug dans le binaire analysé', 'major',
-      'libapp.so (AOT release)', 'assets/flutter_assets/kernel_blob.bin présent',
-      'Analyse le binaire de PUBLICATION : un build debug n\'est ni obfusqué ni représentatif de ce que reçoivent les utilisateurs.', apk));
+    return {
+      findings: [],
+      facts: {
+        scanned: false,
+        isDebugBuild: true,
+        why: 'binaire debug (assets/flutter_assets/kernel_blob.bin présent) — un scan '
+          + 'de sécurité n\'y dit rien de la publication. Construis la release, puis relance.',
+      },
+    };
   }
-  if (config.security?.requireObfuscation && hasAot && !isDebugBuild) {
+  if (config.security?.requireObfuscation && hasAot) {
     findings.push(...auditObfuscation(apk, entries));
   }
 
@@ -390,6 +411,10 @@ function auditObfuscation(apk, entries) {
 function auditBadging(badging, apk, config) {
   const findings = [];
   const sec = config.security ?? {};
+  // On n'arrive ici que sur un binaire de PUBLICATION : l'analyse s'arrête plus
+  // haut, sautée, dès qu'un `kernel_blob.bin` signe un build debug. Ce drapeau
+  // reste donc ce qu'il a toujours été — un blocker — sans avoir à distinguer
+  // le variant une seconde fois.
   if (/application-debuggable/.test(badging)) {
     findings.push(finding('QAM-SEC-DEBUG-APK', 'Binaire livré débogable', 'blocker',
       'aucun drapeau debuggable', 'application-debuggable dans le manifeste compilé',
