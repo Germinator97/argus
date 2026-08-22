@@ -31,7 +31,31 @@ fi
 # ── 2. le scaffold, toujours refait ─────────────────────────────────────────
 rm -rf "$A/test/argus" "$A/scripts/argus" "$A/.maestro" "$A/.github/workflows/argus-mobile.yml" \
        "$A/Makefile" "$A/argus.mobile.yaml" "$A/package.snippet.json" "$A/ARGUS-MOBILE.md"
-bash "$S/../../scripts/install-mobile.sh" "$A" >/dev/null 2>&1
+# ⚠️ LA SORTIE DE L'INSTALLEUR EST LUE, PAS JETÉE. Elle partait vers /dev/null,
+# et comme aucune de ses erreurs n'est fatale — le script continue, la CI reste
+# verte —, un défaut y a vécu six runs en aveugle : un test numérique qui levait
+# « integer expression expected » neuf fois par installation.
+#
+# Le critère est TOTAL et NÉGATIF : zéro ligne de la forme « <script>: line N: »,
+# quelle qu'elle soit. Chercher les formulations déjà vues laisserait passer
+# toutes celles qu'on n'a pas imaginées.
+bash "$S/../../scripts/install-mobile.sh" "$A" > /tmp/bench-install.txt 2>&1
+
+# ⚠️ ARMER LE CAS, sinon le contrôle ci-dessous ne mesure RIEN. Sur un scaffold
+# fraîchement posé, tous les fichiers OWNED portent encore leurs TODO, donc le
+# compteur de l'installeur ne passe jamais par zéro — l'état qui déclenche le
+# défaut est celui d'un projet RÉELLEMENT instrumenté, où ils sont remplis.
+# Mesuré : le banc restait vert sur le défaut réintroduit, et le contrôle avait
+# l'air de marcher. On vide donc les TODO d'un fichier OWNED, et on relance
+# l'installeur comme on le relance sur un projet en cours.
+perl -0777 -pi -e 's/TODO\(argus\):/TODO-rempli:/g' "$A/.maestro/a11y.yaml"
+bash "$S/../../scripts/install-mobile.sh" "$A" >> /tmp/bench-install.txt 2>&1
+
+if grep -qE 'install-mobile\.sh: line [0-9]+:' /tmp/bench-install.txt; then
+  echo "✖ l'installeur a émis une erreur shell :"
+  grep -E 'install-mobile\.sh: line [0-9]+:' /tmp/bench-install.txt | head -3 | sed 's/^/    /'
+  exit 1
+fi
 
 # ── 3. PROUVER que ce qui est posé vient bien du dépôt d'aujourd'hui ────────
 ecart=0

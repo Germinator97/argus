@@ -550,7 +550,7 @@ vrai projet, et les trois qui pouvaient l'être ont tenu :**
   est construite dès 360×640. C'est la moitié ajoutée pour que la liste ne
   devienne pas une permission permanente — elle a servi le jour même.
 
-### 70. `install-mobile.sh:266` casse son propre compteur, une fois par fichier OWNED
+### 70. ✅ Corrigé le 22/08/2026 — `install-mobile.sh` cassait son propre compteur
 
 ```
 install-mobile.sh: line 266: [: 0
@@ -616,7 +616,7 @@ Un agent non interactif n'a qu'un seul canal, son rapport final : la ligne arriv
 donc **après** les décisions qu'elle sert à faire démentir. Le skill suppose un
 interlocuteur ; `PROMPTS.md` traite le cas inverse mais §1 ne le dit pas.
 
-### 77. Le banc JETAIT la sortie de l'installeur — voilà pourquoi 70 a survécu six runs
+### 77. ✅ Corrigé le 22/08/2026 — Le banc JETAIT la sortie de l'installeur, et n'armait pas le cas
 
 `tools/bench.sh:34` lance `install-mobile.sh … >/dev/null 2>&1`. Et la CI du
 plugin le lance sans jeter sa sortie, mais l'erreur n'est **pas fatale** : le job
@@ -625,6 +625,18 @@ reste vert avec `integer expression expected` dans son journal.
 ⚠️ Constat de mon fait, pas du rapport — c'est en cherchant pourquoi le 70 n'avait
 jamais été vu qu'il apparaît. Un défaut qui n'est fatal nulle part n'a besoin que
 d'une sortie jetée pour vivre indéfiniment.
+
+**Corrigé, en deux temps — et le premier ne mesurait rien.** Faire lire la sortie
+au banc et à la CI, avec un critère total (aucune ligne `<script>: line N:`), ne
+suffisait pas : sur un scaffold **fraîchement posé**, tous les fichiers OWNED
+portent encore leurs TODO, donc le compteur ne passe jamais par zéro et le défaut
+ne se déclenche pas. Le banc restait vert sur le défaut réintroduit, pendant que
+le contrôle avait l'air de marcher — l'entrée impossible, exactement.
+
+Le banc **vide donc les TODO d'un fichier OWNED puis relance l'installeur**, ce
+qui est l'état d'un projet réellement instrumenté — celui du run 6, qui n'avait
+plus un seul TODO. Vérifié dans les deux sens : rouge sur le défaut réintroduit,
+vert sans, restauration prouvée par hash.
 
 ### 78. ✅ FAUX — `isCommand` voit très bien le défaut qu'il doit attraper
 

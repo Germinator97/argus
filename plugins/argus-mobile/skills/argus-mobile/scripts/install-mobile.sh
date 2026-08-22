@@ -262,7 +262,17 @@ while IFS= read -r src; do
   # entièrement rempli. C'est le défaut que l'en-tête de ce script décrit pour
   # ARGUS:OWNED — un fichier doit pouvoir PARLER d'un marqueur sans être compté
   # par ce qu'il en dit — et dont la protection n'avait pas été étendue ici.
-  restant="$(grep -c 'TODO(argus):' "$TARGET/$rel" 2>/dev/null || echo 0)"
+  # ⚠️ `grep -c` IMPRIME « 0 » **ET** SORT EN 1 quand il ne compte rien. Le
+  # `|| echo 0` en ajoutait donc un second, `restant` valait « 0\n0 », et le test
+  # numérique de la ligne suivante levait « integer expression expected » — une
+  # fois par fichier OWNED sans TODO, neuf fois sur un projet réel. Le compte
+  # restait juste, seule la sortie devenait illisible, et rien n'échouait : c'est
+  # ce qui lui a permis de traverser six runs en aveugle.
+  #
+  # `|| true` garde ce que grep a imprimé ; le `:-0` couvre le seul cas où il
+  # n'imprime rien (fichier absent, exit 2).
+  restant="$(grep -c 'TODO(argus):' "$TARGET/$rel" 2>/dev/null || true)"
+  restant="${restant:-0}"
   if [ "$restant" -gt 0 ]; then
     echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
   else

@@ -29,8 +29,16 @@ jobs:
       - name: Installation à blanc, puis --check
         run: |
           mkdir -p /tmp/host && printf 'name: host\n' > /tmp/host/pubspec.yaml
-          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/host
+          bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/host 2>&1 | tee /tmp/install-host.txt
           bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/host --check
+          # ⚠️ Aucune erreur de l'installeur n'est fatale : sans ce contrôle, le job
+          # reste VERT avec « line 266: [: integer expression expected » dans son
+          # journal. Critère total : aucune ligne « <script>: line N: ».
+          if grep -qE 'install-mobile\.sh: line [0-9]+:' /tmp/install-host.txt; then
+            echo "::error::l'installeur a émis une erreur shell"
+            grep -E 'install-mobile\.sh: line [0-9]+:' /tmp/install-host.txt
+            exit 1
+          fi
 
       # Le .gitignore est le seul fichier de l'hôte où l'installeur ÉCRIT. Il
       # ne doit rien dupliquer en se rejouant, et ne rien perdre de ce qui était
