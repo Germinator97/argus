@@ -376,7 +376,7 @@ export function auditApk(apk, config) {
   const facts = { scanned: true, entries: entries.length, isDebugBuild, hasAot, badging: badging.ok };
   if (badging.ok) findings.push(...auditBadging(badging.stdout, apk, config));
   else findings.push(finding('QAM-SEC-AAPT2', 'Manifeste compilé non lu', 'info',
-    'aapt2 disponible', 'aapt2 absent du PATH',
+    'aapt2 disponible', 'aapt2 absent du PATH (il n\'y est pas par défaut : $ANDROID_HOME/build-tools/<version>/aapt2)',
     'Le manifeste FUSIONNÉ (permissions héritées des dépendances comprises) n\'a pas été vérifié. '
     + 'Ajoute les Build-Tools du SDK Android au PATH. ⚠️ Tant qu\'il manque, `security.expectedPermissions` '
     + 'ne peut être comparé qu\'au manifeste du dépôt, qui ne porte pas ce que les dépendances injectent : '

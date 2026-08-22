@@ -48,7 +48,10 @@ build:
   android: build/app/outputs/flutter-apk/app-debug.apk
   ios: build/ios/iphonesimulator/Runner.app
   # Commandes de build proposées quand le binaire est absent. Jamais lancées
-  # sans confirmation.
+  # ⚠️ Elles ne sont JAMAIS lancées par le harnais — ni avec, ni sans
+  # confirmation : aucun script ne les exécute, ils les AFFICHENT. La
+  # formulation d'avant laissait croire à une garde qui n'a pas lieu d'être,
+  # et donc à une exécution qui n'a jamais lieu non plus.
   androidBuildCmd: flutter build apk --debug
   iosBuildCmd: flutter build ios --debug --simulator
 
@@ -269,6 +272,12 @@ security:
   # le dit et SAUTE ce contrôle, il ne le passe pas en vert. Poser cette liste
   # avant d'avoir aapt2 revient à régler quelque chose qu'on ne peut pas encore
   # mesurer.
+  # ⚠️ DÉRIVE CETTE LISTE DU MANIFESTE FUSIONNÉ DE LA RELEASE, pas du debug.
+  # Les deux diffèrent : un build debug embarque des permissions que la
+  # publication n'a pas (et l'inverse arrive avec les règles de shrinking).
+  # Remplie depuis un debug, cette liste déclare « attendu » ce que
+  # l'utilisateur ne recevra jamais — et tait ce qu'il recevra.
+  #   aapt2 dump permissions build/app/outputs/flutter-apk/app-release.apk
   expectedPermissions:
     - android.permission.INTERNET
   # Permissions qui font échouer immédiatement si présentes.

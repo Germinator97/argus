@@ -178,6 +178,14 @@ textuel a fusionné dans le label de la racine. C'est pour ça que
 `make argus-anchors` juge sur le **label** de la racine et jamais sur son nombre
 d'enfants : des deux mesures, une seule voit le défaut.
 
+⚠️ **Quand la surface tapable est l'écran ENTIER, le nœud commande absorbe
+tout ce qu'il recouvre** — le libellé de phase, le chronomètre, ce que
+l'utilisateur devait entendre. Le flow marche, TalkBack annonce un seul
+bouton dont le label est la page. Sur ce cas-là, l'ancre de commande se pose
+sur le CONTRÔLE (le bouton, la zone tapable réelle), pas sur le conteneur qui
+s'étend jusqu'aux bords ; à défaut, `explicitChildNodes: true` sur le nœud
+commande garde ses descendants distincts.
+
 ⚠️ **Une racine d'écran qui est AUSSI une commande.** Tap-to-pause, tap-to-dismiss,
 pull-to-refresh : toute la surface réagit, et la consigne « une racine inerte » n'a
 pas prévu ce cas. **Ne pose pas l'ancre et l'action sur le même nœud.** Ça marche
@@ -282,7 +290,7 @@ mesuré sur Flutter 3.32, même écran, seule l'enveloppe change :
 |---|---|---|
 | `InkWell` | `id`, `label`, **`tap`** — un seul nœud | — |
 | `ListTile` avec `onTap` | `id`, `label`, **`tap`** — un seul nœud | — |
-| `TextField` | `id`, **`tap`** — un seul nœud | — |
+| `TextField` | `id`, **`tap`** — un seul nœud | ⚠️ tant que l'enveloppe ne porte **aucun rôle** |
 | `IconButton` | `id`, label **vide**, **aucune action** | la commande, **anonyme** |
 | `ElevatedButton` | `id`, label **vide**, **aucune action** | la commande, avec son label |
 
@@ -518,6 +526,15 @@ est **obligatoire**, sinon Maestro ne voit **aucun** élément et échoue en
 silence. Flutter Desktop n'est pas supporté.
 
 ═══════════════════════════════════════════════════════════════════════════════
+⚠️ **Un RÔLE posé sur l'enveloppe suffit à casser la fusion, même sur les
+composants de la colonne « fusionne ».** `Semantics(identifier: 'x', child:
+TextField(…))` rend UN nœud, qui porte l'ancre et l'action. Ajoute
+`textField: true` à cette même enveloppe et elle devient une frontière : le
+nœud ancré passe **inerte**, la commande vit en dessous sans identifiant.
+Retirer le rôle le rend actif à nouveau. La table ci-dessus prévient pour les
+composants qui construisent DÉJÀ leur propre nœud ; elle ne disait pas qu'on
+peut en fabriquer un soi-même, sans le vouloir, en décrivant l'enveloppe.
+
 ## 3. Installer le harness de non-régression
 ═══════════════════════════════════════════════════════════════════════════════
 
@@ -538,6 +555,17 @@ le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
 | **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
 | **Étage 1** | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
 | | `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
+
+⚠️ **Combien de dettes avant de dire qu'un projet n'est pas prêt ?** Aucun
+seuil, et c'était le trou : sur un projet réel, la première exécution en a
+produit **cinquante-trois** d'un coup. Le critère n'est pas le nombre mais ce
+qu'elles décrivent. Une dette inscrite doit être un **défaut de l'app**, tenu
+et daté ; si le relevé se remplit de défauts du HARNAIS (montages qui
+meurent, mesures qui ne concluent pas), il ne mesure plus rien et c'est le
+harnais qu'il faut corriger d'abord. Inscris en une fois ce que la première
+exécution révèle — le relevé est fait pour ça —, mais **rends la liste avec
+le rapport** : cinquante-trois lignes que personne n'a lues ne sont pas une
+dette assumée, c'est une dette cachée.
 | **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — sept fichiers, tous porteurs de `TODO(argus)` |
 
 `argus.mobile.yaml` reste la **source unique de la configuration** — c'est là que
@@ -556,6 +584,17 @@ résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
 ⚠️ **Tout fichier YAML du workspace doit porter une section de configuration**
 (`appId:` puis `---`), sous-flows compris : Maestro les valide TOUS au démarrage
 et rejette la suite entière sur « Config Section Required ».
+
+**d bis. Et si le défaut est dans le CADRE lui-même ?** Ça arrive, et le
+skill ne le disait pas — sur un projet réel, un agent a patché un fichier de
+cadre pour une raison mesurée, puis s'est refusé à en patcher un second, sans
+règle pour départager. La règle : **corrige sur place quand le correctif est
+TEXTUEL et mesurable** (un formatage, une ligne qui manque, un garde vacant),
+en sachant que `--check` te signalera « en retard sur le plugin » jusqu'à ce
+que le correctif remonte ici. **Ne corrige PAS quand il est SÉMANTIQUE** —
+une migration d'API, un comportement à trancher : tu ne mesures alors plus le
+même harnais que les autres projets. Dans les deux cas, **remonte-le**, c'est
+ce qui empêche la divergence de s'installer.
 
 **e. Déjà installé ?** `install-mobile.sh <TARGET> --check` signale le cadre en
 retard sur le plugin (exit 1) ; `--update` le remet à niveau sans toucher à ce

@@ -1054,6 +1054,19 @@ async function main() {
   }
   const spec = specs[0];
 
+  // ⚠️ `locale.deviceLocale` n'est appliqué QUE par `startDevice`, donc
+  // uniquement sous `autoStart`. Or `autoStart` et `avd` ne se combinent pas :
+  // `maestro start-device` CRÉE son propre AVD et ne sait pas démarrer le tien.
+  // La disposition recommandée — lancer soi-même un AVD nommé — rend donc ce
+  // réglage INOPÉRANT, et il n'existait aucune trace de ce conflit : la clé
+  // était renseignée, plausible, et sans effet.
+  const localeDemandee = String(config.locale?.deviceLocale ?? '');
+  if (localeDemandee && !spec.autoStart) {
+    warn(`locale.deviceLocale = « ${localeDemandee} » n'aura AUCUN effet : elle ne s'applique `
+      + 'qu\'au démarrage du device, et seul `autoStart: true` le démarre.');
+    warn('  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.');
+  }
+
   let attempt = resolveDevice(spec, opts.dryRun);
   // On ne réessaie QUE si le device est simplement absent. Un refus (appareil
   // réel non consenti) ne se rattrape pas en démarrant un émulateur.

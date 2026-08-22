@@ -82,6 +82,13 @@ Deux conséquences, dont la seconde est la plus coûteuse :
 **mesurée** (`avd`, `model`, `os` lus sur l'appareil) à côté de celle qui était
 `declared` — les comparer est alors une lecture, plus une enquête.
 
+⚠️ **Conséquence sur la locale, et elle n'est écrite nulle part ailleurs :**
+`locale.deviceLocale` ne s'applique qu'au DÉMARRAGE du device, donc
+uniquement via `autoStart`. En lançant ton AVD toi-même — la disposition
+recommandée juste en dessous — ce réglage existe, se lit, et n'a **aucun
+effet**. Règle la locale sur l'émulateur avant le run. Le runner le dit
+désormais plutôt que de laisser croire.
+
 ⚠️ `avd` et `autoStart: true` ne se combinent pas : `maestro start-device`
 **crée son propre AVD** et ne sait pas démarrer le tien. Lance-le toi-même
 (`emulator -avd <nom> &`) ; le runner te le dira plutôt que de faire semblant.

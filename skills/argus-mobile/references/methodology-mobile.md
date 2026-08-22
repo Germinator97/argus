@@ -393,6 +393,10 @@ corps et de son exemple. L'horloge et le fuseau se figent en `adb shell`.
 `fr-FR`, format **XOF/FCFA**, dates et nombres, clés de traduction manquantes,
 débordement dû à la longueur du français.
 
+⚠️ **Et pas depuis un AVD que tu lances toi-même non plus** — voir
+`device-matrix.md` : `deviceLocale` ne passe que par `autoStart`, qui est
+précisément ce qu'on n'utilise pas avec un `avd` nommé.
+
 ⚠️ **La locale ne se change pas depuis un flow.** `--device-locale` n'existe que
 sur `maestro start-device` et `maestro cloud`, pas sur `maestro test`, et aucun
 endroit d'un flow ne permet de la définir. Elle se fige au démarrage du device.
