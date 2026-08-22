@@ -14,6 +14,11 @@ tags:
 #            argus.mobile.yaml → artifacts.baselines
 #   assert → `assertScreenshot` compare à cette référence
 #
+# Et un cadrage, ARGUS_VISUAL_CROP, injecté depuis `visualCropOn`. Maestro n'a
+# aucun masquage de pixels : recadrer sur un conteneur stable est le seul levier
+# qui reste depuis un flow pour sortir du cadre ce qui bouge tout seul —
+# l'horloge du système en tête.
+#
 # ⚠️ `thresholdPercentage` est un POURCENTAGE DE CORRESPONDANCE REQUIS (défaut
 # Maestro : 95), pas un ratio de différence. 99 = on tolère 1 % de pixels
 # divergents. Y mettre 0.01 accepterait n'importe quelle image.
@@ -42,13 +47,28 @@ tags:
       - runFlow: _subflows/mask-dynamic.yaml
 
       # ── mode update : produire la référence ──────────────────────────────
+      #
+      # ⚠️ Deux branches par mode, parce qu'un sélecteur VIDE ne se passe pas à
+      # `cropOn:` — Maestro chercherait un élément d'identifiant « » et
+      # échouerait. `visualCropOn` vide veut dire « plein écran », pas
+      # « recadre sur rien ».
       - runFlow:
           when:
-            true: "${typeof ARGUS_VISUAL_MODE !== 'undefined' && ARGUS_VISUAL_MODE === 'update'}"
+            true: "${typeof ARGUS_VISUAL_MODE !== 'undefined' && ARGUS_VISUAL_MODE === 'update' && (typeof ARGUS_VISUAL_CROP === 'undefined' || ARGUS_VISUAL_CROP === '')}"
           commands:
             - takeScreenshot:
                 path: ${ARGUS_SCREEN_ID}
-                label: Nouvelle référence visuelle
+                label: Nouvelle référence visuelle (plein écran)
+
+      - runFlow:
+          when:
+            true: "${typeof ARGUS_VISUAL_MODE !== 'undefined' && ARGUS_VISUAL_MODE === 'update' && typeof ARGUS_VISUAL_CROP !== 'undefined' && ARGUS_VISUAL_CROP !== ''}"
+          commands:
+            - takeScreenshot:
+                path: ${ARGUS_SCREEN_ID}
+                cropOn:
+                  id: ${ARGUS_VISUAL_CROP}
+                label: Nouvelle référence visuelle, recadrée
 
       # ── mode assert : comparer ───────────────────────────────────────────
       # Le chemin de référence est ABSOLU et injecté par le runner. La doc
@@ -57,14 +77,30 @@ tags:
       # dépend d'aucune racine. Éprouvé sur device (Maestro 2.8.0) : génération
       # de la référence, comparaison conforme, puis détection d'une référence
       # corrompue.
+      #
+      # ⚠️ « The comparison screenshot must also have been cropped » — doc de
+      # Maestro. Le cadrage de l'assertion DOIT être celui de la génération :
+      # les deux branches lisent donc la même variable, et le runner refuse de
+      # comparer sous un cadrage qui a changé depuis les références.
       - runFlow:
           when:
-            true: "${typeof ARGUS_VISUAL_MODE === 'undefined' || ARGUS_VISUAL_MODE !== 'update'}"
+            true: "${(typeof ARGUS_VISUAL_MODE === 'undefined' || ARGUS_VISUAL_MODE !== 'update') && (typeof ARGUS_VISUAL_CROP === 'undefined' || ARGUS_VISUAL_CROP === '')}"
           commands:
             - assertScreenshot:
                 path: ${ARGUS_BASELINE_DIR}/${ARGUS_SCREEN_ID}.png
                 thresholdPercentage: ${ARGUS_VISUAL_THRESHOLD}
-                label: Comparaison à la référence visuelle
+                label: Comparaison à la référence visuelle (plein écran)
+
+      - runFlow:
+          when:
+            true: "${(typeof ARGUS_VISUAL_MODE === 'undefined' || ARGUS_VISUAL_MODE !== 'update') && typeof ARGUS_VISUAL_CROP !== 'undefined' && ARGUS_VISUAL_CROP !== ''}"
+          commands:
+            - assertScreenshot:
+                path: ${ARGUS_BASELINE_DIR}/${ARGUS_SCREEN_ID}.png
+                cropOn:
+                  id: ${ARGUS_VISUAL_CROP}
+                thresholdPercentage: ${ARGUS_VISUAL_THRESHOLD}
+                label: Comparaison à la référence visuelle, recadrée
 
 - runFlow:
     when:

@@ -193,7 +193,10 @@ Deux limites à connaître :
 - **Maestro n'a pas de masquage de pixels.** L'équivalent de `dynamicSelectors`
   du harness web n'existe pas ; seul `cropOn` restreint la capture. Rends l'écran
   déterministe avant de le photographier (`_subflows/mask-dynamic.yaml`), ou
-  recadre avec `visualCropOn`.
+  recadre avec `visualCropOn` — le runner le pose sur la génération **et** sur
+  la comparaison. ⚠️ Le changer invalide les références déjà produites : les
+  deux images ne cadrent plus la même chose et le diff accuse l'app. Le runner
+  le note dans `.maestro/_baselines/.argus-crop` et avertit s'il a bougé.
 - **`visualMatchPercentage` est un pourcentage de CORRESPONDANCE**, pas un ratio
   de différence (défaut Maestro : 95). « 1 % de diff toléré » s'écrit `99`.
   Y mettre `0.01` accepterait n'importe quelle image.

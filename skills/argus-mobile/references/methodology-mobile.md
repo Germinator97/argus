@@ -224,6 +224,15 @@ Poser la racine **à l'intérieur** du `SafeArea` quand elle sert de `visualCrop
 Et si elle doit rester à l'extérieur pour une autre raison, recadrer sur un
 conteneur intérieur plutôt que sur elle.
 
+⚠️ **Changer `visualCropOn` invalide les références déjà produites.** La doc de
+Maestro est explicite — « the comparison screenshot must also have been cropped » —
+et rien n'échoue proprement quand les deux cadrages divergent : Maestro compare
+deux images valides qui ne montrent simplement pas la même chose, et le diff se
+lit comme une régression de l'app. Le runner note donc le cadrage à côté des
+références (`.maestro/_baselines/.argus-crop`) et avertit quand il a bougé ;
+régénère avec `make argus-baselines` plutôt que de chercher ce qui a changé
+dans l'écran.
+
 La racine de résolution d'un chemin **relatif** de `assertScreenshot` n'est
 documentée nulle part. Le harness n'essaie pas de la deviner : il injecte un
 chemin **absolu**, ce qui a été éprouvé sur device — génération de la référence,

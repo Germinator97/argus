@@ -18,6 +18,9 @@ appId: ${APP_ID}
 #      `arguments` de launchApp ou un environnement de test dédié ;
 #   2. FERMER ce qui flotte (bannières, toasts, tooltips) — ci-dessous ;
 #   3. RECADRER sur un conteneur stable — `visualCropOn` dans argus.mobile.yaml.
+#      Ce n'est PAS ce sous-flow qui l'applique : le runner l'injecte et
+#      visual.yaml le pose sur la capture comme sur la comparaison. Rien à
+#      écrire ici pour en profiter.
 #
 # Ce qu'il ne faut PAS faire : relâcher `visualMatchPercentage`. Ça masque les
 # zones dynamiques ET les vraies régressions, sans distinction.

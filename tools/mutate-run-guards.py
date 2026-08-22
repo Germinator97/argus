@@ -18,9 +18,16 @@ import sys
 # commande est lancée d'ailleurs — en laissant l'arbre muté, sans un mot.
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCAFFOLD = ROOT / "skills/argus-mobile/assets/scaffold-mobile/scripts/argus"
-CIBLES = {"run": SCAFFOLD / "run.mjs", "config": SCAFFOLD / "config.mjs"}
+FLOWS = ROOT / "skills/argus-mobile/assets/scaffold-mobile/.maestro"
+CIBLES = {
+    "run": SCAFFOLD / "run.mjs",
+    "config": SCAFFOLD / "config.mjs",
+    # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
+    # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
+    "visual": FLOWS / "visual.yaml",
+}
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 21
+NB_TESTS = 25
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -68,6 +75,19 @@ MUTATIONS = [
     ("run", "un téléphone réel passe sans consentement",
      "  if (found.physical && spec.physical !== true) {",
      "  if (found.physical && spec.physical === true && false) {"),
+    # ── Contrat d'injection ────────────────────────────────────────────────
+    ("run", "visualCropOn cesse d'arriver au flow",
+     "    ARGUS_VISUAL_CROP: String(config.visualCropOn ?? ''),\n",
+     ""),
+    ("run", "le runner produit une clé que plus aucun flow ne lit",
+     "    ARGUS_VISUAL_MODE: 'assert',",
+     "    ARGUS_VISUAL_MODE: 'assert',\n    ARGUS_REGLAGE_INERTE: '',"),
+    ("visual", "la capture n'est plus recadrée, la comparaison si",
+     "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
+     "                  id: ${ARGUS_VISUAL_CROP}\n"
+     "                label: Nouvelle référence visuelle, recadrée",
+     "                path: ${ARGUS_SCREEN_ID}\n"
+     "                label: Nouvelle référence visuelle, recadrée"),
 ]
 
 
@@ -112,11 +132,16 @@ def main():
             bilan.append(("HARNAIS", nom, "le fichier n'a pas changé"))
             continue
 
-        check = sh(["node", "--check", str(cible)])
-        if check.returncode != 0:
-            restaure(cle, propre)
-            bilan.append(("HARNAIS", nom, "la mutation ne compile pas"))
-            continue
+        # Une mutation qui casse le build fait rougir pour une raison sans
+        # rapport avec le garde, et ce rouge-là se lit comme un succès. Les
+        # flows Maestro n'ont pas d'équivalent : leur `---` sort du
+        # sous-ensemble YAML du harness, donc aucun parseur d'ici ne les lit.
+        if cible.suffix == ".mjs":
+            check = sh(["node", "--check", str(cible)])
+            if check.returncode != 0:
+                restaure(cle, propre)
+                bilan.append(("HARNAIS", nom, "la mutation ne compile pas"))
+                continue
 
         res = sh(["node", "--test", str(SUITE)])
         sortie = res.stdout + res.stderr

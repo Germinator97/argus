@@ -123,15 +123,25 @@ screens:
 
 # ── Zones non déterministes ────────────────────────────────────────────────
 # ⚠️ Maestro N'A PAS de masquage de pixels : l'équivalent de `dynamicSelectors`
-# du harness web n'existe pas. Seul `cropOn` existe. Deux stratégies réelles :
-#   1. `cropOn` : recadrer la capture sur un conteneur stable (`visualCropOn`) ;
-#   2. rendre l'app déterministe avant capture (horloge figée, données de test).
+# du harness web n'existe pas. Deux stratégies réelles, dans cet ordre :
+#   1. rendre l'app déterministe avant capture (horloge figée, données de test) ;
+#   2. RECADRER la capture sur un conteneur stable — la clé ci-dessous.
 # Relâcher `visualMatchPercentage` est la MAUVAISE réponse : ça masque aussi les
 # vraies régressions.
-# Ces identifiants sont signalés dans le rapport comme « à neutraliser ».
-dynamicRegions: []
-
-# Conteneur sur lequel recadrer les captures visuelles. Vide → plein écran.
+#
+# `visualCropOn` porte l'identifiant sémantique du conteneur sur lequel recadrer.
+# Vide → plein écran. Il est injecté dans .maestro/visual.yaml, qui le pose sur
+# `takeScreenshot` ET sur `assertScreenshot`.
+#
+# ⚠️ Le changer INVALIDE les références déjà produites : Maestro compare deux
+# images qui ne cadrent plus la même chose, et l'échec ressemble à une régression
+# de l'app. Le runner note le cadrage à côté des références et refuse de se taire
+# s'il a bougé — régénère avec `make argus-baselines`.
+#
+# ⚠️ L'endroit où la racine a été posée décide de ce qu'on recadre : autour du
+# `SafeArea` elle prend l'écran entier — horloge système comprise, donc un diff
+# à chaque minute —, dedans la seule zone utile. Mesuré : 216 px d'écart sur un
+# téléphone courant. Voir methodology-mobile.md §VISUAL.
 visualCropOn: ''
 
 # ── Deep links à éprouver ──────────────────────────────────────────────────

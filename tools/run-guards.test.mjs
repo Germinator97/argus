@@ -13,10 +13,13 @@
 //
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
-  avdNameFrom, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  avdNameFrom, buildEnv, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -228,4 +231,98 @@ test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {
   assert.equal(startupHint('id=submit_button', 'home_root', CONFIG), '');
   assert.equal(startupHint('text=Bienvenue', 'home_root', CONFIG), '');
   assert.equal(startupHint('id=home_root', '', CONFIG), '');
+});
+
+// ── Contrat d'injection : aucune variable de flow sans producteur ────────────
+//
+// Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans
+// les DEUX sens, parce que les deux pannes sont muettes :
+//
+//   flow → runner  : un flow qui cite `${ARGUS_X}` que personne ne produit reçoit
+//                    la chaîne littérale « ${ARGUS_X} ». Aucune erreur : Maestro
+//                    cherche un élément d'identifiant « ${ARGUS_X} », ne le
+//                    trouve pas, et l'échec accuse l'écran.
+//   runner → flow  : une clé produite que plus aucun flow ne lit est de la
+//                    configuration morte. C'est exactement ce qui est arrivé à
+//                    `visualCropOn` : déclarée, documentée, commentée dans trois
+//                    fichiers, et jamais lue — au point que la méthodologie
+//                    expliquait, chiffres mesurés à l'appui, comment soigner un
+//                    réglage qui ne faisait rien.
+//
+// Il est DÉRIVÉ des deux sources, jamais d'une liste tenue à la main : une liste
+// aurait vieilli à la première variable ajoutée, et se serait tue précisément
+// là où elle devait parler.
+
+const FLOWS_DIR = fileURLToPath(new URL('../skills/argus-mobile/assets/scaffold-mobile/.maestro/', import.meta.url));
+
+/** Tous les fichiers de flow, sous-flows compris. @returns {string[]} */
+function flowFiles(dir = FLOWS_DIR) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((e) => (
+    e.isDirectory() ? flowFiles(join(dir, e.name)) : e.name.endsWith('.yaml') ? [join(dir, e.name)] : []
+  ));
+}
+
+/** Les variables `${…}` que les flows attendent du runner. @returns {Set<string>} */
+function varsUsedInFlows() {
+  /** @type {Set<string>} */
+  const used = new Set();
+  for (const file of flowFiles()) {
+    for (const m of readFileSync(file, 'utf8').matchAll(/\$\{\s*([A-Z][A-Z0-9_]*)\s*\}/g)) used.add(m[1]);
+    // Maestro accepte aussi la forme nue dans une expression JS (`when:`).
+    for (const m of readFileSync(file, 'utf8').matchAll(/\b(ARGUS_[A-Z0-9_]+)\b/g)) used.add(m[1]);
+  }
+  return used;
+}
+
+/** Le contrat produit par le runner pour une config donnée. */
+const contrat = (/** @type {any} */ config) => buildEnv(config, 'com.exemple.app');
+
+test('toute variable ARGUS_ citée par un flow est produite par le runner', () => {
+  const used = [...varsUsedInFlows()].filter((v) => v === 'APP_ID' || v.startsWith('ARGUS_'));
+  // Sans ce premier contrôle, un renommage de dossier viderait la boucle et le
+  // garde passerait au vert en n'ayant plus rien à vérifier.
+  assert.ok(used.length >= 10, `relevé vide ou tronqué (${used.length}) — les flows ont-ils bougé ?`);
+
+  const produced = new Set(Object.keys(contrat({})));
+  const orphelines = used.filter((v) => !produced.has(v));
+  assert.deepEqual(orphelines, [],
+    'ces variables seraient substituées par leur propre texte, et l\'échec accuserait l\'écran');
+});
+
+test('toute variable produite par le runner est lue par au moins un flow', () => {
+  const used = varsUsedInFlows();
+  const produced = Object.keys(contrat({})).filter((k) => k === 'APP_ID' || k.startsWith('ARGUS_'));
+  assert.ok(produced.length >= 10, `contrat vide ou tronqué (${produced.length})`);
+
+  const mortes = produced.filter((k) => !used.has(k));
+  assert.deepEqual(mortes, [],
+    'clé produite que plus aucun flow ne lit : de la configuration morte, le défaut que ce garde existe pour attraper');
+});
+
+test('visualCropOn arrive jusqu\'au flow, et vide veut dire plein écran', () => {
+  // Le câblage, pas la valeur : c'est de ne pas l'avoir que la clé était morte.
+  assert.equal(contrat({ visualCropOn: 'home_content' }).ARGUS_VISUAL_CROP, 'home_content');
+
+  // Vide DOIT rester vide : le flow s'en sert pour choisir la branche non
+  // recadrée. Y mettre un repli ferait chercher un élément qui n'existe pas.
+  assert.equal(contrat({}).ARGUS_VISUAL_CROP, '');
+  assert.equal(contrat({ visualCropOn: '' }).ARGUS_VISUAL_CROP, '');
+});
+
+test('les deux branches de cadrage existent, en capture comme en comparaison', () => {
+  const flow = readFileSync(join(FLOWS_DIR, 'visual.yaml'), 'utf8');
+
+  // ⚠️ Compter les MENTIONS compte aussi les commentaires — dont le mien, écrit
+  // deux lignes plus haut pour expliquer pourquoi la branche vide existe. Le
+  // relevé ancré sur la ligne YAML rendait 3 au lieu de 2 : un garde peut
+  // naître faux en attrapant le texte qui le documente.
+  const clesYaml = (/** @type {string} */ nom) => [
+    ...flow.matchAll(new RegExp(`^[ \\t]*(?:-[ \\t]+)?${nom}:[ \\t]*$`, 'gm')),
+  ].length;
+
+  // Une seule branche suffirait à passer le garde précédent tout en cassant
+  // l'autre moitié : Maestro exige que la RÉFÉRENCE ait été recadrée pareil.
+  assert.equal(clesYaml('cropOn'), 2, 'il en faut une sur takeScreenshot ET une sur assertScreenshot');
+  assert.equal(clesYaml('takeScreenshot'), 2, 'update : une branche recadrée, une plein écran');
+  assert.equal(clesYaml('assertScreenshot'), 2, 'assert : une branche recadrée, une plein écran');
 });

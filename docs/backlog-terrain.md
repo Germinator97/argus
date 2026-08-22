@@ -106,15 +106,6 @@ restent à confirmer.
 
 ### Ce que le harnais promet et ne tient pas
 
-**11. [vérifié] `visualCropOn` et `dynamicRegions` sont de la configuration morte.**
-Déclarées dans `argus.mobile.yaml`, avec un défaut dans `config.mjs`, citées dans
-les commentaires de `mask-dynamic.yaml` et d'`ARGUS-MOBILE.md` — et **rien ne les
-lit** : aucun `cropOn:` n'est émis dans un flow, `run.mjs` n'injecte ni l'une ni
-l'autre. ⚠️ Aggravant : la doc écrite le matin même (méthodologie §VISUAL, les
-216 px selon le côté du `SafeArea`) **explique l'effet d'une clé non branchée**,
-et pousse donc à soigner un recadrage qui n'aura pas lieu. Deux issues possibles —
-brancher la clé, ou retirer la promesse — mais pas le statu quo.
-
 **12. [vérifié] `make argus-anchors` ne prouve que les racines.** Le skill en fait
 LA preuve de l'instrumentation, mais `ArgusScreen.anchor` est **singulier** : sur
 ce projet, 55 ancres de commande n'avaient aucun endroit où être déclarées, donc

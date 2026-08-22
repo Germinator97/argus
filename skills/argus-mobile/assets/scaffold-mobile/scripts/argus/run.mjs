@@ -23,7 +23,7 @@
  *       manquant, ou harness non configuré
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -457,6 +457,11 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_AUTH_SUCCESS: anchors.success ?? '',
     ARGUS_DEEPLINK: (config.deepLinks ?? [])[0] ?? '',
     ARGUS_VISUAL_THRESHOLD: String(config.thresholds?.visualMatchPercentage ?? 99),
+    // Maestro n'a pas de masquage de pixels : `cropOn` est le SEUL levier qui
+    // reste depuis un flow pour sortir une zone non déterministe du cadre.
+    // Vide = plein écran ; le flow se garde dessus, il ne reçoit jamais un
+    // sélecteur vide à résoudre.
+    ARGUS_VISUAL_CROP: String(config.visualCropOn ?? ''),
     ARGUS_START_TIMEOUT_MS: String(startTimeoutMs(config)),
     ARGUS_SCREEN_ID: '',
     ARGUS_SCREEN_ANCHOR: '',
@@ -833,6 +838,35 @@ function promoteBaselines(bundles, baselineDir) {
   return written;
 }
 
+/** Fichier où l'on note SOUS QUEL CADRAGE les références ont été produites. */
+const CROP_STAMP = '.argus-crop';
+
+/**
+ * Le cadrage sous lequel les références ont été produites, ou `null` si le
+ * dossier ne le dit pas (références antérieures à cette marque).
+ * @param {string} baselineDir @returns {string|null}
+ */
+function baselineCrop(baselineDir) {
+  const path = join(baselineDir, CROP_STAMP);
+  return existsSync(path) ? readFileSync(path, 'utf8').trim() : null;
+}
+
+/**
+ * Grave le cadrage à côté des références qu'il a produites.
+ *
+ * ⚠️ La doc de Maestro est explicite : « the comparison screenshot must also
+ * have been cropped ». Changer `visualCropOn` APRÈS avoir généré les références
+ * compare donc une capture recadrée à une référence plein écran — et l'échec
+ * qui en sort se lit comme une régression visuelle de l'app, pas comme un
+ * changement de config. Rien d'autre ne peut le voir : les deux images sont
+ * valides, elles ne cadrent simplement pas la même chose.
+ * @param {string} baselineDir @param {string} crop
+ */
+function stampBaselineCrop(baselineDir, crop) {
+  mkdirSync(baselineDir, { recursive: true });
+  writeFileSync(join(baselineDir, CROP_STAMP), `${crop}\n`, 'utf8');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 9. Point d'entrée
 // ═══════════════════════════════════════════════════════════════════════════
@@ -939,6 +973,18 @@ async function main() {
   // saurait pas naviguer vers chacun. C'est donc le runner qui boucle.
   const visualScreens = screens.filter((s) => s.visual !== false);
   const visualMode = opts.updateBaselines ? 'update' : 'assert';
+  const visualCrop = String(config.visualCropOn ?? '');
+  if (visualCrop) log(`captures recadrées sur « ${visualCrop} »`);
+  if (visualMode === 'assert') {
+    // Le cadrage doit être le MÊME qu'à la génération, sinon on compare deux
+    // images qui ne cadrent pas la même chose — et l'échec accuse l'app.
+    const stamped = baselineCrop(baselineDir);
+    if (stamped !== null && stamped !== visualCrop) {
+      warn(`visualCropOn a changé depuis la génération des références : « ${stamped || '(plein écran)'} » → « ${visualCrop || '(plein écran)'} ».`);
+      warn('  Les comparaisons vont échouer sur le CADRAGE, pas sur une régression.');
+      warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
+    }
+  }
   if (visualMode === 'assert' && !existsSync(baselineDir)) {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
     warn('  Génère-les : node scripts/argus/run.mjs --update-baselines');
@@ -966,6 +1012,7 @@ async function main() {
   const bundles = harvest(outputDir, before);
   if (opts.updateBaselines) {
     const written = promoteBaselines(bundles, baselineDir);
+    stampBaselineCrop(baselineDir, visualCrop);
     log(`${written} référence(s) visuelle(s) écrite(s) dans ${baselineDir}`);
   }
 
@@ -1075,6 +1122,6 @@ if (invokedDirectly) {
 // Surface exposée aux gardes de tools/. Ce sont les fonctions qui décident
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
-  avdNameFrom, findingsFrom, resolveByAvd, resolveNamedDevice,
+  avdNameFrom, buildEnv, findingsFrom, resolveByAvd, resolveNamedDevice,
   startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples,
 };

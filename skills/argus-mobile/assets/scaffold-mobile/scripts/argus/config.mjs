@@ -331,7 +331,8 @@ const DEFAULTS = {
   platforms: ['android'],
   devices: [],
   screens: [],
-  dynamicRegions: [],
+  // Injecté dans .maestro/visual.yaml (ARGUS_VISUAL_CROP) : le conteneur sur
+  // lequel `cropOn` recadre les captures. Vide → plein écran.
   visualCropOn: '',
   thresholds: {
     coldStartMs: 2000, warmStartMs: 1000, jankFramesPct: 1, memoryMb: 250,
