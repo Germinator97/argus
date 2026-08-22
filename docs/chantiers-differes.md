@@ -39,7 +39,26 @@ temporaire : zéro chemin sortant — et l'instrument a été éprouvé contre u
 injecté, un grep cassé rendant zéro exactement comme un résultat propre. Un garde
 total et négatif le tient : aucun chemin sortant, où que ce soit.
 
-### Décidé le 22/08/2026 : TROIS plugins, à mettre en place après le run 4
+### ✅ FAIT le 22/08/2026, après le run 4 — trois plugins
+
+`claude plugin validate` passe sur le marketplace **et** sur les trois plugins.
+`check-scaffold` voit toujours ses 33 fichiers, le banc installe et tourne vert
+depuis la nouvelle place, et le garde d'autonomie a été **éprouvé par mutation
+après le déplacement** — un garde pointé sur un dossier disparu passe au vert en
+ne mesurant plus rien.
+
+⚠️ **Les 57 références de chemin ont été suivies fichier par fichier, pas par
+balayage** : quatorze d'entre elles, dans ce document, décrivaient déjà la
+structure CIBLE. Un remplacement global les aurait corrompues. Les commandes de
+re-mesure ont été mises à jour — une commande qui pointe un dossier disparu rend
+zéro et se lit « rien à signaler » — et la prose historique laissée telle quelle.
+
+⚠️ **Un dégât collatéral, trouvé en grepant l'état réécrit et non en relisant la
+substitution** : la ligne de copie manuelle du README avait vu sa DESTINATION
+réécrite aussi, envoyant le skill vers `~/.claude/plugins/…` au lieu de
+`~/.claude/skills/`. Une substitution ne connaît pas la phrase qui l'entoure.
+
+<sub>Le plan tel qu'il avait été arrêté :</sub>
 
 ```
 plugins/
