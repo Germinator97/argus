@@ -39,10 +39,62 @@ temporaire : zéro chemin sortant — et l'instrument a été éprouvé contre u
 injecté, un grep cassé rendant zéro exactement comme un résultat propre. Un garde
 total et négatif le tient : aucun chemin sortant, où que ce soit.
 
-**Ce qui reste ouvert, et qui n'est plus technique** : faut-il déclarer *deux
-plugins* dans `marketplace.json` ? Rien ne l'empêche désormais. C'est une
-question de distribution — deux entrées à maintenir contre un choix laissé à
-l'utilisateur —, plus une question de dépendance.
+### Décidé le 22/08/2026 : TROIS plugins, à mettre en place après le run 4
+
+```
+plugins/
+  argus-web/     .claude-plugin/plugin.json + skills/argus/
+  argus-mobile/  .claude-plugin/plugin.json + skills/argus-mobile/
+  argus/         .claude-plugin/plugin.json — RIEN QUE des dependencies
+```
+
+```json
+{ "name": "argus", "version": "1.1.0",
+  "dependencies": ["argus-web", "argus-mobile"] }
+```
+
+La doc le prévoit explicitement : « Besides the required `name`, a plugin
+manifest can consist of only a `dependencies` array. Installing it pulls in every
+dependency, which makes it a way to package a curated plugin set behind one
+install. » **Zéro duplication** — c'est ce qui rend cette voie supérieure à la
+copie synchronisée qu'on envisageait.
+
+**La contrainte qui commande tout** : `/plugin install argus@alexwilfriedo` doit
+continuer à donner exactement ce qu'il donne aujourd'hui, y compris pour une
+installation neuve — des devs s'en servent. Elle est tenue : le nom `argus` ne
+bouge pas, donc rien à migrer, pas même un `renames`.
+
+⚠️ **L'autonomie d'installation et l'autonomie de contenu sont deux choses**, et
+la seconde conditionne la première. Seul `argus` porte des `dependencies` : les
+deux autres n'en déclarent aucune, donc installer l'un ne tire jamais l'autre.
+Mais sans le travail d'autonomie fait plus haut, `argus-mobile` installé seul
+aurait eu des renvois vers `../../argus/references/` que rien n'aurait résolus —
+une commande qui **installe** et un skill qui **ne marche pas**, le pire des deux
+puisque rien ne lève.
+
+⚠️ **Dépendances en chaîne nue**, pas de contraintes de version : elles
+exigeraient des tags `argus-web--v1.1.0` à maintenir, inutile tant que les trois
+avancent ensemble.
+
+⚠️ **Le nom du marketplace reste `alexwilfriedo`.** Il a été envisagé de le
+renommer, puis écarté : `renames` ne couvre **que les plugins**, il n'existe
+aucune migration pour le nom d'un marketplace, et le renommer casserait la
+commande pour toute installation neuve — exactement ce que la contrainte
+interdit. Un nom de marketplace n'est pas une signature, c'est une clé
+d'installation : la seule qualité qu'on lui demande est de ne pas bouger. Ce qui
+relève de l'identité se met dans `owner`, qui n'apparaît dans aucune commande.
+
+### Ce qu'il faudra prouver après le déplacement
+
+**49 occurrences dans 8 fichiers** citent `skills/argus-mobile` : les trois
+outils, la CI, le README, les deux `PROMPTS`, ce registre. Deux vérifications qui
+ne se déduisent pas de « la suite est verte » :
+
+- **`install-mobile.sh` pose toujours le scaffold** depuis sa nouvelle place — le
+  banc le dit en cinq secondes ;
+- **le garde d'autonomie SUIT le déplacement.** Il cherche `skills/argus-mobile`
+  en dur : pointé sur un dossier disparu, il passe au vert sans rien mesurer. À
+  vérifier par mutation, pas par la couleur de la suite.
 
 <sub>Ce qui suit est le dossier tel qu'il avait été instruit, avec sa mesure
 fausse. Le garder montre comment un chiffre plausible fait trancher à l'envers.</sub>
