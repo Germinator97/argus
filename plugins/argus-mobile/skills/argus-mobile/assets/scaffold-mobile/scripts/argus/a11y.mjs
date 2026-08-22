@@ -26,6 +26,7 @@
  *   node scripts/argus/a11y.mjs --screen=home --device=<udid>
  */
 
+import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -158,17 +159,52 @@ export function relaunchDecision({ foreground, matched, requested }) {
  *              splash déclaré est passé
  *   `attendre` tout le reste, y compris un écran immobile pendant son splash
  *
- * `splashMs` vaut `thresholds.brandedSplashMs`. À zéro — non renseigné — on
- * n'invente pas de plancher : on attend le budget entier, ce qui est lent mais
- * jamais faux, et l'appelant dit quoi renseigner pour que ça cesse.
+ * ⚠️ `plancherMs` N'EST PAS `brandedSplashMs`, et les confondre a coûté la
+ * dimension une seconde fois. Le splash de marque dure 2 s ; l'écran
+ * EXPLOITABLE, lui, arrive à 5–7 s sur le même projet — splash, initialisation,
+ * premier rendu. Attendre le premier revient à conclure pendant le second.
+ *
+ * C'est exactement la distinction que le point 88 a fait écrire dans le rapport,
+ * dans la MÊME passe que ce correctif. L'avoir documentée trois fichiers plus
+ * loin ne l'a pas rendue présente à l'esprit ici.
+ *
+ * Le plancher se dérive donc du temps RÉEL d'arrivée de l'écran de départ, que
+ * le harnais mesure déjà (`startup.samples` du rapport). À défaut de mesure, on
+ * n'invente rien : on attend le budget entier — lent, jamais faux — et
+ * l'appelant dit quoi faire pour que ça cesse.
  * @param {{matched:boolean, kind:string, immobile:boolean, ecouleMs:number, splashMs:number}} etat
  * @returns {'reconnu'|'renoncer'|'attendre'}
  */
-export function verdictAttente({ matched, kind, immobile, ecouleMs, splashMs }) {
+export function verdictAttente({ matched, kind, immobile, ecouleMs, plancherMs }) {
   if (matched) return 'reconnu';
   if (kind === 'sans-declaration') return 'renoncer';
-  if (immobile && splashMs > 0 && ecouleMs >= splashMs) return 'renoncer';
+  if (immobile && plancherMs > 0 && ecouleMs >= plancherMs) return 'renoncer';
   return 'attendre';
+}
+
+/**
+ * Le temps qu'a mis l'écran de départ à arriver, au dernier run mesuré.
+ *
+ * ⚠️ C'est la SEULE grandeur qui vaille ici, et elle ne se devine pas : elle
+ * dépend du splash, de l'initialisation et de l'appareil. Le runner l'a déjà
+ * relevée — `startup.samples` — et l'a écrite dans le rapport. On la relit.
+ *
+ * On rend la PLUS GRANDE des mesures, pas la médiane : ce plancher sert à ne pas
+ * conclure trop tôt, donc se tromper vers le haut ne coûte que du temps, et vers
+ * le bas coûte la mesure.
+ * @param {string} reportPath @param {typeof readFileSync} [lire]
+ * @returns {number} 0 si rien de lisible
+ */
+export function plancherMesure(reportPath, lire = readFileSync) {
+  try {
+    const rapport = JSON.parse(String(lire(reportPath, 'utf8')));
+    const ms = (rapport?.startup?.samples ?? [])
+      .map((/** @type {any} */ s) => Number(s?.ms ?? 0))
+      .filter((/** @type {number} */ n) => Number.isFinite(n) && n > 0);
+    return ms.length ? Math.max(...ms) : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export function identifyScreen(nodes, config, requested) {
@@ -426,7 +462,10 @@ function main() {
     // budget d'attente du harnais et pas une seconde de plus.
     const depart = Date.now();
     const limite = depart + startTimeoutMs(config);
-    const splashMs = Number(config.thresholds?.brandedSplashMs ?? 0);
+    // Le temps RÉEL d'arrivée de l'écran, relu du dernier rapport ; à défaut, le
+    // splash déclaré, qui vaut mieux que rien mais qu'on sait trop court.
+    const mesure = plancherMesure(join(artifactsDir(config), 'report.json'));
+    const plancherMs = mesure || Number(config.thresholds?.brandedSplashMs ?? 0);
     const pause = new Int32Array(new SharedArrayBuffer(4));
     let empreinte = '';
     let verdict = 'attendre';
@@ -441,7 +480,7 @@ function main() {
           const vu = `${encore.length}·${encore.map((n) => n['resource-id'] ?? '').sort().join('|')}`;
           verdict = verdictAttente({
             matched: identity.matched, kind: identity.kind,
-            immobile: vu === empreinte, ecouleMs: Date.now() - depart, splashMs,
+            immobile: vu === empreinte, ecouleMs: Date.now() - depart, plancherMs,
           });
           empreinte = vu;
           if (verdict !== 'attendre') break;
@@ -450,10 +489,14 @@ function main() {
       Atomics.wait(pause, 0, 0, 500);
     } while (Date.now() < limite);
 
-    if (!identity.matched && splashMs === 0) {
-      warn('thresholds.brandedSplashMs vaut 0 : sans lui, un écran immobile ne peut pas être '
-        + 'distingué d\'un splash, donc on a attendu le budget entier. Renseigne la durée de '
-        + 'splash que ton app s\'impose pour que cette attente se règle sur elle.');
+    if (!identity.matched && plancherMs === 0) {
+      warn('aucun temps de démarrage connu : ni `startup.samples` dans le rapport (lance '
+        + '`make argus-run` d\'abord), ni `thresholds.brandedSplashMs`. Un écran immobile ne '
+        + 'peut donc pas être distingué d\'un splash, et on a attendu le budget entier.');
+    } else if (!identity.matched && !mesure) {
+      warn(`plancher pris sur thresholds.brandedSplashMs (${plancherMs} ms) faute de mesure — `
+        + 'c\'est la durée du SPLASH, pas celle de l\'écran exploitable, qui est plus longue. '
+        + 'Lance `make argus-run` une fois : son `startup.samples` donnera le bon chiffre.');
     }
   }
 

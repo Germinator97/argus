@@ -28,7 +28,7 @@ import {
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -1246,7 +1246,7 @@ test('écran déjà reconnu : rien à relancer — le garde ne coupe qu\'un sens
 // dimension ne mesurait rien. C'est mot pour mot l'erreur corrigée la veille
 // dans launch-clean.yaml, restée intacte deux fichiers plus loin.
 
-const ATTENTE = { matched: false, kind: 'aucune', immobile: false, ecouleMs: 0, splashMs: 2000 };
+const ATTENTE = { matched: false, kind: 'aucune', immobile: false, ecouleMs: 0, plancherMs: 2000 };
 
 // ⚠️ CE GARDE EXISTE CONTRE UN MOTIF, PAS CONTRE UN DÉFAUT. Le point 84 a filtré
 // `startupHint` par la commande en échec ; son voisin `vanishedHint`, dix lignes
@@ -1287,6 +1287,19 @@ test('passé le splash déclaré, l\'immobilité vaut « posé » — le garde n
     'un écran qui bouge encore n\'est pas posé, quel que soit le temps écoulé');
 });
 
+test('le plancher se LIT dans le rapport, il ne se devine pas', () => {
+  // ⚠️ Le splash déclaré (2 s) n'est pas le temps d'arrivée de l'écran
+  // exploitable (5–7 s mesurés sur un vrai projet). Poser le premier revient à
+  // conclure pendant le second — c'est ce qui a coûté la dimension deux fois.
+  const rapport = (/** @type {any} */ o) => () => JSON.stringify(o);
+  assert.equal(plancherMesure('/x', rapport({ startup: { samples: [{ ms: 5015 }, { ms: 7299 }] } })), 7299,
+    'la PLUS GRANDE : se tromper vers le haut coûte du temps, vers le bas coûte la mesure');
+  assert.equal(plancherMesure('/x', rapport({ startup: { samples: [] } })), 0);
+  assert.equal(plancherMesure('/x', rapport({})), 0);
+  assert.equal(plancherMesure('/x', () => 'pas du json'), 0, 'un rapport illisible ne rend pas un plancher inventé');
+  assert.equal(plancherMesure('/x', () => { throw new Error('ENOENT'); }), 0, 'rapport absent : zéro, pas une exception');
+});
+
 test('rien de déclaré : on renonce tout de suite, attendre ne servirait JAMAIS', () => {
   assert.equal(verdictAttente({ ...ATTENTE, kind: 'sans-declaration', immobile: false }), 'renoncer',
     'aucun écran ne peut être reconnu : le budget entier serait du gaspillage pur');
@@ -1295,12 +1308,12 @@ test('rien de déclaré : on renonce tout de suite, attendre ne servirait JAMAIS
 test('sans brandedSplashMs, on n\'invente pas de plancher — on attend', () => {
   // Un nombre deviné ici serait exactement le défaut d'avant, avec un autre
   // habillage : lent mais jamais faux vaut mieux que rapide et faux.
-  assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 99000, splashMs: 0 }), 'attendre');
+  assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 99000, plancherMs: 0 }), 'attendre');
 });
 
 test('un écran reconnu l\'emporte sur tout le reste', () => {
   assert.equal(verdictAttente({ ...ATTENTE, matched: true, immobile: false, ecouleMs: 0 }), 'reconnu');
-  assert.equal(verdictAttente({ matched: true, kind: 'sans-declaration', immobile: true, ecouleMs: 0, splashMs: 0 }),
+  assert.equal(verdictAttente({ matched: true, kind: 'sans-declaration', immobile: true, ecouleMs: 0, plancherMs: 0 }),
     'reconnu', 'la reconnaissance passe avant le renoncement, sinon on jette une mesure valide');
 });
 

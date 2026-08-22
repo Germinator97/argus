@@ -962,7 +962,7 @@ ponctuel.** `SELECTOR_COMMANDS` nomme les commandes dont l'échec parle d'un
 tombera sans que personne y pense. C'est ce garde-là, pas le correctif, qui
 répond au motif que trois runs ont nommé.
 
-### 91. Le plancher d'attente a11y est le splash, pas le temps d'écran exploitable
+### 91. ✅ Corrigé le 22/08/2026 — Le plancher d'attente a11y était le splash, pas le temps d'écran exploitable
 
 Mon correctif du 79 attend `brandedSplashMs` avant de conclure qu'un écran
 immobile est posé. Sur ce projet : **splash déclaré 2000 ms, écran exploitable
@@ -971,6 +971,16 @@ a mesuré le splash — l'agent a dû le contourner à la main.
 
 ⚠️ **J'ai confondu les deux grandeurs que le point 88 m'a fait documenter la
 veille**, dans la même passe. Écrire la distinction ne suffit pas à s'en servir.
+
+**Corrigé : le plancher se LIT au lieu de se deviner.** `plancherMesure()` relit
+`startup.samples` du rapport — le temps réel d'arrivée de l'écran de départ, que
+le runner mesure déjà — et rend la **plus grande** des mesures : se tromper vers
+le haut coûte du temps, vers le bas coûte la mesure.
+
+À défaut de rapport, repli sur `brandedSplashMs` **en le disant** : « c'est la
+durée du SPLASH, pas celle de l'écran exploitable, qui est plus longue ». Le
+paramètre s'appelle désormais `plancherMs` et non plus `splashMs` — le nom
+portait l'erreur autant que la valeur.
 
 ### 92. ✅ Corrigé le 22/08/2026 — `devices[].model` avait deux vocabulaires pour une clé
 
