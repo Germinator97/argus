@@ -32,7 +32,8 @@ import { extname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, loadConfig, log, sh, warn, writeJson,
+  artifactsDir, detectTools, err, exitCodeFor, flutterCommand, loadConfig, log, sh,
+  warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -420,7 +421,7 @@ function main() {
   if (platform !== 'android') {
     binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur n\'est pas le binaire signé de l\'App Store. Utilise MobSF sur l\'IPA.' };
   } else if (!existsSync(binary)) {
-    binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${config.build.androidBuildCmd}` };
+    binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${flutterCommand(config.build.androidBuildCmd)}` };
   } else if (!tools.unzip.present) {
     binaryFacts = { scanned: false, why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
   } else {

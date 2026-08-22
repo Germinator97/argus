@@ -537,6 +537,32 @@ export function sh(bin, args = [], opts = {}) {
 }
 
 /**
+ * Le projet épingle-t-il son SDK Flutter par FVM ?
+ *
+ * ⚠️ Ça change la commande, pas seulement le confort : la contrainte de SDK du
+ * `pubspec.yaml` REJETTE la version globale, donc `flutter` du PATH échoue sur
+ * tout — `pub get` compris. Le Makefile le dérivait déjà ; les scripts, non,
+ * si bien qu'`argus-doctor` sondait un SDK que le projet n'utilise pas et
+ * rendait sa version. Relevé sur un projet réel : 3.32.0 annoncé là où le
+ * projet construit en 3.41.9.
+ * @returns {boolean}
+ */
+export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));
+
+/**
+ * Une commande Flutter telle qu'il faut la TAPER dans ce projet.
+ *
+ * Ne préfixe que ce qui commence par `flutter ` : une commande déjà écrite
+ * `fvm flutter …`, ou qui passe par un script maison, est rendue intacte.
+ * @param {string} command @returns {string}
+ */
+export function flutterCommand(command) {
+  const text = String(command ?? '').trim();
+  if (!usesFvm() || !text.startsWith('flutter ')) return text;
+  return `fvm ${text}`;
+}
+
+/**
  * Outils optionnels, avec la raison de leur présence et comment les installer.
  * @type {Record<string, {probe:string[], why:string, install:string}>}
  */
@@ -561,7 +587,11 @@ export function detectTools(names = Object.keys(TOOLS)) {
   const out = {};
   for (const name of names) {
     const spec = TOOLS[name] ?? { probe: ['--version'] };
-    const res = sh(name, spec.probe);
+    // Le SDK du PROJET, pas celui du PATH — sinon on rapporte la version d'un
+    // Flutter avec lequel rien ne se construit ici.
+    const res = name === 'flutter' && usesFvm()
+      ? sh('fvm', ['flutter', ...spec.probe])
+      : sh(name, spec.probe);
     // `apkanalyzer -h` sort en code non nul tout en prouvant sa présence :
     // l'absence se reconnaît à l'erreur de spawn (ENOENT), pas au status.
     const present = res.error === null;

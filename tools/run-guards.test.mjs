@@ -19,10 +19,10 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  avdNameFrom, budgetVerdict, buildEnv, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { flutterCommand, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -422,4 +422,65 @@ test('le budget d\'exécution se compare vraiment à ce qui a été dépensé', 
 
   // Budget à zéro = pas de budget, pas un budget impossible à tenir.
   assert.deepEqual(budgetVerdict({}, ilYA(600), 9999).warnings, []);
+});
+
+// ── Quelles dimensions un `--tags` demande-t-il vraiment ? ───────────────────
+//
+// La dimension visuelle a sa PROPRE boucle : un flow Maestro ne sait ni itérer
+// sur des écrans ni naviguer vers chacun, donc c'est le runner qui rappelle
+// visual.yaml une fois par écran. La suite principale exclut donc toujours
+// `visual` — et demander `--tags=visual` lui laissait un ensemble vide, qu'elle
+// exécutait quand même : une JVM Maestro démarrée pour rien, dont la seule
+// sortie était la ligne de skip du flow visuel.
+//
+// ⚠️ Un relevé de terrain en a conclu que `make argus-visual` « ne fait pas de
+// régression visuelle ». Mesuré avant de corriger : il la faisait, dans les
+// deux exécutions suivantes. Le symptôme était réel, le diagnostic faux.
+//
+// Le symétrique comptait autant : `--tags=smoke`, annoncé comme « le plus
+// rapide », lançait la boucle visuelle entière. Corriger un sur-déclenchement
+// fabrique un sous-déclenchement — les deux sens sont donc testés ici.
+
+test('--tags=visual ne lance QUE la boucle visuelle', () => {
+  const d = dimensionsToRun(['visual'], ['wip', 'manual']);
+  assert.equal(d.main, false, 'la suite principale exclut visual : elle n\'aurait rien à exécuter');
+  assert.equal(d.visual, true);
+});
+
+test('--tags=smoke ne lance PAS la boucle visuelle', () => {
+  const d = dimensionsToRun(['smoke'], ['wip', 'manual']);
+  assert.equal(d.main, true);
+  assert.equal(d.visual, false, '« le plus rapide » ne doit pas photographier tous les écrans');
+});
+
+test('sans tag, tout tourne — c\'est le run complet', () => {
+  const d = dimensionsToRun([], ['wip', 'manual']);
+  assert.deepEqual(d, { main: true, visual: true });
+});
+
+test('les deux ensemble lancent les deux', () => {
+  assert.deepEqual(dimensionsToRun(['smoke', 'visual'], []), { main: true, visual: true });
+});
+
+test('exclure visual le retire, même sans rien demander', () => {
+  assert.deepEqual(dimensionsToRun([], ['visual']), { main: true, visual: false });
+  // Et l'exclusion gagne sur la demande : c'est le sens habituel des deux flags.
+  assert.deepEqual(dimensionsToRun(['visual'], ['visual']), { main: false, visual: false });
+});
+
+test('un tag exclu ne suffit pas à faire tourner la suite principale', () => {
+  // Demander uniquement ce qui est exclu ne doit rien lancer du tout.
+  assert.deepEqual(dimensionsToRun(['wip'], ['wip']), { main: false, visual: false });
+});
+
+// ── La commande Flutter est celle du PROJET ─────────────────────────────────
+
+test('une commande flutter n\'est préfixée que si le projet épingle son SDK', () => {
+  // Ce dépôt n'est pas un projet Flutter : pas de .fvmrc, donc pas de préfixe.
+  assert.equal(flutterCommand('flutter build apk --debug'), 'flutter build apk --debug');
+  // Et ce qui n'est pas une commande flutter n'est jamais touché.
+  assert.equal(flutterCommand('make argus-build'), 'make argus-build');
+  assert.equal(flutterCommand('fvm flutter build apk --debug'), 'fvm flutter build apk --debug');
+  assert.equal(flutterCommand(''), '');
+  assert.equal(flutterCommand(undefined), '');
 });

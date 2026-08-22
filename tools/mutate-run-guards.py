@@ -27,7 +27,7 @@ CIBLES = {
     "visual": FLOWS / "visual.yaml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 27
+NB_TESTS = 34
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -91,6 +91,15 @@ MUTATIONS = [
     ("run", "le budget de flows cesse d'être comparé",
      "  if (maxFlows > 0 && flows > maxFlows) {",
      "  if (maxFlows > 0 && flows > maxFlows * 1000) {"),
+    ("run", "--tags=visual relance la suite principale pour rien",
+     "    main: includeTags.some((tag) => tag !== 'visual' && !exclus.has(tag)),",
+     "    main: includeTags.some((tag) => !exclus.has(tag)),"),
+    ("run", "--tags=smoke rejoue toute la boucle visuelle",
+     "    visual: includeTags.includes('visual') && !exclus.has('visual'),",
+     "    visual: !exclus.has('visual'),"),
+    ("config", "flutterCommand préfixe ce qui n'est pas du flutter",
+     "  if (!usesFvm() || !text.startsWith('flutter ')) return text;",
+     "  if (!usesFvm()) return text;"),
     ("visual", "la capture n'est plus recadrée, la comparaison si",
      "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
      "                  id: ${ARGUS_VISUAL_CROP}\n"

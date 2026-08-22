@@ -30,7 +30,8 @@ import { fileURLToPath } from 'node:url';
 
 import {
   activeDevices, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
-  loadConfig, log, missingToolMessage, parseYaml, sh, validateConfig, warn, writeJson,
+  flutterCommand, loadConfig, log, missingToolMessage, parseYaml, sh, validateConfig,
+  warn, writeJson,
 } from './config.mjs';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -868,6 +869,31 @@ function stampBaselineCrop(baselineDir, crop) {
 }
 
 /**
+ * La suite principale a-t-elle quelque chose à exécuter ?
+ *
+ * Elle exclut TOUJOURS `visual` : la dimension visuelle a sa propre boucle,
+ * parce qu'un flow Maestro ne sait ni itérer sur des écrans ni naviguer vers
+ * chacun. Demander `--tags=visual` lui laisse donc un ensemble vide, et elle
+ * démarrait quand même une JVM Maestro pour ne rien exécuter — la seule chose
+ * qu'on lisait alors était la ligne de skip du flow visuel.
+ *
+ * ⚠️ C'est ce skip qui a fait conclure, sur le terrain, que `make argus-visual`
+ * « ne fait pas de régression visuelle ». Mesuré : il la faisait, dans les deux
+ * exécutions suivantes. Le défaut n'était pas l'absence de boucle mais un run
+ * inutile dont la sortie disait le contraire de ce qui se passait juste après.
+ * @param {string[]} includeTags @param {string[]} excludeTags @returns {boolean}
+ */
+function dimensionsToRun(includeTags, excludeTags) {
+  const exclus = new Set(excludeTags);
+  // Rien de demandé = tout ce qui n'est pas exclu. C'est le run complet.
+  if (includeTags.length === 0) return { main: true, visual: !exclus.has('visual') };
+  return {
+    main: includeTags.some((tag) => tag !== 'visual' && !exclus.has(tag)),
+    visual: includeTags.includes('visual') && !exclus.has('visual'),
+  };
+}
+
+/**
  * Ce que le run a coûté, face à ce que `budget` autorisait.
  *
  * Avertit, ne fait pas échouer : dépasser un budget est une information de
@@ -966,7 +992,7 @@ async function main() {
     install = installApp(platform, resolved.udid, binary, appId, opts.dryRun);
     if (!install.ok) {
       err(`installation non prouvée — ${install.proof}`);
-      err(`  Construis le binaire : ${platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd}`);
+      err(`  Construis le binaire : ${flutterCommand(platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd)}`);
       process.exit(2);
     }
     log(`installation prouvée — ${install.proof}`);
@@ -990,20 +1016,23 @@ async function main() {
   const runs = [];
 
   // ── Suite principale (le visuel a sa propre boucle) ─────────────────────
-  runs.push(runMaestro({
-    udid: resolved.udid, target: '.maestro', junitPath: join(reportDir, 'report.junit.xml'),
-    outputDir, env: baseEnv, includeTags, excludeTags: [...excludeTags, 'visual'],
-    dryRun: opts.dryRun, verbose: opts.verbose,
-  }));
+  const dimensions = dimensionsToRun(includeTags, excludeTags);
+  if (dimensions.main) {
+    runs.push(runMaestro({
+      udid: resolved.udid, target: '.maestro', junitPath: join(reportDir, 'report.junit.xml'),
+      outputDir, env: baseEnv, includeTags, excludeTags: [...excludeTags, 'visual'],
+      dryRun: opts.dryRun, verbose: opts.verbose,
+    }));
+  }
 
   // ── Boucle visuelle : un passage par écran ──────────────────────────────
   // Un flow Maestro ne sait pas itérer sur une liste d'écrans, et surtout il ne
   // saurait pas naviguer vers chacun. C'est donc le runner qui boucle.
-  const visualScreens = screens.filter((s) => s.visual !== false);
+  const visualScreens = dimensions.visual ? screens.filter((s) => s.visual !== false) : [];
   const visualMode = opts.updateBaselines ? 'update' : 'assert';
   const visualCrop = String(config.visualCropOn ?? '');
   if (visualCrop) log(`captures recadrées sur « ${visualCrop} »`);
-  if (visualMode === 'assert') {
+  if (dimensions.visual && visualMode === 'assert') {
     // Le cadrage doit être le MÊME qu'à la génération, sinon on compare deux
     // images qui ne cadrent pas la même chose — et l'échec accuse l'app.
     const stamped = baselineCrop(baselineDir);
@@ -1013,7 +1042,7 @@ async function main() {
       warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
     }
   }
-  if (visualMode === 'assert' && !existsSync(baselineDir)) {
+  if (dimensions.visual && visualMode === 'assert' && !existsSync(baselineDir)) {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
     warn('  Génère-les : node scripts/argus/run.mjs --update-baselines');
   } else {
@@ -1153,6 +1182,6 @@ if (invokedDirectly) {
 // Surface exposée aux gardes de tools/. Ce sont les fonctions qui décident
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
-  avdNameFrom, budgetVerdict, buildEnv, findingsFrom, resolveByAvd, resolveNamedDevice,
+  avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
   startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples,
 };

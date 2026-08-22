@@ -59,7 +59,7 @@ cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
    ```bash
    node scripts/argus/config.mjs   # config résolue + outillage détecté
    make argus-guards                      # étage 1 : a11y + disposition, sans device
-   flutter build apk --debug
+   make argus-build                       # `fvm flutter` si le projet l'épingle
    make argus-run                         # étage 2 : suite Maestro sur émulateur
    make argus-baselines                   # références visuelles (1re fois)
    make argus-report                      # rapport HTML

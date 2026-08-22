@@ -26,6 +26,7 @@ argus-doctor: ## Config résolue + outillage détecté
 	@echo "flutter : $(FLUTTER)"
 	@node scripts/argus/config.mjs
 
+
 argus-build: ## Construit l'APK debug
 	@$(FLUTTER) build apk --debug
 
@@ -69,4 +70,19 @@ argus-sca: ## CVE des dépendances Dart et natives
 argus-report: ## Agrège tout en rapport HTML
 	@node scripts/argus/report.mjs
 
-argus: argus-lint argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca argus-report ## Tout, dans l'ordre
+# ⚠️ PAS une liste de prérequis. `argus-run` sort en 1 ou 2 dès qu'un finding
+# atteint le seuil du gate — c'est son travail —, et make s'arrête là : le
+# rapport, c'est-à-dire la seule chose qui explique POURQUOI ça a échoué, n'était
+# jamais produit. Exactement dans le cas où on en a besoin.
+#
+# On enchaîne donc les dimensions à la main, on retient le pire code, et le
+# rapport sort toujours. Le code de sortie reste celui du gate : produire le
+# rapport ne doit pas verdir un run rouge.
+argus: ## Tout, dans l'ordre — le rapport sort même quand une dimension échoue
+	@code=0; \
+	for cible in argus-lint argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca; do \
+		$(MAKE) --no-print-directory $$cible || { s=$$?; [ $$s -gt $$code ] && code=$$s; }; \
+	done; \
+	$(MAKE) --no-print-directory argus-report; \
+	[ $$code -eq 0 ] || echo "✖ dimensions en échec — le rapport ci-dessus dit lesquelles."; \
+	exit $$code

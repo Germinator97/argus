@@ -452,8 +452,11 @@ il devine mal dès que le premier écran déclaré est l'état plein. Et note en
 présentes **dans plusieurs états** — c'est ce qui permet à un flow de ne pas avoir
 à savoir dans quel état il est tombé.
 
-**d. Un binaire installable.** Sinon guide : `flutter build apk --debug` ou
-`flutter build ios --debug --simulator`.
+**d. Un binaire installable.** Sinon guide : `make argus-build`, qui dérive la
+commande du projet. ⚠️ N'écris pas `flutter build apk --debug` en clair dès
+qu'un `.fvmrc` ou un `.fvm/` existe : la contrainte de SDK du `pubspec.yaml`
+rejette la version globale et le build échoue. Le Makefile et les scripts le
+dérivent ; ta ligne de commande, non.
 
 **e. Flutter Web ?** `SemanticsBinding.instance.ensureSemantics()` dans `main()`
 est **obligatoire**, sinon Maestro ne voit **aucun** élément et échoue en
@@ -515,7 +518,7 @@ point de vue, l'élément aura simplement disparu.
 ```bash
 make argus-anchors
 make argus-guards      # étage 1, sans device, quelques secondes
-flutter build apk --debug
+make argus-build       # `fvm flutter` si le projet l'épingle — ne l'écris pas à la main
 make argus-run         # étage 2, sur émulateur
 make argus-baselines   # références visuelles (1re fois, sur le device de la CI)
 make argus-report      # rapport HTML
