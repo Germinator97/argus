@@ -30,6 +30,7 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, flutterCommand, loadConfig, log, sh,
@@ -454,4 +455,9 @@ function main() {
   process.exit(exitCodeFor(findings, config.gate));
 }
 
-main();
+// Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans
+// ce garde, l'importer pour en tester une fonction déclencherait un vrai run —
+// et c'est ce qui rendait ces scripts intestables, donc non testés.
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) main();

@@ -17,11 +17,12 @@
  * Usage : node scripts/argus/report.mjs
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
-import { artifactsDir, loadConfig, log, err, writeJson } from './config.mjs';
+import { artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -55,16 +56,43 @@ const esc = (value) => String(value ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&a
 function collect(dir) {
   const parts = [];
   for (const source of SOURCES) {
-    const data = readJson(join(dir, source.file));
+    const path = join(dir, source.file);
+    const data = readJson(path);
+    // ⚠️ L'ÂGE de chaque part, parce que rien ne l'obligeait à être du même run.
+    // Ce script agrège les JSON présents, quels qu'ils soient : après une preuve
+    // par corruption de baseline, le HTML décrivait un état qui n'existait plus,
+    // sans qu'une seule ligne ne le laisse voir. Un rapport est un instantané —
+    // encore faut-il qu'il dise de QUAND.
+    const at = data === null ? null : statSync(path).mtime;
     if (data === null) {
-      parts.push({ ...source, state: 'absent', reason: `jamais lancé — ${source.how}`, findings: [], data: null });
+      parts.push({ ...source, state: 'absent', reason: `jamais lancé — ${source.how}`, findings: [], data: null, at });
     } else if (data.skipped || data.cve?.scanned === false) {
-      parts.push({ ...source, state: 'skipped', reason: data.skipReason ?? data.cve?.why ?? 'non exécutée', findings: data.findings ?? [], data });
+      parts.push({ ...source, state: 'skipped', reason: data.skipReason ?? data.cve?.why ?? 'non exécutée', findings: data.findings ?? [], data, at });
     } else {
-      parts.push({ ...source, state: 'ok', reason: '', findings: data.findings ?? [], data });
+      parts.push({ ...source, state: 'ok', reason: '', findings: data.findings ?? [], data, at });
     }
   }
   return parts;
+}
+
+/**
+ * Marque comme PÉRIMÉE toute part sensiblement plus vieille que la plus récente.
+ *
+ * Le seuil est dérivé de `budget.maxMinutes` — la durée qu'un run complet a le
+ * droit de prendre — plutôt que deviné : au-delà, deux parts ne peuvent pas
+ * venir du même run. Le choisir en dur aurait produit exactement le genre de
+ * nombre qui se périme sans que rien ne le signale.
+ * @param {any[]} parts @param {any} config @returns {{stale:string[], newest:Date|null, budgetMin:number}}
+ */
+export function stalenessOf(parts, config) {
+  const budgetMin = Math.max(1, Number(config?.budget?.maxMinutes ?? 25));
+  const dated = parts.filter((/** @type {any} */ p) => p.at instanceof Date);
+  if (dated.length === 0) return { stale: [], newest: null, budgetMin };
+  const newest = dated.reduce((/** @type {Date} */ a, /** @type {any} */ p) => (p.at > a ? p.at : a), dated[0].at);
+  const stale = dated
+    .filter((/** @type {any} */ p) => (newest.getTime() - p.at.getTime()) / 60000 > budgetMin)
+    .map((/** @type {any} */ p) => p.file);
+  return { stale, newest, budgetMin };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -84,8 +112,11 @@ function coverageRows(parts) {
   return parts.map((part) => {
     const badge = badges[part.state];
     const state = states[part.state];
+    const age = part.at instanceof Date ? part.at.toISOString().replace('T', ' ').slice(0, 16) : '—';
+    const perime = part.stale ? ' <span class="badge bad">périmée</span>' : '';
     return `<tr><td>${esc(part.label)}</td><td class="muted">${esc(part.dimensions)}</td>`
-      + `<td><span class="badge ${badge}">${state}</span></td>`
+      + `<td><span class="badge ${badge}">${state}</span>${perime}</td>`
+      + `<td class="muted">${esc(age)}</td>`
       + `<td class="muted">${esc(part.reason)}</td></tr>`;
   }).join('');
 }
@@ -197,7 +228,8 @@ function renderBody(context) {
   </div>
 
   <h2>Couverture</h2>
-  <table><tr><th>Source</th><th>Dimensions</th><th>État</th><th>Raison</th></tr>${coverageRows(parts)}</table>
+  ${(context.staleness?.stale ?? []).length ? `<p class="muted"><span class="badge bad">périmée</span> ${(context.staleness.stale).length} relevé(s) ont plus de ${context.staleness.budgetMin} min d'écart avec le plus récent : ils ne viennent pas de ce run. Le rapport les agrège en le disant plutôt que de les taire.</p>` : ''}
+  <table><tr><th>Source</th><th>Dimensions</th><th>État</th><th>Mesurée le</th><th>Raison</th></tr>${coverageRows(parts)}</table>
   ${coverage ? `<p class="muted">Écrans déclarés : ${coverage.screensDeclared ?? '?'} · avec ancre sémantique : ${coverage.screensConfigured ?? '?'}${(coverage.notConfigured ?? []).length ? ` · sans ancre, donc non testés : ${esc((coverage.notConfigured ?? []).join(', '))}` : ''}</p>` : ''}
 
   ${perfRows(perf) ? `<h2>Performance</h2><table><tr><th>Mesure</th><th>Valeur</th><th>Budget</th></tr>${perfRows(perf)}</table>
@@ -296,6 +328,17 @@ function main() {
 
   const dir = artifactsDir(config);
   const parts = collect(dir);
+
+  // Un rapport agrège ce qu'il TROUVE, et rien ne garantit que ce soit du même
+  // run. Le dire est peu de chose ; ne pas le dire produit une page qui décrit
+  // avec assurance un état qui n'existe plus.
+  const staleness = stalenessOf(parts, config);
+  for (const part of parts) part.stale = staleness.stale.includes(part.file);
+  if (staleness.stale.length) {
+    warn(`${staleness.stale.length} relevé(s) plus vieux que ${staleness.budgetMin} min par rapport au plus récent : ${staleness.stale.join(', ')}`);
+    warn('  Le rapport les agrège quand même, en les marquant — mais ils ne viennent pas de ce run.');
+  }
+
   const findings = parts.flatMap((p) => p.findings);
   const counts = Object.fromEntries(SEVERITIES.map((s) => [s, findings.filter((f) => f.severity === s).length]));
 
@@ -307,10 +350,14 @@ function main() {
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   const htmlPath = join(dir, 'report.html');
-  const context = { run, counts, gate, parts, findings, coverage, perf, generatedAt };
+  const context = { run, counts, gate, parts, findings, coverage, perf, generatedAt, staleness };
   writeJson(join(dir, 'summary.json'), {
     generatedAt, gate, counts, findings: findings.length,
-    dimensions: parts.map((p) => ({ source: p.file, state: p.state, reason: p.reason, findings: p.findings.length })),
+    staleParts: staleness.stale,
+    dimensions: parts.map((p) => ({
+      source: p.file, state: p.state, reason: p.reason, findings: p.findings.length,
+      measuredAt: p.at instanceof Date ? p.at.toISOString() : null, stale: p.stale === true,
+    })),
   });
   writeFileSync(htmlPath, render(context), 'utf8');
 
@@ -343,4 +390,9 @@ function main() {
   log(`ouvrir : open ${htmlPath}   (ou : xdg-open / start)`);
 }
 
-main();
+// Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans
+// ce garde, l'importer pour en tester une fonction déclencherait un vrai run —
+// et c'est ce qui rendait ces scripts intestables, donc non testés.
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) main();

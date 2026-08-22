@@ -1101,7 +1101,16 @@ async function main() {
         os: resolved.os,
         physical: resolved.physical,
         identityMeasured: resolved.measured,
-        declared: { avd: spec.avd ?? '', model: spec.model ?? '', os: spec.os ?? '' },
+        // ⚠️ `model` et `os` ne servent QU'À `autoStart` — ils nomment ce que
+        // Maestro doit créer, pas ce qu'on vise. Sur un device qu'on ne démarre
+        // pas, les imprimer en « déclaré » face au modèle mesuré fabrique une
+        // comparaison sans objet : `pixel_6` en regard de `sdk_gphone64_arm64`
+        // se lit comme un écart alors que les deux ne parlent pas de la même
+        // chose. `null` dit « on n'a rien déclaré là-dessus », ce que le schéma
+        // ne permettait pas d'exprimer.
+        declared: spec.autoStart === true
+          ? { avd: spec.avd ?? '', model: spec.model ?? '', os: spec.os ?? '' }
+          : { avd: spec.avd ?? '', model: null, os: null },
       }],
       animationsDisabled: animations.ok, installProof: install.proof,
     },

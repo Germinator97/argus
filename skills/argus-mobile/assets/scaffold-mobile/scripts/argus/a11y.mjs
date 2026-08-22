@@ -26,8 +26,9 @@
  *   node scripts/argus/a11y.mjs --screen=home --device=<udid>
  */
 
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
@@ -56,6 +57,41 @@ function parseArgs(argv) {
 
 /** @param {string} udid @param {string[]} args */
 const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
+
+/**
+ * Quel écran DÉCLARÉ est affiché, d'après les ancres présentes dans le dump.
+ *
+ * Rend toujours un verdict lisible, y compris « aucun » : une mesure qui ne
+ * sait pas de quel écran elle parle vaut mieux si elle le dit.
+ * @param {Array<Record<string,string>>} nodes @param {any} config @param {string} requested
+ * @returns {{id:string, matched:boolean, detail:string}}
+ */
+export function identifyScreen(nodes, config, requested) {
+  const declared = (config.screens ?? []).filter((/** @type {any} */ s) => (s.anchor ?? '').trim());
+  if (declared.length === 0) {
+    return { id: '', matched: false, detail: 'aucun écran déclaré avec une ancre : impossible de reconnaître ce qui est affiché.' };
+  }
+  // L'ancre apparaît dans `resource-id` sur les dumps Android ; on balaie aussi
+  // les autres attributs textuels, parce que le dump n'a pas de forme garantie
+  // d'une version d'Android à l'autre.
+  const haystack = nodes.map((n) => Object.values(n).join('\u0000')).join('\u0000');
+  const found = declared.filter((/** @type {any} */ s) => haystack.includes(s.anchor));
+
+  if (found.length === 0) {
+    const attendu = requested && requested !== 'écran courant' ? ` (attendu : « ${requested} »)` : '';
+    return {
+      id: '',
+      matched: false,
+      detail: `aucune ancre déclarée n'est présente à l'écran${attendu} — ce qui est mesuré n'est PAS un écran du harnais.`
+        + ' Splash, écran système, ou état non déclaré : le relevé ne dit rien de ta couverture.',
+    };
+  }
+  const id = found.map((/** @type {any} */ s) => s.id).join('+');
+  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {
+    return { id, matched: false, detail: `écran affiché « ${id} », qui n'est pas « ${requested} » — la mesure ne porte pas sur ce que tu as demandé.` };
+  }
+  return { id, matched: true, detail: `écran reconnu : « ${id} ».` };
+}
 
 /**
  * Densité effective, en dpi. « Override density » l'emporte quand elle existe :
@@ -239,9 +275,24 @@ function main() {
     const why = `« ${packageName} » n'est pas au premier plan sur ${udid} `
       + `(paquets vus : ${seen.join(', ') || 'aucun'}). Lance l'app avant de mesurer.`;
     err(why);
-    writeJson(reportPath, { platform, device: { udid, dpi }, screen: opts.screen, skipped: true, skipReason: why, findings: [] });
+    writeJson(reportPath, {
+      platform, device: { udid, dpi },
+      screen: { requested: opts.screen, identified: '', matched: false },
+      skipped: true, skipReason: why, findings: [],
+    });
     process.exit(2);
   }
+
+  // ⚠️ Quel écran est-on en train de mesurer ? `--screen` n'était qu'une
+  // ÉTIQUETTE : on écrivait dans le rapport le nom qu'on avait tapé, pas celui
+  // de l'écran affiché. Sur le terrain, ce script lancé après une suite a
+  // mesuré le SPLASH et rendu « rien à mesurer » — honnête, vide, et
+  // indiscernable d'un écran réellement sans contrôles.
+  //
+  // On le RECONNAÎT donc, en croisant le dump avec les ancres déclarées. C'est
+  // le seul moyen d'affirmer quoi que ce soit sur l'écran mesuré.
+  const identity = identifyScreen(appNodes, config, opts.screen);
+  (identity.matched ? log : warn)(identity.detail);
 
   const result = analyse(appNodes, dpi, minDp);
   const labelled = appNodes.filter((n) => (n['content-desc'] ?? '').trim() || (n.text ?? '').trim()).length;
@@ -264,7 +315,9 @@ function main() {
       + 'et vérifie que l\'app est bien au premier plan.';
     err(reasonEmpty);
     writeJson(reportPath, {
-      platform, device: { udid, dpi }, screen: opts.screen, skipped: true,
+      platform, device: { udid, dpi },
+      screen: { requested: opts.screen, identified: identifyScreen(appNodes, config, opts.screen).id, matched: false },
+      skipped: true,
       skipReason: reasonEmpty, nodesSeen: appNodes.length, nodesWithSemantics: labelled, findings: [],
     });
     process.exit(2);
@@ -276,7 +329,11 @@ function main() {
 
   const findings = buildFindings(result, minDp);
   const report = {
-    platform, device: { udid, dpi }, screen: opts.screen,
+    platform, device: { udid, dpi },
+    // Ce qui a été demandé et ce qui a été RECONNU, côte à côte : les
+    // confondre est précisément ce qui a fait publier une mesure de splash
+    // sous le nom d'un écran métier.
+    screen: { requested: opts.screen, identified: identity.id, matched: identity.matched },
     metrics: {
       nodesSeen: appNodes.length,
       nodesTotalOnScreen: nodes.length,
@@ -302,4 +359,9 @@ function main() {
   process.exit(exitCodeFor(findings, config.gate));
 }
 
-main();
+// Comme pour run.mjs : ne lancer la mesure que si CE fichier est le point
+// d'entrée, sans quoi l'importer pour en tester une fonction sonderait un
+// device.
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) main();

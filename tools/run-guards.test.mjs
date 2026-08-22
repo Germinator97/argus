@@ -24,6 +24,8 @@ import {
   startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -514,4 +516,91 @@ test('l\'épinglage se lit sur le disque, et les deux marqueurs comptent', () =>
     process.chdir(avant);
     rmSync(base, { recursive: true, force: true });
   }
+});
+
+// ── Un rapport doit dire de QUAND il parle ───────────────────────────────────
+//
+// `argus-report` agrège les JSON présents, quel que soit leur âge. Après une
+// preuve par corruption de baseline, le HTML décrivait un état qui n'existait
+// plus, et rien dans la page ne permettait de s'en apercevoir. Le seuil est
+// DÉRIVÉ de `budget.maxMinutes` — la durée qu'un run complet a le droit de
+// prendre — plutôt que choisi : un nombre en dur se périmerait en silence, ce
+// qui est exactement le défaut qu'on répare.
+
+const part = (/** @type {string} */ file, /** @type {number} */ ageMin) => ({
+  file, at: new Date(Date.now() - ageMin * 60000),
+});
+
+test('des relevés du même run ne sont jamais marqués périmés', () => {
+  const parts = [part('report.json', 0), part('perf.json', 3), part('a11y.json', 12)];
+  assert.deepEqual(stalenessOf(parts, { budget: { maxMinutes: 25 } }).stale, []);
+});
+
+test('un relevé plus vieux que le budget du run est marqué', () => {
+  const parts = [part('report.json', 0), part('sec.json', 400)];
+  const v = stalenessOf(parts, { budget: { maxMinutes: 25 } });
+  assert.deepEqual(v.stale, ['sec.json'], 'quatre heures d\'écart ne peuvent pas venir du même run');
+  assert.equal(v.budgetMin, 25);
+});
+
+test('le seuil SUIT le budget déclaré — c\'est ce qui le rend non deviné', () => {
+  const parts = [part('report.json', 0), part('sec.json', 45)];
+  // Deux configs qui ne diffèrent QUE par la variable testée.
+  assert.deepEqual(stalenessOf(parts, { budget: { maxMinutes: 25 } }).stale, ['sec.json']);
+  assert.deepEqual(stalenessOf(parts, { budget: { maxMinutes: 90 } }).stale, []);
+});
+
+test('sans budget lisible, un plancher raisonnable plutôt qu\'une division par rien', () => {
+  const parts = [part('report.json', 0), part('sec.json', 400)];
+  assert.deepEqual(stalenessOf(parts, {}).stale, ['sec.json'], 'défaut de 25 min');
+  assert.equal(stalenessOf(parts, { budget: { maxMinutes: 0 } }).budgetMin, 1, 'zéro ne doit pas rendre tout périmé par construction');
+});
+
+test('aucun relevé daté : on ne conclut rien, on ne plante pas', () => {
+  const v = stalenessOf([{ file: 'report.json', at: null }], { budget: { maxMinutes: 25 } });
+  assert.deepEqual(v.stale, []);
+  assert.equal(v.newest, null);
+});
+
+// ── L'écran mesuré est celui qu'on croit ────────────────────────────────────
+//
+// `--screen` n'était qu'une ÉTIQUETTE : le rapport portait le nom tapé, pas
+// celui de l'écran affiché. Lancé après une suite, le script a mesuré le SPLASH
+// et rendu « rien à mesurer » — honnête, vide, et indiscernable d'un écran
+// réellement sans contrôles.
+
+const CONFIG_ECRANS = {
+  screens: [
+    { id: 'home', anchor: 'home_root' },
+    { id: 'login', anchor: 'login_root' },
+    { id: 'profile', anchor: '' },
+  ],
+};
+const dump = (/** @type {string[]} */ ids) => ids.map((id) => ({ 'resource-id': id, class: 'android.view.View' }));
+
+test('l\'écran affiché est reconnu par son ancre, pas par ce qu\'on a tapé', () => {
+  const v = identifyScreen(dump(['home_root', 'autre']), CONFIG_ECRANS, 'home');
+  assert.equal(v.matched, true);
+  assert.equal(v.id, 'home');
+});
+
+test('un splash ne se fait pas passer pour un écran du harnais', () => {
+  const v = identifyScreen(dump(['io.flutter.splash', 'decor_view']), CONFIG_ECRANS, 'home');
+  assert.equal(v.matched, false);
+  assert.equal(v.id, '', 'aucune ancre déclarée n\'est là : le relevé ne porte sur aucun écran connu');
+  assert.match(v.detail, /home/, 'et il doit dire ce qu\'on attendait');
+});
+
+test('mesurer login en croyant mesurer home est signalé', () => {
+  const v = identifyScreen(dump(['login_root']), CONFIG_ECRANS, 'login');
+  assert.equal(v.matched, true);
+  const faux = identifyScreen(dump(['login_root']), CONFIG_ECRANS, 'home');
+  assert.equal(faux.matched, false, 'le bon écran, mais pas celui qu\'on a demandé');
+  assert.equal(faux.id, 'login', 'et on doit quand même savoir lequel c\'était');
+});
+
+test('sans ancre déclarée nulle part, on le DIT plutôt que d\'affirmer', () => {
+  const v = identifyScreen(dump(['quoi']), { screens: [{ id: 'home', anchor: '' }] }, '');
+  assert.equal(v.matched, false);
+  assert.match(v.detail, /aucun écran déclaré/);
 });

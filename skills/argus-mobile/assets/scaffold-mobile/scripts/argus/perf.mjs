@@ -25,6 +25,7 @@
 import { existsSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
@@ -334,4 +335,9 @@ function main() {
   process.exit(exitCodeFor(findings, config.gate));
 }
 
-main();
+// Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans
+// ce garde, l'importer pour en tester une fonction déclencherait un vrai run —
+// et c'est ce qui rendait ces scripts intestables, donc non testés.
+const invokedDirectly = process.argv[1] !== undefined
+  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (invokedDirectly) main();

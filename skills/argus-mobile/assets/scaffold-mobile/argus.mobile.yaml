@@ -70,6 +70,10 @@ platforms:
 # `model`/`os` → consommés par autoStart uniquement. Ce sont des noms MAESTRO
 #                (`pixel_6`), pas ce que l'appareil rend (`sdk_gphone64_arm64`) :
 #                le rapport, lui, écrit ce qu'il a MESURÉ sur le device.
+#                ⚠️ Avec `autoStart: false` ils ne servent à RIEN, et le rapport
+#                les rend alors `null` plutôt que de les afficher en « déclaré »
+#                face au modèle mesuré — une comparaison entre deux choses qui
+#                ne parlent pas de la même, et qui se lit comme un écart.
 # `role: primary` → device qui porte les baselines visuelles et les mesures perf.
 devices:
   - id: android-emu

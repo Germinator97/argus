@@ -25,9 +25,11 @@ CIBLES = {
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
+    "report": SCAFFOLD / "report.mjs",
+    "a11y": SCAFFOLD / "a11y.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 35
+NB_TESTS = 44
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -106,6 +108,18 @@ MUTATIONS = [
     ("config", "le dossier .fvm cesse de compter comme un épinglage",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));",
      "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc'));"),
+    ("report", "un relevé périmé n'est plus signalé",
+     "    .filter((/** @type {any} */ p) => (newest.getTime() - p.at.getTime()) / 60000 > budgetMin)",
+     "    .filter((/** @type {any} */ p) => (newest.getTime() - p.at.getTime()) / 60000 > budgetMin * 1000)"),
+    ("report", "le seuil de péremption cesse de suivre le budget",
+     "  const budgetMin = Math.max(1, Number(config?.budget?.maxMinutes ?? 25));",
+     "  const budgetMin = 25;"),
+    ("a11y", "un splash passe pour un écran du harnais",
+     "  if (found.length === 0) {",
+     "  if (false) {"),
+    ("a11y", "mesurer un autre écran que celui demandé ne se signale plus",
+     "  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {",
+     "  if (false) {"),
     ("visual", "la capture n'est plus recadrée, la comparaison si",
      "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
      "                  id: ${ARGUS_VISUAL_CROP}\n"

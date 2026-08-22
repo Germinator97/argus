@@ -47,6 +47,17 @@ jobs:
             node --check "$f"
           done
 
+      # ⚠️ `node --check` prouve qu'un fichier PARSE, pas qu'il se charge : il a
+      # laissé passer un script dont le garde de point d'entrée utilisait un
+      # symbole jamais importé. Le charger vraiment est ce qui le dit — et au
+      # passage, ça exige que chacun soit importable SANS effet de bord, ce qui
+      # est la condition pour que ses décisions soient testables.
+      - name: Les scripts du harness s'importent, sans rien lancer
+        run: |
+          for f in skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs; do
+            node --input-type=module -e "await import('$GITHUB_WORKSPACE/$f')"
+          done
+
       # `node --check` prouve qu'un fichier parse, jamais qu'il décide juste.
       # Deux défauts ont vécu sous cette seule étape : un rapport qui recopiait
       # l'identité du device au lieu de la lire, et un échec qui accusait
