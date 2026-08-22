@@ -310,7 +310,39 @@ function main() {
   //
   // On le RECONNAÎT donc, en croisant le dump avec les ancres déclarées. C'est
   // le seul moyen d'affirmer quoi que ce soit sur l'écran mesuré.
-  const identity = identifyScreen(appNodes, config, opts.screen);
+  let identity = identifyScreen(appNodes, config, opts.screen);
+
+  // ⚠️ UNE SEULE TENTATIVE DE RATTRAPAGE, ET ELLE EST DITE.
+  //
+  // La cible `argus` enchaîne ce script APRÈS la suite Maestro, qui laisse
+  // l'app là où son dernier flow s'est arrêté — personne ne sait où. Mesuré
+  // dans la chaîne : « 0 interactif, 0 finding », quand le même script pointé
+  // sur un écran connu en rend cinq. Le script avait raison de refuser de
+  // conclure ; c'était l'ordonnancement qui le mettait en position de ne rien
+  // mesurer.
+  //
+  // On relance donc l'app une fois, et on regarde à nouveau. Un `am force-stop`
+  // suivi du lanceur suffit à revenir à l'écran de départ.
+  //
+  // ⚠️ PAS de `pm clear` ici, et c'est délibéré : effacer les données de l'app
+  // est une ÉCRITURE, que la matrice de garde-fous gouverne par `ENV`. Un
+  // simple redémarrage obtient le même écran sans rien détruire — le faire au
+  // passage, dans un script de mesure, serait exactement le genre d'effet de
+  // bord qu'aucun ENV n'a autorisé.
+  if (!identity.matched && !opts.screen) {
+    warn(`${identity.detail}\n  → relance de l'app pour mesurer un écran connu, puis seconde lecture.`);
+    adb(udid, ['shell', 'am', 'force-stop', packageName]);
+    adb(udid, ['shell', 'monkey', '-p', packageName, '-c', 'android.intent.category.LAUNCHER', '1']);
+    const relu = dumpHierarchy(udid);
+    if (relu.xml) {
+      const encore = parseNodes(relu.xml).filter((n) => n.package === packageName);
+      if (encore.length > 0) {
+        appNodes.splice(0, appNodes.length, ...encore);
+        identity = identifyScreen(appNodes, config, opts.screen);
+      }
+    }
+  }
+
   (identity.matched ? log : warn)(identity.detail);
 
   const result = analyse(appNodes, dpi, minDp);

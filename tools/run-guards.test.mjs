@@ -20,6 +20,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
+
 import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
@@ -790,4 +792,34 @@ test('une mesure absente reste absente, sans inventer de raison d\'échantillon'
   const { value, why } = jankIfComparable({ jankFramesPct: null, totalFrames: null }, 1);
   assert.equal(value, null);
   assert.match(why, /gfxinfo/, 'la cause n\'est pas la même, le message non plus');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Aucun script de MESURE n'efface les données de l'app
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Effacer les données est une ÉCRITURE, que la matrice de garde-fous gouverne
+// par ENV. Un script de mesure qui le ferait au passage produirait exactement
+// l'effet de bord qu'aucun ENV n'a autorisé — et sur un appareil réel, il
+// détruirait les données de quelqu'un.
+//
+// Le critère est total et négatif : TOUS les scripts, pas ceux qu'on soupçonne.
+// Et il cherche l'APPEL, jamais le mot : a11y.mjs explique en commentaire
+// pourquoi il ne le fait pas, et un garde qui compterait sa propre mention
+// serait rouge pour la documentation de sa propre règle.
+
+test('aucun script de mesure n\'efface les données de l\'app', () => {
+  const dir = join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const scripts = readdirSync(dir).filter((f) => f.endsWith('.mjs'));
+  assert.ok(scripts.length >= 5, `motif introuvable : ${scripts.length} script(s) lus, le garde ne garde rien`);
+
+  for (const f of scripts) {
+    const code = readFileSync(join(dir, f), 'utf8')
+      .split('\n')
+      .filter((l) => !l.trim().startsWith('//') && !l.trim().startsWith('*'))
+      .join('\n');
+    assert.ok(!/'pm',\s*\n?\s*'clear'/.test(code) && !/shell.{0,20}pm\s+clear/.test(code),
+      `${f} efface les données de l'app — c'est une écriture, elle relève d'ENV, pas d'un script de mesure`);
+  }
 });
