@@ -465,12 +465,29 @@ Trois formes muettes au total — `assertNotVisible` toujours vert, `tapOn` +
 qu'on avait sous les yeux. Un garde total exige maintenant l'encadrement de tout
 sélecteur `text:`, exemples commentés compris, puisque c'est ce qu'on décommente.
 
-### 69. `commands:` n'a aucun moyen de dire « atteignable après défilement »
+### 69. ✅ Corrigé le 22/08/2026 — `commands:` n'avait aucun moyen de dire « atteignable après défilement »
 
 Une ancre au bas d'une liste paresseuse n'existe pas au petit gabarit. Le harnais
 sait maintenant le dire (point 42), mais les deux seules issues restent « suite
 rouge en permanence » ou « la retirer, et plus rien ne la vérifie ». Il manque un
 troisième état — `commandsAfterScroll:`, ou un gabarit de référence par écran.
+
+**Corrigé : `commandsAfterScroll:` existe.** L'ancre y est éprouvée sur le plus
+grand gabarit, là où la liste construit ce qu'elle affiche. L'indice de pli, qui
+proposait jusqu'ici deux mauvaises issues, l'y renvoie.
+
+⚠️ **L'autre moitié compte autant, et c'est elle qui empêche la dette de
+s'installer** : une ancre déclarée « après défilement » mais construite dès le
+gabarit de référence fait ÉCHOUER le test, avec la consigne de la remonter dans
+`commands:`. Sans ça, la liste survivrait à ce qu'elle décrit et deviendrait une
+permission permanente.
+
+⚠️ **La suite du banc ne l'exerçait PAS** — `argusScreens` y est vide, donc la
+nouvelle boucle ne tournait jamais et le vert ne prouvait rien. Armée par une
+sonde jetable (une `ListView.builder` de 30 lignes de 120 dp), elle a été
+vérifiée dans les **trois** sens : une ancre sous le pli passe, une ancre visible
+dès le petit gabarit échoue sur la moitié « périmée », une ancre inexistante
+échoue sur la moitié « présente ».
 
 ## Ce qui reste
 

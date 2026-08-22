@@ -26,6 +26,7 @@ class ArgusScreen {
     required this.build,
     this.anchor,
     this.commands = const <String>[],
+    this.commandsAfterScroll = const <String>[],
     this.priority = 'p0',
   });
 
@@ -62,6 +63,27 @@ class ArgusScreen {
   /// dynamique, commande présente dans deux états) : c'est prévu et ce n'est
   /// pas un défaut.
   final List<String> commands;
+
+  /// Les ancres que cet écran n'expose qu'APRÈS un défilement — le bas d'une
+  /// liste paresseuse, qui n'est pas construit au gabarit de référence.
+  ///
+  /// ⚠️ C'est le TROISIÈME ÉTAT, et son absence coûtait cher. Une telle ancre
+  /// n'avait que deux issues : rester dans [commands], où elle rend la suite
+  /// rouge en permanence, ou en sortir — et alors plus rien ne la vérifie,
+  /// jamais, alors que c'est bien une ancre que des flows ciblent. Le harnais
+  /// savait déjà DIRE qu'une commande n'était qu'invisible ici (il remonte
+  /// l'écran au grand gabarit pour trancher) ; il n'avait aucun endroit où
+  /// l'écrire.
+  ///
+  /// Elle est éprouvée sur le PLUS GRAND gabarit de [argusViewports], où la
+  /// liste construit ce qu'elle affiche.
+  ///
+  /// ⚠️ Et la déclaration ne survit pas à ce qu'elle décrit : une ancre inscrite
+  /// ici qui devient visible au gabarit de référence fait ÉCHOUER le test, avec
+  /// la consigne de la remonter dans [commands]. Sans cette moitié-là, la liste
+  /// deviendrait une permission permanente — la forme la plus courante de dette
+  /// qui s'installe.
+  final List<String> commandsAfterScroll;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
   /// pose lui-même la surface, la police et les marges système.

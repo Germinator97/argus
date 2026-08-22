@@ -24,6 +24,11 @@ import 'argus_types.dart';
 ///         id: 'home',
 ///         anchor: 'home_root',
 ///         commands: <String>['home_start_session', 'home_settings'],
+///         // Le bas d'une liste paresseuse : présent sur device après un
+///         // défilement, jamais construit au gabarit de référence. Le déclarer
+///         // ici le fait éprouver sur le plus grand gabarit, au lieu de le
+///         // laisser rougir en permanence ou disparaître de toute vérification.
+///         commandsAfterScroll: <String>['home_last_row'],
 ///         build: () => BlocProvider<HomeBloc>(
 ///           create: (_) => HomeBloc(repository: FakeHomeRepository()),
 ///           child: const HomeScreen(),

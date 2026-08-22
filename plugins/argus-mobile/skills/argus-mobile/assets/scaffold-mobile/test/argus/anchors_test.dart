@@ -148,9 +148,10 @@ void main() {
                 'présente et construite sur ${argusViewports.last.name}, absente '
                 'sur ${argusViewports.first.name}. Ce n\'est PAS un défaut '
                 'd\'instrumentation — c\'est une liste paresseuse qui ne '
-                'construit pas ce qu\'elle n\'affiche pas. Retire-la de '
-                '`commands:` si aucun flow ne la cible sans défiler, ou fais '
-                'défiler l\'écran avant de la viser.';
+                'construit pas ce qu\'elle n\'affiche pas. DÉPLACE-LA dans '
+                '`commandsAfterScroll:` : elle y sera éprouvée sur le grand '
+                'gabarit, au lieu de rougir ici en permanence — ou de sortir de '
+                '`commands:` et de n\'être plus vérifiée nulle part.';
           }
           // Remonter sur le gabarit de référence : ce qui suit le mesure.
           await pumpArgus(
@@ -207,6 +208,103 @@ void main() {
                 'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label.',
           );
         });
+      }
+
+      handle.dispose();
+    });
+  }
+
+  // ── Le troisième état : atteignable APRÈS défilement ──────────────────────
+  //
+  // Une ancre au bas d'une liste paresseuse n'existe pas au gabarit de
+  // référence. Elle n'avait que deux issues, toutes deux mauvaises : rester dans
+  // `commands:` et rendre la suite rouge en permanence, ou en sortir et n'être
+  // plus vérifiée nulle part — alors que des flows la ciblent. On l'éprouve donc
+  // là où elle est construite, sur le PLUS GRAND gabarit.
+  final List<ArgusScreen> apresDefilement = argusScreens
+      .where((ArgusScreen s) => s.commandsAfterScroll.isNotEmpty)
+      .toList();
+
+  if (apresDefilement.isNotEmpty && argusViewports.length < 2) {
+    test(
+      'commandsAfterScroll déclaré, mais un seul gabarit pour en juger',
+      () {},
+      skip:
+          'ce troisième état se mesure en comparant deux gabarits : sans un '
+          'second, « absente ici » et « absente partout » se confondent',
+    );
+  }
+
+  for (final ArgusScreen screen
+      in argusViewports.length < 2 ? <ArgusScreen>[] : apresDefilement) {
+    testWidgets('commandes après défilement de « ${screen.id} » — '
+        '${screen.commandsAfterScroll.length} ancre(s)', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+
+      for (final String commande in screen.commandsAfterScroll) {
+        // Le grand gabarit d'abord : c'est là qu'elle doit exister.
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.last,
+          debugLabel: screen.id,
+        );
+        argusDrainMountException(tester);
+        final bool presenteEnGrand = argusNodesById(
+          tester,
+          commande,
+        ).isNotEmpty;
+
+        await pumpArgus(
+          tester,
+          screen.build(),
+          viewport: argusViewports.first,
+          debugLabel: screen.id,
+        );
+        argusDrainMountException(tester);
+        final bool presenteEnPetit = argusNodesById(
+          tester,
+          commande,
+        ).isNotEmpty;
+
+        await argusCheck(
+          '${screen.id} · commande « $commande » présente après défilement',
+          () async {
+            expect(
+              presenteEnGrand,
+              isTrue,
+              reason:
+                  'L\'ancre « $commande » de « ${screen.id} » est déclarée '
+                  'atteignable après défilement, mais elle n\'existe sur AUCUN '
+                  'gabarit — pas même ${argusViewports.last.name}. Ce n\'est '
+                  'donc pas un pli : l\'ancre n\'est pas posée, ou l\'écran ne '
+                  'la construit pas dans cet état.',
+            );
+          },
+        );
+
+        // ⚠️ L'AUTRE MOITIÉ, ET ELLE COMPTE AUTANT. Sans elle, cette liste
+        // survivrait à ce qu'elle décrit : une ancre remontée au-dessus du pli
+        // resterait déclarée « après défilement » pour toujours, et cesserait
+        // d'être éprouvée là où elle est désormais — une permission permanente,
+        // la forme la plus courante de dette qui s'installe.
+        await argusCheck(
+          '${screen.id} · « $commande » est bien SOUS le pli',
+          () async {
+            expect(
+              presenteEnPetit,
+              isFalse,
+              reason:
+                  'L\'ancre « $commande » de « ${screen.id} » est déclarée dans '
+                  '`commandsAfterScroll:`, mais elle est construite dès '
+                  '${argusViewports.first.name}. La déclaration est périmée : '
+                  'remonte-la dans `commands:`, où elle sera éprouvée sur le '
+                  'gabarit de référence comme les autres.',
+            );
+          },
+        );
       }
 
       handle.dispose();

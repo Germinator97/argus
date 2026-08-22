@@ -666,7 +666,18 @@ les flows ciblent sur cet écran**. `anchor` étant singulier, s'en tenir à lui
 prouve que les racines : sur un projet réel, 55 ancres de commande n'avaient
 aucun endroit où être déclarées, et c'est exactement là qu'un défaut s'était
 logé — une ancre posée sur l'enveloppe d'un bouton, la commande restant anonyme
-en dessous, garde au vert. Puis :
+en dessous, garde au vert.
+
+⚠️ **Une ancre qui n'existe qu'après un DÉFILEMENT va dans `commandsAfterScroll:`,
+pas dans `commands:`.** Le bas d'une liste paresseuse n'est pas construit au
+gabarit de référence ; déclarée en `commands:`, elle rend la suite rouge en
+permanence, et l'en retirer la fait sortir de toute vérification alors que des
+flows la ciblent. Le troisième état l'éprouve sur le plus grand gabarit — et
+refuse une déclaration **périmée** : une ancre qui redevient visible au gabarit de
+référence fait échouer le test avec la consigne de la remonter, faute de quoi la
+liste deviendrait une permission permanente.
+
+Puis :
 ```bash
 make argus-anchors     # sans device, quelques secondes
 ```
