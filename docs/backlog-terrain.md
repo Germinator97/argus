@@ -528,9 +528,134 @@ vérifiée dans les **trois** sens : une ancre sous le pli passe, une ancre visi
 dès le petit gabarit échoue sur la moitié « périmée », une ancre inexistante
 échoue sur la moitié « présente ».
 
+## Run 6 — la deuxième vérification d'affilée, et la première qui exerce les correctifs
+
+Sixième run en aveugle, sur le terrain remis à neuf. **Neuf flows sur neuf
+`COMPLETED`**, 33 tests d'ancres, 401 gardes d'étage 1, `flutter analyze` sans
+issue, 175 tests du projet sans régression.
+
+⚠️ **Ce run est le premier à EXERCER les correctifs de la passe 63–69 sur un
+vrai projet, et les trois qui pouvaient l'être ont tenu :**
+
+- **63** — le scan de la release a rendu **76 chemins `package:monapp/….dart`
+  lisibles dans `libapp.so`**. Le contrôle discrimine donc sur un vrai binaire,
+  là où il rendait le même verdict dans les deux sens.
+- **67** — l'empreinte gravée à côté des références est
+  `{"model":"sdk_gphone64_arm64","os":"android-36","source":"mesuré"}`, alors que
+  la config déclarait `model: medium_phone`. C'est exactement l'écart que le
+  correctif visait : l'empreinte est **lue sur l'appareil**, pas recopiée.
+- **69** — `commandsAfterScroll` a été employé, et `argus-anchors` a rougi
+  **trois fois avant d'être vert**, dont une sur la moitié « déclaration
+  périmée » : `session_form_rest_minus` était déclarée sous le pli alors qu'elle
+  est construite dès 360×640. C'est la moitié ajoutée pour que la liste ne
+  devienne pas une permission permanente — elle a servi le jour même.
+
+### 70. `install-mobile.sh:266` casse son propre compteur, une fois par fichier OWNED
+
+```
+install-mobile.sh: line 266: [: 0
+0: integer expression expected
+```
+
+**Reproduit** hors du projet : `grep -c` **imprime `0` ET sort en 1** quand il ne
+compte rien, donc `$(grep -c … || echo 0)` vaut `0\n0`, et `[ "$restant" -gt 0 ]`
+lève. Neuf fois sur ce terrain, une par fichier `ARGUS:OWNED` sans TODO restant.
+
+⚠️ **Le commentaire de trois lignes juste au-dessus explique qu'on a déjà corrigé
+CETTE ligne** — pour une autre raison (le deux-points de `TODO(argus):`). On l'a
+donc relue en la corrigeant, sans voir le défaut d'à côté.
+
+### 71. Les branches de `goto.yaml` tapent avant que l'app soit prête
+
+`launch-clean.yaml` rend la main sur un `waitForAnimationToEnd: 5000`, et
+`visual.yaml` appelle `goto.yaml` **avant** son propre `extendedWaitUntil`. Sur ce
+terrain, le démarrage à froid mesuré est de **6,4 à 9,3 s** : chaque branche de
+`goto` tape donc dans le sas de démarrage, et l'échec sort en `Element not found`,
+ce qui se lit comme un défaut d'instrumentation. L'ancre existait, prouvée à
+l'étage 1 et lue dans l'arbre du device.
+
+⚠️ **Le remède du rapport vise `goto.yaml`, qui est `ARGUS:OWNED`** — donc jamais
+mis à jour chez les projets déjà installés. `launch-clean.yaml` est du CADRE :
+y attendre l'ancre de départ couvre **tous** les flows et descend chez tout le
+monde. Le symptôme est juste, le remède proposé est inférieur.
+
+### 72. `startTimeoutMs` n'a pas de levier à lui
+
+`Math.max(20000, coldStartMs × 5)` : le seul moyen de relever le plafond
+anti-flake est `coldStartMs`, qui **relâche du même geste le gate chargé de
+rapporter la lenteur qui cause le flake**. Sur une app à 2 s de splash imposé et
+6,4 s de démarrage réel, aucune valeur n'est à la fois un budget honnête et un
+plafond tenable.
+
+### 73. `allowSecretsIn` livre deux entrées Firebase, et le scanner crie dessus
+
+Le défaut du scaffold cite `google-services.json` et `GoogleService-Info.plist`.
+Sur un projet sans Firebase, elles ne dispensent aucun fichier — et `sec.mjs:298`
+**avertit** précisément dans ce cas. Le skill crie donc pour sa propre valeur par
+défaut, ce qu'il reproche ailleurs aux rapports.
+
+### 74. Le bloc de compteurs de §2b n'a pas de case pour le cas qu'il prescrit
+
+Le format impose une ligne `Commandes : <Y> posées / <N> à poser (<Y/N> %)`, et le
+texte cinq lignes plus bas demande de compter « les composants partagés **une
+fois**, avec leur nombre de call-sites ». Les deux ne tiennent pas dans la même
+ligne. Le skill avertit pourtant qu'un agent qui improvise sa propre forme produit
+exactement ce que ce bloc existe pour empêcher — et il a fallu improviser.
+
+### 75. La table `argusScreens` / `screens[]` a un quatrième écart légitime
+
+Elle en couvre trois : la coquille, l'état qui ne se monte pas seul, l'état
+atteignable après un parcours. Manque : **montable à l'étage 1, inatteignable de
+façon déterministe à l'étage 2** — un splash qui s'auto-remplace en 2 s, un écran
+d'échec qui demande une injection de panne. Choix fait sans instruction :
+`argusScreens` seul.
+
+### 76. §1 demande une ligne de cadrage « avant d'agir », qu'un sous-agent ne peut pas rendre
+
+Un agent non interactif n'a qu'un seul canal, son rapport final : la ligne arrive
+donc **après** les décisions qu'elle sert à faire démentir. Le skill suppose un
+interlocuteur ; `PROMPTS.md` traite le cas inverse mais §1 ne le dit pas.
+
+### 77. Le banc JETAIT la sortie de l'installeur — voilà pourquoi 70 a survécu six runs
+
+`tools/bench.sh:34` lance `install-mobile.sh … >/dev/null 2>&1`. Et la CI du
+plugin le lance sans jeter sa sortie, mais l'erreur n'est **pas fatale** : le job
+reste vert avec `integer expression expected` dans son journal.
+
+⚠️ Constat de mon fait, pas du rapport — c'est en cherchant pourquoi le 70 n'avait
+jamais été vu qu'il apparaît. Un défaut qui n'est fatal nulle part n'a besoin que
+d'une sortie jetée pour vivre indéfiniment.
+
+### 78. ✅ FAUX — `isCommand` voit très bien le défaut qu'il doit attraper
+
+Le rapport affirme que `isCommand => actions != 0 || hasEnabledState` devient
+aveugle quand le composant enveloppé pose `enabled:` sur son propre `Semantics` :
+le nœud ancré serait alors compté comme actif tout en étant inerte.
+
+**Mesuré, et c'est faux.** Sonde jetée dans le banc, passant par `argusNodesById`
+pour mesurer exactement ce que le garde mesure — deux montages ne différant que
+par `enabled:` sur le composant enveloppé :
+
+| Le composant pose `enabled:` | `actions` | `hasEnabledState` | `isCommand` |
+|---|---|---|---|
+| non | 0 | `false` | **`false`** |
+| oui | 0 | `false` | **`false`** |
+
+L'état d'activation **ne remonte pas** au nœud ancré quand la fusion est coupée —
+c'est précisément ce que couper la fusion veut dire. Le garde attrape dans les
+deux cas.
+
+⚠️ **Deuxième constat démenti en six runs**, et il ressemble au 62 : l'agent a eu
+raison sur ce qu'il a **mesuré** (l'ancre fusionne sur ce design system, sonde à
+l'appui) et tort sur ce qu'il en a **déduit** sans mesurer. Reproduire reste la
+seule façon de les séparer — d'autant qu'ici le raisonnement était plausible et
+que le dartdoc du prédicat semblait lui donner raison.
+
 ## Ce qui reste
 
-**Les points 63 à 69**, à traiter dans la session suivante.
+**Les points 70 à 77**, rendus par le run 6 et tous reproduits avant d'être
+inscrits. Le 78 est clos d'avance : il est faux, et la mesure qui le dit vaut
+d'être gardée.
 
 Et ce que cinq runs ont établi, qui ne se périme pas : une passe trouve ce qui
 manque, la suivante trouve ce que la correction a introduit **ou n'a pas
