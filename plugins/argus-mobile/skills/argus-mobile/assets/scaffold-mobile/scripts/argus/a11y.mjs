@@ -137,6 +137,40 @@ export function relaunchDecision({ foreground, matched, requested }) {
   return { relaunch: false, why: '' };
 }
 
+/**
+ * Peut-on cesser d'attendre l'écran, après une relance ?
+ *
+ * ⚠️ « IMMOBILE » NE VEUT PAS DIRE « PRÊT », et c'est la deuxième fois que ce
+ * raisonnement coûte cher. La version d'avant sortait dès que deux lectures de
+ * l'arbre coïncidaient, sous le commentaire « ce n'est un splash QUE s'il bouge
+ * encore ». Un splash STATIQUE — une image de marque immobile deux secondes —
+ * rend deux dumps identiques à 500 ms d'intervalle : la boucle sortait au bout
+ * d'une seconde, en plein sas, et la dimension ne mesurait rien.
+ *
+ * C'est mot pour mot l'erreur corrigée la veille dans `launch-clean.yaml`, où
+ * `waitForAnimationToEnd` se satisfaisait du même silence. Le correctif avait
+ * été pensé comme local alors que l'erreur était une manière de penser.
+ *
+ * Trois issues, et chacune se dérive de ce que le projet a déjà déclaré :
+ *   `reconnu`  un écran déclaré est à l'écran — c'est fini
+ *   `renoncer` soit rien n'est déclaré (aucun écran ne sera JAMAIS reconnu, et
+ *              attendre est du gaspillage pur), soit l'écran est immobile ET le
+ *              splash déclaré est passé
+ *   `attendre` tout le reste, y compris un écran immobile pendant son splash
+ *
+ * `splashMs` vaut `thresholds.brandedSplashMs`. À zéro — non renseigné — on
+ * n'invente pas de plancher : on attend le budget entier, ce qui est lent mais
+ * jamais faux, et l'appelant dit quoi renseigner pour que ça cesse.
+ * @param {{matched:boolean, kind:string, immobile:boolean, ecouleMs:number, splashMs:number}} etat
+ * @returns {'reconnu'|'renoncer'|'attendre'}
+ */
+export function verdictAttente({ matched, kind, immobile, ecouleMs, splashMs }) {
+  if (matched) return 'reconnu';
+  if (kind === 'sans-declaration') return 'renoncer';
+  if (immobile && splashMs > 0 && ecouleMs >= splashMs) return 'renoncer';
+  return 'attendre';
+}
+
 export function identifyScreen(nodes, config, requested) {
   const declared = (config.screens ?? []).filter((/** @type {any} */ s) => (s.anchor ?? '').trim());
   if (declared.length === 0) {
@@ -390,9 +424,12 @@ function main() {
     // personne ne verra — le relevé porterait alors sur l'entrée, pas sur
     // l'écran. On relit donc jusqu'à reconnaître un écran déclaré, dans le
     // budget d'attente du harnais et pas une seconde de plus.
-    const limite = Date.now() + startTimeoutMs(config);
+    const depart = Date.now();
+    const limite = depart + startTimeoutMs(config);
+    const splashMs = Number(config.thresholds?.brandedSplashMs ?? 0);
     const pause = new Int32Array(new SharedArrayBuffer(4));
     let empreinte = '';
+    let verdict = 'attendre';
     do {
       const relu = dumpHierarchy(udid);
       if (relu.xml) {
@@ -401,19 +438,23 @@ function main() {
         if (encore.length > 0) {
           appNodes = encore;
           identity = identifyScreen(appNodes, config, opts.screen);
-          if (identity.matched) break;
-          // Écran non reconnu : ce n'est un splash QUE s'il bouge encore. Deux
-          // lectures identiques disent qu'il est posé, et attendre davantage n'y
-          // changerait rien — ça coûterait le budget entier à chaque run d'un
-          // projet dont les ancres ne sont pas encore déclarées, c'est-à-dire
-          // exactement au moment où l'on découvre le harnais.
           const vu = `${encore.length}·${encore.map((n) => n['resource-id'] ?? '').sort().join('|')}`;
-          if (vu === empreinte) break;
+          verdict = verdictAttente({
+            matched: identity.matched, kind: identity.kind,
+            immobile: vu === empreinte, ecouleMs: Date.now() - depart, splashMs,
+          });
           empreinte = vu;
+          if (verdict !== 'attendre') break;
         }
       }
       Atomics.wait(pause, 0, 0, 500);
     } while (Date.now() < limite);
+
+    if (!identity.matched && splashMs === 0) {
+      warn('thresholds.brandedSplashMs vaut 0 : sans lui, un écran immobile ne peut pas être '
+        + 'distingué d\'un splash, donc on a attendu le budget entier. Renseigne la durée de '
+        + 'splash que ton app s\'impose pour que cette attente se règle sur elle.');
+    }
   }
 
   // ⚠️ CE REFUS VIENT APRÈS LA RELANCE, ET C'ÉTAIT TOUT LE DÉFAUT. Il sortait

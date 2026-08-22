@@ -742,7 +742,7 @@ Le **72** n'a pas été exercé (aucun flake de démarrage à arbitrer).
 premier passage, l'indice de pli les a nommées, elles sont passées dans le
 troisième état — 30/30.
 
-### 79. La relance a11y sort sur un splash STATIQUE — le correctif du 64 à moitié
+### 79. ✅ Corrigé le 22/08/2026 — La relance a11y sortait sur un splash STATIQUE
 
 Ma boucle de rattrapage s'arrête dès que deux lectures de l'arbre coïncident,
 sous le commentaire : *« ce n'est un splash QUE s'il bouge encore »*. **C'est
@@ -758,6 +758,19 @@ Ce que le harnais sait déjà et qui tranche : `identifyScreen` distingue
 `sans-declaration` (rien n'est déclaré, attendre ne servira JAMAIS) de `aucune`
 (des écrans sont déclarés, celui-ci peut encore arriver). Et `brandedSplashMs`
 donne la durée du sas, déclarée par le projet.
+
+**Corrigé : `verdictAttente()` rend trois issues au lieu d'un booléen** —
+`reconnu`, `renoncer`, `attendre` — et chacune se dérive de ce que le projet a
+déjà déclaré. L'immobilité ne vaut « posé » qu'**après** le splash déclaré ;
+`sans-declaration` renonce immédiatement, puisque attendre ne servirait jamais.
+
+⚠️ **Sans `brandedSplashMs`, on n'invente pas de plancher** : on attend le budget
+entier — lent, mais jamais faux — et un avertissement dit quoi renseigner pour que
+ça cesse. Un nombre deviné ici aurait été le même défaut sous un autre habillage.
+
+Cinq gardes, dont celui qui tient l'autre moitié : passé le splash, l'immobilité
+doit faire renoncer, sinon « ne plus sortir trop tôt » deviendrait « attendre le
+budget entier à chaque run ».
 
 ### 80. Le taux de couverture de §2b est faux — `Y/N` au lieu de `Y/(Y+N)`
 

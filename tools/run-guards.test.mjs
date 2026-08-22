@@ -28,7 +28,7 @@ import {
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { ciEmulator, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -1146,6 +1146,43 @@ test('écran déjà reconnu : rien à relancer — le garde ne coupe qu\'un sens
     'sans ça, « relancer quand il le faut » deviendrait « relancer toujours », et chaque '
     + 'mesure repartirait de l\'écran d\'accueil',
   );
+});
+
+// ⚠️ « IMMOBILE » NE VEUT PAS DIRE « PRÊT ». La version d'avant sortait dès que
+// deux lectures de l'arbre coïncidaient : un splash STATIQUE en rend deux
+// identiques à 500 ms d'intervalle, donc la boucle sortait en plein sas et la
+// dimension ne mesurait rien. C'est mot pour mot l'erreur corrigée la veille
+// dans launch-clean.yaml, restée intacte deux fichiers plus loin.
+
+const ATTENTE = { matched: false, kind: 'aucune', immobile: false, ecouleMs: 0, splashMs: 2000 };
+
+test('un splash STATIQUE ne fait plus renoncer — c\'est le défaut qui a coûté la dimension', () => {
+  assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 900 }), 'attendre',
+    'deux dumps identiques pendant le splash déclaré ne prouvent rien : ils prouvent qu\'il est fixe');
+});
+
+test('passé le splash déclaré, l\'immobilité vaut « posé » — le garde ne coupe qu\'un sens', () => {
+  assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 2500 }), 'renoncer',
+    'sans ça, « ne plus sortir trop tôt » deviendrait « attendre le budget entier à chaque run »');
+  assert.equal(verdictAttente({ ...ATTENTE, immobile: false, ecouleMs: 9000 }), 'attendre',
+    'un écran qui bouge encore n\'est pas posé, quel que soit le temps écoulé');
+});
+
+test('rien de déclaré : on renonce tout de suite, attendre ne servirait JAMAIS', () => {
+  assert.equal(verdictAttente({ ...ATTENTE, kind: 'sans-declaration', immobile: false }), 'renoncer',
+    'aucun écran ne peut être reconnu : le budget entier serait du gaspillage pur');
+});
+
+test('sans brandedSplashMs, on n\'invente pas de plancher — on attend', () => {
+  // Un nombre deviné ici serait exactement le défaut d'avant, avec un autre
+  // habillage : lent mais jamais faux vaut mieux que rapide et faux.
+  assert.equal(verdictAttente({ ...ATTENTE, immobile: true, ecouleMs: 99000, splashMs: 0 }), 'attendre');
+});
+
+test('un écran reconnu l\'emporte sur tout le reste', () => {
+  assert.equal(verdictAttente({ ...ATTENTE, matched: true, immobile: false, ecouleMs: 0 }), 'reconnu');
+  assert.equal(verdictAttente({ matched: true, kind: 'sans-declaration', immobile: true, ecouleMs: 0, splashMs: 0 }),
+    'reconnu', 'la reconnaissance passe avant le renoncement, sinon on jette une mesure valide');
 });
 
 test('la relance est CÂBLÉE avant le refus, pas seulement décidée', () => {
