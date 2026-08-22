@@ -943,9 +943,55 @@ export function cropFor(screen, config) {
   return String(config?.visualCropOn ?? '');
 }
 
-function baselineCrop(baselineDir) {
+/**
+ * Les cadrages gravés à côté des références, PAR ÉCRAN.
+ *
+ * ⚠️ C'était une seule chaîne pour tout le dossier — mesuré sur un projet réel :
+ * un fichier d'un octet. Le cadrage étant devenu local, une valeur globale ne
+ * pouvait plus décrire ce qui avait servi.
+ *
+ * Rétrocompatible : un fichier de l'ancien format se lit « ce cadrage valait
+ * pour tous », ce qu'il voulait effectivement dire.
+ * @param {string} baselineDir @returns {Record<string,string>|null}
+ */
+function baselineCrops(baselineDir) {
   const path = join(baselineDir, CROP_STAMP);
-  return existsSync(path) ? readFileSync(path, 'utf8').trim() : null;
+  if (!existsSync(path)) return null;
+  const brut = readFileSync(path, 'utf8').trim();
+  try {
+    const lu = JSON.parse(brut);
+    if (lu && typeof lu === 'object' && !Array.isArray(lu)) return lu;
+  } catch { /* ancien format : une chaîne nue */ }
+  return { '*': brut };
+}
+
+/** Le cadrage gravé pour [id], en retombant sur l'ancien format global. */
+export function baselineCropFor(crops, id) {
+  if (crops === null) return null;
+  return crops[id] ?? crops['*'] ?? null;
+}
+
+/**
+ * Les écrans dont le cadrage EFFECTIF diffère de celui gravé.
+ *
+ * ⚠️ Extrait du corps du runner pour être GARDÉ, et la raison vaut d'être dite :
+ * la version précédente comparait l'empreinte à la valeur GLOBALE. Avec un
+ * `visualCropOn` global vide et des cadrages posés par écran, elle valait
+ * `'' !== ''` — le garde ne disait JAMAIS rien, et l'échec suivant se lisait
+ * comme une régression de l'application. Un correctif ne supprime pas toujours
+ * un mode de panne : souvent il le déplace, et le garde qui veillait sur
+ * l'ancien passe au vert sans rien mesurer.
+ *
+ * ⚠️ Un test qui réimplémenterait cette décision de son côté ne garderait rien —
+ * il vérifierait sa propre copie. C'est pour ça qu'elle est ici et exportée.
+ * @param {Record<string,string>|null} graves @param {any[]} ecrans @param {any} config
+ * @returns {any[]}
+ */
+export function screensWithMovedCrop(graves, ecrans, config) {
+  return ecrans.filter((sc) => {
+    const grave = baselineCropFor(graves, sc.id);
+    return grave !== null && grave !== cropFor(sc, config);
+  });
 }
 
 /**
@@ -959,9 +1005,9 @@ function baselineCrop(baselineDir) {
  * valides, elles ne cadrent simplement pas la même chose.
  * @param {string} baselineDir @param {string} crop
  */
-function stampBaselineCrop(baselineDir, crop) {
+function stampBaselineCrops(baselineDir, crops) {
   mkdirSync(baselineDir, { recursive: true });
-  writeFileSync(join(baselineDir, CROP_STAMP), `${crop}\n`, 'utf8');
+  writeFileSync(join(baselineDir, CROP_STAMP), `${JSON.stringify(crops, null, 2)}\n`, 'utf8');
 }
 
 /**
@@ -1169,10 +1215,13 @@ async function main() {
     // Le cadrage pouvant désormais différer d'un écran à l'autre, l'estampille
     // ne peut plus être comparée à UNE valeur : on la compare à celle qui
     // s'appliquerait, écran par écran, et on n'avertit que si l'une a bougé.
-    const stamped = baselineCrop(baselineDir);
-    const bouge = visualScreens.filter((sc) => stamped !== null && stamped !== cropFor(sc, config));
-    if (bouge.length > 0 && stamped !== null && stamped !== visualCrop) {
-      warn(`visualCropOn a changé depuis la génération des références : « ${stamped || '(plein écran)'} » → « ${visualCrop || '(plein écran)'} ».`);
+    const stamped = baselineCrops(baselineDir);
+    const bouge = screensWithMovedCrop(stamped, visualScreens, config);
+    if (bouge.length > 0) {
+      const exemples = bouge.slice(0, 3).map((sc) =>
+        `${sc.id} : « ${baselineCropFor(stamped, sc.id) || '(plein écran)'} » → « ${cropFor(sc, config) || '(plein écran)'} »`);
+      warn(`le cadrage a changé depuis la génération des références sur ${bouge.length} écran(s) : `
+        + `${exemples.join(', ')}${bouge.length > 3 ? '…' : ''}`);
       warn('  Les comparaisons vont échouer sur le CADRAGE, pas sur une régression.');
       warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
     }
@@ -1205,7 +1254,11 @@ async function main() {
   const bundles = harvest(outputDir, before);
   if (opts.updateBaselines) {
     const written = promoteBaselines(bundles, baselineDir);
-    stampBaselineCrop(baselineDir, visualCrop);
+    // Graver le cadrage EFFECTIF de chaque écran, pas la valeur globale : c'est
+    // ce que la comparaison relira, écran par écran.
+    stampBaselineCrops(baselineDir, Object.fromEntries(
+      visualScreens.map((sc) => [sc.id, cropFor(sc, config)]),
+    ));
     log(`${written} référence(s) visuelle(s) écrite(s) dans ${baselineDir}`);
   }
 

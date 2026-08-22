@@ -31,7 +31,7 @@ import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scrip
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
-import { cropFor, installHint } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { baselineCropFor, cropFor, installHint, screensWithMovedCrop } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -1032,4 +1032,48 @@ test('proposer une désinstallation dit toujours ce qu\'elle DÉTRUIT', () => {
 test('un échec inconnu n\'invente pas de remède', () => {
   assert.equal(installHint('quelque chose que personne n\'a prévu', 'x'), '',
     'un conseil inventé sur un code non reconnu enverrait chercher au mauvais endroit');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le garde du cadrage a été VACANT — voici le cas exact qui le vidait
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le cadrage est devenu local (par écran), et la comparaison a été refaite écran
+// par écran — mais la CONDITION est restée globale : `stamped !== visualCrop`.
+// Avec un `visualCropOn` global vide et des cadrages posés sur les écrans, elle
+// valait `'' !== ''`, donc faux. L'avertissement ne sortait jamais et l'échec
+// suivant se lisait comme une régression de l'application.
+//
+// ⚠️ Un correctif ne supprime pas toujours un mode de panne : souvent il le
+// DÉPLACE, et le garde qui veillait sur l'ancien passe au vert sans rien
+// mesurer. Ce test rejoue la configuration précise qui produisait ce silence.
+
+// ⚠️ On appelle LA fonction du runner, pas une copie. La première version de ce
+// garde réimplémentait la décision ici : il vérifiait sa propre copie, et muter
+// run.mjs ne le faisait pas tomber. C'est la mutation qui l'a dit, pas la
+// relecture.
+const ontBouge = (graves, ecrans, config) =>
+  screensWithMovedCrop(graves, ecrans, config).map((sc) => sc.id);
+
+test('un cadrage par écran qui bouge est vu, même avec un global vide', () => {
+  // la configuration exacte qui rendait le garde muet
+  const graves = { home: 'home_canvas', form: '' };
+  const ecrans = [{ id: 'home', visualCropOn: 'AUTRE_CONTENEUR' }, { id: 'form' }];
+  assert.deepEqual(ontBouge(graves, ecrans, { visualCropOn: '' }), ['home'],
+    'global vide et gravé vide : la comparaison globale valait \'\' !== \'\' et ne voyait rien');
+});
+
+test('rien ne bouge quand rien n\'a bougé — le garde ne crie pas pour rien', () => {
+  const graves = { home: 'home_canvas', form: '' };
+  const ecrans = [{ id: 'home', visualCropOn: 'home_canvas' }, { id: 'form' }];
+  assert.deepEqual(ontBouge(graves, ecrans, { visualCropOn: '' }), []);
+});
+
+test('une empreinte de l\'ancien format vaut pour tous les écrans', () => {
+  // avant, le fichier gravait une chaîne nue : « ce cadrage valait pour tous »
+  const ancien = { '*': 'ancien_conteneur' };
+  assert.equal(baselineCropFor(ancien, 'home'), 'ancien_conteneur');
+  assert.equal(baselineCropFor(ancien, 'nimporte_lequel'), 'ancien_conteneur');
+  assert.equal(baselineCropFor(null, 'home'), null, 'pas de références : rien à comparer');
 });
