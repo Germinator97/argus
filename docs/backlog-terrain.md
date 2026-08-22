@@ -295,17 +295,109 @@ compte**. Un constat juste sur la moitié qu'on regarde peut être faux sur cell
 qu'on n'a pas regardée. Reproduire, toujours, y compris quand le rapporteur a eu
 raison dix-sept fois.
 
+## Rendu par le run 5 — vérification, 22/08/2026
+
+Deuxième vérification d'affilée, sur le terrain remis à neuf. Les correctifs
+57–61 ont porté, et le skill a été lu **depuis sa nouvelle racine** — la
+restructuration en trois plugins tient. `argus-anchors` 30/30, `argus-guards`
+375 passés, cycle visuel prouvé en trois temps, `visualCropOn` par écran employé,
+`build.androidScan` utilisé pour scanner la release, jank « non conclu ».
+
+⚠️ **Trois des six constats désignent les correctifs de la veille**, et c'est ce
+qui rend cette passe utile : deux étaient **incomplets plutôt que faux** — ils
+traitaient la moitié visible du problème — et le troisième n'avait jamais été
+remonté du terrain au dépôt.
+
+### 63. Le contrôle d'obfuscation ne discrimine RIEN
+
+`sec.mjs` cherche `/package:[a-z_][a-z0-9_]*\/[a-z0-9_\/]+\.dart/` dans
+`libapp.so`. Or `--obfuscate` n'efface jamais les chemins du **framework** :
+`package:flutter/src/services/platform_channel.dart` survit à tout.
+
+Mesuré dans les deux sens sur le même projet :
+
+| build release | chemins du projet | verdict |
+|---|---|---|
+| **sans** `--obfuscate` | 42 | `QAM-SEC-OBFUS` major |
+| **avec** `--obfuscate` | 0 | `QAM-SEC-OBFUS` major |
+
+**Verdict identique.** Un contrôle de sécurité qui rend le même résultat quoi
+qu'on fasse ne mesure rien — et il vit dans la dimension dont c'est précisément
+le métier de ne pas rassurer à tort.
+
+⚠️ Le commentaire juste au-dessus du motif dit ce que le code ne fait pas : « du
+projet — qui varierait d'un projet à l'autre ». L'intention était juste, le motif
+ne l'a jamais servie. Remède : ancrer sur `package:<nom du pubspec>/`.
+
+### 64. `make argus` casse encore sa dimension a11y — le correctif du 44 était à moitié fait
+
+La relance auto-correctrice posée au point 44 ne couvre que le cas « l'app est là
+mais sur un écran inconnu ». Quand le paquet n'est **pas au premier plan du tout**
+— ce que `argus-perf` produit en laissant l'app arrêtée —, un `process.exit(2)`
+sort **avant** de l'atteindre.
+
+⚠️ **Incomplet plutôt que faux.** Le correctif traitait la moitié du problème
+qu'on avait sous les yeux, et rien ne signalait l'autre : le script refusait de
+conclure, ce qui est le bon comportement, et masquait donc que la dimension ne
+rendait rien dans le run agrégé.
+
+### 65. Le correctif du 58 a CRÉÉ une contradiction dans le même paragraphe
+
+La table ajoutée au §2c prescrit, pour une surface tapable plein écran :
+`explicitChildNodes: true` **+** `onTap:` sur le `Semantics` **+**
+`excludeFromSemantics: true`. Le paragraphe suivant, qui nomme explicitement
+« tap-to-pause » — le même cas —, prescrit deux nœuds dont celui de commande
+**sans** `explicitChildNodes`, et interdit le `onTap:`.
+
+Ma tentative de lever la contradiction (« Dans CETTE forme ») explique *quand*
+l'interdiction vaut, mais ne dit jamais **laquelle des deux recettes choisir**
+pour le cas qui les concerne toutes les deux. Un lecteur applique la première
+qu'il croise.
+
+### 66. Un défaut du CADRE signalé par un run ne remonte pas tout seul
+
+`argus_harness.dart:187` viole `prefer_single_quotes` — lint courant, qui fait
+sortir `flutter analyze` en 1 sur un projet qui l'active. Le run 4 l'avait
+signalé, et son agent l'avait patché **dans le terrain**. Le terrain a ensuite
+été effacé pour le run 5, et le défaut est réapparu intact.
+
+⚠️ **Le point 52, écrit le même jour, dit exactement quoi faire : « Dans les deux
+cas, remonte-le, c'est ce qui empêche la divergence de s'installer. »** La règle
+existait, elle était juste, et elle n'a pas été appliquée. Écrire la règle ne
+fait pas le geste — et un terrain qu'on efface emporte tout ce qu'on n'a pas
+remonté.
+
+### 67. La CI livrée ne peut pas comparer les références visuelles
+
+`.github/workflows/argus-mobile.yml` fige `api-level: 33`, `profile: pixel_6`,
+`arch: x86_64`, **sans marqueur `ARGUS:OWNED`** — donc non éditable sans que
+`--check` déclare le fichier en retard. Or le skill dit lui-même qu'une baseline
+est liée au couple device + version d'OS. Des références nées sur un autre
+émulateur ne correspondront jamais : la dimension visuelle sera rouge en
+permanence en CI, pour une raison qui n'est pas une régression.
+
+### 68. L'exemple d'assertion i18n est intenable sur Flutter
+
+`i18n.yaml` propose `text: 'Bienvenue'`. Sur une app Flutter, l'attribut `text`
+est **vide sur tous les nœuds** — seule l'horloge système en porte un — et le
+libellé vit dans `accessibilityText`, où le sélecteur fait un match **complet**.
+Un nœud ancré fusionne de surcroît le texte qu'il recouvre : `nav_history` rend
+`'Historique\nHISTORIQUE'`. L'exemple livré échoue donc systématiquement, et
+c'est le premier que quelqu'un copie.
+
+### 69. `commands:` n'a aucun moyen de dire « atteignable après défilement »
+
+Une ancre au bas d'une liste paresseuse n'existe pas au petit gabarit. Le harnais
+sait maintenant le dire (point 42), mais les deux seules issues restent « suite
+rouge en permanence » ou « la retirer, et plus rien ne la vérifie ». Il manque un
+troisième état — `commandsAfterScroll:`, ou un gabarit de référence par écran.
+
 ## Ce qui reste
 
-**Rien — cinquième fois.** Les six constats du run 4 sont traités : quatre
-corrigés, un l'était déjà (57), un était faux (62).
+**Les points 63 à 69**, à traiter dans la session suivante.
 
-Ce fichier n'a plus qu'une chose à apprendre à qui le rouvre, et elle a tenu
-quatre runs : une passe trouve ce qui manque, la suivante trouve ce que la
-correction a introduit ou n'a pas branché. Le run 4 en est la démonstration la
-plus nette — il a confirmé que vingt et un correctifs avaient porté, **et** qu'un
-d'entre eux avait vidé un garde en silence.
-
-Le prochain run de **découverte** devra se jouer sur un projet qui **consomme une
-API** : les quatre premiers ont tous été joués sur un terrain sans backend, et ce
-volet du skill n'a jamais été exercé (`chantiers-differes.md` § C).
+Et ce que cinq runs ont établi, qui ne se périme pas : une passe trouve ce qui
+manque, la suivante trouve ce que la correction a introduit **ou n'a pas
+terminé**. Les runs 4 et 5 ont chacun désigné des correctifs de la veille — non
+pas faux, mais **incomplets** : ils traitaient la moitié du problème qu'on avait
+sous les yeux.
