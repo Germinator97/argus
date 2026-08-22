@@ -184,16 +184,47 @@ jobs:
             maestro check-syntax "$f"
           done
 
+      # ⚠️ L'ÉMULATEUR SE DÉRIVE DE `argus.mobile.yaml`, IL NE SE FIGE PAS ICI.
+      # Une capture de référence est liée au COUPLE appareil + version d'OS.
+      # Figées dans ce fichier, ces valeurs n'avaient aucun rapport avec
+      # l'appareil du projet : la dimension visuelle était rouge en permanence en
+      # CI, pour une raison qui n'est pas une régression. Et ce fichier appartient
+      # au CADRE — l'éditer pour l'accorder le faisait déclarer « en retard » par
+      # `install-mobile.sh --check`, si bien que la seule issue en cassait une
+      # autre. Dérivé, il n'y a plus rien à éditer.
+      - name: Appareil déclaré par le projet
+        id: appareil
+        run: |
+          # ⚠️ `set -e` explicite : le code de sortie d'un `run:` est celui de sa
+          # DERNIÈRE commande, donc le `cat` final avalait l'échec du node et le
+          # job continuait avec un `api-level` vide. Mesuré — le step rendait 0
+          # sur une config illisible comme sur une config saine.
+          set -euo pipefail
+          node -e "
+            import('./scripts/argus/config.mjs').then(({ loadConfig, activeDevices }) => {
+              const d = activeDevices(loadConfig()).find((x) => x.platform === 'android');
+              if (!d) { console.error('aucun device android actif dans argus.mobile.yaml'); process.exit(2); }
+              const api = String(d.os ?? '').replace(/^android-/, '');
+              if (!/^[0-9]+$/.test(api)) { console.error(\`devices[].os illisible : « \${d.os} » (attendu : android-33)\`); process.exit(2); }
+              console.log(\`api-level=\${api}\`);
+              console.log(\`profile=\${d.model || 'pixel_6'}\`);
+            });
+          " >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
       - name: Suite Argus Mobile
         uses: reactivecircus/android-emulator-runner@v2
         env:
           QA_USER: ${{ secrets.QA_USER }}
           QA_PASS: ${{ secrets.QA_PASS }}
         with:
-          api-level: 33
+          api-level: ${{ steps.appareil.outputs.api-level }}
+          profile: ${{ steps.appareil.outputs.profile }}
+          # `target` et `arch` restent ici : ce sont des choix de RUNNER (image
+          # système, architecture de l'hôte), pas des propriétés de l'appareil
+          # que le projet déclare. Rien à dériver.
           target: google_apis
           arch: x86_64
-          profile: pixel_6
           # La locale se fige au démarrage du device : `maestro test` n'a pas de
           # `--device-locale`, et aucun flow ne peut la changer.
           emulator-options: >-
@@ -293,14 +324,21 @@ jobs:
 # ton simulateur, elle ne correspondra JAMAIS au rendu de l'émulateur ci-dessus,
 # et la dimension visuelle sera rouge en permanence.
 #
-# Génère-les dans la MÊME configuration que la CI (api-level 33, pixel_6,
-# fr-FR), depuis une machine ou un job dédié :
+# Le job ci-dessus DÉRIVE son émulateur de `devices[]` d'argus.mobile.yaml, donc
+# générer sur l'appareil que le projet déclare suffit à ce que les deux
+# correspondent — il n'y a plus de couple à recopier de part et d'autre :
 #
 #   node scripts/argus/run.mjs --update-baselines
 #
 # puis commite `.maestro/_baselines/<device-id>/`. Ne lance JAMAIS
 # `--update-baselines` dans ce workflow : une baseline régénérée en CI accepte
 # la régression qu'elle était censée détecter.
+#
+# ⚠️ Le runner GRAVE l'appareil à côté des références (`.argus-device`, lu sur
+# l'appareil et non recopié de la config) et avertit quand le run en cours tourne
+# sur un autre. Sans ça, une référence née ailleurs échoue en se faisant passer
+# pour une régression de l'app — les deux images sont valides, elles ne montrent
+# simplement pas le même appareil.
 #
 # ═══════════════════════════════════════════════════════════════════════════
 # OPTION — Maestro Cloud (plan payant, remplace le job e2e-android)

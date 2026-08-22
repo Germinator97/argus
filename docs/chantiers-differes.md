@@ -392,3 +392,39 @@ grep -rn 'arguments' plugins/argus-mobile/skills/argus-mobile/ | wc -l   # 2 = e
 # qui a changé.
 grep -rn 'clearState' plugins/argus-mobile/skills/argus-mobile/ | wc -l  # doit être > 0
 ```
+
+═══════════════════════════════════════════════════════════════════════════════
+## D. Les références visuelles sont indexées par un id DÉCLARÉ
+═══════════════════════════════════════════════════════════════════════════════
+
+Ouvert le 22/08/2026, en corrigeant le point 67. **Constat neuf**, trouvé en
+lisant le code, jamais rapporté par un run.
+
+`run.mjs` écrit ses références dans `.maestro/_baselines/<devices[].id>` —
+c'est-à-dire sous l'**identifiant déclaré** de l'appareil (`android-emu`), pas
+sous l'appareil réel. Deux appareils différents partagent donc le même dossier :
+un dev qui génère sur son AVD écrase, ou complète, les références d'un autre.
+
+Le point 67 a posé la moitié qui **avertit** — le runner grave `.argus-device` à
+côté des références et dit que l'appareil a changé. Il n'a pas posé celle qui
+**sépare**, et c'est délibéré : indexer par l'appareil réel
+(`_baselines/<model>-<os>/`) **invalide toutes les références déjà commitées**
+d'un projet qui en a. Ça ne se décide pas au milieu d'une passe de correctifs.
+
+Les deux voies, à trancher quand le sujet reviendra :
+
+| Voie | Ce qu'elle coûte |
+|---|---|
+| Indexer par l'appareil mesuré | migration des références existantes, un dossier par appareil, et un choix à faire quand la CI et le poste local diffèrent volontairement |
+| Garder l'id déclaré, refuser de comparer si l'empreinte diffère | rien à migrer, mais un seul appareil de référence par projet — l'avertissement devient un échec |
+
+```sh
+# re-mesurer avant de rouvrir — relevé du 22/08/2026 : 1
+grep -c "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id" \
+  plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs
+# ⚠️ CONTRE-ÉPREUVE, et elle doit être INDÉPENDANTE : compter `_baselines` ne
+# vaudrait rien, c'est la même ligne — les deux tomberaient à 0 ensemble et on ne
+# saurait pas si l'indexation a changé ou si la commande est morte. `runMaestro`
+# est certainement présent tant que ce fichier est un runner (relevé : 3).
+grep -c 'runMaestro' plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs  # > 0
+```

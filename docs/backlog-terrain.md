@@ -426,7 +426,7 @@ qui les active. Le relevé est **total** : les cinq règles sur tout `test/argus
 n'ont rendu qu'**une** occurrence, celle du run 5, et rien d'autre. Contre-épreuve
 faite : la double quote réintroduite fait rougir l'étape.
 
-### 67. La CI livrée ne peut pas comparer les références visuelles
+### 67. ✅ Corrigé le 22/08/2026 — La CI livrée ne pouvait pas comparer les références visuelles
 
 `.github/workflows/argus-mobile.yml` fige `api-level: 33`, `profile: pixel_6`,
 `arch: x86_64`, **sans marqueur `ARGUS:OWNED`** — donc non éditable sans que
@@ -434,6 +434,34 @@ faite : la double quote réintroduite fait rougir l'étape.
 est liée au couple device + version d'OS. Des références nées sur un autre
 émulateur ne correspondront jamais : la dimension visuelle sera rouge en
 permanence en CI, pour une raison qui n'est pas une régression.
+
+**Corrigé en deux moitiés, parce qu'une seule n'aurait couvert que le cas où le
+projet accepte le défaut du scaffold.**
+
+1. **La CI dérive son émulateur de `devices[]`** d'argus.mobile.yaml
+   (`api-level` ← `os`, `profile` ← `model`). Il n'y a donc plus rien à éditer,
+   et le conflit avec `--check` disparaît de lui-même plutôt que d'être arbitré.
+   `target` et `arch` restent figés : ce sont des choix de runner, pas des
+   propriétés de l'appareil que le projet déclare.
+2. **Le runner grave l'appareil à côté des références** (`.argus-device`) et
+   avertit quand le run tourne sur un autre — même mécanisme que l'estampille de
+   cadrage, et pour la même raison : sans lui, l'échec se lit comme une
+   régression de l'app. L'empreinte est **lue sur l'appareil**, jamais recopiée
+   de la config : `devices[].model` dit ce que le projet a écrit, pas ce sur quoi
+   le run tourne. Le NOM (AVD, udid) n'entre pas dans la comparaison — il change
+   d'une machine à l'autre pour un modèle identique, et crier là-dessus
+   apprendrait à ignorer l'avertissement.
+
+⚠️ **Le step de CI rendait 0 sur une config illisible**, ce qu'aucune relecture
+n'aurait vu : le code de sortie d'un `run:` est celui de sa DERNIÈRE commande, et
+le `cat` final avalait l'échec du `node`. Mesuré en extrayant le step du YAML et
+en le jouant tel que GitHub le lira, sur trois configs — nominale, `os` vide,
+aucun device Android. Avec `set -euo pipefail` : 0, 2, 2.
+
+⚠️ **Reste ouvert, et c'est un constat NEUF** : `.maestro/_baselines/<id>` est
+indexé par l'`id` DÉCLARÉ du device (`android-emu`), pas par l'appareil réel.
+Deux appareils différents partagent donc le même dossier — l'avertissement du
+point 2 le dit maintenant, mais ne l'empêche pas. Voir `docs/chantiers-differes.md`.
 
 ### 68. ✅ Corrigé le 22/08/2026 — L'exemple d'assertion i18n était intenable sur Flutter
 

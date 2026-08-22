@@ -31,7 +31,7 @@ import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/
 import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
-import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -852,6 +852,76 @@ test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine r
   }
 });
 
+
+// ───────────────────────────────────────────────────────────────────────────
+// run.mjs — une référence visuelle est liée au COUPLE appareil + version d'OS
+// ───────────────────────────────────────────────────────────────────────────
+//
+// La CI livrée figeait `api-level: 33` / `pixel_6` sans rapport avec l'appareil
+// du projet : des références nées ailleurs ne correspondent JAMAIS, et la
+// dimension visuelle y était rouge en permanence pour une raison qui n'est pas
+// une régression. Le workflow dérive maintenant son émulateur de `devices[]` ;
+// ce qui suit garde l'autre moitié — savoir DIRE que l'appareil a changé, au
+// lieu de laisser l'échec se faire passer pour un défaut de l'app.
+
+const ADB = (/** @type {Record<string,string>} */ reponses) =>
+  (/** @type {string} */ _udid, /** @type {string[]} */ cmd) =>
+    ({ stdout: reponses[cmd[cmd.length - 1]] ?? '', stderr: '', ok: true });
+
+test('l\'appareil gravé est MESURÉ, pas recopié depuis la config', () => {
+  const stamp = deviceStamp('android', 'emulator-5554',
+    { model: 'pixel_6', os: 'android-33' },
+    ADB({ 'ro.product.model': 'Pixel 9a', 'ro.build.version.sdk': '36' }));
+  assert.deepEqual(stamp, { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' },
+    'devices[].model est recopié à la main : le graver rendrait une empreinte fausse, '
+    + 'et le garde qui la relit ne verrait rien');
+});
+
+test('adb muet : on retombe sur la déclaration, et le champ le DIT', () => {
+  const stamp = deviceStamp('android', 'emulator-5554', { model: 'pixel_6', os: 'android-33' }, ADB({}));
+  assert.equal(stamp.source, 'déclaré',
+    'une empreinte déclarée vaut mieux que rien, à condition de ne pas passer pour une mesure');
+  assert.equal(stamp.model, 'pixel_6');
+});
+
+test('hors Android, on ne prétend pas mesurer — et on n\'appelle pas adb', () => {
+  let appels = 0;
+  const stamp = deviceStamp('ios', 'UUID', { model: 'iPhone-16', os: 'iOS-18-2' },
+    () => { appels += 1; return { stdout: 'Pixel 9a', stderr: '', ok: true }; });
+  assert.equal(appels, 0, 'adb sur un simulateur iOS rendrait une valeur d\'un autre appareil');
+  assert.equal(stamp.source, 'déclaré');
+  assert.equal(stamp.os, 'iOS-18-2');
+});
+
+test('même appareil : aucun avertissement — un garde qui crie toujours ne garde rien', () => {
+  const ici = { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' };
+  assert.equal(baselineDeviceDrift({ model: 'Pixel 9a', os: 'android-36' }, ici), null);
+});
+
+test('le NOM de l\'appareil n\'entre pas dans la comparaison', () => {
+  // Un AVD s'appelle autrement d'une machine à l'autre pour un modèle
+  // identique. Crier là-dessus apprendrait à ignorer l'avertissement.
+  const drift = baselineDeviceDrift(
+    { model: 'Pixel 9a', os: 'android-36', name: 'Pixel_9a_API_36' },
+    { model: 'Pixel 9a', os: 'android-36', name: 'CI_emulator', source: 'mesuré' });
+  assert.equal(drift, null);
+});
+
+test('modèle ou OS différent : la dérive est nommée des DEUX côtés', () => {
+  const drift = baselineDeviceDrift({ model: 'pixel_6', os: 'android-33' },
+    { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' });
+  assert.ok(drift, 'sans ça, la comparaison échoue en accusant l\'application');
+  assert.equal(drift.grave.model, 'pixel_6');
+  assert.equal(drift.courant.model, 'Pixel 9a',
+    'le message doit dire d\'où viennent les références ET où l\'on tourne');
+});
+
+test('références d\'avant l\'empreinte : rien à comparer, donc rien à dire', () => {
+  const ici = { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' };
+  assert.equal(baselineDeviceDrift(null, ici), null, 'les références déjà commitées n\'en ont pas');
+  assert.equal(baselineDeviceDrift({ model: '', os: '' }, ici), null,
+    'une empreinte vide n\'est pas une empreinte différente');
+});
 
 // ───────────────────────────────────────────────────────────────────────────
 // .maestro — un sélecteur `text:` non encadré ne matche RIEN, parfois en silence

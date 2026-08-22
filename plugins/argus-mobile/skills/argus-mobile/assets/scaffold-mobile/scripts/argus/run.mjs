@@ -29,7 +29,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  activeDevices, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
+  activeDevices, adbShell, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
   flutterCommand, loadConfig, log, missingToolMessage, parseYaml, sh, validateConfig,
   warn, writeJson,
 } from './config.mjs';
@@ -918,6 +918,7 @@ function promoteBaselines(bundles, baselineDir) {
 
 /** Fichier où l'on note SOUS QUEL CADRAGE les références ont été produites. */
 const CROP_STAMP = '.argus-crop';
+const DEVICE_STAMP = '.argus-device';
 
 /**
  * Le cadrage sous lequel les références ont été produites, ou `null` si le
@@ -992,6 +993,62 @@ export function screensWithMovedCrop(graves, ecrans, config) {
     const grave = baselineCropFor(graves, sc.id);
     return grave !== null && grave !== cropFor(sc, config);
   });
+}
+
+/**
+ * L'appareil qui produit les références, MESURÉ plutôt que déclaré.
+ *
+ * ⚠️ `devices[].model` et `os` sont recopiés à la main : ils disent ce que le
+ * projet a écrit, pas sur quoi le run tourne. Un dev qui garde `model: pixel_6`
+ * en lançant sur son propre AVD grave donc une empreinte fausse, et le garde
+ * qui la relit ne verrait rien. On lit l'appareil.
+ *
+ * Hors Android on retombe sur la déclaration, et le champ `source` le dit : une
+ * empreinte déclarée vaut mieux que pas d'empreinte, à condition de ne pas la
+ * faire passer pour une mesure.
+ * @param {string} platform @param {string} udid @param {any} spec
+ * @returns {{model:string, os:string, source:string}}
+ */
+export function deviceStamp(platform, udid, spec, lire = adbShell) {
+  const declare = { model: String(spec?.model ?? ''), os: String(spec?.os ?? ''), source: 'déclaré' };
+  if (platform !== 'android' || !udid) return declare;
+  const model = lire(udid, ['getprop', 'ro.product.model']).stdout.trim();
+  const sdk = lire(udid, ['getprop', 'ro.build.version.sdk']).stdout.trim();
+  if (!model || !sdk) return declare;
+  return { model, os: `android-${sdk}`, source: 'mesuré' };
+}
+
+/**
+ * L'appareil a-t-il changé depuis la génération des références ?
+ *
+ * ⚠️ Une capture de référence est liée au COUPLE appareil + version d'OS : une
+ * référence née ailleurs ne correspondra JAMAIS, et l'échec se lit comme une
+ * régression de l'app. C'est le piège que la CI livrée portait — elle figeait
+ * `api-level: 33` / `pixel_6` sans rapport avec l'appareil du projet, et la
+ * dimension visuelle y était rouge en permanence pour une raison qui n'en est
+ * pas une.
+ *
+ * Le NOM de l'appareil (AVD, udid) n'entre pas dans la comparaison : il change
+ * d'une machine à l'autre pour un modèle identique, et crier là-dessus
+ * apprendrait à ignorer l'avertissement.
+ * @param {any} grave @param {any} courant @returns {null|{grave:any, courant:any}}
+ */
+export function baselineDeviceDrift(grave, courant) {
+  if (!grave || !grave.model || !grave.os) return null;
+  if (grave.model === courant.model && grave.os === courant.os) return null;
+  return { grave, courant };
+}
+
+/** L'empreinte d'appareil gravée à côté des références, ou null. */
+export function baselineDevice(baselineDir) {
+  const path = join(baselineDir, DEVICE_STAMP);
+  if (!existsSync(path)) return null;
+  try {
+    const lu = JSON.parse(readFileSync(path, 'utf8'));
+    return lu && typeof lu === 'object' && !Array.isArray(lu) ? lu : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -1225,6 +1282,16 @@ async function main() {
       warn('  Les comparaisons vont échouer sur le CADRAGE, pas sur une régression.');
       warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
     }
+
+    const derive = baselineDeviceDrift(baselineDevice(baselineDir),
+      deviceStamp(platform, resolved.udid, spec));
+    if (derive) {
+      warn(`références produites sur ${derive.grave.model} / ${derive.grave.os}, `
+        + `run en cours sur ${derive.courant.model} / ${derive.courant.os}.`);
+      warn('  Une référence est liée au COUPLE appareil + version d\'OS : les comparaisons');
+      warn('  vont échouer sur l\'APPAREIL, pas sur une régression de l\'app.');
+      warn('  Régénère sur cet appareil, ou lance la suite sur celui des références.');
+    }
   }
   if (dimensions.visual && visualMode === 'assert' && !existsSync(baselineDir)) {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
@@ -1259,6 +1326,10 @@ async function main() {
     stampBaselineCrops(baselineDir, Object.fromEntries(
       visualScreens.map((sc) => [sc.id, cropFor(sc, config)]),
     ));
+    // Et l'appareil : sans lui, des références nées ailleurs échouent en se
+    // faisant passer pour une régression.
+    writeFileSync(join(baselineDir, DEVICE_STAMP),
+      `${JSON.stringify(deviceStamp(platform, resolved.udid, spec), null, 2)}\n`, 'utf8');
     log(`${written} référence(s) visuelle(s) écrite(s) dans ${baselineDir}`);
   }
 
