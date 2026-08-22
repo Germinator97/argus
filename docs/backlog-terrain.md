@@ -384,7 +384,7 @@ l'interdiction vaut, mais ne dit jamais **laquelle des deux recettes choisir**
 pour le cas qui les concerne toutes les deux. Un lecteur applique la première
 qu'il croise.
 
-### 66. Un défaut du CADRE signalé par un run ne remonte pas tout seul
+### 66. ✅ Corrigé le 22/08/2026 — Un défaut du CADRE signalé par un run ne remontait pas tout seul
 
 `argus_harness.dart:187` viole `prefer_single_quotes` — lint courant, qui fait
 sortir `flutter analyze` en 1 sur un projet qui l'active. Le run 4 l'avait
@@ -396,6 +396,14 @@ cas, remonte-le, c'est ce qui empêche la divergence de s'installer. »** La rè
 existait, elle était juste, et elle n'a pas été appliquée. Écrire la règle ne
 fait pas le geste — et un terrain qu'on efface emporte tout ce qu'on n'a pas
 remonté.
+
+**Corrigé, et pas seulement la ligne.** Remonter le défaut ne vaut que s'il ne
+peut plus redescendre : `tools/bench.sh` lance désormais une seconde analyse avec
+cinq lints courants que `flutter_lints` n'active pas — c'est **exactement** ce
+trou qui rendait le défaut invisible d'ici tout en le rendant fatal chez celui
+qui les active. Le relevé est **total** : les cinq règles sur tout `test/argus`
+n'ont rendu qu'**une** occurrence, celle du run 5, et rien d'autre. Contre-épreuve
+faite : la double quote réintroduite fait rougir l'étape.
 
 ### 67. La CI livrée ne peut pas comparer les références visuelles
 

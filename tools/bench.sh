@@ -50,6 +50,33 @@ code=0
 r=$?; echo "  dart format     exit $r"; [ $r -ne 0 ] && code=1
 "$FL" analyze test/argus > /tmp/bench-an.txt 2>&1
 r=$?; echo "  flutter analyze exit $r"; [ $r -ne 0 ] && { code=1; grep -E '•' /tmp/bench-an.txt | head -4; }
+# ⚠️ LES LINTS DU PROJET HÔTE NE SONT PAS LES NÔTRES, ET C'EST LÀ QUE ÇA CASSE.
+# `flutter create` pose `flutter_lints`, qui n'active PAS `prefer_single_quotes`
+# — donc le scaffold peut violer un lint parfaitement courant sans qu'aucune
+# mesure d'ici ne le voie, et faire sortir `flutter analyze` en 1 chez celui qui
+# l'active. Vécu : un run l'a signalé, son agent l'a corrigé DANS le terrain, le
+# terrain a été effacé, et le défaut est revenu intact — un défaut remonté d'un
+# run ne remonte pas tout seul jusqu'ici.
+#
+# Ces cinq règles sont un choix : les plus répandues hors du paquet par défaut.
+# En ajouter est sans risque ; en retirer une demande de dire pourquoi.
+cp "$A/analysis_options.yaml" "$A/.analysis_options.argus.bak"
+trap 'mv -f "$A/.analysis_options.argus.bak" "$A/analysis_options.yaml" 2>/dev/null' EXIT
+cat >> "$A/analysis_options.yaml" <<'LINTS'
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - unnecessary_string_escapes
+    - directives_ordering
+    - always_declare_return_types
+    - prefer_final_locals
+LINTS
+"$FL" analyze test/argus > /tmp/bench-lint.txt 2>&1
+r=$?; echo "  lints courants  exit $r"; [ $r -ne 0 ] && { code=1; grep -E '•' /tmp/bench-lint.txt | head -4; }
+mv -f "$A/.analysis_options.argus.bak" "$A/analysis_options.yaml"
+trap - EXIT
+
 "$FL" test test/argus > /tmp/bench-te.txt 2>&1
 r=$?; echo "  flutter test    exit $r"; [ $r -ne 0 ] && { code=1; grep -E 'Some tests failed|Error' /tmp/bench-te.txt | head -4; }
 grep -q 'SKIP — aucun écran déclaré' /tmp/bench-te.txt \

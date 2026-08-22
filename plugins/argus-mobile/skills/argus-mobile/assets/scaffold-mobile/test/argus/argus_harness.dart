@@ -184,7 +184,7 @@ Future<void> pumpArgus(
   } on FlutterError {
     if (debugLabel.isNotEmpty && argusPerpetualAnimations.add(debugLabel)) {
       debugPrint(
-        "⚠️  « $debugLabel » ne se stabilise pas en ${argusSettleTimeout.inSeconds} s : "
+        '⚠️  « $debugLabel » ne se stabilise pas en ${argusSettleTimeout.inSeconds} s : '
         'il porte une animation perpétuelle. La mesure est prise après une '
         "avance d'horloge fixe, ce qui reste valable — mais note que "
         '`waitForAnimationToEnd` expirera aussi sur cet écran à l\'étage 2 '
