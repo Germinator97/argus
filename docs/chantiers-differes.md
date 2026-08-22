@@ -15,8 +15,19 @@ recopié se périme, un relevé recompté non.
 
 ## A. Installer `argus-mobile` sans le skill web
 
-**Ouvert le 22/08/2026. Condition de reprise : après la stabilisation
-d'`argus-mobile` sur un projet de terrain.** Tant que le skill bouge à chaque
+**Ouvert le 22/08/2026. CLOS le même jour, après la passe du run 3.**
+
+**Re-mesuré plutôt que relu**, avec la commande de ce document : *4 références,
+248 lignes, 200 Ko* — identiques au relevé. Le tronc commun n'a pas grossi, donc
+le critère de réouverture n'est pas atteint et **« ne pas scinder » tient**.
+
+⚠️ Ce n'est plus à re-mesurer à la main : le tronc est **figé par égalité** dans
+`tools/run-guards.test.mjs`. Une référence ajoutée fait rougir la suite (il a
+grossi, rouvrir ce dossier) ; une référence retirée aussi (le mobile devient
+autonome, la scission redevient possible). Les deux sont des nouvelles, et le
+message du garde renvoie ici.
+
+<sub>Ce qui suit reste le dossier tel qu'il a été instruit.</sub> Tant que le skill bouge à chaque
 run en aveugle, déplacer ce qu'il référence ajouterait une variable à une mesure
 en cours.
 
@@ -121,18 +132,44 @@ envoie chercher là où il n'y a rien. Reconnaître `INSTALL_FAILED_UPDATE_INCOM
 `signatures do not match` et `VERSION_DOWNGRADE` dans la sortie, et nommer le
 geste dans la preuve d'échec. Coût faible, gain certain.
 
-**2. `clearState` ne purge pas tout — À VÉRIFIER SUR DEVICE avant de coder quoi
-que ce soit.** Le skill connaît déjà un cas : la confirmation système du premier
+**1. ✅ Clos le 22/08/2026.** `installHint` traduit les trois échecs courants en
+geste, donne la commande de désinstallation **avec ce qu'elle détruit**, et
+n'invente rien sur un code non reconnu. Le cas « plus de place » ne suggère
+délibérément aucune désinstallation : elle ne libérerait pas l'espace qui manque.
+Trois gardes le figent, dont celui qui exige que toute suggestion de
+désinstallation nomme son prix.
+
+**2. `clearState` ne purge pas tout — TOUJOURS OUVERT, et volontairement.** Le skill connaît déjà un cas : la confirmation système du premier
 deep link iOS est permanente pour le simulateur, et le flow la gère (« le pire
 profil de flake »). L'hypothèse à éprouver est qu'il en existe un second :
 `pm clear` ne détruirait pas les clés de l'**Android KeyStore** liées à l'app,
 qui ne partiraient qu'à la désinstallation — une app éprouvant du chiffrement,
 de la biométrie ou un jeton scellé hériterait alors d'une clé du run précédent.
 
-⚠️ **Ce dernier point est une hypothèse, pas une mesure.** Il vient d'une lecture,
-pas d'un run sur appareil. Le reproduire avant de prescrire : poser une clé,
-`pm clear`, relire. Si elle survit, le chantier existe ; sinon il se ferme, et
-c'est un bon résultat.
+⚠️ **C'est une hypothèse, pas une mesure**, et elle le reste sciemment. La
+mesurer demande une app qui POSE une clé dans le KeyStore : le projet d'accueil
+du banc est une app Flutter nue, et lui ajouter du chiffrement pour éprouver ce
+point coûterait plus que le point ne vaut. Prescrire sans mesurer serait pire.
+
+**Le protocole, pour quand ce sera gratuit** — un projet de terrain qui utilise
+déjà du stockage sécurisé, de la biométrie ou un jeton scellé :
+
+1. lancer l'app, lui faire écrire sa valeur protégée, la relire (elle doit sortir) ;
+2. `adb shell pm clear <package>` ;
+3. relancer, relire : **la valeur revient-elle, ou la lecture échoue-t-elle ?**
+   Si elle échoue par « clé absente », `pm clear` a bien tout emporté et ce
+   chantier se ferme. Si elle échoue par « donnée déchiffrable introuvable »
+   alors que la clé est là, la clé a survécu et le chantier existe ;
+4. `adb uninstall` puis réinstaller, et refaire (3) : c'est la contre-épreuve —
+   la désinstallation, elle, doit tout emporter dans les deux cas.
+
+⚠️ Sans l'étape 4, on ne saurait pas distinguer « la clé survit » de « le montage
+ne pose pas de clé du tout ». Le premier montage de ce genre, à la passe
+précédente, rendait un exit 0 parce que tout se skippait.
+
+**Condition de reprise** : le premier terrain qui embarque du chiffrement — donc
+probablement le même que celui du § C, puisqu'une app qui parle à une API est
+aussi celle qui garde des jetons.
 
 ### Le garde-fou qui contraint le remède
 
