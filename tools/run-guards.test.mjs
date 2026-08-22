@@ -823,3 +823,58 @@ test('aucun script de mesure n\'efface les données de l\'app', () => {
       `${f} efface les données de l'app — c'est une écriture, elle relève d'ENV, pas d'un script de mesure`);
   }
 });
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le contrat de sortie documenté décrit le rapport réellement écrit
+// ───────────────────────────────────────────────────────────────────────────
+//
+// La doc promettait `metrics.perf` dans report.json. Le fichier ne l'a jamais
+// porté : perf.mjs tourne APRÈS run.mjs, donc les métriques n'existent pas
+// encore quand le rapport est écrit. Rien ne levait — un consommateur qui les
+// cherchait trouvait `undefined`, sans erreur d'aucune sorte.
+//
+// Le garde ne fige pas une liste écrite à la main : il la DÉRIVE des deux
+// sources et exige qu'elles coïncident. Une clé ajoutée au code sans être
+// documentée le fait rougir, et une clé promise sans être écrite aussi.
+
+/** Les clés de premier niveau du littéral `report` de run.mjs. */
+function clesDuRapport() {
+  const src = readFileSync(join(RACINE, 'skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const i = src.indexOf('const report = {');
+  assert.notEqual(i, -1, 'le littéral `const report = {` est introuvable — le garde ne garde plus rien');
+  let prof = 0; let fin = i;
+  for (let k = src.indexOf('{', i); k < src.length; k++) {
+    if (src[k] === '{') prof++;
+    else if (src[k] === '}' && --prof === 0) { fin = k; break; }
+  }
+  const bloc = src.slice(i, fin + 1);
+  const cles = []; let p = 0;
+  for (const ligne of bloc.split('\n')) {
+    // `nom:` comme `nom,` — le raccourci de propriété n'a pas de deux-points
+    const m = /^ {4}([a-zA-Z_]+)\s*[:,]/.exec(ligne);
+    if (m && p === 1) cles.push(m[1]);
+    p += (ligne.match(/\{/g) ?? []).length - (ligne.match(/\}/g) ?? []).length;
+  }
+  return cles.sort();
+}
+
+/** Les clés que le contrat de sortie annonce, dans la phrase qui les liste. */
+function clesDocumentees() {
+  const doc = readFileSync(join(RACINE, 'skills/argus-mobile/references/report-format-mobile.md'), 'utf8');
+  const m = /clés de premier niveau de `report\.json` sont\s*:\s*([^.]+)\./s.exec(doc);
+  assert.ok(m, 'la phrase qui liste les clés a disparu de la doc — reformulée ? le garde est vacant');
+  return [...m[1].matchAll(/`([a-zA-Z_]+)`/g)].map((x) => x[1]).sort();
+}
+
+test('le contrat de sortie documenté = les clés réellement écrites', () => {
+  const reelles = clesDuRapport();
+  assert.ok(reelles.length >= 4, `motif trouvé mais vide : ${reelles.length} clé(s)`);
+  assert.deepEqual(clesDocumentees(), reelles,
+    'la doc et run.mjs ne décrivent plus le même rapport — mets à jour celle des deux qui a tort');
+});
+
+test('le rapport ne promet plus de métriques qu\'il n\'écrit pas', () => {
+  assert.ok(!clesDuRapport().includes('metrics'),
+    'si report.json porte enfin `metrics`, c\'est la doc qu\'il faut rouvrir : elle explique pourquoi il ne le pouvait pas');
+});

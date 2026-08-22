@@ -949,6 +949,28 @@ function dimensionsToRun(includeTags, excludeTags) {
  * @param {any} config @param {Date} startedAt @param {number} flows
  * @returns {{maxMinutes:number, maxFlows:number, minutes:number, flows:number, warnings:string[]}}
  */
+/**
+ * La version DÉCLARÉE de l'app, lue dans le `pubspec.yaml` du projet.
+ *
+ * ⚠️ Le champ s'appelait `appVersion` et recevait `config.app.name`, c'est-à-dire
+ * le NOM du paquet. Un rapport qui titre « version : mon_app » n'a l'air de rien
+ * mais rend deux runs indistinguables : on ne sait plus lequel a testé quoi, et
+ * c'est précisément la question qu'on pose à un rapport archivé.
+ *
+ * Absente ou illisible, on rend `null` : mieux vaut un trou qu'une valeur
+ * plausible et fausse.
+ * @returns {string|null}
+ */
+export function pubspecVersion() {
+  try {
+    const texte = readFileSync(resolve(process.cwd(), 'pubspec.yaml'), 'utf8');
+    const m = /^version:\s*(\S+)/m.exec(texte);
+    return m ? m[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 function budgetVerdict(config, startedAt, flows) {
   const maxMinutes = Number(config.budget?.maxMinutes ?? 0);
   const maxFlows = Number(config.budget?.maxFlows ?? 0);
@@ -1132,7 +1154,7 @@ async function main() {
 
   const report = {
     run: {
-      startedAt: startedAt.toISOString(), platform, appVersion: config.app.name,
+      startedAt: startedAt.toISOString(), platform, appVersion: pubspecVersion(), appName: config.app.name,
       flavor: config.app.flavor, appId, budget,
       // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
       // la config ici ferait dire au rapport « Medium_Phone » quel que soit le

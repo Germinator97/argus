@@ -76,7 +76,17 @@ vers elle.
 **`dimension`** ∈ `functional | visual | a11y | performance | security |
 resilience | i18n | stability`.
 
-**`metrics.perf`** :
+⚠️ **`metrics.perf` ne vit PAS dans `report.json`, et ne le peut pas.** La chaîne
+écrit `report.json` à la fin de `argus-run`, alors que `perf.mjs` n'a pas encore
+tourné : les métriques ci-dessous sont donc dans **`perf.json`**, et seul le
+rapport HTML les agrège. Un consommateur qui les cherche dans `report.json` les
+trouvera absentes, sans erreur d'aucune sorte — c'est ce que ce paragraphe disait
+avant d'être corrigé.
+
+Les clés de premier niveau de `report.json` sont : `run`, `summary`, `findings`,
+`coverage`, `startup`. Un garde les fige par égalité contre cette liste.
+
+**`metrics.perf`**, dans `perf.json` :
 ```jsonc
 {
   "firstLaunchMs": 3700,   // PREMIER lancement après installation — état à part
