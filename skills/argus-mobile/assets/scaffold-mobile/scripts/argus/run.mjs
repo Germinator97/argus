@@ -893,6 +893,25 @@ const CROP_STAMP = '.argus-crop';
  * dossier ne le dit pas (références antérieures à cette marque).
  * @param {string} baselineDir @returns {string|null}
  */
+/**
+ * Le cadrage qui s'applique à CET écran.
+ *
+ * ⚠️ `visualCropOn` est une clé globale, et la doctrine des racines est locale :
+ * chaque écran a la sienne. Dès le deuxième écran en `visual: true`, aucune
+ * valeur globale ne convient — sur un projet réel, l'agent a dû la laisser vide
+ * et l'horloge du système est entrée dans les quatre références.
+ *
+ * Un `visualCropOn` posé sur une entrée de `screens[]` l'emporte donc sur le
+ * global, qui reste le défaut. Additif : une config existante ne change pas de
+ * comportement.
+ * @param {any} screen @param {any} config @returns {string}
+ */
+export function cropFor(screen, config) {
+  const local = screen?.visualCropOn;
+  if (typeof local === 'string' && local.trim() !== '') return local.trim();
+  return String(config?.visualCropOn ?? '');
+}
+
 function baselineCrop(baselineDir) {
   const path = join(baselineDir, CROP_STAMP);
   return existsSync(path) ? readFileSync(path, 'utf8').trim() : null;
@@ -1103,8 +1122,12 @@ async function main() {
   if (dimensions.visual && visualMode === 'assert') {
     // Le cadrage doit être le MÊME qu'à la génération, sinon on compare deux
     // images qui ne cadrent pas la même chose — et l'échec accuse l'app.
+    // Le cadrage pouvant désormais différer d'un écran à l'autre, l'estampille
+    // ne peut plus être comparée à UNE valeur : on la compare à celle qui
+    // s'appliquerait, écran par écran, et on n'avertit que si l'une a bougé.
     const stamped = baselineCrop(baselineDir);
-    if (stamped !== null && stamped !== visualCrop) {
+    const bouge = visualScreens.filter((sc) => stamped !== null && stamped !== cropFor(sc, config));
+    if (bouge.length > 0 && stamped !== null && stamped !== visualCrop) {
       warn(`visualCropOn a changé depuis la génération des références : « ${stamped || '(plein écran)'} » → « ${visualCrop || '(plein écran)'} ».`);
       warn('  Les comparaisons vont échouer sur le CADRAGE, pas sur une régression.');
       warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
@@ -1122,6 +1145,7 @@ async function main() {
           ARGUS_ANIMATIONS_DISABLED: String(animations.ok),
           ARGUS_SCREEN_ID: screen.id, ARGUS_SCREEN_ANCHOR: screen.anchor,
           ARGUS_BASELINE_DIR: baselineDir, ARGUS_VISUAL_MODE: visualMode,
+          ARGUS_VISUAL_CROP: cropFor(screen, config),
         }),
         includeTags: [], excludeTags: [], dryRun: opts.dryRun, verbose: opts.verbose,
       }));

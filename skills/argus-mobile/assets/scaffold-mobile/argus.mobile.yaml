@@ -153,6 +153,16 @@ screens:
 # `SafeArea` elle prend l'écran entier — horloge système comprise, donc un diff
 # à chaque minute —, dedans la seule zone utile. Mesuré : 216 px d'écart sur un
 # téléphone courant. Voir methodology-mobile.md §VISUAL.
+# ⚠️ Cette clé est GLOBALE, la doctrine des racines est LOCALE : chaque écran a
+# la sienne. Dès le deuxième écran en `visual: true`, aucune valeur globale ne
+# convient. Pose alors `visualCropOn:` sur l'entrée de `screens[]` concernée —
+# elle l'emporte sur celle-ci, qui reste le défaut :
+#
+#   screens:
+#     - id: home
+#       anchor: home_root
+#       visual: true
+#       visualCropOn: home_canvas   # ce cadrage-ci, pour cet écran-là
 visualCropOn: ''
 
 # ── Deep links à éprouver ──────────────────────────────────────────────────

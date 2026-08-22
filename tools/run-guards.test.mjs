@@ -31,6 +31,7 @@ import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scrip
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { cropFor } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -928,4 +929,27 @@ test('tout marqueur de tâche du scaffold est une directive, ou une mention cit�
     }
   }
   assert.ok(vus >= 10, `garde vacant : ${vus} marqueur(s) rencontré(s) dans tout le scaffold`);
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le cadrage visuel est LOCAL, comme les racines qu'il vise
+// ───────────────────────────────────────────────────────────────────────────
+//
+// `visualCropOn` était une clé globale alors que chaque écran a sa propre
+// racine : dès le deuxième écran en `visual: true`, aucune valeur ne convient.
+// Sur un projet réel, elle est restée vide et l'horloge du système est entrée
+// dans les quatre références visuelles.
+
+test('un écran impose son cadrage, le global reste le défaut', () => {
+  assert.equal(cropFor({ id: 'a', visualCropOn: 'local' }, { visualCropOn: 'global' }), 'local');
+  assert.equal(cropFor({ id: 'a' }, { visualCropOn: 'global' }), 'global',
+    'sans quoi « cadrage par écran » deviendrait « plus de cadrage du tout » pour les autres');
+});
+
+test('un cadrage vide n\'est pas un cadrage — il retombe sur le défaut', () => {
+  // Un sélecteur vide ne se passe pas à `cropOn:` : Maestro chercherait un
+  // élément d'identifiant « » et échouerait. Vide veut dire « plein écran ».
+  assert.equal(cropFor({ id: 'a', visualCropOn: '   ' }, { visualCropOn: 'global' }), 'global');
+  assert.equal(cropFor({ id: 'a' }, {}), '');
 });
