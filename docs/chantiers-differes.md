@@ -15,7 +15,37 @@ recopié se périme, un relevé recompté non.
 
 ## A. Installer `argus-mobile` sans le skill web
 
-**Ouvert le 22/08/2026. CLOS le même jour, après la passe du run 3.**
+**Ouvert le 22/08/2026. RENVERSÉ puis clos le même jour.**
+
+⚠️ **La décision de ne pas scinder reposait sur une mesure fausse.** Elle disait
+« 248 lignes qui divergeraient » — le compte des fichiers entiers, alors que
+`methodology-mobile.md` a ses propres §1 à §9 sur 506 lignes et n'empruntait que
+le §3. L'emprunt réel valait **76 lignes**, dont :
+
+- le **§3 du web, 25 lignes**, alors que le mobile a le sien — **31 lignes**,
+  plus complet que celui qu'il citait ;
+- le **contrat de sortie, 51 lignes**, portant **neuf mentions de vocabulaire
+  web** (`baseUrl`, `browsers`, `viewport`, `selector`, le reporter Playwright),
+  au point que le mobile publiait une **table de traduction** : `url` → `screen`
+  + `step`, `browser` → `platform` + `osVersion`.
+
+La dépendance coûtait donc au lecteur **un document de plus, écrit pour un autre
+médium, plus une table pour le transposer** — davantage que la duplication
+qu'elle évitait. Le socle vit désormais dans `report-format-mobile.md`, en
+mobile, et la table a disparu faute d'avoir quelque chose à traduire.
+
+**`skills/argus-mobile/` se copie seul.** Prouvé en le copiant dans un dossier
+temporaire : zéro chemin sortant — et l'instrument a été éprouvé contre un chemin
+injecté, un grep cassé rendant zéro exactement comme un résultat propre. Un garde
+total et négatif le tient : aucun chemin sortant, où que ce soit.
+
+**Ce qui reste ouvert, et qui n'est plus technique** : faut-il déclarer *deux
+plugins* dans `marketplace.json` ? Rien ne l'empêche désormais. C'est une
+question de distribution — deux entrées à maintenir contre un choix laissé à
+l'utilisateur —, plus une question de dépendance.
+
+<sub>Ce qui suit est le dossier tel qu'il avait été instruit, avec sa mesure
+fausse. Le garder montre comment un chiffre plausible fait trancher à l'envers.</sub>
 
 **Re-mesuré plutôt que relu**, avec la commande de ce document : *4 références,
 248 lignes, 200 Ko* — identiques au relevé. Le tronc commun n'a pas grossi, donc

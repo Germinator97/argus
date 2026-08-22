@@ -27,10 +27,15 @@ Dans Claude Code :
 Puis, dans n'importe quel projet : `/argus` ou `/argus-mobile`.
 
 ### Option B — Copie manuelle du skill
+Chaque skill se suffit à lui-même : copie seulement celui dont tu as besoin.
 ```bash
-cp -R argus-cc/skills/argus        ~/.claude/skills/argus
-cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile
+cp -R argus-cc/skills/argus        ~/.claude/skills/argus         # web
+cp -R argus-cc/skills/argus-mobile ~/.claude/skills/argus-mobile  # Flutter
 ```
+> `argus-mobile` a longtemps renvoyé au skill web pour son contrat de sortie et
+> ses garde-fous : copié seul, ces chemins ne résolvaient nulle part et l'agent
+> inventait ce qu'il ne trouvait pas. Il est autonome depuis, et un garde le
+> vérifie à chaque CI.
 
 ---
 
