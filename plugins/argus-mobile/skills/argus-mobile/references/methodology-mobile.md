@@ -4,7 +4,10 @@
 > tester à grande échelle, et comment classer un défaut. SKILL.md est
 > l'orchestrateur ; ceci est le cerveau.
 >
-> Ce qui est **identique au web** n'est pas recopié : sévérité, exit codes,
+> Ce qui est **identique au web** n'est pas recopié : sévérité des findings,
+> codes de sortie, forme du rapport. Ce qui est écrit ici est ce que le mobile
+> fait AUTREMENT — et ça commence dès la couche d'accessibilité.
+>
 > Ce document se suffit à lui-même. Il renvoyait auparavant à la méthodologie
 > du skill web pour la philosophie de preuve et les garde-fous transverses,
 > alors qu'il porte déjà les siens (§3, plus complet que celui qu'il citait) :

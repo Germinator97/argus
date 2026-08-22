@@ -381,6 +381,8 @@ mesuré sur Flutter 3.32, même écran, seule l'enveloppe change :
 | Enveloppé par l'extérieur | nœud de l'ancre | ce qui reste en dessous |
 |---|---|---|
 | `InkWell` | `id`, `label`, **`tap`** — un seul nœud | — |
+| `InkResponse` | `id`, `label`, **`tap`** — un seul nœud | — |
+| `GestureDetector` | `id`, `label`, **`tap`** — un seul nœud | — |
 | `ListTile` avec `onTap` | `id`, `label`, **`tap`** — un seul nœud | — |
 | `TextField` | `id`, **`tap`** — un seul nœud | ⚠️ tant que l'enveloppe ne porte **aucun rôle** |
 | `IconButton` | `id`, label **vide**, **aucune action** | la commande, **anonyme** |
@@ -390,6 +392,16 @@ La ligne de partage n'est pas « InkWell contre IconButton » : c'est que les
 composants qui déclarent un **rôle de bouton** posent une frontière sémantique,
 et que ceux qui n'ajoutent qu'un **geste** fusionnent avec l'enveloppe. La
 plupart des boutons Material sont donc du mauvais côté.
+
+⚠️ **Cette table est une illustration, pas un inventaire — et le critère
+au-dessus est ce qu'il faut retenir.** Un projet réel l'a employée pour un
+`InkResponse`, absent de la liste, et a dû raisonner par analogie avec `InkWell`
+là où ce §2c dit précisément de ne pas le faire. La question à poser à un widget
+inconnu est toujours la même : **déclare-t-il un rôle** (`button:`, `Semantics`
+interne, `MaterialButton`), ou n'ajoute-t-il qu'un geste ?
+
+Et si le doute persiste, ne raisonne pas : `make argus-anchors` tranche en
+quelques secondes, sans device — une ancre inerte y rougit avec son nom.
 
 Ce que ça produit : une ancre parfaitement trouvable par Maestro — le `tapOn`
 marche, il vise le centre du rect — sur un nœud qui **ne fait rien**, pendant
@@ -765,6 +777,20 @@ harnais dont la boucle visuelle n'a jamais tourné une seule fois.
 puis **remplacer une référence par un aplat** et vérifier que celle-là seule
 rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
 mesure ou si elle dort.
+
+⚠️ **`argus-run` peut refuser de démarrer, et c'est prévu.** L'installation n'est
+pas une formalité : sur un émulateur dont `/data` est plein, `adb install` rend
+`INSTALL_FAILED_INSUFFICIENT_STORAGE` et le runner **s'arrête** plutôt que de
+piloter le binaire de la veille. Deux gestes, dans cet ordre :
+
+```bash
+adb -s <udid> uninstall <appId>      # réinstaller par-dessus demande PLUS de place
+make argus-build                     # le runner propose la commande ciblée sur l'ABI
+```
+
+Un APK debug « gras » embarque quatre ABI quand l'appareil n'en lit qu'une : le
+ciblage divise sa taille par deux, et c'est souvent tout ce qui manquait. Reprends
+ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être rejouées.
 
 **g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
 `argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et

@@ -23,7 +23,11 @@ appId: ${APP_ID}
 
 - runFlow:
     when:
-      true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === 'home'}"
+      # ⚠️ `startsWith('home')`, pas `=== 'home'`. Le §2c-bis du skill demande une
+      # entrée PAR ÉTAT (`home-empty`, `home-filled`) : en le suivant à la lettre,
+      # aucun identifiant ne valait plus « home » et cette branche ne matchait
+      # jamais. Le gabarit et le sous-flow livré ne se rejoignaient pas.
+      true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || String(SCREEN_ID).startsWith('home')}"
     commands:
       - assertTrue:
           condition: "${true}"

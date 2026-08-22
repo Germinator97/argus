@@ -1004,24 +1004,39 @@ commentaire que le 86 a corrigé dans `run.mjs`, et pas ici.
 commandes qui tranchent écrites à côté — `avdmanager list device` pour ce que la
 CI acceptera, `maestro start-device --help` pour `autoStart`.
 
-### 93. §2c-bis prescrit `home-empty`, `goto.yaml` ne connaît que `home`
+### 93. ✅ Corrigé le 22/08/2026 — §2c-bis prescrivait `home-empty`, `goto.yaml` ne connaissait que `home`
 
 Le gabarit du skill donne `id: home-empty` (« une entrée PAR ÉTAT »), et la
 branche « rien à naviguer » du sous-flow teste `SCREEN_ID === 'home'`. En suivant
 le skill à la lettre, elle ne matche jamais.
 
-### 94. La table §2c ne couvre pas `InkResponse`
+**Corrigé** : `startsWith('home')`. Le gabarit demandait une entrée par ÉTAT et le
+sous-flow attendait un nom d'écran — deux fichiers livrés ensemble qui ne se
+rejoignaient pas.
+
+### 94. ✅ Corrigé le 22/08/2026 — La table §2c ne couvrait pas `InkResponse`
 
 C'est pourtant le bouton-icône réel de deux écrans de ce projet. L'agent a
 raisonné par analogie avec `InkWell`, puis mesuré — alors que le §2c invite
 précisément à ne pas raisonner par analogie.
 
-### 95. §3g ne prévoit pas que l'installation puisse échouer
+**Corrigé** : `InkResponse` et `GestureDetector` rejoignent la table, et surtout
+il est écrit que **c'est une illustration, pas un inventaire**. Devant un widget
+absent de la liste, la question est toujours la même — déclare-t-il un rôle, ou
+n'ajoute-t-il qu'un geste ? — et `make argus-anchors` tranche en quelques
+secondes plutôt que de raisonner.
+
+### 95. ✅ Corrigé le 22/08/2026 — §3g ne prévoyait pas que l'installation puisse échouer
 
 La séquence suppose que `argus-run` passe. Quand l'installation refuse — place
 disque, ici — il faut rebâtir et tout reprendre : deux runs de plus, non annoncés.
 La méthodologie le dit ailleurs (« INSTALL n'est pas une formalité ») ; §3g ne le
 laisse pas prévoir.
+
+**Corrigé** : §3g porte les deux gestes qui débloquent, dans l'ordre —
+désinstaller (réinstaller par-dessus demande PLUS de place) puis rebâtir avec la
+commande ciblée sur l'ABI. Et il dit où reprendre la séquence, plutôt que de la
+laisser recommencer au début.
 
 ### 96. Le compteur de l'installeur compte les `TODO(argus):` qui EXPLIQUENT
 
@@ -1034,11 +1049,14 @@ commence par `TODO(argus):`. Remplis, ils restent comptés : le fichier rapporte
 n'a jamais été étendue au compteur. Deuxième défaut de ce compteur en deux runs
 (cf. 70).
 
-### 97. Une phrase interrompue en tête de `methodology-mobile.md`
+### 97. ✅ Corrigé le 22/08/2026 — Une phrase interrompue en tête de `methodology-mobile.md`
 
 « *Ce qui est identique au web n'est pas recopié : sévérité, exit codes,* » —
 puis rien. Coupure d'édition, dans les sept premières lignes du document le plus
 lu après le SKILL.
+
+**Corrigé** : la phrase est terminée, et dit ce qu'elle annonçait — ce qui est
+écrit ici est ce que le mobile fait AUTREMENT.
 
 ## Ce qui reste
 
