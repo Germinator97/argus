@@ -120,22 +120,62 @@ void main() {
         viewport: argusViewports.first,
         debugLabel: screen.id,
       );
+      argusDrainMountException(tester);
 
       for (final String commande in screen.commands) {
         final List<ArgusSemanticNode> noeuds = argusNodesById(tester, commande);
 
-        expect(
-          noeuds,
-          isNotEmpty,
-          reason:
-              'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
-              '« $commande ». Le flow Maestro qui le cible échouera sur device '
-              'en disant que l\'élément a disparu — sans nommer la cause. '
-              'Vérifie que l\'ancre est posée sur ce sous-arbre, que l\'écran '
-              'est monté dans l\'état qui la rend, et qu\'aucun '
-              '`ExcludeSemantics` ne la couvre (c\'est le seul voisin qui la '
-              'fasse disparaître, sans erreur d\'aucune sorte).',
-        );
+        // ⚠️ ABSENTE et SOUS LE PLI rendent le même vide sur ce gabarit, et le
+        // message accuserait alors l'instrumentation pour un défaut qui n'existe
+        // pas. Une commande au bas d'une liste paresseuse n'est simplement pas
+        // construite ici. Mesuré sur un projet réel : quatre ancres déclarées
+        // « absentes » au petit gabarit, TOUTES présentes et actives au grand.
+        //
+        // On ne raisonne donc pas : on remonte l'écran plus haut et on regarde.
+        // Rendre discernable coûte moins cher que déduire.
+        String indicePli = '';
+        if (noeuds.isEmpty && argusViewports.length > 1) {
+          await pumpArgus(
+            tester,
+            screen.build(),
+            viewport: argusViewports.last,
+            debugLabel: screen.id,
+          );
+          argusDrainMountException(tester);
+          if (argusNodesById(tester, commande).isNotEmpty) {
+            indicePli =
+                '\n\n⚠️ ELLE EXISTE, mais plus bas que ce gabarit ne le montre : '
+                'présente et construite sur ${argusViewports.last.name}, absente '
+                'sur ${argusViewports.first.name}. Ce n\'est PAS un défaut '
+                'd\'instrumentation — c\'est une liste paresseuse qui ne '
+                'construit pas ce qu\'elle n\'affiche pas. Retire-la de '
+                '`commands:` si aucun flow ne la cible sans défiler, ou fais '
+                'défiler l\'écran avant de la viser.';
+          }
+          // Remonter sur le gabarit de référence : ce qui suit le mesure.
+          await pumpArgus(
+            tester,
+            screen.build(),
+            viewport: argusViewports.first,
+            debugLabel: screen.id,
+          );
+          argusDrainMountException(tester);
+        }
+
+        await argusCheck('${screen.id} · commande « $commande » présente', () async {
+          expect(
+            noeuds,
+            isNotEmpty,
+            reason:
+                'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
+                '« $commande ». Le flow Maestro qui le cible échouera sur device '
+                'en disant que l\'élément a disparu — sans nommer la cause. '
+                'Vérifie que l\'ancre est posée sur ce sous-arbre, que l\'écran '
+                'est monté dans l\'état qui la rend, et qu\'aucun '
+                '`ExcludeSemantics` ne la couvre (c\'est le seul voisin qui la '
+                'fasse disparaître, sans erreur d\'aucune sorte).$indicePli',
+          );
+        });
 
         // Présente ne suffit pas : elle doit être posée sur la COMMANDE.
         //
@@ -149,22 +189,24 @@ void main() {
         final Iterable<ArgusSemanticNode> commandes = noeuds.where(
           (ArgusSemanticNode n) => n.isCommand,
         );
-        expect(
-          commandes,
-          isNotEmpty,
-          reason:
-              'L\'ancre « $commande » de « ${screen.id} » est posée sur un '
-              'nœud INERTE : il ne porte aucune action et ne déclare pas d\'état '
-              'd\'activation. C\'est la signature d\'une enveloppe autour d\'un '
-              'composant qui construit déjà son propre nœud — IconButton, '
-              'ElevatedButton et la plupart des boutons d\'un design system. '
-              'La vraie commande est un cran plus bas, sans identifiant : '
-              'Maestro la tapera quand même (il vise le centre du rect), mais '
-              'TalkBack annoncera un bouton anonyme et la dimension a11y le '
-              'comptera comme tel. Pose l\'ancre sur l\'ENFANT que le composant '
-              'reçoit (son `icon:`, son `child:`) plutôt qu\'autour de lui — '
-              'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label.',
-        );
+        await argusCheck('${screen.id} · commande « $commande » active', () async {
+          expect(
+            commandes,
+            isNotEmpty,
+            reason:
+                'L\'ancre « $commande » de « ${screen.id} » est posée sur un '
+                'nœud INERTE : il ne porte aucune action et ne déclare pas d\'état '
+                'd\'activation. C\'est la signature d\'une enveloppe autour d\'un '
+                'composant qui construit déjà son propre nœud — IconButton, '
+                'ElevatedButton et la plupart des boutons d\'un design system. '
+                'La vraie commande est un cran plus bas, sans identifiant : '
+                'Maestro la tapera quand même (il vise le centre du rect), mais '
+                'TalkBack annoncera un bouton anonyme et la dimension a11y le '
+                'comptera comme tel. Pose l\'ancre sur l\'ENFANT que le composant '
+                'reçoit (son `icon:`, son `child:`) plutôt qu\'autour de lui — '
+                'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label.',
+          );
+        });
       }
 
       handle.dispose();
@@ -182,19 +224,22 @@ void main() {
         viewport: argusViewports.first,
         debugLabel: screen.id,
       );
+      argusDrainMountException(tester);
 
-      expect(
-        find.bySemanticsIdentifier(screen.anchor!),
-        findsOneWidget,
-        reason:
-            'L\'écran « ${screen.id} » se construit, mais aucun nœud '
-            'sémantique ne porte l\'identifiant « ${screen.anchor} ». '
-            'Trois causes, par ordre de fréquence : l\'ancre n\'est pas posée '
-            'sur ce sous-arbre ; elle est posée sur un widget qui ne construit '
-            'pas de nœud propre ; ou un parent l\'absorbe faute de '
-            '`explicitChildNodes: true`. Tant que ce test est rouge, tout flow '
-            'Maestro visant cet écran échouera sur device.',
-      );
+      await argusCheck('${screen.id} · ancre de racine présente', () async {
+        expect(
+          find.bySemanticsIdentifier(screen.anchor!),
+          findsOneWidget,
+          reason:
+              'L\'écran « ${screen.id} » se construit, mais aucun nœud '
+              'sémantique ne porte l\'identifiant « ${screen.anchor} ». '
+              'Trois causes, par ordre de fréquence : l\'ancre n\'est pas posée '
+              'sur ce sous-arbre ; elle est posée sur un widget qui ne construit '
+              'pas de nœud propre ; ou un parent l\'absorbe faute de '
+              '`explicitChildNodes: true`. Tant que ce test est rouge, tout flow '
+              'Maestro visant cet écran échouera sur device.',
+        );
+      });
 
       // Trouver l'ancre ne suffit pas : sans `explicitChildNodes: true`, le
       // nœud EXISTE mais AVALE le texte de ses descendants. Le premier
