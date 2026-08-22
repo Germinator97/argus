@@ -9,6 +9,7 @@ Trois façons dont un harnais de mutation ment, toutes traitées ici :
 Et la restauration est prouvée par hash, pas annoncée.
 """
 import hashlib
+import re
 import pathlib
 import subprocess
 import sys
@@ -29,7 +30,13 @@ CIBLES = {
     "a11y": SCAFFOLD / "a11y.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 54
+# ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
+# de « aucun test n'a tourné » — deux verdicts opposés que la même sortie vide
+# produirait. Écrit à la main, il se périmait au premier test ajouté et TOUTES
+# les mutations rendaient alors « HARNAIS », ce qui masquait la mesure entière.
+# Il se relève donc sur la suite PROPRE, avant la première mutation : c'est le
+# seul moment où le compte est à la fois connu et digne de foi.
+NB_TESTS = None
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -162,6 +169,18 @@ def restaure(cle, attendu):
 
 
 def main():
+    global NB_TESTS
+    base = sh(["node", "--test", str(SUITE)])
+    m = re.search(r"tests (\d+)", base.stdout + base.stderr)
+    if not m:
+        print("✖ impossible de relever le compte de tests sur la suite propre —")
+        print("  sans lui, « aucun test n'a tourné » et « le garde est vacant » sont indistinguables.")
+        return 1
+    NB_TESTS = int(m.group(1))
+    if base.returncode != 0:
+        print(f"✖ la suite est DÉJÀ rouge ({NB_TESTS} tests) — corrige avant de muter.")
+        return 1
+
     for cle, cible in CIBLES.items():
         if sh(["git", "status", "--porcelain", str(cible.relative_to(ROOT))]).stdout.strip():
             print(f"✖ {cible.name} a des modifications non commitées : commite d'abord.")
