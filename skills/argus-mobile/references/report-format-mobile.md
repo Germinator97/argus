@@ -1,9 +1,34 @@
-# Argus Mobile — contrat de sortie (delta mobile)
+# Argus Mobile — contrat de sortie
 
-> Le format de base est celui du skill web : **`../../argus/references/report-format.md`**.
-> Ce document ne décrit que ce qui change. Lis les deux.
+> À lire au moment de produire un rapport. Deux publics : la **machine** (CI) et
+> l'**humain**. Ce document se suffit à lui-même : il portait auparavant le seul
+> *delta* d'un contrat écrit pour le web, ce qui obligeait à lire deux documents
+> — dont un qui parle de `baseUrl`, de `browsers` et de Core Web Vitals — puis
+> une table pour transposer. Le socle est donc ici, en mobile.
 
-## A. `report.json` — les champs qui diffèrent
+## A. `report.json`
+
+**Le socle**, commun à tout rapport Argus :
+
+```jsonc
+{
+  "run":     { "startedAt", "platform", "appVersion", "env", "mode", "commit?" },
+  "summary": { "findings": { "blocker", "critical", "major", "minor", "info" },
+               "passed", "failed", "flaky", "gate": "pass|fail" },
+  "findings": [
+    { "id", "title", "severity", "dimension",
+      "expected", "actual", "evidence": ["chemins"], "repro": ["étapes"],
+      "suggestedFix", "status": "open|known|fixed", "occurrences" }
+  ],
+  "coverage": { … }, "startup": { … }
+}
+```
+
+⚠️ **Ces clés de premier niveau sont figées par égalité** dans la suite de gardes :
+`run`, `summary`, `findings`, `coverage`, `startup`. Une clé ajoutée au code sans
+être écrite ici fait rougir la CI, et une clé promise ici sans être écrite aussi.
+
+### Les champs propres au mobile
 
 **`run` gagne :**
 ```jsonc

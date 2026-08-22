@@ -956,53 +956,44 @@ test('un cadrage vide n\'est pas un cadrage — il retombe sur le défaut', () =
 
 
 // ───────────────────────────────────────────────────────────────────────────
-// Ce que le skill mobile emprunte au skill web — figé par ÉGALITÉ
+// Le skill mobile est AUTONOME — il ne lit rien du skill web
 // ───────────────────────────────────────────────────────────────────────────
 //
-// Le plugin livre les deux skills ensemble parce que le mobile n'est pas
-// autonome : il délègue au web la méthodologie de base, les garde-fous
-// transverses et le contrat de sortie. Copier `skills/argus-mobile/` seul casse
-// ces chemins EN SILENCE — l'agent lit que le format de base vit ailleurs, ne le
-// trouve pas, et invente un format de rapport.
+// Il a longtemps délégué au web la méthodologie de base, les garde-fous
+// transverses et le contrat de sortie. Copier `skills/argus-mobile/` seul — ce
+// que propose l'option B du README — cassait donc ces chemins EN SILENCE :
+// l'agent lisait que le format de base vivait ailleurs, ne le trouvait pas, et
+// inventait un format de rapport.
 //
-// La décision de ne pas scinder tient tant que ce tronc reste petit. Plutôt que
-// de le re-mesurer à la main un jour, ce garde le fige par ÉGALITÉ : une
-// référence ajoutée le fait rougir (le tronc grossit, il faut rouvrir le
-// dossier), une référence retirée aussi (le mobile devient autonome, la
-// scission redevient possible). Les deux sont des nouvelles, pas des défauts —
-// le message le dit.
+// Mesuré avant de trancher : l'emprunt valait 76 lignes et non 248 — le §3 du
+// web (25 lignes) alors que le mobile a le sien (31 lignes), et un contrat de
+// sortie de 51 lignes portant NEUF mentions de vocabulaire web, au point que le
+// mobile devait publier une table pour les transposer. La dépendance coûtait
+// une lecture de plus qu'elle n'économisait de duplication.
+//
+// Le critère est total et négatif : AUCUN chemin sortant, où que ce soit.
 
-test('le tronc commun mobile → web n\'a pas bougé', () => {
+test('le skill mobile ne référence aucun fichier du skill web', () => {
   const dir = join(RACINE, 'skills/argus-mobile');
-  const vus = [];
+  const sortants = [];
+  let lus = 0;
   const parcourir = (d) => {
     for (const e of readdirSync(d, { withFileTypes: true })) {
       const c = join(d, e.name);
       if (e.isDirectory()) { parcourir(c); continue; }
-      if (!/\.(md|mjs|dart|sh|ya?ml)$/.test(e.name)) continue;
-      const texte = readFileSync(c, 'utf8');
-      for (const m of texte.matchAll(/\.\.\/\.\.\/argus\/references\/([a-z-]+\.md)/g)) {
-        vus.push(`${c.slice(dir.length + 1)} → ${m[1]}`);
+      if (!/\.(md|mjs|dart|sh|ya?ml|json)$/.test(e.name)) continue;
+      lus++;
+      for (const m of readFileSync(c, 'utf8').matchAll(/\.\.\/\.\.\/argus\/[^\s`)'"]+/g)) {
+        sortants.push(`${c.slice(dir.length + 1)} -> ${m[0]}`);
       }
     }
   };
   parcourir(dir);
-  assert.ok(vus.length > 0, 'aucune référence trouvée — le motif a changé, le garde est vacant');
-
-  assert.deepEqual(vus.sort(), [
-    'SKILL.md → report-format.md',
-    'references/methodology-mobile.md → methodology.md',
-    'references/methodology-mobile.md → methodology.md',
-    'references/report-format-mobile.md → report-format.md',
-  ], 'le tronc commun a changé. Ce n\'est pas un défaut, c\'est une décision à reprendre : '
-   + 'docs/chantiers-differes.md § A explique pourquoi le plugin livre les deux skills, '
-   + 'et à quelle condition ça cesse d\'être le bon choix.');
-
-  // Ce qui est emprunté doit exister : un chemin cassé ne lève nulle part.
-  for (const cible of new Set(vus.map((v) => v.split(' → ')[1]))) {
-    assert.ok(existsSync(join(RACINE, 'skills/argus/references', cible)),
-      `${cible} est référencé par le skill mobile et n'existe pas — le renvoi est mort`);
-  }
+  assert.ok(lus >= 30, `garde vacant : ${lus} fichier(s) lus`);
+  assert.deepEqual(sortants, [],
+    'le skill mobile s\'est remis a lire le skill web. Copie seul, ces chemins ne '
+    + 'resolvent nulle part et rien ne leve : l\'agent invente ce qu\'il ne trouve '
+    + 'pas. Absorbe ce dont tu as besoin, ou rouvre docs/chantiers-differes.md § A.');
 });
 
 

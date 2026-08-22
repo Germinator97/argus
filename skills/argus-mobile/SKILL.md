@@ -765,9 +765,9 @@ Matrice complète par environnement : `references/methodology-mobile.md` §3.
   budget, et ce que l'émulateur ne sait pas tester. À lire avant de fixer `devices`.
 - **`references/demo-mode-mobile.md`** — la couche cinématique et l'enregistrement
   vidéo. À lire uniquement en MODE=DEMO.
-- **`references/report-format-mobile.md`** — le **delta mobile** du contrat de
-  sortie ; il référence `../../argus/references/report-format.md` au lieu de le
-  recopier. À lire au moment de produire un rapport.
+- **`references/report-format-mobile.md`** — le contrat de sortie, entier et
+  autonome : `report.json`, preuves, rapport HTML, exit codes. À lire au moment
+  de produire un rapport.
 - **`scripts/install-mobile.sh`** — copie idempotente du scaffold dans un projet Flutter.
 - **`assets/scaffold-mobile/`** — le harness réel : flows Maestro, scripts de mesure,
   gardes `flutter_test`, CI. Son `ARGUS-MOBILE.md` documente l'usage côté projet

@@ -5,8 +5,10 @@
 > l'orchestrateur ; ceci est le cerveau.
 >
 > Ce qui est **identique au web** n'est pas recopié : sévérité, exit codes,
-> philosophie de preuve et garde-fous transverses renvoient à
-> `../../argus/references/methodology.md`. Le delta mobile est ce qui a de la valeur.
+> Ce document se suffit à lui-même. Il renvoyait auparavant à la méthodologie
+> du skill web pour la philosophie de preuve et les garde-fous transverses,
+> alors qu'il porte déjà les siens (§3, plus complet que celui qu'il citait) :
+> le renvoi coûtait une lecture de plus sans rien apporter.
 
 ## Sommaire
 1. RUN CONFIG mobile
@@ -103,7 +105,8 @@ ENV=staging avec données jetables, ou une confirmation explicite.
 - **Captures** : une baseline d'un écran authentifié contient des données réelles
   et se retrouve versionnée. Utilise un compte de test aux données inventées.
 
-Transverse (identique au web) : `../../argus/references/methodology.md` §3.
+Ces garde-fous sont les mêmes que côté web, à ceci près que le mobile en
+ajoute trois — appareil réel, secrets passés par `-e`, baselines authentifiées.
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 4. Stratégie de passage à l'échelle
