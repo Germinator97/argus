@@ -998,6 +998,64 @@ test('références d\'avant l\'empreinte : rien à comparer, donc rien à dire',
 });
 
 
+
+// ───────────────────────────────────────────────────────────────────────────
+// La doc livrée — une ligne de tableau détachée s'affiche en texte brut
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Un tableau du SKILL.md avait été coupé par douze lignes de prose : ses deux
+// premières lignes rendaient un tableau, la troisième — « Étage 2 », la plus
+// utile — s'affichait telle quelle, barres verticales comprises, chez qui lit le
+// skill. Rien ne le voit : le fichier est valide, le lien n'est pas cassé, et
+// l'agent qui le lit n'a pas de raison de signaler une ligne un peu étrange.
+//
+// Le critère est TOTAL : toute ligne de tableau, dans TOUS les documents livrés,
+// doit toucher son tableau. Une ligne d'en-tête est reconnue à ce qui la suit —
+// le séparateur `|---|` — et non à ce qui la précède.
+
+const DOCS_SKILL = [
+  'SKILL.md', 'PROMPTS.md', 'PROMPTS-by-mode.md',
+  'references/methodology-mobile.md', 'references/device-matrix.md',
+  'references/report-format-mobile.md', 'references/demo-mode-mobile.md',
+];
+
+/** Les lignes de tableau qui ne touchent aucun tableau. */
+function lignesDetachees(fichier) {
+  const chemin = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile', fichier);
+  const lignes = readFileSync(chemin, 'utf8').split('\n');
+  const detachees = [];
+  let vues = 0;
+  for (const [i, ligne] of lignes.entries()) {
+    if (!ligne.startsWith('|')) continue;
+    vues += 1;
+    const apres = lignes[i + 1] ?? '';
+    const avant = i > 0 ? lignes[i - 1] : '';
+    if (apres.startsWith('|-')) continue;      // en-tête : son séparateur suit
+    if (avant.startsWith('|')) continue;       // corps : elle touche sa table
+    detachees.push(`${fichier}:${i + 1} — ${ligne.slice(0, 60)}`);
+  }
+  return { detachees, vues };
+}
+
+test('aucune ligne de tableau détachée dans la doc livrée', () => {
+  const detachees = [];
+  let vues = 0;
+  for (const fichier of DOCS_SKILL) {
+    const r = lignesDetachees(fichier);
+    detachees.push(...r.detachees);
+    vues += r.vues;
+  }
+
+  // ⚠️ Prouver d'abord que le balayage a vu des tableaux : renommés ou déplacés,
+  // ces fichiers rendraient « zéro ligne détachée » avec exactement le même vert.
+  assert.ok(vues > 60, `${vues} lignes de tableau lues : le balayage n'a rien ouvert`);
+
+  assert.deepEqual(detachees, [],
+    'une ligne de tableau séparée de son tableau s\'affiche en texte brut, barres '
+    + 'verticales comprises, chez qui lit le skill');
+});
+
+
 // ───────────────────────────────────────────────────────────────────────────
 // .maestro — « lancé » doit vouloir dire PRÊT, pas seulement immobile
 // ───────────────────────────────────────────────────────────────────────────

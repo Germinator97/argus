@@ -118,8 +118,8 @@ agents en rendent deux, et aucun des deux ne se compare à l'autre :
 
 ```
 Instrumentation Semantics — parcours critiques
-  Racines d'état     : <R> posées / <RT> à poser     ← l'essentiel de la production
-  Commandes          : <Y> posées / <N> à poser  (<Y/N> %)
+  Racines d'état     : <R> posées / <RESTE_R> à poser   ← l'essentiel de la production
+  Commandes          : <Y> posées / <RESTE> à poser  (<Y/(Y+RESTE)> %)
     dont partagées   : <C> composant(s) couvrant <S> call-sites
   Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
 
@@ -151,6 +151,17 @@ Les deux nombres de la sous-ligne ne se recouvrent pas : `<C>` compte les
 composants qu'on instrumente, `<S>` ce que ça couvre. Sept composants pour
 trente-cinq call-sites est le relevé qui dit le mieux pourquoi c'est ce
 travail-là qui rapporte le plus.
+
+⚠️ **Le taux est `Y/(Y+RESTE)`, jamais `Y/RESTE`.** Le second se lisait comme une
+proportion et n'en est pas une : sur 41 posées et 3 restantes, il rend **1367 %**.
+Et le jeton du dénominateur s'appelle `RESTE`, pas `N` ni `RT` — ces deux-là se
+lisaient « Nombre total » et « Racines Total » alors que la légende dit « à
+poser », si bien que le même gabarit produisait deux relevés incomparables selon
+comment on l'avait lu.
+
+⚠️ La formule fautive a survécu à l'édition de la ligne juste au-dessus — celle
+qui a ajouté la sous-ligne des composants partagés. Relire un bloc pour y ajouter
+quelque chose ne le relit pas.
 
 ⚠️ **« Instrumenté » a une définition, une seule.** Un widget est instrumenté
 quand il porte un **`Semantics(identifier:)`**. Un `semanticLabel:` n'en est PAS
@@ -650,6 +661,7 @@ le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
 | **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
 | **Étage 1** | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
 | | `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
+| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — sept fichiers, tous porteurs de `TODO(argus)` |
 
 ⚠️ **Combien de dettes avant de dire qu'un projet n'est pas prêt ?** Aucun
 seuil, et c'était le trou : sur un projet réel, la première exécution en a
@@ -661,7 +673,6 @@ harnais qu'il faut corriger d'abord. Inscris en une fois ce que la première
 exécution révèle — le relevé est fait pour ça —, mais **rends la liste avec
 le rapport** : cinquante-trois lignes que personne n'a lues ne sont pas une
 dette assumée, c'est une dette cachée.
-| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — sept fichiers, tous porteurs de `TODO(argus)` |
 
 `argus.mobile.yaml` reste la **source unique de la configuration** — c'est là que
 les scripts et les flows lisent. Les autres portent du CODE et des PARCOURS, ce

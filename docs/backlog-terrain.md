@@ -772,7 +772,7 @@ Cinq gardes, dont celui qui tient l'autre moitié : passé le splash, l'immobili
 doit faire renoncer, sinon « ne plus sortir trop tôt » deviendrait « attendre le
 budget entier à chaque run ».
 
-### 80. Le taux de couverture de §2b est faux — `Y/N` au lieu de `Y/(Y+N)`
+### 80. ✅ Corrigé le 22/08/2026 — Le taux de couverture de §2b était faux
 
 `Commandes : <Y> posées / <N> à poser  (<Y/N> %)`. Si `N` est le reste à poser,
 le taux est `Y/(Y+N)`. Sur 41 posées et 3 restantes, la formule écrite rend
@@ -782,6 +782,11 @@ le taux est `Y/(Y+N)`. Sur 41 posées et 3 restantes, la formule écrite rend
 ⚠️ **Ce bloc a été relu la veille**, en y ajoutant la sous-ligne du point 74 — et
 la formule d'à côté n'a pas été vue. Deuxième fois en deux passes qu'une ligne
 fautive survit à l'édition de sa voisine (cf. 70).
+
+**Corrigé** : le taux s'écrit `<Y/(Y+RESTE)>`, et le jeton du dénominateur
+s'appelle `RESTE` — `N` et `RT` se lisaient « Nombre total » et « Racines Total »
+quand la légende disait « à poser », si bien que le même gabarit produisait deux
+relevés incomparables selon comment on l'avait lu.
 
 ### 81. Une ancre d'affichage n'a de case nulle part
 
@@ -804,11 +809,20 @@ rien ; c'est le journal qui l'a détrompé, pas le rapport.
 ⚠️ Un `0` rendu par une commande qui a échoué n'est pas un `0` de mesure — et ici
 c'est le harnais lui-même qui fabrique le piège.
 
-### 83. Une ligne de tableau orpheline en §3c
+### 83. ✅ Corrigé le 22/08/2026 — Une ligne de tableau orpheline en §3c
 
 La table `Config / Étage 1 / Étage 2` est coupée : deux lignes, puis douze lignes
 de prose, puis la ligne « Étage 2 » — qui ne rejoindra jamais son tableau au
 rendu Markdown et s'affichera comme du texte brut avec ses barres verticales.
+
+**Corrigé, et gardé.** La ligne est remontée dans sa table. Un garde balaie
+désormais **les sept documents livrés** : toute ligne de tableau doit toucher son
+tableau, une ligne d'en-tête étant reconnue à ce qui la SUIT (le séparateur) et
+non à ce qui la précède.
+
+⚠️ Mon premier détecteur comptait **huit** défauts là où il y en avait un : il
+prenait chaque en-tête de tableau pour une orpheline. Un contrôle qui accuse
+partout ne mesure rien de plus qu'un contrôle qui se tait.
 
 ### 84. `startupHint` colle une hypothèse fausse sur un finding visuel
 
