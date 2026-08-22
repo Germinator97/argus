@@ -71,8 +71,44 @@ if [ ! -f "$TARGET/pubspec.yaml" ]; then
   echo
 fi
 
+# ── Fusion idempotente d'un bloc dans un fichier de l'hôte ──────────────────
+# Le bloc est délimité et signé : on ne relit et ne remplace que lui. Sans ces
+# bornes, il n'y a pas de fusion possible — seulement un ajout, qui se répète à
+# chaque exécution.
+BLOC_DEBUT='# ── Argus Mobile ── début du bloc géré (ne pas éditer à la main) ──'
+BLOC_FIN='# ── Argus Mobile ── fin du bloc géré ──'
+
+merge_gitignore() {
+  src="$1"; dest="$2"
+  # Le corps : la source sans son en-tête de marqueurs, qui ne concerne que
+  # l'installeur et n'aurait aucun sens dans le fichier de l'hôte.
+  corps="$(sed '1,2d' "$src")"
+  nouveau="$(printf '%s\n%s\n%s\n' "$BLOC_DEBUT" "$corps" "$BLOC_FIN")"
+
+  if grep -qF "$BLOC_DEBUT" "$dest"; then
+    ancien="$(awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" 'index($0,d){p=1} p{print} index($0,f){p=0}' "$dest")"
+    if [ "$ancien" = "$nouveau" ]; then
+      return 1
+    fi
+    # Remplacement en place : on écrit dans un temporaire puis on renomme, parce
+    # qu'un script d'édition qui échoue à mi-chemin est plus dangereux qu'un
+    # script qui ne tourne pas.
+    tmp="$(mktemp)"
+    awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" 'index($0,d){p=1;next} index($0,f){p=0;next} !p{print}' "$dest" > "$tmp"
+    printf '%s\n' "$nouveau" >> "$tmp"
+    mv "$tmp" "$dest"
+    echo "  🔁 bloc .gitignore mis à jour (le reste du fichier est intact)"
+    return 0
+  fi
+
+  printf '\n%s\n' "$nouveau" >> "$dest"
+  echo "  ➕ bloc .gitignore ajouté à la fin (le reste du fichier est intact)"
+  return 0
+}
+
 copied=0
 skipped=0
+merged=0
 outdated=0
 updated=0
 foreign=0
@@ -103,8 +139,20 @@ while IFS= read -r src; do
 
   # Fichier à FUSIONNER dans un homonyme du projet (.gitignore, snippet npm) :
   # il ne remplace rien et ne se compare à rien.
+  #
+  # Le .gitignore fait exception, et pour une raison précise : « fusionne-le à la
+  # main » était prescrit sans dire OÙ ni comment ne pas dupliquer, si bien que
+  # chaque réinstallation ajoutait les mêmes lignes une fois de plus — ou, plus
+  # souvent, personne ne le faisait et les rapports partaient dans le dépôt.
+  # On l'écrit donc, mais dans un BLOC DÉLIMITÉ qui porte notre signature : ce
+  # bloc est le seul endroit qu'on relit et qu'on remplace, le reste du fichier
+  # n'est jamais touché.
   if head -20 "$src" | grep -qF 'ARGUS:MERGE'; then
-    [ "$MODE" = "install" ] && echo "  ⏭️  à fusionner à la main : $rel" || true
+    if [ "$(basename "$rel")" = ".gitignore" ] && [ "$MODE" != "check" ]; then
+      merge_gitignore "$src" "$dest" && merged=$((merged + 1)) || true
+    else
+      [ "$MODE" = "install" ] && echo "  ⏭️  à fusionner à la main : $rel" || true
+    fi
     skipped=$((skipped + 1))
     continue
   fi
@@ -216,4 +264,4 @@ echo
 if [ "$legacy" -eq 1 ]; then
   echo "  ⚠️  AVANT TOUT : migre test/argus/harness.dart (voir plus haut)."
 fi
-echo "  Fusionne aussi le .gitignore fourni dans celui du projet."
+echo "  Le .gitignore a reçu un bloc délimité et signé — relis-le, il est à toi."

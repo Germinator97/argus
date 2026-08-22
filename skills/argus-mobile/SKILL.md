@@ -495,10 +495,13 @@ et rejette la suite entière sur « Config Section Required ».
 retard sur le plugin (exit 1) ; `--update` le remet à niveau sans toucher à ce
 que l'utilisateur édite. Sans ça, une amélioration ne redescend jamais.
 
-**f. Garde-fous gitignore.** Fusionne le `.gitignore` fourni : `argus-mobile-report/`
-et les journaux de debug Maestro sont ignorés, **mais `.maestro/_baselines/` est
-volontairement conservé** — une régression visuelle sans référence versionnée ne
-garde rien.
+**f. Garde-fous gitignore.** L'installeur écrit lui-même dans le `.gitignore` du
+projet, dans un **bloc délimité et signé** qu'il est seul à relire et à remplacer :
+`argus-mobile-report/` et les journaux de debug Maestro sont ignorés, **mais
+`.maestro/_baselines/` est volontairement conservé** — une régression visuelle
+sans référence versionnée ne garde rien. Le reste du fichier n'est jamais touché,
+et réinstaller ne duplique rien. Relis quand même le bloc : ce fichier est à
+l'utilisateur, pas à nous.
 
 **f bis. Prouve l'instrumentation AVANT de lancer quoi que ce soit d'autre.**
 Renseigne `anchor:` sur chaque `ArgusScreen` de `test/argus/harness.dart` — la

@@ -32,6 +32,24 @@ jobs:
           bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host
           bash skills/argus-mobile/scripts/install-mobile.sh /tmp/host --check
 
+      # Le .gitignore est le seul fichier de l'hôte où l'installeur ÉCRIT. Il
+      # ne doit rien dupliquer en se rejouant, et ne rien perdre de ce qui était
+      # là — les deux moitiés comptent, et corriger la première casse
+      # facilement la seconde.
+      - name: Le bloc gitignore se fusionne sans dupliquer ni écraser
+        run: |
+          mkdir -p /tmp/gi && printf 'name: gi\n' > /tmp/gi/pubspec.yaml
+          printf '# a moi\nbuild/\n' > /tmp/gi/.gitignore
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi
+          bash skills/argus-mobile/scripts/install-mobile.sh /tmp/gi --update
+          blocs=$(grep -c 'début du bloc géré' /tmp/gi/.gitignore)
+          [ "$blocs" = 1 ] || { echo "✖ $blocs blocs au lieu d'un : la fusion duplique"; exit 1; }
+          grep -q '# a moi' /tmp/gi/.gitignore \
+            || { echo "✖ le contenu du projet a disparu"; exit 1; }
+          grep -q 'argus-mobile-report' /tmp/gi/.gitignore \
+            || { echo "✖ le bloc n'a pas été écrit"; exit 1; }
+
       - name: Un homonyme du projet n'est jamais écrasé
         run: |
           mkdir -p /tmp/own && printf 'name: own\n' > /tmp/own/pubspec.yaml

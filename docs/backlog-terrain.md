@@ -152,15 +152,6 @@ comme le plus rapide, lançait la boucle visuelle entière.
 **32. Le bloc `i18n` présume une app monétaire** (`currencySample`, TODO XOF), sans
 objet pour une app qui n'affiche aucun montant.
 
-**33. Fusion du `.gitignore`** : prescrite sans règle d'emplacement ni de
-déduplication.
-
-**34. `allowSecretsIn` et les fichiers gitignorés** : les y lister est redondant,
-le skill ne tranche pas.
-
-**35. `expectedPermissions` se juge sur le manifeste FUSIONNÉ**, que `sec.mjs` ne
-peut pas lire sans `aapt2` — un réglage à poser avant de pouvoir le mesurer.
-
 ### Et le dialogue de cadrage (§1) n'a pas eu lieu
 
 Le skill ouvre sur un dialogue « OBLIGATOIRE ». La mission ayant pré-tranché le

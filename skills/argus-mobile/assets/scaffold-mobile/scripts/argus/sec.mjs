@@ -281,7 +281,25 @@ function auditSecrets(root, config) {
   const patterns = compiled.filter((/** @type {any} */ c) => 'regex' in c);
   if (patterns.length === 0) return findings;
   const allowed = (config.security?.allowSecretsIn ?? []).map(String);
-  for (const file of scannableFiles(root)) {
+  const scannables = scannableFiles(root);
+  const relatifs = scannables.map((/** @type {string} */ f) => relative(root, f));
+
+  // ⚠️ Une entrée qui ne dispense AUCUN fichier ne fait rien — et ne le dit pas.
+  // Le cas le plus fréquent est de lister un fichier gitignoré (`key.properties`,
+  // `.env`) : il n'est déjà pas scanné, donc l'inscrire est redondant. Une
+  // dispense inutile ressemble pourtant à une décision de sécurité, et personne
+  // ne la remet en cause. Deuxième cas, plus grave : le chemin a bougé, la
+  // dispense pointe dans le vide, et le fichier réel se met à remonter — ou
+  // pas, si le motif a bougé aussi.
+  const inertes = allowed.filter((/** @type {string} */ a) =>
+    !relatifs.some((/** @type {string} */ rel) => rel === a || rel.endsWith(a)));
+  if (inertes.length) {
+    warn(`allowSecretsIn : ${inertes.length} entrée(s) ne dispensent aucun fichier scanné — ${inertes.join(', ')}`);
+    warn('  Soit le fichier est gitignoré (donc déjà hors du scan, et la ligne est de trop),');
+    warn('  soit son chemin a changé et la dispense ne protège plus rien.');
+  }
+
+  for (const file of scannables) {
     const rel = relative(root, file);
     if (allowed.some((/** @type {string} */ a) => rel === a || rel.endsWith(a))) continue;
     let content;
@@ -338,7 +356,10 @@ function auditApk(apk, config) {
   if (badging.ok) findings.push(...auditBadging(badging.stdout, apk, config));
   else findings.push(finding('QAM-SEC-AAPT2', 'Manifeste compilé non lu', 'info',
     'aapt2 disponible', 'aapt2 absent du PATH',
-    'Le manifeste FUSIONNÉ (permissions héritées des dépendances comprises) n\'a pas été vérifié. Ajoute les Build-Tools du SDK Android au PATH.', apk));
+    'Le manifeste FUSIONNÉ (permissions héritées des dépendances comprises) n\'a pas été vérifié. '
+    + 'Ajoute les Build-Tools du SDK Android au PATH. ⚠️ Tant qu\'il manque, `security.expectedPermissions` '
+    + 'ne peut être comparé qu\'au manifeste du dépôt, qui ne porte pas ce que les dépendances injectent : '
+    + 'la liste se remplit APRÈS un `aapt2 dump permissions` sur l\'APK, pas avant.', apk));
   return { findings, facts };
 }
 

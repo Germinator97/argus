@@ -234,8 +234,24 @@ auth:
 # ⚠️ Uniquement sur TES propres builds. Jamais de reverse-engineering d'une app
 # tierce : c'est la frontière, elle n'est pas négociable.
 security:
-  # Permissions attendues au manifeste. Toute permission déclarée hors de cette
-  # liste est un finding (permission excessive).
+  # Permissions attendues. Toute permission présente hors de cette liste est un
+  # finding (permission excessive).
+  #
+  # ⚠️ CETTE LISTE SE DÉRIVE DU MANIFESTE FUSIONNÉ, PAS DU TIEN. Le manifeste du
+  # dépôt ne porte que ce que tu as écrit ; celui de l'APK porte en plus tout ce
+  # que les dépendances y ont injecté — et c'est celui-là que les stores lisent.
+  # La remplir depuis `android/app/src/main/AndroidManifest.xml` produit donc une
+  # liste incomplète, et un lot de « permissions non prévues » qui sont en réalité
+  # normales.
+  #
+  # L'ordre est : construire l'APK, LIRE le manifeste fusionné, puis remplir.
+  #     make argus-build
+  #     aapt2 dump permissions build/app/outputs/flutter-apk/app-debug.apk
+  #
+  # ⚠️ Sans `aapt2` au PATH, `make argus-sec` ne peut pas lire ce manifeste : il
+  # le dit et SAUTE ce contrôle, il ne le passe pas en vert. Poser cette liste
+  # avant d'avoir aapt2 revient à régler quelque chose qu'on ne peut pas encore
+  # mesurer.
   expectedPermissions:
     - android.permission.INTERNET
   # Permissions qui font échouer immédiatement si présentes.
@@ -268,6 +284,12 @@ security:
   # google-services.json est une clé client publique, pas une fuite. Sans cette
   # liste, chaque run remonterait le même faux positif — et un rapport qui crie
   # au loup à chaque fois finit par ne plus être lu.
+  #
+  # ⚠️ N'y liste QUE des fichiers VERSIONNÉS. Le scan ne parcourt que ce que git
+  # suit : un fichier gitignoré (`android/key.properties`, `.env`) n'est déjà pas
+  # regardé, donc l'inscrire ne dispense rien — mais ressemble à une décision de
+  # sécurité, et plus personne ne la remet en cause. `make argus-sec` signale
+  # désormais les entrées qui ne dispensent aucun fichier scanné.
   allowSecretsIn:
     - android/app/google-services.json
     - ios/Runner/GoogleService-Info.plist
