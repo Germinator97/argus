@@ -31,7 +31,7 @@ import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scrip
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
-import { baselineCropFor, cropFor, installHint, screensWithMovedCrop } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { baselineCropFor, baselineCrops, cropFor, installHint, screensWithMovedCrop } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -1071,9 +1071,24 @@ test('rien ne bouge quand rien n\'a bougé — le garde ne crie pas pour rien', 
 });
 
 test('une empreinte de l\'ancien format vaut pour tous les écrans', () => {
-  // avant, le fichier gravait une chaîne nue : « ce cadrage valait pour tous »
-  const ancien = { '*': 'ancien_conteneur' };
-  assert.equal(baselineCropFor(ancien, 'home'), 'ancien_conteneur');
+  // ⚠️ On fait PRODUIRE l'objet par la lecture du fichier, on ne le fabrique
+  // pas ici : un test qui construit `{'*': …}` lui-même ne garde pas le maillon
+  // qui la produit — vérifié par mutation, il restait vert.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-crop-'));
+  writeFileSync(join(dir, '.argus-crop'), 'ancien_conteneur\n');
+  const ancien = baselineCrops(dir);
+  assert.equal(baselineCropFor(ancien, 'home'), 'ancien_conteneur',
+    'un fichier de l\'ancien format doit valoir pour tous les écrans');
   assert.equal(baselineCropFor(ancien, 'nimporte_lequel'), 'ancien_conteneur');
+
+  // et le format actuel, lu du disque lui aussi
+  writeFileSync(join(dir, '.argus-crop'), JSON.stringify({ home: 'home_canvas', form: '' }));
+  const neuf = baselineCrops(dir);
+  assert.equal(baselineCropFor(neuf, 'home'), 'home_canvas');
+  assert.equal(baselineCropFor(neuf, 'form'), '');
+  assert.equal(baselineCropFor(neuf, 'inconnu'), null, 'un écran non gravé n\'a rien à comparer');
+
+  rmSync(dir, { recursive: true, force: true });
   assert.equal(baselineCropFor(null, 'home'), null, 'pas de références : rien à comparer');
+  assert.equal(baselineCrops(dir), null, 'dossier absent : pas d\'empreinte');
 });

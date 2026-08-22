@@ -954,7 +954,7 @@ export function cropFor(screen, config) {
  * pour tous », ce qu'il voulait effectivement dire.
  * @param {string} baselineDir @returns {Record<string,string>|null}
  */
-function baselineCrops(baselineDir) {
+export function baselineCrops(baselineDir) {
   const path = join(baselineDir, CROP_STAMP);
   if (!existsSync(path)) return null;
   const brut = readFileSync(path, 'utf8').trim();
