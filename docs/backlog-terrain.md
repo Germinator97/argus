@@ -106,13 +106,6 @@ restent à confirmer.
 
 ### Ce que le harnais promet et ne tient pas
 
-**12. [vérifié] `make argus-anchors` ne prouve que les racines.** Le skill en fait
-LA preuve de l'instrumentation, mais `ArgusScreen.anchor` est **singulier** : sur
-ce projet, 55 ancres de commande n'avaient aucun endroit où être déclarées, donc
-aucune n'était vérifiée. C'est dans cet angle mort qu'un défaut s'est logé chez
-lui — une ancre posée sur un nœud inerte, le nœud tapable restant sans libellé,
-garde au vert. Il a fallu une sonde écrite à la main pour le voir.
-
 **13. `argus.mobile.yaml` n'est pas « le SEUL fichier à éditer ».** §3c le dit puis
 nomme `harness.dart` dans la phrase suivante, et sept flows portent des
 `TODO(argus)` en `ARGUS:OWNED`.
@@ -143,11 +136,6 @@ racine à l'étage 1 — incompatibles.
 **18. Écrans à animation perpétuelle.** `pumpArgus` finit par `pumpAndSettle`, qui
 expire sur un point pulsé. Ces écrans ne peuvent pas entrer dans `argusScreens`,
 et l'échec ressemble à un test lent. (Même mécanisme que le point 9, côté étage 1.)
-
-**19. Déclarer un `ArgusScreen` SANS ancre.** Rien ne le prévoit, `anchor` est
-nullable — et c'est l'entrée qui a le plus rapporté chez lui : la coquille
-(barre + onglets) a seule trouvé un débordement à taille de texte **nominale**.
-Contrepartie : `argusScreens` et `screens[]` cessent de se correspondre.
 
 **20. Que faire des défauts PRÉEXISTANTS que les gardes révèlent ?** §2 exige
 `Z = 0` avant d'installer ; rien ne dit quoi faire des 43 échecs que l'étage 1

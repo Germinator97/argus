@@ -1,64 +1,17 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// Argus Mobile — étage 1 : les gardes qui tournent SANS device.
+// Argus Mobile — étage 1 : ce que TU renseignes. Rien d'autre.
 // ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
 //
 // C'EST LE FICHIER À ÉDITER pour brancher les gardes `flutter test` sur ton app.
-// Les deux suites qui l'utilisent (a11y_test.dart, layout_test.dart, dans ce
-// même dossier) n'ont rien à modifier.
-//
-// Pourquoi cet étage existe alors qu'Argus pilote déjà Maestro : deux mesures
-// lui sont structurellement inaccessibles.
-//   - La TAILLE DES CIBLES TACTILES : les sélecteurs `width`/`height` de Maestro
-//     sont des égalités en pixels, avec une tolérance. « ≥ 48 dp » ne s'écrit pas.
-//   - Le LAYOUT À GRANDE POLICE : changer la taille de texte système demande un
-//     réglage device, alors qu'ici c'est un paramètre.
-// Et ces tests-là tournent en secondes, sans émulateur, donc à chaque PR.
-//
-// Aucune dépendance ajoutée : `flutter_test` est déjà dev_dep de tout projet
-// Flutter.
+// Les types (`argus_types.dart`) et la mécanique (`argus_harness.dart`) vivent
+// à côté, appartiennent au plugin, et se mettent à jour toutes seules avec
+// `install-mobile.sh --update`. Les suites (`anchors_test.dart`,
+// `a11y_test.dart`, `layout_test.dart`) n'ont rien à modifier non plus.
 // ═══════════════════════════════════════════════════════════════════════════
 
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-// `RenderParagraph` n'est pas ré-exporté par widgets.dart : sans cet import, la
-// mesure de troncature ne compile pas.
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_test/flutter_test.dart';
 
-/// Un écran à éprouver, tel qu'il se construit hors de l'application.
-class ArgusScreen {
-  const ArgusScreen({
-    required this.id,
-    required this.build,
-    this.anchor,
-    this.priority = 'p0',
-  });
-
-  /// Doit correspondre à `screens[].id` de argus.mobile.yaml, pour que les deux
-  /// étages parlent des mêmes écrans dans le rapport.
-  final String id;
-
-  /// L'ancre sémantique de la racine — la même valeur que `screens[].anchor`
-  /// de argus.mobile.yaml, celle que les flows Maestro ciblent.
-  ///
-  /// La renseigner branche `anchors_test.dart`, qui PROUVE que l'identifiant
-  /// arrive réellement dans l'arbre sémantique. Sans lui, l'instrumentation
-  /// n'est vérifiée qu'à l'étage 2, sur device, où son absence se manifeste par
-  /// un flow entier qui échoue sans dire pourquoi.
-  final String? anchor;
-
-  /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
-  /// pose lui-même la surface, la police et les marges système.
-  final Widget Function() build;
-
-  final String priority;
-}
-
-// ───────────────────────────────────────────────────────────────────────────
-// 1. À REMPLIR
-// ───────────────────────────────────────────────────────────────────────────
+import 'argus_types.dart';
 
 /// TODO(argus): déclare les écrans à éprouver.
 ///
@@ -69,14 +22,21 @@ class ArgusScreen {
 ///     final List<ArgusScreen> argusScreens = <ArgusScreen>[
 ///       ArgusScreen(
 ///         id: 'home',
+///         anchor: 'home_root',
+///         commands: <String>['home_start_session', 'home_settings'],
 ///         build: () => BlocProvider<HomeBloc>(
 ///           create: (_) => HomeBloc(repository: FakeHomeRepository()),
 ///           child: const HomeScreen(),
 ///         ),
 ///       ),
+///       // Une COQUILLE n'est pas un écran : pas d'ancre, pas d'entrée dans
+///       // screens[], et pourtant l'un des montages les plus rentables — sur un
+///       // projet réel c'est elle qui portait le seul débordement visible à
+///       // taille de texte nominale.
+///       ArgusScreen(id: 'coquille', build: () => const AppShell()),
 ///     ];
 ///
-/// Tant que cette liste est vide, les deux suites se marquent SKIPPÉES avec la
+/// Tant que cette liste est vide, les suites se marquent SKIPPÉES avec la
 /// raison. Elles ne passent pas au vert : un garde qui ne garde rien est pire
 /// qu'un garde absent, parce qu'il rassure.
 final List<ArgusScreen> argusScreens = <ArgusScreen>[];
@@ -143,210 +103,3 @@ const Locale argusLocale = Locale('fr', 'FR');
 /// une couleur née sur les fonds sombres passe en sombre et échoue en clair,
 /// et l'inverse est tout aussi vrai.
 ThemeData? argusTheme() => null;
-
-// ───────────────────────────────────────────────────────────────────────────
-// 2. Gabarits de mesure
-// ───────────────────────────────────────────────────────────────────────────
-
-/// Un gabarit d'écran, marges système comprises.
-class ArgusViewport {
-  const ArgusViewport({
-    required this.name,
-    required this.physicalSize,
-    required this.devicePixelRatio,
-    required this.padding,
-  });
-
-  final String name;
-
-  /// Taille PHYSIQUE, en pixels. `tester.view.physicalSize` donne l'écran
-  /// entier ; l'app n'en a jamais autant, d'où [padding].
-  final Size physicalSize;
-
-  final double devicePixelRatio;
-
-  /// ⚠️ Barre d'état + barre de gestes valent ~48 dp sur un téléphone courant —
-  /// souvent l'ordre de grandeur du débordement qu'on cherche. Les ignorer fait
-  /// mesurer un écran qui n'existe pas.
-  final FakeViewPadding padding;
-}
-
-/// Trois gabarits : un petit d'entrée de gamme, un grand récent, une tablette.
-/// La densité et la hauteur utile comptent plus que le modèle.
-const List<ArgusViewport> argusViewports = <ArgusViewport>[
-  ArgusViewport(
-    name: 'compact 360×640',
-    physicalSize: Size(720, 1280),
-    devicePixelRatio: 2,
-    padding: FakeViewPadding(top: 48, bottom: 48),
-  ),
-  ArgusViewport(
-    name: 'courant 412×915',
-    physicalSize: Size(1080, 2400),
-    devicePixelRatio: 2.625,
-    padding: FakeViewPadding(top: 63, bottom: 63),
-  ),
-  ArgusViewport(
-    name: 'tablette 800×1280',
-    physicalSize: Size(1600, 2560),
-    devicePixelRatio: 2,
-    padding: FakeViewPadding(top: 48, bottom: 0),
-  ),
-];
-
-/// ⚠️ PIÈGE VÉRIFIÉ DANS LA SOURCE DE `MinimumTapTargetGuideline` : la guideline
-/// IGNORE tout nœud qui touche le bord de la vue, ou le bord d'un conteneur
-/// défilant (`_isAtBoundary`), pour ne pas accuser un élément partiellement
-/// sorti de l'écran. Conséquence pratique : une cible tactile collée au bord
-/// n'est PAS mesurée, et le garde passe au vert sans l'avoir regardée.
-///
-/// Ça s'est produit ici même : une cible de 24 dp posée au coin supérieur gauche
-/// n'a rien déclenché, et il a fallu lire la source pour comprendre que c'était
-/// la SONDE qui était fautive, pas le garde. Si tu doutes qu'un élément soit
-/// couvert, écarte-le des bords et regarde si le verdict change.
-///
-/// La comparaison, elle, se fait bien en dp : la guideline divise les bornes de
-/// peinture par `devicePixelRatio` avant de comparer à 48 (ou 44 sur iOS).
-
-/// Échelles de texte éprouvées. 1.3 est un cran de réglage système courant, pas
-/// un cas limite ; 2.0 est le maximum qu'un utilisateur malvoyant applique
-/// réellement.
-const List<double> argusTextScales = <double>[1.0, 1.3, 2.0];
-
-// ───────────────────────────────────────────────────────────────────────────
-// 3. Mécanique
-// ───────────────────────────────────────────────────────────────────────────
-
-/// Charge chaque famille déclarée dans [argusFonts] sous SON nom.
-///
-/// ⚠️ Un fichier déclaré mais absent fait ÉCHOUER le chargement, il n'est pas
-/// sauté : une police qui manque en silence, c'est la police de test qui prend
-/// sa place, et toutes les mesures qui suivent portent alors sur un rendu qui
-/// n'existe nulle part. Mieux vaut un test rouge qu'un chiffre faux.
-///
-/// Rend le nombre de fichiers chargés.
-Future<int> loadArgusFonts() async {
-  int loaded = 0;
-  for (final MapEntry<String, List<String>> family in argusFonts.entries) {
-    final FontLoader loader = FontLoader(family.key);
-    for (final String assetPath in family.value) {
-      final File file = File(assetPath);
-      if (!file.existsSync()) {
-        throw StateError(
-          "Police déclarée mais introuvable : '$assetPath' (famille "
-          "'${family.key}'). Corrige argusFonts dans test/argus/harness.dart. "
-          'Sans ce fichier, flutter_test rendrait le texte dans sa police par '
-          "défaut — un carré d'un cadratin par glyphe — et toute mesure de "
-          'disposition porterait sur un écran qui n\'existe pas.',
-        );
-      }
-      loader.addFont(
-        Future<ByteData>.value(ByteData.sublistView(file.readAsBytesSync())),
-      );
-      loaded += 1;
-    }
-    await loader.load();
-  }
-  return loaded;
-}
-
-/// Raison de sauter les gardes, ou `null` s'ils sont exploitables.
-///
-/// Rendre une RAISON plutôt qu'un booléen : « skippé » sans explication se
-/// transforme en « ça a toujours été comme ça » au bout de deux semaines.
-String? argusSkipReason() {
-  if (argusScreens.isEmpty) {
-    return 'aucun écran déclaré — remplis argusScreens dans test/argus/harness.dart';
-  }
-  if (argusFonts.isEmpty) {
-    return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
-        'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
-        "d'un cadratin). Recopie la section fonts: du pubspec dans "
-        'test/argus/harness.dart.';
-  }
-  if (argusFontFamily.isEmpty) {
-    return 'argusFontFamily est vide : indique la famille par défaut du thème.';
-  }
-  if (!argusFonts.containsKey(argusFontFamily)) {
-    // Le piège exact qu'on veut écarter : un nom qui ne correspond à rien
-    // retombe EN SILENCE sur la police de test.
-    return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une clé de "
-        'argusFonts (${argusFonts.keys.join(', ')}). Un nom qui ne correspond à '
-        'aucune famille chargée retombe en silence sur la police de test.';
-  }
-  return null;
-}
-
-/// Monte [child] sur une surface de mesure honnête : vraie taille, vraies
-/// marges système, vraie police, échelle de texte imposée.
-Future<void> pumpArgus(
-  WidgetTester tester,
-  Widget child, {
-  required ArgusViewport viewport,
-  double textScale = 1.0,
-}) async {
-  tester.view.devicePixelRatio = viewport.devicePixelRatio;
-  tester.view.physicalSize = viewport.physicalSize;
-  // `SafeArea` lit `padding`, un padding bas posé à la main lit `viewPadding` :
-  // renseigner un seul des deux laisse la moitié du décor hors de la mesure.
-  tester.view.padding = viewport.padding;
-  tester.view.viewPadding = viewport.padding;
-  addTearDown(tester.view.reset);
-
-  await tester.pumpWidget(
-    MaterialApp(
-      locale: argusLocale,
-      localizationsDelegates: argusLocalizationsDelegates.isEmpty
-          ? null
-          : argusLocalizationsDelegates,
-      theme:
-          argusTheme() ??
-          ThemeData(fontFamily: argusFontFamily.isEmpty ? null : argusFontFamily),
-      debugShowCheckedModeBanner: false,
-      home: Builder(
-        builder: (BuildContext context) => MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(textScaler: TextScaler.linear(textScale)),
-          // `MaterialApp.home` ne fournit PAS de `Material` ancêtre — c'est le
-          // `Scaffold` qui en pose un. Sans lui, tout écran contenant un
-          // `InkWell`, un `ListTile` ou un champ Material lève « No Material
-          // widget found » au montage, et l'échec qu'on lit ensuite est une
-          // conséquence sans rapport (relevé : un débordement de 99805 px).
-          // On pose donc le minimum manquant, en transparence : un écran qui
-          // porte déjà son propre Scaffold reste rendu tel qu'il est écrit.
-          child: Material(type: MaterialType.transparency, child: child),
-        ),
-      ),
-    ),
-  );
-  await tester.pumpAndSettle();
-}
-
-/// `true` quand les gardes ne sont pas exploitables.
-///
-/// `testWidgets` n'accepte qu'un booléen en `skip` — contrairement à `test` du
-/// paquet `test`, qui prend une chaîne. La raison passe donc par [argusName],
-/// sans quoi un test sauté n'expliquerait rien à celui qui lit le rapport.
-bool get argusShouldSkip => argusSkipReason() != null;
-
-/// Nom de test portant, le cas échéant, la raison du saut.
-String argusName(String name) {
-  final String? reason = argusSkipReason();
-  return reason == null ? name : '$name  [SKIP — $reason]';
-}
-
-/// Textes tronqués à l'écran courant, avec leur contenu.
-///
-/// ⚠️ C'est LA mesure qui compte quand les textes portent `maxLines` + ellipsis :
-/// dans ce cas rien ne « déborde » jamais, `tester.takeException()` reste vide,
-/// et un test qui guette une exception passe sur n'importe quelle largeur, même
-/// absurde. Ce qui casse, c'est la troncature — et c'est `didExceedMaxLines`
-/// qui la voit, pas le mécanisme d'erreur.
-List<String> argusTruncatedTexts(WidgetTester tester) {
-  return tester
-      .renderObjectList<RenderParagraph>(find.byType(RichText))
-      .where((RenderParagraph paragraph) => paragraph.didExceedMaxLines)
-      .map((RenderParagraph paragraph) => paragraph.text.toPlainText())
-      .toList();
-}

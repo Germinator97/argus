@@ -380,7 +380,12 @@ garde rien.
 
 **f bis. Prouve l'instrumentation AVANT de lancer quoi que ce soit d'autre.**
 Renseigne `anchor:` sur chaque `ArgusScreen` de `test/argus/harness.dart` — la
-même valeur que `screens[].anchor` — puis :
+même valeur que `screens[].anchor` — **et `commands:`, la liste des ancres que
+les flows ciblent sur cet écran**. `anchor` étant singulier, s'en tenir à lui ne
+prouve que les racines : sur un projet réel, 55 ancres de commande n'avaient
+aucun endroit où être déclarées, et c'est exactement là qu'un défaut s'était
+logé — une ancre posée sur l'enveloppe d'un bouton, la commande restant anonyme
+en dessous, garde au vert. Puis :
 ```bash
 make argus-anchors     # sans device, quelques secondes
 ```

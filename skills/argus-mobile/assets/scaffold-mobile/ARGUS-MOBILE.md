@@ -225,6 +225,8 @@ argus.mobile.yaml            # LE fichier à éditer
 test/
   argus/                     # tout le harness ici : un seul dossier à retirer
     harness.dart             # étage 1 : LE fichier à éditer
+    argus_types.dart         #   les types — au plugin
+    argus_harness.dart       #   la mécanique — au plugin, seul import des suites
     a11y_test.dart           # cibles tactiles, contrastes, labels
     layout_test.dart         # 3 gabarits × 3 échelles de texte
 scripts/

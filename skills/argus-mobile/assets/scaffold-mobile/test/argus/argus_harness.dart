@@ -1,0 +1,254 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Argus Mobile — la MÉCANIQUE de l'étage 1. Rien à éditer ici.
+//
+// Ce fichier appartient au plugin : `install-mobile.sh --update` le remplace.
+// Ce que TU renseignes vit dans `harness.dart` ; les types, dans
+// `argus_types.dart`. C'est le seul fichier que les suites importent : il
+// ré-exporte les deux autres.
+//
+// Pourquoi cet étage existe alors qu'Argus pilote déjà Maestro : deux mesures
+// lui sont structurellement inaccessibles.
+//   - La TAILLE DES CIBLES TACTILES : les sélecteurs `width`/`height` de Maestro
+//     sont des égalités en pixels, avec une tolérance. « ≥ 48 dp » ne s'écrit pas.
+//   - Le LAYOUT À GRANDE POLICE : changer la taille de texte système demande un
+//     réglage device, alors qu'ici c'est un paramètre.
+// Et ces tests-là tournent en secondes, sans émulateur, donc à chaque PR.
+//
+// Aucune dépendance ajoutée : `flutter_test` est déjà dev_dep de tout projet
+// Flutter.
+// ═══════════════════════════════════════════════════════════════════════════
+
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+// `RenderParagraph` n'est pas ré-exporté par widgets.dart : sans cet import, la
+// mesure de troncature ne compile pas.
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+import 'argus_types.dart';
+import 'harness.dart';
+
+export 'argus_types.dart';
+export 'harness.dart';
+
+// ───────────────────────────────────────────────────────────────────────────
+// 3. Mécanique
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Charge chaque famille déclarée dans [argusFonts] sous SON nom.
+///
+/// ⚠️ Un fichier déclaré mais absent fait ÉCHOUER le chargement, il n'est pas
+/// sauté : une police qui manque en silence, c'est la police de test qui prend
+/// sa place, et toutes les mesures qui suivent portent alors sur un rendu qui
+/// n'existe nulle part. Mieux vaut un test rouge qu'un chiffre faux.
+///
+/// Rend le nombre de fichiers chargés.
+Future<int> loadArgusFonts() async {
+  int loaded = 0;
+  for (final MapEntry<String, List<String>> family in argusFonts.entries) {
+    final FontLoader loader = FontLoader(family.key);
+    for (final String assetPath in family.value) {
+      final File file = File(assetPath);
+      if (!file.existsSync()) {
+        throw StateError(
+          "Police déclarée mais introuvable : '$assetPath' (famille "
+          "'${family.key}'). Corrige argusFonts dans test/argus/harness.dart. "
+          'Sans ce fichier, flutter_test rendrait le texte dans sa police par '
+          "défaut — un carré d'un cadratin par glyphe — et toute mesure de "
+          'disposition porterait sur un écran qui n\'existe pas.',
+        );
+      }
+      loader.addFont(
+        Future<ByteData>.value(ByteData.sublistView(file.readAsBytesSync())),
+      );
+      loaded += 1;
+    }
+    await loader.load();
+  }
+  return loaded;
+}
+
+/// Raison de sauter les gardes, ou `null` s'ils sont exploitables.
+///
+/// Rendre une RAISON plutôt qu'un booléen : « skippé » sans explication se
+/// transforme en « ça a toujours été comme ça » au bout de deux semaines.
+String? argusSkipReason() {
+  if (argusScreens.isEmpty) {
+    return 'aucun écran déclaré — remplis argusScreens dans test/argus/harness.dart';
+  }
+  if (argusFonts.isEmpty) {
+    return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
+        'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
+        "d'un cadratin). Recopie la section fonts: du pubspec dans "
+        'test/argus/harness.dart.';
+  }
+  if (argusFontFamily.isEmpty) {
+    return 'argusFontFamily est vide : indique la famille par défaut du thème.';
+  }
+  if (!argusFonts.containsKey(argusFontFamily)) {
+    // Le piège exact qu'on veut écarter : un nom qui ne correspond à rien
+    // retombe EN SILENCE sur la police de test.
+    return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une clé de "
+        'argusFonts (${argusFonts.keys.join(', ')}). Un nom qui ne correspond à '
+        'aucune famille chargée retombe en silence sur la police de test.';
+  }
+  return null;
+}
+
+/// Monte [child] sur une surface de mesure honnête : vraie taille, vraies
+/// marges système, vraie police, échelle de texte imposée.
+Future<void> pumpArgus(
+  WidgetTester tester,
+  Widget child, {
+  required ArgusViewport viewport,
+  double textScale = 1.0,
+}) async {
+  tester.view.devicePixelRatio = viewport.devicePixelRatio;
+  tester.view.physicalSize = viewport.physicalSize;
+  // `SafeArea` lit `padding`, un padding bas posé à la main lit `viewPadding` :
+  // renseigner un seul des deux laisse la moitié du décor hors de la mesure.
+  tester.view.padding = viewport.padding;
+  tester.view.viewPadding = viewport.padding;
+  addTearDown(tester.view.reset);
+
+  await tester.pumpWidget(
+    MaterialApp(
+      locale: argusLocale,
+      localizationsDelegates: argusLocalizationsDelegates.isEmpty
+          ? null
+          : argusLocalizationsDelegates,
+      theme:
+          argusTheme() ??
+          ThemeData(
+            fontFamily: argusFontFamily.isEmpty ? null : argusFontFamily,
+          ),
+      debugShowCheckedModeBanner: false,
+      home: Builder(
+        builder: (BuildContext context) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: TextScaler.linear(textScale)),
+          // `MaterialApp.home` ne fournit PAS de `Material` ancêtre — c'est le
+          // `Scaffold` qui en pose un. Sans lui, tout écran contenant un
+          // `InkWell`, un `ListTile` ou un champ Material lève « No Material
+          // widget found » au montage, et l'échec qu'on lit ensuite est une
+          // conséquence sans rapport (relevé : un débordement de 99805 px).
+          // On pose donc le minimum manquant, en transparence : un écran qui
+          // porte déjà son propre Scaffold reste rendu tel qu'il est écrit.
+          child: Material(type: MaterialType.transparency, child: child),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
+/// `true` quand les gardes ne sont pas exploitables.
+///
+/// `testWidgets` n'accepte qu'un booléen en `skip` — contrairement à `test` du
+/// paquet `test`, qui prend une chaîne. La raison passe donc par [argusName],
+/// sans quoi un test sauté n'expliquerait rien à celui qui lit le rapport.
+bool get argusShouldSkip => argusSkipReason() != null;
+
+/// Nom de test portant, le cas échéant, la raison du saut.
+String argusName(String name) {
+  final String? reason = argusSkipReason();
+  return reason == null ? name : '$name  [SKIP — $reason]';
+}
+
+/// Textes tronqués à l'écran courant, avec leur contenu.
+///
+/// ⚠️ C'est LA mesure qui compte quand les textes portent `maxLines` + ellipsis :
+/// dans ce cas rien ne « déborde » jamais, `tester.takeException()` reste vide,
+/// et un test qui guette une exception passe sur n'importe quelle largeur, même
+/// absurde. Ce qui casse, c'est la troncature — et c'est `didExceedMaxLines`
+/// qui la voit, pas le mécanisme d'erreur.
+List<String> argusTruncatedTexts(WidgetTester tester) {
+  return tester
+      .renderObjectList<RenderParagraph>(find.byType(RichText))
+      .where((RenderParagraph paragraph) => paragraph.didExceedMaxLines)
+      .map((RenderParagraph paragraph) => paragraph.text.toPlainText())
+      .toList();
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 4. Lecture de l'arbre sémantique
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Un nœud tel que la couche d'accessibilité l'expose — c'est-à-dire tel que
+/// Maestro et TalkBack le verront.
+class ArgusSemanticNode {
+  const ArgusSemanticNode({
+    required this.identifier,
+    required this.label,
+    required this.actions,
+    required this.hasEnabledState,
+  });
+
+  final String identifier;
+  final String label;
+
+  /// Champ de bits des actions. Zéro = le nœud ne fait rien.
+  final int actions;
+
+  /// Le nœud déclare-t-il un état d'activation ? C'est ce qui distingue une
+  /// commande DÉSACTIVÉE (légitime) d'une enveloppe inerte (le défaut).
+  final bool hasEnabledState;
+
+  /// `true` quand ce nœud est une commande, active ou non.
+  ///
+  /// Mesuré sur Flutter 3.32, trois cas qui ne se distinguent QUE par ces deux
+  /// champs :
+  ///
+  /// | cas | `actions` | `hasEnabledState` |
+  /// |---|---|---|
+  /// | bouton actif | ≠ 0 | `true` |
+  /// | bouton **désactivé** | 0 | **`true`** |
+  /// | enveloppe inerte autour d'un bouton | 0 | **`false`** |
+  ///
+  /// Ne juger que sur `actions` ferait donc rougir tout écran monté avec un
+  /// bouton grisé — un état parfaitement normal, et l'un des plus utiles à
+  /// photographier.
+  bool get isCommand => actions != 0 || hasEnabledState;
+}
+
+/// Tous les nœuds portant [identifier] dans l'arbre actuellement monté.
+///
+/// Rend une LISTE, jamais un nœud : une ancre de commande se répète
+/// légitimement sur les lignes d'une liste dynamique, où c'est même le seul
+/// moyen de les adresser (le flow choisit par rang). `tester.getSemantics`, qui
+/// exige une correspondance unique, ne saurait donc pas les lire.
+///
+/// ⚠️ Demande `tester.ensureSemantics()` avant le montage — sinon le finder
+/// lève, avec la bonne raison.
+///
+/// La remontée par `isMergedIntoParent` reproduit ce que fait
+/// `SemanticsController.find` : un nœud fusionné n'existe pas pour la couche
+/// d'accessibilité, seul son parent est exposé. Lire le nœud fusionné rendrait
+/// des champs vides pour un élément parfaitement annoncé.
+List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
+  return tester
+      .elementList(find.bySemanticsIdentifier(identifier))
+      .map((Element element) {
+        RenderObject? render = element.renderObject;
+        SemanticsNode? node = render?.debugSemantics;
+        while (render != null && (node == null || node.isMergedIntoParent)) {
+          render = render.parent;
+          node = render?.debugSemantics;
+        }
+        return node;
+      })
+      .whereType<SemanticsNode>()
+      .map((SemanticsNode node) {
+        final SemanticsData data = node.getSemanticsData();
+        return ArgusSemanticNode(
+          identifier: data.identifier,
+          label: data.label,
+          actions: data.actions,
+          hasEnabledState: data.hasFlag(SemanticsFlag.hasEnabledState),
+        );
+      })
+      .toList();
+}

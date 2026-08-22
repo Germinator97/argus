@@ -25,7 +25,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'harness.dart';
+import 'argus_harness.dart';
 
 void main() {
   setUpAll(() async {

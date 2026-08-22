@@ -60,3 +60,44 @@ jobs:
       # silence, ce qui est le seul mode de panne qu'une suite verte ne dit pas.
       - name: Les gardes du runner gardent encore
         run: python3 tools/mutate-run-guards.py
+
+  # ── L'étage 1 compile-t-il seulement ? ──────────────────────────────────
+  # Rien ici ne compilait le Dart, et ça s'est vu : la séparation du harnais en
+  # trois fichiers a d'abord produit un CYCLE d'imports que Dart résout mal —
+  # chaque nom du cadre « défini dans les deux bibliothèques », plus rien qui
+  # compile. Aucune étape de cette CI ne pouvait le voir ; il a fallu monter un
+  # projet Flutter à la main.
+  #
+  # On le monte donc ici, à partir de rien : `flutter create` puis la copie du
+  # scaffold, exactement ce que l'installeur fait chez l'utilisateur. Le
+  # reproduire est le seul moyen d'éprouver un montage — le lire ne suffit pas.
+  harness:
+    name: L'étage 1 analyse et tourne
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Un projet d'accueil, neuf
+        run: |
+          flutter create -e /tmp/accueil
+          cd /tmp/accueil && flutter pub add dev:flutter_test --sdk=flutter
+
+      - name: Le scaffold, tel que l'installeur le pose
+        run: bash skills/argus-mobile/scripts/install-mobile.sh /tmp/accueil
+
+      # Le scaffold est livré NON BRANCHÉ (`argusScreens` vide) : les suites s'y
+      # marquent skippées avec leur raison. C'est donc la compilation qu'on
+      # mesure ici, pas un verdict — et c'est précisément ce qui manquait.
+      - name: Il analyse sans un mot
+        run: cd /tmp/accueil && flutter analyze test/argus
+
+      - name: Il tourne, et dit qu'il n'est pas branché
+        run: |
+          cd /tmp/accueil
+          flutter test test/argus 2>&1 | tee /tmp/sortie.txt
+          grep -q 'SKIP — aucun écran déclaré' /tmp/sortie.txt \
+            || { echo "✖ les suites devraient se déclarer non branchées, avec leur raison"; exit 1; }

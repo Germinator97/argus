@@ -20,7 +20,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'harness.dart';
+import 'argus_harness.dart';
 
 void main() {
   setUpAll(() async {
@@ -49,17 +49,22 @@ void main() {
       .where((ArgusScreen s) => (s.anchor ?? '').isNotEmpty)
       .toList();
 
-  // Des écrans, mais aucune ancre déclarée : cette suite ne peut RIEN affirmer.
-  // Le dire, plutôt que de boucler sur une liste vide et de passer au vert —
-  // c'est exactement ainsi qu'un garde cesse de garder sans prévenir.
+  // Des écrans, mais aucune ancre de RACINE : on le dit, plutôt que de boucler
+  // sur une liste vide et de passer au vert — c'est exactement ainsi qu'un garde
+  // cesse de garder sans prévenir.
+  //
+  // ⚠️ On ne SORT pas pour autant. Un écran peut légitimement n'avoir pas de
+  // racine — une coquille d'application n'est pas un écran — tout en déclarant
+  // des commandes, et ce sont elles qui restaient sans preuve. Sortir ici
+  // rendrait la moitié utile de cette suite inatteignable précisément dans ce
+  // cas-là.
   if (ancres.isEmpty) {
     test(
-      'ancres non déclarées — renseigne anchor: sur tes ArgusScreen '
+      'ancres de racine non déclarées — renseigne anchor: sur tes ArgusScreen '
       '(${argusScreens.length} écran(s) déclaré(s), 0 avec ancre)',
       () {},
-      skip: 'aucun ArgusScreen ne porte d\'ancre : rien à vérifier ici',
+      skip: 'aucun ArgusScreen ne porte d\'ancre de racine',
     );
-    return;
   }
 
   test('les ancres de racine sont uniques', () {
@@ -78,6 +83,81 @@ void main() {
           'celles de racine, non.',
     );
   });
+
+  // ── Les ancres de COMMANDE ────────────────────────────────────────────────
+  //
+  // `anchor` est singulier, donc jusqu'ici seules les RACINES étaient prouvées.
+  // Sur un projet réel, 55 ancres de commande n'avaient aucun endroit où être
+  // déclarées — et c'est dans cet angle mort qu'un défaut s'était logé : une
+  // ancre posée sur l'enveloppe d'un composant, le nœud tapable restant anonyme
+  // en dessous. Rien ne rougissait, et le `tapOn` de Maestro marchait quand
+  // même (il tape au centre du rect), si bien que seul TalkBack en souffrait.
+  final List<ArgusScreen> avecCommandes =
+      argusScreens.where((ArgusScreen s) => s.commands.isNotEmpty).toList();
+
+  if (avecCommandes.isEmpty) {
+    test(
+      'ancres de commande non déclarées — renseigne commands: sur tes ArgusScreen '
+      '(${argusScreens.length} écran(s) déclaré(s), 0 avec commandes)',
+      () {},
+      skip: 'aucun ArgusScreen ne déclare de commande : les boutons, champs et '
+          'lignes que ciblent tes flows ne sont vérifiés NULLE PART',
+    );
+  }
+
+  for (final ArgusScreen screen in avecCommandes) {
+    testWidgets('commandes de « ${screen.id} » — ${screen.commands.length} ancre(s)', (
+      WidgetTester tester,
+    ) async {
+      final SemanticsHandle handle = tester.ensureSemantics();
+      await pumpArgus(tester, screen.build(), viewport: argusViewports.first);
+
+      for (final String commande in screen.commands) {
+        final List<ArgusSemanticNode> noeuds = argusNodesById(tester, commande);
+
+        expect(
+          noeuds,
+          isNotEmpty,
+          reason: 'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
+              '« $commande ». Le flow Maestro qui le cible échouera sur device '
+              'en disant que l\'élément a disparu — sans nommer la cause. '
+              'Vérifie que l\'ancre est posée sur ce sous-arbre, que l\'écran '
+              'est monté dans l\'état qui la rend, et qu\'aucun '
+              '`ExcludeSemantics` ne la couvre (c\'est le seul voisin qui la '
+              'fasse disparaître, sans erreur d\'aucune sorte).',
+        );
+
+        // Présente ne suffit pas : elle doit être posée sur la COMMANDE.
+        //
+        // Mesuré sur Flutter 3.32 — envelopper par l'extérieur ne donne pas le
+        // même résultat selon le composant. `InkWell`, `ListTile` et
+        // `TextField` fusionnent avec l'enveloppe, donc l'ancre porte l'action.
+        // `IconButton` et `ElevatedButton`, eux, construisent leur propre nœud
+        // frontière : l'ancre reste au-dessus, INERTE, et la commande vit en
+        // dessous sans identifiant. Les deux se compilent, ne lèvent rien, et
+        // ne se distinguent QUE par ce champ.
+        final Iterable<ArgusSemanticNode> commandes =
+            noeuds.where((ArgusSemanticNode n) => n.isCommand);
+        expect(
+          commandes,
+          isNotEmpty,
+          reason: 'L\'ancre « $commande » de « ${screen.id} » est posée sur un '
+              'nœud INERTE : il ne porte aucune action et ne déclare pas d\'état '
+              'd\'activation. C\'est la signature d\'une enveloppe autour d\'un '
+              'composant qui construit déjà son propre nœud — IconButton, '
+              'ElevatedButton et la plupart des boutons d\'un design system. '
+              'La vraie commande est un cran plus bas, sans identifiant : '
+              'Maestro la tapera quand même (il vise le centre du rect), mais '
+              'TalkBack annoncera un bouton anonyme et la dimension a11y le '
+              'comptera comme tel. Pose l\'ancre sur l\'ENFANT que le composant '
+              'reçoit (son `icon:`, son `child:`) plutôt qu\'autour de lui — '
+              'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label.',
+        );
+      }
+
+      handle.dispose();
+    });
+  }
 
   for (final ArgusScreen screen in ancres) {
     testWidgets('ancre « ${screen.anchor} » présente — ${screen.id}', (

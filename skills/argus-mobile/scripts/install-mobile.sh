@@ -135,6 +135,27 @@ while IFS= read -r src; do
   esac
 done < <(find "$SCAFFOLD_DIR" -type f)
 
+# ── Harnais d'étage 1 d'avant la séparation ─────────────────────────────────
+# `test/argus/harness.dart` t'appartient, donc il n'est jamais remplacé. Tant
+# qu'il portait AUSSI les types (`class ArgusScreen`), les suites que --update
+# livre entrent en collision avec lui : le même nom défini deux fois, plus rien
+# ne compile. Le dire ICI, avant que ça arrive, plutôt que de laisser lire une
+# erreur d'analyse qui ne nomme pas sa cause.
+LEGACY_HARNESS="$TARGET/test/argus/harness.dart"
+legacy=0
+if [ -f "$LEGACY_HARNESS" ] && grep -q '^class ArgusScreen' "$LEGACY_HARNESS"; then
+  legacy=1
+  echo
+  echo "  ⚠️  test/argus/harness.dart date d'avant la séparation : il définit encore"
+  echo "      « class ArgusScreen », que argus_types.dart porte désormais."
+  echo "      Les suites ne compileront pas tant que les deux coexistent."
+  echo "      Migration, en trois gestes qui ne perdent rien :"
+  echo "        1. garde de ton harness.dart les blocs TODO(argus) que tu as remplis"
+  echo "           (argusScreens, argusFonts, argusFontFamily, argusTheme…) ;"
+  echo "        2. remplace le reste par le nouveau harness.dart du scaffold ;"
+  echo "        3. remets tes valeurs dedans. Rien d'autre n'a changé de nom."
+fi
+
 if [ "$MODE" != "check" ]; then
   # Dossiers d'artefacts et de références visuelles.
   mkdir -p "$TARGET/argus-mobile-report" "$TARGET/.maestro/_baselines"
@@ -192,4 +213,7 @@ echo "  7. Étage 2, sur device :        make argus-run"
 echo "  8. Références visuelles :       make argus-baselines   # 1re fois"
 echo "  9. Rapport HTML :               make argus-report"
 echo
+if [ "$legacy" -eq 1 ]; then
+  echo "  ⚠️  AVANT TOUT : migre test/argus/harness.dart (voir plus haut)."
+fi
 echo "  Fusionne aussi le .gitignore fourni dans celui du projet."
