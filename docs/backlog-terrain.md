@@ -195,15 +195,112 @@ soixante-dix commits pour une raison simple : rien n'a jamais été poussé, don
 workflow n'a jamais tourné une seule fois. **Un garde qui ne s'exécute pas est
 indiscernable d'un garde qui passe.**
 
+## Rendu par le run 4 — vérification, 22/08/2026
+
+**Un run de VÉRIFICATION**, pas de découverte : même terrain remis à neuf, pour
+contrôler que les vingt et un correctifs du run 3 avaient porté. Ils ont porté —
+le run le constate un par un : `dart format` à zéro fichier, `analyze` sans un
+mot, le jank « non conclu » plutôt que vert à 0 %, l'avertissement `deviceLocale`
+sorti et juste, la dimension sécurité sautée sur un binaire debug, et surtout ces
+deux-là que le harnais a dits **de lui-même** :
+
+> ⚠️ ELLE EXISTE, mais plus bas que ce gabarit ne le montre.
+> « … » figure dans known_issues.dart, mais l'écran PASSE. Retire cette ligne.
+
+Étage 1 : **375 réussis / 0 échec**. Dette : 53 → **66 clés**, toutes des défauts
+de l'application — dont **deux débordements à taille NOMINALE**, visibles par
+tout le monde et sur n'importe quel appareil.
+
+⚠️ **Trois agents, trois stratégies d'ancrage** pour le même projet : 56 ancres
+littérales (run 2), 30 littérales + 26 par paramètre de composant (run 3), 34
+littérales dont plusieurs interpolées (run 4). Le skill laisse ce choix
+entièrement ouvert, et les trois marchent.
+
+### 57. ✅ Corrigé le 22/08/2026 — le correctif du matin avait VIDÉ un garde
+
+Rendre le cadrage visuel local (point 51) a refait la comparaison écran par
+écran, mais a **laissé la condition globale** : `stamped !== visualCrop`. Avec un
+cadrage global vide et des cadrages posés sur les écrans, elle valait
+`'' !== ''` — l'avertissement ne sortait **jamais**, et l'échec suivant se lisait
+comme une régression de l'application, exactement ce que le commentaire voisin
+dit prévenir. Le run l'a mesuré : le fichier d'empreinte faisait **un octet**.
+
+L'autre moitié était dans l'empreinte elle-même, qui gravait une seule chaîne
+pour tout le dossier : deux écrans cadrés différemment rendaient la même valeur.
+Elle est par écran désormais, en lisant l'ancien format comme « ce cadrage valait
+pour tous ».
+
+⚠️ **La leçon, et elle vaut plus que le correctif : un remède ne supprime pas
+toujours un mode de panne, souvent il le DÉPLACE** — et le garde qui veillait sur
+l'ancien passe au vert sans rien mesurer. C'est la cinquième façon pour un garde
+de devenir vacant, et la seule qu'aucune relecture ne voit : il n'est pas né
+vacant, il l'est devenu, le jour où on a corrigé autre chose.
+
+⚠️ **Deux gardes écrits pour le fermer étaient eux-mêmes circulaires** : ils
+réimplémentaient la décision dans le fichier de test, donc ils vérifiaient leur
+propre copie et muter le code de production les laissait verts. C'est la mutation
+qui l'a dit, jamais la relecture. La décision est extraite et exportée ; le test
+de rétrocompatibilité lit un vrai fichier au lieu de fabriquer l'objet.
+
+### 58. `explicitChildNodes: true` sur un nœud commande plein écran rend l'ancre INERTE
+
+Ajouté au §2c le matin même — « à défaut, `explicitChildNodes: true` sur le nœud
+commande garde ses descendants distincts » — et il contredit une phrase du même
+document : « Ne mets pas `onTap:` sur ce `Semantics` ». Les trois réglages,
+mesurés sur deux écrans :
+
+| Réglage | Résultat |
+|---|---|
+| `explicitChildNodes: false` | le nœud porte le tap **mais avale tout le texte de l'écran** |
+| `explicitChildNodes: true` seul | descendants distincts, **ancre inerte** — `argus-anchors` rougit |
+| `true` + `onTap:` sur le `Semantics` + `excludeFromSemantics: true` sur le geste | un seul nœud, ancré, actif, libellé ✅ |
+
+La troisième voie manque, et l'interdiction du `onTap:` n'est vraie que quand le
+nœud fusionne.
+
+### 59. Le bloc `.gitignore` ne couvre pas les diffs visuels
+
+Un run visuel en échec écrit `<écran>_diff.png` **dans** le dossier des
+références, volontairement versionné. `git status` le voit. Il manque
+`/.maestro/_baselines/**/*_diff.png` dans le bloc géré par l'installeur.
+
+### 60. `argus-sec` exige la release, mais lit la clé qui sert à INSTALLER
+
+`sec.mjs` lit `config.build.android` — la même clé qui décide de ce que le runner
+**installe** sur l'appareil. Les deux usages tirent en sens inverse et il
+n'existe aucun override (`parseArgs` n'accepte que `--platform` et
+`--require-tools`). Conséquence directe du point 39 : depuis qu'un binaire debug
+fait sauter la dimension, il faut pointer la release — donc éditer la config
+entre deux runs. Il faut un chemin distinct pour l'analyse, ou un override.
+
+### 61. Taille et mémoire comparées à des budgets de RELEASE sur un build debug
+
+`binarySizeMb` 117,5 contre un budget de 60 → finding `major`. La release du même
+projet fait **32,1 Mo**, largement sous le seuil. La config avertit explicitement
+pour les *permissions* (« dérive cette liste de la RELEASE, pas du debug ») ; la
+même mise en garde manque pour la taille et la mémoire, qui sont pourtant les
+deux métriques les plus sensibles au variant.
+
+### 62. ✅ FAUX — le premier constat démenti en quatre runs
+
+Le run rapportait que le compteur `TODO(argus)` inclut la prose qui explique le
+marqueur. C'était vrai le matin, et **corrigé le matin même** (point 50) : la
+mention est entre backticks et l'installeur compte `TODO(argus):`, avec le
+deux-points qui sépare une directive d'une mention.
+
+⚠️ **Gardé exprès, comme le 7 et le 25.** Sur dix-sept constats reproduits aux
+runs 2 et 3, aucun n'avait été démenti. Celui-ci l'est, et il enseigne comment :
+l'agent a lu la ligne 14 — exacte — et conclu sans lire **ce que l'installeur
+compte**. Un constat juste sur la moitié qu'on regarde peut être faux sur celle
+qu'on n'a pas regardée. Reproduire, toujours, y compris quand le rapporteur a eu
+raison dix-sept fois.
+
 ## Ce qui reste
 
-**Rien — et c'est la quatrième fois que cette phrase est écrite ici.** Le 21/08
-au matin le backlog était vide ; le soir, vingt-cinq points. Le 22 au matin vide
-de nouveau ; le soir, vingt et un de plus, sur un skill pourtant corrigé partout
-où le run précédent avait mordu.
+**Les points 58 à 61.** Le 57 est clos, le 62 était faux.
 
-La seule chose qui ne se périme pas dans ce fichier est donc la méthode : une
-passe trouve ce qui manque, la suivante trouve ce que la correction a introduit
-ou n'a pas branché. Le prochain terrain devra **consommer une API** — les trois
-runs ont été joués sur un projet qui n'en appelle aucune, et tout ce volet du
-skill n'a jamais été exercé (`chantiers-differes.md` § C).
+Et la seule chose qui ne se périme pas dans ce fichier, écrite pour la cinquième
+fois : une passe trouve ce qui manque, la suivante trouve ce que la correction a
+introduit ou n'a pas branché. Le run 4 en est la démonstration la plus nette —
+il a confirmé que vingt et un correctifs avaient porté, **et** trouvé qu'un
+d'entre eux avait vidé un garde en silence.
