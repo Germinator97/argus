@@ -437,6 +437,19 @@ function disableAnimations(platform, udid, dryRun) {
  * @param {any} config @returns {number}
  */
 function startTimeoutMs(config) {
+  // ⚠️ UN LEVIER À LUI, PARCE QUE LES DEUX NE MESURENT PAS LA MÊME CHOSE. Tant
+  // que ce budget se dérivait du seul `coldStartMs`, le relever — le seul geste
+  // possible quand la suite flake sur un démarrage lent — RELÂCHAIT du même coup
+  // le gate chargé de rapporter cette lenteur. Sur une app à 2 s de splash
+  // imposé et 6,4 s de démarrage réel, aucune valeur n'était à la fois un budget
+  // honnête et un plafond tenable : il fallait choisir entre une suite rouge et
+  // un verdict de performance muet.
+  //
+  // La dérivation reste le DÉFAUT — elle a l'avantage de suivre le projet sans
+  // qu'on y pense. `startTimeoutMs` ne fait que la court-circuiter quand
+  // quelqu'un a mesuré son démarrage et décidé.
+  const explicite = Number(config.thresholds?.startTimeoutMs ?? 0);
+  if (explicite > 0) return explicite;
   return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);
 }
 

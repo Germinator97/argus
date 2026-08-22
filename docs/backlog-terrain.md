@@ -587,13 +587,21 @@ d'une ancre déclarée : un projet qui n'en a pas encore garde le comportement
 d'avant plutôt que d'hériter d'une attente sur une variable vide, qui ferait
 échouer chaque flow sur un sélecteur non résolu. Deux gardes, un par moitié.
 
-### 72. `startTimeoutMs` n'a pas de levier à lui
+### 72. ✅ Corrigé le 22/08/2026 — `startTimeoutMs` n'avait pas de levier à lui
 
 `Math.max(20000, coldStartMs × 5)` : le seul moyen de relever le plafond
 anti-flake est `coldStartMs`, qui **relâche du même geste le gate chargé de
 rapporter la lenteur qui cause le flake**. Sur une app à 2 s de splash imposé et
 6,4 s de démarrage réel, aucune valeur n'est à la fois un budget honnête et un
 plafond tenable.
+
+**Corrigé — `thresholds.startTimeoutMs` existe, et la dérivation reste le
+défaut.** Un BUDGET (au-delà, le rapport signale une lenteur) et un PLAFOND
+(au-delà, le flow renonce) ne mesurent pas la même chose ; les découpler était le
+seul remède. Vide ou `0` → `max(20 s, coldStartMs × 5)`, qui suit le projet sans
+qu'on y pense — c'est l'autre moitié, sans laquelle « ajouter un levier » serait
+devenu « ne plus suivre le projet ». Une valeur explicite peut être **plus basse**
+que la dérivation, sinon elle ne découplerait rien.
 
 ### 73. `allowSecretsIn` livre deux entrées Firebase, et le scanner crie dessus
 

@@ -231,6 +231,26 @@ test('le budget d\'attente reste LARGEMENT au-dessus du seuil de perf', () => {
   assert.ok(startTimeoutMs({}) >= 20000, 'une config sans seuil doit rester utilisable');
 });
 
+test('un budget d\'attente EXPLICITE l\'emporte sur la dérivation', () => {
+  // Le levier qui manquait : relever le plafond anti-flake obligeait à relever
+  // `coldStartMs`, donc à relâcher le gate chargé de rapporter la lenteur qui
+  // cause le flake. Les deux ne mesurent pas la même chose.
+  const config = { thresholds: { coldStartMs: 2000, startTimeoutMs: 45000 } };
+  assert.equal(startTimeoutMs(config), 45000);
+  // Et il doit pouvoir descendre SOUS la dérivation, sinon il ne découple rien.
+  assert.equal(startTimeoutMs({ thresholds: { coldStartMs: 8000, startTimeoutMs: 12000 } }), 12000,
+    'la dérivation rendrait 40 000 : une valeur mesurée doit pouvoir être plus basse');
+});
+
+test('sans valeur explicite, la dérivation reste — le garde ne coupe qu\'un sens', () => {
+  for (const explicite of [undefined, 0]) {
+    const config = { thresholds: { coldStartMs: 8000, startTimeoutMs: explicite } };
+    assert.equal(startTimeoutMs(config), 40000,
+      `startTimeoutMs=${explicite} doit retomber sur max(20s, coldStartMs × 5) : sans ça, ` +
+      '« ajouter un levier » deviendrait « ne plus suivre le projet »');
+  }
+});
+
 test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {
   const sur = startupHint('id=home_root', 'home_root', CONFIG);
   assert.match(sur, /démarrage/, 'c\'est le message qui a fait accuser l\'ancre pendant tout un run');

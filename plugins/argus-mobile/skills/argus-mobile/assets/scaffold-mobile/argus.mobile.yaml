@@ -194,6 +194,19 @@ deepLinks: []
 thresholds:
   # Démarrage à froid / à chaud, en ms (Android : `adb shell am start -W`).
   coldStartMs: 2000
+  # Combien de temps un flow attend l'écran de départ avant d'abandonner.
+  #
+  # ⚠️ CE N'EST PAS `coldStartMs`, et c'est pour ça que la clé existe. L'un est un
+  # BUDGET — au-delà, le rapport signale une lenteur ; l'autre est un PLAFOND
+  # anti-flake — au-delà, le flow renonce. Tant que le second se dérivait du
+  # premier, relever le plafond parce que la suite flake relâchait du même geste
+  # le gate qui rapporte la lenteur causant le flake.
+  #
+  # Vide (ou 0) → dérivé : `max(20 s, coldStartMs × 5)`, ce qui suit le projet
+  # sans qu'on y pense. Ne le renseigne qu'après avoir MESURÉ ton démarrage :
+  #   adb shell am start -W -n <package>/<activité>   # lis TotalTime
+  # Relevé sur un projet réel : 6,4 s à froid, 9,3 s au tout premier lancement.
+  startTimeoutMs: 0
   # Durée de splash que le PRODUIT impose — une marque qui doit rester à l'écran
   # un temps minimum. Elle est SOUSTRAITE avant de juger `coldStartMs`.
   #
