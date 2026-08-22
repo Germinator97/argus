@@ -14,6 +14,12 @@ appId: ${APP_ID}
 # `argus.mobile.yaml → screens[].id`.
 #
 # `home` ne demande rien : `launch-clean.yaml` y a déjà mené.
+#
+# ⚠️ Tu peux taper dès la première ligne d'une branche : `launch-clean.yaml`
+# attend désormais l'ancre de départ, pas seulement la fin des animations. Avant
+# ça, une branche qui tapait tout de suite le faisait PENDANT le sas de
+# démarrage — 6,4 à 9,3 s mesurés sur un projet réel — et l'échec sortait en
+# « Element not found », ce qui se lit comme une ancre manquante.
 
 - runFlow:
     when:

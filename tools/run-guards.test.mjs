@@ -977,6 +977,48 @@ test('références d\'avant l\'empreinte : rien à comparer, donc rien à dire',
     'une empreinte vide n\'est pas une empreinte différente');
 });
 
+
+// ───────────────────────────────────────────────────────────────────────────
+// .maestro — « lancé » doit vouloir dire PRÊT, pas seulement immobile
+// ───────────────────────────────────────────────────────────────────────────
+//
+// `launch-clean.yaml` est le point d'entrée de tous les flows. Il rendait la
+// main sur un `waitForAnimationToEnd: 5000`, qui se satisfait de n'importe quel
+// écran immobile — un splash statique compris — et plafonne à 5 s, quand un
+// démarrage à froid mesuré sur un projet réel va de 6,4 à 9,3 s.
+//
+// Tout ce qui suivait tapait donc dans le sas de démarrage, et l'échec sortait
+// en « Element not found » : on le lit comme une ancre manquante et on part
+// chercher un défaut d'instrumentation qui n'existe pas. Deux flows visuels du
+// sixième run sont tombés là-dessus, sur des ancres prouvées présentes.
+
+test('le lancement attend un ÉTAT, pas seulement la fin des animations', () => {
+  const source = readFileSync(join(FLOWS_DIR, '_subflows/launch-clean.yaml'), 'utf8');
+
+  // ⚠️ Prouver d'abord que le fichier a été lu : renommé ou déplacé, la lecture
+  // lèverait — mais un jour où elle rendrait du vide, les deux assertions qui
+  // suivent passeraient sur une chaîne vide sans rien garder.
+  assert.match(source, /launchApp:/, 'ce n\'est pas le sous-flow de lancement');
+
+  assert.match(source, /extendedWaitUntil:/,
+    '`waitForAnimationToEnd` seul se satisfait d\'un splash statique et plafonne à 5 s : '
+    + 'les flows suivants tapent alors pendant le démarrage, et l\'échec accuse l\'ancre');
+  assert.match(source, /\$\{ARGUS_ANCHOR_HOME\}/,
+    'l\'attente doit porter sur l\'ancre de DÉPART, la seule qui prouve que l\'app est prête');
+  assert.match(source, /\$\{ARGUS_START_TIMEOUT_MS\}/,
+    'et sur le budget du harnais, pas sur un délai écrit à la main : un démarrage lent '
+    + 'doit sortir en finding de lenteur, jamais en échec fonctionnel');
+});
+
+test('sans ancre de départ, le lancement ne prétend rien attendre', () => {
+  const source = readFileSync(join(FLOWS_DIR, '_subflows/launch-clean.yaml'), 'utf8');
+  // L'autre moitié : un projet qui n'a pas encore déclaré d'ancre doit garder le
+  // comportement d'avant, pas hériter d'une attente sur une variable vide — qui
+  // ferait échouer chaque flow sur un sélecteur non résolu.
+  assert.match(source, /ARGUS_ANCHOR_HOME !== ''/,
+    'l\'attente doit être conditionnée, sinon elle casse les projets sans ancre déclarée');
+});
+
 // ───────────────────────────────────────────────────────────────────────────
 // .maestro — un sélecteur `text:` non encadré ne matche RIEN, parfois en silence
 // ───────────────────────────────────────────────────────────────────────────

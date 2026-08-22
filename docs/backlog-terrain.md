@@ -565,7 +565,7 @@ lève. Neuf fois sur ce terrain, une par fichier `ARGUS:OWNED` sans TODO restant
 CETTE ligne** — pour une autre raison (le deux-points de `TODO(argus):`). On l'a
 donc relue en la corrigeant, sans voir le défaut d'à côté.
 
-### 71. Les branches de `goto.yaml` tapent avant que l'app soit prête
+### 71. ✅ Corrigé le 22/08/2026 — Les branches de `goto.yaml` tapaient avant que l'app soit prête
 
 `launch-clean.yaml` rend la main sur un `waitForAnimationToEnd: 5000`, et
 `visual.yaml` appelle `goto.yaml` **avant** son propre `extendedWaitUntil`. Sur ce
@@ -578,6 +578,14 @@ l'étage 1 et lue dans l'arbre du device.
 mis à jour chez les projets déjà installés. `launch-clean.yaml` est du CADRE :
 y attendre l'ancre de départ couvre **tous** les flows et descend chez tout le
 monde. Le symptôme est juste, le remède proposé est inférieur.
+
+**Corrigé dans le cadre.** `launch-clean.yaml` attend maintenant l'ancre de
+départ avec le budget du harnais, après le `waitForAnimationToEnd` qui reste —
+« lancé » veut désormais dire **prêt**, et non « rien ne bouge », ce dont un
+splash statique se satisfait aussi. L'attente est **conditionnée** à l'existence
+d'une ancre déclarée : un projet qui n'en a pas encore garde le comportement
+d'avant plutôt que d'hériter d'une attente sur une variable vide, qui ferait
+échouer chaque flow sur un sélecteur non résolu. Deux gardes, un par moitié.
 
 ### 72. `startTimeoutMs` n'a pas de levier à lui
 

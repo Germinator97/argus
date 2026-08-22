@@ -30,3 +30,27 @@ appId: ${APP_ID}
 # jamais juste.
 - waitForAnimationToEnd:
     timeout: 5000
+
+# ⚠️ ET CE N'EST PAS ASSEZ : `waitForAnimationToEnd` rend la main dès que RIEN NE
+# BOUGE, ce qui arrive aussi pendant un splash statique. Il plafonne à 5 s, alors
+# qu'un démarrage à froid mesuré sur un projet réel va de 6,4 à 9,3 s — jusqu'à
+# 22 s sous charge. Tout ce qui suit ce sous-flow tapait donc dans le sas de
+# démarrage, et l'échec sortait en « Element not found » : on lit ça comme une
+# ancre manquante, et on part chercher un défaut d'instrumentation qui n'existe
+# pas. Vécu au sixième run, sur deux flows visuels.
+#
+# On attend donc un ÉTAT — l'ancre de départ — et non la seule immobilité. Le
+# budget est celui du harnais, LARGEMENT au-dessus du seuil de performance, pour
+# qu'un démarrage lent sorte en finding de lenteur et pas en échec fonctionnel.
+#
+# Sans ancre de départ déclarée, on ne peut rien attendre de mieux : on garde le
+# comportement d'avant plutôt que d'inventer un délai.
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: ${ARGUS_ANCHOR_HOME}
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: Écran de départ affiché — l'app est prête, pas seulement immobile
