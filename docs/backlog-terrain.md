@@ -151,151 +151,59 @@ ajouter une boucle qui existait déjà. Et corriger le vrai défaut a immédiate
 révélé son symétrique, que personne n'avait signalé : `--tags=smoke`, annoncé
 comme le plus rapide, lançait la boucle visuelle entière.
 
-## Rendu par le run 3 — un troisième agent vierge, 22/08/2026
+## Rendu par le run 3 — un troisième agent vierge, 22/08/2026 — clos
 
-Troisième passe en aveugle, sur le même terrain remis à neuf. Onze constats ont
-été reproduits dans le dépôt avant d'être inscrits ici : **onze confirmés, aucun
-démenti**.
+Vingt et un points (36–56), traités en une passe. Onze avaient été reproduits
+dans le dépôt avant d'être inscrits : onze confirmés, aucun démenti.
 
 ⚠️ **Ce que ce run a mesuré en creux.** Les deux runs précédents avaient posé
 56 ancres en `Semantics(identifier:)` littéraux. Celui-ci en pose **56 aussi** —
-mais 26 par **paramètre optionnel** de composant partagé (`semanticId`,
-`semanticIdPrefix`), 30 en littéral. Même volume, stratégie opposée. Le skill
-laisse donc ce choix entièrement ouvert, et les deux voies marchent.
+mais 26 par **paramètre optionnel** de composant partagé, 30 en littéral. Même
+volume, stratégie opposée, les deux viables. Le skill laisse ce choix ouvert, et
+c'est mesuré plutôt que supposé.
 
 ⚠️ **Et ce qu'il ne pouvait pas voir** : le terrain n'appelle aucun backend.
 Rien ici ne porte sur cette dimension — voir `chantiers-differes.md` § C.
 
-### La classe dominante : le scaffold livré ne passe pas ses propres gardes
+### 43. ✅ Tranché le 22/08/2026 — le constat était juste, le diagnostic incomplet
 
-**36. Rien ne vérifie que le harnais posé sort en 0.** Les quatre points suivants
-sont indépendants et se découvrent un par un ; ce qui les réunit est qu'aucun
-d'eux n'aurait survécu à un garde dérivé — *poser le scaffold sur un projet neuf
-et exiger que chaque cible du Makefile sorte en 0*. La CI monte déjà un projet
-Flutter à partir de rien et l'analyse ; elle ne lance pas les cibles.
+Le run rapportait qu'`anchors_test` n'avait pas d'équivalent de
+`known_issues.dart`, donc qu'un défaut préexistant y bloquait l'instrumentation
+sans laisser de clé à inscrire. Exact. Mais **envelopper les assertions dans
+`argusCheck` n'aurait rien changé** : le fichier portait aussi le défaut du
+point 40 — aucune exception de montage n'était consommée, si bien que le test
+mourait AVANT qu'`argusCheck` ne produise quoi que ce soit, sur le message
+générique « Test failed. See exception logs above. ».
 
-**37. Trois fichiers du CADRE ne passent pas `dart format`.** Mesuré sur la copie
-vierge du dépôt, pas sur une édition : `a11y_test.dart`, `anchors_test.dart`,
-`layout_test.dart`, exit 1. Or le workflow que l'installeur pose lance
-`flutter analyze` — **la CI livrée est rouge à la minute où elle est installée**,
-et sur un projet qui active `prefer_single_quotes`, elle l'est deux fois.
+Le remède demandé aurait donc été posé, vérifié en relecture, et n'aurait rien
+produit. C'est le drain qui rend la dette possible, et la dette qui rend le drain
+utile — l'un sans l'autre ne garde rien.
 
-**38. `a11y_test.dart` ne consomme jamais `tester.takeException()`** — quand
-`layout_test.dart` le fait, en le justifiant. Le garde a11y monte pourtant les
-mêmes écrans à `textScale: 2`. Sur un écran qui déborde à cette échelle,
-l'exception reste en attente et fait tomber le test **avant** que `argusCheck`
-n'ait produit un verdict : message générique, **aucune clé**, donc
-`known_issues.dart` est impuissant. Mesuré sur le terrain : **11 écrans sur 14**,
-soit une suite rouge en permanence et irrécupérable par la dette.
+⚠️ La leçon dépasse ce point : **un rapport décrit ce qu'il a vu, pas ce qui
+l'empêche de le voir**. Le run avait constaté l'absence de clé sans pouvoir
+savoir qu'une seconde cause la produisait aussi. Reproduire avant de corriger
+n'est pas une précaution contre les rapports faux — celui-ci était juste — mais
+contre les remèdes incomplets.
 
-**39. `make argus-sec` ne peut pas être vert avec les défauts livrés.**
-`build.android` pointe l'APK **debug** et `requireDebuggableOff` vaut `true` :
-le scaffold prescrit donc de scanner un binaire qu'il condamne ensuite en
-**blocker**. Deux valeurs par défaut justes séparément, contradictoires ensemble.
+### Ce que la classe a rapporté au-delà des points
 
-**40. `jankFramesPct` n'a aucun garde d'échantillon minimal.** Deux exécutions du
-même binaire sur le même device ont rendu `jank 0 %` puis `jank 100 %
-(framesRendered: 1)` — sévérité `critical`, donc exit 2. Un pourcentage tiré
-d'une seule frame n'est pas une mesure, et il fait échouer la CI.
-
-### Deuxième classe : un instrument qui rend un verdict sans savoir distinguer deux causes
-
-**41. La classe.** Trois relevés donnent le même verdict pour des causes
-différentes, et leur message oriente alors activement à côté. C'est la famille de
-défaut la plus coûteuse du lot, parce qu'elle envoie chercher là où il n'y a rien.
-
-**42. `anchors_test.dart` ne monte qu'`argusViewports.first`.** Une commande sous
-le pli d'une liste paresseuse y est **indiscernable d'une ancre absente** — et le
-message d'échec énumère trois causes possibles sans jamais citer le pli. Mesuré :
-4 ancres déclarées « absentes » au petit gabarit, **toutes présentes et actives**
-au grand.
-
-**43. `anchors_test.dart` n'a ni `argusCheck` ni dette inscriptible** (0 contre 5
-dans `a11y_test.dart`). Un débordement **préexistant** sur un écran rend donc son
-instrumentation impossible : le garde tombe au montage, sans clé à inscrire, et
-la seule issue est de modifier le jeu d'essai du projet.
-
-**44. `argus-a11y` s'exécute après `argus-run` dans la cible `argus`.**
-`a11y.mjs` mesure « l'écran affiché » ; après une suite Maestro, personne ne sait
-lequel c'est. Mesuré dans la chaîne : `0 interactif, 0 finding`, quand le même
-script lancé sur un écran connu en rend cinq. Le script refuse correctement de
-mentir — c'est l'ordonnancement qui le met en position de ne rien mesurer.
-
-### Troisième classe : la doc affirme ce que le code ne fait pas
-
-**45. La classe.** `tools/check-scaffold.sh` fige déjà les compteurs de la doc.
-Le garde à dériver est le même, étendu aux **affirmations de structure** : un
-champ promis dans un format de sortie doit exister dans le fichier produit.
-
-**46. `report-format-mobile.md` §A décrit un `report.json` qui n'existe pas.**
-Il promet `metrics.perf` ; le fichier réel porte `run`, `summary`, `findings`,
-`coverage`, `startup` — **aucune clé `metrics`**. Et `run.appVersion` reçoit le
-**nom** du paquet, pas sa version.
-
-**47. Contradiction sur la locale, entre deux fichiers de référence.**
-`device-matrix.md` recommande de lancer soi-même son AVD (`avd` et `autoStart`
-ne se combinent pas) ; `methodology-mobile.md` §I18N précise que `--device-locale`
-n'existe que sur `maestro start-device`. Or `run.mjs` ne passe `deviceLocale`
-qu'à `startDevice`. Donc dans la disposition **recommandée**, `locale.deviceLocale`
-existe et **n'a aucun effet**. Aucun des deux documents ne signale le conflit.
-
-**48. `buildCmd` est décrit comme « jamais lancé sans confirmation ».** Il n'est
-lancé **jamais du tout** : aucun script ne le référence, il est seulement affiché.
-La formulation laisse croire à une garde qui n'a pas lieu d'être.
-
-**49. La table « enveloppé par l'extérieur » du §2 est incomplète.** Elle donne
-`TextField` → « un seul nœud », ce qui est vrai. Mais poser un **rôle** sur
-l'enveloppe (`Semantics(identifier: …, textField: true, child: TextField(…))`)
-crée une frontière et rend le nœud **inerte** ; le retirer le rend actif. La
-table prévient pour les composants qui construisent déjà leur nœud, pas pour le
-rôle ajouté à l'enveloppe.
-
-### Points isolés
-
-**50. Le compteur `TODO(argus)` de l'installeur compte sa propre documentation.**
-`argus.mobile.yaml` porte en commentaire une ligne qui **explique** le mécanisme
-et contient le marqueur : ce fichier rapportera éternellement « 1 TODO(argus) à
-traiter », même entièrement rempli. C'est l'anti-pattern que l'en-tête de
-`install-mobile.sh` décrit pour `ARGUS:OWNED`/`ARGUS:MERGE` — marqueur réservé et
-borné à l'en-tête — **dont la protection n'a pas été étendue à `TODO(argus)`**.
-
-**51. `visualCropOn` est une clé globale, la doctrine des racines est locale.**
-Dès le deuxième écran en `visual: true`, aucune valeur ne convient : chaque écran
-a sa racine. Le skill consacre deux longues mises en garde au cadrage sans jamais
-dire comment concilier les deux. Sur le terrain, l'agent l'a laissée vide et
-l'horloge système est entrée dans les quatre références.
-
-**52. Le skill ne dit pas quoi faire quand le défaut est DANS le cadre.** L'agent
-a patché un fichier `ARGUS:OWNED`-non (le cadre), mesure à l'appui, et a laissé
-`install-mobile.sh --check` en échec — puis n'a **pas** patché un second défaut du
-cadre, jugeant sa migration sémantique et non textuelle. Deux décisions opposées
-sur la même question, faute de règle.
-
-**53. Une racine d'écran qui est aussi une commande absorbe le texte en dessous.**
-Quand la surface tapable est l'écran entier, le nœud commande prend dans son
-label le contenu qu'il recouvre. La recette du §2 ne le dit pas ; son exemple ne
-couvre pas ce cas.
-
-**54. À partir de combien de dettes un projet n'est-il « pas prêt » ?** Le skill
-dit que `known_issues.dart` vide est le bon état par défaut et que le premier
-défaut doit se corriger plutôt que s'inscrire. Le terrain en a produit **53** d'un
-coup. Aucun seuil, aucune conduite à tenir.
-
-**55. Les build-tools ne sont pas dans le PATH par défaut, et rien ne le dit.**
-Sans `aapt2`, `make argus-sec` saute la lecture du **manifeste fusionné** —
-précisément l'étape qui révèle les permissions ajoutées par les dépendances, et
-donc celle qui sert à remplir `expectedPermissions`.
-
-**56. `expectedPermissions` se dérive d'un manifeste fusionné — mais de quel
-variant ?** Le skill dit de construire l'APK et de lire le manifeste, sans
-préciser debug ou release. Les deux peuvent différer.
+Le garde dérivé du point 36 — *poser le scaffold sur un projet neuf et exiger que
+tout sorte en 0* — a trouvé ce qu'aucun run n'avait signalé : **la CI de ce dépôt
+était elle-même rouge**. `flutter analyze test/argus`, une étape que le job
+`harness` exécutait déjà, sortait en 1 sur un projet neuf. Invisible depuis
+soixante-dix commits pour une raison simple : rien n'a jamais été poussé, donc le
+workflow n'a jamais tourné une seule fois. **Un garde qui ne s'exécute pas est
+indiscernable d'un garde qui passe.**
 
 ## Ce qui reste
 
-**Les vingt et un points du run 3, ci-dessus.** Le backlog était vide le 22/08 au
-matin — pour la troisième fois — et un agent vierge l'a rempli le soir même, sur
-un skill pourtant corrigé partout où le run précédent avait mordu.
+**Rien — et c'est la quatrième fois que cette phrase est écrite ici.** Le 21/08
+au matin le backlog était vide ; le soir, vingt-cinq points. Le 22 au matin vide
+de nouveau ; le soir, vingt et un de plus, sur un skill pourtant corrigé partout
+où le run précédent avait mordu.
 
-C'est le résultat le plus stable de ce chantier, et il porte sur la méthode :
-**une passe trouve ce qui manque, la suivante trouve ce que la correction a
-introduit ou n'a pas branché.** Ne pas relire un backlog vide comme une fin.
+La seule chose qui ne se périme pas dans ce fichier est donc la méthode : une
+passe trouve ce qui manque, la suivante trouve ce que la correction a introduit
+ou n'a pas branché. Le prochain terrain devra **consommer une API** — les trois
+runs ont été joués sur un projet qui n'en appelle aucune, et tout ce volet du
+skill n'a jamais été exercé (`chantiers-differes.md` § C).
