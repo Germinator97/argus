@@ -522,6 +522,46 @@ export function configuredScreens(config) {
  * @param {any} config @param {{apiLevel:string, profile:string}} [defauts]
  * @returns {{ok:boolean, apiLevel?:string, profile?:string, source?:string, why:string}}
  */
+/**
+ * La commande de build à PROPOSER, ciblée sur l'ABI de l'appareil visé.
+ *
+ * ⚠️ UN APK « FAT » EMBARQUE QUATRE ABI, L'APPAREIL N'EN LIT QU'UNE. Mesuré sur
+ * un projet, `flutter clean` avant chaque build : **84,9 Mo** contre **39,7 Mo**
+ * pour arm64 seul — les trois `libflutter.so` en trop pèsent 45,2 Mo stockées.
+ *
+ * Ce n'est pas qu'une économie, c'est plus JUSTE : le Play Store livre un APK
+ * découpé par ABI, donc l'utilisateur reçoit déjà du mono-ABI. C'est le fat qui
+ * ne correspond à rien de ce que quelqu'un installe, et les autres ABI ne sont
+ * jamais chargées sur l'appareil visé. Au passage, ça écarte le
+ * `INSTALL_FAILED_INSUFFICIENT_STORAGE` d'un émulateur dont `/data` est plein.
+ *
+ * ⚠️ L'ABI se LIT sur l'appareil, elle ne se devine pas : un émulateur sur
+ * Apple Silicon rend `arm64-v8a`, sur Intel `x86_64`, un vieux téléphone
+ * `armeabi-v7a`. Sans lecture possible, on rend la commande telle quelle plutôt
+ * que d'inventer une cible — un `--target-platform` faux ne produit pas un APK
+ * plus petit, il produit un APK qui ne s'installe pas.
+ *
+ * ⚠️ Et on ne LANCE rien : ces commandes sont AFFICHÉES. Le harnais ne construit
+ * jamais à la place de qui l'utilise.
+ * @param {string} commande @param {string} abi @returns {string}
+ */
+export function buildCmdForAbi(commande, abi) {
+  const cible = { 'arm64-v8a': 'android-arm64', 'armeabi-v7a': 'android-arm', 'x86_64': 'android-x64' }[abi];
+  if (!cible || !/\bbuild\s+apk\b/.test(commande) || /--target-platform/.test(commande)) return commande;
+  return `${commande} --target-platform ${cible}`;
+}
+
+/**
+ * L'ABI de l'appareil, LUE sur lui. Chaîne vide si on n'a pas pu.
+ * @param {string} udid @param {typeof adbShell} [lire]
+ * @returns {string}
+ */
+export function deviceAbi(udid, lire = adbShell) {
+  if (!udid) return '';
+  const abi = lire(udid, ['getprop', 'ro.product.cpu.abi']).stdout.trim();
+  return /^[a-z0-9_-]+$/i.test(abi) ? abi : '';
+}
+
 export function ciEmulator(config, defauts = { apiLevel: '33', profile: 'pixel_6' }) {
   const device = activeDevices(config).find((/** @type {any} */ d) => d?.platform === 'android');
   if (!device) {

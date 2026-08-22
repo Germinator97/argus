@@ -26,7 +26,7 @@ import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { ciEmulator, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -887,6 +887,40 @@ test('auditApk CÂBLE le pubspec du projet — sans quoi le défaut d\'origine r
 // portait `os: ''` avec le commentaire qui explique pourquoi.
 
 const AVEC = (/** @type {any} */ device) => ({ platforms: ['android'], devices: [device] });
+
+// ⚠️ Un APK « fat » embarque quatre ABI, l'appareil n'en lit qu'une : 84,9 Mo
+// contre 39,7 mesurés, flutter clean avant chaque build. Plus petit, et plus
+// juste — le Play Store livre déjà du mono-ABI.
+
+test('la commande proposée cible l\'ABI de l\'appareil', () => {
+  assert.equal(buildCmdForAbi('flutter build apk --debug', 'arm64-v8a'),
+    'flutter build apk --debug --target-platform android-arm64');
+  assert.equal(buildCmdForAbi('flutter build apk --debug', 'x86_64'),
+    'flutter build apk --debug --target-platform android-x64');
+});
+
+test('ABI illisible : on rend la commande TELLE QUELLE, on n\'invente pas de cible', () => {
+  // Un --target-platform faux ne produit pas un APK plus petit : il produit un
+  // APK qui ne s\'installe pas.
+  assert.equal(buildCmdForAbi('flutter build apk --debug', ''), 'flutter build apk --debug');
+  assert.equal(buildCmdForAbi('flutter build apk --debug', 'mips64'), 'flutter build apk --debug');
+});
+
+test('une commande qui n\'est pas un build apk, ou déjà ciblée, n\'est pas touchée', () => {
+  assert.equal(buildCmdForAbi('flutter build appbundle', 'arm64-v8a'), 'flutter build appbundle',
+    'un App Bundle est découpé par le store : le cibler ici n\'aurait pas de sens');
+  const deja = 'flutter build apk --debug --target-platform android-arm';
+  assert.equal(buildCmdForAbi(deja, 'arm64-v8a'), deja, 'un choix explicite l\'emporte');
+});
+
+test('l\'ABI est LUE sur l\'appareil, et une lecture douteuse ne passe pas', () => {
+  const adb = (/** @type {any} */ out) => () => ({ stdout: out, stderr: '', ok: true });
+  assert.equal(deviceAbi('emulator-5554', adb('arm64-v8a\n')), 'arm64-v8a');
+  assert.equal(deviceAbi('emulator-5554', adb('')), '', 'rien lu : rien de deviné');
+  assert.equal(deviceAbi('emulator-5554', adb('arm64-v8a; rm -rf /')), '',
+    'une valeur qui n\'a pas la forme d\'une ABI ne va pas dans une ligne de commande');
+  assert.equal(deviceAbi('', adb('arm64-v8a')), '');
+});
 
 test('os renseigné : la CI démarre l\'appareil du projet', () => {
   const r = ciEmulator(AVEC({ platform: 'android', model: 'pixel_9a', os: 'android-36' }));

@@ -29,9 +29,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  activeDevices, adbShell, artifactsDir, configuredScreens, detectTools, err, exitCodeFor,
-  flutterCommand, loadConfig, log, missingToolMessage, parseYaml, sh, validateConfig,
-  warn, writeJson,
+  activeDevices, adbShell, artifactsDir, buildCmdForAbi, configuredScreens, detectTools,
+  deviceAbi, err, exitCodeFor, flutterCommand, loadConfig, log, missingToolMessage, parseYaml,
+  sh, validateConfig, warn, writeJson,
 } from './config.mjs';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1265,7 +1265,12 @@ async function main() {
     install = installApp(platform, resolved.udid, binary, appId, opts.dryRun);
     if (!install.ok) {
       err(`installation non prouvée — ${install.proof}`);
-      err(`  Construis le binaire : ${flutterCommand(platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd)}`);
+      // La commande PROPOSÉE est ciblée sur l'ABI de l'appareil qu'on vient de
+      // résoudre : un fat APK embarque quatre ABI dont trois ne seront jamais
+      // lues, et pèse deux fois plus (84,9 Mo contre 39,7 mesurés).
+      const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
+      const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(resolved.udid));
+      err(`  Construis le binaire : ${flutterCommand(ciblee)}`);
       process.exit(2);
     }
     log(`installation prouvée — ${install.proof}`);

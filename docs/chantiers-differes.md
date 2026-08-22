@@ -430,7 +430,7 @@ grep -c 'runMaestro' plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mo
 ```
 
 ═══════════════════════════════════════════════════════════════════════════════
-## E. L'APK installé embarque quatre ABI, l'appareil n'en lit qu'une
+## E. ✅ FAIT le 22/08/2026 — L'APK installé embarquait quatre ABI, l'appareil n'en lit qu'une
 ═══════════════════════════════════════════════════════════════════════════════
 
 Ouvert le 22/08/2026, sur une question de Germinator pendant le run 7 : puisqu'on
@@ -479,6 +479,23 @@ CLAUDE.md § 1.3, et seul `flutter clean` a donné un chiffre honnête.
 Deuxième instrument fautif dans la même mesure : la colonne 2 d'`unzip -v` est la
 **méthode** de compression, pas une taille. La lire comme telle rendait
 « 0,00 Mo » pour chaque lib — un zéro parfaitement plausible.
+
+**Fait.** `buildCmdForAbi()` ajoute `--target-platform` dérivé de
+`deviceAbi()`, qui LIT `ro.product.cpu.abi` sur l'appareil résolu. Le runner
+**propose** la commande ciblée là où il affichait un défaut figé — ce qui contourne
+le fait que `build.androidBuildCmd` soit une clé `ARGUS:OWNED`, donc jamais mise
+à jour chez les projets déjà installés.
+
+Quatre gardes, dont les trois qui tiennent l'autre moitié : une ABI illisible ou
+mal formée rend la commande **telle quelle** (un `--target-platform` faux ne
+produit pas un APK plus petit, il produit un APK qui ne s'installe pas), un
+`build appbundle` n'est pas touché (le store le découpe déjà), et un
+`--target-platform` explicite l'emporte.
+
+⚠️ **Le point 2 ci-dessus reste ouvert** : le budget `binarySizeMb` compare
+toujours un chiffre dont la nature vient de changer. À traiter au prochain
+passage sur `perf.mjs` — la commande n'étant que PROPOSÉE, aucun projet ne bascule
+tant que quelqu'un ne l'a pas recopiée.
 
 ```sh
 # re-mesurer avant de rouvrir — relevé du 22/08/2026 : 84,9 Mo et 39,7 Mo
