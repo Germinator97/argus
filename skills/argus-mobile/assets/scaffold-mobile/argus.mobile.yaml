@@ -162,7 +162,8 @@ thresholds:
   jankFramesPct: 1
   memoryMb: 250
   binarySizeMb: 60
-  crashFreePct: 99.5
+  # Pas de `crashFreePct` ici : rien dans le harnais ne compte les crashs. Un
+  # seuil que personne ne mesure se lit comme une garantie et n'en est pas.
   # ⚠️ INVERSION PAR RAPPORT AU HARNESS WEB. Côté Playwright on tolère un RATIO
   # DE DIFFÉRENCE (0.01 = 1 % de pixels divergents). Côté Maestro,
   # `thresholdPercentage` est un POURCENTAGE DE CORRESPONDANCE REQUIS, et son
@@ -171,34 +172,35 @@ thresholds:
   visualMatchPercentage: 99
 
 # ── Accessibilité ──────────────────────────────────────────────────────────
+# ⚠️ Les échelles de texte et le ratio de contraste ne se règlent PAS ici : ils
+# vivent dans `test/argus/harness.dart` (`argusTextScales`) et dans la guideline
+# Flutter qui porte le 4.5. Les répéter ici donnerait deux sources de vérité,
+# dont une que rien ne lit — c'est ce qu'elles étaient.
 a11y:
   # Cible tactile minimale, en dp. Android : 48. iOS (HIG) : 44.
+  # Lu par scripts/argus/a11y.mjs, qui mesure le rendu réel sur device.
   minTouchTargetDp: 48
-  # Échelles de texte éprouvées par les gardes `flutter test` (étage 1).
-  # 1.3 est un cran de réglage système courant, pas un cas limite.
-  textScales: [1.0, 1.3, 2.0]
-  # Ratio de contraste minimal (WCAG AA sur texte normal).
-  minContrastRatio: 4.5
 
 # ── Localisation ───────────────────────────────────────────────────────────
 # ⚠️ `--device-locale` n'existe QUE sur `maestro start-device` et `maestro cloud`,
 # pas sur `maestro test` : la locale se fige au DÉMARRAGE du device. Aucun flow
 # ne peut la changer.
+#
+# Le format monétaire attendu et le fuseau ne sont pas ici : ils ne servent qu'à
+# écrire les assertions de `.maestro/i18n.yaml`, et c'est là qu'ils vivent, en
+# regard du TODO qui les emploie. Une app qui n'affiche aucun montant n'a donc
+# rien à renseigner.
 locale:
   deviceLocale: fr_FR
-  currency: XOF
-  # Format monétaire attendu (espace insécable étroit avant FCFA côté UEMOA).
-  currencySample: '1 234 567 FCFA'
-  timezone: Africa/Abidjan
 
 # ── Authentification ───────────────────────────────────────────────────────
 # AUCUNE valeur en dur. Le runner lit ces variables dans l'environnement et les
 # passe aux flows via `-e`. Une variable absente → le flow de login skippe et la
 # dimension est rapportée non couverte.
+# La forme de l'authentification (formulaire, OTP, SSO, biométrie) ne se déclare
+# pas : elle s'écrit, dans `.maestro/_subflows/login.yaml`. Un champ qui la
+# nomme sans que rien ne le lise laisse croire que le harnais s'y adapte.
 auth:
-  required: false
-  # form | otp | sso | biometric
-  kind: form
   secretsFromEnv:
     - QA_USER
     - QA_PASS
@@ -257,19 +259,23 @@ security:
   scaFailOn: high
 
 # ── Budget d'exécution ─────────────────────────────────────────────────────
-# Dépassement → on loggue ce qui a été échantillonné ET ce qui a été ignoré.
-# Jamais de troncature silencieuse.
+# Le runner mesure ce que le run a coûté et le compare à ces deux plafonds : il
+# AVERTIT au dépassement et publie le relevé dans `run.budget` du rapport. Il ne
+# tronque rien et ne fait pas échouer — dépasser un budget dit quelque chose de
+# la capacité, pas de l'application, et faire rougir la CI là-dessus apprendrait
+# à ignorer le rouge. Mettre 0 désactive le plafond.
 budget:
   maxMinutes: 25
   maxFlows: 40
-  parallelDevices: 1
 
 # ── Gating CI ──────────────────────────────────────────────────────────────
 # Sévérités et exit codes IDENTIQUES au skill web : 0 vert · 1 major · 2 blocker
 # ou critical. Voir references/methodology-mobile.md §8.
 gate:
   failOn: [blocker, critical, major]
-  failOnNewFinding: true
+  # Pas de `failOnNewFinding` : le harnais ne conserve aucun run précédent, donc
+  # rien ne saurait dire lequel est « nouveau ». Le promettre aurait laissé
+  # croire à un gating différentiel qui n'existe pas.
   failOnVisualDiff: true
   # Une suite où AUCUN flow n'a réellement tourné (toutes les ancres vides) sort
   # en exit 2. Sans cette règle, un scaffold neuf rendrait un vert parfait en

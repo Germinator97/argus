@@ -867,11 +867,39 @@ function stampBaselineCrop(baselineDir, crop) {
   writeFileSync(join(baselineDir, CROP_STAMP), `${crop}\n`, 'utf8');
 }
 
+/**
+ * Ce que le run a coûté, face à ce que `budget` autorisait.
+ *
+ * Avertit, ne fait pas échouer : dépasser un budget est une information de
+ * capacité, pas un défaut de l'application — et faire rougir la CI là-dessus
+ * apprendrait à ignorer le rouge. Mais le dire est ce qui rend les deux clés
+ * lisibles ; sans lecteur elles décrivaient une discipline que rien n'exerçait.
+ * @param {any} config @param {Date} startedAt @param {number} flows
+ * @returns {{maxMinutes:number, maxFlows:number, minutes:number, flows:number, warnings:string[]}}
+ */
+function budgetVerdict(config, startedAt, flows) {
+  const maxMinutes = Number(config.budget?.maxMinutes ?? 0);
+  const maxFlows = Number(config.budget?.maxFlows ?? 0);
+  const minutes = Math.round(((Date.now() - startedAt.getTime()) / 60000) * 10) / 10;
+  /** @type {string[]} */
+  const warnings = [];
+  if (maxMinutes > 0 && minutes > maxMinutes) {
+    warnings.push(`budget de durée dépassé : ${minutes} min pour ${maxMinutes} autorisées (budget.maxMinutes).`);
+  }
+  if (maxFlows > 0 && flows > maxFlows) {
+    warnings.push(`budget de flows dépassé : ${flows} exécutés pour ${maxFlows} autorisés (budget.maxFlows).`);
+  }
+  return { maxMinutes, maxFlows, minutes, flows, warnings };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 9. Point d'entrée
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function main() {
+  // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
+  // après le dernier flow, donc il datait la FIN du run en disant « début ».
+  const startedAt = new Date();
   const opts = parseArgs(process.argv.slice(2));
 
   let config;
@@ -1024,10 +1052,13 @@ async function main() {
     ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
     ...startupFindings(startup, reportDevice, platform, config),
   ];
+  const budget = budgetVerdict(config, startedAt, bundles.length);
+  for (const line of budget.warnings) warn(line);
+
   const report = {
     run: {
-      startedAt: new Date().toISOString(), platform, appVersion: config.app.name,
-      flavor: config.app.flavor, appId,
+      startedAt: startedAt.toISOString(), platform, appVersion: config.app.name,
+      flavor: config.app.flavor, appId, budget,
       // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
       // la config ici ferait dire au rapport « Medium_Phone » quel que soit le
       // device qui a réellement tourné : il décrirait l'intention en ayant l'air
@@ -1122,6 +1153,6 @@ if (invokedDirectly) {
 // Surface exposée aux gardes de tools/. Ce sont les fonctions qui décident
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
-  avdNameFrom, buildEnv, findingsFrom, resolveByAvd, resolveNamedDevice,
+  avdNameFrom, budgetVerdict, buildEnv, findingsFrom, resolveByAvd, resolveNamedDevice,
   startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples,
 };

@@ -19,7 +19,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  avdNameFrom, buildEnv, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  avdNameFrom, budgetVerdict, buildEnv, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples,
 } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { validateConfig } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -325,4 +325,101 @@ test('les deux branches de cadrage existent, en capture comme en comparaison', (
   assert.equal(clesYaml('cropOn'), 2, 'il en faut une sur takeScreenshot ET une sur assertScreenshot');
   assert.equal(clesYaml('takeScreenshot'), 2, 'update : une branche recadrée, une plein écran');
   assert.equal(clesYaml('assertScreenshot'), 2, 'assert : une branche recadrée, une plein écran');
+});
+
+// ── Aucune clé de configuration sans lecteur ─────────────────────────────────
+//
+// `visualCropOn` n'était pas seule : le relevé dérivé en a trouvé ONZE autres du
+// même genre — un seuil de crash que rien ne compte, des échelles de texte
+// dupliquées de `harness.dart`, une forme d'authentification que personne
+// n'interroge, un `failOnNewFinding` qui supposait un run précédent qu'aucun
+// mécanisme ne conserve. Aucune ne produit d'erreur ; toutes se lisent comme des
+// réglages, et deux se lisaient comme des garanties.
+//
+// Le critère est TOTAL et NÉGATIF — « aucune feuille de DEFAULTS sans lecteur »,
+// où que ce soit — et non la liste des cas déjà vus. La direction compte : large
+// moins les exceptions, jamais étroit plus ce qu'on a rencontré. Il n'y a
+// d'ailleurs aucune exception, et c'est délibéré : une clé lue par l'agent et
+// non par un script est une instruction, sa place est dans la prose.
+
+const SCRIPTS_DIR = fileURLToPath(new URL('../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/', import.meta.url));
+
+/** Le bloc DEFAULTS, lu dans la source — le seul endroit qui l'énumère. */
+function defaultsSource() {
+  const src = readFileSync(join(SCRIPTS_DIR, 'config.mjs'), 'utf8');
+  const m = src.match(/const DEFAULTS = (\{[\s\S]*?\n\});/);
+  assert.ok(m, 'bloc DEFAULTS introuvable dans config.mjs — le relevé ne mesure plus rien');
+  return m[1];
+}
+
+/** Chemins pointés de toutes les feuilles de DEFAULTS. @returns {string[]} */
+function defaultsLeaves() {
+  const defaults = new Function(`return (${defaultsSource()});`)();
+  /** @type {string[]} */
+  const leaves = [];
+  (function walk(/** @type {any} */ node, /** @type {string[]} */ path) {
+    for (const [k, v] of Object.entries(node)) {
+      const next = [...path, k];
+      if (v !== null && typeof v === 'object' && !Array.isArray(v)) walk(v, next);
+      else leaves.push(next.join('.'));
+    }
+  })(defaults, []);
+  return leaves;
+}
+
+/**
+ * Le code des scripts, commentaires ôtés et bloc DEFAULTS exclu.
+ *
+ * Les deux retraits comptent. Un commentaire qui CITE une clé la ferait passer
+ * pour lue — c'est exactement ainsi qu'un garde naît vacant, en attrapant le
+ * texte qui le documente. Et DEFAULTS déclare les clés, il ne les lit pas :
+ * l'y laisser rendrait chacune vivante par sa seule existence.
+ */
+function codeDesScripts() {
+  const bloc = defaultsSource();
+  return readdirSync(SCRIPTS_DIR).filter((f) => f.endsWith('.mjs')).map((f) => {
+    const brut = readFileSync(join(SCRIPTS_DIR, f), 'utf8').replace(bloc, '');
+    return brut.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').map((l) => l.replace(/\/\/.*$/, '')).join('\n');
+  }).join('\n');
+}
+
+test('toute clé de argus.mobile.yaml est lue par au moins un script', () => {
+  const leaves = defaultsLeaves();
+  assert.ok(leaves.length >= 40, `relevé vide ou tronqué (${leaves.length}) — DEFAULTS a-t-il changé de forme ?`);
+
+  const code = codeDesScripts();
+  assert.ok(code.length > 10000, 'corpus vide : les scripts ont-ils bougé de dossier ?');
+
+  // Lue = ACCÉDÉE (`config.x?.y`), pas mentionnée. C'est la forme réelle d'un
+  // lecteur, et la seule qu'un commentaire ne peut pas imiter une fois les
+  // commentaires retirés.
+  const mortes = leaves.filter((p) => {
+    const cle = p.split('.').pop() ?? '';
+    return !new RegExp(`\\.\\s*${cle}\\b`).test(code);
+  });
+  assert.deepEqual(mortes, [],
+    'clés déclarées, documentées, et que rien ne lit : les renseigner ne change rien, mais elles se lisent comme des réglages');
+});
+
+test('le budget d\'exécution se compare vraiment à ce qui a été dépensé', () => {
+  const config = { budget: { maxMinutes: 25, maxFlows: 40 } };
+  const ilYA = (/** @type {number} */ minutes) => new Date(Date.now() - minutes * 60000);
+
+  // Sous le budget : rien. Un garde qui parle toujours n'informe plus.
+  assert.deepEqual(budgetVerdict(config, ilYA(3), 12).warnings, []);
+
+  // Chaque moitié compte séparément — un run court peut noyer la CI de flows,
+  // un run d'un seul flow peut durer une heure.
+  assert.equal(budgetVerdict(config, ilYA(40), 12).warnings.length, 1);
+  assert.equal(budgetVerdict(config, ilYA(3), 99).warnings.length, 1);
+  assert.equal(budgetVerdict(config, ilYA(40), 99).warnings.length, 2);
+
+  // Le relevé est publié quoi qu'il arrive : c'est lui qu'on relit six mois
+  // plus tard pour savoir si le budget était réaliste.
+  const v = budgetVerdict(config, ilYA(10), 7);
+  assert.equal(v.flows, 7);
+  assert.ok(v.minutes >= 9.9 && v.minutes <= 10.1, `durée mesurée aberrante : ${v.minutes}`);
+
+  // Budget à zéro = pas de budget, pas un budget impossible à tenir.
+  assert.deepEqual(budgetVerdict({}, ilYA(600), 9999).warnings, []);
 });

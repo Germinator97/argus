@@ -27,7 +27,7 @@ CIBLES = {
     "visual": FLOWS / "visual.yaml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
-NB_TESTS = 25
+NB_TESTS = 27
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -82,6 +82,15 @@ MUTATIONS = [
     ("run", "le runner produit une clé que plus aucun flow ne lit",
      "    ARGUS_VISUAL_MODE: 'assert',",
      "    ARGUS_VISUAL_MODE: 'assert',\n    ARGUS_REGLAGE_INERTE: '',"),
+    ("config", "une clé de config renaît sans lecteur",
+     "  budget: { maxMinutes: 25, maxFlows: 40 },",
+     "  budget: { maxMinutes: 25, maxFlows: 40, parallelDevices: 1 },"),
+    ("run", "le budget de durée cesse d'être comparé",
+     "  if (maxMinutes > 0 && minutes > maxMinutes) {",
+     "  if (maxMinutes > 0 && minutes > maxMinutes * 1000) {"),
+    ("run", "le budget de flows cesse d'être comparé",
+     "  if (maxFlows > 0 && flows > maxFlows) {",
+     "  if (maxFlows > 0 && flows > maxFlows * 1000) {"),
     ("visual", "la capture n'est plus recadrée, la comparaison si",
      "                path: ${ARGUS_SCREEN_ID}\n                cropOn:\n"
      "                  id: ${ARGUS_VISUAL_CROP}\n"

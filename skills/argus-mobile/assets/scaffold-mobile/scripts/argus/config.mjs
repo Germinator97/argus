@@ -336,12 +336,12 @@ const DEFAULTS = {
   visualCropOn: '',
   thresholds: {
     coldStartMs: 2000, warmStartMs: 1000, jankFramesPct: 1, memoryMb: 250,
-    binarySizeMb: 60, crashFreePct: 99.5, visualMatchPercentage: 99,
+    binarySizeMb: 60, visualMatchPercentage: 99,
   },
-  a11y: { minTouchTargetDp: 48, textScales: [1.0, 1.3, 2.0], minContrastRatio: 4.5 },
-  locale: { deviceLocale: 'fr_FR', currency: 'XOF', currencySample: '1 234 567 FCFA', timezone: 'Africa/Abidjan' },
+  a11y: { minTouchTargetDp: 48 },
+  locale: { deviceLocale: 'fr_FR' },
   auth: {
-    required: false, kind: 'form', secretsFromEnv: [],
+    secretsFromEnv: [],
     anchors: { screen: '', user: '', password: '', submit: '', success: '' },
   },
   deepLinks: [],
@@ -350,8 +350,8 @@ const DEFAULTS = {
     requireCleartextDisabled: true, requireAllowBackupOff: true, requireObfuscation: true,
     secretPatterns: [], allowSecretsIn: [], scaFailOn: 'high',
   },
-  budget: { maxMinutes: 25, maxFlows: 40, parallelDevices: 1 },
-  gate: { failOn: ['blocker', 'critical', 'major'], failOnNewFinding: true, failOnVisualDiff: true, failOnEmptyRun: true },
+  budget: { maxMinutes: 25, maxFlows: 40 },
+  gate: { failOn: ['blocker', 'critical', 'major'], failOnVisualDiff: true, failOnEmptyRun: true },
   artifacts: { dir: 'argus-mobile-report', baselines: '.maestro/_baselines' },
   artifact: { enabled: false, url: '', title: '', evidence: 'all', maxMb: 12 },
 };

@@ -81,8 +81,7 @@ resilience | i18n | stability`.
 {
   "firstLaunchMs": 3700,   // PREMIER lancement après installation — état à part
   "coldStartMs": 910, "warmStartMs": 320,
-  "jankFramesPct": 0.8, "memoryMb": 187, "binarySizeMb": 42.1,
-  "crashFreePct": 100
+  "jankFramesPct": 0.8, "memoryMb": 187, "binarySizeMb": 42.1
 }
 ```
 `firstLaunchMs` est isolé volontairement : c'est un état réel, vécu une fois par

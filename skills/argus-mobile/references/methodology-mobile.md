@@ -32,14 +32,13 @@ PLATFORMS    : [ android ]                      # + ios si Mac/Xcode disponible
 DEVICES      : voir device-matrix.md            # émulateur | simulateur | réel
 ENV          : prod | staging | local           # pilote les garde-fous (§3)
 MODE         : EXPLORE | DEMO | REGRESS         # voir §2
-AUTH         : { required, kind: form|otp|sso|biometric,
-                 secrets_from_env: [QA_USER, QA_PASS], anchors: {…} }
-LOCALE       : { deviceLocale: fr_FR, currency: XOF, timezone: Africa/Abidjan }
-BUDGET       : { max_minutes: [25], max_flows: [40], parallel_devices: [1] }
+AUTH         : { secrets_from_env: [QA_USER, QA_PASS], anchors: {…} }
+LOCALE       : { deviceLocale: fr_FR }
+BUDGET       : { max_minutes: [25], max_flows: [40] }
 THRESHOLDS   : { coldStartMs: 2000, warmStartMs: 1000, jankFramesPct: 1,
-                 memoryMb: 250, binarySizeMb: 60, crashFreePct: 99.5,
+                 memoryMb: 250, binarySizeMb: 60,
                  visualMatchPercentage: 99, minTouchTargetDp: 48 }
-GATE         : { fail_on: [blocker, critical, major], fail_on_new_finding: true,
+GATE         : { fail_on: [blocker, critical, major],
                  fail_on_visual_diff: true, fail_on_empty_run: true }
 ARTIFACTS    : argus-mobile-report/
 BASELINES    : .maestro/_baselines/<device-id>/
