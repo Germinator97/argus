@@ -1400,16 +1400,28 @@ async function main() {
         os: resolved.os,
         physical: resolved.physical,
         identityMeasured: resolved.measured,
-        // ⚠️ `model` et `os` ne servent QU'À `autoStart` — ils nomment ce que
-        // Maestro doit créer, pas ce qu'on vise. Sur un device qu'on ne démarre
-        // pas, les imprimer en « déclaré » face au modèle mesuré fabrique une
-        // comparaison sans objet : `pixel_6` en regard de `sdk_gphone64_arm64`
-        // se lit comme un écart alors que les deux ne parlent pas de la même
-        // chose. `null` dit « on n'a rien déclaré là-dessus », ce que le schéma
-        // ne permettait pas d'exprimer.
-        declared: spec.autoStart === true
-          ? { avd: spec.avd ?? '', model: spec.model ?? '', os: spec.os ?? '' }
-          : { avd: spec.avd ?? '', model: null, os: null },
+        // ⚠️ `model` et `os` NE DÉCRIVENT PAS l'appareil mesuré, et les lire comme
+        // tels fabrique une comparaison sans objet : `pixel_6` en regard de
+        // `sdk_gphone64_arm64` se lit comme un écart alors que les deux ne
+        // parlent pas de la même chose. C'est pour ça qu'ils étaient rendus
+        // `null` hors `autoStart`.
+        //
+        // ⚠️ Mais ils ont acquis un SECOND RÔLE depuis : la CI les lit
+        // (`ciEmulator`) pour choisir l'émulateur qui comparera les références
+        // visuelles. Les taire revenait donc à cacher deux clés qui gouvernent
+        // quelque chose — et le commentaire qui disait « ils ne servent QU'À
+        // autoStart » était devenu faux le jour même où on l'a écrit ailleurs.
+        //
+        // On les rend, avec ce qu'ils gouvernent écrit à côté : c'est `role` qui
+        // empêche de les lire comme une description de l'appareil.
+        declared: {
+          avd: spec.avd ?? '',
+          model: spec.model ?? '',
+          os: spec.os ?? '',
+          role: spec.autoStart === true
+            ? 'ce que Maestro doit CRÉER — jamais une description du device mesuré'
+            : 'l\'émulateur que la CI démarrera — jamais une description du device mesuré',
+        },
       }],
       animationsDisabled: animations.ok, installProof: install.proof,
     },
@@ -1430,6 +1442,13 @@ async function main() {
     // Ce que l'écran de départ a coûté, flow par flow. Le harnais payait déjà
     // ce temps ; il ne le disait pas.
     startup: {
+      // ⚠️ CE TEMPS N'EST PAS `coldStartMs`, et les lire côte à côte sans le dire
+      // fait conclure à une contradiction. Ici on mesure l'attente de l'ancre de
+      // DÉPART, c'est-à-dire l'écran réellement exploitable — splash imposé et
+      // initialisation compris. `am start -W` de `argus-perf` mesure la première
+      // frame. Sur un projet réel : 6 s ici, 1,2 s là-bas, les deux justes.
+      measures: 'attente de l\'écran de départ exploitable (splash et init compris) — '
+        + 'à ne pas confondre avec thresholds.coldStartMs, qui juge la première frame',
       screen: home?.id ?? '',
       anchor: home?.anchor ?? '',
       origin: start.origin,   // declared | home | first — voir startScreen()

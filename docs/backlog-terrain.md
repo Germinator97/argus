@@ -864,7 +864,7 @@ une mesure.
 conclu ») et non plus la brute, et `perf.json` porte `jankComparable` + `jankWhy`
 à côté du relevé. Les deux chiffres restent lisibles ; un seul porte un verdict.
 
-### 86. `declared.model` / `declared.os` sont `null` — et ce n'est plus vrai
+### 86. ✅ Corrigé le 22/08/2026 — `declared.model` / `declared.os` étaient `null`, et ce n'était plus vrai
 
 Le rapport les met à `null` hors `autoStart`, avec sept lignes de commentaire
 expliquant qu'ils « ne servent QU'À `autoStart` ». **Ce n'est plus le cas depuis
@@ -875,19 +875,30 @@ gouvernent désormais quelque chose.
 ⚠️ Le constat de l'agent était juste, son diagnostic incomplet : il y voyait un
 champ vide, c'est une décision devenue fausse.
 
+**Corrigé : les deux clés sont rendues, avec `role` qui dit ce qu'elles
+gouvernent.** C'est ce champ-là qui empêche de les lire comme une description de
+l'appareil — le danger d'origine, qui reste réel. Les taire protégeait d'une
+lecture fausse en en cachant une vraie.
+
 ### 87. §3g fait générer les références APRÈS le premier run
 
 Ce qui garantit une première passe visuelle non exécutée. C'est défendable — on
 prouve d'abord que les flows tournent — mais rien ne le dit, et l'ordre se lit
 comme une erreur.
 
-### 88. Deux temps de démarrage présentés côte à côte sans dire qu'ils diffèrent
+### 88. ✅ Corrigé le 22/08/2026 — Deux temps de démarrage côte à côte, sans dire qu'ils diffèrent
 
 `am start -W` mesure 1,2 s (première frame) quand l'écran d'accueil réel met ~6 s
 (splash imposé + init). Les deux chiffres sont justes et ne mesurent pas la même
 chose ; le rapport les affiche l'un près de l'autre sans le dire. Un lecteur
 pressé y voit une contradiction. `brandedSplashMs` existe et fonctionne, mais il
 n'explique pas cet écart-là.
+
+**Corrigé : chaque chiffre porte `measures`**, une phrase qui dit ce qu'il mesure
+et renvoie à l'autre. `perf.json` précise que `am start -W` s'arrête à la première
+frame ; `startup` du rapport précise qu'il attend l'écran **exploitable**, splash
+et init compris, et qu'il est normalement plus grand. Les deux restent affichés :
+c'est leur écart qui informe, à condition qu'on sache le lire.
 
 ## Ce qui reste
 

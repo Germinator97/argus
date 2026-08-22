@@ -356,6 +356,12 @@ function main() {
   // Le variant du binaire mesuré : `-debug.apk` dans le chemin suffit à le dire,
   // et c'est ce que le scaffold pointe par défaut.
   const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';
+  // ⚠️ Ce que `am start -W` mesure, écrit à côté du chiffre : sans ça, il se lit
+  // en regard de `startup.samples` du rapport principal — qui mesure l'écran
+  // exploitable, splash compris — et l'écart passe pour une contradiction.
+  const mesure = 'am start -W : jusqu\'à la première frame, splash de marque compris mais '
+    + 'PAS l\'initialisation applicative qui suit. Le temps jusqu\'à l\'écran exploitable est '
+    + 'dans startup.samples du rapport principal, et il est normalement plus grand.';
   const comparableJank = jankIfComparable(jank, thresholds.jankFramesPct);
   if (comparableJank.value === null && comparableJank.why) warn(`jank non conclu — ${comparableJank.why}`);
 
@@ -378,6 +384,7 @@ function main() {
       // confondre faisait lire « 0 % » comme une mesure alors que zéro frame
       // avait été rendue — seul `framesRendered` à côté permettait de s'en
       // apercevoir, et rien n'obligeait à le regarder.
+      measures: mesure,
       jankFramesPct: jank.jankFramesPct, framesRendered: jank.totalFrames,
       jankComparable: comparableJank.value, jankWhy: comparableJank.why,
       memoryMb, binarySizeMb: sizeMb,
