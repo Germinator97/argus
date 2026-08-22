@@ -142,19 +142,21 @@ signalée pour la durée métier.
 
 ### Outillage
 
-**25. [vérifié] `make argus-visual` ne fait pas de régression visuelle** — il lance
-`--tags=visual` avec `ARGUS_SCREEN_ID` vide, donc la branche de skip. Seul
-`argus-run` complet boucle sur les écrans.
+**25. ✅ Tranché le 22/08/2026 — la boucle visuelle tournait, le message disait
+le contraire.** Le relevé concluait que `make argus-visual` « ne fait pas de
+régression visuelle ». Mesuré avant de corriger, par `--dry-run` : sur ses trois
+exécutions Maestro, **deux portaient un `ARGUS_SCREEN_ID`** et comparaient bien
+leur écran. Ce qui était vrai : la première incluait ET excluait le tag `visual`,
+donc démarrait une JVM pour n'exécuter aucun flow, et la seule ligne qu'elle
+imprimait était le skip du flow visuel. On lisait ce skip, on concluait que la
+cible était inerte.
 
-**26. [vérifié] `make argus` n'atteint jamais `argus-report`** : `argus-run` sort en
-2 sur un finding, et make s'arrête.
-
-**27. [vérifié] `argus-doctor` sonde le `flutter` du PATH**, pas celui du projet —
-le Makefile dérive pourtant `FLUTTER` de `.fvmrc`. Il a vu 3.32.0 là où le projet
-construit en 3.41.9.
-
-**28. [vérifié] §3g prescrit `flutter build apk --debug` sans `fvm`**, alors que §2a
-l'impose dès qu'un `.fvmrc` existe. La commande échoue sur ce projet.
+Gardé parce que ce qu'il enseigne n'est pas le correctif : **un symptôme observé
+est presque toujours juste, le diagnostic qui l'accompagne beaucoup moins.**
+Appliquer le remède demandé — « seul `argus-run` complet boucle » — aurait fait
+ajouter une boucle qui existait déjà. Et corriger le vrai défaut a immédiatement
+révélé son symétrique, que personne n'avait signalé : `--tags=smoke`, annoncé
+comme le plus rapide, lançait la boucle visuelle entière.
 
 **29. `make argus-a11y` mesure ce qui traîne à l'écran**, sans pouvoir désigner
 l'écran. Lancé après une suite, il a mesuré le **splash** et rendu « rien à
