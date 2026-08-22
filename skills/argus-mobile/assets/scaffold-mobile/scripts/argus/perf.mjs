@@ -167,6 +167,44 @@ function measureJank(udid, packageName) {
 }
 
 /**
+ * Le jank n'est comparable à son seuil que si l'échantillon a la granularité
+ * nécessaire — sinon la mesure est vraie et la conclusion est du bruit.
+ *
+ * Avec N frames rendues, la plus petite valeur non nulle mesurable vaut
+ * `100/N` %. En dessous, un pourcentage ne peut plus que valoir zéro ou
+ * dépasser le seuil : il n'existe aucune valeur intermédiaire à comparer. Une
+ * frame rend 0 % ou 100 %, jamais 1 %. Le plancher se DÉRIVE donc du seuil
+ * (`100/seuil`) plutôt que d'être un nombre choisi — un plancher deviné se
+ * périmerait à la première révision du budget.
+ *
+ * Mesuré sur un projet réel : le même binaire, sur le même appareil, à deux
+ * exécutions d'écart, a rendu `0 %` puis `100 % (framesRendered: 1)`. Le second
+ * était classé `critical`, donc exit 2 : une CI que rien ne distingue d'une
+ * vraie régression de rendu.
+ *
+ * ⚠️ Ce n'est pas un adoucissement : au-dessus du plancher, le seuil s'applique
+ * exactement comme avant. Ce qui est écarté est ce qu'on ne pouvait pas juger.
+ * @param {{jankFramesPct:number|null, totalFrames:number|null}} jank
+ * @param {number} thresholdPct
+ * @returns {{value:number|null, why:string}}
+ */
+export function jankIfComparable(jank, thresholdPct) {
+  const { jankFramesPct, totalFrames } = jank;
+  if (jankFramesPct === null || jankFramesPct === undefined) {
+    return { value: null, why: 'dumpsys gfxinfo n\'a pas rendu de ligne « Janky frames »' };
+  }
+  const floor = thresholdPct > 0 ? Math.ceil(100 / thresholdPct) : 0;
+  if (totalFrames !== null && totalFrames < floor) {
+    return {
+      value: null,
+      why: `échantillon trop court pour conclure : ${totalFrames} frame(s) rendue(s), `
+        + `il en faut ${floor} pour qu'un seuil de ${thresholdPct} % ait une valeur à comparer`,
+    };
+  }
+  return { value: jankFramesPct, why: '' };
+}
+
+/**
  * Mémoire : TOTAL PSS, la mesure qui compte pour un budget d'app.
  * @param {string} udid @param {string} packageName @returns {number|null}
  */
@@ -304,10 +342,13 @@ function main() {
     process.exit(2);
   }
 
+  const comparableJank = jankIfComparable(jank, thresholds.jankFramesPct);
+  if (comparableJank.value === null && comparableJank.why) warn(`jank non conclu — ${comparableJank.why}`);
+
   const findings = [
     thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
     thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
-    thresholdFinding('QAM-PERF-JANK', 'Frames en retard', jank.jankFramesPct, thresholds.jankFramesPct, '%'),
+    thresholdFinding('QAM-PERF-JANK', 'Frames en retard', comparableJank.value, thresholds.jankFramesPct, '%'),
     thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo'),
     thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo'),
   ].filter(Boolean);

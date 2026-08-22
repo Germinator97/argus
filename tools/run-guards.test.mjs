@@ -28,6 +28,7 @@ import { flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../sk
 import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -754,4 +755,39 @@ test('un binaire de PUBLICATION est bien scanné — le garde coupe dans un seul
   assert.equal(facts.scanned, true,
     'sans ça, sauter « sur un debug » se serait mué en « ne jamais rien scanner »');
   assert.equal(facts.isDebugBuild, false);
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// perf.mjs — un pourcentage n'est comparable que si l'échantillon le permet
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Mesuré sur un projet réel : même binaire, même appareil, deux exécutions —
+// « jank 0 % » puis « jank 100 % (framesRendered: 1) ». Le second était classé
+// critical, donc exit 2. Le chiffre était vrai ; la conclusion, du bruit.
+
+test('une seule frame ne conclut rien — et le dit', () => {
+  const { value, why } = jankIfComparable({ jankFramesPct: 100, totalFrames: 1 }, 1);
+  assert.equal(value, null, 'sinon une frame en retard vaut 100 % et fait échouer la CI');
+  assert.match(why, /1 frame/, 'et la raison doit citer la taille de l\'échantillon');
+});
+
+test('un échantillon suffisant est jugé normalement — le garde ne coupe qu\'un sens', () => {
+  const { value } = jankIfComparable({ jankFramesPct: 3.4, totalFrames: 500 }, 1);
+  assert.equal(value, 3.4,
+    'sans ça, « écarter les échantillons courts » deviendrait « ne plus jamais mesurer le jank »');
+});
+
+test('le plancher SUIT le seuil, il n\'est pas un nombre figé', () => {
+  // 40 frames : la granularité est de 2,5 %. Insuffisant pour juger à 1 %,
+  // largement assez pour juger à 5 %. Un plancher constant se tromperait sur
+  // l'un des deux, et se périmerait à la première révision du budget.
+  assert.equal(jankIfComparable({ jankFramesPct: 7, totalFrames: 40 }, 1).value, null);
+  assert.equal(jankIfComparable({ jankFramesPct: 7, totalFrames: 40 }, 5).value, 7);
+});
+
+test('une mesure absente reste absente, sans inventer de raison d\'échantillon', () => {
+  const { value, why } = jankIfComparable({ jankFramesPct: null, totalFrames: null }, 1);
+  assert.equal(value, null);
+  assert.match(why, /gfxinfo/, 'la cause n\'est pas la même, le message non plus');
 });
