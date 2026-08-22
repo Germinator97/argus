@@ -371,7 +371,7 @@ Six gardes, dont un qui branche la décision sur la valeur que `parseArgs` produ
 **vraiment** — la tester sur `''` aurait re-signé le défaut — et un qui vérifie
 l'**ordre** des deux blocs dans la source.
 
-### 65. Le correctif du 58 a CRÉÉ une contradiction dans le même paragraphe
+### 65. ✅ Corrigé le 22/08/2026 — Le correctif du 58 avait CRÉÉ une contradiction dans le même paragraphe
 
 La table ajoutée au §2c prescrit, pour une surface tapable plein écran :
 `explicitChildNodes: true` **+** `onTap:` sur le `Semantics` **+**
@@ -383,6 +383,27 @@ Ma tentative de lever la contradiction (« Dans CETTE forme ») explique *quand*
 l'interdiction vaut, mais ne dit jamais **laquelle des deux recettes choisir**
 pour le cas qui les concerne toutes les deux. Un lecteur applique la première
 qu'il croise.
+
+**Corrigé — et la bonne réponse était qu'il n'y a pas à choisir.** Les deux
+prescriptions ne s'opposent pas, elles se **composent** : l'une dit COMBIEN de
+nœuds (deux — une racine inerte, une commande), l'autre dit COMMENT écrire le
+nœud commande **selon ce qu'il recouvre**. Une surface tapable plein écran relève
+des deux à la fois. Le §2c porte désormais le critère en une question — « ce nœud
+recouvre-t-il du contenu que quelqu'un doit entendre ? » — et l'exemple de code,
+qui montrait le cas plein écran avec la recette du petit bouton, a été aligné sur
+sa propre table.
+
+⚠️ **Ce qui rendait la contradiction crédible des deux côtés : l'interdiction du
+`onTap:` n'a pas deux versions, elle a un interrupteur.** Tant que le nœud
+fusionne, le geste fournit l'action et la doubler crée deux nœuds tapables ; dès
+qu'`explicitChildNodes: true` coupe la fusion, l'action ne remonte plus et il faut
+la lui donner. Énoncée sans nommer l'interrupteur, la règle se lit comme deux
+prescriptions inverses pour le même écran.
+
+⚠️ Et ce qui a été **ajouté** est marqué comme tel : les trois lignes de l'exemple
+composent deux mesures existantes, elles ne viennent pas d'un troisième relevé.
+Le label de la forme d'origine n'a jamais été mesuré, et le document le dit
+maintenant plutôt que de laisser croire le contraire.
 
 ### 66. ✅ Corrigé le 22/08/2026 — Un défaut du CADRE signalé par un run ne remontait pas tout seul
 

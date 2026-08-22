@@ -200,6 +200,21 @@ Poser `explicitChildNodes` coupe la fusion, donc l'action du `GestureDetector` n
 remonte plus au nœud ancré : il faut la lui donner, et faire taire celle d'en
 dessous pour ne pas en avoir deux.
 
+**Le critère qui tranche tient en une question : ce nœud recouvre-t-il du contenu
+que quelqu'un doit entendre ?**
+
+| Le nœud commande recouvre… | Ce qu'on écrit |
+|---|---|
+| un contrôle et rien d'autre (bouton, ligne, champ) | **laisse-le fusionner** : ni `explicitChildNodes`, ni `onTap:` — le `GestureDetector` en dessous fournit l'action |
+| du contenu à annoncer (titre, chronomètre, tout un écran) | **coupe la fusion** : `explicitChildNodes: true` + `onTap:` + `excludeFromSemantics: true` sur le geste |
+
+⚠️ **Cette table et celle de « racine AUSSI commande », plus bas, ne s'opposent
+pas — elles se composent, et les avoir lues comme un choix a coûté un run.**
+L'une dit COMBIEN de nœuds (deux : une racine inerte, une commande), l'autre dit
+COMMENT écrire le nœud commande selon ce qu'il recouvre. Une surface tapable
+plein écran relève des deux à la fois : deux nœuds, dont celui du bas avec la
+fusion coupée.
+
 ⚠️ **Une racine d'écran qui est AUSSI une commande.** Tap-to-pause, tap-to-dismiss,
 pull-to-refresh : toute la surface réagit, et la consigne « une racine inerte » n'a
 pas prévu ce cas. **Ne pose pas l'ancre et l'action sur le même nœud.** Ça marche
@@ -219,22 +234,39 @@ Semantics(                            // la racine — inerte, comme sur les aut
     container: true,
     button: true,
     label: 'Lecture ou pause',
-    child: GestureDetector(onTap: _basculer, child: …),
+    // La commande couvre TOUT l'écran, donc elle recouvre du contenu à
+    // annoncer : on coupe sa fusion, et on lui rend l'action que couper vient
+    // de lui retirer. C'est la troisième ligne de la table plus haut.
+    explicitChildNodes: true,
+    onTap: _basculer,
+    child: GestureDetector(
+      onTap: _basculer,
+      excludeFromSemantics: true,     // sinon deux nœuds tapables superposés
+      child: …,
+    ),
   ),
 )
 ```
 
-Relevé de cette forme exacte : `player_root` rend `actions=` *(aucune)* et un
-label vide, `player_toggle` rend `actions=tap`. Le flow garde donc deux cibles qui
-ne disent pas la même chose — « je suis sur le lecteur » et « j'actionne le
-lecteur » — et l'écran reste comparable aux autres.
+Relevé de la forme SANS ces trois lignes : `player_root` rend `actions=` *(aucune)*
+et un label vide, `player_toggle` rend `actions=tap`. Le flow garde donc deux
+cibles qui ne disent pas la même chose — « je suis sur le lecteur » et
+« j'actionne le lecteur » — et l'écran reste comparable aux autres.
 
-⚠️ **Dans CETTE forme, ne mets pas `onTap:` sur le `Semantics` de commande** : il
-fusionne avec le `GestureDetector`, qui fournit déjà l'action, et doubler créerait
-deux nœuds tapables superposés. La règle vaut tant que le nœud fusionne — elle
-s'inverse dès qu'on pose `explicitChildNodes: true`, qui coupe précisément cette
-fusion (voir la table plus haut). Les deux phrases se sont contredites pendant une
-journée, et c'est un run en aveugle qui l'a relevé, pas une relecture.
+⚠️ **Ce qui n'a PAS été mesuré sur cette forme-là, c'est son label.** Le relevé
+ci-dessus dit que l'action remonte, jamais ce que TalkBack annonce ; et la table
+de l'absorption, elle, a été mesurée : un nœud qui fusionne avale le texte qu'il
+recouvre. Les trois lignes ajoutées ci-dessus composent ces deux mesures, elles ne
+viennent pas d'un troisième relevé. Sur un écran qui n'a rien à annoncer sous la
+commande, la forme d'origine reste correcte.
+
+⚠️ **Ne mets `onTap:` sur un `Semantics` de commande QUE si tu viens de couper sa
+fusion.** Tant qu'il fusionne, le `GestureDetector` fournit déjà l'action et
+doubler créerait deux nœuds tapables superposés ; dès que `explicitChildNodes:
+true` coupe la fusion, l'action ne remonte plus et il faut la lui donner. La règle
+n'a donc pas deux versions, elle a un interrupteur — et c'est de l'avoir énoncée
+sans le nommer que sont nées deux prescriptions qui se contredisaient pour le
+même écran. Deux runs en aveugle l'ont relevé, jamais une relecture.
 
 ⚠️ **Une ancre ne se dérive JAMAIS d'un texte affiché.** Un libellé est traduit,
 et une ancre bâtie dessus (`'nav_${label}'`, `id: 'onglet_$titre'`) change avec
