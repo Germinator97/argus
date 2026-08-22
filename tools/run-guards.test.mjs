@@ -14,7 +14,7 @@
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -31,7 +31,7 @@ import { stalenessOf } from '../skills/argus-mobile/assets/scaffold-mobile/scrip
 import { identifyScreen } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { jankIfComparable } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
-import { cropFor } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { cropFor, installHint } from '../skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -952,4 +952,93 @@ test('un cadrage vide n\'est pas un cadrage — il retombe sur le défaut', () =
   // élément d'identifiant « » et échouerait. Vide veut dire « plein écran ».
   assert.equal(cropFor({ id: 'a', visualCropOn: '   ' }, { visualCropOn: 'global' }), 'global');
   assert.equal(cropFor({ id: 'a' }, {}), '');
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Ce que le skill mobile emprunte au skill web — figé par ÉGALITÉ
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le plugin livre les deux skills ensemble parce que le mobile n'est pas
+// autonome : il délègue au web la méthodologie de base, les garde-fous
+// transverses et le contrat de sortie. Copier `skills/argus-mobile/` seul casse
+// ces chemins EN SILENCE — l'agent lit que le format de base vit ailleurs, ne le
+// trouve pas, et invente un format de rapport.
+//
+// La décision de ne pas scinder tient tant que ce tronc reste petit. Plutôt que
+// de le re-mesurer à la main un jour, ce garde le fige par ÉGALITÉ : une
+// référence ajoutée le fait rougir (le tronc grossit, il faut rouvrir le
+// dossier), une référence retirée aussi (le mobile devient autonome, la
+// scission redevient possible). Les deux sont des nouvelles, pas des défauts —
+// le message le dit.
+
+test('le tronc commun mobile → web n\'a pas bougé', () => {
+  const dir = join(RACINE, 'skills/argus-mobile');
+  const vus = [];
+  const parcourir = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const c = join(d, e.name);
+      if (e.isDirectory()) { parcourir(c); continue; }
+      if (!/\.(md|mjs|dart|sh|ya?ml)$/.test(e.name)) continue;
+      const texte = readFileSync(c, 'utf8');
+      for (const m of texte.matchAll(/\.\.\/\.\.\/argus\/references\/([a-z-]+\.md)/g)) {
+        vus.push(`${c.slice(dir.length + 1)} → ${m[1]}`);
+      }
+    }
+  };
+  parcourir(dir);
+  assert.ok(vus.length > 0, 'aucune référence trouvée — le motif a changé, le garde est vacant');
+
+  assert.deepEqual(vus.sort(), [
+    'SKILL.md → report-format.md',
+    'references/methodology-mobile.md → methodology.md',
+    'references/methodology-mobile.md → methodology.md',
+    'references/report-format-mobile.md → report-format.md',
+  ], 'le tronc commun a changé. Ce n\'est pas un défaut, c\'est une décision à reprendre : '
+   + 'docs/chantiers-differes.md § A explique pourquoi le plugin livre les deux skills, '
+   + 'et à quelle condition ça cesse d\'être le bon choix.');
+
+  // Ce qui est emprunté doit exister : un chemin cassé ne lève nulle part.
+  for (const cible of new Set(vus.map((v) => v.split(' → ')[1]))) {
+    assert.ok(existsSync(join(RACINE, 'skills/argus/references', cible)),
+      `${cible} est référencé par le skill mobile et n'existe pas — le renvoi est mort`);
+  }
+});
+
+
+// ───────────────────────────────────────────────────────────────────────────
+// Un échec d'installation dit le GESTE, pas seulement le symptôme
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le harnais n'installe qu'avec `-r` et ne désinstalle jamais. Les échecs qui en
+// découlent sont bruyants — le double contrôle interdit de poursuivre sur la
+// version précédente — mais le message brut d'adb nomme un code sans dire quoi
+// en faire, et le lecteur doit deviner. C'est le défaut que le point 7 avait
+// déjà corrigé ailleurs.
+
+test('les trois échecs d\'installation courants nomment le geste', () => {
+  for (const code of ['INSTALL_FAILED_UPDATE_INCOMPATIBLE', 'signatures do not match',
+    'INSTALL_FAILED_VERSION_DOWNGRADE', 'INSTALL_FAILED_INSUFFICIENT_STORAGE']) {
+    const hint = installHint(code, 'com.exemple.app');
+    assert.notEqual(hint, '', `${code} n'est pas reconnu — le lecteur reste avec un code brut`);
+    assert.ok(/relance|repartira|Libère/.test(hint), `${code} explique sans dire quoi faire`);
+  }
+});
+
+test('proposer une désinstallation dit toujours ce qu\'elle DÉTRUIT', () => {
+  // C'est une écriture irréversible sur l'appareil de quelqu'un. Le harnais ne
+  // la fait pas à sa place ; s'il la suggère, il en donne le prix.
+  for (const code of ['INSTALL_FAILED_UPDATE_INCOMPATIBLE', 'INSTALL_FAILED_VERSION_DOWNGRADE']) {
+    const hint = installHint(code, 'com.exemple.app');
+    assert.match(hint, /adb uninstall com\.exemple\.app/, 'la commande doit être donnée telle quelle');
+    assert.match(hint, /EFFACE les données/, `${code} propose une désinstallation sans en dire le prix`);
+  }
+  // Le manque de place ne se règle pas en désinstallant l'app qu'on veut poser.
+  assert.ok(!installHint('INSTALL_FAILED_INSUFFICIENT_STORAGE', 'x').includes('adb uninstall'),
+    'suggérer de désinstaller ici ferait détruire des données pour rien');
+});
+
+test('un échec inconnu n\'invente pas de remède', () => {
+  assert.equal(installHint('quelque chose que personne n\'a prévu', 'x'), '',
+    'un conseil inventé sur un code non reconnu enverrait chercher au mauvais endroit');
 });

@@ -322,6 +322,37 @@ function installApp(platform, udid, binaryPath, appId, dryRun) {
 }
 
 /**
+ * Traduit un échec d'`adb install` en geste à faire.
+ *
+ * ⚠️ Le harnais n'installe qu'avec `-r` — réinstaller par-dessus — et ne
+ * désinstalle jamais : effacer l'app de quelqu'un n'est pas à lui d'en décider.
+ * Trois échecs courants en découlent, et le message brut d'`adb` les nomme sans
+ * dire quoi en faire. Un rapport qui n'a que le symptôme envoie chercher là où
+ * il n'y a rien — c'est le même défaut que le message d'ancre du point 7.
+ *
+ * On ne propose donc PAS de désinstaller à la place de l'utilisateur : on lui
+ * donne la commande, avec ce qu'elle détruit.
+ * @param {string} sortie @param {string} packageName @returns {string}
+ */
+export function installHint(sortie, packageName) {
+  const geste = `\n  → adb uninstall ${packageName} puis relance. `
+    + '⚠️ Cela EFFACE les données de cette app sur cet appareil.';
+  if (/INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match|INCONSISTENT_CERTIFICATES/i.test(sortie)) {
+    return `\n  L'app est déjà installée avec une AUTRE signature — un build du store, `
+      + `ou un autre keystore. Android refuse de la remplacer.${geste}`;
+  }
+  if (/INSTALL_FAILED_VERSION_DOWNGRADE/i.test(sortie)) {
+    return `\n  La version installée est plus RÉCENTE que celle que tu poses. `
+      + `\`-r\` ne sait pas revenir en arrière.${geste}`;
+  }
+  if (/INSTALL_FAILED_INSUFFICIENT_STORAGE/i.test(sortie)) {
+    return '\n  L\'appareil n\'a plus de place. Libère de l\'espace ou recrée l\'émulateur — '
+      + 'inutile de désinstaller quoi que ce soit d\'autre, l\'installation repartira.';
+  }
+  return '';
+}
+
+/**
  * @param {string} udid @param {string} apk @param {string} packageName
  * @returns {{ok:boolean, proof:string}}
  */
@@ -330,7 +361,7 @@ function installAndroid(udid, apk, packageName) {
   const said = /Success/i.test(`${res.stdout}${res.stderr}`);
   if (!res.ok || !said) {
     const detail = (res.stderr || res.stdout || res.error || '').trim().split('\n').slice(-3).join(' ');
-    return { ok: false, proof: `adb install n'a pas dit « Success » : ${detail || 'sortie vide'}` };
+    return { ok: false, proof: `adb install n'a pas dit « Success » : ${detail || 'sortie vide'}${installHint(detail, packageName)}` };
   }
   const listed = sh('adb', ['-s', udid, 'shell', 'pm', 'list', 'packages', packageName]);
   if (!listed.stdout.includes(`package:${packageName}`)) {
