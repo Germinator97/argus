@@ -914,14 +914,107 @@ frame ; `startup` du rapport précise qu'il attend l'écran **exploitable**, spl
 et init compris, et qu'il est normalement plus grand. Les deux restent affichés :
 c'est leur écart qui informe, à condition qu'on sache le lire.
 
+## Run 8 — le VOISIN, trois fois
+
+**11 flows sur 11 `COMPLETED`**, 35 tests d'ancres, 380 gardes d'étage 1,
+555 tests verts, `coverage.notConfigured` vide, cycle visuel prouvé en trois
+temps avec restauration par hash.
+
+⚠️ **Les huit correctifs de la passe 79–88 ont été exercés**, et les nouveautés
+ont servi telles quelles : `displays:` employé pour cinq ancres, le second
+`argus-run` de §3g joué sans qu'on le demande, et la commande de build ciblée
+(`--target-platform android-arm64`, 118 → 92 Mo) reprise pour sortir d'un
+`INSTALL_FAILED_INSUFFICIENT_STORAGE`.
+
+⚠️ **Et quatre des neuf constats désignent la passe de la veille — trois par le
+MÊME mécanisme.** Corriger un endroit laisse le voisin intact :
+
+| corrigé la veille | le voisin, resté fautif |
+|---|---|
+| `startupHint` filtré par commande (84) | `vanishedHint`, dix lignes plus bas, ne l'est pas |
+| le commentaire de `run.mjs` sur `model`/`os` (86) | celui d'`argus.mobile.yaml` dit encore « uniquement » |
+| `commandsAfterScroll` pour les commandes (69) | `displays:` n'a pas son troisième état (81) |
+
+C'est la **troisième passe consécutive** où ce motif sort, et la deuxième où il
+sort trois fois. Ce n'est plus un oubli, c'est la façon dont les correctifs sont
+pensés : locaux, alors que les défauts sont des manières de raisonner.
+
+### 89. `displays:` n'a pas de troisième état — le 81 s'arrête où le 69 continuait
+
+Un affichage sous le pli a **exactement** les deux mauvaises issues que
+`commandsAfterScroll` a fermées pour les commandes : le déclarer rend la suite
+rouge en permanence, l'omettre le sort de toute vérification. `form_reps_value`
+est resté non déclaré pour cette seule raison — c'est le seul écart entre les
+72 ancres posées et les 71 prouvées.
+
+### 90. `vanishedHint` colle son diagnostic sur un finding visuel
+
+Corrigé la veille pour `startupHint` (point 84), pas pour son voisin de dix
+lignes. Un `QAM-001` de seuil visuel porte donc : « cette ancre a été TROUVÉE
+plus tôt puis a disparu : l'instrumentation est bonne, c'est l'ÉTAT de l'app qui
+a changé ». Diagnostic exact pour une autre classe de finding, recollé sur une
+image de référence qui a simplement changé.
+
+### 91. Le plancher d'attente a11y est le splash, pas le temps d'écran exploitable
+
+Mon correctif du 79 attend `brandedSplashMs` avant de conclure qu'un écran
+immobile est posé. Sur ce projet : **splash déclaré 2000 ms, écran exploitable
+mesuré 5015 à 7299 ms**. La boucle sort donc encore trop tôt, et `make argus-a11y`
+a mesuré le splash — l'agent a dû le contourner à la main.
+
+⚠️ **J'ai confondu les deux grandeurs que le point 88 m'a fait documenter la
+veille**, dans la même passe. Écrire la distinction ne suffit pas à s'en servir.
+
+### 92. `devices[].model` a deux vocabulaires pour une clé
+
+`argus.mobile.yaml` dit « ce sont des noms **MAESTRO**, consommés par `autoStart`
+**uniquement** » ; `ciEmulator()` s'en sert comme **profil `avdmanager`** pour
+`android-emulator-runner`. Les deux nomenclatures se ressemblent assez pour qu'on
+ne voie pas l'écart, et assez peu pour qu'un nom valide d'un côté ne le soit pas
+de l'autre. Le mot « uniquement » est faux depuis le point 67 — c'est le
+commentaire que le 86 a corrigé dans `run.mjs`, et pas ici.
+
+### 93. §2c-bis prescrit `home-empty`, `goto.yaml` ne connaît que `home`
+
+Le gabarit du skill donne `id: home-empty` (« une entrée PAR ÉTAT »), et la
+branche « rien à naviguer » du sous-flow teste `SCREEN_ID === 'home'`. En suivant
+le skill à la lettre, elle ne matche jamais.
+
+### 94. La table §2c ne couvre pas `InkResponse`
+
+C'est pourtant le bouton-icône réel de deux écrans de ce projet. L'agent a
+raisonné par analogie avec `InkWell`, puis mesuré — alors que le §2c invite
+précisément à ne pas raisonner par analogie.
+
+### 95. §3g ne prévoit pas que l'installation puisse échouer
+
+La séquence suppose que `argus-run` passe. Quand l'installation refuse — place
+disque, ici — il faut rebâtir et tout reprendre : deux runs de plus, non annoncés.
+La méthodologie le dit ailleurs (« INSTALL n'est pas une formalité ») ; §3g ne le
+laisse pas prévoir.
+
+### 96. Le compteur de l'installeur compte les `TODO(argus):` qui EXPLIQUENT
+
+Les cinq champs de `harness.dart` portent leur consigne dans un **dartdoc** qui
+commence par `TODO(argus):`. Remplis, ils restent comptés : le fichier rapporte
+« 5 TODO à traiter » pour l'éternité.
+
+⚠️ C'est le défaut que l'en-tête de l'installeur décrit lui-même pour
+`ARGUS:OWNED` — un fichier classé par ce qu'il **dit** — et dont la protection
+n'a jamais été étendue au compteur. Deuxième défaut de ce compteur en deux runs
+(cf. 70).
+
+### 97. Une phrase interrompue en tête de `methodology-mobile.md`
+
+« *Ce qui est identique au web n'est pas recopié : sévérité, exit codes,* » —
+puis rien. Coupure d'édition, dans les sept premières lignes du document le plus
+lu après le SKILL.
+
 ## Ce qui reste
 
-**Les points 79 à 88**, rendus par le run 7 et tous reproduits avant d'être
-inscrits — dont le **79**, qui est un correctif de la veille resté à moitié, et
-le **80**, une ligne fautive que l'édition de sa voisine n'a pas vue.
-
-Et le chantier **§ E** de `docs/chantiers-differes.md` : l'APK installé embarque
-quatre ABI quand l'appareil n'en lit qu'une — 84,9 Mo contre 39,7.
+**Les points 89 à 97**, rendus par le run 8 et tous reproduits avant d'être
+inscrits. Quatre visent la passe de la veille, **trois par le même mécanisme** :
+le correctif a été posé à un endroit, son voisin l'a attendu en vain.
 
 Et ce que cinq runs ont établi, qui ne se périme pas : une passe trouve ce qui
 manque, la suivante trouve ce que la correction a introduit **ou n'a pas
