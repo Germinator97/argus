@@ -195,7 +195,7 @@ soixante-dix commits pour une raison simple : rien n'a jamais été poussé, don
 workflow n'a jamais tourné une seule fois. **Un garde qui ne s'exécute pas est
 indiscernable d'un garde qui passe.**
 
-## Rendu par le run 4 — vérification, 22/08/2026
+## Rendu par le run 4 — vérification, 22/08/2026 — clos
 
 **Un run de VÉRIFICATION**, pas de découverte : même terrain remis à neuf, pour
 contrôler que les vingt et un correctifs du run 3 avaient porté. Ils ont porté —
@@ -242,7 +242,7 @@ propre copie et muter le code de production les laissait verts. C'est la mutatio
 qui l'a dit, jamais la relecture. La décision est extraite et exportée ; le test
 de rétrocompatibilité lit un vrai fichier au lieu de fabriquer l'objet.
 
-### 58. `explicitChildNodes: true` sur un nœud commande plein écran rend l'ancre INERTE
+### 58. ✅ Corrigé le 22/08/2026 — `explicitChildNodes: true` sur un nœud commande plein écran rend l'ancre INERTE
 
 Ajouté au §2c le matin même — « à défaut, `explicitChildNodes: true` sur le nœud
 commande garde ses descendants distincts » — et il contredit une phrase du même
@@ -258,13 +258,13 @@ mesurés sur deux écrans :
 La troisième voie manque, et l'interdiction du `onTap:` n'est vraie que quand le
 nœud fusionne.
 
-### 59. Le bloc `.gitignore` ne couvre pas les diffs visuels
+### 59. ✅ Corrigé le 22/08/2026 — Le bloc `.gitignore` ne couvre pas les diffs visuels
 
 Un run visuel en échec écrit `<écran>_diff.png` **dans** le dossier des
 références, volontairement versionné. `git status` le voit. Il manque
 `/.maestro/_baselines/**/*_diff.png` dans le bloc géré par l'installeur.
 
-### 60. `argus-sec` exige la release, mais lit la clé qui sert à INSTALLER
+### 60. ✅ Corrigé le 22/08/2026 — `argus-sec` exige la release, mais lit la clé qui sert à INSTALLER
 
 `sec.mjs` lit `config.build.android` — la même clé qui décide de ce que le runner
 **installe** sur l'appareil. Les deux usages tirent en sens inverse et il
@@ -273,7 +273,7 @@ n'existe aucun override (`parseArgs` n'accepte que `--platform` et
 fait sauter la dimension, il faut pointer la release — donc éditer la config
 entre deux runs. Il faut un chemin distinct pour l'analyse, ou un override.
 
-### 61. Taille et mémoire comparées à des budgets de RELEASE sur un build debug
+### 61. ✅ Corrigé le 22/08/2026 — Taille et mémoire comparées à des budgets de RELEASE sur un build debug
 
 `binarySizeMb` 117,5 contre un budget de 60 → finding `major`. La release du même
 projet fait **32,1 Mo**, largement sous le seuil. La config avertit explicitement
@@ -297,10 +297,15 @@ raison dix-sept fois.
 
 ## Ce qui reste
 
-**Les points 58 à 61.** Le 57 est clos, le 62 était faux.
+**Rien — cinquième fois.** Les six constats du run 4 sont traités : quatre
+corrigés, un l'était déjà (57), un était faux (62).
 
-Et la seule chose qui ne se périme pas dans ce fichier, écrite pour la cinquième
-fois : une passe trouve ce qui manque, la suivante trouve ce que la correction a
-introduit ou n'a pas branché. Le run 4 en est la démonstration la plus nette —
-il a confirmé que vingt et un correctifs avaient porté, **et** trouvé qu'un
+Ce fichier n'a plus qu'une chose à apprendre à qui le rouvre, et elle a tenu
+quatre runs : une passe trouve ce qui manque, la suivante trouve ce que la
+correction a introduit ou n'a pas branché. Le run 4 en est la démonstration la
+plus nette — il a confirmé que vingt et un correctifs avaient porté, **et** qu'un
 d'entre eux avait vidé un garde en silence.
+
+Le prochain run de **découverte** devra se jouer sur un projet qui **consomme une
+API** : les quatre premiers ont tous été joués sur un terrain sans backend, et ce
+volet du skill n'a jamais été exercé (`chantiers-differes.md` § C).
