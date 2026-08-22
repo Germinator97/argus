@@ -651,11 +651,21 @@ arriver deux fois de suite ? »**. Si la réponse demande un « en général »,
 ce cas-ci — et le mettre dans `screens[]` produirait un flow qui échoue par
 intermittence, la pire des suites, celle qu'on finit par ignorer.
 
-### 76. §1 demande une ligne de cadrage « avant d'agir », qu'un sous-agent ne peut pas rendre
+### 76. ✅ Corrigé le 22/08/2026 — §1 demandait une ligne « avant d'agir » qu'un sous-agent ne peut pas rendre
 
 Un agent non interactif n'a qu'un seul canal, son rapport final : la ligne arrive
 donc **après** les décisions qu'elle sert à faire démentir. Le skill suppose un
 interlocuteur ; `PROMPTS.md` traite le cas inverse mais §1 ne le dit pas.
+
+**Corrigé : §1 nomme le cas et dit quoi faire.** Écrire la ligne en tête du
+rapport — elle ne prévient plus, mais elle rend relisible ce qui suit — **et** la
+poser dans `argus.mobile.yaml`, près de chaque clé qu'elle gouverne : c'est le
+seul endroit qui survit au rapport, et celui que la personne suivante ouvrira.
+
+⚠️ Et surtout : **ne pas s'arrêter pour demander**. Un agent non interactif qui
+attend une réponse qui ne viendra jamais ne rend rien du tout — pire qu'un choix
+assumé. Six runs le confirment : ce que ces agents ont produit de plus utile est
+la liste de ce qu'ils ont tranché seuls, jamais leurs questions.
 
 ### 77. ✅ Corrigé le 22/08/2026 — Le banc JETAIT la sortie de l'installeur, et n'armait pas le cas
 

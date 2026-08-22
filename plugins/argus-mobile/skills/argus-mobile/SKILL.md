@@ -67,6 +67,22 @@ de **rendre visibles celles qui restent** :
 Une ligne, avant d'agir. Elle ne coûte rien et elle transforme un choix invisible
 en décision que quelqu'un peut démentir.
 
+⚠️ **Et si tu n'as personne à qui parler ?** Une tâche de fond, un agent délégué,
+un job de CI n'ont qu'un seul canal : leur rapport final. La ligne y arriverait
+donc APRÈS les décisions qu'elle sert à faire démentir — ce qui la rend inutile
+au moment où elle vaudrait le plus. Deux gestes la sauvent :
+
+1. **Écris-la quand même, en tête du rapport**, pas noyée au milieu. Elle ne
+   préviendra pas, mais elle rendra relisible tout ce qui suit.
+2. **Écris-la aussi dans `argus.mobile.yaml`**, à l'endroit que chaque choix
+   gouverne — `ENV` près de sa clé, le device près de la sienne. C'est le seul
+   endroit qui survit à ton rapport, et celui que la personne suivante ouvrira.
+
+⚠️ Ne t'arrête PAS pour demander : un agent non interactif qui attend une réponse
+qui ne viendra jamais ne rend rien du tout, et c'est pire qu'un choix assumé.
+Tranche, écris ce que tu as tranché, et poursuis. `PROMPTS.md` existe pour que ce
+cas soit cadré d'avance — mais il ne l'est jamais complètement.
+
 ═══════════════════════════════════════════════════════════════════════════════
 ## 2. Reconnaissance du projet Flutter (AVANT tout le reste)
 ═══════════════════════════════════════════════════════════════════════════════
