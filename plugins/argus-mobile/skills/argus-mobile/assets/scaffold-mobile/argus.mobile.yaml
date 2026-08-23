@@ -25,6 +25,22 @@
 #   `yes`/`no`/`on`/`off` nus (ambigus en YAML 1.1 — écris true/false)
 # ═══════════════════════════════════════════════════════════════════════════
 
+# ── Le cadrage de ce run ───────────────────────────────────────────────────
+# `env`  : local | staging | prod — commande les garde-fous, pas le niveau de
+#          détail. `local` autorise les écritures et l'effacement des données de
+#          l'app ; si ton app pointe ailleurs que vers des données jetables,
+#          `local` est une DÉCISION, pas un défaut.
+# `mode` : REGRESS installer la garde | EXPLORE auditer sans rien laisser |
+#          DEMO filmer.
+# Les deux sont recopiés tels quels dans `run.env` / `run.mode` du rapport :
+# c'est ce qui permet de relire un rapport sans deviner sous quel régime il a
+# été produit. ⚠️ Ces clés ont manqué neuf runs — le contrat de sortie les
+# promettait, rien ne les écrivait, et deux agents de suite ont rangé le cadrage
+# en commentaire d'en-tête faute d'endroit où le mettre.
+run:
+  env: local
+  mode: REGRESS
+
 # ── L'application sous test ────────────────────────────────────────────────
 app:
   # Nom du paquet Dart (pubspec.yaml → name). Sert d'étiquette dans les rapports.

@@ -321,6 +321,13 @@ export function parseYaml(source, file = '<yaml>') {
 
 /** Défauts appliqués sous la config lue : un fichier amputé ne fait pas planter. */
 const DEFAULTS = {
+  // Le cadrage du run, celui que le SKILL §1 demande d'écrire « près de sa clé ».
+  // ⚠️ Ces deux clés ont manqué neuf runs : le contrat de sortie les promettait
+  // (`run.env`, `run.mode`), le rapport ne les écrivait pas, et la consigne
+  // désignait un emplacement qui n'existait pas — deux agents de suite ont donc
+  // rangé ENV en commentaire d'en-tête, chacun à sa façon. Une consigne qui
+  // pointe une case absente se solde par une case inventée.
+  run: { env: 'local', mode: 'REGRESS' },
   app: { name: 'app', androidPackage: '', iosBundleId: '', flavor: '' },
   build: {
     android: 'build/app/outputs/flutter-apk/app-debug.apk',

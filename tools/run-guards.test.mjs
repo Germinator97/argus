@@ -1854,3 +1854,70 @@ test('une génération réussie sans finding ne dit rien de superflu', () => {
   assert.deepEqual({ exit: v.exit, w: v.warnings.length, e: v.errors.length }, { exit: 0, w: 0, e: 0 },
     'pas d\'avertissement quand il n\'y a rien à expliquer');
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le contrat de sortie, un cran PLUS BAS
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le garde du dessus fige les clés de PREMIER niveau, et il a tenu. Le bloc
+// jsonc, lui, promet aussi le contenu de `run` — dont `env` et `mode`, qui
+// n'ont jamais été écrits : neuf runs, aucun rouge. Le garde existait, il
+// s'arrêtait à un niveau. C'est le motif du chantier appliqué à un garde.
+//
+// `commit?` porte un point d'interrogation : le contrat le déclare facultatif,
+// il est donc exclu du relevé — la marque est ce qui rend la promesse tenable.
+
+/** Les sous-clés que le bloc jsonc promet à `run`, hors optionnelles. */
+function sousClesRunDocumentees() {
+  const doc = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/references/report-format-mobile.md'), 'utf8');
+  const m = /"run":\s*\{([^}]*)\}/.exec(doc);
+  assert.ok(m, 'le bloc jsonc ne décrit plus `run` — reformulé ? le garde est vacant');
+  const cles = [...m[1].matchAll(/"([a-zA-Z_]+)(\??)"/g)]
+    .filter((x) => x[2] !== '?').map((x) => x[1]).sort();
+  assert.ok(cles.length >= 3, `motif trouvé mais quasi vide : ${cles.length} clé(s)`);
+  return cles;
+}
+
+/** Les sous-clés réellement écrites dans `report.run` par run.mjs. */
+function sousClesRunEcrites() {
+  const src = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  // ⚠️ Depuis `const report = {`, jamais depuis le début du fichier : la
+  // PREMIÈRE occurrence de `run: {` est le rapport d'interruption, écrit sur
+  // une ligne et porteur de trois clés. Ancré là, ce garde relevait « 0 clé »
+  // et son assertion de non-vacuité l'a dit — sinon il aurait comparé le
+  // contrat au mauvais bloc, et rendu un verdict sur autre chose.
+  const base = src.indexOf('const report = {');
+  assert.notEqual(base, -1, 'le littéral `const report = {` est introuvable — le garde ne garde plus rien');
+  const i = src.indexOf('    run: {', base);
+  assert.notEqual(i, -1, 'le bloc `run` du rapport est introuvable — le garde ne garde plus rien');
+  let prof = 0; let fin = i;
+  for (let k = src.indexOf('{', i); k < src.length; k++) {
+    if (src[k] === '{') prof++;
+    else if (src[k] === '}' && --prof === 0) { fin = k; break; }
+  }
+  const cles = []; let p = 0;
+  for (const ligne of src.slice(i, fin + 1).split('\n')) {
+    // ⚠️ TOUTES les clés de la ligne, pas la première : le rapport en groupe
+    // plusieurs par ligne (`startedAt: …, platform, appVersion: …`). Ne lire que
+    // la première faisait manquer `platform`, `appVersion` et `mode`, et le
+    // garde accusait le code d'omissions qu'il n'avait pas.
+    if (p === 1 && !/^\s*\/\//.test(ligne)) {
+      // Le délimiteur de fin en LOOKAHEAD : le consommer mangeait la virgule
+      // qui sert d'ancre au match suivant, si bien qu'une clé sur deux
+      // disparaissait dans une ligne groupée (`platform, appVersion: …`).
+      for (const m of ligne.matchAll(/(?:^\s{6}|[{,]\s*)([a-zA-Z_]+)(?=\s*[:,])/g)) cles.push(m[1]);
+    }
+    p += (ligne.match(/\{/g) ?? []).length - (ligne.match(/\}/g) ?? []).length;
+  }
+  assert.ok(cles.length >= 4, `motif trouvé mais quasi vide : ${cles.length} clé(s)`);
+  return cles.sort();
+}
+
+test('tout ce que le contrat promet à `run` est écrit', () => {
+  const promis = sousClesRunDocumentees();
+  const ecrites = sousClesRunEcrites();
+  const manquantes = promis.filter((k) => !ecrites.includes(k));
+  assert.deepEqual(manquantes, [],
+    'le contrat de sortie promet ces sous-clés de `run` et rien ne les écrit — '
+    + 'écris-les, ou retire-les du contrat :\n  ' + manquantes.join(', '));
+});

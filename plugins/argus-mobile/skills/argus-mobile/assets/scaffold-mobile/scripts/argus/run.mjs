@@ -1459,6 +1459,10 @@ async function main() {
   const report = {
     run: {
       startedAt: startedAt.toISOString(), platform, appVersion: pubspecVersion(), appName: config.app.name,
+      // Le cadrage, tel qu'il est CONFIGURÉ. Le contrat de sortie promettait ces
+      // deux clés depuis le début et rien ne les écrivait — neuf runs, aucun
+      // rouge, parce que le garde du contrat s'arrêtait au premier niveau.
+      env: config.run.env, mode: config.run.mode,
       flavor: config.app.flavor, appId, budget,
       // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
       // la config ici ferait dire au rapport « Medium_Phone » quel que soit le
