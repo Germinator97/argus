@@ -1686,7 +1686,7 @@ assume que le cadrage est réparti — avec la raison, et l'interdit qui va avec
 un bloc en tête **en plus**, jamais **à la place**, parce qu'un commentaire ne
 gouverne rien.
 
-### 127. §3g dit « la suite », alors que le critère est « le flow qui produit la capture »
+### 127. ✅ Corrigé le 23/08/2026 — §3g dit « la suite », alors que le critère est « le flow qui produit la capture »
 
 Le texte justifie l'ordre run → baselines → run ainsi : « une référence prise sur
 une suite dont on n'a pas encore prouvé qu'elle tourne fige un écran qu'on n'a
@@ -1698,7 +1698,11 @@ quatre écrans visuels. Il a généré quand même, à raison, et l'a écrit : *
 ne dit pas si c'est légitime*. Ce qui doit être vert avant de figer une
 référence, c'est **le flow qui la produit**, pas la suite entière.
 
-### 128. Le piège du `startsWith` vaut pour TOUTE famille d'états — voisin de mon 122
+**Corrigé** : §3g dit désormais que le critère est **le flow qui produit la
+capture**, avec le cas vécu — un `lifecycle` rouge n'invalide aucune référence de
+`home-empty`, il ne la produit pas.
+
+### 128. ✅ Corrigé le 23/08/2026 — Le piège du `startsWith` vaut pour TOUTE famille d'états — voisin de mon 122
 
 Mon correctif d'aujourd'hui a documenté, dans `goto.yaml`, ce que la branche
 `startsWith('home')` coûte : tous les états d'accueil y tombent, et un
@@ -1714,7 +1718,12 @@ l'écrire pour **les familles d'états** en général. La leçon du chantier
 s'applique à moi une fois de plus : un correctif ponctuel là où il fallait un
 énoncé général.
 
-### 129. Rien ne dit COMMENT choisir entre `commands:` et `commandsAfterScroll:`
+**Corrigé par la RÈGLE, pas par le cas** : le commentaire énonce « une branche
+par état qui demande une préparation ; le `startsWith` n'est légitime que pour
+les états auxquels le lancement mène déjà », et nomme les familles voisines
+(`history-*`, `categories-*`) pour qu'on n'ait pas à les redécouvrir une par une.
+
+### 129. ✅ Corrigé le 23/08/2026 — Rien ne dit COMMENT choisir entre `commands:` et `commandsAfterScroll:`
 
 `argus_types.dart` documente parfaitement le troisième état et ses deux moitiés
 — mais pas la méthode. Or la seule praticable est : **tout déclarer en
@@ -1727,7 +1736,11 @@ intuition, et le harnais a corrigé **neuf** déclarations d'un coup. Une phrase
 « ne devine pas le pli, le harnais te le donne » — ferait gagner ce tour à tout
 le monde.
 
-### 130. Le §SECURITY de la méthodologie ne mentionne pas `build.androidScan`
+**Corrigé** : le dartdoc ouvre sur « NE DEVINE PAS LE PLI » et donne la méthode —
+déclarer, lancer, déplacer ce que le message prescrit — en rappelant que le
+harnais tranche dans les **deux** sens.
+
+### 130. ✅ Corrigé le 23/08/2026 — Le §SECURITY de la méthodologie ne mentionne pas `build.androidScan`
 
 C'est pourtant la clé qui **débloque la dimension** : sans elle, le scan porte sur
 un binaire debug et s'arrête avec « un scan de sécurité n'y dit rien de la
@@ -1735,7 +1748,10 @@ publication ». Elle est très bien documentée dans `argus.mobile.yaml`, et abs
 de la section qui décrit la mesure. Le run 12 l'a trouvée **en lisant
 `sec.mjs`**.
 
-### 131. Le skill fait prouver l'INSTALLATION, jamais le CONTENU du binaire
+**Corrigé** : le §PERFORMANCE/SÉCURITÉ nomme `build.androidScan` et dit qu'elle
+est ce qui envoie le scan sur un binaire de publication.
+
+### 131. ✅ Corrigé le 23/08/2026 — Le skill fait prouver l'INSTALLATION, jamais le CONTENU du binaire
 
 `installProof` est soigné — « Success » plus `pm list packages`. Mais rien ne
 demande de vérifier que le binaire installé porte **le code du moment**, et c'est
@@ -1747,7 +1763,13 @@ contre-épreuve, `com.exemple.app`, rendait **0** dans le `kernel_blob.bin`
 mort qui aurait pu faire conclure « le binaire est périmé ». Il l'a démasqué en
 prenant un littéral Dart de l'app comme motif certain.
 
-### 132. L'avertissement de locale est systématique dans la disposition RECOMMANDÉE — voisin de mon 124
+**Corrigé** : §3g porte la commande de comptage du marqueur, et les deux pièges —
+**piper** au lieu de capturer (une capture tronque au premier octet nul et rend 0
+pour tout motif), et une **contre-épreuve** dont l'absence serait impossible, avec
+l'erreur exacte du run (l'identifiant d'application rend 0 : il vit dans le
+manifeste, pas dans le kernel Dart).
+
+### 132. ✅ Corrigé le 23/08/2026 — L'avertissement de locale est systématique dans la disposition RECOMMANDÉE — voisin de mon 124
 
 `run.mjs:1284` avertit dès que `locale.deviceLocale` est renseignée et
 `autoStart: false`. Or c'est **exactement** la disposition que mon correctif du
@@ -1759,9 +1781,14 @@ Mais il ne devrait sortir que quand ça **compte** : quand la locale du device
 diffère de celle demandée. Le runner sait la lire
 (`adb shell settings get system system_locales`).
 
+**Corrigé** : `localeWarnings` est extraite, décidée **après** la résolution du
+device, et compare la locale demandée à celle que l'appareil rend. Silence quand
+elles coïncident — le cas nominal du skill —, avertissement quand l'écart est
+réel ou la locale illisible. Six cas éprouvés, mutation vérifiée.
+
 ## Ce qui reste
 
-**Les points 127 à 132**, rendus par le run 12 et tous reproduits.
+**Rien.** Les points 127 à 132 sont clos le 23/08/2026, un commit par lot.
 
 **Et c'est la meilleure vérification du chantier : les NEUF correctifs de la
 veille ont porté**, quatre de façon mesurable dans les artefacts sauvegardés —
