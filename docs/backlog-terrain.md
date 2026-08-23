@@ -1891,16 +1891,94 @@ rendu 2 ; réunis, ils diraient : **un accentué ET un ASCII**.
 le mécanisme (Latin-1 tant que tout tient sur un octet, UTF-16 dès la première
 lettre accentuée) et ce qu'un zéro ferait conclure à tort.
 
+### 141. Le gabarit du rapport d'instrumentation n'a pas de case pour l'AVANT/APRÈS
+
+§2b décrit l'état *trouvé* (`X posées / Y à poser`) — mais en REGRESS le livrable
+est justement que `Y` tombe à zéro. Rendu une seule fois, le bloc est soit
+périmé, soit trompeur : « 53 posées / 0 à poser (100 %) » cache que **tout** était
+à faire.
+
+Le run 14 a rendu les deux états, et l'a dit : c'est exactement l'improvisation
+de format que ce bloc existe pour empêcher.
+
+### 142. ⚠️ La séquence du §3g fait PUBLIER une fausse régression
+
+L'ordre prescrit finit par : contre-épreuve (remplacer une référence par un
+aplat, relancer la comparaison) puis `argus-report`. Or `make argus-visual` est
+`run.mjs --tags=visual`, qui **réécrit `report.json`** (l. 1572) — avec la
+régression fabriquée dedans. Rien ne dit de rejouer `argus-run` derrière.
+
+Un agent qui suit la lettre publie donc, comme un fait, un défaut qu'il vient de
+créer lui-même. C'est l'anti-pattern « lire un journal de VÉRIFICATION comme un
+journal de RÉSULTATS » — **provoqué par le skill**. Le run 14 s'en est aperçu et
+a rejoué une troisième passe ; il ne le devait qu'à sa vigilance.
+
+⚠️ Le fond du défaut n'est pas la ligne manquante : c'est qu'un run **partiel**
+(`--tags=…`) écrase le rapport complet sans que rien ne l'indique. Le rapport ne
+porte aucune trace des tags employés.
+
+### 143. `methodology-mobile.md` situe mal l'empreinte de cadrage
+
+La doc dit `.maestro/_baselines/.argus-crop`. Le code écrit dans `baselineDir`,
+qui vaut `.maestro/_baselines/<device-id>/` (`run.mjs:1359`). Le fichier
+`.argus-device`, écrit au même endroit, n'est pas mentionné du tout. Deux minutes
+perdues et un `cat` en erreur dans le relevé du run.
+
+### 144. `argus-build` ne dit rien quand le paquet a bien changé
+
+Mon correctif du 120 avertit sur un sha256 **identique**. Quand le hash diffère,
+il se tait — et le run 14, voyant `96 438 630 → 96 438 630 octets`, n'avait aucun
+moyen de savoir si le contrôle avait tourné. Un silence se lit « rien n'a été
+vérifié » aussi bien que « tout va bien ».
+
+### 145. Aucune règle d'arrêt pour `a11y.yaml`
+
+Le §6 demande « une assertion par ancre déclarée » — avec 53 ancres de commande,
+le flow ferait plusieurs centaines de lignes et des minutes de device. `visual:
+true` a sa règle d'arrêt explicite ; la couverture a11y n'en a aucune. Le run 14
+a retenu les racines + la coquille + 2 à 4 commandes par écran, **faute de
+critère**, et l'a signalé.
+
+### 146. Rien ne dit où poser les doubles de test du projet
+
+`harness.dart` est présenté comme « le fichier à éditer », mais un écran qui
+exige quatre blocs falsifiés et un service d'injection y ajoute 150 lignes qui ne
+sont pas de la déclaration. Le run 14 a créé `test/argus/argus_fakes.dart` (159
+lignes) — bon réflexe, mais ce fichier n'a **ni marqueur de classement, ni ligne
+dans l'inventaire que l'installeur imprime**. Il disparaît du seul relevé que la
+personne suivante lira.
+
+### 147. Deux chiffres de démarrage se lisent comme une contradiction dans le HTML
+
+`perf.json` rend `coldStartMs: 1314` (sous le budget de 2 000) pendant que
+`QAM-START` annonce 8 031 ms en `major`. Les deux sont justes — première frame
+contre écran exploitable — et `report.json` porte un champ `measures` qui
+l'explique. Mais le HTML les met côte à côte **sans reprendre cette phrase**, et
+la lecture naturelle est « l'outil se contredit ».
+
+### 148. ❌ PAS un défaut du skill — le tap-to-pause n'est exercé par aucun flow
+
+Le run 14 signale que `runner_toggle` est prouvé porteur d'une action par
+`argus-anchors`, mais qu'aucun flow ne le tape : la forme est vérifiée, l'effet
+non. Le constat est juste et honnête — **c'est un manque de SON parcours
+critique**, pas du skill, qui ne prescrit pas quels gestes métier éprouver.
+
+Inscrit pour ce qu'il enseigne : une ancre prouvée *présente et active* ne dit
+rien de ce que son appui déclenche. La distinction vaut d'être connue ; elle
+n'appelle aucune correction ici.
+
 ## Ce qui reste
 
-**Rien.** Les points 133 à 140 sont clos le 23/08/2026.
+**Les points 141 à 147.** Le 148 est classé faux — il porte sur le parcours du
+projet, pas sur le skill.
 
-**Les six correctifs de la veille ont porté**, et le 132 s'est prouvé sur les
-DEUX sens en deux runs : silencieux au run 12 quand la locale du device
-correspondait, **parlant au run 13** quand l'appareil est resté en `en-US` alors
-que la config demandait `fr_FR`.
+**Les correctifs du run 13 ont porté**, deux de façon nette : le run 14 a écrit
+« Sous le pli : 0 (inconnu à ce stade — **non devinable**) » puis a rempli la case
+à 7 (136 + 129), et sa contre-épreuve binaire portait **un motif ASCII et un
+motif accentué**, dans les trois encodages (140). `autoStart: false` était le
+défaut employé (135).
 
-⚠️ **Le motif de ce run est le plus net depuis le début : je DÉCRIS au lieu de
-FERMER.** Le 133 et le 135 sont le même geste manqué — deux passes de
-commentaires au-dessus d'une ligne que je n'ai pas changée. Un piège décrit reste
-un piège ; il coûte juste plus de lignes à lire avant d'y tomber.
+⚠️ **Le compte qui décide de la suite : SEPT constats sur huit exigent de modifier
+`plugins/argus-mobile/`.** On n'est pas au run propre. Mais le 142 est d'une autre
+nature que les six autres — c'est un défaut fonctionnel, pas un écart de prose :
+la séquence prescrite fait publier une régression fabriquée.
