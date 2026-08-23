@@ -1417,7 +1417,7 @@ geste de rattrapage.
 mesures, et dit que construire avant de brancher l'appareil produit l'APK gras
 pour rien.
 
-### 116. ⚠️ Corrigé À MOITIÉ le 23/08/2026 — Le jank n'a JAMAIS conclu, six runs sur six
+### 116. ✅ Tranché le 23/08/2026 — Le jank n'a JAMAIS conclu, et la dimension est RETIRÉE
 
 Constat non rapporté : personne ne l'a signalé, parce que le harnais est honnête
 et dit « non conclu » plutôt que « 0 % ». Relevé dans les `perf.json`
@@ -1469,21 +1469,46 @@ dimension dessus changerait donc sa **sémantique** — « frames tombées » n'
 « frames en retard » — et son contrat de sortie. **Arbitrage à trancher, pas à
 prendre seul.**
 
-**Fait dans mon périmètre** : le message n'accuse plus l'échantillon. Il disait
-« échantillon trop court, il en faut 100 » et envoyait chercher au mauvais
-endroit — exactement le défaut que ce chantier corrige depuis dix runs.
+**Tranché par Germinator : la dimension est retirée.** Le raisonnement décisif
+n'est pas « c'est cassé » mais **« même réparé, ça mesure le mauvais binaire »** :
+ce harnais tourne sur un **debug**, sur émulateur, où un chiffre de jank n'a
+aucun rapport avec ce que voit un utilisateur. L'écart d'instrument masquait un
+second écart, qui lui survivait.
+
+Retiré de **tous** les consommateurs, trouvés en balayant le **vocabulaire** et
+non en listant les fichiers de mémoire — deux ne me seraient pas venus : le
+**manifeste du plugin** et la **description du marketplace**, c'est-à-dire ce que
+lit quelqu'un qui l'installe. Et un troisième était pire qu'une prose : le
+frontmatter du SKILL portait « mesurer un temps de démarrage à froid, **du jank
+ou des frames sautées** » — un **déclencheur d'invocation**. Garder le
+déclencheur d'une capacité retirée, c'est router la demande ici pour ne rien lui
+répondre.
+
+Les six gardes de `jankIfComparable` partent avec la fonction qu'ils gardaient.
+Deux fichiers gardent le mot, et tous deux **expliquent le retrait** (tête de
+`perf.mjs`, section performance de la méthodologie) : sans eux, quelqu'un le
+rajoute dans six mois.
+
+⚠️ **Si le jank redevient nécessaire**, la voie est `FrameTiming`
+(`SchedulerBinding.addTimingsCallback`) côté application, en profile ou release,
+sur appareil réel. Pas `adb`. Et c'est un autre chantier : le skill ne touche
+aujourd'hui au code de production que pour les ancres.
 
 ## Ce qui reste
 
-**Un seul point, et il demande un arbitrage : le 116.** La dimension jank ne peut
-pas fonctionner sous Flutter — établi par la mesure, mécanisme connu
-(`gfxinfo` ne voit pas une `SurfaceView`), contre-épreuve faite. Son message dit
-désormais la vérité, ce qui était mon périmètre. Ce qui reste ne l'est pas :
-basculer la dimension sur `dumpsys SurfaceFlinger --timestats` change sa
-**sémantique** — « frames tombées » n'est pas « frames en retard » — et son
-contrat de sortie, ou bien il faut la retirer. **À trancher avec Germinator.**
+**Rien.** Les points 109 à 116 sont clos le 23/08/2026, un commit par étape — et
+le dernier est le premier **retrait de dimension** du chantier.
 
-Les points 109 à 115 sont clos, un commit par étape.
+Ce qu'il enseigne dépasse le jank : un instrument mort ne se remplace pas
+réflexivement par un instrument vivant. La question qui a tranché n'était pas
+« que sait-on mesurer ? » mais **« la mesure vaudrait-elle quelque chose une fois
+juste ? »** — et la réponse était non, parce que ce harnais mesure un debug sur
+émulateur. Le défaut d'instrument en masquait un second, qui lui survivait.
+
+⚠️ Et le balayage de la suppression a trouvé trois consommateurs qu'aucune liste
+de mémoire n'aurait donnés : le manifeste du plugin, la description du
+marketplace, et — le plus dangereux — un **déclencheur d'invocation** dans le
+frontmatter du SKILL.
 
 **Le run 10 était une vérification, et six correctifs de la veille ont été
 exercés et confirmés** : la commande de build résolue et le paquet mesuré
