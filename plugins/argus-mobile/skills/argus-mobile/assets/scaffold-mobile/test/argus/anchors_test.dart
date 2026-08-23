@@ -125,43 +125,14 @@ void main() {
       for (final String commande in screen.commands) {
         final List<ArgusSemanticNode> noeuds = argusNodesById(tester, commande);
 
-        // ⚠️ ABSENTE et SOUS LE PLI rendent le même vide sur ce gabarit, et le
-        // message accuserait alors l'instrumentation pour un défaut qui n'existe
-        // pas. Une commande au bas d'une liste paresseuse n'est simplement pas
-        // construite ici. Mesuré sur un projet réel : quatre ancres déclarées
-        // « absentes » au petit gabarit, TOUTES présentes et actives au grand.
-        //
-        // On ne raisonne donc pas : on remonte l'écran plus haut et on regarde.
-        // Rendre discernable coûte moins cher que déduire.
-        String indicePli = '';
-        if (noeuds.isEmpty && argusViewports.length > 1) {
-          await pumpArgus(
-            tester,
-            screen.build(),
-            viewport: argusViewports.last,
-            debugLabel: screen.id,
-          );
-          argusDrainMountException(tester);
-          if (argusNodesById(tester, commande).isNotEmpty) {
-            indicePli =
-                '\n\n⚠️ ELLE EXISTE, mais plus bas que ce gabarit ne le montre : '
-                'présente et construite sur ${argusViewports.last.name}, absente '
-                'sur ${argusViewports.first.name}. Ce n\'est PAS un défaut '
-                'd\'instrumentation — c\'est une liste paresseuse qui ne '
-                'construit pas ce qu\'elle n\'affiche pas. DÉPLACE-LA dans '
-                '`commandsAfterScroll:` : elle y sera éprouvée sur le grand '
-                'gabarit, au lieu de rougir ici en permanence — ou de sortir de '
-                '`commands:` et de n\'être plus vérifiée nulle part.';
-          }
-          // Remonter sur le gabarit de référence : ce qui suit le mesure.
-          await pumpArgus(
-            tester,
-            screen.build(),
-            viewport: argusViewports.first,
-            debugLabel: screen.id,
-          );
-          argusDrainMountException(tester);
-        }
+        final String indicePli = noeuds.isEmpty
+            ? await argusFoldHint(
+                tester,
+                screen,
+                commande,
+                champ: 'commandsAfterScroll:',
+              )
+            : '';
 
         await argusCheck('${screen.id} · commande « $commande » présente', () async {
           expect(
@@ -243,6 +214,20 @@ void main() {
             affichage,
           );
 
+          // Même sonde que les commandes, et pour la même raison : sans elle,
+          // « absente » et « sous le pli » rendent le même vide, et le message
+          // accuse l'instrumentation pour une liste paresseuse qui fait son
+          // travail. `displaysAfterScroll:` existait déjà — c'est l'indice qui
+          // l'annonce qui manquait.
+          final String indicePli = noeuds.isEmpty
+              ? await argusFoldHint(
+                  tester,
+                  screen,
+                  affichage,
+                  champ: 'displaysAfterScroll:',
+                )
+              : '';
+
           await argusCheck(
             '${screen.id} · affichage « $affichage » présent',
             () async {
@@ -252,7 +237,8 @@ void main() {
                 reason:
                     'L\'écran « ${screen.id} » ne porte aucun nœud sémantique '
                     '« $affichage ». Un flow qui le LIT échouera sur device en '
-                    'disant que l\'élément a disparu, sans nommer la cause.',
+                    'disant que l\'élément a disparu, sans nommer la cause.'
+                    '$indicePli',
               );
             },
           );

@@ -379,3 +379,59 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
     );
   }
 }
+
+/// Distingue « l'ancre n'existe pas » de « elle est sous le pli ».
+///
+/// ⚠️ ABSENTE et SOUS LE PLI rendent le même vide sur le gabarit de référence,
+/// et le message accuserait alors l'instrumentation pour un défaut qui n'existe
+/// pas. Une ancre au bas d'une liste paresseuse n'y est simplement pas
+/// construite. Mesuré sur un projet réel : quatre ancres déclarées « absentes »
+/// au petit gabarit, TOUTES présentes au grand.
+///
+/// On ne raisonne donc pas : on remonte l'écran plus haut et on regarde. Rendre
+/// discernable coûte moins cher que déduire.
+///
+/// ⚠️ **Cette sonde a vécu une passe entière dans le seul chemin des
+/// commandes.** `displaysAfterScroll` existait déjà, et le message des
+/// affichages ne le nommait nulle part : deux échecs sur quatre du run suivant
+/// étaient exactement ce cas. Elle est ici — et non recopiée là-bas — pour que
+/// le troisième axe l'ait par construction plutôt que par attention.
+///
+/// Rend l'indice à coller au message d'échec, ou `''` si l'ancre est vraiment
+/// absente. Laisse l'écran remonté sur le gabarit de référence : ce qui suit
+/// l'appel mesure là.
+Future<String> argusFoldHint(
+  WidgetTester tester,
+  ArgusScreen screen,
+  String ancre, {
+  required String champ,
+}) async {
+  if (argusViewports.length < 2) return '';
+
+  await pumpArgus(
+    tester,
+    screen.build(),
+    viewport: argusViewports.last,
+    debugLabel: screen.id,
+  );
+  argusDrainMountException(tester);
+  final bool existeAilleurs = argusNodesById(tester, ancre).isNotEmpty;
+
+  // Remonter sur le gabarit de référence : ce qui suit le mesure.
+  await pumpArgus(
+    tester,
+    screen.build(),
+    viewport: argusViewports.first,
+    debugLabel: screen.id,
+  );
+  argusDrainMountException(tester);
+
+  if (!existeAilleurs) return '';
+  return '\n\n⚠️ ELLE EXISTE, mais plus bas que ce gabarit ne le montre : '
+      'présente et construite sur ${argusViewports.last.name}, absente sur '
+      '${argusViewports.first.name}. Ce n\'est PAS un défaut d\'instrumentation '
+      '— c\'est une liste paresseuse qui ne construit pas ce qu\'elle n\'affiche '
+      'pas. DÉPLACE-LA dans `$champ` : elle y sera éprouvée sur le grand '
+      'gabarit, au lieu de rougir ici en permanence — ou de sortir de sa liste '
+      'et de n\'être plus vérifiée nulle part.';
+}
