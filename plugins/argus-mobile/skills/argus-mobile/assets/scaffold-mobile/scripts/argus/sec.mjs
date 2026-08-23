@@ -33,8 +33,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, flutterCommand, loadConfig, log, sh,
-  warn, writeJson,
+  artifactsDir, detectTools, err, exitCodeFor, flutterCommand, loadConfig, log, sh, toolPath, warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -395,7 +394,7 @@ export function auditApk(apk, config, dartPackage = dartPackageName(process.cwd(
   }
 
   // aapt2 lit le manifeste COMPILÉ, c'est-à-dire l'état réel après fusion.
-  const badging = sh('aapt2', ['dump', 'badging', apk]);
+  const badging = sh(toolPath('aapt2'), ['dump', 'badging', apk]);
   const facts = { scanned: true, entries: entries.length, isDebugBuild, hasAot, badging: badging.ok, obfuscation };
   if (badging.ok) findings.push(...auditBadging(badging.stdout, apk, config));
   else findings.push(finding('QAM-SEC-AAPT2', 'Manifeste compilé non lu', 'info',

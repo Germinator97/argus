@@ -26,7 +26,7 @@ import {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -1752,4 +1752,39 @@ test('la commande de build reste ciblable sur l\'ABI, dans les deux sens', () =>
   assert.equal(buildCmdForAbi(base, ''), base, 'sans device, la commande sort intacte');
   assert.equal(buildCmdForAbi(`${base} --target-platform android-arm64`, 'x86_64'),
     `${base} --target-platform android-arm64`, 'un ciblage déjà écrit à la main prime');
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Un outil du SDK n'est pas « absent » parce qu'il n'est pas au PATH
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Run 9 : la moitié de la dimension sécurité sautait faute d'`aapt2` au PATH,
+// alors qu'il est livré avec les Build-Tools de toute machine Android. Le
+// classement des versions est gardé ici parce que ma PREMIÈRE écriture s'est
+// trompée deux fois — `sort()` alphabétique place « 9.0.0 » après « 35.0.0 »,
+// et préférait une release candidate à une stable.
+
+test('le classement des Build-Tools est numérique, et la stable prime', () => {
+  assert.equal(rankBuildTools(['9.0.0', '35.0.0', '34.0.0'])[0], '35.0.0',
+    'un tri alphabétique placerait 9.0.0 en tête');
+  assert.equal(rankBuildTools(['37.0.0-rc2', '35.0.0'])[0], '35.0.0',
+    'une préversion ne prime jamais sur une stable, même plus récente');
+  assert.equal(rankBuildTools(['37.0.0', '37.0.0-rc2'])[0], '37.0.0');
+  assert.equal(rankBuildTools(['37.0.0-rc2'])[0], '37.0.0-rc2',
+    'à défaut de stable, la RC sert : mieux qu\'une dimension sautée');
+  assert.deepEqual(rankBuildTools([]), [], 'aucun dossier : aucun plantage');
+});
+
+test('toolPath ne détourne que les outils du SDK, et rend le nom nu sinon', () => {
+  for (const nu of ['adb', 'maestro', 'flutter', 'unzip', 'osv-scanner']) {
+    assert.equal(toolPath(nu), nu, `${nu} doit rester résolu par le PATH`);
+  }
+  // L'autre moitié : sur une machine sans SDK, les deux outils du SDK sortent
+  // nus eux aussi — l'appelant reçoit alors l'ENOENT habituel, et le message
+  // d'outil absent reste celui qu'on connaît.
+  for (const sdk of ['aapt2', 'apkanalyzer']) {
+    const p = toolPath(sdk);
+    assert.ok(p === sdk || p.endsWith(sdk) || p.endsWith(`${sdk}.exe`) || p.endsWith(`${sdk}.bat`),
+      `toolPath('${sdk}') doit rendre un chemin vers ${sdk}, ou son nom nu — obtenu « ${p} »`);
+  }
 });

@@ -19,8 +19,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -669,6 +669,87 @@ export const TOOLS = {
 };
 
 /**
+ * Racines plausibles du SDK Android, dans l'ordre où on les essaie.
+ * @returns {string[]}
+ */
+function androidSdkRoots() {
+  const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+  return [
+    process.env.ANDROID_HOME ?? '',
+    process.env.ANDROID_SDK_ROOT ?? '',
+    home ? resolve(home, 'Library/Android/sdk') : '',   // macOS
+    home ? resolve(home, 'Android/Sdk') : '',           // Linux
+    process.env.LOCALAPPDATA ? resolve(process.env.LOCALAPPDATA, 'Android/Sdk') : '',
+  ].filter(Boolean);
+}
+
+/**
+ * Classe les dossiers de Build-Tools, du meilleur au pire.
+ *
+ * ⚠️ `sort()` est ALPHABÉTIQUE, et sur des versions il ment deux fois : il place
+ * « 9.0.0 » après « 35.0.0 », et il préfère « 37.0.0-rc2 » à « 35.0.0 » stable.
+ * Mesuré en écrivant ce correctif — la première version choisissait bien la RC.
+ *
+ * Une STABLE l'emporte donc toujours sur une préversion, même plus récente : cet
+ * outil établit un fait de sécurité (les permissions du manifeste fusionné), et
+ * sur ce terrain la prévisibilité vaut mieux que la nouveauté — une RC peut être
+ * retirée ou changer d'avis. À défaut de stable, la préversion sert quand même :
+ * mieux vaut une RC que la dimension sautée.
+ * @param {string[]} versions @returns {string[]}
+ */
+export function rankBuildTools(versions) {
+  /** @param {string} v */
+  const cle = (v) => ({
+    parts: v.split('-')[0].split('.').map((n) => Number.parseInt(n, 10) || 0),
+    pre: v.includes('-'),
+  });
+  return [...versions].sort((a, b) => {
+    const [x, y] = [cle(a), cle(b)];
+    if (x.pre !== y.pre) return x.pre ? 1 : -1;   // toute stable avant toute préversion
+    for (let i = 0; i < Math.max(x.parts.length, y.parts.length); i += 1) {
+      const d = (y.parts[i] ?? 0) - (x.parts[i] ?? 0);
+      if (d !== 0) return d;
+    }
+    return a < b ? 1 : -1;
+  });
+}
+
+/**
+ * Le chemin d'un outil : le PATH d'abord, puis là où le SDK Android le range.
+ *
+ * ⚠️ `aapt2` et `apkanalyzer` existent sur TOUTE machine ayant les Build-Tools
+ * ou les Command-line Tools — ils n'y sont simplement pas exposés. Les traiter
+ * en binaire présent/absent faisait sauter la moitié de la dimension sécurité
+ * pour une variable d'environnement : mesuré au run 9, un `export PATH=…` la
+ * débloquait entièrement (142 entrées lues, obfuscation confirmée).
+ *
+ * Rend le nom nu si rien n'est trouvé : l'appelant obtient alors l'ENOENT
+ * habituel, et le message d'outil absent reste celui qu'on connaît.
+ * @param {string} name @returns {string}
+ */
+export function toolPath(name) {
+  if (!['aapt2', 'apkanalyzer'].includes(name)) return name;
+  for (const root of androidSdkRoots()) {
+    // Build-Tools : une version par dossier, on prend la plus récente.
+    if (name === 'aapt2') {
+      const dir = join(root, 'build-tools');
+      let versions = [];
+      try { versions = rankBuildTools(readdirSync(dir)); } catch { versions = []; }
+      for (const v of versions) {
+        const p = join(dir, v, IS_WINDOWS ? 'aapt2.exe' : 'aapt2');
+        if (existsSync(p)) return p;
+      }
+    } else {
+      for (const rel of ['cmdline-tools/latest/bin', 'cmdline-tools/bin', 'tools/bin']) {
+        const p = join(root, rel, IS_WINDOWS ? 'apkanalyzer.bat' : 'apkanalyzer');
+        if (existsSync(p)) return p;
+      }
+    }
+  }
+  return name;
+}
+
+/**
  * Détecte les outils disponibles.
  * @param {string[]} [names]
  * @returns {Record<string, {present:boolean, version:string|null}>}
@@ -682,7 +763,7 @@ export function detectTools(names = Object.keys(TOOLS)) {
     // Flutter avec lequel rien ne se construit ici.
     const res = name === 'flutter' && usesFvm()
       ? sh('fvm', ['flutter', ...spec.probe])
-      : sh(name, spec.probe);
+      : sh(toolPath(name), spec.probe);
     // `apkanalyzer -h` sort en code non nul tout en prouvant sa présence :
     // l'absence se reconnaît à l'erreur de spawn (ENOENT), pas au status.
     const present = res.error === null;
