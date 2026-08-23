@@ -1966,3 +1966,34 @@ test('le sous-flow livré emploie la condition dérivée, pas un préfixe', () =
     + devinees.join('\n  '));
   assert.ok(goto.includes('ARGUS_START_SCREEN'), 'et la branche du départ doit se dériver de la config');
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Un rapport PARTIEL ne doit pas pouvoir passer pour complet
+// ───────────────────────────────────────────────────────────────────────────
+//
+// La contre-épreuve visuelle prescrite par le skill lance `run.mjs --tags=visual`,
+// qui écrit le MÊME report.json qu'une passe complète — avec dedans la régression
+// qu'on vient de fabriquer pour prouver que la comparaison mesure. Un
+// `argus-report` lancé derrière la publiait comme un fait : le journal de
+// VÉRIFICATION lu comme un journal de RÉSULTATS, et c'est le skill qui y menait.
+
+test('le rapport porte le périmètre du run qui l\'a produit', () => {
+  const src = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const i = src.indexOf('const report = {');
+  assert.notEqual(i, -1, 'littéral du rapport introuvable — le garde est vacant');
+  const bloc = src.slice(i, i + 2000);
+  assert.match(bloc, /scope:/, 'sans ce champ, rien ne distingue un run filtré d\'une passe complète');
+  assert.match(bloc, /includeTags|excludeTags/, 'et il doit se DÉRIVER des tags, pas être écrit à la main');
+});
+
+test('le rapport HTML avertit sur un run filtré, et se tait sur un run complet', () => {
+  const src = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs'), 'utf8');
+  const m = /run\?\.scope[^\n]*\n?[^\n]*/.exec(src);
+  assert.ok(m, 'le rendu ne lit plus `run.scope` — le bandeau a disparu');
+  assert.match(m[0], /!==\s*'complet'/,
+    'la condition doit exclure le cas complet, sinon le bandeau crie sur chaque rapport');
+  const i = src.indexOf('run?.scope');
+  assert.match(src.slice(i, i + 700), /partiel/, 'et le bandeau doit se nommer');
+});

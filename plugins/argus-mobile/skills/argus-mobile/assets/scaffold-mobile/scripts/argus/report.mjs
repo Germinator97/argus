@@ -227,6 +227,7 @@ function renderBody(context) {
   </div>
 
   <h2>Couverture</h2>
+  ${run?.scope && run.scope !== 'complet' ? `<p class="muted"><span class="badge bad">partiel</span> ce rapport vient d'un run <strong>${esc(run.scope)}</strong>, pas d'une passe complète : les dimensions que le filtre a écartées ne sont pas mesurées ici, elles sont ABSENTES. Rejoue <code>make argus-run</code> avant de conclure — c'est notamment le cas après la contre-épreuve visuelle, qui réécrit ce fichier avec la régression qu'on vient de fabriquer.</p>` : ''}
   ${(context.staleness?.stale ?? []).length ? `<p class="muted"><span class="badge bad">périmée</span> ${(context.staleness.stale).length} relevé(s) ont plus de ${context.staleness.budgetMin} min d'écart avec le plus récent : ils ne viennent pas de ce run. Le rapport les agrège en le disant plutôt que de les taire.</p>` : ''}
   <table><tr><th>Source</th><th>Dimensions</th><th>État</th><th>Mesurée le</th><th>Raison</th></tr>${coverageRows(parts)}</table>
   ${coverage ? `<p class="muted">Écrans déclarés : ${coverage.screensDeclared ?? '?'} · avec ancre sémantique : ${coverage.screensConfigured ?? '?'}${(coverage.notConfigured ?? []).length ? ` · sans ancre, donc non testés : ${esc((coverage.notConfigured ?? []).join(', '))}` : ''}</p>` : ''}

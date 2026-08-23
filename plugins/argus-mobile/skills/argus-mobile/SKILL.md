@@ -864,6 +864,14 @@ puis **remplacer une référence par un aplat** et vérifier que celle-là seule
 rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
 mesure ou si elle dort.
 
+⚠️ **QUATRIÈME TEMPS, obligatoire : restaure la référence et REJOUE
+`make argus-run`.** La contre-épreuve écrit `report.json` comme n'importe quel
+run — avec, dedans, la régression que tu viens de fabriquer. Un `argus-report`
+lancé derrière la publierait comme un fait. Le rapport porte désormais son
+périmètre (`run.scope`) et affiche un bandeau « partiel » quand il vient d'un run
+filtré, mais l'ordre reste le tien : **le dernier run avant le rapport doit être
+un run complet.**
+
 ⚠️ **L'installation prouvée ne prouve PAS le contenu.** Le runner vérifie que
 l'APK est bien posé (« Success », puis `pm list packages`) — c'est nécessaire et
 ça ne dit rien du code embarqué : un binaire peut être installé et porter le

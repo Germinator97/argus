@@ -1497,6 +1497,14 @@ async function main() {
       // deux clés depuis le début et rien ne les écrivait — neuf runs, aucun
       // rouge, parce que le garde du contrat s'arrêtait au premier niveau.
       env: config.run.env, mode: config.run.mode,
+      // ⚠️ CE QUI A TOURNÉ. Un run filtré (`--tags=visual`) écrit le MÊME
+      // `report.json` qu'un run complet : la contre-épreuve visuelle prescrite
+      // par le skill écrasait donc le rapport avec la régression qu'on venait
+      // de fabriquer, et `argus-report` la publiait comme un fait. Rien ne
+      // distinguait les deux fichiers. Désormais si.
+      scope: includeTags.length || excludeTags.length
+        ? `filtré (${[...includeTags.map((x) => `+${x}`), ...excludeTags.map((x) => `-${x}`)].join(' ')})`
+        : 'complet',
       flavor: config.app.flavor, appId, budget,
       // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
       // la config ici ferait dire au rapport « Medium_Phone » quel que soit le
