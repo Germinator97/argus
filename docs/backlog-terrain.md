@@ -1611,7 +1611,7 @@ d'accueil y tombent, et un état « plein » en `visual: true` ferait photograph
 l'accueil VIDE sous son nom. Un état qui demande des données a besoin de sa
 propre branche.
 
-### 123. `anchors_test.dart` s'arrête au PREMIER échec par écran
+### 123. ✅ Corrigé le 23/08/2026 — `anchors_test.dart` s'arrêtait au PREMIER échec par écran
 
 `argusCheck` lève, donc la boucle sur `screen.commands` abandonne. Sur un écran à
 24 commandes dont plusieurs sous le pli, découvrir l'ensemble demande une
@@ -1622,17 +1622,33 @@ mesure »).
 Le message et l'indice de pli sont bons ; il manque de les **collecter** avant de
 lever.
 
-⚠️ **Reste OUVERT, et voici pourquoi.** J'ai écrit le collecteur — une classe qui
-retient les échecs et lève une fois en fin d'écran — puis j'ai voulu câbler les
-quatre boucles **par substitution**. Deux tentatives, deux fois un fichier qui ne
-compile plus : envelopper `await argusCheck(…)` demande de refermer une
-parenthèse dont la position dépend du corps, ce qu'une regex ne sait pas faire.
-J'ai restauré, et retiré le collecteur avec — un helper que personne n'appelle
-serait du code mort livré à tous les projets, c'est-à-dire le défaut d'à côté.
+**Corrigé — et la façon dont il l'a été compte autant que le correctif.** La
+première tentative câblait les quatre boucles **par substitution** : deux fois un
+fichier qui ne compile plus, parce qu'envelopper `await argusCheck(…)` demande de
+refermer une parenthèse dont la position dépend du corps de l'appel.
 
-Ce point demande une réécriture **à la main** des quatre boucles, pas un
-codemod. Il est de confort — aucune mesure n'est fausse, elles sont seulement
-rendues une par une.
+La reprise change d'angle plutôt que d'insister : la collecte devient
+**ambiante**. `argusCheck` route sa levée par un seul point qui, selon qu'une
+collecte est ouverte, lève ou **retient**. Chaque boucle gagne alors **deux
+lignes** — `argusCollecteDebut()` après `ensureSemantics`, `argusCollecteFin(id)`
+après `dispose`. Aucun site d'appel touché, aucune parenthèse déplacée.
+
+⚠️ Deux pièges fermés en chemin :
+- **retenir doit RENDRE LA MAIN, pas relancer** — une exception à cet endroit
+  arrêterait la boucle, c'est-à-dire le défaut qu'on corrige ;
+- le désarmement est posé en `addTearDown`, donc il a lieu même si le test meurt
+  avant la fin : sans ça, une collecte restée ouverte avalerait les échecs du
+  test suivant.
+
+**Éprouvé sur le banc, quatre fois** : deux ancres absentes rendent **4 défauts
+en une exécution** ; un seul échec sort **tel quel**, sans enrobage « N défauts » ;
+un écran sain reste vert ; et la mutation (le collecteur qui relance) fait
+retomber le relevé de **8 mentions à 2**.
+
+⚠️ **La mutation a d'abord rendu « 0 », et ce zéro ne mesurait rien** : le banc
+repose le scaffold à chaque exécution, donc il avait écrasé ma sonde. Vérifier
+que le montage arme AVANT de lire son verdict — c'est la troisième fois de la
+journée que ce contrôle change une conclusion.
 
 ### 124. ✅ Corrigé le 23/08/2026 — Le `argus.mobile.yaml` livré contredit le cadrage que le §1 recommande
 
@@ -1672,8 +1688,13 @@ gouverne rien.
 
 ## Ce qui reste
 
-**Le point 123, seul, et de confort** — `anchors_test` ne rend qu'un défaut par
-écran et par exécution. Les huit autres sont clos.
+**Rien.** Les neuf points du run 11 sont clos le 23/08/2026.
+
+⚠️ Ce que ce run laisse, au-delà de ses points : **deux régressions, toutes deux
+de moi**, dont une que rien n'avait vue parce qu'aucun contrôle n'exécutait les
+scripts de mesure — et un garde, écrit pour l'attraper, **né vacant** faute de
+prouver qu'il mesurait. La règle qui en sort tient en une phrase : un montage qui
+ne peut pas montrer qu'il a mesuré ne doit jamais être lu comme un succès.
 
 **Le run 11 était une vérification, et les correctifs de la veille ont porté** :
 le gabarit du rapport a été rempli avec ses nouvelles cases (« Affichages : 2 »,
