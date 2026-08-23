@@ -1806,14 +1806,17 @@ tombent enfin dans une branche qui doit les **préparer**.
 Le commentaire est passé de 24 lignes à 8, et c'est le vrai signe : **un piège
 décrit demande des paragraphes, un piège fermé demande une phrase.**
 
-### 134. Le §VISUAL parle de `visualCropOn` comme d'une clé globale
+### 134. ✅ Corrigé le 23/08/2026 — Le §VISUAL parle de `visualCropOn` comme d'une clé globale
 
 `methodology-mobile.md` la présente au niveau global ; `argus.mobile.yaml`
 explique en commentaire qu'elle se pose **par écran** dès le deuxième écran
 visuel. Les deux sont justes, et rien ne relie l'un à l'autre : le run 13 a dû
 lire les deux pour comprendre que la clé globale devait rester vide.
 
-### 135. Le device livré contredit toujours la consigne — et je l'avais seulement COMMENTÉ
+**Corrigé** : le §VISUAL dit « par ÉCRAN dès que deux écrans sont en `visual:
+true` », que la clé globale reste alors vide, et renvoie au détail du YAML.
+
+### 135. ✅ Corrigé le 23/08/2026 — Le device livré contredit toujours la consigne — et je l'avais seulement COMMENTÉ
 
 Le point 124 a ajouté, dans `argus.mobile.yaml`, un avertissement disant de
 renseigner `avd:` et de retourner `autoStart:`. **Les valeurs livrées n'ont pas
@@ -1825,7 +1828,12 @@ fallait changer au lieu de le changer. Le run 13 propose le bon défaut :
 `autoStart: false`, qui échoue **bruyamment** si personne n'a démarré le device —
 au lieu d'en créer un autre en silence.
 
-### 136. Le gabarit `screens[]` de §2c-bis ignore le troisième état — voisin du 110
+**Corrigé — la VALEUR, pas le commentaire.** `autoStart: false` devient le défaut :
+il échoue bruyamment si personne n'a démarré le device, au lieu d'en fabriquer un
+autre en silence. Et il convient aussi en CI, où l'action de provisionnement a
+déjà démarré l'émulateur.
+
+### 136. ✅ Corrigé le 23/08/2026 — Le gabarit `screens[]` de §2c-bis ignore le troisième état — voisin du 110
 
 Le 110 a doté le **rapport d'instrumentation** de ses cases manquantes
 (« Affichages », « Sous le pli »). Le gabarit YAML « prêt à coller » de la même
@@ -1836,27 +1844,42 @@ Sur ce projet, **7 des 79 ancres** relevaient du troisième état. Le run 13 ne 
 su qu'en lançant `argus-anchors` — ce qui est le bon geste (129), mais le gabarit
 laisse croire que le relevé se fait à l'œil.
 
-### 137. `a11y.yaml` : chaque `goto` suppose l'état de sortie de `launch-clean`
+**Corrigé** : le gabarit nomme `commandsAfterScroll:` / `displaysAfterScroll:` et
+dit de ne pas les deviner — déclarer, lancer, déplacer ce que le message
+prescrit. Avec le chiffre du terrain : 7 ancres sur 79, aucune visible à l'œil.
+
+### 137. ✅ Corrigé le 23/08/2026 — `a11y.yaml` : chaque `goto` suppose l'état de sortie de `launch-clean`
 
 Non dit, et ça a coûté **un run device complet (~7 min)**. Enchaîner deux `goto`
 sans revenir à l'onglet d'accueil échoue sur `Element not found: Id matching
 regex: home_empty_start` — c'est-à-dire le message qui envoie chercher un défaut
 d'instrumentation inexistant, exactement le piège que le skill décrit ailleurs.
 
-### 138. `make argus-baselines` relance TOUTE la suite fonctionnelle
+**Corrigé** : l'avertissement est en tête d'`a11y.yaml`, avec le message d'erreur
+exact qu'on obtient et le geste qui l'évite.
+
+### 138. ✅ Corrigé le 23/08/2026 — `make argus-baselines` relance TOUTE la suite fonctionnelle
 
 12 flows au lieu des 6 qui produisent des captures. Le skill la présente comme
 l'étape courte entre deux `argus-run` ; en pratique la séquence prescrite coûte
 **trois passes device pleines**, et ce coût n'est chiffré nulle part.
 
-### 139. Le tableau du §7 présente la couverture a11y comme une capacité livrée
+**Corrigé** : §3g chiffre la séquence — **trois passes device pleines**, `argus-baselines`
+rejouant toute la suite fonctionnelle (12 flows pour 6 captures). Et dit que ça
+ne se refait qu'une fois.
+
+### 139. ✅ Corrigé le 23/08/2026 — Le tableau du §7 présente la couverture a11y comme une capacité livrée
 
 `a11y (couverture sémantique) | Maestro | device` se lit comme une mesure fournie.
 C'est **entièrement du travail projet** — 75 étapes écrites à la main sur ce
 run. Le §A11Y le corrige deux pages plus loin ; le tableau est ce qu'on lit en
 premier. C'est le voisin du 125, qui avait corrigé l'autre table.
 
-### 140. La contre-épreuve du marqueur binaire mérite les deux encodages
+**Corrigé** : la ligne du tableau porte « flow à ÉCRIRE, une assertion par ancre ».
+C'est le voisin du 125, qui avait corrigé l'autre table — les deux disent
+maintenant la même chose.
+
+### 140. ✅ Corrigé le 23/08/2026 — La contre-épreuve du marqueur binaire mérite les deux encodages
 
 Le §3g dit de prendre « un littéral que l'app affiche ». Sur une app francophone,
 un littéral affiché est **accentué**, donc encodé autrement dans le
@@ -1864,9 +1887,13 @@ un littéral affiché est **accentué**, donc encodé autrement dans le
 documents séparés. Le run 13 a pris les deux « à tout hasard » et les deux ont
 rendu 2 ; réunis, ils diraient : **un accentué ET un ASCII**.
 
+**Corrigé** : §3g demande **deux** contre-épreuves, une accentuée et une ASCII, avec
+le mécanisme (Latin-1 tant que tout tient sur un octet, UTF-16 dès la première
+lettre accentuée) et ce qu'un zéro ferait conclure à tort.
+
 ## Ce qui reste
 
-**Les points 134 à 140.** Le 133 est déjà clos — c'est le plus instructif du run.
+**Rien.** Les points 133 à 140 sont clos le 23/08/2026.
 
 **Les six correctifs de la veille ont porté**, et le 132 s'est prouvé sur les
 DEUX sens en deux runs : silencieux au run 12 quand la locale du device
