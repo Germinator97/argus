@@ -277,6 +277,21 @@ que quelqu'un doit entendre ?**
 | un contrôle et rien d'autre (bouton, ligne, champ) | **laisse-le fusionner** : ni `explicitChildNodes`, ni `onTap:` — le `GestureDetector` en dessous fournit l'action |
 | du contenu à annoncer (titre, chronomètre, tout un écran) | **coupe la fusion** : `explicitChildNodes: true` + `onTap:` + `excludeFromSemantics: true` sur le geste |
 
+⚠️ **Une question précède celle-ci, et la table ne la posait pas : le composant
+rend-il un widget de POSITION ?** `Expanded`, `Flexible`, `Positioned` doivent
+rester enfants directs de leur parent — les envelopper lève un
+`ParentDataWidget` **à l'exécution**, pas à la compilation ni à l'analyse. Le
+critère « déclare-t-il un rôle ? » ne le prédit pas, et deux runs consécutifs
+sont tombés sur le même cas : `SlidableAction` de `flutter_slidable`, qui rend
+un `Expanded` (`lib/src/actions.dart:101`) sans que rien dans son nom ou son API
+ne le laisse deviner.
+
+Le tell est qu'un composant **de mise en page d'une liste** (action de swipe,
+cellule de `Flex`, enfant de `Stack`) a de bonnes chances d'en être un : ouvre sa
+source avant de l'envelopper, ou pose l'ancre sur son **enfant**. À défaut, c'est
+le repli n° 3 — non instrumenté, ciblé par texte, et le commentaire écrit à
+l'endroit concerné pour que le suivant ne recommence pas l'enquête.
+
 ⚠️ **Cette table et celle de « racine AUSSI commande », plus bas, ne s'opposent
 pas — elles se composent, et les avoir lues comme un choix a coûté un run.**
 L'une dit COMBIEN de nœuds (deux : une racine inerte, une commande), l'autre dit
@@ -672,7 +687,7 @@ est **obligatoire**, sinon Maestro ne voit **aucun** élément et échoue en
 silence. Flutter Desktop n'est pas supporté.
 
 ═══════════════════════════════════════════════════════════════════════════════
-⚠️ **Un RÔLE posé sur l'enveloppe suffit à casser la fusion, même sur les
+⚠️ **CERTAINS rôles posés sur l'enveloppe cassent la fusion, même sur les
 composants de la colonne « fusionne ».** `Semantics(identifier: 'x', child:
 TextField(…))` rend UN nœud, qui porte l'ancre et l'action. Ajoute
 `textField: true` à cette même enveloppe et elle devient une frontière : le
@@ -680,6 +695,14 @@ nœud ancré passe **inerte**, la commande vit en dessous sans identifiant.
 Retirer le rôle le rend actif à nouveau. La table ci-dessus prévient pour les
 composants qui construisent DÉJÀ leur propre nœud ; elle ne disait pas qu'on
 peut en fabriquer un soi-même, sans le vouloir, en décrivant l'enveloppe.
+
+⚠️ **« Certains », pas « un rôle » : ce qui est mesuré, c'est `textField:`.**
+La formulation d'avant généralisait depuis un seul cas, et elle envoie défaire
+une instrumentation correcte — `Semantics(button: true, child: InkWell(…))`
+**fusionne**, mesuré sur un projet réel où quatre composants partagés
+l'employaient : 52 ancres, toutes actives. Devant un rôle que cette page ne cite
+pas, ne raisonne pas par analogie : `make argus-anchors` tranche en une commande,
+et le champ `isCommand` du relevé dit lequel des deux cas tu as.
 
 ## 3. Installer le harness de non-régression
 ═══════════════════════════════════════════════════════════════════════════════
