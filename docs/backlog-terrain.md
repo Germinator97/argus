@@ -1891,7 +1891,7 @@ rendu 2 ; réunis, ils diraient : **un accentué ET un ASCII**.
 le mécanisme (Latin-1 tant que tout tient sur un octet, UTF-16 dès la première
 lettre accentuée) et ce qu'un zéro ferait conclure à tort.
 
-### 141. Le gabarit du rapport d'instrumentation n'a pas de case pour l'AVANT/APRÈS
+### 141. ✅ Corrigé le 23/08/2026 — Le gabarit du rapport d'instrumentation n'a pas de case pour l'AVANT/APRÈS
 
 §2b décrit l'état *trouvé* (`X posées / Y à poser`) — mais en REGRESS le livrable
 est justement que `Y` tombe à zéro. Rendu une seule fois, le bloc est soit
@@ -1901,7 +1901,10 @@ périmé, soit trompeur : « 53 posées / 0 à poser (100 %) » cache que **tout
 Le run 14 a rendu les deux états, et l'a dit : c'est exactement l'improvisation
 de format que ce bloc existe pour empêcher.
 
-### 142. ⚠️ La séquence du §3g fait PUBLIER une fausse régression
+**Corrigé** : §2b demande le relevé **deux fois en REGRESS** — état trouvé, état
+laissé — et dit pourquoi une seule fois ment.
+
+### 142. ✅ Corrigé le 23/08/2026 — ⚠️ La séquence du §3g fait PUBLIER une fausse régression
 
 L'ordre prescrit finit par : contre-épreuve (remplacer une référence par un
 aplat, relancer la comparaison) puis `argus-report`. Or `make argus-visual` est
@@ -1917,21 +1920,36 @@ a rejoué une troisième passe ; il ne le devait qu'à sa vigilance.
 (`--tags=…`) écrase le rapport complet sans que rien ne l'indique. Le rapport ne
 porte aucune trace des tags employés.
 
-### 143. `methodology-mobile.md` situe mal l'empreinte de cadrage
+**Corrigé À LA SOURCE, pas par une ligne à retenir.** `report.run.scope` se dérive
+des tags, et le HTML affiche un bandeau « partiel » qui nomme le filtre. Un
+rapport issu d'un run filtré ne peut plus passer pour complet. Éprouvé des deux
+côtés : `complet` n'affiche rien, `filtré (+visual)` affiche le bandeau.
+
+§3g gagne quand même son **quatrième temps** (restaurer, puis rejouer un run
+COMPLET avant le rapport) : le bandeau prévient après coup, l'ordre doit être bon
+avant.
+
+### 143. ✅ Corrigé le 23/08/2026 — `methodology-mobile.md` situe mal l'empreinte de cadrage
 
 La doc dit `.maestro/_baselines/.argus-crop`. Le code écrit dans `baselineDir`,
 qui vaut `.maestro/_baselines/<device-id>/` (`run.mjs:1359`). Le fichier
 `.argus-device`, écrit au même endroit, n'est pas mentionné du tout. Deux minutes
 perdues et un `cat` en erreur dans le relevé du run.
 
-### 144. `argus-build` ne dit rien quand le paquet a bien changé
+**Corrigé** : le chemin porte l'id du device, et `.argus-device` — qui vit à côté
+et n'était pas documenté — est nommé avec ce qu'il sert à empêcher.
+
+### 144. ✅ Corrigé le 23/08/2026 — `argus-build` ne dit rien quand le paquet a bien changé
 
 Mon correctif du 120 avertit sur un sha256 **identique**. Quand le hash diffère,
 il se tait — et le run 14, voyant `96 438 630 → 96 438 630 octets`, n'avait aucun
 moyen de savoir si le contrôle avait tourné. Un silence se lit « rien n'a été
 vérifié » aussi bien que « tout va bien ».
 
-### 145. Aucune règle d'arrêt pour `a11y.yaml`
+**Corrigé** : la cible dit aussi quand le paquet **a** été réécrit, et pourquoi le
+hash tranche là où deux tailles égales ne prouvent rien.
+
+### 145. ✅ Corrigé le 23/08/2026 — Aucune règle d'arrêt pour `a11y.yaml`
 
 Le §6 demande « une assertion par ancre déclarée » — avec 53 ancres de commande,
 le flow ferait plusieurs centaines de lignes et des minutes de device. `visual:
@@ -1939,7 +1957,12 @@ true` a sa règle d'arrêt explicite ; la couverture a11y n'en a aucune. Le run 
 a retenu les racines + la coquille + 2 à 4 commandes par écran, **faute de
 critère**, et l'a signalé.
 
-### 146. Rien ne dit où poser les doubles de test du projet
+**Corrigé** : la règle d'arrêt est écrite — racine de chaque écran déclaré, la
+coquille, deux à quatre commandes par écran — avec l'argument qui la justifie :
+le reste appartient à `anchors_test`, qui les couvre toutes pour zéro seconde de
+device.
+
+### 146. ✅ Corrigé le 23/08/2026 — Rien ne dit où poser les doubles de test du projet
 
 `harness.dart` est présenté comme « le fichier à éditer », mais un écran qui
 exige quatre blocs falsifiés et un service d'injection y ajoute 150 lignes qui ne
@@ -1948,13 +1971,19 @@ lignes) — bon réflexe, mais ce fichier n'a **ni marqueur de classement, ni li
 dans l'inventaire que l'installeur imprime**. Il disparaît du seul relevé que la
 personne suivante lira.
 
-### 147. Deux chiffres de démarrage se lisent comme une contradiction dans le HTML
+**Corrigé** : un fichier voisin, et **le marqueur `ARGUS:OWNED` en en-tête** — sans
+lui il n'apparaît ni dans la liste de sortie de l'installeur, ni dans `--check`.
+
+### 147. ✅ Corrigé le 23/08/2026 — Deux chiffres de démarrage se lisent comme une contradiction dans le HTML
 
 `perf.json` rend `coldStartMs: 1314` (sous le budget de 2 000) pendant que
 `QAM-START` annonce 8 031 ms en `major`. Les deux sont justes — première frame
 contre écran exploitable — et `report.json` porte un champ `measures` qui
 l'explique. Mais le HTML les met côte à côte **sans reprendre cette phrase**, et
 la lecture naturelle est « l'outil se contredit ».
+
+**Corrigé** : le HTML rend la phrase que `report.json` portait déjà et que rien
+n'affichait. Éprouvé dans les deux sens.
 
 ### 148. ❌ PAS un défaut du skill — le tap-to-pause n'est exercé par aucun flow
 
@@ -1969,8 +1998,8 @@ n'appelle aucune correction ici.
 
 ## Ce qui reste
 
-**Les points 141 à 147.** Le 148 est classé faux — il porte sur le parcours du
-projet, pas sur le skill.
+**Rien.** Les points 141 à 147 sont clos le 23/08/2026 ; le 148 est classé faux —
+il porte sur le parcours du projet, pas sur le skill.
 
 **Les correctifs du run 13 ont porté**, deux de façon nette : le run 14 a écrit
 « Sous le pli : 0 (inconnu à ce stade — **non devinable**) » puis a rempli la case
