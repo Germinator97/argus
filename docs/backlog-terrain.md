@@ -1127,15 +1127,29 @@ l'indice qui apprend à s'en servir — *mon* correctif, une passe plus tôt.
 remède **total** est de l'extraire, pour que le troisième axe l'ait par
 construction.
 
-### 102. `devices[].os` a deux consommateurs, comme `model` au 92 — le voisin, encore
+### 102. ❌ FAUX — « `devices[].os` ne peut pas satisfaire ses deux consommateurs »
 
-Le 92 a doté `devices[].model` d'un commentaire qui nomme les deux vocabulaires
-(`maestro start-device` contre `android-emulator-runner`) et donne la commande qui
-tranche. `devices[].os` a exactement le même problème — Maestro attend
-`android-36`, l'action de CI attend `api-level: 36` — et n'a rien reçu.
+Le run 9 écrit : « J'ai mis la forme Maestro ; la CI retombera sur son défaut. »
+**Mesuré, elle ne retombe sur rien** — `ciEmulator` traduit :
 
-Le run 9 a mis la forme Maestro et l'a écrit noir sur blanc : « la CI retombera
-sur son défaut ».
+```
+os=android-36 model=pixel_6 → {"ok":true,"apiLevel":"36","profile":"pixel_6","source":"argus.mobile.yaml"}
+os vide                     → {"ok":true,"apiLevel":"33",…,"source":"défaut du workflow"}
+os=36  (la forme CI)        → {"ok":false,"why":"devices[].os illisible : « 36 » (attendu : android-33)"}
+```
+
+Le champ unique sert bien les deux : la forme Maestro est la seule acceptée, et
+la CI en **dérive** son `api-level`. C'est exactement ce que le 67 avait posé. La
+seule façon de retomber sur le défaut est de laisser `os` vide — et le harnais le
+dit alors dans son `why`.
+
+⚠️ **Deux lectures fausses avant la mesure, dont la mienne.** Le rapport voyait
+un champ à un seul vocabulaire ; moi j'ai inscrit « le voisin du 92 : `os` n'a
+rien reçu » après avoir lu le commentaire du YAML — qui dit pourtant
+« `model`/`os` → DEUX consommateurs » — **sans ouvrir `ciEmulator`**. Reproduire
+n'est pas lire le fichier voisin : c'est exécuter la fonction. Le commit qui a
+inscrit ce point (`1a8d58b`) porte donc un résumé faux ; il reste tel quel, c'est
+ici que la vérité vit.
 
 ### 103. Deux identifiants qui tombent dans le même nœud fusionné : le second disparaît, en silence
 
@@ -1227,9 +1241,9 @@ double.
 ## Ce qui reste
 
 **Les points 98 à 108**, rendus par le run 9 et tous reproduits avant d'être
-inscrits. Deux visent la passe de la veille, **par le même mécanisme** : le 101
-est le voisin du 89, le 102 celui du 92 — un champ créé d'un côté, son jumeau
-laissé sans rien.
+inscrits — **deux se sont révélés faux à la reproduction** (102 et 108), un
+record pour un seul run. Le 101 reste le motif du chantier : le voisin du 89, un
+champ créé d'un côté et l'indice qui l'annonce laissé de l'autre.
 
 **Le run 9 était une vérification, et les neuf points du run 8 ont porté** :
 trois ont été exercés pour de vrai — l'installation qui refuse de démarrer (95),
@@ -1241,8 +1255,9 @@ manque, la suivante trouve ce que la correction a introduit **ou n'a pas
 terminé**. Les runs 4, 5, 8 et 9 ont chacun désigné des correctifs de la veille —
 non pas faux, mais **incomplets**.
 
-⚠️ **Un constat démenti (108), et c'est mon instrument qui l'avait confirmé.**
-Les autres démentis encore inscrits sont le **62** et le **78** ; le **25**, clos,
-vit dans la page publiée. Reproduire reste moins cher que corriger ce qui n'est
+⚠️ **Deux constats démentis (102, 108), et dans les deux cas c'est MOI qui les
+avais confirmés** — un grep non ancré pour l'un, une lecture du fichier voisin au
+lieu de l'exécution de la fonction pour l'autre. Les autres démentis encore
+inscrits sont le **62** et le **78** ; le **25**, clos, vit dans la page publiée. Reproduire reste moins cher que corriger ce qui n'est
 pas cassé — et le 108 ajoute une variante : reproduire *avec un motif ancré*, ou
 l'instrument confirme le constat à la place du fichier.
