@@ -54,11 +54,17 @@ build:
   # androidScan: build/app/outputs/flutter-apk/app-release.apk
   # (ponctuellement : `node scripts/argus/sec.mjs --binary=<chemin>`)
   ios: build/ios/iphonesimulator/Runner.app
-  # Commandes de build proposées quand le binaire est absent. Jamais lancées
-  # ⚠️ Elles ne sont JAMAIS lancées par le harnais — ni avec, ni sans
-  # confirmation : aucun script ne les exécute, ils les AFFICHENT. La
-  # formulation d'avant laissait croire à une garde qui n'a pas lieu d'être,
-  # et donc à une exécution qui n'a jamais lieu non plus.
+  # Commandes de build. DEUX consommateurs, et ils n'en font pas la même chose :
+  #   • les scripts de mesure les AFFICHENT quand le binaire manque — aucun
+  #     `.mjs` n'exécute un build, ni avec ni sans confirmation ;
+  #   • `make argus-build` les EXÉCUTE, après les avoir résolues
+  #     (`config.mjs --print-build-cmd`) : préfixe FVM dérivé du projet, et
+  #     ciblage `--target-platform` sur l'ABI du device branché.
+  # ⚠️ Jusqu'au run 9, le Makefile lançait sa propre ligne, écrite en dur : la
+  # valeur configurée ici n'était donc pas celle qui se construisait. Un projet
+  # qui ciblait son ABI reconstruisait quand même l'APK gras — celui-là même que
+  # l'installation venait de refuser.
+  # Pas de `fvm` à écrire ici : le préfixe est dérivé, l'ajouter le doublerait.
   androidBuildCmd: flutter build apk --debug
   iosBuildCmd: flutter build ios --debug --simulator
 

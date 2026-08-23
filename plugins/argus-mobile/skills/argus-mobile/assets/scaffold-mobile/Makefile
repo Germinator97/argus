@@ -27,8 +27,21 @@ argus-doctor: ## Config résolue + outillage détecté
 	@node scripts/argus/config.mjs
 
 
-argus-build: ## Construit l'APK debug
-	@$(FLUTTER) build apk --debug
+argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du device
+	@CMD="$$(node scripts/argus/config.mjs --print-build-cmd)"; \
+	APK="$$(node scripts/argus/config.mjs --print-binary)"; \
+	BEFORE=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); BEFORE=$${BEFORE:-0}; \
+	echo "→ $$CMD"; \
+	START=$$(date +%s); eval "$$CMD"; ELAPSED=$$(( $$(date +%s) - START )); \
+	AFTER=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); AFTER=$${AFTER:-0}; \
+	echo "  paquet   $$APK"; \
+	echo "  $$BEFORE → $$AFTER octets en $${ELAPSED}s"; \
+	if [ "$$BEFORE" != "0" ] && [ "$$BEFORE" = "$$AFTER" ]; then \
+	  echo "  ⚠️  TAILLE INCHANGÉE — « Built » ne prouve pas qu'un paquet a été refait."; \
+	  echo "      Si la commande vient de changer (ciblage d'ABI, flavor, flags), rien"; \
+	  echo "      n'a été re-packagé : \`$(FLUTTER) clean\` puis relance."; \
+	fi
+
 
 argus-lint: ## Syntaxe des flows Maestro, sans device
 	@set -e; for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do \

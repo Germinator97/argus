@@ -1709,3 +1709,47 @@ test('sur un binaire de publication, le finding reste ce qu\'il était', () => {
   assert.equal(thresholdFinding('QAM-PERF-SIZE', 'x', 30, 60, 'Mo'), null,
     'et sous le budget, toujours aucun finding');
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// La valeur configurée EST la valeur exécutée
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le run 9 : `argus.mobile.yaml` portait `androidBuildCmd`, les scripts de
+// mesure l'AFFICHAIENT quand le binaire manquait, et `make argus-build`
+// lançait sa propre ligne écrite en dur. Un projet qui ciblait son ABI
+// reconstruisait donc l'APK gras — celui que l'installation venait de refuser.
+//
+// Le garde ne surveille pas la ligne corrigée : il balaie TOUT le Makefile.
+// Une seconde cible qui recoderait un build en dur tomberait sans que personne
+// y pense — c'est le seul remède au motif qui domine ce chantier.
+
+test('aucune cible du Makefile ne code en dur un build que la config porte', () => {
+  const makefile = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+
+  // Les lignes de recette (celles qui s'exécutent) : elles commencent par une
+  // tabulation. Les commentaires et la doc des cibles ne s'exécutent pas.
+  const recettes = makefile.split('\n').filter((l) => l.startsWith('\t'));
+  assert.ok(recettes.length > 10, 'motif introuvable : le Makefile n\'a plus de recettes tabulées ?');
+
+  const enDur = recettes.filter((l) => /\bbuild\s+(apk|appbundle|ios|ipa)\b/.test(l));
+  assert.deepEqual(enDur, [],
+    'ces recettes lancent un build littéral au lieu de résoudre la commande de la config '
+    + '(`node scripts/argus/config.mjs --print-build-cmd`) :\n  ' + enDur.join('\n  '));
+
+  // L'autre moitié : la cible existe toujours et passe bien par la config.
+  const cible = /^argus-build:.*?(?=\n[a-z-]+:)/ms.exec(makefile);
+  assert.ok(cible, 'la cible argus-build a disparu — le garde ci-dessus deviendrait vacant');
+  assert.match(cible[0], /--print-build-cmd/,
+    'argus-build doit demander la commande à la config, pas l\'inventer');
+  assert.match(cible[0], /--print-binary/,
+    'et mesurer le paquet : « Built » ne prouve pas qu\'un paquet a été refait');
+});
+
+test('la commande de build reste ciblable sur l\'ABI, dans les deux sens', () => {
+  const base = 'flutter build apk --debug';
+  assert.equal(buildCmdForAbi(base, 'arm64-v8a'), `${base} --target-platform android-arm64`);
+  assert.equal(buildCmdForAbi(base, ''), base, 'sans device, la commande sort intacte');
+  assert.equal(buildCmdForAbi(`${base} --target-platform android-arm64`, 'x86_64'),
+    `${base} --target-platform android-arm64`, 'un ciblage déjà écrit à la main prime');
+});

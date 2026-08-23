@@ -785,12 +785,27 @@ piloter le binaire de la veille. Deux gestes, dans cet ordre :
 
 ```bash
 adb -s <udid> uninstall <appId>      # réinstaller par-dessus demande PLUS de place
-make argus-build                     # le runner propose la commande ciblée sur l'ABI
+make argus-build                     # résout la commande de la config et cible l'ABI
 ```
 
-Un APK debug « gras » embarque quatre ABI quand l'appareil n'en lit qu'une : le
-ciblage divise sa taille par deux, et c'est souvent tout ce qui manquait. Reprends
-ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être rejouées.
+Un APK debug « gras » embarque quatre ABI quand l'appareil n'en lit qu'une, et le
+ciblage retire celles qu'il ne lira jamais. **Ce que ça rend dépend de ce qui pèse
+dans ton paquet, et il faut le mesurer plutôt que l'attendre** : 84,9 Mo → 39,7 sur
+un projet, 117,5 → 92,0 (−21,7 %) sur un autre, dont le `kernel_blob.bin` pesait à
+lui seul 84,3 Mo — que `--target-platform` ne touche pas. Le ciblage ne retire pas
+tout non plus : les `.so` des plugins qui livrent toutes les ABI survivent.
+
+⚠️ **Le ciblage ne suffit pas toujours** — sur le second projet, c'est la
+désinstallation qui a débloqué, pas lui. Fais les deux gestes, dans l'ordre.
+
+⚠️ **Et lis les deux tailles que `argus-build` imprime.** Un build peut rendre
+« ✓ Built » sans avoir re-packagé quoi que ce soit : mesuré, 8,5 s et 145 octets
+d'écart — des horodatages — juste après un changement de commande, là où le build
+qui l'a réellement appliquée en a pris 48,9 et retiré 26 Mo. Taille inchangée après
+un changement de flags ⇒ `flutter clean`, puis relance.
+
+Reprends ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être
+rejouées.
 
 **g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
 `argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et

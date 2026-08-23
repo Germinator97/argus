@@ -803,6 +803,41 @@ function main() {
     process.exitCode = 2;
     return;
   }
+
+  // ── `--print-build-cmd` : la commande que la CONFIG porte, résolue. ───────
+  //
+  // ⚠️ Elle existe parce que la valeur configurée et la valeur exécutée
+  // n'étaient pas la même : `argus.mobile.yaml` portait `androidBuildCmd`,
+  // que les scripts de mesure AFFICHENT quand le binaire manque, pendant que
+  // `make argus-build` lançait sa propre ligne, écrite en dur et jamais
+  // ciblée. Un projet qui configurait la première reconstruisait la seconde —
+  // et sur un `/data` plein, c'est exactement l'APK gras qui vient d'être
+  // refusé à l'installation.
+  //
+  // Le ciblage d'ABI est appliqué ici, une seule fois, avec la même fonction
+  // que le runner emploie pour PROPOSER la commande. Sans device branché,
+  // `deviceAbi('')` rend '' et la commande sort inchangée : la dégradation
+  // est silencieuse parce qu'elle est correcte, pas parce qu'elle est cachée.
+  const printCmd = process.argv.slice(2).find((a) => a === '--print-build-cmd');
+  if (printCmd) {
+    const arg = (/** @type {string} */ name) =>
+      (process.argv.slice(2).find((a) => a.startsWith(`${name}=`)) ?? '').split('=')[1] ?? '';
+    const platform = arg('--platform') || 'android';
+    const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
+    const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice().udid : '');
+    const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(udid));
+    console.log(flutterCommand(ciblee));
+    return;
+  }
+
+  // Le chemin du binaire que cette commande produit — pour que l'appelant
+  // puisse MESURER le paquet avant et après, au lieu de croire « ✓ Built ».
+  if (process.argv.slice(2).includes('--print-binary')) {
+    const platform = (process.argv.slice(2).find((a) => a.startsWith('--platform=')) ?? '').split('=')[1] || 'android';
+    console.log(platform === 'ios' ? config.build.ios : config.build.android);
+    return;
+  }
+
   log(`config lue : ${config.__file}`);
   console.log(JSON.stringify({ ...config, __file: undefined }, null, 2));
 
