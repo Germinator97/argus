@@ -210,6 +210,12 @@ function renderBody(context) {
   const shots = context.shots ?? new Map();
   const devices = (run?.devices ?? []).map((/** @type {any} */ d) => `${d.id} (${d.model || '?'} · ${d.os || '?'}${d.physical ? ' · APPAREIL RÉEL' : ''})`).join(', ');
   const ok = parts.filter((/** @type {any} */ p) => p.state === 'ok' && p.findings.length === 0);
+  // ⚠️ LES DEUX GRANDEURS DE DÉMARRAGE, côte à côte, se lisent comme une
+  // contradiction : `coldStartMs` sous son budget pendant que QAM-START rougit à
+  // 8 s. Les deux sont justes — première frame contre écran exploitable — et
+  // `report.json` porte déjà la phrase qui les sépare (`startup.measures`).
+  // Elle n'était rendue nulle part : le HTML montrait les chiffres sans elle.
+  const mesureDemarrage = String(context.run?.startup?.measures ?? run?.startup?.measures ?? '');
 
   return `<div class="wrap">
   <h1>Argus Mobile — rapport QA</h1>
@@ -227,6 +233,7 @@ function renderBody(context) {
   </div>
 
   <h2>Couverture</h2>
+  ${mesureDemarrage ? `<p class="muted">Deux grandeurs de démarrage coexistent ici, et elles ne mesurent pas la même chose : ${esc(mesureDemarrage)}</p>` : ''}
   ${run?.scope && run.scope !== 'complet' ? `<p class="muted"><span class="badge bad">partiel</span> ce rapport vient d'un run <strong>${esc(run.scope)}</strong>, pas d'une passe complète : les dimensions que le filtre a écartées ne sont pas mesurées ici, elles sont ABSENTES. Rejoue <code>make argus-run</code> avant de conclure — c'est notamment le cas après la contre-épreuve visuelle, qui réécrit ce fichier avec la régression qu'on vient de fabriquer.</p>` : ''}
   ${(context.staleness?.stale ?? []).length ? `<p class="muted"><span class="badge bad">périmée</span> ${(context.staleness.stale).length} relevé(s) ont plus de ${context.staleness.budgetMin} min d'écart avec le plus récent : ils ne viennent pas de ce run. Le rapport les agrège en le disant plutôt que de les taire.</p>` : ''}
   <table><tr><th>Source</th><th>Dimensions</th><th>État</th><th>Mesurée le</th><th>Raison</th></tr>${coverageRows(parts)}</table>

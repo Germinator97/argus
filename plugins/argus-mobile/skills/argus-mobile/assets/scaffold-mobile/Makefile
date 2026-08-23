@@ -42,6 +42,9 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	  echo "  ⚠️  PAQUET INTACT — le fichier n'a pas été réécrit (même sha256)."; \
 	  echo "      Si la commande vient de changer (ciblage d'ABI, flavor, flags), rien"; \
 	  echo "      n'a été re-packagé : \`$(FLUTTER) clean\` puis relance."; \
+	elif [ -n "$$AFTERH" ]; then \
+	  echo "  ✔ paquet réécrit (sha256 différent) — deux tailles égales ne veulent pas"; \
+	  echo "    dire deux paquets identiques, c'est le hash qui tranche."; \
 	fi
 
 

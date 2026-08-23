@@ -133,6 +133,12 @@ Instrumentation Semantics — parcours critiques
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
 
+⚠️ **En REGRESS, rends-le DEUX FOIS : l'état TROUVÉ, puis l'état LAISSÉ.** Le
+livrable y est justement que la colonne « à poser » tombe à zéro — un relevé
+unique est alors soit périmé, soit trompeur : « 53 posées / 0 à poser (100 %) »
+cache que tout était à faire. En EXPLORE et en DEMO, une seule fois suffit :
+rien n'est posé.
+
 À instrumenter, par fichier :
   lib/…/panier_page.dart:88    racine d'état « panier vide »   → panier_empty_root
   lib/…/panier_page.dart:142   ElevatedButton « Valider »      → panier_valider
@@ -205,6 +211,13 @@ dépend donc de l'intention cadrée en §1 :
 exposées** à la couche d'accessibilité. Un flow qui cible une Key échoue,
 toujours. C'est `Semantics(identifier:)` qu'il faut, et c'est la voie recommandée
 parce qu'elle survit à un changement de langue et de wording.
+
+⚠️ **Où poser les doubles de test dont tes écrans ont besoin.** `harness.dart`
+déclare ; il n'a pas à héberger quatre blocs falsifiés et un service d'injection.
+Mets-les dans un fichier voisin — `test/argus/argus_fakes.dart` est le nom que le
+terrain a choisi — et **déclare-le `ARGUS:OWNED` en en-tête** : sans ce marqueur,
+il n'apparaît ni dans la liste que l'installeur imprime en sortant, ni dans son
+`--check`. Il disparaît alors du seul inventaire que la personne suivante lira.
 
 **c. Proposer, jamais imposer.** Patch minimal. Sur un widget interactif,
 l'identifiant se pose sur le nœud `Semantics` qui porte DÉJÀ le rôle — pas dans

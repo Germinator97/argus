@@ -238,7 +238,10 @@ Maestro est explicite — « the comparison screenshot must also have been cropp
 et rien n'échoue proprement quand les deux cadrages divergent : Maestro compare
 deux images valides qui ne montrent simplement pas la même chose, et le diff se
 lit comme une régression de l'app. Le runner note donc le cadrage à côté des
-références (`.maestro/_baselines/.argus-crop`) et avertit quand il a bougé ;
+références (`.maestro/_baselines/<device-id>/.argus-crop` — **le dossier porte
+l'id du device**) et avertit quand il a bougé ; à côté, `.argus-device` grave
+l'appareil MESURÉ au moment des captures, pour qu'une référence née ailleurs ne
+passe pas pour une régression ;
 régénère avec `make argus-baselines` plutôt que de chercher ce qui a changé
 dans l'écran.
 
@@ -291,6 +294,14 @@ Trois mesures, trois outils, parce qu'aucun ne couvre les trois :
 | Couverture des ancres sémantiques — **une assertion par ancre, que TU écris** | `.maestro/a11y.yaml` | seul Maestro voit l'arbre réel du device |
 | Cibles tactiles ≥ 48 dp, contrastes, labels | `test/argus/a11y_test.dart` | **inexprimable en Maestro** : `width`/`height` sont des égalités en pixels |
 | Cibles tactiles sur le rendu réel | `scripts/argus/a11y.mjs` | croise `uiautomator dump` et `wm density` |
+
+⚠️ **Sa règle d'arrêt, parce que « une assertion par ancre » n'en est pas une** :
+sur un projet à 53 commandes, ce flow ferait des centaines de lignes et des
+minutes de device pour re-prouver ce que l'étage 1 prouve déjà sans appareil. Ce
+que l'étage 2 seul peut voir, c'est l'arbre RÉEL — donc vise **la racine de
+chaque écran de `screens[]`, la coquille, et deux à quatre commandes par écran**,
+choisies parmi celles qu'un parcours emprunte vraiment. Le reste appartient à
+`anchors_test`, qui les couvre toutes pour zéro seconde de device.
 
 ⚠️ **La première ligne n'est pas automatique, et le flow livré ne mesure pas ce
 que son titre laisse croire** : `a11y.yaml` n'asserte que l'ancre d'accueil. La
