@@ -19,9 +19,10 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
+import { fileURLToPath } from 'node:url';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Parseur YAML (sous-ensemble strict)
@@ -940,4 +941,13 @@ function main() {
   process.exitCode = problems.some((p) => p.level === 'error') ? 2 : 0;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+// ⚠️ `realpathSync` DES DEUX CÔTÉS. `resolve()` normalise sans résoudre les
+// liens symboliques, or `import.meta.url` porte le chemin RÉEL : lancé par un
+// chemin qui traverse un lien (sur macOS, `$TMPDIR` et `/tmp` en sont),
+// le script ne se reconnaît pas, `main()` n'est jamais appelé — pas de sortie,
+// pas d'erreur, exit 0. Mesuré : `node scripts/argus/perf.mjs` mesure,
+// `node /var/folders/…/perf.mjs` ne fait rien et rend 0.
+const invokedDirectly = process.argv[1] !== undefined
+  && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+
+if (invokedDirectly) main();

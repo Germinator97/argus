@@ -23,7 +23,7 @@
  *       manquant, ou harness non configuré
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -1589,8 +1589,14 @@ async function main() {
 // l'importer pour en tester une fonction déclencherait un vrai run : install
 // du binaire, clearState sur le device, la totale. C'est ce qui rendait le
 // runner intestable, et donc non testé.
+// ⚠️ `realpathSync` DES DEUX CÔTÉS. `resolve()` normalise sans résoudre les
+// liens symboliques, or `import.meta.url` porte le chemin RÉEL : lancé par un
+// chemin qui traverse un lien (sur macOS, `$TMPDIR` et `/tmp` en sont),
+// le script ne se reconnaît pas, `main()` n'est jamais appelé — pas de sortie,
+// pas d'erreur, exit 0. Mesuré : `node scripts/argus/perf.mjs` mesure,
+// `node /var/folders/…/perf.mjs` ne fait rien et rend 0.
 const invokedDirectly = process.argv[1] !== undefined
-  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
 
 if (invokedDirectly) {
   main().catch((e) => {

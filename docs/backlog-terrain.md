@@ -1494,32 +1494,153 @@ rajoute dans six mois.
 sur appareil réel. Pas `adb`. Et c'est un autre chantier : le skill ne touche
 aujourd'hui au code de production que pour les ancres.
 
+### 117. ✅ Corrigé le 23/08/2026 — Mon retrait du jank a emporté DEUX fonctions, et rien ne l'a vu
+
+`measureMemory` et `deviceContext` étaient appelées et définies nulle part. **La
+dimension performance était morte à l'installation** : le run 11 l'a découverte
+en `ReferenceError` à l'exécution, l'une après l'autre — corriger la première
+fait apparaître la seconde.
+
+Mon découpage a coupé du début du dartdoc du jank jusqu'au bandeau de section
+suivant, et les deux fonctions vivaient dans cet intervalle.
+
+⚠️ **Ce qui rend ce défaut instructif, c'est que TOUS mes contrôles étaient
+verts** : `node --check` ne prouve que la syntaxe ; le banc n'exécutait aucun
+script de mesure ; les 122 gardes ne touchent pas `perf.mjs` ; et mon propre
+contrôle — « perf.mjs tourne-t-il encore sans device ? » — a rendu « ✖ aucun
+device Android connecté » que j'ai lu comme une **sortie propre**. Le script
+mourait avant d'atteindre le code que je venais de supprimer.
+
+**Corrigé** : les deux fonctions restaurées à l'octet près depuis `1695fc5^`, et
+le banc gagne une étape qui **déroule** `perf.mjs` et `a11y.mjs` sur leur chemin
+nominal derrière un faux `adb`, en échouant sur `ReferenceError`. Mutation
+vérifiée : le défaut réintroduit fait tomber le banc en nommant la fonction.
+
+### 118. ✅ Corrigé le 23/08/2026 — Un script lancé par un chemin SYMLINKÉ ne s'exécute pas, et sort 0
+
+Trouvé en écrivant le garde du 117, pas par le run. Le garde d'entrée compare
+`resolve(process.argv[1])` à `fileURLToPath(import.meta.url)` — or **`resolve`
+normalise sans résoudre les liens symboliques**, tandis que l'URL du module porte
+le chemin réel. Sur macOS, `$TMPDIR` et `/tmp` sont des liens vers `/private/…` :
+
+```
+node scripts/argus/perf.mjs        → [argus-mobile] mesures sur emulator-5554 …
+node /var/folders/…/perf.mjs       → (RIEN)   exit 0
+```
+
+Le script ne fait rien, ne dit rien, et rend 0. `config.mjs` est pire encore :
+il compare des chaînes (`import.meta.url === \`file://${process.argv[1]}\``), ce
+qui casse en plus sur tout chemin non canonique.
+
+⚠️ **Ma première version du garde du 117 est tombée dans ce piège** : elle
+lançait les scripts par chemin absolu, donc elle rapportait « déroulé » sur des
+scripts qui ne s'exécutaient pas — **verte sur le défaut qu'elle venait d'être
+écrite pour attraper**.
+
+**Corrigé** : `realpathSync` des deux côtés dans les sept scripts, et le banc
+exige une **sortie non vide** — un montage qui ne peut pas montrer qu'il a mesuré
+ne doit pas être lu comme un succès.
+
+### 119. `known_issues.dart` promet « par égalité », mais réconcilie par clé EXERCÉE
+
+Son en-tête dit : « CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ ASSERTÉ
+PAR ÉGALITÉ. » Le mécanisme est `argusCheck(key, …)` → `if
+(!argusKnownIssues.contains(key))`. La confrontation n'a donc lieu **que si la
+clé est exercée**.
+
+Une clé qu'aucun appel ne produit — faute de frappe, écran retiré, libellé
+d'assertion reformulé — n'est jamais réconciliée et devient **une permission
+permanente, en silence**. Le run 11 l'a mesuré par mutation :
+
+| Mutation | Attendu | Obtenu |
+|---|---|---|
+| clé exercée dont le défaut est absent | rouge | ✅ rouge, avec « retire cette ligne » |
+| clé **jamais exercée** (`shell · defaut-qui-nexiste-pas`) | rouge | ❌ **All tests passed** |
+
+Ce que « par égalité » exigerait : comparer en fin de suite l'ensemble des clés
+**produites** à l'ensemble **déclaré**, et rougir sur la différence dans les deux
+sens.
+
+### 120. « TAILLE INCHANGÉE ⇒ `flutter clean` » a produit une fausse alerte
+
+Mon correctif du 99 avertit quand le paquet ne change pas de taille. Le run 11 l'a
+reçu sur un build **démontrablement frais** : marqueur unique compté dans le
+`kernel_blob.bin` (`'Lecture ou pause'` → 2, chaîne introduite par cette passe),
+mtime de l'APK postérieure à la dernière édition de `lib/`. L'APK préexistant
+pesait simplement le même nombre d'octets.
+
+Le remède prescrit coûte ~50 s pour rien. L'heuristique « même taille ⇒ rien
+re-packagé » ne tient pas ; c'est un **indice**, pas une preuve. La technique qui
+tranche — compter un marqueur du changement dans le kernel — est connue du
+chantier et n'est pas câblée à l'endroit précis où elle servirait.
+
+### 121. Le bloc `screens[]` « prêt à coller » de §2c-bis ne porte pas `visualCropOn`
+
+Le gabarit donne `anchor:`, `visual:`, `priority:` — pas le cadrage. Or
+`argus.mobile.yaml` explique dix lignes plus loin que « dès le deuxième écran en
+`visual: true`, aucune valeur globale ne convient ». Le bloc produit donc une
+configuration à retoucher aussitôt. Une ligne commentée suffirait.
+
+### 122. `goto.yaml` : `startsWith('home')` avale le second état d'accueil sans le dire
+
+Le point 93 a remplacé `=== 'home'` par `startsWith('home')` pour que le gabarit
+et le sous-flow se rejoignent, et le commentaire l'explique bien. Ce qu'il ne dit
+pas : `home-filled` matche la **même** branche, celle qui rend `assertTrue(true)`
+et ne navigue nulle part.
+
+Conséquence si quelqu'un met `home-filled` en `visual: true` : on photographie
+`home-empty` sous le nom de `home-filled`, et **rien ne le signale**. Le run 11
+l'a évité en ne mettant pas cet écran en visuel — par un autre raisonnement.
+
+### 123. `anchors_test.dart` s'arrête au PREMIER échec par écran
+
+`argusCheck` lève, donc la boucle sur `screen.commands` abandonne. Sur un écran à
+24 commandes dont plusieurs sous le pli, découvrir l'ensemble demande une
+exécution par ancre. Le run 11 s'en est sorti en **déduisant** les ancres voisines
+— exactement ce que le skill dit de ne pas faire (« on ne raisonne pas : on
+mesure »).
+
+Le message et l'indice de pli sont bons ; il manque de les **collecter** avant de
+lever.
+
+### 124. Le `argus.mobile.yaml` livré contredit le cadrage que le §1 recommande
+
+Valeurs par défaut : `avd: ''` + `autoStart: true`. Or le §1 demande d'écrire
+« device = émulateur `<AVD>` », et `device-matrix.md` dit que `avd` et
+`autoStart: true` **ne se combinent pas** (`start-device` crée son propre AVD).
+Suivre le cadrage impose donc de retourner le drapeau soi-même, sans que rien ne
+le rappelle à cet endroit.
+
+### 125. La table §6 de la méthodologie laisse croire que la couverture d'ancres est mesurée
+
+« Couverture des ancres sémantiques → `.maestro/a11y.yaml` » se lit comme une
+mesure automatique. Le flow livré n'asserte que l'ancre d'accueil ; **tout le
+reste est à écrire à la main**. La table gagnerait à le dire.
+
+### 126. Le cadrage est dispersé : `run:` en tête, le device 90 lignes plus bas
+
+Conséquence directe de mon correctif du 109. Le §1 demande d'écrire le cadrage
+« à l'endroit que chaque choix gouverne » ; `env` et `mode` ont désormais leur
+clé en tête du fichier, le device vit dans `devices[]`, et le run 11 a dû écrire
+le cadrage **à deux endroits** pour le rendre relisible d'un bloc.
+
+⚠️ Le correctif du 109 était juste et ce point ne le défait pas : il demande
+seulement que le §1 dise où va quoi, ou qu'un renvoi relie les deux.
+
 ## Ce qui reste
 
-**Rien.** Les points 109 à 116 sont clos le 23/08/2026, un commit par étape — et
-le dernier est le premier **retrait de dimension** du chantier.
+**Les points 119 à 126.** Les 117 et 118 sont déjà clos — ce sont les deux
+régressions, et **toutes deux sont de moi** : le retrait du jank a emporté deux
+fonctions, et le garde écrit pour l'attraper est né vacant.
 
-Ce qu'il enseigne dépasse le jank : un instrument mort ne se remplace pas
-réflexivement par un instrument vivant. La question qui a tranché n'était pas
-« que sait-on mesurer ? » mais **« la mesure vaudrait-elle quelque chose une fois
-juste ? »** — et la réponse était non, parce que ce harnais mesure un debug sur
-émulateur. Le défaut d'instrument en masquait un second, qui lui survivait.
+**Le run 11 était une vérification, et les correctifs de la veille ont porté** :
+le gabarit du rapport a été rempli avec ses nouvelles cases (« Affichages : 2 »,
+« Sous le pli : 4 »), le ciblage d'ABI s'est appliqué d'emblée, `argus-baselines`
+n'a plus rendu de faux échec, la précision sur `textField:` a été lue et
+appliquée telle quelle (« le rôle en ferait une frontière »), et le
+`container: true` sur les frères de rangée a été posé sans enquête.
 
-⚠️ Et le balayage de la suppression a trouvé trois consommateurs qu'aucune liste
-de mémoire n'aurait donnés : le manifeste du plugin, la description du
-marketplace, et — le plus dangereux — un **déclencheur d'invocation** dans le
-frontmatter du SKILL.
-
-**Le run 10 était une vérification, et six correctifs de la veille ont été
-exercés et confirmés** : la commande de build résolue et le paquet mesuré
-(98/99), l'indice du pli côté `displays:` qui a fait déplacer
-`session_form_reps_value` (101), `aapt2` trouvé hors PATH sans intervention
-(106), le `container: true` sur les frères de rangée appliqué d'emblée (103), le
-ciblage d'ABI mesuré à −21,7 % (100). Aucun n'est revenu, et **aucun n'a coûté à
-ce run ce qu'il avait coûté au précédent** — la sonde d'une demi-heure du run 9
-sur les nœuds fusionnés est devenue une décision de trois lignes.
-
-⚠️ **Le 110 est le troisième voisin de `displays` en trois runs.** Le remède du
-101 (extraire plutôt que recopier) couvrait le code ; il ne couvrait pas les
-énumérations en prose. Ce n'est pas un endroit qui manque, c'est la **liste des
-endroits qui énumèrent les axes**.
+⚠️ **Ce que ce run change dans la façon de mesurer** : un défaut a traversé le
+banc, les 122 gardes et `node --check` parce qu'**aucun d'eux n'exécutait les
+scripts**. Le banc les déroule désormais derrière un faux `adb`. La leçon vaut
+au-delà : `node --check` prouve la syntaxe, jamais qu'un chemin de code existe.

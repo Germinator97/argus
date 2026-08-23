@@ -22,7 +22,7 @@
  * Codes de sortie : 0 vert · 1 major · 2 blocker/critical ou outillage absent.
  */
 
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, realpathSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -374,6 +374,12 @@ function main() {
 // Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans
 // ce garde, l'importer pour en tester une fonction déclencherait un vrai run —
 // et c'est ce qui rendait ces scripts intestables, donc non testés.
+// ⚠️ `realpathSync` DES DEUX CÔTÉS. `resolve()` normalise sans résoudre les
+// liens symboliques, or `import.meta.url` porte le chemin RÉEL : lancé par un
+// chemin qui traverse un lien (sur macOS, `$TMPDIR` et `/tmp` en sont),
+// le script ne se reconnaît pas, `main()` n'est jamais appelé — pas de sortie,
+// pas d'erreur, exit 0. Mesuré : `node scripts/argus/perf.mjs` mesure,
+// `node /var/folders/…/perf.mjs` ne fait rien et rend 0.
 const invokedDirectly = process.argv[1] !== undefined
-  && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
 if (invokedDirectly) main();
