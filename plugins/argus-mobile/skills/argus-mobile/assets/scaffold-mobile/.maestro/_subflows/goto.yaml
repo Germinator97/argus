@@ -35,6 +35,16 @@ appId: ${APP_ID}
       # `visual: true` on photographie l'accueil VIDE sous le nom du plein, sans
       # qu'aucune mesure ne le signale. Un état d'accueil qui demande des données
       # a besoin de sa PROPRE branche, qui les crée.
+      #
+      # ⚠️ ET ÇA VAUT POUR CHAQUE FAMILLE D'ÉTATS, pas seulement l'accueil.
+      # `history-empty` / `history-filled`, `categories-empty` / `-filled` :
+      # dès que deux états partagent un préfixe, une branche qui les attrape
+      # ensemble en sert UN et ment sur l'autre. La règle générale, pour ne pas
+      # avoir à la redécouvrir famille par famille : **une branche par état qui
+      # demande une préparation** ; le `startsWith` n'est légitime que pour les
+      # états auxquels le lancement mène déjà. Deux runs consécutifs sont tombés
+      # dessus, le second sur `history-*` alors que le commentaire ne parlait que
+      # de `home`.
       true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || String(SCREEN_ID).startsWith('home')}"
     commands:
       - assertTrue:

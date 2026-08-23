@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
-  avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -1890,4 +1890,32 @@ test('le gabarit du rapport d\'instrumentation nomme tous les axes du type', () 
     'ces axes existent dans ArgusScreen et le gabarit du rapport ne les compte nulle part — '
     + 'un agent qui en pose n\'a pas de case où les mettre, et s\'abstient ou invente :\n  '
     + absents.join(', '));
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// L'avertissement de locale ne parle que quand il a quelque chose à dire
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Il sortait dès que la clé était renseignée et `autoStart` faux — la
+// disposition que le skill RECOMMANDE depuis le point 124. Trois lignes de bruit
+// par exécution sur une configuration correcte, relevées comme telles au run 12.
+// Un avertissement systématique cesse d'être lu, et emporte les vrais avec lui.
+
+test('locale : silence quand l\'appareil est DÉJÀ dans la locale demandée', () => {
+  assert.deepEqual(localeWarnings('fr_FR', false, 'fr-FR'), [],
+    'le cas nominal du skill — avd nommé, device réglé — ne doit rien dire');
+  assert.deepEqual(localeWarnings('fr_FR', false, 'fr-FR,en-US'), [],
+    'une liste de locales : c\'est la première qui compte');
+  assert.deepEqual(localeWarnings('fr_FR', true, 'en-US'), [],
+    'sous autoStart la locale SERA appliquée : rien à signaler');
+  assert.deepEqual(localeWarnings('', false, 'en-US'), [], 'rien de demandé, rien à dire');
+});
+
+test('locale : il parle quand l\'écart est réel — le garde ne coupe qu\'un sens', () => {
+  const differe = localeWarnings('fr_FR', false, 'en-US');
+  assert.ok(differe.length >= 1, 'sans ça, « moins de bruit » deviendrait « ne prévient jamais »');
+  assert.match(differe[0], /en-US/, 'et il doit dire ce que l\'appareil rend, pas seulement ce qu\'on voulait');
+  const illisible = localeWarnings('fr_FR', false, null);
+  assert.ok(illisible.length >= 1, 'locale illisible : on ne peut pas conclure au silence');
+  assert.match(illisible[0], /pas pu être lue/);
 });

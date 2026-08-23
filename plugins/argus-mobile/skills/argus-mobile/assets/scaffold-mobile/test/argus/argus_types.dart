@@ -106,6 +106,13 @@ class ArgusScreen {
 
   /// Les affichages que cet écran n'expose qu'APRÈS un défilement.
   ///
+  /// ⚠️ NE DEVINE PAS LE PLI — déclare tout en [commands] / [displays], lance
+  /// `make argus-anchors`, et déplace ce que le message prescrit. Le harnais
+  /// tranche dans les DEUX sens : il dit « ELLE EXISTE, mais plus bas » pour ce
+  /// qui doit descendre, et « déclarée ici, mais construite dès le petit
+  /// gabarit » pour ce qui doit remonter. Un run réel a vu neuf déclarations
+  /// corrigées d'un coup, là où son intuition en avait mal placé neuf.
+  ///
   /// ⚠️ Le pendant exact de [commandsAfterScroll], et il a manqué une passe
   /// entière. Un affichage sous le pli avait les deux mêmes mauvaises issues
   /// qu'une commande sous le pli — rouge en permanence, ou plus vérifié du

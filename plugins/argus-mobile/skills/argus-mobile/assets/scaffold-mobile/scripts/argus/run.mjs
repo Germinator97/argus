@@ -35,6 +35,37 @@ import {
 } from './config.mjs';
 
 /**
+ * Faut-il avertir que `locale.deviceLocale` restera sans effet ?
+ *
+ * ⚠️ Cet avertissement sortait dès que la clé était renseignée et `autoStart`
+ * faux — c'est-à-dire sur la disposition que le skill RECOMMANDE (un `avd`
+ * nommé, qu'on lance soi-même). Trois lignes de bruit à chaque exécution, sur
+ * une configuration correcte : le run 12 les a relevées comme telles.
+ *
+ * Il dit vrai — la clé n'a aucun effet sans `autoStart` — mais il ne devient
+ * UTILE que si la locale du device diffère de celle demandée. Quand elles
+ * coïncident, l'intention est satisfaite, quel qu'en soit le moyen : se taire.
+ *
+ * @param {string} demandee ce que `locale.deviceLocale` déclare (`fr_FR`)
+ * @param {boolean} autoStart le runner démarre-t-il le device lui-même
+ * @param {string|null} surDevice ce que l'appareil rend, `null` si illisible
+ * @returns {string[]} les lignes à avertir, vide si le silence est justifié
+ */
+export function localeWarnings(demandee, autoStart, surDevice) {
+  if (!demandee || autoStart) return [];
+  const normaliser = (/** @type {string} */ v) => v.trim().toLowerCase().replace(/_/g, '-').split(',')[0];
+  if (surDevice && normaliser(surDevice) === normaliser(demandee)) return [];
+  const constat = surDevice
+    ? `l'appareil est en « ${surDevice} »`
+    : 'la locale de l\'appareil n\'a pas pu être lue';
+  return [
+    `locale.deviceLocale = « ${demandee} » n'aura AUCUN effet : elle ne s'applique `
+      + `qu'au démarrage du device, et seul \`autoStart: true\` le démarre — or ${constat}.`,
+    '  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.',
+  ];
+}
+
+/**
  * Le verdict d'une commande qui GÉNÈRE des références visuelles.
  *
  * ⚠️ Générer n'est pas comparer. Ce chemin rejouait la suite puis sortait sur le
@@ -1274,19 +1305,6 @@ async function main() {
   }
   const spec = specs[0];
 
-  // ⚠️ `locale.deviceLocale` n'est appliqué QUE par `startDevice`, donc
-  // uniquement sous `autoStart`. Or `autoStart` et `avd` ne se combinent pas :
-  // `maestro start-device` CRÉE son propre AVD et ne sait pas démarrer le tien.
-  // La disposition recommandée — lancer soi-même un AVD nommé — rend donc ce
-  // réglage INOPÉRANT, et il n'existait aucune trace de ce conflit : la clé
-  // était renseignée, plausible, et sans effet.
-  const localeDemandee = String(config.locale?.deviceLocale ?? '');
-  if (localeDemandee && !spec.autoStart) {
-    warn(`locale.deviceLocale = « ${localeDemandee} » n'aura AUCUN effet : elle ne s'applique `
-      + 'qu\'au démarrage du device, et seul `autoStart: true` le démarre.');
-    warn('  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.');
-  }
-
   let attempt = resolveDevice(spec, opts.dryRun);
   // On ne réessaie QUE si le device est simplement absent. Un refus (appareil
   // réel non consenti) ne se rattrape pas en démarrant un émulateur.
@@ -1299,6 +1317,17 @@ async function main() {
     process.exit(2);
   }
   const resolved = attempt.device;
+
+  // ⚠️ APRÈS la résolution, pas avant : l'avertissement ne vaut que si la locale
+  // du device diffère de celle demandée, et il faut un device pour la lire.
+  {
+    const lue = platform === 'android' && resolved.udid && !opts.dryRun
+      ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
+      : '';
+    for (const ligne of localeWarnings(
+      String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null,
+    )) warn(ligne);
+  }
 
   const reportDir = artifactsDir(config);
   const outputDir = join(reportDir, 'maestro');

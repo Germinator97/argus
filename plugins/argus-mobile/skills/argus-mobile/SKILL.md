@@ -831,10 +831,17 @@ make argus-report      # rapport HTML
 ⚠️ **L'ordre est délibéré, et il coûte un run de plus — dis-le plutôt que de le
 laisser passer pour une erreur.** Un premier `argus-run` sans références ne
 compare rien : la dimension visuelle s'y annonce non exécutée, ce qui est honnête
-mais se lit comme un oubli. On génère APRÈS, parce qu'une référence prise sur une
-suite dont on n'a pas encore prouvé qu'elle tourne fige un écran qu'on n'a jamais
-vu arriver — et une baseline fausse est pire qu'une baseline absente : elle rend
+mais se lit comme un oubli. On génère APRÈS, parce qu'une référence prise sur un
+flow dont on n'a pas encore prouvé qu'il tourne fige un écran qu'on n'a jamais vu
+arriver — et une baseline fausse est pire qu'une baseline absente : elle rend
 vert pour toujours ce qu'elle a photographié de travers.
+
+⚠️ **Ce qui doit être vert, c'est le FLOW QUI PRODUIT LA CAPTURE, pas la suite
+entière.** Un `lifecycle` ou un `resilience` en échec n'invalide aucune référence
+de `home-empty` : il ne la produit pas. Génère, puis corrige le flow fautif —
+l'inverse fait attendre les références pour une raison qui ne les concerne pas.
+Vécu : un run est arrivé ici avec un flow rouge sans rapport, a généré à raison,
+et a dû écrire que le skill ne disait pas si c'était légitime.
 
 D'où le second `argus-run` : c'est le seul qui **compare**. Sans lui, on livre un
 harnais dont la boucle visuelle n'a jamais tourné une seule fois.
@@ -843,6 +850,23 @@ harnais dont la boucle visuelle n'a jamais tourné une seule fois.
 puis **remplacer une référence par un aplat** et vérifier que celle-là seule
 rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
 mesure ou si elle dort.
+
+⚠️ **L'installation prouvée ne prouve PAS le contenu.** Le runner vérifie que
+l'APK est bien posé (« Success », puis `pm list packages`) — c'est nécessaire et
+ça ne dit rien du code embarqué : un binaire peut être installé et porter le
+kernel d'avant. Quand un correctif semble sans effet, compte un **marqueur** du
+changement dans le binaire plutôt que de rechercher le défaut :
+
+```bash
+unzip -p build/app/outputs/flutter-apk/app-debug.apk assets/flutter_assets/kernel_blob.bin \
+  | grep -a -c "home_empty_root"        # en release : lib/arm64-v8a/libapp.so
+```
+
+⚠️ **Pipe, ne capture jamais** — `$(unzip …)` tronque au premier octet nul et
+rend `0` pour n'importe quel motif. Et fais porter au relevé une **contre-épreuve**,
+un motif dont l'absence serait impossible : un run a pris l'identifiant
+d'application (`com.exemple.app`), qui rend **0** dans le kernel — il vit dans le
+manifeste, pas dans le code Dart. Prends un littéral que l'app affiche.
 
 ⚠️ **`argus-run` peut refuser de démarrer, et c'est prévu.** L'installation n'est
 pas une formalité : sur un émulateur dont `/data` est plein, `adb install` rend

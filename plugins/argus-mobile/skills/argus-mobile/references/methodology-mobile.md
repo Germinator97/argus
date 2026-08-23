@@ -327,6 +327,13 @@ dans la source, pas supposé.
 - **Crash-free** — `crash-report.txt` / `anr-report.txt` du bundle d'artefacts
   Maestro, collectés par flow.
 
+⚠️ **La dimension sécurité ne conclut que sur un binaire de PUBLICATION**, et la
+clé qui l'y envoie est `build.androidScan`. Sans elle, le scan porte sur le debug
+et s'arrête sur « un scan de sécurité n'y dit rien de la publication » — ce qui
+est juste, et se lit comme une panne. Construis la release, renseigne la clé une
+fois pour toutes. Elle est documentée dans `argus.mobile.yaml` ; un run l'a
+trouvée en lisant `sec.mjs`, ce qui est deux fichiers trop loin.
+
 ⚠️ **Un chiffre de performance ne veut rien dire sans l'état où il est pris.**
 Le **premier lancement après installation** est plusieurs fois plus lent que le
 régime stabilisé — et ce n'est ni la taille de l'APK ni la compilation ART (les
