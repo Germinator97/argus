@@ -568,6 +568,11 @@ function buildEnv(config, appId, extra = {}) {
   const env = {
     APP_ID: appId,
     ARGUS_ANCHOR_HOME: home?.anchor ?? '',
+    // L'ID de l'écran de départ, pas seulement son ancre : c'est lui qui permet
+    // à `goto.yaml` de savoir quel écran le lancement atteint DÉJÀ, au lieu de
+    // le deviner par un préfixe. Un `startsWith('home')` sert `home-empty` et
+    // ment sur `home-filled` — et le même piège attend chaque famille d'états.
+    ARGUS_START_SCREEN: home?.id ?? '',
     ARGUS_AUTH_SCREEN: anchors.screen ?? '',
     ARGUS_AUTH_USER: anchors.user ?? '',
     ARGUS_AUTH_PASS: anchors.password ?? '',

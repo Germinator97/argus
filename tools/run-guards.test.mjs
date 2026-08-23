@@ -1919,3 +1919,50 @@ test('locale : il parle quand l\'écart est réel — le garde ne coupe qu\'un s
   assert.ok(illisible.length >= 1, 'locale illisible : on ne peut pas conclure au silence');
   assert.match(illisible[0], /pas pu être lue/);
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// La branche « rien à naviguer » se DÉRIVE, elle ne se devine pas
+// ───────────────────────────────────────────────────────────────────────────
+//
+// `goto.yaml` décidait par `startsWith('home')` : ça sert l'écran de départ et
+// ça MENT sur son voisin de famille, qu'aucune branche ne prépare alors que la
+// condition prétend l'avoir atteint. Trois runs de suite l'ont rencontré — et
+// mes deux premières passes se sont contentées de le DÉCRIRE, en commentaire,
+// au-dessus de la ligne qui le posait. Décrire un piège ne le ferme pas.
+
+test('buildEnv expose l\'id de l\'écran de départ, pas seulement son ancre', () => {
+  const env = buildEnv({
+    screens: [
+      { id: 'home-empty', anchor: 'home_empty_root', start: true },
+      { id: 'home-filled', anchor: 'home_filled_root' },
+    ],
+  }, 'com.exemple.app');
+  assert.equal(env.ARGUS_START_SCREEN, 'home-empty',
+    'sans cet id, goto.yaml ne peut que deviner par préfixe');
+  assert.equal(env.ARGUS_ANCHOR_HOME, 'home_empty_root', 'et l\'ancre reste exposée');
+});
+
+test('la condition dérivée sert le départ et laisse passer son voisin de famille', () => {
+  const env = buildEnv({
+    screens: [{ id: 'home-empty', anchor: 'a', start: true }, { id: 'home-filled', anchor: 'b' }],
+  }, 'app');
+  const rienANaviguer = (/** @type {string} */ id) => id === '' || id === env.ARGUS_START_SCREEN;
+  assert.ok(rienANaviguer('home-empty'), 'le lancement y mène déjà');
+  assert.ok(rienANaviguer(''), 'aucun écran demandé : on est là où le lancement laisse');
+  for (const voisin of ['home-filled', 'history-empty', 'categories-filled']) {
+    assert.ok(!rienANaviguer(voisin),
+      `${voisin} doit tomber dans une branche qui le PRÉPARE — un startsWith l'avalait`);
+  }
+});
+
+test('le sous-flow livré emploie la condition dérivée, pas un préfixe', () => {
+  const goto = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+  const conditions = goto.split('\n').filter((l) => l.includes('true: "${'));
+  assert.ok(conditions.length > 0, 'aucune condition trouvée — le garde est vacant');
+  const devinees = conditions.filter((l) => /startsWith\(/.test(l));
+  assert.deepEqual(devinees, [],
+    'ces conditions décident par préfixe : elles servent un état et mentent sur ses voisins\n  '
+    + devinees.join('\n  '));
+  assert.ok(goto.includes('ARGUS_START_SCREEN'), 'et la branche du départ doit se dériver de la config');
+});
