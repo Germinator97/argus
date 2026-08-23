@@ -675,6 +675,13 @@ screens:
     #   écran : aucune valeur globale ne convient à deux dispositions. La valeur
     #   est l'ancre de la racine, celle de la ligne `anchor:` juste au-dessus.
     visualCropOn: home_filled_root
+  # ⚠️ Le TROISIÈME ÉTAT des ancres se déclare dans `harness.dart`, pas ici — mais
+  #   il existe, et ce gabarit ne le montrerait pas : `commandsAfterScroll:` et
+  #   `displaysAfterScroll:` pour ce qu'une liste paresseuse ne construit qu'après
+  #   défilement. Ne le devine pas : déclare tout en `commands:` / `displays:`,
+  #   lance `make argus-anchors`, et déplace ce que le message prescrit. Il
+  #   tranche dans les deux sens. Sur un projet réel, 7 ancres sur 79 en
+  #   relevaient — aucune n'était visible à l'œil.
 
 # Commandes → consommées par les flows, PAS par screens[]
 #   home_start_session   lancer une session      (présente dans les deux états)
@@ -846,6 +853,12 @@ et a dû écrire que le skill ne disait pas si c'était légitime.
 D'où le second `argus-run` : c'est le seul qui **compare**. Sans lui, on livre un
 harnais dont la boucle visuelle n'a jamais tourné une seule fois.
 
+⚠️ **Chiffre le coût avant de le subir : c'est TROIS passes device pleines.**
+`argus-baselines` n'est pas l'étape courte du milieu — elle rejoue toute la suite
+fonctionnelle avant de produire les captures (12 flows là où 6 en produisent).
+Sur un émulateur, la séquence complète approche les vingt minutes. Ça se prévoit,
+et ça ne se refait qu'une fois : les passages suivants sont un seul `argus-run`.
+
 ⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
 puis **remplacer une référence par un aplat** et vérifier que celle-là seule
 rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
@@ -867,6 +880,14 @@ rend `0` pour n'importe quel motif. Et fais porter au relevé une **contre-épre
 un motif dont l'absence serait impossible : un run a pris l'identifiant
 d'application (`com.exemple.app`), qui rend **0** dans le kernel — il vit dans le
 manifeste, pas dans le code Dart. Prends un littéral que l'app affiche.
+
+⚠️ **Deux contre-épreuves, une ACCENTUÉE et une ASCII.** Dart stocke une chaîne
+en Latin-1 quand tous ses points de code tiennent sur un octet, en UTF-16 sinon :
+une seule lettre accentuée fait basculer toute la phrase, et un `grep` UTF-8 rend
+alors `0` sur un texte pourtant présent. Sur une app francophone, le littéral que
+tu choisis a toutes les chances d'être accentué — donc mesure les deux, sinon un
+zéro te fera conclure « le binaire est périmé » alors que c'est l'instrument qui
+ne sait pas lire.
 
 ⚠️ **`argus-run` peut refuser de démarrer, et c'est prévu.** L'installation n'est
 pas une formalité : sur un émulateur dont `/data` est plein, `adb install` rend

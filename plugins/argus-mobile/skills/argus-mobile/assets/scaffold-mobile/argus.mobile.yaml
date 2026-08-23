@@ -131,17 +131,19 @@ platforms:
 devices:
   - id: android-emu
     platform: android
-    # ⚠️ RENSEIGNE `avd:` ET PASSE `autoStart:` À FALSE — c'est ce que le §1 du
-    #   skill demande (« device = émulateur <AVD>, celui-là et aucun autre ») et
-    #   les deux ne se combinent pas : `start-device` CRÉE son propre AVD, il ne
-    #   sait pas démarrer le tien. Les valeurs livrées ci-dessous sont l'autre
-    #   cadrage, celui d'une CI qui n'a pas d'AVD à elle. Sur ta machine, le
-    #   défaut à retourner est ici, et rien d'autre ne te le rappellera.
+    # ⚠️ RENSEIGNE `avd:` — le §1 du skill demande « device = émulateur <AVD>,
+    #   celui-là et aucun autre », et c'est la seule identité stable
+    #   (`emulator-5554` est un numéro de port réattribué à chaque démarrage).
+    #   `autoStart: false` est le défaut parce qu'il échoue BRUYAMMENT si
+    #   personne n'a démarré le device, au lieu d'en créer un autre en silence :
+    #   `maestro start-device` ne sait pas démarrer TON avd, il fabrique le sien.
+    #   En CI, l'action qui provisionne l'émulateur l'a déjà démarré — `false`
+    #   convient donc des deux côtés.
     avd: ''
     udid: ''
     model: pixel_6
     os: android-33
-    autoStart: true
+    autoStart: false
     role: primary
   # - id: ios-sim
   #   platform: ios

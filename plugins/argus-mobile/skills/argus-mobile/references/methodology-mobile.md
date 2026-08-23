@@ -206,7 +206,11 @@ réels, du plus fiable au moins fiable :
 1. **Figer la donnée** — horloge, solde, jeu de test, via les `arguments` de
    `launchApp` ou un environnement de test dédié ;
 2. **Fermer ce qui flotte** — bannières, toasts, tooltips (`optional: true`) ;
-3. **Recadrer** sur un conteneur stable (`visualCropOn`).
+3. **Recadrer** sur un conteneur stable (`visualCropOn`) — ⚠️ **par ÉCRAN dès
+   que deux écrans sont en `visual: true`** : aucune valeur globale ne convient
+   à deux dispositions différentes, et la clé globale reste alors vide. La
+   valeur est l'ancre de la racine de l'écran. `argus.mobile.yaml` porte le
+   détail à côté de la clé ; ce qui suit vaut pour les deux formes.
 
 ⚠️ **Ce que `visualCropOn` recadre dépend de l'endroit où la racine a été posée**,
 et ça ne se voit pas dans le code d'instrumentation. Une racine d'écran cadre la
@@ -461,7 +465,7 @@ sélecteur de texte que Maestro 2.8 connaît — `accessibilityText:` est refus�
 |---|---|---|
 | functional, resilience, lifecycle, i18n | Maestro | device |
 | visual | Maestro `assertScreenshot` | device |
-| a11y (couverture sémantique) | Maestro | device |
+| a11y (couverture sémantique) — **flow à ÉCRIRE, une assertion par ancre** | Maestro | device |
 | a11y (cibles, contrastes, labels) | `flutter_test` `meetsGuideline` | **sans device** |
 | layout à 130 % / 200 % | `flutter_test` | **sans device** |
 | a11y (rendu réel) | `uiautomator dump` + `wm density` | device |
