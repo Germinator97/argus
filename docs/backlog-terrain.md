@@ -1541,7 +1541,7 @@ scripts qui ne s'exécutaient pas — **verte sur le défaut qu'elle venait d'ê
 exige une **sortie non vide** — un montage qui ne peut pas montrer qu'il a mesuré
 ne doit pas être lu comme un succès.
 
-### 119. `known_issues.dart` promet « par égalité », mais réconcilie par clé EXERCÉE
+### 119. ✅ Corrigé le 23/08/2026 — `known_issues.dart` promet « par égalité », mais réconcilie par clé EXERCÉE
 
 Son en-tête dit : « CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ ASSERTÉ
 PAR ÉGALITÉ. » Le mécanisme est `argusCheck(key, …)` → `if
@@ -1561,7 +1561,14 @@ Ce que « par égalité » exigerait : comparer en fin de suite l'ensemble des c
 **produites** à l'ensemble **déclaré**, et rougir sur la différence dans les deux
 sens.
 
-### 120. « TAILLE INCHANGÉE ⇒ `flutter clean` » a produit une fausse alerte
+**Corrigé** : un garde dérive les ids d'écran d'`argusScreens` et rougit sur toute
+ligne de dette qui n'en nomme aucun — éprouvé dans les deux sens sur le banc. Et
+l'en-tête dit désormais la **limite exacte** du mécanisme au lieu de promettre
+l'égalité. Le reste — comparer les clés produites aux clés déclarées à travers
+toutes les suites — est écrit dans le fichier, faute d'une orchestration qui
+l'autorise.
+
+### 120. ✅ Corrigé le 23/08/2026 — « TAILLE INCHANGÉE ⇒ `flutter clean` » a produit une fausse alerte
 
 Mon correctif du 99 avertit quand le paquet ne change pas de taille. Le run 11 l'a
 reçu sur un build **démontrablement frais** : marqueur unique compté dans le
@@ -1574,14 +1581,21 @@ re-packagé » ne tient pas ; c'est un **indice**, pas une preuve. La technique 
 tranche — compter un marqueur du changement dans le kernel — est connue du
 chantier et n'est pas câblée à l'endroit précis où elle servirait.
 
-### 121. Le bloc `screens[]` « prêt à coller » de §2c-bis ne porte pas `visualCropOn`
+**Corrigé** : le critère est le **sha256**, pas la taille. Deux paquets de même
+taille ont des contenus différents ; un hash identique, lui, prouve que le
+fichier n'a pas été réécrit. Le garde du Makefile suit le nouveau critère.
+
+### 121. ✅ Corrigé le 23/08/2026 — Le bloc `screens[]` « prêt à coller » de §2c-bis ne porte pas `visualCropOn`
 
 Le gabarit donne `anchor:`, `visual:`, `priority:` — pas le cadrage. Or
 `argus.mobile.yaml` explique dix lignes plus loin que « dès le deuxième écran en
 `visual: true`, aucune valeur globale ne convient ». Le bloc produit donc une
 configuration à retoucher aussitôt. Une ligne commentée suffirait.
 
-### 122. `goto.yaml` : `startsWith('home')` avale le second état d'accueil sans le dire
+**Corrigé** : le bloc porte `visualCropOn:` sur le second écran visuel, avec la
+règle en commentaire — la valeur est l'ancre de la racine, juste au-dessus.
+
+### 122. ✅ Corrigé le 23/08/2026 — `goto.yaml` : `startsWith('home')` avale le second état d'accueil sans le dire
 
 Le point 93 a remplacé `=== 'home'` par `startsWith('home')` pour que le gabarit
 et le sous-flow se rejoignent, et le commentaire l'explique bien. Ce qu'il ne dit
@@ -1591,6 +1605,11 @@ et ne navigue nulle part.
 Conséquence si quelqu'un met `home-filled` en `visual: true` : on photographie
 `home-empty` sous le nom de `home-filled`, et **rien ne le signale**. Le run 11
 l'a évité en ne mettant pas cet écran en visuel — par un autre raisonnement.
+
+**Corrigé** : le commentaire dit ce que la branche coûte — tous les états
+d'accueil y tombent, et un état « plein » en `visual: true` ferait photographier
+l'accueil VIDE sous son nom. Un état qui demande des données a besoin de sa
+propre branche.
 
 ### 123. `anchors_test.dart` s'arrête au PREMIER échec par écran
 
@@ -1603,7 +1622,19 @@ mesure »).
 Le message et l'indice de pli sont bons ; il manque de les **collecter** avant de
 lever.
 
-### 124. Le `argus.mobile.yaml` livré contredit le cadrage que le §1 recommande
+⚠️ **Reste OUVERT, et voici pourquoi.** J'ai écrit le collecteur — une classe qui
+retient les échecs et lève une fois en fin d'écran — puis j'ai voulu câbler les
+quatre boucles **par substitution**. Deux tentatives, deux fois un fichier qui ne
+compile plus : envelopper `await argusCheck(…)` demande de refermer une
+parenthèse dont la position dépend du corps, ce qu'une regex ne sait pas faire.
+J'ai restauré, et retiré le collecteur avec — un helper que personne n'appelle
+serait du code mort livré à tous les projets, c'est-à-dire le défaut d'à côté.
+
+Ce point demande une réécriture **à la main** des quatre boucles, pas un
+codemod. Il est de confort — aucune mesure n'est fausse, elles sont seulement
+rendues une par une.
+
+### 124. ✅ Corrigé le 23/08/2026 — Le `argus.mobile.yaml` livré contredit le cadrage que le §1 recommande
 
 Valeurs par défaut : `avd: ''` + `autoStart: true`. Or le §1 demande d'écrire
 « device = émulateur `<AVD>` », et `device-matrix.md` dit que `avd` et
@@ -1611,13 +1642,20 @@ Valeurs par défaut : `avd: ''` + `autoStart: true`. Or le §1 demande d'écrire
 Suivre le cadrage impose donc de retourner le drapeau soi-même, sans que rien ne
 le rappelle à cet endroit.
 
-### 125. La table §6 de la méthodologie laisse croire que la couverture d'ancres est mesurée
+**Corrigé** : l'entrée de device dit, à l'endroit où on la lit, qu'il faut
+renseigner `avd:` et retourner `autoStart:` — et pourquoi les deux ne se
+combinent pas. Les valeurs livrées sont celles d'une CI, pas d'une machine.
+
+### 125. ✅ Corrigé le 23/08/2026 — La table §6 de la méthodologie laisse croire que la couverture d'ancres est mesurée
 
 « Couverture des ancres sémantiques → `.maestro/a11y.yaml` » se lit comme une
 mesure automatique. Le flow livré n'asserte que l'ancre d'accueil ; **tout le
 reste est à écrire à la main**. La table gagnerait à le dire.
 
-### 126. Le cadrage est dispersé : `run:` en tête, le device 90 lignes plus bas
+**Corrigé** : la ligne porte « une assertion par ancre, que TU écris », et un
+avertissement dit que le flow livré n'asserte que l'ancre d'accueil.
+
+### 126. ✅ Corrigé le 23/08/2026 — Le cadrage est dispersé : `run:` en tête, le device 90 lignes plus bas
 
 Conséquence directe de mon correctif du 109. Le §1 demande d'écrire le cadrage
 « à l'endroit que chaque choix gouverne » ; `env` et `mode` ont désormais leur
@@ -1627,11 +1665,15 @@ le cadrage **à deux endroits** pour le rendre relisible d'un bloc.
 ⚠️ Le correctif du 109 était juste et ce point ne le défait pas : il demande
 seulement que le §1 dise où va quoi, ou qu'un renvoi relie les deux.
 
+**Corrigé** : le §1 nomme les trois emplacements (`run:`, `devices[]`, `app:`) et
+assume que le cadrage est réparti — avec la raison, et l'interdit qui va avec :
+un bloc en tête **en plus**, jamais **à la place**, parce qu'un commentaire ne
+gouverne rien.
+
 ## Ce qui reste
 
-**Les points 119 à 126.** Les 117 et 118 sont déjà clos — ce sont les deux
-régressions, et **toutes deux sont de moi** : le retrait du jank a emporté deux
-fonctions, et le garde écrit pour l'attraper est né vacant.
+**Le point 123, seul, et de confort** — `anchors_test` ne rend qu'un défaut par
+écran et par exécution. Les huit autres sont clos.
 
 **Le run 11 était une vérification, et les correctifs de la veille ont porté** :
 le gabarit du rapport a été rempli avec ses nouvelles cases (« Affichages : 2 »,
