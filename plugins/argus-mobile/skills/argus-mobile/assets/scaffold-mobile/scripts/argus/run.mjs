@@ -34,6 +34,48 @@ import {
   sh, validateConfig, warn, writeJson,
 } from './config.mjs';
 
+/**
+ * Le verdict d'une commande qui GÉNÈRE des références visuelles.
+ *
+ * ⚠️ Générer n'est pas comparer. Ce chemin rejouait la suite puis sortait sur le
+ * gate des flows qu'il venait de jouer : une génération impeccable rendait
+ * `exit 1`, et sur un run en aveugle ce rouge se lit « la génération a échoué »
+ * — donc on recommence ce qui était déjà fait. Le verdict d'une commande doit
+ * porter sur CE QU'ELLE FAIT.
+ *
+ * L'autre moitié compte autant : zéro référence écrite est un échec. Sans elle,
+ * « ne plus appliquer le gate » deviendrait « ne plus jamais échouer ».
+ *
+ * @param {number} written références écrites
+ * @param {number} gateCode ce que le gate aurait rendu
+ * @param {string} outputDir où regarder en cas d'échec
+ * @returns {{exit:number, warnings:string[], errors:string[]}}
+ */
+export function baselineVerdict(written, gateCode, outputDir = '') {
+  if (written === 0) {
+    return {
+      exit: 2,
+      errors: [
+        'aucune référence visuelle écrite — la génération n\'a rien produit.',
+        `  Vérifie qu'un écran porte \`visual: true\` et que les flows ont tourné${outputDir ? ` : ${outputDir}` : ''}`,
+      ],
+      warnings: [],
+    };
+  }
+  if (gateCode !== 0) {
+    return {
+      exit: 0,
+      errors: [],
+      warnings: [
+        'gate non appliqué : cette commande GÉNÈRE des références, elle ne compare pas.',
+        `  ${written} référence(s) écrite(s). Les findings ci-dessus viennent des flows`,
+        '  rejoués pour les produire — relance `make argus-run` pour un verdict qui compare.',
+      ],
+    };
+  }
+  return { exit: 0, errors: [], warnings: [] };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 1. Arguments
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1387,8 +1429,10 @@ async function main() {
 
   // ── Normalisation ───────────────────────────────────────────────────────
   const bundles = harvest(outputDir, before);
+  let baselinesWritten = 0;
   if (opts.updateBaselines) {
     const written = promoteBaselines(bundles, baselineDir);
+    baselinesWritten = written;
     // Graver le cadrage EFFECTIF de chaque écran, pas la valeur globale : c'est
     // ce que la comparaison relira, écran par écran.
     stampBaselineCrops(baselineDir, Object.fromEntries(
@@ -1512,6 +1556,21 @@ async function main() {
 
   const code = exitCodeFor(findings, config.gate);
   const failedRuns = runs.filter((r) => !r.ok).length;
+
+  // ⚠️ GÉNÉRER DES RÉFÉRENCES N'EST PAS LES COMPARER. Ce chemin rejouait la
+  // suite puis sortait sur le gate des flows qu'il venait de jouer : une
+  // génération impeccable rendait `exit 1`, et sur un run en aveugle ce rouge
+  // se lit « la génération a échoué » — donc on recommence ce qui était fait.
+  // Le verdict d'une commande doit porter sur CE QU'ELLE FAIT.
+  //
+  // L'autre moitié compte autant : si rien n'a été écrit, elle échoue. Sans
+  // ça, « ne plus appliquer le gate » deviendrait « ne plus jamais échouer ».
+  if (opts.updateBaselines) {
+    const verdict = baselineVerdict(baselinesWritten, code, outputDir);
+    for (const line of verdict.errors) err(line);
+    for (const line of verdict.warnings) warn(line);
+    process.exit(verdict.exit);
+  }
   if (code === 0 && failedRuns > 0 && findings.length === 0) {
     // Maestro a échoué sans qu'aucune étape ne soit marquée FAILED : le défaut
     // est en amont des flows (device perdu, app absente, driver). Ne pas rendre

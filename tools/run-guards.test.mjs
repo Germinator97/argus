@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
-  avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -1821,4 +1821,36 @@ test('un échantillon vraiment court garde son ancien message — le garde ne co
   assert.match(why, /échantillon trop court/,
     '40 frames est un vrai échantillon court, pas un défaut d\'instrument');
   assert.ok(!/SurfaceView/.test(why), 'ne pas coller le diagnostic Flutter sur un cas qui n\'est pas lui');
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Générer des références n'est pas les comparer
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Run 10 : `make argus-baselines` a écrit ses 4 références, l'a dit, puis est
+// sorti en 1 — il héritait du gate des flows qu'il venait de jouer pour les
+// produire. Sur un run en aveugle ce rouge se lit « la génération a échoué »,
+// et on recommence ce qui était déjà fait.
+
+test('une génération réussie sort en 0, même si le gate aurait échoué', () => {
+  const v = baselineVerdict(4, 1, 'argus-mobile-report');
+  assert.equal(v.exit, 0, 'le verdict doit porter sur ce que LA COMMANDE fait');
+  assert.equal(v.errors.length, 0);
+  assert.ok(v.warnings.some((l) => /ne compare pas/.test(l)),
+    'et dire pourquoi le gate ne s\'applique pas, sinon le silence ressemble à un oubli');
+  assert.ok(v.warnings.some((l) => /4 référence/.test(l)), 'avec le compte de ce qui a été écrit');
+});
+
+test('zéro référence écrite reste un ÉCHEC — le garde ne coupe qu\'un sens', () => {
+  const v = baselineVerdict(0, 0, 'argus-mobile-report');
+  assert.equal(v.exit, 2,
+    'sans ça, « ne plus appliquer le gate » deviendrait « ne plus jamais échouer »');
+  assert.ok(v.errors.some((l) => /aucune référence/.test(l)));
+  assert.ok(v.errors.some((l) => /visual: true/.test(l)), 'et nommer le geste qui débloque');
+});
+
+test('une génération réussie sans finding ne dit rien de superflu', () => {
+  const v = baselineVerdict(5, 0);
+  assert.deepEqual({ exit: v.exit, w: v.warnings.length, e: v.errors.length }, { exit: 0, w: 0, e: 0 },
+    'pas d\'avertissement quand il n\'y a rien à expliquer');
 });
