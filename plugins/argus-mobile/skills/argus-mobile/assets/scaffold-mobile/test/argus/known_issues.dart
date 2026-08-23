@@ -15,11 +15,23 @@
 //     jour où elle l'est, elle ne garde plus rien du tout ;
 //   · FIGER le relevé, ce que fait ce fichier.
 //
-// ⚠️ CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ ASSERTÉ PAR ÉGALITÉ.
+// ⚠️ CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ.
 // Une ligne inscrite ici affirme que le défaut EST ENCORE LÀ. Le jour où tu le
 // corriges, le test rougit et te demande de retirer la ligne. C'est ce qui
 // empêche la liste de survivre à ce qu'elle décrit : sans ça, elle deviendrait
 // une permission permanente et le garde cesserait de garder sans le dire.
+//
+// ⚠️ ET VOICI SA LIMITE EXACTE, parce qu'elle a été mesurée. La confrontation a
+// lieu quand la clé est EXERCÉE : `argusCheck` compare ce que la mesure vient
+// de rendre à ce que cette liste déclare. Une clé qu'aucun appel ne produit
+// n'est donc confrontée à rien — elle ne rougit jamais, et personne ne
+// l'apprend. Ce fichier disait « asserté par égalité », ce qui promettait plus.
+//
+// Deux choses ferment la porte, et la seconde est ta vigilance :
+//   · un garde vérifie que chaque ligne nomme un ÉCRAN DÉCLARÉ, ce qui attrape
+//     l'écran retiré et la faute de frappe sur l'écran ;
+//   · pour le reste de la clé, COLLE ce que le message d'échec te donne. Une
+//     clé réécrite de mémoire ne correspond à rien, et ce rien est silencieux.
 //
 // La clé exacte à inscrire est donnée par le message d'échec, prête à coller.
 // Ne la réécris pas de mémoire : elle porte l'écran, le gabarit et l'échelle de

@@ -86,6 +86,44 @@ void main() {
     );
   });
 
+  // ── La dette déclarée pointe-t-elle sur quelque chose qui existe ? ────────
+  //
+  // ⚠️ `known_issues.dart` s'annonce « ASSERTÉ PAR ÉGALITÉ », mais la
+  // réconciliation d'`argusCheck` se fait à l'EXERCICE : `if
+  // (!argusKnownIssues.contains(key))`. Une clé qu'aucun appel ne produit —
+  // faute de frappe, écran retiré, libellé d'assertion reformulé — n'est donc
+  // jamais confrontée, et devient une permission permanente en silence.
+  //
+  // Mesuré sur un projet réel : une clé inventée de toutes pièces laisse la
+  // suite entièrement verte.
+  //
+  // Ce garde ferme le cas qui se dérive sans exécuter : toute clé nomme un
+  // écran DÉCLARÉ. Il n'attrape pas une faute de frappe dans la partie mesure
+  // de la clé — ce qui demanderait de comparer les clés produites aux clés
+  // déclarées à travers toutes les suites, donc une orchestration qui n'existe
+  // pas. Ce reste est écrit ici plutôt que promis ailleurs.
+  test('toute dette déclarée nomme un écran qui existe', () {
+    if (argusKnownIssues.isEmpty || argusScreens.isEmpty) return;
+    final Set<String> ids = argusScreens.map((ArgusScreen s) => s.id).toSet();
+    final List<String> orphelines = argusKnownIssues
+        .where(
+          (String k) =>
+              !ids.any((String id) => k.startsWith('$id ·') || k == id),
+        )
+        .toList();
+    expect(
+      orphelines,
+      isEmpty,
+      reason:
+          'Ces lignes de known_issues.dart ne commencent par l\'id d\'aucun écran '
+          'déclaré. Elles ne seront donc JAMAIS réconciliées — ni confirmées, ni '
+          'retirées — et le relevé cesse de mesurer ce qu\'il prétend figer :\n'
+          '  ${orphelines.join('\n  ')}\n\n'
+          'Écrans déclarés : ${ids.join(', ')}.\n'
+          'Colle la clé donnée par le message d\'échec, ne la réécris pas.',
+    );
+  });
+
   // ── Les ancres de COMMANDE ────────────────────────────────────────────────
   //
   // `anchor` est singulier, donc jusqu'ici seules les RACINES étaient prouvées.
