@@ -1280,7 +1280,7 @@ conditionnelle, et sur cet AVD il n'a rien de conditionnel — 3 paquets tiers
 installés, 621 Mo libres sur `/data`, un APK debug de 92 Mo qui en demande le
 double.
 
-### 109. `report-format-mobile.md` promet `run.env` et `run.mode` ; rien ne les écrit
+### 109. ✅ Corrigé le 23/08/2026 — `report-format-mobile.md` promet `run.env` et `run.mode` ; rien ne les écrit
 
 Le contrat de sortie annonce
 `"run": { "startedAt", "platform", "appVersion", "env", "mode", "commit?" }`.
@@ -1295,7 +1295,18 @@ sa clé ». **La clé n'existe pas**, donc l'agent range `ENV` où il peut : deu
 de suite l'ont mis en commentaire d'en-tête, chacun à sa façon. Une consigne qui
 désigne un emplacement inexistant se solde par un emplacement inventé.
 
-### 110. Le gabarit du rapport d'instrumentation n'a pas de case pour les `displays` — troisième voisin
+**Corrigé** : `run.env` / `run.mode` existent dans `DEFAULTS`, dans le YAML (bloc
+`run:` en tête, là où le cadrage se lit) et dans le rapport. **Et le garde du
+contrat descend d'un niveau** : il figeait les clés de premier niveau — il a
+tenu — mais rien ne lisait ce que le bloc jsonc promet à `run`.
+
+⚠️ **Ce garde a demandé trois essais, chacun rattrapé par sa propre assertion de
+non-vacuité et non par une relecture** : il lisait le rapport d'INTERRUPTION au
+lieu du principal (0 clé), puis la seule première clé de chaque ligne (3 fausses
+omissions), puis mangeait la virgule dont le match suivant avait besoin (1 de
+plus). Prouver l'instrument avant de croire ce qu'il rend.
+
+### 110. ✅ Corrigé le 23/08/2026 — Le gabarit du rapport d'instrumentation n'a pas de case pour les `displays` — troisième voisin
 
 §2b compte « Racines d'état », « Commandes », « Non enveloppables ». Pas les
 affichages. Or `displays:` existe depuis le 81, `displaysAfterScroll:` depuis le
@@ -1313,7 +1324,12 @@ Et le bloc §2b se condamne lui-même : « Un format qui prescrit une informatio
 sans lui donner de case la fait inventer. » Le run 10 s'est abstenu d'inventer une
 ligne — et l'a dit.
 
-### 111. « Un RÔLE casse la fusion » généralise depuis un seul rôle mesuré
+**Corrigé** : le gabarit compte les affichages et le sous-le-pli. **Et le garde
+dérive les axes du TYPE** (`argus_types.dart`) : un quatrième axe ajouté à
+`ArgusScreen` fera rougir tant que le gabarit ne le nomme pas. Mutation vérifiée
+— un axe factice fait tomber le garde, qui le nomme.
+
+### 111. ✅ Corrigé le 23/08/2026 — « Un RÔLE casse la fusion » généralise depuis un seul rôle mesuré
 
 L'avertissement de §2c dit : *« Un RÔLE posé sur l'enveloppe suffit à casser la
 fusion, même sur les composants de la colonne "fusionne" »*, et l'illustre par
@@ -1329,7 +1345,11 @@ si. L'avertissement, lu tel quel, envoie défaire une instrumentation correcte.
 `make argus-anchors` tranche ». Le repli a joué son rôle — mais un avertissement
 qui oblige à recourir au repli est un avertissement qui coûte un aller-retour.
 
-### 112. `SlidableAction` : le critère « déclare-t-il un rôle ? » ne prédit pas un `ParentDataWidget`
+**Corrigé** : l'avertissement dit « CERTAINS rôles », nomme celui qui a été mesuré
+(`textField:`), donne le contre-exemple mesuré (`button:` fusionne, 52 ancres
+actives) et renvoie à la commande qui tranche plutôt qu'à l'analogie.
+
+### 112. ✅ Corrigé le 23/08/2026 — `SlidableAction` : le critère « déclare-t-il un rôle ? » ne prédit pas un `ParentDataWidget`
 
 Deux runs de suite ont buté dessus. `SlidableAction` n'est ni « composant qui
 déclare son rôle » ni « geste » : il **retourne un `Expanded`**
@@ -1342,7 +1362,11 @@ la source du paquet pour savoir. Le gabarit §2b connaît pourtant la catégorie
 (« Non enveloppables (ParentDataWidget, slivers) ») — la table, elle, ne dit pas
 comment y arriver avant de se prendre l'exception.
 
-### 113. `make argus-baselines` sort en ÉCHEC alors qu'il a parfaitement réussi
+**Corrigé** : une question précède désormais la table — « le composant rend-il un
+widget de POSITION ? » — avec le tell (un composant qui se place dans une liste),
+le geste (ouvrir la source, ou ancrer l'enfant) et le repli.
+
+### 113. ✅ Corrigé le 23/08/2026 — `make argus-baselines` sort en ÉCHEC alors qu'il a parfaitement réussi
 
 `--update-baselines` écrit les références, les estampille (cadrage + appareil),
 loge « N référence(s) visuelle(s) écrite(s) »… puis **continue le chemin normal**
@@ -1354,7 +1378,12 @@ recommencer. C'est le motif du **code de sortie qui ment sur ce qui vient d'êtr
 fait** : la seule action de la commande a réussi, son verdict porte sur autre
 chose.
 
-### 114. `maestro check-syntax` n'accepte qu'un fichier — dit dans les références, pas dans le SKILL
+**Corrigé** : `baselineVerdict` est extraite, exportée et gardée. Une génération
+réussie sort en 0 en disant pourquoi le gate ne s'applique pas ; **zéro référence
+écrite reste un échec**, sinon « ne plus appliquer le gate » deviendrait « ne
+plus jamais échouer ».
+
+### 114. ✅ Corrigé le 23/08/2026 — `maestro check-syntax` n'accepte qu'un fichier — dit dans les références, pas dans le SKILL
 
 `methodology-mobile.md:537` le précise (« un fichier à la fois ») ; `SKILL.md`
 §3d ne le dit pas, et `make argus-lint` boucle correctement — donc le harnais est
@@ -1363,7 +1392,10 @@ juste, c'est la main qui se trompe. Deux minutes perdues au run 10 sur
 
 Constat mineur, inscrit pour ce qu'il coûte, pas pour ce qu'il casse.
 
-### 115. Le ciblage d'ABI mérite d'être le geste par défaut, pas un remède
+**Corrigé** : §3d le dit, avec le message d'erreur exact, et renvoie à la cible qui
+boucle.
+
+### 115. ✅ Corrigé le 23/08/2026 — Le ciblage d'ABI mérite d'être le geste par défaut, pas un remède
 
 §3g le présente comme la sortie d'un `INSTALL_FAILED_INSUFFICIENT_STORAGE`. Le
 run 10 l'a mesuré des deux côtés, sur le même projet :
@@ -1381,7 +1413,11 @@ c'est le réserver aux gens dont le disque est déjà plein.
 là** : le constat porte donc sur la PROSE, pas sur le code. Elle décrit encore un
 geste de rattrapage.
 
-### 116. ⚠️ Le jank n'a JAMAIS conclu — six runs sur six
+**Corrigé** : §3g présente le ciblage comme le geste par défaut, avec les deux
+mesures, et dit que construire avant de brancher l'appareil produit l'APK gras
+pour rien.
+
+### 116. ⚠️ Corrigé À MOITIÉ le 23/08/2026 — Le jank n'a JAMAIS conclu, six runs sur six
 
 Constat non rapporté : personne ne l'a signalé, parce que le harnais est honnête
 et dit « non conclu » plutôt que « 0 % ». Relevé dans les `perf.json`
@@ -1439,8 +1475,15 @@ endroit — exactement le défaut que ce chantier corrige depuis dix runs.
 
 ## Ce qui reste
 
-**Les points 109 à 116**, rendus par le run 10 — sept par le rapport, **le 116
-par une mesure que personne n'avait faite**.
+**Un seul point, et il demande un arbitrage : le 116.** La dimension jank ne peut
+pas fonctionner sous Flutter — établi par la mesure, mécanisme connu
+(`gfxinfo` ne voit pas une `SurfaceView`), contre-épreuve faite. Son message dit
+désormais la vérité, ce qui était mon périmètre. Ce qui reste ne l'est pas :
+basculer la dimension sur `dumpsys SurfaceFlinger --timestats` change sa
+**sémantique** — « frames tombées » n'est pas « frames en retard » — et son
+contrat de sortie, ou bien il faut la retirer. **À trancher avec Germinator.**
+
+Les points 109 à 115 sont clos, un commit par étape.
 
 **Le run 10 était une vérification, et six correctifs de la veille ont été
 exercés et confirmés** : la commande de build résolue et le paquet mesuré
