@@ -152,6 +152,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
+      argusCollecteDebut();
       await pumpArgus(
         tester,
         screen.build(),
@@ -220,6 +221,7 @@ void main() {
       }
 
       handle.dispose();
+      argusCollecteFin(screen.id);
     });
   }
 
@@ -238,6 +240,7 @@ void main() {
       'affichages de « ${screen.id} » — ${screen.displays.length} ancre(s)',
       (WidgetTester tester) async {
         final SemanticsHandle handle = tester.ensureSemantics();
+        argusCollecteDebut();
         await pumpArgus(
           tester,
           screen.build(),
@@ -301,6 +304,7 @@ void main() {
         }
 
         handle.dispose();
+        argusCollecteFin(screen.id);
       },
     );
   }
@@ -327,6 +331,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
+      argusCollecteDebut();
       for (final String ancre in screen.displaysAfterScroll) {
         await pumpArgus(
           tester,
@@ -375,6 +380,7 @@ void main() {
         );
       }
       handle.dispose();
+      argusCollecteFin(screen.id);
     });
   }
 
@@ -406,6 +412,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final SemanticsHandle handle = tester.ensureSemantics();
+      argusCollecteDebut();
 
       for (final String commande in screen.commandsAfterScroll) {
         // Le grand gabarit d'abord : c'est là qu'elle doit exister.
@@ -472,6 +479,7 @@ void main() {
       }
 
       handle.dispose();
+      argusCollecteFin(screen.id);
     });
   }
 

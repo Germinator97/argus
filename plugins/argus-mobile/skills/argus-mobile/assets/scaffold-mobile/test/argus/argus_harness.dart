@@ -346,6 +346,42 @@ void argusDrainMountException(WidgetTester tester) {
 /// Le second sens est celui qu'on oublie, et sans lui la liste se transforme en
 /// permission permanente — elle survit à ce qu'elle décrit, et le garde cesse
 /// de garder sans rien dire.
+/// Les défauts retenus par la collecte en cours, `null` si personne ne collecte.
+List<Object>? _argusCollecte;
+
+/// Ouvre une collecte : à partir d'ici, [argusCheck] RETIENT ses défauts au lieu
+/// de lever au premier.
+///
+/// ⚠️ Sans elle, une boucle de vérifications s'arrête au premier échec — sur un
+/// écran à 24 commandes, découvrir l'ensemble demandait une exécution PAR ancre.
+/// Un run réel s'en est sorti en DÉDUISANT les ancres voisines, exactement ce
+/// que ce harnais dit de ne pas faire (« on ne raisonne pas : on mesure »).
+///
+/// Rien de ce qui est jugé ne change : chaque vérification garde sa clé, sa
+/// réconciliation de dette et son message. Seul le MOMENT de la levée change.
+///
+/// Le désarmement est posé en `addTearDown`, donc il a lieu même si le test
+/// meurt avant [argusCollecteFin] — sans quoi un test suivant qui ne collecte
+/// pas verrait ses propres échecs avalés par une collecte restée ouverte.
+void argusCollecteDebut() {
+  _argusCollecte = <Object>[];
+  addTearDown(() => _argusCollecte = null);
+}
+
+/// Ferme la collecte et lève UNE fois avec tout ce qui a été retenu.
+void argusCollecteFin(String contexte) {
+  final List<Object> echecs = _argusCollecte ?? <Object>[];
+  _argusCollecte = null;
+  if (echecs.isEmpty) return;
+  if (echecs.length == 1) fail(echecs.first.toString());
+  fail(
+    '${echecs.length} défauts sur « $contexte » — ils sont TOUS listés '
+    'ci-dessous. Inutile de relancer pour découvrir le suivant, et surtout : '
+    'ne DÉDUIS pas les autres à partir de celui-ci.\n\n'
+    '${echecs.join('\n\n────────────────────────────────────────\n\n')}',
+  );
+}
+
 Future<void> argusCheck(String key, Future<void> Function() verifier) async {
   Object? echec;
   try {
@@ -356,7 +392,7 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
 
   if (!argusKnownIssues.contains(key)) {
     if (echec != null) {
-      fail(
+      _argusLever(
         '$echec\n\n'
         '── Défaut PRÉEXISTANT ? ────────────────────────────────────────────\n'
         'Si celui-ci appartient à l\'application et ne se corrige pas maintenant, '
@@ -371,7 +407,7 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
   }
 
   if (echec == null) {
-    fail(
+    _argusLever(
       '« $key » figure dans test/argus/known_issues.dart, mais l\'écran PASSE.\n'
       'Retire cette ligne. Une dette corrigée qui reste inscrite devient une '
       'permission permanente : la liste survit à ce qu\'elle décrit, et plus '
@@ -434,4 +470,17 @@ Future<String> argusFoldHint(
       'pas. DÉPLACE-LA dans `$champ` : elle y sera éprouvée sur le grand '
       'gabarit, au lieu de rougir ici en permanence — ou de sortir de sa liste '
       'et de n\'être plus vérifiée nulle part.';
+}
+
+/// Lève, ou RETIENT si une collecte est ouverte. Le seul endroit qui décide.
+///
+/// ⚠️ Retenir doit RENDRE LA MAIN, pas relancer : une exception ici remonterait
+/// à la boucle appelante et l'arrêterait — c'est-à-dire exactement le défaut que
+/// la collecte existe pour corriger.
+void _argusLever(String message) {
+  final List<Object>? collecte = _argusCollecte;
+  if (collecte == null) {
+    fail(message);
+  }
+  collecte.add(message);
 }
