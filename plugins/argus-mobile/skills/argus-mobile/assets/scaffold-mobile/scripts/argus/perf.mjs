@@ -175,6 +175,34 @@ function measureWarmStarts(udid, component, samples) {
 // (`SchedulerBinding.addTimingsCallback`) côté application, en profile ou
 // release, sur un appareil réel. C'est un autre chantier que celui-ci.
 
+/**
+ * Mémoire : TOTAL PSS, la mesure qui compte pour un budget d'app.
+ * @param {string} udid @param {string} packageName @returns {number|null}
+ */
+function measureMemory(udid, packageName) {
+  const res = adb(udid, ['shell', 'dumpsys', 'meminfo', packageName]);
+  const match = /TOTAL(?:\s+PSS)?:?\s+(\d+)/.exec(res.stdout);
+  return match ? Math.round((Number.parseInt(match[1], 10) / 1024) * 10) / 10 : null;
+}
+
+/**
+ * Contexte du device. Enregistré POUR SITUER la mesure, jamais pour expliquer
+ * un écart : attribuer un chiffre de performance à un mécanisme sans l'avoir
+ * isolé fait optimiser à côté.
+ * @param {string} udid @param {string} packageName
+ */
+function deviceContext(udid, packageName) {
+  const prop = (/** @type {string} */ name) => adb(udid, ['shell', 'getprop', name]).stdout.trim();
+  const compile = adb(udid, ['shell', 'dumpsys', 'package', packageName]).stdout;
+  const status = /\[status=([a-z-]+)\]/.exec(compile) ?? /status=([a-z-]+)/.exec(compile);
+  return {
+    androidRelease: prop('ro.build.version.release'),
+    sdkInt: prop('ro.build.version.sdk'),
+    model: prop('ro.product.model'),
+    artCompilation: status ? status[1] : null,
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Taille du binaire
 // ═══════════════════════════════════════════════════════════════════════════

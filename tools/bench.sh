@@ -106,5 +106,49 @@ r=$?; echo "  flutter test    exit $r"; [ $r -ne 0 ] && { code=1; grep -E 'Some 
 grep -q 'SKIP — aucun écran déclaré' /tmp/bench-te.txt \
   || { echo "  ✖ les suites ne se déclarent plus non branchées"; code=1; }
 
+# ── 5. LES SCRIPTS DE MESURE, DÉROULÉS POUR DE VRAI ─────────────────────────
+#
+# ⚠️ Rien ici ne les exécutait, et `node --check` ne prouve QUE la syntaxe. Un
+# retrait de code a ainsi emporté deux fonctions (`measureMemory`,
+# `deviceContext`) sans qu'aucune mesure ne bronche : banc vert, gardes verts,
+# `--check` vert — et la dimension performance morte à l'installation chez le
+# projet suivant, qui l'a découverte en `ReferenceError` à l'exécution.
+#
+# Un faux `adb` suffit à dérouler le chemin nominal. Lancer le script SANS
+# device ne prouve rien : il sort avant d'atteindre le corps de la mesure —
+# c'est exactement le contrôle que j'avais fait, et il était vert.
+FAKE="$(mktemp -d)"
+cat > "$FAKE/adb" <<'FAKEADB'
+#!/usr/bin/env bash
+case "$*" in
+  *"devices"*)          printf 'List of devices attached\nemulator-5554\tdevice\n' ;;
+  *"emu avd name"*)     printf 'bench_avd\nOK\n' ;;
+  *"resolve-activity"*) printf 'com.exemple.app/.MainActivity\n' ;;
+  *"am start"*)         printf 'Status: ok\nTotalTime: 900\nWaitTime: 950\n' ;;
+  *"meminfo"*)          printf '  TOTAL PSS:   192000  TOTAL RSS:  300000\n' ;;
+  *"ro.build.version.release"*) printf '16\n' ;;
+  *"ro.build.version.sdk"*)     printf '36\n' ;;
+  *"ro.product.model"*)         printf 'bench_device\n' ;;
+  *"getprop"*)          printf 'x\n' ;;
+  *"dumpsys package"*)  printf '  [status=speed-profile]\n' ;;
+  *)                    printf '\n' ;;
+esac
+exit 0
+FAKEADB
+chmod +x "$FAKE/adb"
+sed -i.bak 's/^appId:.*/appId: com.exemple.app/; s/^  androidPackage:.*/  androidPackage: com.exemple.app/' "$A/argus.mobile.yaml"
+for s in perf a11y; do
+  out=$(PATH="$FAKE:$PATH" node "$A/scripts/argus/$s.mjs" --samples=1 2>&1)
+  if printf '%s' "$out" | grep -qE 'ReferenceError|is not a function|is not defined'; then
+    echo "  ✖ scripts/$s.mjs — référence morte sur le chemin nominal :"
+    printf '%s' "$out" | grep -E 'ReferenceError|is not a function|is not defined' | head -2 | sed 's/^/      /'
+    code=1
+  else
+    echo "  $s.mjs déroulé  exit 0"
+  fi
+done
+mv -f "$A/argus.mobile.yaml.bak" "$A/argus.mobile.yaml"
+rm -rf "$FAKE"
+
 [ $code -eq 0 ] && echo "✔ banc vert" || echo "✖ banc rouge"
 exit $code
