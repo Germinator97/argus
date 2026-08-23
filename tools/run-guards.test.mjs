@@ -1711,6 +1711,12 @@ test('aucune cible du Makefile ne code en dur un build que la config porte', () 
     'argus-build doit demander la commande à la config, pas l\'inventer');
   assert.match(cible[0], /--print-binary/,
     'et mesurer le paquet : « Built » ne prouve pas qu\'un paquet a été refait');
+  // ⚠️ Le critère est le HASH, pas la taille. La taille a crié au loup sur un
+  // build démontrablement frais (run 11) : deux paquets de même taille ont des
+  // contenus différents, et le remède prescrit coûtait ~50 s pour rien. Un
+  // sha256 identique, lui, prouve que le fichier n'a pas été réécrit.
+  assert.match(cible[0], /shasum/,
+    'l\'avertissement doit se décider sur le hash — la taille confond deux paquets différents');
 });
 
 test('la commande de build reste ciblable sur l\'ABI, dans les deux sens', () => {

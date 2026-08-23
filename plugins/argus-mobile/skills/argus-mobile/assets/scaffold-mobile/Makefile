@@ -31,13 +31,15 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	@CMD="$$(node scripts/argus/config.mjs --print-build-cmd)"; \
 	APK="$$(node scripts/argus/config.mjs --print-binary)"; \
 	BEFORE=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); BEFORE=$${BEFORE:-0}; \
+	BEFOREH=$$(shasum -a 256 "$$APK" 2>/dev/null | cut -d' ' -f1 || true); \
 	echo "→ $$CMD"; \
 	START=$$(date +%s); eval "$$CMD"; ELAPSED=$$(( $$(date +%s) - START )); \
 	AFTER=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); AFTER=$${AFTER:-0}; \
+	AFTERH=$$(shasum -a 256 "$$APK" 2>/dev/null | cut -d' ' -f1 || true); \
 	echo "  paquet   $$APK"; \
 	echo "  $$BEFORE → $$AFTER octets en $${ELAPSED}s"; \
-	if [ "$$BEFORE" != "0" ] && [ "$$BEFORE" = "$$AFTER" ]; then \
-	  echo "  ⚠️  TAILLE INCHANGÉE — « Built » ne prouve pas qu'un paquet a été refait."; \
+	if [ -n "$$BEFOREH" ] && [ "$$BEFOREH" = "$$AFTERH" ]; then \
+	  echo "  ⚠️  PAQUET INTACT — le fichier n'a pas été réécrit (même sha256)."; \
 	  echo "      Si la commande vient de changer (ciblage d'ABI, flavor, flags), rien"; \
 	  echo "      n'a été re-packagé : \`$(FLUTTER) clean\` puis relance."; \
 	fi

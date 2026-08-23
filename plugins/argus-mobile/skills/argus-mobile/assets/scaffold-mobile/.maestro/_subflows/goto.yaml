@@ -27,6 +27,14 @@ appId: ${APP_ID}
       # entrée PAR ÉTAT (`home-empty`, `home-filled`) : en le suivant à la lettre,
       # aucun identifiant ne valait plus « home » et cette branche ne matchait
       # jamais. Le gabarit et le sous-flow livré ne se rejoignaient pas.
+      #
+      # ⚠️ ET VOICI CE QUE ÇA COÛTE, à savoir avant d'y toucher : TOUS les états
+      # d'accueil tombent dans cette branche, qui ne navigue nulle part. Pour
+      # `home-empty` c'est juste — le lancement y arrive déjà. Pour un
+      # `home-filled`, ça ne l'est pas : rien ne le prépare, et s'il est en
+      # `visual: true` on photographie l'accueil VIDE sous le nom du plein, sans
+      # qu'aucune mesure ne le signale. Un état d'accueil qui demande des données
+      # a besoin de sa PROPRE branche, qui les crée.
       true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || String(SCREEN_ID).startsWith('home')}"
     commands:
       - assertTrue:

@@ -284,9 +284,14 @@ Trois mesures, trois outils, parce qu'aucun ne couvre les trois :
 
 | Mesure | Où | Pourquoi pas ailleurs |
 |---|---|---|
-| Couverture des ancres sémantiques | `.maestro/a11y.yaml` | seul Maestro voit l'arbre réel du device |
+| Couverture des ancres sémantiques — **une assertion par ancre, que TU écris** | `.maestro/a11y.yaml` | seul Maestro voit l'arbre réel du device |
 | Cibles tactiles ≥ 48 dp, contrastes, labels | `test/argus/a11y_test.dart` | **inexprimable en Maestro** : `width`/`height` sont des égalités en pixels |
 | Cibles tactiles sur le rendu réel | `scripts/argus/a11y.mjs` | croise `uiautomator dump` et `wm density` |
+
+⚠️ **La première ligne n'est pas automatique, et le flow livré ne mesure pas ce
+que son titre laisse croire** : `a11y.yaml` n'asserte que l'ancre d'accueil. La
+couverture, c'est toi qui l'écris, ancre par ancre — le fichier est un point de
+départ, pas un instrument. Les deux autres lignes, elles, mesurent seules.
 
 Le **rapport d'instrumentation** de SKILL.md §2 EST une métrique a11y : un widget
 que Maestro ne trouve pas est un widget que TalkBack n'annonce pas. Son format est

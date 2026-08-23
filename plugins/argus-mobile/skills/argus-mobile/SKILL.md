@@ -75,8 +75,16 @@ au moment où elle vaudrait le plus. Deux gestes la sauvent :
 1. **Écris-la quand même, en tête du rapport**, pas noyée au milieu. Elle ne
    préviendra pas, mais elle rendra relisible tout ce qui suit.
 2. **Écris-la aussi dans `argus.mobile.yaml`**, à l'endroit que chaque choix
-   gouverne — `ENV` près de sa clé, le device près de la sienne. C'est le seul
-   endroit qui survit à ton rapport, et celui que la personne suivante ouvrira.
+   gouverne. C'est le seul endroit qui survit à ton rapport, et celui que la
+   personne suivante ouvrira. Les emplacements, pour que tu ne les cherches pas :
+   `env` et `mode` dans le bloc **`run:`** en tête du fichier, le device dans
+   **`devices[]`**, l'identifiant dans **`app:`**.
+
+   ⚠️ Le cadrage est donc **réparti**, et ne se relit pas d'un bloc. C'est le
+   prix de clés qui ont un sens là où on les lit — mais deux agents de suite
+   l'ont recopié en commentaire d'en-tête faute de savoir où il allait. Si tu
+   veux un bloc relisible, mets-le en tête **en plus**, jamais **à la place** :
+   un commentaire ne gouverne rien, et le prochain outil lira les clés.
 
 ⚠️ Ne t'arrête PAS pour demander : un agent non interactif qui attend une réponse
 qui ne viendra jamais ne rend rien du tout, et c'est pire qu'un choix assumé.
@@ -663,6 +671,10 @@ screens:
     anchor: home_filled_root
     priority: p0
     visual: true
+    # ⚠️ Dès le DEUXIÈME écran en `visual: true`, le cadrage se déclare par
+    #   écran : aucune valeur globale ne convient à deux dispositions. La valeur
+    #   est l'ancre de la racine, celle de la ligne `anchor:` juste au-dessus.
+    visualCropOn: home_filled_root
 
 # Commandes → consommées par les flows, PAS par screens[]
 #   home_start_session   lancer une session      (présente dans les deux états)
