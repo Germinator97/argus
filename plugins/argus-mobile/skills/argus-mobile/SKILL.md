@@ -121,6 +121,8 @@ Instrumentation Semantics — parcours critiques
   Racines d'état     : <R> posées / <RESTE_R> à poser   ← l'essentiel de la production
   Commandes          : <Y> posées / <RESTE> à poser  (<Y/(Y+RESTE)> %)
     dont partagées   : <C> composant(s) couvrant <S> call-sites
+  Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
+  Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
 
 À instrumenter, par fichier :

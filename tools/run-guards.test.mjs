@@ -1921,3 +1921,35 @@ test('tout ce que le contrat promet à `run` est écrit', () => {
     'le contrat de sortie promet ces sous-clés de `run` et rien ne les écrit — '
     + 'écris-les, ou retire-les du contrat :\n  ' + manquantes.join(', '));
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Tout axe d'ancres que le TYPE porte, le gabarit du rapport le compte
+// ───────────────────────────────────────────────────────────────────────────
+//
+// `displays:` est arrivé au run 8, son indice au run 9, et au run 10 le gabarit
+// du rapport d'instrumentation ne le connaissait toujours pas : un agent en a
+// posé 7 et n'avait nulle part où les compter. Troisième voisin de la même
+// notion en trois runs.
+//
+// Le remède du run 9 — extraire plutôt que recopier — couvrait le CODE. Il ne
+// couvrait pas les énumérations en PROSE, et c'est là que le trou est resté.
+// Ce garde dérive donc les axes du type lui-même : un quatrième axe ajouté à
+// ArgusScreen fera rougir tant que le gabarit ne le nomme pas.
+
+test('le gabarit du rapport d\'instrumentation nomme tous les axes du type', () => {
+  const types = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_types.dart'), 'utf8');
+  const axes = [...types.matchAll(/^ {2}final List<String> ([a-zA-Z]+);/gm)].map((m) => m[1]);
+  assert.ok(axes.length >= 3, `motif introuvable dans argus_types.dart : ${axes.length} axe(s) — le garde est vacant`);
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf("Racines d'état");
+  assert.notEqual(i, -1, 'le gabarit du rapport d\'instrumentation a disparu du SKILL — garde vacant');
+  const gabarit = skill.slice(i, i + 900);
+
+  const absents = axes.filter((a) => !gabarit.includes(a));
+  assert.deepEqual(absents, [],
+    'ces axes existent dans ArgusScreen et le gabarit du rapport ne les compte nulle part — '
+    + 'un agent qui en pose n\'a pas de case où les mettre, et s\'abstient ou invente :\n  '
+    + absents.join(', '));
+});
