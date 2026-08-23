@@ -40,6 +40,19 @@ appId: ${APP_ID}
 # Flutter un nœud fusionne le texte qu'il recouvre. Avec `optional: true`, un
 # motif trop étroit échoue en SILENCE : l'invite reste ouverte et pollue toutes
 # les captures, sans une ligne dans le journal.
+#
+# ⚠️ ET LE TROP LARGE EST PIRE, parce qu'il TAPE quelque chose. Mesuré sur un
+# projet réel : `(?s).*(Erreur|Validation|Diagnostic).*` a attrapé la section
+# « DIAGNOSTIC » d'un écran de réglages, dont le tap ENVOYAIT un événement de
+# télémétrie ; la bannière de confirmation a ensuite pollué la capture et fait
+# diverger la référence à 98,6 %. Un `optional: true` qui tape la mauvaise chose
+# ne laisse aucune trace non plus — mais il a agi.
+#
+# D'où l'ordre des deux exemples ci-dessus : cibler par `id:` est la seule forme
+# qui sait CE QU'ELLE TOUCHE. Le ciblage par texte est le repli, quand la chose
+# qui flotte n'est pas à toi et que tu ne peux pas lui poser d'ancre. Si elle est
+# à toi, donne-lui une ancre — c'est trois lignes de Dart contre un motif qu'il
+# faudra relire à chaque libellé ajouté.
 # - tapOn:
 #     text: '(?s).*Plus tard.*'
 #     optional: true
