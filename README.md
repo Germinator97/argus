@@ -100,7 +100,7 @@ cp -R argus-cc/plugins/argus-mobile/skills/argus-mobile ~/.claude/skills/argus-m
 | | Ce qui tourne | Coût | Couvre |
 |---|---|---|---|
 | **Étage 1** | `flutter test` | secondes, **sans device** | cibles tactiles, contrastes, labels, disposition à 130 % et 200 % de texte |
-| **Étage 2** | Maestro + `adb` / `simctl` | minutes, **sur device** | parcours E2E, permissions, offline, cycle de vie, démarrage, jank, MASVS |
+| **Étage 2** | Maestro + `adb` / `simctl` | minutes, **sur device** | parcours E2E, permissions, offline, cycle de vie, démarrage, MASVS |
 
 Ce n'est pas un doublon : les sélecteurs `width`/`height` de Maestro sont des
 **égalités en pixels**, donc « ≥ 48 dp » ne s'écrit pas dans un flow.

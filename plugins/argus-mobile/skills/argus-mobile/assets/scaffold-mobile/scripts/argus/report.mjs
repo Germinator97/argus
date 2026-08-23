@@ -131,7 +131,6 @@ function perfRows(perf) {
     ['Premier lancement après installation', metrics.firstLaunchMs, null, 'ms'],
     ['Démarrage à froid (médiane)', metrics.coldStartMs, thresholds.coldStartMs, 'ms'],
     ['Démarrage à chaud (médiane)', metrics.warmStartMs, thresholds.warmStartMs, 'ms'],
-    ['Frames en retard', metrics.jankFramesPct, thresholds.jankFramesPct, '%'],
     ['Mémoire (TOTAL PSS)', metrics.memoryMb, thresholds.memoryMb, 'Mo'],
     ['Taille du binaire', metrics.binarySizeMb, thresholds.binarySizeMb, 'Mo'],
   ];

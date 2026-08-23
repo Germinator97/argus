@@ -342,7 +342,7 @@ const DEFAULTS = {
   // lequel `cropOn` recadre les captures. Vide → plein écran.
   visualCropOn: '',
   thresholds: {
-    coldStartMs: 2000, brandedSplashMs: 0, warmStartMs: 1000, jankFramesPct: 1, memoryMb: 250,
+    coldStartMs: 2000, brandedSplashMs: 0, warmStartMs: 1000, memoryMb: 250,
     binarySizeMb: 60, visualMatchPercentage: 99,
   },
   a11y: { minTouchTargetDp: 48 },

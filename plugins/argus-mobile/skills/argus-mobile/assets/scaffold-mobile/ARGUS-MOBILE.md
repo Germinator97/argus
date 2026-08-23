@@ -9,7 +9,7 @@ sécurité MASVS, conditions réelles — exécutable en local et en CI, avec ga
 | | Ce qui tourne | Coût | Ce que ça couvre |
 |---|---|---|---|
 | **Étage 1** | `flutter test` | secondes, **sans device** | cibles tactiles, contrastes, labels, disposition à 130 % et 200 % de texte |
-| **Étage 2** | Maestro + `adb` / `simctl` | minutes, **sur device** | parcours E2E, permissions, offline, cycle de vie, démarrage, jank, MASVS |
+| **Étage 2** | Maestro + `adb` / `simctl` | minutes, **sur device** | parcours E2E, permissions, offline, cycle de vie, démarrage, MASVS |
 
 L'étage 1 n'est pas un doublon : les sélecteurs `width`/`height` de Maestro sont
 des **égalités en pixels**, donc « ≥ 48 dp » ne s'écrit pas dans un flow. Et
@@ -113,7 +113,7 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 | `make argus-smoke` | smoke seul — le plus rapide |
 | `make argus-visual` | régression visuelle seule |
 | `make argus-baselines` | (re)génère les références visuelles |
-| `make argus-perf` | démarrage à froid/à chaud, jank, mémoire, taille |
+| `make argus-perf` | démarrage à froid/à chaud, mémoire, taille |
 | `make argus-a11y` | cibles tactiles et labels, sur l'écran affiché |
 | `make argus-sec` | MASVS statique (sources + binaire) |
 | `make argus-sca` | CVE des dépendances Dart et natives |
@@ -248,7 +248,7 @@ scripts/
   argus/
     config.mjs               # config + outillage + parseur YAML (socle partagé)
     run.mjs                  # devices, install vérifiée, Maestro, report.json
-    perf.mjs                 # démarrage, jank, mémoire, taille
+    perf.mjs                 # démarrage, mémoire, taille
     a11y.mjs                 # cibles tactiles sur device
     sec.mjs                  # MASVS statique
     sca.mjs                  # CVE

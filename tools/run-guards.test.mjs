@@ -30,7 +30,7 @@ import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn
 import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
-import { jankIfComparable, thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
@@ -1339,39 +1339,6 @@ test('la relance est CÂBLÉE avant le refus, pas seulement décidée', () => {
 // ───────────────────────────────────────────────────────────────────────────
 // perf.mjs — un pourcentage n'est comparable que si l'échantillon le permet
 // ───────────────────────────────────────────────────────────────────────────
-//
-// Mesuré sur un projet réel : même binaire, même appareil, deux exécutions —
-// « jank 0 % » puis « jank 100 % (framesRendered: 1) ». Le second était classé
-// critical, donc exit 2. Le chiffre était vrai ; la conclusion, du bruit.
-
-test('une seule frame ne conclut rien — et le dit', () => {
-  const { value, why } = jankIfComparable({ jankFramesPct: 100, totalFrames: 1 }, 1);
-  assert.equal(value, null, 'sinon une frame en retard vaut 100 % et fait échouer la CI');
-  assert.match(why, /1 frame/, 'et la raison doit citer la taille de l\'échantillon');
-});
-
-test('un échantillon suffisant est jugé normalement — le garde ne coupe qu\'un sens', () => {
-  const { value } = jankIfComparable({ jankFramesPct: 3.4, totalFrames: 500 }, 1);
-  assert.equal(value, 3.4,
-    'sans ça, « écarter les échantillons courts » deviendrait « ne plus jamais mesurer le jank »');
-});
-
-test('le plancher SUIT le seuil, il n\'est pas un nombre figé', () => {
-  // 40 frames : la granularité est de 2,5 %. Insuffisant pour juger à 1 %,
-  // largement assez pour juger à 5 %. Un plancher constant se tromperait sur
-  // l'un des deux, et se périmerait à la première révision du budget.
-  assert.equal(jankIfComparable({ jankFramesPct: 7, totalFrames: 40 }, 1).value, null);
-  assert.equal(jankIfComparable({ jankFramesPct: 7, totalFrames: 40 }, 5).value, 7);
-});
-
-test('une mesure absente reste absente, sans inventer de raison d\'échantillon', () => {
-  const { value, why } = jankIfComparable({ jankFramesPct: null, totalFrames: null }, 1);
-  assert.equal(value, null);
-  assert.match(why, /gfxinfo/, 'la cause n\'est pas la même, le message non plus');
-});
-
-
-// ───────────────────────────────────────────────────────────────────────────
 // Aucun script de MESURE n'efface les données de l'app
 // ───────────────────────────────────────────────────────────────────────────
 //
@@ -1790,41 +1757,6 @@ test('toolPath ne détourne que les outils du SDK, et rend le nom nu sinon', () 
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// Le jank sous Flutter : nommer l'INSTRUMENT, pas l'échantillon
-// ───────────────────────────────────────────────────────────────────────────
-//
-// Six runs consécutifs n'ont jamais conclu, et le message accusait la taille de
-// l'échantillon — donc il envoyait produire de l'interaction. Mesuré sur device :
-// 6 swipes → 0 frame, 8 transitions → 0 frame, la même manipulation sur une appli
-// système → 70. `dumpsys gfxinfo` compte le rendu HWUI ; Flutter dessine dans une
-// SurfaceView, que HWUI ne voit pas. Mauvais instrument, pas mauvais protocole.
-
-test('0 ou 1 frame sous Flutter accuse l\'instrument, jamais l\'échantillon', () => {
-  for (const totalFrames of [0, 1, 2]) {
-    const { value, why } = jankIfComparable({ jankFramesPct: 100, totalFrames }, 1);
-    assert.equal(value, null);
-    assert.match(why, /SurfaceView/,
-      'le message doit nommer la cause mesurée, sinon il envoie chercher au mauvais endroit');
-    // ⚠️ Pas `!/échantillon trop court/` : le message Flutter contient cette
-    // phrase pour la NIER (« ce n'est pas un échantillon trop court, c'est le
-    // mauvais instrument »). Un garde qui interdit une sous-chaîne interdit
-    // aussi sa négation — on distingue donc la BRANCHE, pas un mot.
-    assert.ok(!why.startsWith('échantillon trop court'),
-      'la branche « échantillon » ne doit pas s\'appliquer ici : c\'est ce qui a coûté six runs');
-    assert.match(why, /timestats/, 'et nommer ce qui, lui, voit ces frames');
-  }
-});
-
-test('un échantillon vraiment court garde son ancien message — le garde ne coupe qu\'un sens', () => {
-  const { value, why } = jankIfComparable({ jankFramesPct: 5, totalFrames: 40 }, 1);
-  assert.equal(value, null);
-  assert.match(why, /échantillon trop court/,
-    '40 frames est un vrai échantillon court, pas un défaut d\'instrument');
-  assert.ok(!/SurfaceView/.test(why), 'ne pas coller le diagnostic Flutter sur un cas qui n\'est pas lui');
-});
-
-// ───────────────────────────────────────────────────────────────────────────
-// Générer des références n'est pas les comparer
 // ───────────────────────────────────────────────────────────────────────────
 //
 // Run 10 : `make argus-baselines` a écrit ses 4 références, l'a dit, puis est

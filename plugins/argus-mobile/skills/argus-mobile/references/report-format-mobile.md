@@ -116,7 +116,7 @@ Les clés de premier niveau de `report.json` sont : `run`, `summary`, `findings`
 {
   "firstLaunchMs": 3700,   // PREMIER lancement après installation — état à part
   "coldStartMs": 910, "warmStartMs": 320,
-  "jankFramesPct": 0.8, "memoryMb": 187, "binarySizeMb": 42.1
+  "memoryMb": 187, "binarySizeMb": 42.1
 }
 ```
 `firstLaunchMs` est isolé volontairement : c'est un état réel, vécu une fois par

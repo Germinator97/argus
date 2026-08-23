@@ -251,7 +251,6 @@ thresholds:
   brandedSplashMs: 0
   warmStartMs: 1000
   # % de frames au-delà du budget de 16 ms (`dumpsys gfxinfo … framestats`).
-  jankFramesPct: 1
   memoryMb: 250
   binarySizeMb: 60
   # Pas de `crashFreePct` ici : rien dans le harnais ne compte les crashs. Un

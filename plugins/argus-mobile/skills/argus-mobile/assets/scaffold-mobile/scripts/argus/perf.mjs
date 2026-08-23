@@ -3,7 +3,7 @@
 /**
  * Argus Mobile — performance et stabilité
  * ------------------------------------------------------------------------
- * Démarrage à froid et à chaud, jank, mémoire, taille du binaire.
+ * Démarrage à froid et à chaud, mémoire, taille du binaire.
  * Écrit argus-mobile-report/perf.json et sort selon le gate.
  *
  * ⚠️ UN CHIFFRE DE PERFORMANCE NE VEUT RIEN DIRE SANS L'ÉTAT OÙ IL EST PRIS.
@@ -149,104 +149,31 @@ function measureWarmStarts(udid, component, samples) {
   return { samples: values, medianMs: median(values), metric: 'WaitTime (retour au premier plan)' };
 }
 
-/**
- * Jank : part des frames au-delà du budget d'affichage.
- * `dumpsys gfxinfo <pkg>` agrège depuis le dernier `reset` — d'où le reset, une
- * navigation, puis la lecture. Sans reset, on lit l'historique du device.
- * @param {string} udid @param {string} packageName
- * @returns {{jankFramesPct:number|null, totalFrames:number|null}}
- */
-function measureJank(udid, packageName) {
-  const res = adb(udid, ['shell', 'dumpsys', 'gfxinfo', packageName]);
-  const total = /Total frames rendered:\s*(\d+)/.exec(res.stdout);
-  const janky = /Janky frames:\s*(\d+)\s*\(([\d.]+)%\)/.exec(res.stdout);
-  return {
-    jankFramesPct: janky ? Number.parseFloat(janky[2]) : null,
-    totalFrames: total ? Number.parseInt(total[1], 10) : null,
-  };
-}
-
-/**
- * Le jank n'est comparable à son seuil que si l'échantillon a la granularité
- * nécessaire — sinon la mesure est vraie et la conclusion est du bruit.
- *
- * Avec N frames rendues, la plus petite valeur non nulle mesurable vaut
- * `100/N` %. En dessous, un pourcentage ne peut plus que valoir zéro ou
- * dépasser le seuil : il n'existe aucune valeur intermédiaire à comparer. Une
- * frame rend 0 % ou 100 %, jamais 1 %. Le plancher se DÉRIVE donc du seuil
- * (`100/seuil`) plutôt que d'être un nombre choisi — un plancher deviné se
- * périmerait à la première révision du budget.
- *
- * Mesuré sur un projet réel : le même binaire, sur le même appareil, à deux
- * exécutions d'écart, a rendu `0 %` puis `100 % (framesRendered: 1)`. Le second
- * était classé `critical`, donc exit 2 : une CI que rien ne distingue d'une
- * vraie régression de rendu.
- *
- * ⚠️ Ce n'est pas un adoucissement : au-dessus du plancher, le seuil s'applique
- * exactement comme avant. Ce qui est écarté est ce qu'on ne pouvait pas juger.
- * @param {{jankFramesPct:number|null, totalFrames:number|null}} jank
- * @param {number} thresholdPct
- * @returns {{value:number|null, why:string}}
- */
-export function jankIfComparable(jank, thresholdPct) {
-  const { jankFramesPct, totalFrames } = jank;
-  if (jankFramesPct === null || jankFramesPct === undefined) {
-    return { value: null, why: 'dumpsys gfxinfo n\'a pas rendu de ligne « Janky frames »' };
-  }
-  const floor = thresholdPct > 0 ? Math.ceil(100 / thresholdPct) : 0;
-  if (totalFrames !== null && totalFrames < floor) {
-    // ⚠️ NE PAS ACCUSER L'ÉCHANTILLON. Ce message disait « échantillon trop
-    // court » et envoyait produire de l'interaction — mesuré sur device, ça ne
-    // change rien : 6 swipes → 0 frame, 8 transitions → 0 frame, alors que la
-    // même manipulation sur une appli système en rend 70. `dumpsys gfxinfo`
-    // compte le rendu HWUI de la hiérarchie de vues Android, et Flutter dessine
-    // dans une SurfaceView : ce qu'on lit ici est la coquille, jamais l'app.
-    // Six runs consécutifs ont rendu 0 ou 1 frame pour cette raison.
-    const flutter = totalFrames <= 2;
-    return {
-      value: null,
-      why: flutter
-        ? `${totalFrames} frame(s) — sous Flutter, \`dumpsys gfxinfo\` ne compte PAS les frames `
-          + 'de l\'app : elles sont rendues dans une SurfaceView, que HWUI ne voit pas. Ce n\'est '
-          + 'pas un échantillon trop court, c\'est le mauvais instrument, et aucune interaction '
-          + 'n\'y changera rien. Ce qui voit ces frames : `dumpsys SurfaceFlinger --timestats '
-          + '-enable` puis `-dump`, filtré sur le layer `SurfaceView[<appId>/…]`. Mesuré : 22 '
-          + 'frames là où gfxinfo en rendait 0 — mais son `Jank payload` par layer peut être vide '
-          + 'selon la version d\'Android, donc vérifie avant de t\'y fier.'
-        : `échantillon trop court pour conclure : ${totalFrames} frame(s) rendue(s), `
-          + `il en faut ${floor} pour qu'un seuil de ${thresholdPct} % ait une valeur à comparer`,
-    };
-  }
-  return { value: jankFramesPct, why: '' };
-}
-
-/**
- * Mémoire : TOTAL PSS, la mesure qui compte pour un budget d'app.
- * @param {string} udid @param {string} packageName @returns {number|null}
- */
-function measureMemory(udid, packageName) {
-  const res = adb(udid, ['shell', 'dumpsys', 'meminfo', packageName]);
-  const match = /TOTAL(?:\s+PSS)?:?\s+(\d+)/.exec(res.stdout);
-  return match ? Math.round((Number.parseInt(match[1], 10) / 1024) * 10) / 10 : null;
-}
-
-/**
- * Contexte du device. Enregistré POUR SITUER la mesure, jamais pour expliquer
- * un écart : attribuer un chiffre de performance à un mécanisme sans l'avoir
- * isolé fait optimiser à côté.
- * @param {string} udid @param {string} packageName
- */
-function deviceContext(udid, packageName) {
-  const prop = (/** @type {string} */ name) => adb(udid, ['shell', 'getprop', name]).stdout.trim();
-  const compile = adb(udid, ['shell', 'dumpsys', 'package', packageName]).stdout;
-  const status = /\[status=([a-z-]+)\]/.exec(compile) ?? /status=([a-z-]+)/.exec(compile);
-  return {
-    androidRelease: prop('ro.build.version.release'),
-    sdkInt: prop('ro.build.version.sdk'),
-    model: prop('ro.product.model'),
-    artCompilation: status ? status[1] : null,
-  };
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// Le jank a été RETIRÉ le 23/08/2026 — et voici pourquoi, pour qu'il ne
+// revienne pas par inadvertance.
+//
+// Il a vécu ici dix runs sans jamais conclure une seule fois : `framesRendered`
+// valait 0 ou 1 là où le seuil en demandait 100. Ce n'était pas un échantillon
+// trop court, c'était le mauvais instrument — mesuré :
+//
+//   6 swipes → 0 frame · 8 transitions → 0 frame · les deux → 0 frame
+//   CONTRE-ÉPREUVE, mêmes swipes sur une appli système → 70 frames
+//
+// `dumpsys gfxinfo` compte le rendu HWUI de la hiérarchie de vues Android, et
+// Flutter dessine dans une SurfaceView (`SurfaceView[<appId>/…](BLAST)` dans
+// `dumpsys SurfaceFlinger --list`). Ce qu'on lisait était la coquille Android.
+//
+// ⚠️ ET LA RÉPARATION N'AURAIT PAS SUFFI. `dumpsys SurfaceFlinger --timestats`
+// voit bien ce layer (22 frames là où gfxinfo en rendait 0), mais son
+// `Jank payload` par layer est vide sur Android 36 — seul l'agrégat GLOBAL est
+// rempli, tous layers confondus, donc non attribuable à l'app. Et surtout : ce
+// harnais mesure un binaire de DEBUG sur émulateur, où le jank n'a aucun
+// rapport avec ce que voit un utilisateur.
+//
+// Une mesure de jank qui vaudrait quelque chose demande `FrameTiming`
+// (`SchedulerBinding.addTimingsCallback`) côté application, en profile ou
+// release, sur un appareil réel. C'est un autre chantier que celui-ci.
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Taille du binaire
@@ -324,7 +251,7 @@ function main() {
     writeJson(reportPath, {
       platform, skipped: true,
       skipReason: 'iOS : aucun équivalent local de `adb shell am start -W` / `dumpsys gfxinfo`. '
-        + 'Le démarrage et le jank iOS se mesurent avec Instruments (App Launch, Animation Hitches), '
+        + 'Le démarrage iOS se mesure avec Instruments (App Launch, Animation Hitches), '
         + 'hors périmètre automatisable de ce harness.',
       binarySizeMb: sizeMb, findings,
     });
@@ -358,7 +285,7 @@ function main() {
   // ⚠️ UNE PHASE, UNE LIGNE. Ce bloc était muet de bout en bout : entre le log
   // ci-dessus et celui des résultats, il n'y avait rien — pendant N démarrages
   // à froid (chacun un `force-stop` + un `am start -W`), N à chaud, une passe
-  // de jank et une de mémoire. Mesuré au run 9 : deux exécutions au-delà de
+  // et une de mémoire. Mesuré au run 9 : deux exécutions au-delà de
   // 10 min contre trois à 5 s, même commande et même device, sans une ligne
   // pour distinguer « ça calcule » de « ça ne rendra jamais la main ». La
   // variable n'a jamais été isolée, donc rien ici ne prétend l'expliquer :
@@ -367,10 +294,6 @@ function main() {
   const cold = measureColdStarts(udid, packageName, component, opts.samples);
   log(`  démarrages à chaud (${opts.samples})…`);
   const warm = measureWarmStarts(udid, component, opts.samples);
-  log('  jank…');
-  adb(udid, ['shell', 'dumpsys', 'gfxinfo', packageName, 'reset']);
-  timedLaunch(udid, component);
-  const jank = measureJank(udid, packageName);
   log('  mémoire…');
   const memoryMb = measureMemory(udid, packageName);
   const context = deviceContext(udid, packageName);
@@ -391,13 +314,9 @@ function main() {
   const mesure = 'am start -W : jusqu\'à la première frame, splash de marque compris mais '
     + 'PAS l\'initialisation applicative qui suit. Le temps jusqu\'à l\'écran exploitable est '
     + 'dans startup.samples du rapport principal, et il est normalement plus grand.';
-  const comparableJank = jankIfComparable(jank, thresholds.jankFramesPct);
-  if (comparableJank.value === null && comparableJank.why) warn(`jank non conclu — ${comparableJank.why}`);
-
   const findings = [
     thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
     thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
-    thresholdFinding('QAM-PERF-JANK', 'Frames en retard', comparableJank.value, thresholds.jankFramesPct, '%'),
     thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo', 'performance', variante),
     thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo', 'performance', variante),
   ].filter(Boolean);
@@ -409,13 +328,6 @@ function main() {
       firstLaunchMs: cold.firstLaunchMs,
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
       warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
-      // ⚠️ `jankComparable` porte le verdict, `jankFramesPct` le relevé brut. Les
-      // confondre faisait lire « 0 % » comme une mesure alors que zéro frame
-      // avait été rendue — seul `framesRendered` à côté permettait de s'en
-      // apercevoir, et rien n'obligeait à le regarder.
-      measures: mesure,
-      jankFramesPct: jank.jankFramesPct, framesRendered: jank.totalFrames,
-      jankComparable: comparableJank.value, jankWhy: comparableJank.why,
       memoryMb, binarySizeMb: sizeMb,
     },
     thresholds, findings,
@@ -423,13 +335,7 @@ function main() {
   writeJson(reportPath, report);
 
   log(`premier lancement ${cold.firstLaunchMs ?? '?'} ms · à froid ${cold.medianMs ?? '?'} ms · à chaud ${warm.medianMs ?? '?'} ms`);
-  // ⚠️ LA VALEUR COMPARABLE, PAS LA BRUTE. Cette ligne affichait
-  // `jank.jankFramesPct` — donc « jank 0 % » vingt-cinq lignes après un
-  // « jank non conclu — 0 frame(s) rendue(s) ». Les deux étaient vrais et se
-  // contredisaient : l'un disait qu'on ne peut pas juger, l'autre donnait un
-  // verdict. Sur une sortie de terminal, c'est le second qu'on retient.
-  const jankLu = comparableJank.value === null ? 'non conclu' : `${comparableJank.value} %`;
-  log(`jank ${jankLu} · mémoire ${memoryMb ?? '?'} Mo · binaire ${sizeMb ?? '?'} Mo`);
+  log(`mémoire ${memoryMb ?? '?'} Mo · binaire ${sizeMb ?? '?'} Mo`);
   if (cold.firstLaunchMs && cold.medianMs && cold.firstLaunchMs > cold.medianMs * 1.5) {
     warn(`premier lancement ${Math.round((cold.firstLaunchMs / cold.medianMs) * 10) / 10}× plus lent que le régime stabilisé — chaque utilisateur le vit une fois.`);
   }

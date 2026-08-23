@@ -40,7 +40,7 @@ MODE         : EXPLORE | DEMO | REGRESS         # voir §2
 AUTH         : { secrets_from_env: [QA_USER, QA_PASS], anchors: {…} }
 LOCALE       : { deviceLocale: fr_FR }
 BUDGET       : { max_minutes: [25], max_flows: [40] }
-THRESHOLDS   : { coldStartMs: 2000, warmStartMs: 1000, jankFramesPct: 1,
+THRESHOLDS   : { coldStartMs: 2000, warmStartMs: 1000,
                  memoryMb: 250, binarySizeMb: 60,
                  visualMatchPercentage: 99, minTouchTargetDp: 48 }
 GATE         : { fail_on: [blocker, critical, major],
@@ -307,9 +307,17 @@ dans la source, pas supposé.
   `TotalTime`. iOS : pas d'équivalent en ligne de commande ; ça se mesure avec
   Instruments (App Launch), hors périmètre automatisable — donc rapporté
   `skipped`, jamais vert.
-- **Jank** — `adb shell dumpsys gfxinfo <pkg>` après `reset`, lecture de
-  `Janky frames`.
 - **Mémoire** — `dumpsys meminfo <pkg>` → TOTAL PSS.
+- ⚠️ **Pas de jank.** Il a été mesuré ici dix runs sans jamais conclure, et
+  retiré le 23/08/2026 : `dumpsys gfxinfo` compte le rendu HWUI de la hiérarchie
+  de vues Android, or **Flutter dessine dans une `SurfaceView`** que HWUI ne voit
+  pas — 0 frame relevée après six défilements, contre 70 pour la même
+  manipulation sur une appli système. `SurfaceFlinger --timestats` voit bien ce
+  layer, mais son `Jank payload` par layer est vide sur Android 36, et ce harnais
+  mesure de toute façon un **debug sur émulateur**, où le chiffre n'aurait aucun
+  rapport avec ce que voit un utilisateur. Une mesure qui vaudrait quelque chose
+  demande `FrameTiming` côté application, en profile ou release, sur appareil
+  réel — autre chantier. Le détail des mesures est en tête de `perf.mjs`.
 - **Taille du binaire** — et `flutter build apk --analyze-size` pour savoir *où*.
 - **Crash-free** — `crash-report.txt` / `anr-report.txt` du bundle d'artefacts
   Maestro, collectés par flow.
