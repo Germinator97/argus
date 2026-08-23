@@ -1070,14 +1070,179 @@ lu après le SKILL.
 **Corrigé** : la phrase est terminée, et dit ce qu'elle annonçait — ce qui est
 écrit ici est ce que le mobile fait AUTREMENT.
 
+### 98. `make argus-build` construit l'APK **gras**, alors que §3g le prescrit juste après `adb uninstall`
+
+Le runner sait proposer la bonne commande : quand l'installation échoue, il rend
+`buildCmdForAbi(brute, deviceAbi(udid))` — ciblée sur l'ABI de l'appareil qu'il
+vient de résoudre. Mais la cible que §3g demande de lancer ensuite est
+`@$(FLUTTER) build apk --debug`, **écrite en dur dans le `Makefile`**, qui ne lit
+ni `build.androidBuildCmd` ni l'ABI. La séquence prescrite reconstruit donc
+exactement le binaire qui vient de ne pas rentrer.
+
+Le run 9 l'a vécu sans le nommer : il a dû construire à la main avec
+`--target-platform android-arm64`.
+
+⚠️ **Deux chemins de build coexistent** — celui du `Makefile` (en dur) et celui
+que `run.mjs:1295` compose depuis la config. C'est le motif du voisin sous sa
+forme la plus coûteuse : le geste documenté et le geste outillé ne font pas la
+même chose.
+
+### 99. Un build peut réussir **sans re-packager**, et rien ne le dit
+
+Mesuré au run 9 : un premier `--target-platform android-arm64` a duré **8,5 s** et
+rendu **123 230 339** octets contre **123 230 484** avant — 145 octets d'écart,
+c'est-à-dire des horodatages. Le build suivant a rendu **96 438 630**. Entre les
+deux, la seule différence lisible était la durée.
+
+`argus-build` s'arrête à `✓ Built` : ni taille, ni hash. C'est le pendant exact
+de la règle sur le `kernel_blob.bin`, mais côté paquet — et le run 9 en a tiré la
+conclusion inverse de la réalité (« le ciblage ne sert à rien »), écrite avant
+d'être démentie par la mesure suivante.
+
+### 100. « le ciblage divise sa taille par deux » — un chiffre vrai une fois, écrit comme une loi
+
+`SKILL.md:791`. La mesure qui l'a produit est réelle (84,9 Mo contre 39,7, run 8).
+Sur le projet du run 9 : **123 230 484 → 96 438 630 octets**, soit 117,5 → 92,0 Mo,
+**−21,7 %**. Le terme dominant n'y était pas les ABI mais
+`assets/flutter_assets/kernel_blob.bin` (**84,3 Mo**), que `--target-platform` ne
+touche pas — et le ciblage ne retire pas tout : `lib/x86_64` et `lib/armeabi-v7a`
+survivent (4,8 Mo de `.so` de plugins qui livrent toutes les ABI).
+
+Surtout, la phrase qui suit — « et c'est souvent tout ce qui manquait » — a été
+démentie dans le même run : le ciblage **n'a pas suffi**, c'est `adb uninstall`
+qui a débloqué. Dire ce qui **détermine** le gain vaut mieux qu'un ratio.
+
+### 101. L'indice du pli existe pour `commands:` et pas pour `displays:` — le voisin du 89
+
+Une `commands:` introuvable déclenche une sonde : le test remonte au plus grand
+gabarit et, si l'ancre y est, rend « ⚠️ ELLE EXISTE, mais plus bas que ce gabarit
+ne le montre … DÉPLACE-LA dans `commandsAfterScroll:` ». Une `displays:`
+introuvable ne déclenche rien : le message accuse l'instrumentation et **ne
+mentionne jamais `displaysAfterScroll:`**, qui existe pourtant depuis le 89.
+
+Deux des quatre échecs du run 9 étaient dans ce cas. Le champ a été créé sans
+l'indice qui apprend à s'en servir — *mon* correctif, une passe plus tôt.
+
+⚠️ Le remède ponctuel serait de recopier la sonde dans le chemin `displays`. Le
+remède **total** est de l'extraire, pour que le troisième axe l'ait par
+construction.
+
+### 102. `devices[].os` a deux consommateurs, comme `model` au 92 — le voisin, encore
+
+Le 92 a doté `devices[].model` d'un commentaire qui nomme les deux vocabulaires
+(`maestro start-device` contre `android-emulator-runner`) et donne la commande qui
+tranche. `devices[].os` a exactement le même problème — Maestro attend
+`android-36`, l'action de CI attend `api-level: 36` — et n'a rien reçu.
+
+Le run 9 a mis la forme Maestro et l'a écrit noir sur blanc : « la CI retombera
+sur son défaut ».
+
+### 103. Deux identifiants qui tombent dans le même nœud fusionné : le second disparaît, en silence
+
+Le skill couvre l'**absorption** (une racine qui avale ses descendants →
+`container: true` + `explicitChildNodes: true`) et l'ancre inerte. Il ne dit nulle
+part que **deux `Semantics(identifier:)` frères recouverts par un même nœud
+fusionné n'en gardent qu'un**.
+
+Mesuré au run 9 par une sonde jetable, avec contre-épreuve :
+
+```
+SONDE home_streak_value elements = 1     ← l'ancre de contrôle
+SONDE home_total_value  elements = 0
+widget id=home_total_value               ← le widget EST dans l'arbre
+node id=home_streak_value rect=(0,0,312,158.5)   ← 312 px : la RANGÉE ENTIÈRE
+```
+
+Le widget est dans l'arbre, `flutter analyze` est vert, rien ne lève : seul le
+second identifiant a disparu. Remède `container: true` sur chacun, revérifié —
+`rect=(0,0,32.3,63.0)` et `rect=(0,0,82.5,32.0)`. La table « §2c » gagnerait une
+quatrième ligne.
+
+### 104. `mask-dynamic.yaml` n'avertit que d'un côté — et c'est l'autre qui a mordu
+
+Le fichier prévient qu'un motif **trop étroit** échoue en silence sous
+`optional: true`. Rien sur le motif **trop large**, dont le dégât est pire : il
+tape quelque chose.
+
+Au run 9, `(?s).*(Erreur|Validation|Diagnostic).*` a attrapé la section
+« DIAGNOSTIC » des Réglages, dont le tap **envoie un événement Sentry** ; le
+bandeau de confirmation a ensuite pollué la capture et fait diverger la référence
+à **98,60849919 %**. Un `optional: true` qui tape la mauvaise chose est plus
+dangereux qu'un qui ne tape rien.
+
+⚠️ **La moitié démentie du constat.** Le run 9 écrit que « donner une ancre à ce
+qui flotte, puis cibler par `id`, n'est proposé nulle part » : c'est faux, c'est
+le **premier** exemple commenté du fichier (`id: banner_dismiss`). Le symptôme
+était juste, le diagnostic non.
+
+### 105. `perf.mjs` ne dit rien pendant qu'il travaille
+
+**4 appels à `log()` en 416 lignes** : `mesures sur <udid>` à la ligne 340, puis
+plus rien jusqu'aux résultats (396). Entre les deux se jouent N démarrages à
+froid, les démarrages à chaud, le jank et la mémoire.
+
+Le run 9 a vu deux exécutions dépasser **10 min** (`make: *** [argus-perf]
+Terminated: 15`) contre trois à **5 s**, même commande, même device — sans qu'une
+seule ligne permette de distinguer « ça calcule » de « ça ne rendra jamais la
+main ». La variable n'a pas été isolée, donc aucun mécanisme n'est avancé ici :
+ce qui est certain est que le script est muet.
+
+### 106. `aapt2` et `apkanalyzer` sont cherchés au PATH seulement, jamais là où ils vivent
+
+`detectTools` fait `sh(name, probe)` : présent au PATH ou absent. Or ces deux-là
+existent sur **toute** machine ayant les Android SDK Build-Tools — ils n'y sont
+simplement pas exposés. `TOOLS.aapt2.install` le sait déjà et dit « (ajoute-le au
+PATH) », mais rien ne va le chercher.
+
+Conséquence mesurée au run 9 : la moitié de la dimension sécurité a été sautée
+jusqu'à un `export PATH=…/build-tools/35.0.0:$PATH`, après quoi elle a rendu
+`binary: 142 entrées, isDebugBuild false, hasAot true, obfuscation projectPaths: 0`.
+Sonder `$ANDROID_HOME/build-tools/*/` avant de déclarer absent coûte quelques
+lignes ; ce qu'on y gagne est une dimension entière.
+
+### 107. `androidBuildCmd` par défaut ne porte pas le préfixe FVM
+
+`argus.mobile.yaml:62` et `config.mjs:328` valent `flutter build apk --debug`,
+sans `fvm`, alors que tout le reste du scaffold dérive le préfixe. Sans
+conséquence à l'exécution — `flutterCommand()` le rétablit — mais c'est une ligne
+de configuration qu'on lit et qu'on copie, et elle donne alors le mauvais SDK.
+
+### 108. ❌ FAUX — « `adb uninstall` est présenté comme un remède, pas comme une routine »
+
+Le run 9 le signale et propose de le « mettre dans la séquence ». Il y est déjà :
+`SKILL.md:786-788` donne les **deux gestes dans cet ordre**,
+`adb -s <udid> uninstall <appId>` puis `make argus-build`, sous le titre
+« `argus-run` peut refuser de démarrer, et c'est prévu ».
+
+⚠️ **Mon premier grep a confirmé le constat à tort** : `grep "adb uninstall"` ne
+matche pas `adb -s <udid> uninstall`. J'allais inscrire « le skill ne mentionne
+jamais la désinstallation », l'exact contraire de ce que le fichier porte. Un
+motif non ancré compte faux ; ici il aurait fait *ajouter* ce qui existait.
+
+Ce qui reste vrai, et vaut pour le 98 : le geste est dans une section
+conditionnelle, et sur cet AVD il n'a rien de conditionnel — 3 paquets tiers
+installés, 621 Mo libres sur `/data`, un APK debug de 92 Mo qui en demande le
+double.
+
 ## Ce qui reste
 
-**Les points 89 à 97**, rendus par le run 8 et tous reproduits avant d'être
-inscrits. Quatre visent la passe de la veille, **trois par le même mécanisme** :
-le correctif a été posé à un endroit, son voisin l'a attendu en vain.
+**Les points 98 à 108**, rendus par le run 9 et tous reproduits avant d'être
+inscrits. Deux visent la passe de la veille, **par le même mécanisme** : le 101
+est le voisin du 89, le 102 celui du 92 — un champ créé d'un côté, son jumeau
+laissé sans rien.
 
-Et ce que cinq runs ont établi, qui ne se périme pas : une passe trouve ce qui
+**Le run 9 était une vérification, et les neuf points du run 8 ont porté** :
+trois ont été exercés pour de vrai — l'installation qui refuse de démarrer (95),
+la table qui couvre `InkResponse` (94), le plancher d'attente qui lit le temps
+d'écran exploitable et non le splash (91). Aucun n'est revenu.
+
+Et ce que six runs ont établi, qui ne se périme pas : une passe trouve ce qui
 manque, la suivante trouve ce que la correction a introduit **ou n'a pas
-terminé**. Les runs 4 et 5 ont chacun désigné des correctifs de la veille — non
-pas faux, mais **incomplets** : ils traitaient la moitié du problème qu'on avait
-sous les yeux.
+terminé**. Les runs 4, 5, 8 et 9 ont chacun désigné des correctifs de la veille —
+non pas faux, mais **incomplets**.
+
+⚠️ **Un constat démenti (108), et c'est mon instrument qui l'avait confirmé.**
+Les autres démentis encore inscrits sont le **62** et le **78** ; le **25**, clos,
+vit dans la page publiée. Reproduire reste moins cher que corriger ce qui n'est
+pas cassé — et le 108 ajoute une variante : reproduire *avec un motif ancré*, ou
+l'instrument confirme le constat à la place du fichier.
