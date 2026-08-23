@@ -1686,24 +1686,92 @@ assume que le cadrage est réparti — avec la raison, et l'interdit qui va avec
 un bloc en tête **en plus**, jamais **à la place**, parce qu'un commentaire ne
 gouverne rien.
 
+### 127. §3g dit « la suite », alors que le critère est « le flow qui produit la capture »
+
+Le texte justifie l'ordre run → baselines → run ainsi : « une référence prise sur
+une suite dont on n'a pas encore prouvé qu'elle tourne fige un écran qu'on n'a
+jamais vu arriver ». Juste — mais trop large.
+
+Le run 12 est arrivé au premier `argus-run` avec **un** flow rouge, le sien
+(`lifecycle`, un retour manquant vers l'accueil), sans aucun rapport avec les
+quatre écrans visuels. Il a généré quand même, à raison, et l'a écrit : *le skill
+ne dit pas si c'est légitime*. Ce qui doit être vert avant de figer une
+référence, c'est **le flow qui la produit**, pas la suite entière.
+
+### 128. Le piège du `startsWith` vaut pour TOUTE famille d'états — voisin de mon 122
+
+Mon correctif d'aujourd'hui a documenté, dans `goto.yaml`, ce que la branche
+`startsWith('home')` coûte : tous les états d'accueil y tombent, et un
+`home-filled` en `visual: true` ferait photographier l'accueil vide sous son nom.
+
+Le run 12 a rencontré **exactement le même piège pour `history-empty` /
+`history-filled`**, et a dû écrire la condition à la main. Le fichier ne parle que
+de `home`.
+
+⚠️ **C'est mon propre correctif du jour qui a laissé son voisin.** J'ai écrit le
+coût de la branche pour la famille que le run précédent avait citée, au lieu de
+l'écrire pour **les familles d'états** en général. La leçon du chantier
+s'applique à moi une fois de plus : un correctif ponctuel là où il fallait un
+énoncé général.
+
+### 129. Rien ne dit COMMENT choisir entre `commands:` et `commandsAfterScroll:`
+
+`argus_types.dart` documente parfaitement le troisième état et ses deux moitiés
+— mais pas la méthode. Or la seule praticable est : **tout déclarer en
+`commands:`, lancer, et déplacer ce que le message prescrit**. Le harnais tranche
+dans les deux sens (absente-mais-plus-bas, et déclaration périmée), c'est même sa
+force.
+
+Le run 12 l'a découvert en payant une itération : son découpage initial était une
+intuition, et le harnais a corrigé **neuf** déclarations d'un coup. Une phrase —
+« ne devine pas le pli, le harnais te le donne » — ferait gagner ce tour à tout
+le monde.
+
+### 130. Le §SECURITY de la méthodologie ne mentionne pas `build.androidScan`
+
+C'est pourtant la clé qui **débloque la dimension** : sans elle, le scan porte sur
+un binaire debug et s'arrête avec « un scan de sécurité n'y dit rien de la
+publication ». Elle est très bien documentée dans `argus.mobile.yaml`, et absente
+de la section qui décrit la mesure. Le run 12 l'a trouvée **en lisant
+`sec.mjs`**.
+
+### 131. Le skill fait prouver l'INSTALLATION, jamais le CONTENU du binaire
+
+`installProof` est soigné — « Success » plus `pm list packages`. Mais rien ne
+demande de vérifier que le binaire installé porte **le code du moment**, et c'est
+un geste distinct : une installation prouvée n'exclut pas un kernel périmé.
+
+Le run 12 l'a fait de lui-même, et s'est heurté au piège classique : sa première
+contre-épreuve, `com.exemple.app`, rendait **0** dans le `kernel_blob.bin`
+— l'identifiant vit dans le manifeste, pas dans le kernel Dart. Un instrument
+mort qui aurait pu faire conclure « le binaire est périmé ». Il l'a démasqué en
+prenant un littéral Dart de l'app comme motif certain.
+
+### 132. L'avertissement de locale est systématique dans la disposition RECOMMANDÉE — voisin de mon 124
+
+`run.mjs:1284` avertit dès que `locale.deviceLocale` est renseignée et
+`autoStart: false`. Or c'est **exactement** la disposition que mon correctif du
+124 vient de recommander (`avd:` nommé ⇒ `autoStart: false`). Trois lignes de
+bruit à chaque exécution, sur une configuration que le skill demande.
+
+L'avertissement dit vrai — la locale déclarée n'a aucun effet sans `autoStart`.
+Mais il ne devrait sortir que quand ça **compte** : quand la locale du device
+diffère de celle demandée. Le runner sait la lire
+(`adb shell settings get system system_locales`).
+
 ## Ce qui reste
 
-**Rien.** Les neuf points du run 11 sont clos le 23/08/2026.
+**Les points 127 à 132**, rendus par le run 12 et tous reproduits.
 
-⚠️ Ce que ce run laisse, au-delà de ses points : **deux régressions, toutes deux
-de moi**, dont une que rien n'avait vue parce qu'aucun contrôle n'exécutait les
-scripts de mesure — et un garde, écrit pour l'attraper, **né vacant** faute de
-prouver qu'il mesurait. La règle qui en sort tient en une phrase : un montage qui
-ne peut pas montrer qu'il a mesuré ne doit jamais être lu comme un succès.
+**Et c'est la meilleure vérification du chantier : les NEUF correctifs de la
+veille ont porté**, quatre de façon mesurable dans les artefacts sauvegardés —
+`perf.mjs` conclut (`coldStartMs = 1009` là où il mourait en `ReferenceError`),
+le cadrage est écrit dans les **clés** `run:` et non plus en commentaire
+d'en-tête, `avd:` est renseigné avec `autoStart: false`, et `visualCropOn`
+apparaît sept fois. Le collecteur du 123 s'est vu aussi : **neuf déclarations mal
+placées corrigées en un seul passage**, là où le run 11 en découvrait une par
+exécution.
 
-**Le run 11 était une vérification, et les correctifs de la veille ont porté** :
-le gabarit du rapport a été rempli avec ses nouvelles cases (« Affichages : 2 »,
-« Sous le pli : 4 »), le ciblage d'ABI s'est appliqué d'emblée, `argus-baselines`
-n'a plus rendu de faux échec, la précision sur `textField:` a été lue et
-appliquée telle quelle (« le rôle en ferait une frontière »), et le
-`container: true` sur les frères de rangée a été posé sans enquête.
-
-⚠️ **Ce que ce run change dans la façon de mesurer** : un défaut a traversé le
-banc, les 122 gardes et `node --check` parce qu'**aucun d'eux n'exécutait les
-scripts**. Le banc les déroule désormais derrière un faux `adb`. La leçon vaut
-au-delà : `node --check` prouve la syntaxe, jamais qu'un chemin de code existe.
+⚠️ **Deux des six nouveaux constats sont les voisins de mes correctifs du
+jour** (128 et 132). Le motif ne faiblit pas : j'écris le remède pour le cas que
+le run précédent m'a montré, au lieu de l'écrire pour la classe.
