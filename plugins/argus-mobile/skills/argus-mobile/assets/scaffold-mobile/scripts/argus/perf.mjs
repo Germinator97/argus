@@ -195,10 +195,26 @@ export function jankIfComparable(jank, thresholdPct) {
   }
   const floor = thresholdPct > 0 ? Math.ceil(100 / thresholdPct) : 0;
   if (totalFrames !== null && totalFrames < floor) {
+    // ⚠️ NE PAS ACCUSER L'ÉCHANTILLON. Ce message disait « échantillon trop
+    // court » et envoyait produire de l'interaction — mesuré sur device, ça ne
+    // change rien : 6 swipes → 0 frame, 8 transitions → 0 frame, alors que la
+    // même manipulation sur une appli système en rend 70. `dumpsys gfxinfo`
+    // compte le rendu HWUI de la hiérarchie de vues Android, et Flutter dessine
+    // dans une SurfaceView : ce qu'on lit ici est la coquille, jamais l'app.
+    // Six runs consécutifs ont rendu 0 ou 1 frame pour cette raison.
+    const flutter = totalFrames <= 2;
     return {
       value: null,
-      why: `échantillon trop court pour conclure : ${totalFrames} frame(s) rendue(s), `
-        + `il en faut ${floor} pour qu'un seuil de ${thresholdPct} % ait une valeur à comparer`,
+      why: flutter
+        ? `${totalFrames} frame(s) — sous Flutter, \`dumpsys gfxinfo\` ne compte PAS les frames `
+          + 'de l\'app : elles sont rendues dans une SurfaceView, que HWUI ne voit pas. Ce n\'est '
+          + 'pas un échantillon trop court, c\'est le mauvais instrument, et aucune interaction '
+          + 'n\'y changera rien. Ce qui voit ces frames : `dumpsys SurfaceFlinger --timestats '
+          + '-enable` puis `-dump`, filtré sur le layer `SurfaceView[<appId>/…]`. Mesuré : 22 '
+          + 'frames là où gfxinfo en rendait 0 — mais son `Jank payload` par layer peut être vide '
+          + 'selon la version d\'Android, donc vérifie avant de t\'y fier.'
+        : `échantillon trop court pour conclure : ${totalFrames} frame(s) rendue(s), `
+          + `il en faut ${floor} pour qu'un seuil de ${thresholdPct} % ait une valeur à comparer`,
     };
   }
   return { value: jankFramesPct, why: '' };

@@ -1396,17 +1396,46 @@ run 9   framesRendered=1   jankComparable=null   « … 1 frame … »
 run 10  framesRendered=0   jankComparable=null   « … 0 frame … »
 ```
 
-Le seuil de 100 frames est bon. C'est le **protocole** qui ne peut pas l'atteindre :
-`perf.mjs` fait `dumpsys gfxinfo reset`, **un** lancement, puis lit — et un
-lancement seul ne rend qu'une poignée de frames, zéro si le splash court encore.
+⚠️ **Mon premier diagnostic était FAUX, et c'est la mesure qui l'a dit.** J'avais
+écrit « c'est le protocole qui ne peut pas atteindre le seuil » et j'allais
+prescrire un défilement piloté pour produire des frames. Mesuré sur device, sur
+ce terrain, app au premier plan et processus vivant :
 
-C'est le cinquième mode de vacance appliqué à une dimension de mesure : elle
-guette un phénomène que son propre protocole rend inatteignable. Elle n'a jamais
-menti — elle n'a jamais rien mesuré non plus, et coûte un lancement à chaque run.
+```
+6 swipes verticaux                    → frames = 0
+8 taps de navigation (transitions)    → frames = 0
+les deux combinés                     → frames = 0
+CONTRE-ÉPREUVE, appli système Réglages, mêmes 6 swipes → frames = 70
+```
 
-⚠️ **Le remède se mesure avant de s'écrire** : produire des frames (défilement
-piloté) doit être VÉRIFIÉ sur device, pas supposé. Un remède non mesuré ici
-rejouerait exactement le défaut qu'on corrige.
+L'instrument mesure ; il ne voit simplement pas cette app. **`dumpsys gfxinfo`
+compte le rendu HWUI de la hiérarchie de vues Android, or Flutter dessine dans
+une `SurfaceView`** — visible dans les layers :
+`SurfaceView[com.exemple.app/...](BLAST)#143`. Les « 1 ou 2 frames » des six
+runs sont celles de la coquille Android, jamais celles de l'app.
+
+**Ce n'est donc pas le mauvais protocole, c'est le mauvais instrument** — et
+aucun défilement, si long soit-il, n'y changera rien.
+
+Un instrument qui, lui, voit ces frames existe et a été mesuré :
+
+```
+dumpsys SurfaceFlinger --timestats -enable / -dump
+  layerName   = 788924b SurfaceView[com.exemple.app/…](BLAST)#143
+  totalFrames = 22            ← pour 8 swipes, là où gfxinfo en voyait 0
+  droppedFrames = 0
+  Jank payload for this layer: totalTimelineFrames = 0   ← VIDE sur cet Android
+```
+
+⚠️ **Mais il ne rend pas le jank par layer sur cet appareil** (`totalTimelineFrames
+= 0`) ; seul l'agrégat global l'est (`jankyFrames = 1` sur 18). Basculer la
+dimension dessus changerait donc sa **sémantique** — « frames tombées » n'est pas
+« frames en retard » — et son contrat de sortie. **Arbitrage à trancher, pas à
+prendre seul.**
+
+**Fait dans mon périmètre** : le message n'accuse plus l'échantillon. Il disait
+« échantillon trop court, il en faut 100 » et envoyait chercher au mauvais
+endroit — exactement le défaut que ce chantier corrige depuis dix runs.
 
 ## Ce qui reste
 

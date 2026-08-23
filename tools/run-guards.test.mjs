@@ -1788,3 +1788,37 @@ test('toolPath ne détourne que les outils du SDK, et rend le nom nu sinon', () 
       `toolPath('${sdk}') doit rendre un chemin vers ${sdk}, ou son nom nu — obtenu « ${p} »`);
   }
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le jank sous Flutter : nommer l'INSTRUMENT, pas l'échantillon
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Six runs consécutifs n'ont jamais conclu, et le message accusait la taille de
+// l'échantillon — donc il envoyait produire de l'interaction. Mesuré sur device :
+// 6 swipes → 0 frame, 8 transitions → 0 frame, la même manipulation sur une appli
+// système → 70. `dumpsys gfxinfo` compte le rendu HWUI ; Flutter dessine dans une
+// SurfaceView, que HWUI ne voit pas. Mauvais instrument, pas mauvais protocole.
+
+test('0 ou 1 frame sous Flutter accuse l\'instrument, jamais l\'échantillon', () => {
+  for (const totalFrames of [0, 1, 2]) {
+    const { value, why } = jankIfComparable({ jankFramesPct: 100, totalFrames }, 1);
+    assert.equal(value, null);
+    assert.match(why, /SurfaceView/,
+      'le message doit nommer la cause mesurée, sinon il envoie chercher au mauvais endroit');
+    // ⚠️ Pas `!/échantillon trop court/` : le message Flutter contient cette
+    // phrase pour la NIER (« ce n'est pas un échantillon trop court, c'est le
+    // mauvais instrument »). Un garde qui interdit une sous-chaîne interdit
+    // aussi sa négation — on distingue donc la BRANCHE, pas un mot.
+    assert.ok(!why.startsWith('échantillon trop court'),
+      'la branche « échantillon » ne doit pas s\'appliquer ici : c\'est ce qui a coûté six runs');
+    assert.match(why, /timestats/, 'et nommer ce qui, lui, voit ces frames');
+  }
+});
+
+test('un échantillon vraiment court garde son ancien message — le garde ne coupe qu\'un sens', () => {
+  const { value, why } = jankIfComparable({ jankFramesPct: 5, totalFrames: 40 }, 1);
+  assert.equal(value, null);
+  assert.match(why, /échantillon trop court/,
+    '40 frames est un vrai échantillon court, pas un défaut d\'instrument');
+  assert.ok(!/SurfaceView/.test(why), 'ne pas coller le diagnostic Flutter sur un cas qui n\'est pas lui');
+});
