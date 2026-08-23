@@ -1786,19 +1786,94 @@ device, et compare la locale demandée à celle que l'appareil rend. Silence qua
 elles coïncident — le cas nominal du skill —, avertissement quand l'écart est
 réel ou la locale illisible. Six cas éprouvés, mutation vérifiée.
 
+### 133. ✅ Corrigé le 23/08/2026 — `goto.yaml` DOCUMENTAIT son piège sans le fermer
+
+Vingt-quatre lignes de commentaire expliquaient pourquoi `startsWith('home')`
+sert un état et ment sur ses voisins — **directement au-dessus de la ligne qui
+posait le piège**. Le run 13 l'a dit sans détour : « le fichier documente son
+propre piège sans le désamorcer », et a remplacé la condition à la main.
+
+⚠️ **Mes deux passes précédentes sur ce fichier (122 puis 128) n'ont fait que
+décrire.** J'ai écrit le coût, puis la règle générale, sans jamais toucher au
+code. Trois runs consécutifs sont tombés dessus.
+
+**Corrigé — la branche se DÉRIVE.** `buildEnv` expose `ARGUS_START_SCREEN`,
+l'id de l'écran déclaré `start: true`, à côté de l'ancre qu'il exposait déjà ;
+`goto.yaml` compare dessus. Mesuré des deux côtés : `home-empty` obtient « rien à
+naviguer », tandis que `home-filled`, `history-empty` et `categories-filled`
+tombent enfin dans une branche qui doit les **préparer**.
+
+Le commentaire est passé de 24 lignes à 8, et c'est le vrai signe : **un piège
+décrit demande des paragraphes, un piège fermé demande une phrase.**
+
+### 134. Le §VISUAL parle de `visualCropOn` comme d'une clé globale
+
+`methodology-mobile.md` la présente au niveau global ; `argus.mobile.yaml`
+explique en commentaire qu'elle se pose **par écran** dès le deuxième écran
+visuel. Les deux sont justes, et rien ne relie l'un à l'autre : le run 13 a dû
+lire les deux pour comprendre que la clé globale devait rester vide.
+
+### 135. Le device livré contredit toujours la consigne — et je l'avais seulement COMMENTÉ
+
+Le point 124 a ajouté, dans `argus.mobile.yaml`, un avertissement disant de
+renseigner `avd:` et de retourner `autoStart:`. **Les valeurs livrées n'ont pas
+bougé** (`avd: ''`, `autoStart: true`) — donc le seul endroit du scaffold où le
+défaut contredit la consigne principale du §1 le contredit encore.
+
+⚠️ **Même motif que le 133, découvert dans le même run** : j'ai décrit ce qu'il
+fallait changer au lieu de le changer. Le run 13 propose le bon défaut :
+`autoStart: false`, qui échoue **bruyamment** si personne n'a démarré le device —
+au lieu d'en créer un autre en silence.
+
+### 136. Le gabarit `screens[]` de §2c-bis ignore le troisième état — voisin du 110
+
+Le 110 a doté le **rapport d'instrumentation** de ses cases manquantes
+(« Affichages », « Sous le pli »). Le gabarit YAML « prêt à coller » de la même
+section, lui, ne montre toujours ni `commandsAfterScroll` ni
+`displays`/`displaysAfterScroll`.
+
+Sur ce projet, **7 des 79 ancres** relevaient du troisième état. Le run 13 ne l'a
+su qu'en lançant `argus-anchors` — ce qui est le bon geste (129), mais le gabarit
+laisse croire que le relevé se fait à l'œil.
+
+### 137. `a11y.yaml` : chaque `goto` suppose l'état de sortie de `launch-clean`
+
+Non dit, et ça a coûté **un run device complet (~7 min)**. Enchaîner deux `goto`
+sans revenir à l'onglet d'accueil échoue sur `Element not found: Id matching
+regex: home_empty_start` — c'est-à-dire le message qui envoie chercher un défaut
+d'instrumentation inexistant, exactement le piège que le skill décrit ailleurs.
+
+### 138. `make argus-baselines` relance TOUTE la suite fonctionnelle
+
+12 flows au lieu des 6 qui produisent des captures. Le skill la présente comme
+l'étape courte entre deux `argus-run` ; en pratique la séquence prescrite coûte
+**trois passes device pleines**, et ce coût n'est chiffré nulle part.
+
+### 139. Le tableau du §7 présente la couverture a11y comme une capacité livrée
+
+`a11y (couverture sémantique) | Maestro | device` se lit comme une mesure fournie.
+C'est **entièrement du travail projet** — 75 étapes écrites à la main sur ce
+run. Le §A11Y le corrige deux pages plus loin ; le tableau est ce qu'on lit en
+premier. C'est le voisin du 125, qui avait corrigé l'autre table.
+
+### 140. La contre-épreuve du marqueur binaire mérite les deux encodages
+
+Le §3g dit de prendre « un littéral que l'app affiche ». Sur une app francophone,
+un littéral affiché est **accentué**, donc encodé autrement dans le
+`kernel_blob.bin` — le conseil et l'avertissement d'encodage vivent dans deux
+documents séparés. Le run 13 a pris les deux « à tout hasard » et les deux ont
+rendu 2 ; réunis, ils diraient : **un accentué ET un ASCII**.
+
 ## Ce qui reste
 
-**Rien.** Les points 127 à 132 sont clos le 23/08/2026, un commit par lot.
+**Les points 134 à 140.** Le 133 est déjà clos — c'est le plus instructif du run.
 
-**Et c'est la meilleure vérification du chantier : les NEUF correctifs de la
-veille ont porté**, quatre de façon mesurable dans les artefacts sauvegardés —
-`perf.mjs` conclut (`coldStartMs = 1009` là où il mourait en `ReferenceError`),
-le cadrage est écrit dans les **clés** `run:` et non plus en commentaire
-d'en-tête, `avd:` est renseigné avec `autoStart: false`, et `visualCropOn`
-apparaît sept fois. Le collecteur du 123 s'est vu aussi : **neuf déclarations mal
-placées corrigées en un seul passage**, là où le run 11 en découvrait une par
-exécution.
+**Les six correctifs de la veille ont porté**, et le 132 s'est prouvé sur les
+DEUX sens en deux runs : silencieux au run 12 quand la locale du device
+correspondait, **parlant au run 13** quand l'appareil est resté en `en-US` alors
+que la config demandait `fr_FR`.
 
-⚠️ **Deux des six nouveaux constats sont les voisins de mes correctifs du
-jour** (128 et 132). Le motif ne faiblit pas : j'écris le remède pour le cas que
-le run précédent m'a montré, au lieu de l'écrire pour la classe.
+⚠️ **Le motif de ce run est le plus net depuis le début : je DÉCRIS au lieu de
+FERMER.** Le 133 et le 135 sont le même geste manqué — deux passes de
+commentaires au-dessus d'une ligne que je n'ai pas changée. Un piège décrit reste
+un piège ; il coûte juste plus de lignes à lire avant d'y tomber.
