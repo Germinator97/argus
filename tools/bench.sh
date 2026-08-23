@@ -137,9 +137,19 @@ exit 0
 FAKEADB
 chmod +x "$FAKE/adb"
 sed -i.bak 's/^appId:.*/appId: com.exemple.app/; s/^  androidPackage:.*/  androidPackage: com.exemple.app/' "$A/argus.mobile.yaml"
+# ⚠️ CHEMIN RELATIF, et sortie EXIGÉE. Les deux pour la même raison : lancé par
+# un chemin absolu qui traverse un lien symbolique (sur macOS, $TMPDIR en est
+# un), le garde d'entrée de ces scripts ne reconnaît pas son propre fichier et
+# `main()` n'est JAMAIS appelé — sortie vide, exit 0. Ma première version de
+# cette étape faisait exactement ça : elle lançait un script qui ne s'exécutait
+# pas et rapportait « déroulé ». Elle est donc restée verte sur le défaut
+# qu'elle venait d'être écrite pour attraper.
 for s in perf a11y; do
-  out=$(PATH="$FAKE:$PATH" node "$A/scripts/argus/$s.mjs" --samples=1 2>&1)
-  if printf '%s' "$out" | grep -qE 'ReferenceError|is not a function|is not defined'; then
+  out=$(cd "$A" && PATH="$FAKE:$PATH" node "scripts/argus/$s.mjs" --samples=1 2>&1)
+  if [ -z "$(printf '%s' "$out" | tr -d '[:space:]')" ]; then
+    echo "  ✖ scripts/$s.mjs n'a RIEN produit — le montage ne mesure pas, ne lis pas ce vert."
+    code=1
+  elif printf '%s' "$out" | grep -qE 'ReferenceError|is not a function|is not defined'; then
     echo "  ✖ scripts/$s.mjs — référence morte sur le chemin nominal :"
     printf '%s' "$out" | grep -E 'ReferenceError|is not a function|is not defined' | head -2 | sed 's/^/      /'
     code=1
