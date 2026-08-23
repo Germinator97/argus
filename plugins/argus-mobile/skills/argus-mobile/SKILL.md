@@ -750,6 +750,9 @@ que personne ne sache que la ligne devait y être.
 
 **d. Vérifier avant de lancer** : `node scripts/argus/config.mjs` (config
 résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
+⚠️ Passe par la cible, pas par l'outil : `maestro check-syntax` n'accepte
+**qu'un fichier à la fois** et rend `Unmatched argument at index 2` sur le
+second — `argus-lint` boucle pour toi.
 ⚠️ **Tout fichier YAML du workspace doit porter une section de configuration**
 (`appId:` puis `---`), sous-flows compris : Maestro les valide TOUS au démarrage
 et rejette la suite entière sur « Config Section Required ».
@@ -838,6 +841,19 @@ piloter le binaire de la veille. Deux gestes, dans cet ordre :
 adb -s <udid> uninstall <appId>      # réinstaller par-dessus demande PLUS de place
 make argus-build                     # résout la commande de la config et cible l'ABI
 ```
+
+⚠️ **Le ciblage n'est pas un rattrapage : c'est le geste par défaut.** Il ne
+coûte rien, il est même plus RAPIDE, et `argus-build` l'applique dès qu'un device
+est branché — donc dès cette étape de la séquence. Mesuré sur le même projet, la
+même commande :
+
+```
+make argus-build  (sans device)     →  123 231 176 octets en 15 s
+make argus-build  (device branché)  →   96 438 630 octets en 10 s
+```
+
+Construire avant de brancher l'appareil, c'est produire l'APK gras pour rien.
+Ce qui suit ne vaut donc que si le disque reste plein malgré tout.
 
 Un APK debug « gras » embarque quatre ABI quand l'appareil n'en lit qu'une, et le
 ciblage retire celles qu'il ne lira jamais. **Ce que ça rend dépend de ce qui pèse
