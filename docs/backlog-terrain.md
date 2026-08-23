@@ -1070,7 +1070,7 @@ lu après le SKILL.
 **Corrigé** : la phrase est terminée, et dit ce qu'elle annonçait — ce qui est
 écrit ici est ce que le mobile fait AUTREMENT.
 
-### 98. `make argus-build` construit l'APK **gras**, alors que §3g le prescrit juste après `adb uninstall`
+### 98. ✅ Corrigé le 23/08/2026 — `make argus-build` construit l'APK **gras**, alors que §3g le prescrit juste après `adb uninstall`
 
 Le runner sait proposer la bonne commande : quand l'installation échoue, il rend
 `buildCmdForAbi(brute, deviceAbi(udid))` — ciblée sur l'ABI de l'appareil qu'il
@@ -1087,7 +1087,12 @@ que `run.mjs:1295` compose depuis la config. C'est le motif du voisin sous sa
 forme la plus coûteuse : le geste documenté et le geste outillé ne font pas la
 même chose.
 
-### 99. Un build peut réussir **sans re-packager**, et rien ne le dit
+**Corrigé** : `argus-build` demande sa commande à la config (`config.mjs --print-build-cmd`),
+qui résout le préfixe FVM et le `--target-platform` de l'ABI du device branché. Un
+garde balaie **toutes** les recettes tabulées du Makefile — une seconde cible qui
+recoderait un build tomberait seule.
+
+### 99. ✅ Corrigé le 23/08/2026 — Un build peut réussir **sans re-packager**, et rien ne le dit
 
 Mesuré au run 9 : un premier `--target-platform android-arm64` a duré **8,5 s** et
 rendu **123 230 339** octets contre **123 230 484** avant — 145 octets d'écart,
@@ -1099,7 +1104,10 @@ de la règle sur le `kernel_blob.bin`, mais côté paquet — et le run 9 en a t
 conclusion inverse de la réalité (« le ciblage ne sert à rien »), écrite avant
 d'être démentie par la mesure suivante.
 
-### 100. « le ciblage divise sa taille par deux » — un chiffre vrai une fois, écrit comme une loi
+**Corrigé** : la cible mesure le paquet avant et après, et le dit. Taille inchangée
+après un changement de commande ⇒ le message nomme `flutter clean`.
+
+### 100. ✅ Corrigé le 23/08/2026 — « le ciblage divise sa taille par deux » — un chiffre vrai une fois, écrit comme une loi
 
 `SKILL.md:791`. La mesure qui l'a produit est réelle (84,9 Mo contre 39,7, run 8).
 Sur le projet du run 9 : **123 230 484 → 96 438 630 octets**, soit 117,5 → 92,0 Mo,
@@ -1112,7 +1120,11 @@ Surtout, la phrase qui suit — « et c'est souvent tout ce qui manquait » — 
 démentie dans le même run : le ciblage **n'a pas suffi**, c'est `adb uninstall`
 qui a débloqué. Dire ce qui **détermine** le gain vaut mieux qu'un ratio.
 
-### 101. L'indice du pli existe pour `commands:` et pas pour `displays:` — le voisin du 89
+**Corrigé** : §3g donne les deux mesures (84,9 → 39,7 et 117,5 → 92,0), dit que le
+gain dépend de ce qui pèse dans le paquet, et que le ciblage **ne suffit pas
+toujours** — sur le second projet c'est la désinstallation qui a débloqué.
+
+### 101. ✅ Corrigé le 23/08/2026 — L'indice du pli existe pour `commands:` et pas pour `displays:` — le voisin du 89
 
 Une `commands:` introuvable déclenche une sonde : le test remonte au plus grand
 gabarit et, si l'ancre y est, rend « ⚠️ ELLE EXISTE, mais plus bas que ce gabarit
@@ -1126,6 +1138,12 @@ l'indice qui apprend à s'en servir — *mon* correctif, une passe plus tôt.
 ⚠️ Le remède ponctuel serait de recopier la sonde dans le chemin `displays`. Le
 remède **total** est de l'extraire, pour que le troisième axe l'ait par
 construction.
+
+**Corrigé — par extraction, pas par recopie.** `argusFoldHint` vit dans le harnais et
+les deux axes l'appellent ; le troisième l'aura par construction. Éprouvé sur le
+banc dans les deux sens : sous le pli ⇒ l'indice nomme `displaysAfterScroll:`,
+vraiment absente ⇒ **zéro** indice et le message accuse l'instrumentation, ce qui
+est juste.
 
 ### 102. ❌ FAUX — « `devices[].os` ne peut pas satisfaire ses deux consommateurs »
 
@@ -1151,7 +1169,7 @@ n'est pas lire le fichier voisin : c'est exécuter la fonction. Le commit qui a
 inscrit ce point (`1a8d58b`) porte donc un résumé faux ; il reste tel quel, c'est
 ici que la vérité vit.
 
-### 103. Deux identifiants qui tombent dans le même nœud fusionné : le second disparaît, en silence
+### 103. ✅ Corrigé le 23/08/2026 — Deux identifiants qui tombent dans le même nœud fusionné : le second disparaît, en silence
 
 Le skill couvre l'**absorption** (une racine qui avale ses descendants →
 `container: true` + `explicitChildNodes: true`) et l'ancre inerte. Il ne dit nulle
@@ -1172,7 +1190,11 @@ second identifiant a disparu. Remède `container: true` sur chacun, revérifié 
 `rect=(0,0,32.3,63.0)` et `rect=(0,0,82.5,32.0)`. La table « §2c » gagnerait une
 quatrième ligne.
 
-### 104. `mask-dynamic.yaml` n'avertit que d'un côté — et c'est l'autre qui a mordu
+**Corrigé** : §2c porte la sonde, la contre-épreuve, le `rect` qui trahit (312 px =
+la rangée entière) et le remède revérifié. Et la consigne de lecture : devant une
+ancre « absente » qu'on voit dans le code, lire le `rect` de sa **voisine**.
+
+### 104. ✅ Corrigé le 23/08/2026 — `mask-dynamic.yaml` n'avertit que d'un côté — et c'est l'autre qui a mordu
 
 Le fichier prévient qu'un motif **trop étroit** échoue en silence sous
 `optional: true`. Rien sur le motif **trop large**, dont le dégât est pire : il
@@ -1189,7 +1211,11 @@ qui flotte, puis cibler par `id`, n'est proposé nulle part » : c'est faux, c'e
 le **premier** exemple commenté du fichier (`id: banner_dismiss`). Le symptôme
 était juste, le diagnostic non.
 
-### 105. `perf.mjs` ne dit rien pendant qu'il travaille
+**Corrigé** : l'avertissement porte les deux sens, avec la mesure du dégât (98,6 %),
+et dit pourquoi l'exemple `id:` vient en premier — c'est le seul ciblage qui sait ce
+qu'il touche.
+
+### 105. ✅ Corrigé le 23/08/2026 — `perf.mjs` ne dit rien pendant qu'il travaille
 
 **4 appels à `log()` en 416 lignes** : `mesures sur <udid>` à la ligne 340, puis
 plus rien jusqu'aux résultats (396). Entre les deux se jouent N démarrages à
@@ -1201,7 +1227,10 @@ seule ligne permette de distinguer « ça calcule » de « ça ne rendra jamais 
 main ». La variable n'a pas été isolée, donc aucun mécanisme n'est avancé ici :
 ce qui est certain est que le script est muet.
 
-### 106. `aapt2` et `apkanalyzer` sont cherchés au PATH seulement, jamais là où ils vivent
+**Corrigé** : une ligne par phase (froid, chaud, jank, mémoire). Ça ne corrige pas la
+lenteur — personne n'en a isolé la cause — ça la rend lisible.
+
+### 106. ✅ Corrigé le 23/08/2026 — `aapt2` et `apkanalyzer` sont cherchés au PATH seulement, jamais là où ils vivent
 
 `detectTools` fait `sh(name, probe)` : présent au PATH ou absent. Or ces deux-là
 existent sur **toute** machine ayant les Android SDK Build-Tools — ils n'y sont
@@ -1214,12 +1243,25 @@ jusqu'à un `export PATH=…/build-tools/35.0.0:$PATH`, après quoi elle a rendu
 Sonder `$ANDROID_HOME/build-tools/*/` avant de déclarer absent coûte quelques
 lignes ; ce qu'on y gagne est une dimension entière.
 
-### 107. `androidBuildCmd` par défaut ne porte pas le préfixe FVM
+**Corrigé** : `toolPath()` les résout depuis `ANDROID_HOME` et les racines usuelles, et
+**la sonde comme le site d'appel** l'utilisent — détecter un outil qu'on ne sait
+ensuite pas lancer serait le même défaut en plus petit.
+
+⚠️ **Ma première écriture s'est trompée deux fois**, et c'est la mesure qui l'a dit :
+`sort()` alphabétique place « 9.0.0 » après « 35.0.0 », et il choisissait une
+`37.0.0-rc2` contre une stable. Le classement est gardé, et une stable prime
+toujours — cet outil établit un fait de sécurité.
+
+### 107. ✅ Corrigé le 23/08/2026 — `androidBuildCmd` par défaut ne porte pas le préfixe FVM
 
 `argus.mobile.yaml:62` et `config.mjs:328` valent `flutter build apk --debug`,
 sans `fvm`, alors que tout le reste du scaffold dérive le préfixe. Sans
 conséquence à l'exécution — `flutterCommand()` le rétablit — mais c'est une ligne
 de configuration qu'on lit et qu'on copie, et elle donne alors le mauvais SDK.
+
+**Corrigé** : le commentaire du YAML dit qui **affiche** ces commandes (les scripts de
+mesure) et qui les **exécute** (`make argus-build`), et qu'il ne faut pas y écrire
+`fvm` — le préfixe est dérivé, l'ajouter le doublerait.
 
 ### 108. ❌ FAUX — « `adb uninstall` est présenté comme un remède, pas comme une routine »
 
@@ -1240,10 +1282,14 @@ double.
 
 ## Ce qui reste
 
-**Les points 98 à 108**, rendus par le run 9 et tous reproduits avant d'être
-inscrits — **deux se sont révélés faux à la reproduction** (102 et 108), un
-record pour un seul run. Le 101 reste le motif du chantier : le voisin du 89, un
-champ créé d'un côté et l'indice qui l'annonce laissé de l'autre.
+**Rien.** Les points 98 à 108 sont clos le 23/08/2026, neuf par un commit chacun,
+**deux démentis par la mesure** (102 et 108) — un record pour un seul run, et
+dans les deux cas c'est moi qui les avais confirmés avant de les reproduire pour
+de bon.
+
+Le 101 reste le motif du chantier : le voisin du 89, un champ créé d'un côté et
+l'indice qui l'annonce laissé de l'autre. Son remède n'est pas une recopie mais
+une **extraction** — le troisième axe l'aura par construction.
 
 **Le run 9 était une vérification, et les neuf points du run 8 ont porté** :
 trois ont été exercés pour de vrai — l'installation qui refuse de démarrer (95),
