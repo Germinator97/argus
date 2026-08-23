@@ -219,6 +219,32 @@ textuel a fusionné dans le label de la racine. C'est pour ça que
 `make argus-anchors` juge sur le **label** de la racine et jamais sur son nombre
 d'enfants : des deux mesures, une seule voit le défaut.
 
+⚠️ **DEUX ancres qui tombent dans le même nœud fusionné n'en gardent qu'UNE.**
+Cas distinct de l'absorption : ici personne n'avale personne, deux `Semantics`
+**frères** — deux cartes d'une même rangée, deux cellules d'un `Row` — sont
+simplement recouverts par un seul nœud, et un nœud ne porte qu'un identifiant.
+Le second disparaît. Le widget est dans l'arbre, `flutter analyze` est vert,
+rien ne lève : `make argus-anchors` dit « absente » d'une ancre parfaitement
+posée. Mesuré sur un projet réel, sonde et contre-épreuve :
+
+```
+SONDE streak_value elements = 1          ← l'ancre témoin, celle qui survit
+SONDE total_value  elements = 0
+widget id=total_value                     ← le widget EST là
+node id=streak_value rect=(0,0,312,158.5) ← 312 px : la RANGÉE ENTIÈRE, pas la carte
+```
+
+Le `rect` est ce qui trahit : il couvre les deux cartes. Remède —
+`container: true` sur **chacune** des deux, ce qui force un nœud par carte :
+
+```
+node id=streak_value rect=(0,0,32.3,63.0)
+node id=total_value  rect=(0,0,82.5,32.0)
+```
+
+Devant une ancre « absente » que tu vois pourtant dans le code, lis le `rect` de
+sa **voisine** avant de conclure à un défaut d'instrumentation.
+
 ⚠️ **Quand la surface tapable est l'écran ENTIER, le nœud commande absorbe
 tout ce qu'il recouvre** — le libellé de phase, le chronomètre, ce que
 l'utilisateur devait entendre. Le flow marche, TalkBack annonce un seul
