@@ -338,11 +338,24 @@ function main() {
   }
 
   log(`mesures sur ${udid} · ${component}`);
+
+  // ⚠️ UNE PHASE, UNE LIGNE. Ce bloc était muet de bout en bout : entre le log
+  // ci-dessus et celui des résultats, il n'y avait rien — pendant N démarrages
+  // à froid (chacun un `force-stop` + un `am start -W`), N à chaud, une passe
+  // de jank et une de mémoire. Mesuré au run 9 : deux exécutions au-delà de
+  // 10 min contre trois à 5 s, même commande et même device, sans une ligne
+  // pour distinguer « ça calcule » de « ça ne rendra jamais la main ». La
+  // variable n'a jamais été isolée, donc rien ici ne prétend l'expliquer :
+  // ces logs ne corrigent pas la lenteur, ils la rendent LISIBLE.
+  log(`  démarrages à froid (${opts.samples} + le premier lancement)…`);
   const cold = measureColdStarts(udid, packageName, component, opts.samples);
+  log(`  démarrages à chaud (${opts.samples})…`);
   const warm = measureWarmStarts(udid, component, opts.samples);
+  log('  jank…');
   adb(udid, ['shell', 'dumpsys', 'gfxinfo', packageName, 'reset']);
   timedLaunch(udid, component);
   const jank = measureJank(udid, packageName);
+  log('  mémoire…');
   const memoryMb = measureMemory(udid, packageName);
   const context = deviceContext(udid, packageName);
 
