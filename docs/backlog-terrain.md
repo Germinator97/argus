@@ -1280,30 +1280,149 @@ conditionnelle, et sur cet AVD il n'a rien de conditionnel — 3 paquets tiers
 installés, 621 Mo libres sur `/data`, un APK debug de 92 Mo qui en demande le
 double.
 
+### 109. `report-format-mobile.md` promet `run.env` et `run.mode` ; rien ne les écrit
+
+Le contrat de sortie annonce
+`"run": { "startedAt", "platform", "appVersion", "env", "mode", "commit?" }`.
+Le rapport produit, lui, rend `startedAt, platform, appVersion, appName, flavor,
+appId, budget, devices, animationsDisabled, installProof` — mesuré au run 10 par
+`Object.keys(report.json.run)`. **`env`, `mode` et `commit` n'existent nulle
+part**, ni dans `run.mjs`, ni comme clé de `argus.mobile.yaml`.
+
+⚠️ Ce n'est pas qu'un champ manquant. `SKILL.md` §1 demande d'écrire le cadrage
+« dans `argus.mobile.yaml`, à l'endroit que chaque choix gouverne — `ENV` près de
+sa clé ». **La clé n'existe pas**, donc l'agent range `ENV` où il peut : deux runs
+de suite l'ont mis en commentaire d'en-tête, chacun à sa façon. Une consigne qui
+désigne un emplacement inexistant se solde par un emplacement inventé.
+
+### 110. Le gabarit du rapport d'instrumentation n'a pas de case pour les `displays` — troisième voisin
+
+§2b compte « Racines d'état », « Commandes », « Non enveloppables ». Pas les
+affichages. Or `displays:` existe depuis le 81, `displaysAfterScroll:` depuis le
+89, et l'indice qui les annonce depuis le 101 : le run 10 en a posé **7** et
+n'avait nulle part où les compter.
+
+⚠️ **C'est la troisième fois que `displays` révèle un voisin oublié, en trois
+runs.** Le champ (81), l'indice (101), le gabarit (110). Le remède du 101 —
+extraire plutôt que recopier — était le bon geste et n'a pas suffi : il couvrait
+le *code*, pas les *énumérations en prose*. Ce que ça enseigne dépasse le point :
+**quand on ajoute un axe à une notion, ce qui casse n'est pas un endroit, c'est
+la liste de tous les endroits qui énuméraient les axes.**
+
+Et le bloc §2b se condamne lui-même : « Un format qui prescrit une information
+sans lui donner de case la fait inventer. » Le run 10 s'est abstenu d'inventer une
+ligne — et l'a dit.
+
+### 111. « Un RÔLE casse la fusion » généralise depuis un seul rôle mesuré
+
+L'avertissement de §2c dit : *« Un RÔLE posé sur l'enveloppe suffit à casser la
+fusion, même sur les composants de la colonne "fusionne" »*, et l'illustre par
+`textField: true`. Le mot « rôle » est un pluriel implicite ; la mesure derrière
+est **singulière**.
+
+Or `Semantics(button: true, child: InkWell(…))` est la forme exacte qu'employaient
+déjà quatre composants partagés du projet d'essai — et le run 10 a mesuré **52
+ancres actives** avec elle. `button:` ne casse donc pas la fusion, `textField:`
+si. L'avertissement, lu tel quel, envoie défaire une instrumentation correcte.
+
+⚠️ Le run 10 s'en est sorti parce que le skill dit ailleurs « ne raisonne pas :
+`make argus-anchors` tranche ». Le repli a joué son rôle — mais un avertissement
+qui oblige à recourir au repli est un avertissement qui coûte un aller-retour.
+
+### 112. `SlidableAction` : le critère « déclare-t-il un rôle ? » ne prédit pas un `ParentDataWidget`
+
+Deux runs de suite ont buté dessus. `SlidableAction` n'est ni « composant qui
+déclare son rôle » ni « geste » : il **retourne un `Expanded`**
+(`flutter_slidable 4.0.3`, `lib/src/actions.dart:101`), donc l'envelopper lève un
+`ParentDataWidget` **à l'exécution** — pas à la compilation, pas à l'analyse.
+
+Le repli n° 3 est le bon, et les deux runs l'ont trouvé. Ce qui manque est
+**l'antériorité** : la table §2c fait décider sur le rôle, et il a fallu ouvrir
+la source du paquet pour savoir. Le gabarit §2b connaît pourtant la catégorie
+(« Non enveloppables (ParentDataWidget, slivers) ») — la table, elle, ne dit pas
+comment y arriver avant de se prendre l'exception.
+
+### 113. `make argus-baselines` sort en ÉCHEC alors qu'il a parfaitement réussi
+
+`--update-baselines` écrit les références, les estampille (cadrage + appareil),
+loge « N référence(s) visuelle(s) écrite(s) »… puis **continue le chemin normal**
+jusqu'à `exitCodeFor(findings, config.gate)`. Il hérite donc du gate des flows
+qu'il vient de jouer : au run 10, `exit 1` sur une génération impeccable.
+
+Sur un run en aveugle, ce rouge se lit « la génération a échoué » et fait
+recommencer. C'est le motif du **code de sortie qui ment sur ce qui vient d'être
+fait** : la seule action de la commande a réussi, son verdict porte sur autre
+chose.
+
+### 114. `maestro check-syntax` n'accepte qu'un fichier — dit dans les références, pas dans le SKILL
+
+`methodology-mobile.md:537` le précise (« un fichier à la fois ») ; `SKILL.md`
+§3d ne le dit pas, et `make argus-lint` boucle correctement — donc le harnais est
+juste, c'est la main qui se trompe. Deux minutes perdues au run 10 sur
+`maestro check-syntax a.yaml b.yaml` → `Unmatched argument at index 2`.
+
+Constat mineur, inscrit pour ce qu'il coûte, pas pour ce qu'il casse.
+
+### 115. Le ciblage d'ABI mérite d'être le geste par défaut, pas un remède
+
+§3g le présente comme la sortie d'un `INSTALL_FAILED_INSUFFICIENT_STORAGE`. Le
+run 10 l'a mesuré des deux côtés, sur le même projet :
+
+```
+make argus-build  (sans device)   →  123 231 176 octets en 15 s
+make argus-build  (device branché) →   96 438 630 octets en 10 s   (−26,8 Mo, −21,7 %)
+```
+
+Il ne coûte rien — il est même **plus rapide** — et il ne demande qu'un device
+branché, ce que la séquence a de toute façon à cette étape. En faire un remède,
+c'est le réserver aux gens dont le disque est déjà plein.
+
+⚠️ Le correctif du 98 rend déjà ce ciblage automatique **quand un device est
+là** : le constat porte donc sur la PROSE, pas sur le code. Elle décrit encore un
+geste de rattrapage.
+
+### 116. ⚠️ Le jank n'a JAMAIS conclu — six runs sur six
+
+Constat non rapporté : personne ne l'a signalé, parce que le harnais est honnête
+et dit « non conclu » plutôt que « 0 % ». Relevé dans les `perf.json`
+sauvegardés :
+
+```
+run 5   framesRendered=0   jankComparable=null
+run 6   framesRendered=1   jankComparable=null
+run 7   framesRendered=0   jankComparable=null
+run 8   framesRendered=1   jankComparable=null   « échantillon trop court : 1 frame, il en faut 100 »
+run 9   framesRendered=1   jankComparable=null   « … 1 frame … »
+run 10  framesRendered=0   jankComparable=null   « … 0 frame … »
+```
+
+Le seuil de 100 frames est bon. C'est le **protocole** qui ne peut pas l'atteindre :
+`perf.mjs` fait `dumpsys gfxinfo reset`, **un** lancement, puis lit — et un
+lancement seul ne rend qu'une poignée de frames, zéro si le splash court encore.
+
+C'est le cinquième mode de vacance appliqué à une dimension de mesure : elle
+guette un phénomène que son propre protocole rend inatteignable. Elle n'a jamais
+menti — elle n'a jamais rien mesuré non plus, et coûte un lancement à chaque run.
+
+⚠️ **Le remède se mesure avant de s'écrire** : produire des frames (défilement
+piloté) doit être VÉRIFIÉ sur device, pas supposé. Un remède non mesuré ici
+rejouerait exactement le défaut qu'on corrige.
+
 ## Ce qui reste
 
-**Rien.** Les points 98 à 108 sont clos le 23/08/2026, neuf par un commit chacun,
-**deux démentis par la mesure** (102 et 108) — un record pour un seul run, et
-dans les deux cas c'est moi qui les avais confirmés avant de les reproduire pour
-de bon.
+**Les points 109 à 116**, rendus par le run 10 — sept par le rapport, **le 116
+par une mesure que personne n'avait faite**.
 
-Le 101 reste le motif du chantier : le voisin du 89, un champ créé d'un côté et
-l'indice qui l'annonce laissé de l'autre. Son remède n'est pas une recopie mais
-une **extraction** — le troisième axe l'aura par construction.
+**Le run 10 était une vérification, et six correctifs de la veille ont été
+exercés et confirmés** : la commande de build résolue et le paquet mesuré
+(98/99), l'indice du pli côté `displays:` qui a fait déplacer
+`session_form_reps_value` (101), `aapt2` trouvé hors PATH sans intervention
+(106), le `container: true` sur les frères de rangée appliqué d'emblée (103), le
+ciblage d'ABI mesuré à −21,7 % (100). Aucun n'est revenu, et **aucun n'a coûté à
+ce run ce qu'il avait coûté au précédent** — la sonde d'une demi-heure du run 9
+sur les nœuds fusionnés est devenue une décision de trois lignes.
 
-**Le run 9 était une vérification, et les neuf points du run 8 ont porté** :
-trois ont été exercés pour de vrai — l'installation qui refuse de démarrer (95),
-la table qui couvre `InkResponse` (94), le plancher d'attente qui lit le temps
-d'écran exploitable et non le splash (91). Aucun n'est revenu.
-
-Et ce que six runs ont établi, qui ne se périme pas : une passe trouve ce qui
-manque, la suivante trouve ce que la correction a introduit **ou n'a pas
-terminé**. Les runs 4, 5, 8 et 9 ont chacun désigné des correctifs de la veille —
-non pas faux, mais **incomplets**.
-
-⚠️ **Deux constats démentis (102, 108), et dans les deux cas c'est MOI qui les
-avais confirmés** — un grep non ancré pour l'un, une lecture du fichier voisin au
-lieu de l'exécution de la fonction pour l'autre. Les autres démentis encore
-inscrits sont le **62** et le **78** ; le **25**, clos, vit dans la page publiée. Reproduire reste moins cher que corriger ce qui n'est
-pas cassé — et le 108 ajoute une variante : reproduire *avec un motif ancré*, ou
-l'instrument confirme le constat à la place du fichier.
+⚠️ **Le 110 est le troisième voisin de `displays` en trois runs.** Le remède du
+101 (extraire plutôt que recopier) couvrait le code ; il ne couvrait pas les
+énumérations en prose. Ce n'est pas un endroit qui manque, c'est la **liste des
+endroits qui énumèrent les axes**.
