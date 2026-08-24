@@ -1996,18 +1996,101 @@ Inscrit pour ce qu'il enseigne : une ancre prouvée *présente et active* ne dit
 rien de ce que son appui déclenche. La distinction vaut d'être connue ; elle
 n'appelle aucune correction ici.
 
+### 149. ✅ Corrigé le 24/08/2026 — ⚠️ Le SKILL promettait quelque chose que le code ne faisait pas
+
+Le 146, écrit la veille, dit : « déclare-le `ARGUS:OWNED` en en-tête : sans ce
+marqueur, il n'apparaît ni dans la liste que l'installeur imprime en sortant, ni
+dans son `--check` ». **C'était faux le jour où je l'ai écrit.** La boucle finale
+itérait `find "$SCAFFOLD_DIR"`, donc elle ne pouvait lister que les fichiers du
+scaffold — jamais un fichier créé dans le projet.
+
+Le run 15 a posé le marqueur, mesuré, et n'a rien trouvé. Reproduit ici : le
+fichier porte bien `ARGUS:OWNED` et reste invisible.
+
+⚠️ **C'est l'anti-pattern que ma propre mémoire décrit** — une promesse de
+comportement technique écrite dans un document, que rien ne mesure — et je l'ai
+commise **en corrigeant un autre constat**. Un correctif de doc est du code non
+testé tant qu'un garde ne le tient pas.
+
+**Corrigé** : la liste parcourt la cible d'abord (sa copie fait foi, c'est elle
+qu'on ouvrira) puis le scaffold, dédupliquée sur le chemin relatif. Gardé de bout
+en bout dans un dossier temporaire : un fichier marqué du projet est listé, un
+non marqué ne l'est pas, aucun doublon, aucune erreur shell.
+
+⚠️ **Deux instruments ont menti en l'écrivant** : une substitution de processus
+imbriquée faisait **exécuter** les noms de fichiers par bash, et `sort -t"\t"`
+passe un antislash et un « t » au lieu d'une tabulation — la déduplication
+tournait sur le mauvais champ et coupait la liste de dix entrées à deux, sans un
+mot. Les deux ont été pris en mesurant la sortie, jamais en la relisant.
+
+### 150. ✅ Corrigé le 24/08/2026 — `perf.mjs` pouvait perdre la mémoire en silence
+
+`dumpsys meminfo` rend « No process found » sur un processus mort, la regex ne
+matche pas, et `memoryMb` valait **`null`** — sans finding, sans « sauté », sans
+un mot. Le run 15 a relevé 314,6 Mo à la main pour un budget de 250 : **un
+finding `major` que la chaîne avait silencieusement perdu**.
+
+Le skill promet pourtant qu'« un outil absent donne une dimension sautée et
+mentionnée, jamais un faux vert ». Ici l'outil était là et fonctionnait.
+
+**Corrigé** : l'app est relancée avant la pesée, une seconde tentative suit, et
+une mesure absente est **annoncée** — parce qu'un `null` muet est pire qu'une
+dimension sautée : il ne se voit nulle part. Éprouvé des deux côtés derrière un
+faux `adb`.
+
+### 151. ✅ Corrigé le 24/08/2026 — `make` aplatit le contrat de sortie 0/1/2
+
+Mesuré : `run.mjs --tags=smoke` rend **1**, `make argus-smoke` rend **2** pour le
+même run. GNU make sort en 2 dès qu'une recette échoue. Un humain qui lit `make`
+ne distingue donc pas un `major` d'un `blocker`.
+
+**Corrigé** : dit là où les cibles sont définies. La CI appelle le script
+directement, elle n'est pas concernée.
+
+### 152. ✅ Corrigé le 24/08/2026 — `<W>` du gabarit : des widgets ou des call-sites ?
+
+La ligne « Non enveloppables : `<W>` » ne disait pas ce que `W` compte. Le run 15
+a compté les call-sites (4 `SlidableAction`), un autre compterait 1 composant.
+Les trois ⚠️ voisines ferment exactement ce genre d'ambiguïté sur les autres
+lignes.
+
+### 153. ✅ Corrigé le 24/08/2026 — §3g ne couvre pas le flow rouge pour raison de TIMING
+
+Le skill dit qu'un flow rouge sans rapport n'invalide pas une référence. Il ne
+dit rien du cas où le flow échoue **parce que l'app est lente** : l'échec est
+alors un `Assertion is false: id: <ancre de départ> is visible`, il concerne tous
+les flows, et il faut relever `startTimeoutMs` **avant** de générer.
+
+⚠️ Avec la précision qui compte : **ne pas toucher à `coldStartMs`**, sinon la
+lenteur disparaît dans un seuil au lieu de rester un finding. Le run a mesuré une
+dispersion de 6 090 à 23 244 ms sur le même écran, **sans identifier le
+mécanisme** — et l'a écrit plutôt que d'inventer une explication.
+
+### 154. ✅ Corrigé le 24/08/2026 — Que faire quand l'AVD est DÉJÀ dans la bonne locale
+
+`device-matrix.md` explique que `deviceLocale` n'a aucun effet sans `autoStart`,
+sans dire s'il faut alors vider la clé. **Corrigé** : la laisser — elle documente
+l'intention, et depuis le 132 le runner ne parle que lorsque l'écart est réel.
+
+### 155. ✅ Corrigé le 24/08/2026 — `argus-perf` n'était pas chiffré
+
+~9 min à lui seul (quatre démarrages à froid, trois à chaud, la pesée). Le run 15
+l'a tué deux fois avec son propre timeout de dix minutes avant de comprendre que
+le script allait bien. **Corrigé** : chiffré à côté du coût des références.
+
 ## Ce qui reste
 
-**Rien.** Les points 141 à 147 sont clos le 23/08/2026 ; le 148 est classé faux —
-il porte sur le parcours du projet, pas sur le skill.
+**Rien.** Les points 149 à 155 sont clos le 24/08/2026.
 
-**Les correctifs du run 13 ont porté**, deux de façon nette : le run 14 a écrit
-« Sous le pli : 0 (inconnu à ce stade — **non devinable**) » puis a rempli la case
-à 7 (136 + 129), et sa contre-épreuve binaire portait **un motif ASCII et un
-motif accentué**, dans les trois encodages (140). `autoStart: false` était le
-défaut employé (135).
+⚠️ **Le compteur de sortie : SEPT constats sur sept exigeaient de modifier le
+skill.** Pas de progrès sur ce chiffre — mais deux d'entre eux sont d'une gravité
+que les runs précédents n'avaient pas atteinte : une **promesse fausse** que
+j'avais écrite la veille (149), et une **mesure perdue en silence** (150), c'est-
+à-dire précisément les deux choses que ce chantier existe pour empêcher.
 
-⚠️ **Le compte qui décide de la suite : SEPT constats sur huit exigent de modifier
-`plugins/argus-mobile/`.** On n'est pas au run propre. Mais le 142 est d'une autre
-nature que les six autres — c'est un défaut fonctionnel, pas un écart de prose :
-la séquence prescrite fait publier une régression fabriquée.
+⚠️ **Ce run a été interrompu par une panne d'API** en pleine passe finale, puis
+**repris** — son travail était sur disque, seul le compte rendu manquait. La
+reprise a été cadrée par trois consignes (ne rien reconstruire de mémoire, dire
+ce que l'interruption laisse inachevé, arrêter l'émulateur) et l'agent les a
+tenues : il signale de lui-même que `perf.json` est antérieur de 29 min au
+rapport et marqué `stale`.
