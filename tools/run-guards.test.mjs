@@ -564,6 +564,38 @@ test('le binaire de la commande d\'exemple a sa ligne dans le tableau des encoda
     + 'distingue plus rien, et c\'est précisément ce qu\'il existe pour dire');
 });
 
+// ── La locale déclarée par le harnais est-elle APPLIQUÉE ? ──────────────────
+//
+// `MaterialApp` résout sa locale effective en croisant `locale` avec
+// `supportedLocales`, dont le défaut est `[Locale('en','US')]` : une locale non
+// supportée est purement IGNORÉE. Le harnais passait `locale: fr_FR` sans la
+// liste, donc il déclarait le français et montait en anglais — sans exception,
+// sans log. Tout ce qui vient de Material était mesuré dans la mauvaise langue,
+// donc à la mauvaise largeur. Dix-neuvième run.
+//
+// Garde de CÂBLAGE : omettre `supportedLocales` compile et ne casse rien.
+test('le montage déclare supportedLocales, sinon sa locale est ignorée', () => {
+  const dir = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  const harnais = readFileSync(join(dir, 'argus_harness.dart'), 'utf8');
+
+  const materialApp = harnais.indexOf('MaterialApp(');
+  assert.notEqual(materialApp, -1,
+    'le montage n\'emploie plus MaterialApp — si le harnais a été réécrit, mets ce motif à jour ; '
+    + 'sinon ce garde ne garde plus rien');
+
+  // La locale passée et la liste qui la rend applicable doivent coexister : la
+  // première sans la seconde est un réglage qui n'a aucun effet.
+  const bloc = harnais.slice(materialApp, materialApp + 1200);
+  const passeLocale = /\blocale:\s*(\w+)/.exec(bloc);
+  assert.ok(passeLocale, 'le montage ne passe plus de locale du tout');
+  assert.match(bloc, /supportedLocales:/,
+    `le montage passe « locale: ${passeLocale[1]} » sans supportedLocales : MaterialApp l'ignorera `
+    + 'et montera en en_US, ce qui mesure la disposition dans la mauvaise langue');
+  assert.ok(new RegExp(`supportedLocales:[^;]*${passeLocale[1]}`).test(bloc),
+    `supportedLocales doit contenir ${passeLocale[1]} — une liste qui ne l'inclut pas laisse la `
+    + 'locale déclarée sans effet, ce qui est exactement le défaut qu\'on ferme');
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans

@@ -139,6 +139,15 @@ Future<void> pumpArgus(
   await tester.pumpWidget(
     MaterialApp(
       locale: argusLocale,
+      // ⚠️ `supportedLocales` EST REQUIS pour que `locale` s'applique. Sans
+      // cette liste, `MaterialApp` retombe sur son défaut — `[Locale('en','US')]`
+      // — et résout la locale effective en croisant les deux : une locale non
+      // supportée est purement IGNORÉE. Le harnais déclarait donc `fr_FR` et
+      // montait en anglais, sans que rien ne le dise. Tout ce qui vient de
+      // Material (dates, boutons de dialogue, tooltips) était alors mesuré dans
+      // la mauvaise langue, donc à la mauvaise largeur — ce qui fausse une
+      // mesure de disposition sans jamais lever d'exception.
+      supportedLocales: <Locale>[argusLocale],
       localizationsDelegates: argusLocalizationsDelegates.isEmpty
           ? null
           : argusLocalizationsDelegates,
