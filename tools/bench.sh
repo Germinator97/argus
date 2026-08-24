@@ -101,10 +101,17 @@ r=$?; echo "  lints courants  exit $r"; [ $r -ne 0 ] && { code=1; grep -E '•' 
 mv -f "$A/.analysis_options.argus.bak" "$A/analysis_options.yaml"
 trap - EXIT
 
-"$FL" test test/argus > /tmp/bench-te.txt 2>&1
+# ⚠️ `--reporter expanded` N'EST PAS UN CONFORT : le reporter compact de
+# `flutter test` écrit TOUT sur une seule ligne, réécrite avec \r et TRONQUÉE à
+# la largeur du terminal. Le motif cherché ci-dessous survivait donc ou non selon
+# la longueur du chemin affiché — d'où un banc rouge intermittent, quatre fois,
+# sur un dépôt sain. Et comme cette étape n'imprime pas d'exit, elle échappait
+# aux relectures en `tail`. Mesuré : compact = 1 ligne tronquée ; expanded = 11
+# lignes, motif présent 3 fois, stable.
+"$FL" test test/argus --reporter expanded > /tmp/bench-te.txt 2>&1
 r=$?; echo "  flutter test    exit $r"; [ $r -ne 0 ] && { code=1; grep -E 'Some tests failed|Error' /tmp/bench-te.txt | head -4; }
-grep -q 'SKIP — aucun écran déclaré' /tmp/bench-te.txt \
-  || { echo "  ✖ les suites ne se déclarent plus non branchées"; code=1; }
+grep -q 'aucun écran déclaré' /tmp/bench-te.txt \
+  || { echo "  ✖ les suites ne se déclarent plus non branchées (motif introuvable dans /tmp/bench-te.txt)"; code=1; }
 
 # ── 5. LES SCRIPTS DE MESURE, DÉROULÉS POUR DE VRAI ─────────────────────────
 #
