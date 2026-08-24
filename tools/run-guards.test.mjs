@@ -781,6 +781,27 @@ test('la taille pèse la RELEASE quand elle existe, et le dit quand ce n\'est pa
   }
 });
 
+// ⚠️ ET LE CÂBLAGE, sans quoi le garde ci-dessus est aveugle : la fonction peut
+// rester parfaite pendant que `main()` cesse de l'appeler. C'est exactement ce
+// qui s'est produit — la mutation a remplacé l'appel, et le test de comportement
+// est resté vert. Même angle mort que pour le choix de device.
+test('perf.mjs APPELLE binaryToWeigh au lieu de lire build.android en direct', () => {
+  const perf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+
+  const appels = [...perf.matchAll(/binaryToWeigh\(/g)];
+  assert.ok(appels.length >= 2,
+    `${appels.length} occurrence(s) de binaryToWeigh dans perf.mjs — la déclaration et au moins `
+    + 'un appel sont attendus ; si la fonction a été renommée, mets ce motif à jour');
+
+  // Le site de mesure ne doit plus lire le binaire de test en direct : c'est
+  // cette lecture-là qui pesait le debug contre un budget de publication.
+  const mesure = perf.split('\n').filter((l) => l.includes('binarySizeMb(') && l.includes('resolve('));
+  assert.equal(mesure.length, 1, `${mesure.length} site(s) de mesure de taille au lieu d'un`);
+  assert.ok(!/config\.build\.(android|ios)\b/.test(mesure[0]),
+    `le site de mesure relit build.* en direct et contourne binaryToWeigh : ${mesure[0].trim()}`);
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans
