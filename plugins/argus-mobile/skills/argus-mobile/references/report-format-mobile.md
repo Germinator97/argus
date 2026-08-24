@@ -209,6 +209,13 @@ pas le voir : il compare les dates des relevés **entre eux**, jamais un relevé
 son objet, et il rendra `staleParts: []` sur un `sec.json` fraîchement écrit qui
 juge un binaire de la veille.
 
+⚠️ **`perf.metrics` porte `binaryPath` et `binaryIsRelease`.** La taille est
+pesée sur `build.androidScan` — le binaire de **publication** — dès qu'il est
+renseigné et présent ; sinon sur celui que le runner installe, et le script le
+**dit**. Sans cette distinction, `QAM-PERF-SIZE` rend un finding qui décrit
+l'outillage : mesuré 92 Mo sur un debug contre 30,2 Mo pour la release du même
+code, face à un budget de 60 écrit pour ce qui sort.
+
 ## C. Rapport HTML
 
 Même structure que le web (`report-format.md` §C) : header, bandeau métriques,

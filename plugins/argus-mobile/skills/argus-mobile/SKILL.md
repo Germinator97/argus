@@ -938,10 +938,14 @@ et a dû écrire que le skill ne disait pas si c'était légitime.
 D'où le second `argus-run` : c'est le seul qui **compare**. Sans lui, on livre un
 harnais dont la boucle visuelle n'a jamais tourné une seule fois.
 
-⚠️ **`make argus-perf` coûte ~9 min à lui seul** : quatre démarrages à froid
-(chacun un `force-stop`) plus trois à chaud, plus la pesée. Lance-le en tâche de
-fond ou avec une fenêtre large — un run l'a tué deux fois par son propre timeout
-de dix minutes avant de comprendre que le script allait bien.
+⚠️ **Le coût de `make argus-perf` suit le DÉMARRAGE de ton app, il n'est pas
+fixe.** Il enchaîne quatre démarrages à froid, trois à chaud et une pesée : sept
+lancements, plus les attentes entre eux. Mesuré **8,8 s** sur une app démarrant en
+1,3 s à froid, et **plusieurs minutes** sur un terrain où le démarrage dépassait
+la dizaine de secondes — le même script, deux ordres de grandeur.
+
+Chronomètre-le une fois sur ton projet plutôt que de te fier à un chiffre écrit
+ailleurs : c'est la seule façon de savoir ce qu'il coûte *chez toi*.
 
 ⚠️ **Chiffre le coût avant de le subir : c'est TROIS passes device pleines.**
 `argus-baselines` n'est pas l'étape courte du milieu — elle rejoue toute la suite

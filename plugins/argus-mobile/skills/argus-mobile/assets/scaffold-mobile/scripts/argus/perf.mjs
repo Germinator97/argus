@@ -208,6 +208,29 @@ function deviceContext(udid, packageName) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Le binaire dont la TAILLE compte — celui qu'on publierait, pas celui qu'on teste.
+ *
+ * ⚠️ `build.android` est le binaire que le runner installe : un **debug** presque
+ * toujours, et un debug n'est ni minifié ni découpé. Le peser contre
+ * `thresholds.binarySizeMb`, budget écrit pour ce qui sort, rend un finding qui
+ * décrit l'outillage et non l'application. Mesuré au vingt-et-unième run : 92 Mo
+ * en debug (finding `major`) contre **30,2 Mo** pour la release du même code,
+ * largement sous le budget de 60.
+ *
+ * `build.androidScan` — la release, celle que le scan de sécurité emploie déjà —
+ * est donc préférée quand elle est renseignée ET présente. Sinon on pèse le
+ * binaire de test, et le rapport le DIT plutôt que de laisser croire au contraire.
+ * @param {string} platform @param {any} config @returns {{path:string, isRelease:boolean}}
+ */
+export function binaryToWeigh(platform, config) {
+  const b = config?.build ?? {};
+  const publie = platform === 'ios' ? b.iosScan : b.androidScan;
+  const teste = platform === 'ios' ? b.ios : b.android;
+  if (publie && existsSync(resolve(process.cwd(), publie))) return { path: publie, isRelease: true };
+  return { path: teste ?? '', isRelease: false };
+}
+
+/**
  * Taille du binaire livré. Sur un dossier `.app` iOS, on somme récursivement.
  * @param {string} path @returns {number|null} Mo
  */
@@ -270,7 +293,13 @@ function main() {
   const platform = opts.platform || (config.platforms ?? ['android'])[0];
   const reportPath = join(artifactsDir(config), 'perf.json');
   const thresholds = config.thresholds ?? {};
-  const sizeMb = binarySizeMb(resolve(process.cwd(), platform === 'ios' ? config.build.ios : config.build.android));
+  const pese = binaryToWeigh(platform, config);
+  const sizeMb = binarySizeMb(resolve(process.cwd(), pese.path));
+  if (!pese.isRelease) {
+    warn(`taille mesurée sur ${pese.path} — un binaire de TEST. Le budget`
+      + ` binarySizeMb vise ce que tu publies : renseigne build.androidScan pour`
+      + ' que ce chiffre décrive l\'application plutôt que l\'outillage.');
+  }
 
   // iOS : pas d'équivalent local à `am start -W`. On le DIT et on rapporte
   // `skipped`, plutôt que de rendre un vert qui laisserait croire à une mesure.
@@ -378,6 +407,9 @@ function main() {
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
       warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
       memoryMb, binarySizeMb: sizeMb,
+      // QUEL binaire a été pesé, et s'il s'agit de celui qu'on publierait : sans
+      // ces deux-là, « 92 Mo » et « 30 Mo » se lisent comme le même relevé.
+      binaryPath: pese.path, binaryIsRelease: pese.isRelease,
     },
     thresholds, findings,
   };

@@ -30,6 +30,7 @@ import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterComma
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
@@ -739,6 +740,45 @@ test('la commande prescrite VOIT un gabarit interpolé', () => {
   assert.match(skill, /PLANCHER, pas le chiffre du rapport/,
     'le SKILL ne dit plus que le compte de lib/ n\'est pas celui du rapport');
   rmSync(dossier, { recursive: true, force: true });
+});
+
+// ── La taille pèse-t-elle ce dont elle parle ? ──────────────────────────────
+//
+// `build.android` est le binaire que le runner installe : un debug presque
+// toujours, ni minifié ni découpé. Le peser contre un budget écrit pour ce qui
+// sort rend un finding qui décrit l'outillage. Mesuré au vingt-et-unième run :
+// 92 Mo en debug (major) contre 30,2 Mo pour la release du même code, sous le
+// budget de 60. Même famille que le 168 — un verdict sur un binaire dont on ne
+// parle pas.
+test('la taille pèse la RELEASE quand elle existe, et le dit quand ce n\'est pas elle', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-poids-'));
+  const release = join(dossier, 'release.apk');
+  const debug = join(dossier, 'debug.apk');
+  writeFileSync(debug, 'x');
+  const cwd = process.cwd();
+  process.chdir(dossier);
+  try {
+    // Sans release sur le disque, on pèse le binaire de test — et `isRelease`
+    // dit que ce n'en est pas une, ce qui est la moitié qui manquait.
+    const sansRelease = binaryToWeigh('android', { build: { android: debug, androidScan: release } });
+    assert.equal(sansRelease.path, debug);
+    assert.equal(sansRelease.isRelease, false,
+      'déclarer androidScan ne suffit pas : le fichier doit exister, sinon on pèserait du vide');
+
+    // Dès qu'elle est là, c'est elle qui compte.
+    writeFileSync(release, 'y');
+    const avec = binaryToWeigh('android', { build: { android: debug, androidScan: release } });
+    assert.equal(avec.path, release);
+    assert.equal(avec.isRelease, true);
+
+    // Et sans androidScan du tout, on retombe sur le test sans prétendre autre chose.
+    const nu = binaryToWeigh('android', { build: { android: debug } });
+    assert.equal(nu.path, debug);
+    assert.equal(nu.isRelease, false);
+  } finally {
+    process.chdir(cwd);
+    rmSync(dossier, { recursive: true, force: true });
+  }
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
