@@ -29,7 +29,7 @@ import {
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
@@ -594,6 +594,53 @@ test('le montage déclare supportedLocales, sinon sa locale est ignorée', () =>
   assert.ok(new RegExp(`supportedLocales:[^;]*${passeLocale[1]}`).test(bloc),
     `supportedLocales doit contenir ${passeLocale[1]} — une liste qui ne l'inclut pas laisse la `
     + 'locale déclarée sans effet, ce qui est exactement le défaut qu\'on ferme');
+});
+
+// ── Le binaire scanné porte-t-il le code qu'on vient d'écrire ? ─────────────
+//
+// Un relevé peut être frais et son SUJET périmé — indiscernable dans le rapport.
+// Au dix-neuvième run, `sec.json` venait d'être écrit et concluait « obfusqué,
+// pas un debug, 0 secret » sur un APK construit CINQUANTE MINUTES avant
+// l'instrumentation. Le mécanisme de péremption compare les relevés entre eux,
+// jamais un relevé à son objet : il affirmait `staleParts: []`.
+test('un binaire plus vieux que le code est signalé comme tel', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-fresh-'));
+  mkdirSync(join(dossier, 'lib'), { recursive: true });
+  writeFileSync(join(dossier, 'lib', 'main.dart'), '// code');
+  const apk = join(dossier, 'app.apk');
+  writeFileSync(apk, 'binaire');
+
+  // Horloge injectée : le binaire précède la source d'une heure.
+  const dates = { [apk]: 1000, [join(dossier, 'lib', 'main.dart')]: 1000 + 3600_000 };
+  const vieux = binaryFreshness(apk, dossier, (f) => dates[f] ?? 0);
+  assert.equal(vieux?.stale, true,
+    'un binaire antérieur au code ne peut pas le contenir : ses verdicts décrivent autre chose');
+
+  // L'autre moitié — un garde qui ne sait que crier ne garde rien : un binaire
+  // construit APRÈS le code est parfaitement légitime et doit se taire.
+  const frais = binaryFreshness(apk, dossier, (f) => (f === apk ? 9_000_000 : 1000));
+  assert.equal(frais?.stale, false);
+
+  // Sans sources Dart, on ne prétend pas juger : null, pas « frais ».
+  rmSync(join(dossier, 'lib'), { recursive: true, force: true });
+  assert.equal(binaryFreshness(apk, dossier, () => 1000), null,
+    'aucune source lue : rendre « frais » serait affirmer ce qu\'on n\'a pas mesuré');
+
+  // Et un binaire absent ne doit pas faire tomber le scan entier.
+  assert.equal(binaryFreshness(join(dossier, 'absent.apk'), dossier), null);
+  rmSync(dossier, { recursive: true, force: true });
+});
+
+test('le rapport de sécurité DATE le binaire qu\'il a jugé', () => {
+  const sec = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs'), 'utf8');
+  // Le chemin seul ne suffit pas : deux binaires au même chemin, à deux heures
+  // différentes, rendent le même rapport.
+  assert.match(sec, /builtAt:/,
+    'sec.json doit dater le binaire jugé — sans quoi rien ne distingue un verdict sur le binaire '
+    + 'du jour d\'un verdict sur celui d\'avant-hier');
+  assert.match(sec, /stale:\s*fraicheur\.stale/,
+    'et dire s\'il précède le code, ce que le lecteur du rapport ne peut pas deviner');
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────

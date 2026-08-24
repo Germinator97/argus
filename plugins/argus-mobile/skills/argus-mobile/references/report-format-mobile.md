@@ -201,6 +201,14 @@ lecteur d'écran.
 En REGRESS il n'y a pas de patch : l'instrumentation reste dans le code, et
 c'est `coverage.notConfigured[]` qui dit ce qui n'a pas d'ancre.
 
+⚠️ **`levels.binary` porte `builtAt` et `stale`.** Le premier date le binaire
+jugé, le second dit s'il est **antérieur au code** — cas où ses verdicts
+(obfuscation, debug, secrets) décrivent une application qui ne porte pas les
+changements qu'on vient de faire. Le mécanisme de péremption du rapport ne peut
+pas le voir : il compare les dates des relevés **entre eux**, jamais un relevé à
+son objet, et il rendra `staleParts: []` sur un `sec.json` fraîchement écrit qui
+juge un binaire de la veille.
+
 ## C. Rapport HTML
 
 Même structure que le web (`report-format.md` §C) : header, bandeau métriques,

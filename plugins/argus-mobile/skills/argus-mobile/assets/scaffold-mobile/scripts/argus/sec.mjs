@@ -331,6 +331,45 @@ function auditSecrets(root, config) {
  * @param {string} apk @param {any} config @returns {{findings:any[], facts:any}}
  */
 /**
+ * Le binaire scanné est-il PLUS VIEUX que le code qu'il est censé porter ?
+ *
+ * ⚠️ Un relevé peut être frais et son SUJET périmé, et c'est indiscernable dans
+ * le rapport. Vécu au dix-neuvième run : `sec.json` venait d'être écrit, il
+ * concluait « obfusqué, pas un debug, 0 secret » — sur un APK release construit
+ * **cinquante minutes avant l'instrumentation**, donc sans une seule des ancres
+ * qu'on venait de poser. Le mécanisme de péremption du rapport n'y voyait rien :
+ * il compare les dates des relevés ENTRE EUX, jamais un relevé à son objet, et
+ * il affirmait `staleParts: []`.
+ *
+ * Le critère est la date du fichier le plus récent sous `lib/` : si le binaire
+ * lui est antérieur, il ne peut pas le contenir.
+ * @param {string} binary @param {string} root @param {(p:string)=>number} mtime
+ * @returns {{builtAt:number, newestSource:number, stale:boolean}|null}
+ */
+export function binaryFreshness(binary, root, mtime = (f) => statSync(f).mtimeMs) {
+  let builtAt = 0;
+  try { builtAt = mtime(binary); } catch { return null; }
+
+  let newest = 0;
+  /** @param {string} dir */
+  const walk = (dir) => {
+    /** @type {any[]} */
+    let entries = [];
+    try { entries = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      const full = join(dir, e.name);
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith('.dart')) {
+        try { newest = Math.max(newest, mtime(full)); } catch { /* fichier disparu */ }
+      }
+    }
+  };
+  walk(join(root, 'lib'));
+  if (!newest) return null;
+  return { builtAt, newestSource: newest, stale: builtAt < newest };
+}
+
+/**
  * Le binaire à ANALYSER — qui n'est pas celui qu'on installe, et ne peut pas l'être.
  *
  * `build.android` décide de ce que le runner POSE sur l'appareil : un debug,
@@ -573,12 +612,33 @@ function main() {
   const obfuscation = binaryFacts.obfuscation;
   if (obfuscation && !obfuscation.scanned) warn(`obfuscation non jugée — ${obfuscation.why}`);
 
+  // ⚠️ Dit AVANT d'écrire : un verdict de sécurité sur un binaire plus vieux que
+  // le code ne décrit pas l'application qu'on vient d'instrumenter.
+  const fraicheur = binaryFreshness(binary, root);
+  if (fraicheur?.stale) {
+    warn(`le binaire scanné est ANTÉRIEUR au code : construit le `
+      + `${new Date(fraicheur.builtAt).toISOString()}, dernière source modifiée le `
+      + `${new Date(fraicheur.newestSource).toISOString()}.`);
+    warn('  Ses verdicts (obfuscation, debug, secrets) décrivent un binaire qui ne porte pas');
+    warn('  tes changements. Reconstruis-le avec la commande de release DE TON PROJET,');
+    warn('  puis relance ce scan — sinon la dimension est verte pour la mauvaise raison.');
+  }
+
   const findings = [...sourceFindings, ...binaryFindings];
   writeJson(reportPath, {
     platform, root,
     levels: {
       sources: { scanned: true, findings: sourceFindings.length },
-      binary: { ...binaryFacts, findings: binaryFindings.length, path: relative(root, binary) },
+      binary: {
+        ...binaryFacts, findings: binaryFindings.length, path: relative(root, binary),
+        // Quand le binaire a été construit, et s'il précède le code : sans ces
+        // deux-là, rien ne distingue un verdict sur le binaire du jour d'un
+        // verdict sur celui d'avant-hier.
+        ...(fraicheur ? {
+          builtAt: new Date(fraicheur.builtAt).toISOString(),
+          stale: fraicheur.stale,
+        } : {}),
+      },
     },
     boundary: 'Détection uniquement, sur tes propres builds. Le pentest mobile manuel (hooking, '
       + 'contournement de pinning, abus de logique métier) reste une intervention humaine séparée.',
