@@ -545,11 +545,23 @@ test('le binaire de la commande d\'exemple a sa ligne dans le tableau des encoda
     `${cmd[1]} est le binaire que la commande ouvre, et aucune ligne du tableau ne le décrit : `
     + 'le lecteur appliquera l\'encodage de l\'autre mode');
 
-  // Et les deux modes ne doivent pas annoncer le MÊME encodage : c'est tout
-  // l'intérêt du tableau, et l'écrire une fois pour les deux le viderait.
-  const [a, b] = lignes;
-  assert.notEqual(a.split('|')[3]?.trim(), b.split('|')[3]?.trim(),
-    'debug et release annoncent le même encodage : le tableau ne distingue plus rien');
+  // Et les deux modes ne doivent partager AUCUN encodage : c'est tout l'intérêt
+  // du tableau.
+  //
+  // ⚠️ Comparer les deux cellules par égalité ne suffit pas, et c'est la mutation
+  // qui l'a montré — pas la relecture. Écrire « **Latin-1** » côté debug laisse
+  // les chaînes DIFFÉRENTES de « **Latin-1**, ou **UTF-16** dès que… », donc un
+  // `notEqual` passe au vert sur un tableau qui ne distingue plus rien. Le
+  // critère porte sur les encodages NOMMÉS, pas sur le texte qui les entoure.
+  const encodagesDe = (/** @type {string} */ ligne) =>
+    new Set((ligne.match(/UTF-8|UTF-16|Latin-1/g) ?? []));
+  const [a, b] = lignes.map(encodagesDe);
+  assert.ok(a.size > 0 && b.size > 0,
+    'une ligne du tableau ne nomme aucun encodage connu — ce garde ne mesure plus rien');
+  const communs = [...a].filter((e) => b.has(e));
+  assert.deepEqual(communs, [],
+    `debug et release annoncent le même encodage (${communs.join(', ')}) : le tableau ne `
+    + 'distingue plus rien, et c\'est précisément ce qu\'il existe pour dire');
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
