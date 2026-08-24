@@ -2611,37 +2611,90 @@ prend pas.
 avec les deux messages exacts, et dit de regarder l'image **avant** de chercher
 plus loin.
 
+## Run 21 — dix correctifs exercés, et la taille pèse le mauvais binaire
+
+⚠️ **DIX correctifs vérifiés**, record du chantier. L'agent en cite plusieurs
+dans son propre raisonnement, y compris des corrections de la veille :
+- **172** — « 38 sites dans `lib/` pour **75 ancres déclarées** — l'écart vient des
+  2 gabarits et des composants partagés », exactement la distinction prescrite ;
+- **173** — « l'AVD est une image *Google Play* (`tag.id=google_apis_playstore`,
+  donc `persist.sys.locale` immuable) » ;
+- **169** — l'aplat « **aux dimensions exactes** (1080×1980, relevées par `sips`),
+  pour que le seuil soit réellement emprunté et non court-circuité par un
+  `Screenshot size mismatch` » ;
+- **165** — « sans ces flags, le finding « binaire non obfusqué » aurait décrit ma
+  commande et non l'app » ;
+- **171**, **168**, **166**, **164**, **157**, et le **161** dans les conditions
+  les plus dures du chantier.
+
+⚠️ **Le piège du port s'est produit POUR DE VRAI** : l'émulateur voisin occupait
+`5554`, celui du run a reçu `5556`. Et un **téléphone personnel** était branché.
+Prouvé par balayage des journaux : `Armor_X12` → aucune occurrence,
+`emulator-5554` → aucune, `device=emulator-5556` → **45 fois**.
+
+### 174. ⚠️ `QAM-PERF-SIZE` pèse le binaire de TEST, contre un budget de PUBLICATION
+
+`perf.mjs:273` lit `config.build.android` — le binaire que le runner installe,
+**un debug presque toujours**. Le budget en regard, `binarySizeMb: 60`, est
+manifestement écrit pour ce qu'on publie.
+
+Mesuré sur ce run :
+
+| binaire | taille | verdict |
+|---|---|---|
+| `app-debug.apk` (mesuré) | **92 Mo** | `QAM-PERF-SIZE` **major** |
+| `app-release.apk` (publié) | **30,2 Mo** | sous le budget de 60 |
+
+Le rapport porte donc un finding `major` qui décrit **le binaire de test**, pas
+celui qui sortirait. L'agent l'a écrit noir sur blanc — « le finding de taille
+décrit le binaire de test, pas ce qui serait publié » — mais rien dans l'outil ne
+le dit à qui lit le rapport.
+
+⚠️ **Même famille que le 168**, dans une autre dimension : *un verdict rendu sur
+un binaire qui n'est pas celui dont on parle*. Et le remède est à portée :
+`build.androidScan` — la release — est déjà dans la config, c'est celle que le
+scan de sécurité emploie.
+
+### 175. Le coût annoncé pour `argus-perf` est démenti d'un facteur soixante
+
+`SKILL.md` écrit : « ⚠️ **`make argus-perf` coûte ~9 min à lui seul** : quatre
+démarrages à froid, trois à chaud, la pesée. »
+
+Mesuré sur ce run : **8,788 s**.
+
+Le chiffre venait du point 155, où il avait été relevé sur un terrain dont le
+démarrage à froid valait plusieurs secondes. Il est écrit comme une **propriété du
+script**, alors qu'il est presque entièrement déterminé par la vitesse de
+démarrage de l'app mesurée — ici 1331 ms à froid, 114 ms à chaud.
+
+⚠️ C'est un nombre qui décrit le contenu sans être dérivé de la donnée, et il sert
+à **décider** : le skill le donne pour qu'on prévoie le coût avant de lancer. Un
+lecteur qui l'a lu attend neuf minutes devant une commande qui en prend neuf
+secondes — ou renonce à la lancer.
+
 ## Ce qui reste
 
-**Rien.** Les points 172 et 173 sont clos le 24/08/2026 — le backlog se vide pour
-la **vingtième** fois.
+**Les points 174 et 175**, inscrits le 24/08/2026 au dépouillement du run 21.
+Aucun n'est encore traité.
 
-⚠️ **HUIT correctifs vérifiés sur le terrain**, le meilleur rendement du chantier,
-dont le **161** dans les conditions les plus dures jamais réunies : un appareil
-**physique** et deux émulateurs branchés ensemble, et les scripts ont ciblé le
-bon sans aide.
+⚠️ **DIX correctifs vérifiés sur le terrain** — record du chantier, et plusieurs
+datent de la veille. Le **161** l'a été dans les conditions les plus dures jamais
+réunies : un **téléphone personnel** branché, un émulateur voisin occupant `5554`,
+et le piège du port qui s'est produit **pour de vrai**. Balayage des journaux :
+zéro occurrence du téléphone, zéro de `5554`, **45** de `emulator-5556`.
 
-⚠️ **Le compteur de sortie tombe à DEUX** (7 → 5 → 3 → 4 → 4 → **2**), et trois
-constats ont été démentis par la reproduction.
+⚠️ **Le compteur de sortie : DEUX constats, deux exigent une modification** —
+stable au plus bas (7 → 5 → 3 → 4 → 4 → 2 → **2**). Un troisième candidat a été
+**démenti** : le Makefile documente déjà qu'il aplatit les codes de sortie, et
+l'agent l'avait lu.
 
-⚠️ **CE QUE CETTE PASSE APPREND, et qui vaut plus que ses deux points** : en
-corrigeant le 172, j'ai écrit dans le SKILL une **affirmation technique fausse**
-— que la forme en doubles quotes « rend 0 sans rien dire ». Ce zéro venait de
-**mon shell**, pas de la commande. C'est **le harnais de mutation** qui l'a
-dénoncé : la mutation bâtie sur cette prémisse ne mutait rien, et il a rendu
-« VACANT ».
+⚠️ **Les deux constats sont de la même famille, et c'est celle qui revient** :
+*un chiffre rendu sur autre chose que ce dont il parle*. La taille pèse le binaire
+de test contre un budget de publication (174, cousin du 168) ; le coût annoncé de
+`argus-perf` décrit une machine et un projet d'un autre jour (175). Aucun des deux
+ne ment sur ce qu'il mesure — les deux répondent à une question que personne n'a
+posée.
 
-C'est la forme exacte du point 149, onze runs plus tard — *une promesse technique
-écrite en corrigeant autre chose, que rien ne mesurait*. Deux différences, et
-elles comptent : elle a été **trouvée le jour même**, et le constat qu'elle
-accompagnait tient toujours, parce que **son chiffre venait du terrain et non
-d'une explication**.
-
-📌 La règle qui en sort : *tester une commande à la main, dans un autre shell que
-celui qui l'exécutera, n'est pas une mesure.* Le garde l'exécute désormais dans
-les conditions réelles.
-
-Le reste ne concerne pas le skill : 55 entrées de dette décrivent l'application
-d'essai — dont un débordement à taille nominale prouvé **préexistant** par retrait
-des ancres (316 px avant, 316 px après) — et `osv-scanner` reste une affaire de
-machine.
+Le reste ne concerne pas le skill : 52 entrées de dette décrivent l'application
+d'essai — dont **41 px de débordement à taille nominale** visibles sur un
+360×640 — et `osv-scanner` reste une affaire de machine.
