@@ -131,7 +131,7 @@ Instrumentation Semantics — parcours critiques
     dont partagées   : <C> composant(s) couvrant <S> call-sites
   Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
-  Non enveloppables  : <W>  (ParentDataWidget, slivers — voir plus bas)
+  Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
 
 ⚠️ **En REGRESS, rends-le DEUX FOIS : l'état TROUVÉ, puis l'état LAISSÉ.** Le
 livrable y est justement que la colonne « à poser » tombe à zéro — un relevé
@@ -856,6 +856,16 @@ flow dont on n'a pas encore prouvé qu'il tourne fige un écran qu'on n'a jamais
 arriver — et une baseline fausse est pire qu'une baseline absente : elle rend
 vert pour toujours ce qu'elle a photographié de travers.
 
+⚠️ **Un cas que ça ne couvre pas : le flow rouge parce que l'app est LENTE.**
+Si l'échec est un `Assertion is false: id: <ancre de départ> is visible`, ce
+n'est pas l'instrumentation, c'est le plafond d'attente — et il concerne alors
+tous les flows, y compris ceux qui produisent les captures. Relève
+`startTimeoutMs` **avant** de générer, dérivé du maximum que tu as observé, et ne
+touche pas à `coldStartMs` : la lenteur doit rester un finding, pas disparaître
+dans un seuil. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
+écran, sans mécanisme identifié — c'est exactement le cas où l'on relève le
+plafond sans rien conclure.
+
 ⚠️ **Ce qui doit être vert, c'est le FLOW QUI PRODUIT LA CAPTURE, pas la suite
 entière.** Un `lifecycle` ou un `resilience` en échec n'invalide aucune référence
 de `home-empty` : il ne la produit pas. Génère, puis corrige le flow fautif —
@@ -865,6 +875,11 @@ et a dû écrire que le skill ne disait pas si c'était légitime.
 
 D'où le second `argus-run` : c'est le seul qui **compare**. Sans lui, on livre un
 harnais dont la boucle visuelle n'a jamais tourné une seule fois.
+
+⚠️ **`make argus-perf` coûte ~9 min à lui seul** : quatre démarrages à froid
+(chacun un `force-stop`) plus trois à chaud, plus la pesée. Lance-le en tâche de
+fond ou avec une fenêtre large — un run l'a tué deux fois par son propre timeout
+de dix minutes avant de comprendre que le script allait bien.
 
 ⚠️ **Chiffre le coût avant de le subir : c'est TROIS passes device pleines.**
 `argus-baselines` n'est pas l'étape courte du milieu — elle rejoue toute la suite

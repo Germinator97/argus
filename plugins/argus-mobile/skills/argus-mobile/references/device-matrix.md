@@ -84,6 +84,11 @@ Deux conséquences, dont la seconde est la plus coûteuse :
 
 ⚠️ **Conséquence sur la locale, et elle n'est écrite nulle part ailleurs :**
 `locale.deviceLocale` ne s'applique qu'au DÉMARRAGE du device, donc
+
+⚠️ **Et si l'AVD est DÉJÀ dans la bonne locale ?** Laisse la clé renseignée : elle
+documente l'intention, et le runner ne dit plus rien quand l'appareil correspond
+— il n'avertit que lorsque l'écart est réel ou la locale illisible. La vider
+ferait perdre l'information sans rien gagner.
 uniquement via `autoStart`. En lançant ton AVD toi-même — la disposition
 recommandée juste en dessous — ce réglage existe, se lit, et n'a **aucun
 effet**. Règle la locale sur l'émulateur avant le run. Le runner le dit

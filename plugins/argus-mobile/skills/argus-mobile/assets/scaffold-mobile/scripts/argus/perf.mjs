@@ -322,8 +322,26 @@ function main() {
   const cold = measureColdStarts(udid, packageName, component, opts.samples);
   log(`  démarrages à chaud (${opts.samples})…`);
   const warm = measureWarmStarts(udid, component, opts.samples);
+  // ⚠️ L'APP DOIT ÊTRE EN VIE POUR QU'ON PUISSE LA PESER, et rien ne le
+  // garantissait ici : `dumpsys meminfo` rend « No process found » sur un
+  // processus mort, la regex ne matche pas, et `memoryMb` valait **null** — un
+  // trou qui traversait toute la chaîne sans un mot, ni finding, ni « sauté ».
+  // Mesuré sur un projet réel : 314,6 Mo relevés à la main pour un budget de
+  // 250, donc un finding `major` que le rapport avait silencieusement perdu.
   log('  mémoire…');
-  const memoryMb = measureMemory(udid, packageName);
+  timedLaunch(udid, component);
+  let memoryMb = measureMemory(udid, packageName);
+  if (memoryMb === null) {
+    // Une seconde chance après un instant : le processus peut n'être pas encore
+    // visible de `dumpsys`. Si ça échoue encore, on le DIT — un `null` muet est
+    // pire qu'une dimension sautée, parce qu'il ne se voit nulle part.
+    memoryMb = measureMemory(udid, packageName);
+  }
+  if (memoryMb === null) {
+    warn('mémoire non mesurée — `dumpsys meminfo` n\'a rendu aucun TOTAL PSS.');
+    warn(`  L'app était-elle en vie ? \`adb -s ${udid} shell dumpsys meminfo ${packageName}\``);
+    warn('  Le rapport porte `memoryMb: null` : c\'est une mesure ABSENTE, pas un budget tenu.');
+  }
   const context = deviceContext(udid, packageName);
 
   if (cold.medianMs === null && warm.medianMs === null) {

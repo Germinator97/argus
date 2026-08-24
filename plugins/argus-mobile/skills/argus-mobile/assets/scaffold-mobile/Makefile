@@ -19,6 +19,13 @@ FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo fl
         argus-anchors \
         argus-doctor argus-build
 
+# ⚠️ `make` APLATIT LE CODE DE SORTIE. Le contrat d'Argus distingue 0 (vert),
+# 1 (major) et 2 (blocker/critical) — GNU make, lui, sort en **2** dès qu'une
+# recette échoue, quelle qu'en soit la cause. Mesuré : `run.mjs --tags=smoke`
+# rend 1, `make argus-smoke` rend 2 pour le même run. Qui a besoin du code exact
+# appelle le script directement, comme le fait la CI ; ces cibles sont des
+# raccourcis pour la main humaine, pas une interface de gating.
+
 argus-help: ## Liste les cibles
 	@grep -E '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n", $$1, $$2}'
 
