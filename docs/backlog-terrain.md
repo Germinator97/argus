@@ -2426,7 +2426,7 @@ Le **165** a envoyé l'agent lire la doc de release du projet — c'est là qu'i
 découvert qu'il ne pouvait pas la reconstruire (elle exige un secret), et il l'a
 **dit** au lieu de scanner sans le signaler. C'est le 168 ci-dessous.
 
-### 168. ⚠️ La dimension sécurité conclut sur un binaire dont RIEN ne dit l'âge
+### 168. ✅ Corrigé le 24/08/2026 — ⚠️ La sécurité concluait sur un binaire dont rien ne disait l'âge
 
 `sec.json` porte `platform`, `root`, `levels`, `boundary`, `findings` — **aucun
 champ ne nomme le binaire scanné, ni sa date**.
@@ -2444,7 +2444,13 @@ L'agent l'a signalé de lui-même dans ses inachevés — c'est le 165 qui l'y a
 envoyé — mais rien dans l'outil ne l'aurait dit à quelqu'un qui ne regarde que le
 rapport.
 
-### 169. La contre-épreuve visuelle peut échouer sur les DIMENSIONS, sans jamais exercer le seuil
+**Corrigé** : `levels.binary` porte `builtAt` et `stale`, dérivés du `.dart` le
+plus récent sous `lib/` — un binaire antérieur au code ne peut pas le contenir —
+et le scan le **dit avant d'écrire**. Horloge injectée dans le garde, les deux
+sens couverts : un binaire postérieur doit se taire, et sans source lisible la
+fonction rend `null` plutôt que d'affirmer une fraîcheur qu'elle n'a pas mesurée.
+
+### 169. ✅ Corrigé le 24/08/2026 — La contre-épreuve visuelle pouvait échouer sur les DIMENSIONS
 
 `SKILL.md` prescrit de « **remplacer une référence par un aplat** et vérifier que
 celle-là seule rougit ». Il ne dit pas **aux dimensions exactes de la référence**.
@@ -2459,7 +2465,11 @@ la référence corrompue rougit, la restauration ramène au vert), mais le chemi
 d'une preuve. Celle-ci prouve que la boucle lit la référence, pas qu'elle sait
 comparer.
 
-### 170. `pumpArgus` déclare une locale que `MaterialApp` n'applique pas
+**Corrigé** : le SKILL prescrit l'aplat **aux dimensions exactes**, dit pourquoi
+ce n'est pas un détail, et donne la commande qui relève la taille de la
+référence.
+
+### 170. ✅ Corrigé le 24/08/2026 — `pumpArgus` déclarait une locale que `MaterialApp` n'appliquait pas
 
 Le montage passe `locale: argusLocale` et `localizationsDelegates:` — mais
 **jamais `supportedLocales`** : zéro occurrence dans tout le scaffold.
@@ -2477,7 +2487,12 @@ mesuré dans la mauvaise langue, donc à la mauvaise largeur.
 ⚠️ L'agent a nommé cet écart et **ne l'a pas patché** : « il appartient au cadre,
 pas au projet ». Il avait raison sur les deux points.
 
-### 171. Aucune commande de comptage n'est prescrite, et deux compteurs sont tombés dans le même piège
+**Corrigé** : `supportedLocales: <Locale>[argusLocale]`. Garde de **câblage** —
+omettre ce paramètre compile et monte joyeusement dans la mauvaise langue — et il
+vérifie aussi que la liste **contient** la locale passée : une liste qui l'exclut
+laisse la déclaration tout aussi inerte.
+
+### 171. ✅ Corrigé le 24/08/2026 — Aucune commande de comptage n'était prescrite
 
 Le rapport d'instrumentation du §2 est le **premier livrable** du skill et repose
 entièrement sur des comptes — racines, commandes, affichages, composants
@@ -2497,31 +2512,45 @@ occurrence est en commentaire.
 ⚠️ Même famille que le 168 : *un relevé qui compte autre chose que ce qu'il
 annonce*. Et il est en tête du rapport, donc il donne le ton de tout le reste.
 
+**Corrigé** : les commandes sont écrites, avec l'auto-vérification qui compte —
+les lancer sur le `harness.dart` **livré**, qui ne porte aucune vraie ancre : tout
+autre résultat que `0` signale un motif qui lit le commentaire. Le garde **exécute**
+ce comptage au lieu de relire la prose, et sa contre-épreuve passe en premier : le
+jour où l'exemple perdrait ses ancres, le filtre ne prouverait plus rien et le
+garde le dit au lieu de verdir.
+
+⚠️ **Ce garde est né faux, et pour la deuxième fois de la journée** : il vérifiait
+qu'un `grep -v` figurait **quelque part** dans la page, si bien que retirer le
+filtre d'une des deux commandes le laissait vert. C'est la **mutation** qui l'a
+dit. Le critère est désormais par commande.
+
 ## Ce qui reste
 
-**Les points 168 à 171**, inscrits le 24/08/2026 au dépouillement du run 19.
-Aucun n'est encore traité.
+**Rien.** Les points 168 à 171 sont clos le 24/08/2026 — le backlog se vide pour
+la **dix-neuvième** fois.
 
-⚠️ **CINQ correctifs vérifiés** (156, 157, 162, 164, 167), et un sixième — le 165 —
-qui a fait lire à l'agent la doc de release du projet, d'où le 168. C'est le
-meilleur rendement de correctifs du chantier.
+⚠️ **CINQ correctifs vérifiés sur le terrain** (156, 157, 162, 164, 167), et un
+sixième (165) qui a envoyé l'agent lire la doc de release du projet, d'où le 168.
+C'est le meilleur rendement du chantier.
 
-⚠️ **Le compteur de sortie : QUATRE constats, quatre exigent une modification.**
-Stable par rapport au 18 (7 → 5 → 3 → 4 → 4). Mais leur **famille** est nouvelle et
-elle est plus profonde que les « voisins » du run précédent : **trois des quatre
-sont des relevés qui mesurent autre chose que ce qu'ils annoncent** — une
-dimension de sécurité qui décrit un binaire dont rien ne dit l'âge, une
-contre-épreuve qui rougit avant toute comparaison, un compteur qui lit un exemple
-en commentaire. Le quatrième (170) est du même bois : un montage qui déclare une
-locale que le framework ignore.
+⚠️ **Le compteur de sortie : QUATRE constats, quatre exigeaient une modification.**
+Stable (7 → 5 → 3 → 4 → 4). Leur famille, elle, est plus profonde que les voisins
+du run 18 : **trois des quatre sont des relevés qui mesurent autre chose que ce
+qu'ils annoncent**, et le quatrième est un montage qui déclare une locale que le
+framework ignore.
 
-⚠️ **Un run coupé par une panne d'API a été REPRIS**, pour la deuxième fois du
-chantier après le run 15. Les trois consignes de reprise tiennent : ne rien
-reconstruire de mémoire, nommer ce qui reste inachevé, arrêter son émulateur seul.
-L'agent les a toutes tenues et a rendu **huit trous nommés** dans une section
-dédiée — dont celui qui est devenu le 168.
+⚠️ **Un run coupé par une panne d'API a été REPRIS**, deuxième fois après le 15.
+Les trois consignes tiennent, et l'agent a rendu **huit trous nommés** plutôt que
+de les combler — dont celui devenu le 168.
+
+⚠️ **Deux gardes écrits ce jour-là sont nés faux, tous deux trop littéraux sur du
+texte, tous deux dénoncés par la MUTATION et non par la relecture** : celui du 166
+comparait deux cellules par égalité, celui du 171 cherchait un filtre « quelque
+part » au lieu de l'exiger sur chaque commande. C'est le motif à retenir : *un
+garde qui lit de la prose doit porter sur toutes les occurrences, jamais sur la
+présence*.
 
 Le reste ne concerne pas le skill : 51 entrées de dette décrivent l'application
-d'essai (dont **un débordement de 41 px sur la coquille à taille de texte
+d'essai (dont **41 px de débordement sur la coquille à taille de texte
 nominale**, que tout le monde voit), et `osv-scanner` absent reste une affaire de
-machine — dimension **sautée et dite**, jamais verte.
+machine.
