@@ -852,10 +852,20 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
   // sur une divergence de 5,04 %. `WAIT_COMMANDS` est défini vingt lignes plus
   // haut et n'était pas consulté ici.
   if (commandKey && !WAIT_COMMANDS.has(commandKey)) return '';
+  // ⚠️ ET IL DOIT NOMMER LE BON LEVIER. Ce message ne citait que
+  // `thresholds.coldStartMs` — donc la seule clé qu'on relève quand on est
+  // pressé, et précisément celle que `startTimeoutMs` existe pour épargner : la
+  // relever relâche du même coup le gate chargé de RAPPORTER cette lenteur, ce
+  // que le SKILL.md interdit en toutes lettres. La doc prescrivait un geste,
+  // l'outil en conseillait un autre, et rien ne pouvait le voir — un écart entre
+  // deux textes n'a aucun comportement à casser. Trouvé au seizième run.
+  const plafond = startTimeoutMs(config);
+  const froid = config.thresholds?.coldStartMs ?? 2000;
   return ` — c'est l'écran de DÉPART qui n'est pas arrivé à temps, pas forcément`
-    + ` l'ancre qui est fausse. Vérifie d'abord le temps de démarrage`
-    + ` (thresholds.coldStartMs = ${config.thresholds?.coldStartMs ?? 2000} ms,`
-    + ` relevé dans startup.samples du rapport) avant de soupçonner l'instrumentation.`;
+    + ` l'ancre qui est fausse. Relève thresholds.startTimeoutMs (plafond effectif`
+    + ` ${plafond} ms), dérivé du maximum que montre startup.samples du rapport.`
+    + ` Ne touche PAS à thresholds.coldStartMs (${froid} ms) : la lenteur de`
+    + ` démarrage doit rester un finding, pas disparaître dans un seuil.`;
 }
 
 /**

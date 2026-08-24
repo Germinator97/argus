@@ -262,6 +262,35 @@ test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {
   assert.equal(startupHint('id=home_root', '', CONFIG), '');
 });
 
+// ── Le message conseille-t-il le geste que la doc prescrit ? ─────────────────
+//
+// Ce garde ne vérifie ni une valeur ni un refus : il vérifie que deux TEXTES ne
+// divergent pas. Pendant seize runs, le SKILL.md a prescrit de relever
+// `startTimeoutMs` en interdisant `coldStartMs`, pendant que le seul levier cité
+// par le message était… `coldStartMs`. Ni l'un ni l'autre n'était faux seul.
+// Rien ne pouvait le voir : un écart entre deux textes n'a aucun comportement à
+// casser, donc aucun test à faire rougir.
+test('l\'indice nomme le levier que le SKILL prescrit, pas celui qu\'il interdit', () => {
+  // ⚠️ DÉRIVÉ, jamais recopié. Écrire `startTimeoutMs` ici ferait un garde qui
+  // suit le message au lieu de le surveiller : changer les deux ensemble le
+  // laisserait vert. Le nom est LU dans la doc, qui est la source.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const prescrit = skill.match(/Relève\s+`([A-Za-z.]+)`/);
+  assert.ok(prescrit, 'le SKILL.md ne prescrit plus de levier pour le flow rouge sur un démarrage lent. '
+    + 'Si la phrase a été reformulée, mets ce motif à jour — sinon ce garde ne garde plus rien.');
+  const interdit = skill.match(/ne\s+touche pas à `([A-Za-z.]+)`/);
+  assert.ok(interdit, 'le SKILL.md ne dit plus quel levier NE PAS toucher — même remarque.');
+  assert.notEqual(prescrit[1], interdit[1], 'la doc prescrirait et interdirait la même clé');
+
+  const sur = startupHint('id=home_root', 'home_root', CONFIG);
+  assert.match(sur, new RegExp(prescrit[1]),
+    `le message doit NOMMER ${prescrit[1]} : c'est le geste que la doc prescrit, et devant un flow `
+    + 'rouge on relève la seule clé qu\'on nous cite');
+  assert.match(sur, /Ne touche PAS/,
+    `${interdit[1]} ne doit plus être cité comme un conseil : le relever relâche le gate qui `
+    + 'rapporte la lenteur, ce qui est exactement le piège que le levier séparé ferme');
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans
