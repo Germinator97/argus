@@ -1997,3 +1997,42 @@ test('le rapport HTML avertit sur un run filtré, et se tait sur un run complet'
   const i = src.indexOf('run?.scope');
   assert.match(src.slice(i, i + 700), /partiel/, 'et le bandeau doit se nommer');
 });
+
+// ───────────────────────────────────────────────────────────────────────────
+// Une promesse écrite dans le SKILL doit être TENUE par le code
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Le §2b dit : « déclare-le ARGUS:OWNED, sinon il n'apparaît ni dans la liste
+// que l'installeur imprime en sortant, ni dans son --check ». C'était FAUX le
+// jour où je l'ai écrit : la boucle finale n'itérait que le scaffold, donc un
+// fichier créé dans le PROJET restait invisible quel que soit son marqueur.
+// Rien ne mesurait cette promesse — c'est exactement le défaut que la règle
+// « une phrase de doc se traduit en test » existe pour empêcher.
+
+test('l\'installeur liste aussi les fichiers OWNED que le PROJET a créés', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-owned-'));
+  try {
+    mkdirSync(join(dir, 'test/argus'), { recursive: true });
+    writeFileSync(join(dir, 'test/argus/argus_fakes.dart'), '// ARGUS:OWNED — sonde\nconst x = 1;\n');
+    writeFileSync(join(dir, 'test/argus/sans_marqueur.dart'), '// rien\nconst y = 2;\n');
+    const script = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+    const out = execFileSync('bash', [script, dir], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const i = out.indexOf("Les fichiers qui t'appartiennent");
+    assert.notEqual(i, -1, 'la liste a disparu de la sortie — le garde est vacant');
+    const liste = out.slice(i, out.indexOf('\n\n', i));
+    assert.ok(liste.split('\n').length > 5, `liste quasi vide (${liste.split('\n').length} lignes) : l'instrument ne mesure pas`);
+
+    assert.match(liste, /argus_fakes\.dart/,
+      'un fichier du PROJET portant ARGUS:OWNED doit être listé — le SKILL le promet');
+    assert.ok(!/sans_marqueur/.test(liste),
+      'et un fichier SANS marqueur ne doit pas l\'être, sinon la liste ne veut plus rien dire');
+
+    const noms = [...liste.matchAll(/[✏✔][^\s]*\s+(\S+)/g)].map((m) => m[1]);
+    assert.deepEqual(noms.filter((n, k) => noms.indexOf(n) !== k), [],
+      'un fichier présent des deux côtés ne doit apparaître qu\'une fois');
+    assert.ok(!/install-mobile\.sh: line \d+:/.test(out), 'l\'installeur a émis une erreur shell');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

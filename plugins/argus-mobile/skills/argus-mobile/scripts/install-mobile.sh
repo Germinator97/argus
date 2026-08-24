@@ -252,10 +252,31 @@ fi
 # « argus.mobile.yaml est le SEUL fichier à éditer » était faux, et le dire deux
 # lignes avant de nommer harness.dart n'aidait personne. La liste se dérive des
 # marqueurs, donc elle ne peut pas vieillir.
+# ⚠️ LE SCAFFOLD **ET** LA CIBLE. Cette liste n'itérait que le scaffold, donc un
+# fichier que TU crées — des doubles de test, un helper — n'y apparaissait jamais,
+# quel que soit son marqueur. Le SKILL promettait pourtant l'inverse (« déclare-le
+# ARGUS:OWNED, sinon il n'apparaît pas dans cette liste ») : une promesse écrite
+# dans la doc que le code ne tenait pas, et que rien ne mesurait. Vécu sur un
+# projet réel — `argus_fakes.dart` portait le marqueur et restait invisible.
+#
+# La CIBLE est parcourue d'abord : quand les deux portent le même chemin relatif,
+# c'est la copie posée chez l'hôte qui fait foi, puisque c'est elle qu'on ouvrira.
+OWNED_LIST="$(mktemp)"
+trap 'rm -f "$OWNED_LIST"' EXIT
+for d in "$TARGET/test/argus" "$TARGET/.maestro"; do
+  [ -d "$d" ] || continue
+  find "$d" -type f -print0 | while IFS= read -r -d '' f; do
+    printf '%s\t%s\n' "${f#"$TARGET"/}" "$f"
+  done >> "$OWNED_LIST"
+done
+find "$SCAFFOLD_DIR" -type f -print0 | while IFS= read -r -d '' f; do
+  printf '%s\t%s\n' "${f#"$SCAFFOLD_DIR"/}" "$f"
+done >> "$OWNED_LIST"
+
 echo "Les fichiers qui t'appartiennent (jamais écrasés, jamais mis à jour) :"
 while IFS= read -r src; do
   head -20 "$src" | grep -qF 'ARGUS:OWNED' || continue
-  rel="${src#"$SCAFFOLD_DIR"/}"
+  rel="${src#"$SCAFFOLD_DIR"/}"; rel="${rel#"$TARGET"/}"
   # ⚠️ Le deux-points est ce qui sépare une DIRECTIVE d'une MENTION. Sans lui,
   # ce compteur additionnait la ligne de `argus.mobile.yaml` qui EXPLIQUE le
   # mécanisme : ce fichier rapportait « 1 TODO à traiter » pour l'éternité, même
@@ -293,7 +314,10 @@ while IFS= read -r src; do
   else
     echo "  ✔  $rel"
   fi
-done < <(find "$SCAFFOLD_DIR" -type f | sort)
+# ⚠️ `-t$'\\t'` et non `-t"\\t"` : le second passe un antislash suivi d'un « t »,
+# pas une tabulation — la déduplication se faisait alors sur le mauvais champ et
+# la liste tombait de dix entrées à deux, sans une erreur.
+done < <(sort -u -t$'\t' -k1,1 "$OWNED_LIST" | sort | cut -f2-)
 echo
 
 echo "Prochaines étapes :"
