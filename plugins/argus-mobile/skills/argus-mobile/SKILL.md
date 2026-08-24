@@ -143,7 +143,7 @@ rien n'est posé.
   lib/…/panier_page.dart:88    racine d'état « panier vide »   → panier_empty_root
   lib/…/panier_page.dart:142   ElevatedButton « Valider »      → panier_valider
   lib/…/panier_page.dart:167   InkWell (carte article)         → panier_article
-  lib/…/shared/bouton.dart:38  composant partagé, 14 call-sites → <param d'ancre>
+  lib/…/shared/bouton.dart:38  composant partagé, 14 call-sites → semanticIdentifier
 
 Non enveloppables :
   lib/…/entete.dart:22         Expanded — ciblé par texte, fragile à la traduction
@@ -506,6 +506,19 @@ place lui-même l'ancre sur son enfant, et le call-site n'écrit qu'une chaîne.
 C'est une modification d'API partagée, mais optionnelle et non cassante — dis-le,
 puis fais-la ; c'est ce qui rapporte le plus, un composant couvrant tous ses
 call-sites d'un coup.
+
+**Nomme ce paramètre `semanticIdentifier`** — aligné sur le `semanticLabel` de
+Flutter et sur le champ `Semantics.identifier` qu'il alimente — et
+**`anchorPrefix`** quand il préfixe une famille d'ancres au lieu d'en porter une
+(une liste, un stepper, un groupe de puces).
+
+⚠️ **Si le projet a déjà sa convention, garde-la** — ce nom-là lui appartient — et
+**écris-la dans le rapport d'instrumentation**, à la ligne du composant partagé.
+Ce qui compte n'est pas le mot mais qu'un lecteur puisse retrouver les ancres
+posées par paramètre : sans nom stable elles sont invisibles à tout relevé, et
+c'est ce qui est arrivé — sur seize runs, un comparateur a cherché un nom que
+personne n'avait employé et rendu « 0 » douze fois de suite sans que rien ne
+signale qu'il ne mesurait rien.
 
 `make argus-anchors` attrape ce défaut à condition que l'ancre soit déclarée en
 `commands:` sur l'`ArgusScreen`. C'est la moitié de son intérêt.

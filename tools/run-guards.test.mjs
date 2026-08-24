@@ -324,6 +324,35 @@ test('la couverture ne se tait pas sur les écrans sans ancre — et ne coupe qu
   assert.equal(coverageLine(null), '');
 });
 
+// ── Le paramètre d'ancre porte-t-il le même nom aux deux endroits ? ──────────
+//
+// Le SKILL prescrivait le MÉCANISME (« le composant place lui-même l'ancre ») et
+// montrait `<param d'ancre>` en placeholder : chaque projet inventait donc son
+// nom. Conséquence mesurée au seizième run : le comparateur d'étalons cherchait
+// `semanticId`, personne ne l'avait jamais employé, et son relevé rendait « 0 »
+// depuis DOUZE runs sans que rien ne signale qu'il ne mesurait rien.
+//
+// Ce garde n'est pas circulaire : il compare deux endroits qui doivent dire la
+// même chose — la prose qui prescrit, et le gabarit qui montre. Changer l'un
+// sans l'autre le fait rougir, ce qu'aucune relecture ne voit.
+test('le paramètre d\'ancre porte le MÊME nom dans la prose et dans le gabarit', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const prescrit = skill.match(/\*\*Nomme ce paramètre `([A-Za-z]+)`\*\*/);
+  assert.ok(prescrit, 'le SKILL ne prescrit plus de nom pour le paramètre d\'ancre. '
+    + 'Si la phrase a été reformulée, mets ce motif à jour — sinon ce garde ne garde plus rien.');
+
+  const lignes = skill.split('\n').filter((l) => l.includes('composant partagé,'));
+  assert.equal(lignes.length, 1, 'le gabarit du rapport d\'instrumentation ne montre plus '
+    + 'exactement une ligne de composant partagé — garde vacant');
+
+  assert.ok(!/<[^>]+>/.test(lignes[0]),
+    `le gabarit remontre un placeholder au lieu d'un nom : ${lignes[0]}`);
+  assert.ok(lignes[0].includes(prescrit[1]),
+    `le gabarit doit montrer ${prescrit[1]}, le nom que la prose prescrit — sinon on lit deux `
+    + `conventions dans le même document : ${lignes[0]}`);
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans
