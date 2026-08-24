@@ -95,6 +95,38 @@ export function stalenessOf(parts, config) {
   return { stale, newest, budgetMin };
 }
 
+/**
+ * La ligne de couverture — extraite pour être MESURABLE, elle vivait dans le
+ * gabarit HTML où rien ne pouvait l'exercer.
+ *
+ * ⚠️ Elle dit désormais ce qu'elle NE dit PAS. Les trois relevés qu'elle affichait
+ * (`screensDeclared`, `screensConfigured`, `notConfigured`) dérivent tous de
+ * `config.screens` : un état qui n'y figure pas est invisible aux trois. Sur un
+ * projet réel, « 10 déclarés · 10 avec ancre » se lisait « tout est couvert »
+ * alors que quatre états n'étaient montés qu'à l'étage 1 — un arbitrage
+ * défendable, écrit dans le harnais, mais que le rapport passait sous silence —
+ * et que la comparaison visuelle n'en couvrait que quatre.
+ *
+ * Le compteur ne mentait pas : il répondait à une question plus étroite que
+ * celle qu'on lui posait.
+ * @param {any} coverage @returns {string}
+ */
+export function coverageLine(coverage) {
+  if (!coverage) return '';
+  const declares = coverage.screensDeclared ?? '?';
+  const avecAncre = coverage.screensConfigured ?? '?';
+  const visuels = (coverage.visualScreens ?? []).length;
+  const sansAncre = coverage.notConfigured ?? [];
+  return `<p class="muted">Écrans déclarés : ${esc(declares)}`
+    + ` · avec ancre sémantique : ${esc(avecAncre)}`
+    + ` · comparés visuellement : ${esc(visuels)}`
+    + (sansAncre.length ? ` · sans ancre, donc non testés : ${esc(sansAncre.join(', '))}` : '')
+    + `<br>Ce relevé ne compte que les écrans <strong>déclarés dans screens[]</strong> :`
+    + ` un état monté à l'étage 1 seul, ou jamais déclaré, n'y apparaît pas.`
+    + ` « ${esc(avecAncre)} sur ${esc(declares)} » ne veut donc pas dire « tout est couvert ».</p>`;
+}
+
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Fragments HTML
 // ═══════════════════════════════════════════════════════════════════════════
@@ -237,7 +269,7 @@ function renderBody(context) {
   ${run?.scope && run.scope !== 'complet' ? `<p class="muted"><span class="badge bad">partiel</span> ce rapport vient d'un run <strong>${esc(run.scope)}</strong>, pas d'une passe complète : les dimensions que le filtre a écartées ne sont pas mesurées ici, elles sont ABSENTES. Rejoue <code>make argus-run</code> avant de conclure — c'est notamment le cas après la contre-épreuve visuelle, qui réécrit ce fichier avec la régression qu'on vient de fabriquer.</p>` : ''}
   ${(context.staleness?.stale ?? []).length ? `<p class="muted"><span class="badge bad">périmée</span> ${(context.staleness.stale).length} relevé(s) ont plus de ${context.staleness.budgetMin} min d'écart avec le plus récent : ils ne viennent pas de ce run. Le rapport les agrège en le disant plutôt que de les taire.</p>` : ''}
   <table><tr><th>Source</th><th>Dimensions</th><th>État</th><th>Mesurée le</th><th>Raison</th></tr>${coverageRows(parts)}</table>
-  ${coverage ? `<p class="muted">Écrans déclarés : ${coverage.screensDeclared ?? '?'} · avec ancre sémantique : ${coverage.screensConfigured ?? '?'}${(coverage.notConfigured ?? []).length ? ` · sans ancre, donc non testés : ${esc((coverage.notConfigured ?? []).join(', '))}` : ''}</p>` : ''}
+  ${coverageLine(coverage)}
 
   ${perfRows(perf) ? `<h2>Performance</h2><table><tr><th>Mesure</th><th>Valeur</th><th>Budget</th></tr>${perfRows(perf)}</table>
   <p class="muted">Le premier lancement après installation est mesuré à part : c'est un état réel, vécu une fois par chaque utilisateur, et le moyenner avec le régime stabilisé ne décrirait ni l'un ni l'autre.</p>` : ''}

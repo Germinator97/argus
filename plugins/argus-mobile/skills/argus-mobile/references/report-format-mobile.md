@@ -127,6 +127,13 @@ ni l'autre.
 (écrans déclarés sans ancre sémantique, donc non testés), `visualScreens[]` et
 `visualMode`.
 
+⚠️ **Les quatre premiers dérivent tous de `screens[]`**, donc aucun ne voit ce qui
+n'y est pas déclaré : un état monté à l'étage 1 seul lui est invisible. Le rapport
+HTML affiche pour cette raison le compte **comparé visuellement** à côté du compte
+déclaré, et écrit noir sur blanc que « N sur N » ne veut pas dire « tout est
+couvert ». Sans cette phrase, un relevé exact — il l'était — se lit comme une
+garantie qu'il ne donne pas.
+
 ## B. Preuves
 
 | Preuve | Où la trouver |

@@ -27,7 +27,7 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -289,6 +289,39 @@ test('l\'indice nomme le levier que le SKILL prescrit, pas celui qu\'il interdit
   assert.match(sur, /Ne touche PAS/,
     `${interdit[1]} ne doit plus être cité comme un conseil : le relever relâche le gate qui `
     + 'rapporte la lenteur, ce qui est exactement le piège que le levier séparé ferme');
+});
+
+// ── La couverture dit-elle ce qu'elle ne couvre pas ? ────────────────────────
+//
+// Les trois relevés affichés dérivaient TOUS de `config.screens`, si bien que
+// « 10 déclarés · 10 avec ancre » se lisait « tout est couvert » — alors que la
+// comparaison visuelle n'en couvrait que quatre et que quatre états n'étaient
+// montés qu'à l'étage 1. Le compteur ne mentait pas : il répondait à une
+// question plus étroite que celle qu'on lui posait. Seizième run, point 158.
+test('la couverture affiche le compte VISUEL, qui ne dérive pas de la même source', () => {
+  const ligne = coverageLine({
+    screensDeclared: 10, screensConfigured: 10, notConfigured: [],
+    visualScreens: ['home-empty', 'history-empty', 'categories-empty', 'session-form'],
+  });
+  assert.match(ligne, /comparés visuellement : 4/,
+    'sans ce compte, dix écrans « avec ancre » cachent six écrans que rien ne compare');
+  assert.match(ligne, /ne veut donc pas dire/,
+    'le relevé doit dire ce qu\'il NE dit pas : un état hors screens[] lui est invisible');
+});
+
+test('la couverture ne se tait pas sur les écrans sans ancre — et ne coupe qu\'un sens', () => {
+  const avec = coverageLine({ screensDeclared: 3, screensConfigured: 2, notConfigured: ['runner-end'], visualScreens: [] });
+  assert.match(avec, /runner-end/, 'un écran déclaré sans ancre doit être nommé, pas compté');
+
+  // L'autre moitié : sur un relevé sain, aucune mention d'écran manquant ne doit
+  // apparaître — un garde qui ne vérifie que l'alerte se satisfait d'un rapport
+  // qui alerte toujours.
+  const sain = coverageLine({ screensDeclared: 3, screensConfigured: 3, notConfigured: [], visualScreens: ['a'] });
+  assert.ok(!/sans ancre/.test(sain), 'aucun écran ne manque : le rapport ne doit pas inventer une alerte');
+  assert.match(sain, /comparés visuellement : 1/);
+
+  // Et sans relevé du tout, la ligne disparaît au lieu de rendre « ? sur ? ».
+  assert.equal(coverageLine(null), '');
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
