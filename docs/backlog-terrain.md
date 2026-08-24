@@ -2632,7 +2632,7 @@ dans son propre raisonnement, y compris des corrections de la veille :
 Prouvé par balayage des journaux : `Armor_X12` → aucune occurrence,
 `emulator-5554` → aucune, `device=emulator-5556` → **45 fois**.
 
-### 174. ⚠️ `QAM-PERF-SIZE` pèse le binaire de TEST, contre un budget de PUBLICATION
+### 174. ✅ Corrigé le 24/08/2026 — ⚠️ `QAM-PERF-SIZE` pesait le binaire de TEST
 
 `perf.mjs:273` lit `config.build.android` — le binaire que le runner installe,
 **un debug presque toujours**. Le budget en regard, `binarySizeMb: 60`, est
@@ -2651,11 +2651,20 @@ décrit le binaire de test, pas ce qui serait publié » — mais rien dans l'ou
 le dit à qui lit le rapport.
 
 ⚠️ **Même famille que le 168**, dans une autre dimension : *un verdict rendu sur
-un binaire qui n'est pas celui dont on parle*. Et le remède est à portée :
-`build.androidScan` — la release — est déjà dans la config, c'est celle que le
-scan de sécurité emploie.
+un binaire qui n'est pas celui dont on parle*.
 
-### 175. Le coût annoncé pour `argus-perf` est démenti d'un facteur soixante
+**Corrigé** : `build.androidScan` est préférée dès qu'elle est **déclarée ET
+présente** — déclarer ne suffit pas, sinon on pèserait du vide — et
+`perf.metrics` porte `binaryPath` / `binaryIsRelease`, sans quoi « 92 Mo » et
+« 30 Mo » se lisent comme le même relevé. À défaut de release, le script **dit**
+sur quoi il est retombé.
+
+⚠️ **Le premier garde était aveugle et la mutation l'a dit** : il éprouvait la
+fonction, la mutation cassait son **appel** — la fonction peut rester parfaite
+pendant que `main()` cesse de l'appeler. Même angle mort que pour le choix de
+device. Un garde de câblage l'accompagne désormais.
+
+### 175. ✅ Corrigé le 24/08/2026 — Le coût annoncé pour `argus-perf` était démenti d'un facteur soixante
 
 `SKILL.md` écrit : « ⚠️ **`make argus-perf` coûte ~9 min à lui seul** : quatre
 démarrages à froid, trois à chaud, la pesée. »
@@ -2672,29 +2681,33 @@ démarrage de l'app mesurée — ici 1331 ms à froid, 114 ms à chaud.
 lecteur qui l'a lu attend neuf minutes devant une commande qui en prend neuf
 secondes — ou renonce à la lancer.
 
+**Corrigé** : le skill dit ce qui **détermine** le coût — sept lancements, donc le
+démarrage de l'app — avec les deux extrêmes mesurés (8,8 s et plusieurs minutes),
+et invite à chronométrer une fois sur son propre projet plutôt qu'à se fier à un
+chiffre relevé ailleurs.
+
 ## Ce qui reste
 
-**Les points 174 et 175**, inscrits le 24/08/2026 au dépouillement du run 21.
-Aucun n'est encore traité.
+**Rien.** Les points 174 et 175 sont clos le 24/08/2026 — le backlog se vide pour
+la **vingt-et-unième** fois.
 
-⚠️ **DIX correctifs vérifiés sur le terrain** — record du chantier, et plusieurs
-datent de la veille. Le **161** l'a été dans les conditions les plus dures jamais
-réunies : un **téléphone personnel** branché, un émulateur voisin occupant `5554`,
-et le piège du port qui s'est produit **pour de vrai**. Balayage des journaux :
-zéro occurrence du téléphone, zéro de `5554`, **45** de `emulator-5556`.
+⚠️ **DIX correctifs vérifiés**, record du chantier, et le **161** éprouvé dans les
+conditions les plus dures jamais réunies — téléphone personnel branché, piège du
+port survenu pour de vrai, zéro occurrence du mauvais appareil dans les journaux.
 
-⚠️ **Le compteur de sortie : DEUX constats, deux exigent une modification** —
-stable au plus bas (7 → 5 → 3 → 4 → 4 → 2 → **2**). Un troisième candidat a été
-**démenti** : le Makefile documente déjà qu'il aplatit les codes de sortie, et
-l'agent l'avait lu.
+⚠️ **Le compteur de sortie reste à DEUX**, au plus bas (7 → 5 → 3 → 4 → 4 → 2 → 2),
+avec un troisième candidat **démenti** : le Makefile documente déjà qu'il aplatit
+les codes de sortie.
 
-⚠️ **Les deux constats sont de la même famille, et c'est celle qui revient** :
-*un chiffre rendu sur autre chose que ce dont il parle*. La taille pèse le binaire
-de test contre un budget de publication (174, cousin du 168) ; le coût annoncé de
-`argus-perf` décrit une machine et un projet d'un autre jour (175). Aucun des deux
-ne ment sur ce qu'il mesure — les deux répondent à une question que personne n'a
-posée.
+⚠️ **Les deux constats sont de la même famille, celle qui revient le plus** : *un
+chiffre rendu sur autre chose que ce dont il parle*. Aucun des deux ne ment sur ce
+qu'il mesure — les deux répondent à une question que personne n'a posée.
+
+⚠️ **Et un garde neuf était aveugle**, une fois de plus dénoncé par la mutation :
+il éprouvait la fonction quand la mutation cassait son **appel**. Deuxième fois
+que ce couple fonction/câblage se présente, après le choix de device — c'est
+devenu un réflexe à avoir : *toute fonction extraite mérite son garde de
+câblage*.
 
 Le reste ne concerne pas le skill : 52 entrées de dette décrivent l'application
-d'essai — dont **41 px de débordement à taille nominale** visibles sur un
-360×640 — et `osv-scanner` reste une affaire de machine.
+d'essai, et `osv-scanner` reste une affaire de machine.
