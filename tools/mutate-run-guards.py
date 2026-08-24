@@ -36,6 +36,10 @@ CIBLES = {
     # celui que le gabarit montre. Un écart entre deux textes n'a aucun
     # comportement à casser : sans mutation, rien ne prouve qu'ils gardent.
     "skill": ROOT / "plugins/argus-mobile/skills/argus-mobile/SKILL.md",
+    # Depuis le run 17 : le choix du device y vit aussi, et son garde porte sur
+    # le CÂBLAGE — un paramètre optionnel non passé est légal, donc rien
+    # d'autre ne le verrait.
+    "perf": SCAFFOLD / "perf.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
@@ -187,6 +191,13 @@ MUTATIONS = [
     ("skill", "le param\u00e8tre d'ancre redevient un placeholder",
      "composant partag\u00e9, 14 call-sites \u2192 semanticIdentifier",
      "composant partag\u00e9, 14 call-sites \u2192 <param d'ancre>"),
+    # ── Dix-septième run ────────────────────────────────────────────────────
+    ("perf", "un script cesse de passer la config, donc ignore l'AVD d\u00e9clar\u00e9",
+     "defaultAndroidDevice(config);",
+     "defaultAndroidDevice();"),
+    ("run", "une seule ancre d'authentification redevient exig\u00e9e",
+     "  const requises = ['screen', 'user', 'password', 'submit', 'success'];",
+     "  const requises = ['user'];"),
 ]
 
 
