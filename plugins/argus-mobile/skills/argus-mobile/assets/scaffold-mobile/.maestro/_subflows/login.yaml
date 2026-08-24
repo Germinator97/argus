@@ -16,9 +16,15 @@ appId: ${APP_ID}
 # Le bloc entier skippe si les secrets OU les ancres manquent : une suite qui
 # tente de se connecter sans identifiants échoue pour la mauvaise raison, et on
 # passe une heure à chercher un bug applicatif qui n'existe pas.
+#
+# ⚠️ `ARGUS_AUTH_READY` vaut '1' quand les CINQ ancres sont renseignées, et la
+# décision est prise dans `run.mjs` (`authAnchorsReady`) parce qu'un garde peut
+# l'y exercer. Cette condition ne testait que le champ identifiant : renseigner
+# celui-là et laisser l'écran vide faisait partir un `assertVisible` sur un id
+# vide — l'échec à mi-parcours que le commentaire promettait justement d'éviter.
 - runFlow:
     when:
-      true: "${typeof QA_USER !== 'undefined' && QA_USER !== '' && typeof ARGUS_AUTH_USER !== 'undefined' && ARGUS_AUTH_USER !== ''}"
+      true: "${typeof QA_USER !== 'undefined' && QA_USER !== '' && typeof ARGUS_AUTH_READY !== 'undefined' && ARGUS_AUTH_READY !== ''}"
     commands:
       - assertVisible:
           id: ${ARGUS_AUTH_SCREEN}
@@ -50,7 +56,7 @@ appId: ${APP_ID}
 
 - runFlow:
     when:
-      true: "${typeof QA_USER === 'undefined' || QA_USER === '' || typeof ARGUS_AUTH_USER === 'undefined' || ARGUS_AUTH_USER === ''}"
+      true: "${typeof QA_USER === 'undefined' || QA_USER === '' || typeof ARGUS_AUTH_READY === 'undefined' || ARGUS_AUTH_READY === ''}"
     commands:
       - assertTrue:
           condition: "${true}"

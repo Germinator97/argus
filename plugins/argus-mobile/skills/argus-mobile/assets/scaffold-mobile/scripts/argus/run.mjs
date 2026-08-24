@@ -185,6 +185,20 @@ function probeAndroidIdentity(udid) {
 }
 
 /**
+ * Les cinq ancres d'authentification sont-elles TOUTES renseignées ?
+ *
+ * Le sous-flow de connexion est tout ou rien : il faut l'écran, les deux champs,
+ * le bouton et la preuve que la session est ouverte. Une seule manquante et le
+ * flow échoue à mi-parcours sur un identifiant vide — un échec qui accuse l'app
+ * alors qu'il décrit une configuration incomplète.
+ * @param {any} anchors @returns {boolean}
+ */
+export function authAnchorsReady(anchors) {
+  const requises = ['screen', 'user', 'password', 'submit', 'success'];
+  return requises.every((k) => String(anchors?.[k] ?? '').trim() !== '');
+}
+
+/**
  * Devices Android connectés, avec leur identité mesurée. `physical` distingue
  * un vrai téléphone d'un émulateur : la distinction pilote un garde-fou, pas
  * seulement un affichage.
@@ -565,6 +579,17 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_AUTH_PASS: anchors.password ?? '',
     ARGUS_AUTH_SUBMIT: anchors.submit ?? '',
     ARGUS_AUTH_SUCCESS: anchors.success ?? '',
+    // ⚠️ LA DÉCISION VIT ICI, pas dans la condition du sous-flow. Le commentaire
+    // de `argus.mobile.yaml` promettait « une seule vide → le sous-flow skippe
+    // en entier, plutôt que d'échouer à mi-parcours sur un champ introuvable » ;
+    // la condition, elle, ne regardait que `ARGUS_AUTH_USER`. Renseigner le champ
+    // identifiant en laissant `screen` vide — une instrumentation commencée puis
+    // interrompue — faisait donc partir un `assertVisible` sur un id VIDE, soit
+    // exactement ce que la phrase disait éviter. Dix-septième run.
+    //
+    // Reconstruire l'expression à sept variables dans le YAML l'aurait rendue
+    // illisible et intestable ; ici, un garde l'exerce dans les deux sens.
+    ARGUS_AUTH_READY: authAnchorsReady(anchors) ? '1' : '',
     ARGUS_DEEPLINK: (config.deepLinks ?? [])[0] ?? '',
     ARGUS_VISUAL_THRESHOLD: String(config.thresholds?.visualMatchPercentage ?? 99),
     // Maestro n'a pas de masquage de pixels : `cropOn` est le SEUL levier qui

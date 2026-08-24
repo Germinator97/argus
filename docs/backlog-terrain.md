@@ -2251,6 +2251,34 @@ affiche aucun, laisse ce bloc commenté et note… ». Un fichier du scaffold pr
 le cas « ça ne s'applique pas à mon app », son voisin non — et c'est celui qui
 pose le plus de TODO.
 
+### 163. ⚠️ « Une seule vide → le sous-flow skippe » — vrai pour UNE ancre sur cinq
+
+Trouvé en vérifiant la promesse sur laquelle le 162 allait s'appuyer, au lieu de
+la croire.
+
+`argus.mobile.yaml` écrit, au-dessus des cinq ancres d'authentification : « Une
+seule vide → le sous-flow skippe en entier **plutôt que d'échouer à mi-parcours
+sur un champ introuvable** ». La condition de `login.yaml` ne teste pourtant que
+deux variables :
+
+```
+${typeof QA_USER !== 'undefined' && QA_USER !== ''
+  && typeof ARGUS_AUTH_USER !== 'undefined' && ARGUS_AUTH_USER !== ''}
+```
+
+`screen`, `password`, `submit` et `success` n'y sont pas. Renseigne le champ
+identifiant et laisse-en une autre vide — le cas exact d'une instrumentation
+commencée puis interrompue — et le bloc s'exécute : `assertVisible: id: ${ARGUS_AUTH_SCREEN}`
+part avec un identifiant **vide** et échoue à mi-parcours, ce que la phrase
+promettait d'éviter.
+
+Rien ne rattrape en amont : `run.mjs:563-567` injecte les cinq ancres telles
+quelles (`anchors.x ?? ''`) et `validateConfig` ne les regarde pas.
+
+⚠️ **C'est une promesse de comportement technique que rien ne mesurait** — la
+famille que ce chantier existe pour fermer, trouvée cette fois dans un commentaire
+de scaffold plutôt que dans le SKILL.
+
 ## Ce qui reste
 
 **Les points 161 et 162**, inscrits le 24/08/2026 au dépouillement du run 17.

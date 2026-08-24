@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
-  avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -405,6 +405,51 @@ test('l\'AVD déclaré est lu — et son absence ne fabrique rien', () => {
 
   // Plateforme omise = android, comme partout ailleurs dans la config.
   assert.equal(androidAvdDeclared({ devices: [{ id: 'e', avd: 'Y' }] }), 'Y');
+});
+
+// ── « Une seule vide → le sous-flow skippe » : vrai pour combien d'ancres ? ──
+//
+// Le scaffold promettait, au-dessus des cinq ancres d'authentification : « Une
+// seule vide → le sous-flow skippe en entier plutôt que d'échouer à mi-parcours
+// sur un champ introuvable ». La condition du sous-flow ne regardait que
+// `ARGUS_AUTH_USER` — une ancre sur cinq. Renseigner le champ identifiant en
+// laissant l'écran vide faisait donc partir un `assertVisible` sur un id VIDE,
+// c'est-à-dire précisément l'échec que la phrase disait éviter.
+test('les CINQ ancres d\'authentification sont exigées, pas seulement une', () => {
+  const pleines = { screen: 'a', user: 'b', password: 'c', submit: 'd', success: 'e' };
+  assert.equal(authAnchorsReady(pleines), true, 'cinq ancres renseignées : le login doit s\'exécuter');
+
+  // Chacune, retirée seule, doit suffire à faire skipper. C'est LA moitié qui
+  // manquait : tester la seule qui marchait aurait laissé passer les quatre
+  // autres, ce qui est exactement ce qui s'était produit.
+  for (const k of Object.keys(pleines)) {
+    const amputee = { ...pleines, [k]: '' };
+    assert.equal(authAnchorsReady(amputee), false,
+      `« ${k} » vide doit faire skipper le sous-flow — sinon il part et échoue à mi-parcours `
+      + 'sur un identifiant vide, en accusant l\'app');
+  }
+  assert.equal(authAnchorsReady({ ...pleines, screen: '   ' }), false, 'une ancre blanche n\'est pas une ancre');
+  assert.equal(authAnchorsReady(null), false);
+});
+
+test('le sous-flow de connexion LIT la décision, il ne la refait pas', () => {
+  const yaml = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/login.yaml'),
+    'utf8');
+  const conditions = [...yaml.matchAll(/^\s+true: "\$\{([^}]*)\}"/gm)].map((m) => m[1]);
+  assert.equal(conditions.length, 2,
+    `${conditions.length} condition(s) trouvée(s) au lieu de 2 — si le sous-flow a été réécrit, `
+    + 'mets ce motif à jour ; sinon ce garde est vacant');
+
+  for (const c of conditions) {
+    assert.ok(c.includes('ARGUS_AUTH_READY'),
+      `une condition n'emploie pas ARGUS_AUTH_READY : ${c}`);
+    // Reconstruire la décision dans le YAML est ce qui l'avait rendue fausse et
+    // intestable : une seule ancre y était citée, et personne ne pouvait le voir.
+    for (const nu of ['ARGUS_AUTH_SCREEN', 'ARGUS_AUTH_PASS', 'ARGUS_AUTH_SUBMIT', 'ARGUS_AUTH_SUCCESS']) {
+      assert.ok(!c.includes(nu), `la condition refait la décision au lieu de la lire (${nu}) : ${c}`);
+    }
+  }
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
