@@ -29,7 +29,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  activeDevices, adbShell, artifactsDir, buildCmdForAbi, configuredScreens, detectTools,
+  activeDevices, adbShell, artifactsDir, avdNameFrom, buildCmdForAbi, configuredScreens, detectTools,
   deviceAbi, err, exitCodeFor, flutterCommand, loadConfig, log, missingToolMessage, parseYaml,
   sh, validateConfig, warn, writeJson,
 } from './config.mjs';
@@ -159,19 +159,6 @@ function printHelp() {
  * a besoin de la distinction : en `--dry-run` aucun device n'est interrogé, et
  * publier « modèle X » sans l'avoir lu est exactement le défaut qu'on corrige.
  */
-
-/**
- * Nom d'AVD extrait de la sortie d'`adb emu avd name`.
- *
- * ⚠️ Cette commande rend DEUX lignes : le nom, puis un « OK » de la console
- * émulateur. Prendre la première ligne donne le nom ; prendre la dernière, ou
- * trimmer le tout, donne « OK » — un nom d'AVD qui ne correspondra à rien et
- * fera échouer la résolution en désignant un coupable inexistant.
- * @param {string} stdout @returns {string}
- */
-function avdNameFrom(stdout) {
-  return String(stdout).split('\n').map((l) => l.trim()).find((l) => l !== '' && l !== 'OK') ?? '';
-}
 
 /**
  * Identité RÉELLE d'un device Android, lue sur l'appareil.

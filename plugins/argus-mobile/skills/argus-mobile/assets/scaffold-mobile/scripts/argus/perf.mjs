@@ -294,7 +294,10 @@ function main() {
     process.exit(2);
   }
 
-  const picked = opts.device ? { udid: opts.device, why: '' } : defaultAndroidDevice();
+  // ⚠️ `config` PASSÉE, jamais omise : sans elle, l'AVD déclaré est ignoré et
+  // c'est le premier émulateur venu qui est mesuré — en silence. Un garde de
+  // CÂBLAGE le tient, parce qu'un paramètre optionnel non passé est légal.
+  const picked = opts.device ? { udid: opts.device, why: '' } : defaultAndroidDevice(config);
   if (!picked.udid) {
     err(picked.why);
     process.exit(2);

@@ -76,11 +76,24 @@ Deux conséquences, dont la seconde est la plus coûteuse :
 | Émulateur Android | `avd: Medium_Phone_API_36` | seule identité stable (`emulator -list-avds`) |
 | Simulateur iOS | `udid: <UUID>` | l'UUID est attribué à la création, stable à vie |
 | Téléphone physique | `udid: <série>` + `physical: true` | deux gestes délibérés, voir ci-dessus |
-| N'importe quel émulateur | les deux vides | le runner prend le premier — jamais un physique |
+| N'importe quel émulateur | les deux vides | Argus prend le premier — jamais un physique |
 
 `avd` est prioritaire sur `udid`. Le rapport écrit ensuite l'identité qu'il a
 **mesurée** (`avd`, `model`, `os` lus sur l'appareil) à côté de celle qui était
 `declared` — les comparer est alors une lecture, plus une enquête.
+
+⚠️ **Cela vaut pour TOUS les scripts, et ce n'était pas le cas.** `run.mjs` tenait
+seul cette règle ; `perf.mjs`, `a11y.mjs` et le calcul d'ABI de
+`--print-build-cmd` appelaient une résolution qui prenait le premier émulateur
+d'`adb devices` sans jamais lire `devices[].avd`. Avec deux émulateurs branchés —
+le cas courant d'une machine de développement — ils mesuraient donc l'appareil
+d'à côté. Corrigé au dix-septième run, qui l'a découvert **par chance** : l'app
+n'était pas installée sur l'autre AVD, sinon les chiffres seraient sortis faux
+sans un mot.
+
+Depuis, un AVD déclaré mais **non démarré** est un refus qui nomme ce qu'il
+cherchait et ce qu'il a trouvé — jamais un repli silencieux sur un autre
+appareil.
 
 ⚠️ **Conséquence sur la locale, et elle n'est écrite nulle part ailleurs :**
 `locale.deviceLocale` ne s'applique qu'au DÉMARRAGE du device, donc

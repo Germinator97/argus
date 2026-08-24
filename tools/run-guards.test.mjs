@@ -26,7 +26,7 @@ import {
   avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -351,6 +351,60 @@ test('le paramètre d\'ancre porte le MÊME nom dans la prose et dans le gabarit
   assert.ok(lignes[0].includes(prescrit[1]),
     `le gabarit doit montrer ${prescrit[1]}, le nom que la prose prescrit — sinon on lit deux `
     + `conventions dans le même document : ${lignes[0]}`);
+});
+
+// ── Le device ciblé est-il celui qu'on a DÉCLARÉ ? ──────────────────────────
+//
+// `device-matrix.md` promet en titre qu'on désigne un device par son `avd` et
+// non par son `udid`, et consacre un paragraphe au piège du port. Seul `run.mjs`
+// tenait la promesse : trois voisins appelaient `defaultAndroidDevice()`, qui
+// prenait le premier émulateur d'`adb devices`. Mesuré au dix-septième run, avec
+// deux émulateurs branchés — `perf.mjs` a ciblé l'appareil d'un autre projet, et
+// n'a crié que parce que l'app n'y était pas installée.
+//
+// ⚠️ Le garde décisif porte sur le CÂBLAGE, pas sur le comportement : `config`
+// est un paramètre OPTIONNEL, donc ne pas le passer est légal, ne casse aucun
+// test et fait retomber la production sur le défaut — en silence.
+test('aucun script ne choisit un device sans lui passer la config', () => {
+  const dir = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const scripts = readdirSync(dir).filter((f) => f.endsWith('.mjs'));
+  assert.ok(scripts.length >= 4,
+    `motif introuvable : ${scripts.length} script(s) dans ${dir} — ce garde est vacant`);
+
+  const sites = [];
+  for (const f of scripts) {
+    const src = readFileSync(join(dir, f), 'utf8');
+    for (const m of src.matchAll(/defaultAndroidDevice\(([^)]*)\)/g)) {
+      const arg = m[1].trim();
+      if (arg === 'config = null') continue;   // la déclaration, pas un appel
+      sites.push({ f, arg });
+    }
+  }
+  assert.ok(sites.length >= 3,
+    `${sites.length} appel(s) trouvé(s) : si la fonction a été renommée, mets ce motif à jour — `
+    + 'sinon ce garde ne garde plus rien');
+
+  const nus = sites.filter((s) => s.arg === '');
+  assert.deepEqual(nus, [],
+    'ces appels ignorent l\'AVD déclaré et cibleront le premier émulateur venu : '
+    + JSON.stringify(nus));
+});
+
+test('l\'AVD déclaré est lu — et son absence ne fabrique rien', () => {
+  assert.equal(androidAvdDeclared({ devices: [{ id: 'e', platform: 'android', avd: 'Medium_Phone_API_36.1' }] }),
+    'Medium_Phone_API_36.1');
+
+  // Un device sans `avd` ne doit rien rendre : c'est ce qui autorise le repli
+  // sur « le premier émulateur », légitime quand personne n'a rien déclaré.
+  assert.equal(androidAvdDeclared({ devices: [{ id: 'e', platform: 'android', avd: '' }] }), '');
+  assert.equal(androidAvdDeclared({ devices: [] }), '');
+  assert.equal(androidAvdDeclared(null), '');
+
+  // Un AVD déclaré sur un device iOS ne concerne pas Android.
+  assert.equal(androidAvdDeclared({ devices: [{ id: 's', platform: 'ios', avd: 'X' }] }), '');
+
+  // Plateforme omise = android, comme partout ailleurs dans la config.
+  assert.equal(androidAvdDeclared({ devices: [{ id: 'e', avd: 'Y' }] }), 'Y');
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────

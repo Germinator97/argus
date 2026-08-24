@@ -795,14 +795,54 @@ export function missingToolMessage(name) {
 }
 
 /**
+ * Nom d'AVD extrait de la sortie d'`adb emu avd name`.
+ *
+ * ⚠️ Cette commande rend DEUX lignes : le nom, puis un « OK » de la console
+ * émulateur. Prendre la première ligne donne le nom ; prendre la dernière, ou
+ * trimmer le tout, donne « OK » — un nom d'AVD qui ne correspondra à rien et
+ * fera échouer la résolution en désignant un coupable inexistant.
+ *
+ * ⚠️ Vit ici, et non dans le runner qui l'employait seul : trois autres scripts
+ * en avaient besoin pour cesser de cibler le premier port venu. Extraite, pas
+ * recopiée — c'est la seule forme qui ne diverge pas.
+ * @param {string} stdout @returns {string}
+ */
+export function avdNameFrom(stdout) {
+  return String(stdout).split('\n').map((l) => l.trim()).find((l) => l !== '' && l !== 'OK') ?? '';
+}
+
+/**
+ * L'AVD que la configuration DÉCLARE pour Android, ou '' si elle n'en nomme
+ * aucun. Premier device android portant un `avd` : c'est la même règle de
+ * priorité que le runner applique (`avd` avant `udid`).
+ * @param {any} config @returns {string}
+ */
+export function androidAvdDeclared(config) {
+  const devices = config?.devices ?? [];
+  const spec = devices.find((/** @type {any} */ d) => (d?.platform ?? 'android') === 'android' && d?.avd);
+  return spec?.avd ?? '';
+}
+
+/**
  * Device Android à cibler par défaut : un ÉMULATEUR, jamais un téléphone.
  *
  * Prendre le premier de `adb devices` reviendrait à lancer, arrêter et sonder
  * une app sur l'appareil personnel de quelqu'un simplement parce qu'il était
  * branché. Un appareil réel doit être nommé explicitement par `--device`.
+ *
+ * ⚠️ ET JAMAIS « LE PREMIER ÉMULATEUR » NON PLUS quand la config nomme un AVD.
+ * Ce raisonnement n'était fait qu'à moitié : il écartait les appareils réels et
+ * laissait passer le second émulateur. `device-matrix.md` promet pourtant en
+ * titre que l'on désigne un device par son `avd` et non par son `udid` — seul
+ * `run.mjs` tenait cette promesse, ses trois voisins prenaient le premier port
+ * venu. Mesuré au dix-septième run, avec deux émulateurs branchés : `perf.mjs`
+ * a ciblé l'appareil d'un AUTRE projet. Il n'a crié que parce que l'app n'y
+ * était pas installée ; installée des deux côtés, il aurait mesuré le mauvais
+ * appareil **en silence**, et le rapport aurait porté ses chiffres.
+ * @param {any} config la configuration chargée, pour lire `devices[].avd`
  * @returns {{udid:string, why:string}}
  */
-export function defaultAndroidDevice() {
+export function defaultAndroidDevice(config = null) {
   const res = sh('adb', ['devices']);
   const listed = res.stdout
     .split('\n')
@@ -810,6 +850,25 @@ export function defaultAndroidDevice() {
     .map((line) => line.trim().split(/\s+/))
     .filter((parts) => parts.length >= 2 && parts[1] === 'device')
     .map((parts) => parts[0]);
+
+  // L'AVD déclaré gagne, et son absence est un REFUS — jamais un repli sur le
+  // premier venu, qui est précisément le défaut qu'on ferme ici.
+  const voulu = androidAvdDeclared(config);
+  if (voulu) {
+    const emus = listed.filter((udid) => udid.startsWith('emulator-'));
+    const avdDe = (/** @type {string} */ udid) => avdNameFrom(sh('adb', ['-s', udid, 'emu', 'avd', 'name']).stdout);
+    const trouve = emus.find((udid) => avdDe(udid) === voulu);
+    if (trouve) return { udid: trouve, why: '' };
+    const vus = emus.map((udid) => `${avdDe(udid) || '?'} (${udid})`).join(', ');
+    return {
+      udid: '',
+      why: `l'AVD « ${voulu} », déclaré dans devices[], n'est pas démarré. `
+        + (emus.length ? `Émulateurs trouvés : ${vus}. ` : 'Aucun émulateur Android n\'est démarré. ')
+        + `Démarre-le (emulator -avd ${voulu}), ou passe --device=<udid> en connaissance de cause — `
+        + 'ne pas le faire ferait mesurer un autre appareil sans que rien ne le signale.',
+    };
+  }
+
   const emulator = listed.find((udid) => udid.startsWith('emulator-'));
   if (emulator) return { udid: emulator, why: '' };
   if (listed.length > 0) {
@@ -913,7 +972,7 @@ function main() {
       (process.argv.slice(2).find((a) => a.startsWith(`${name}=`)) ?? '').split('=')[1] ?? '';
     const platform = arg('--platform') || 'android';
     const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
-    const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice().udid : '');
+    const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice(config).udid : '');
     const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(udid));
     console.log(flutterCommand(ciblee));
     return;
