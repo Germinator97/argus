@@ -2078,19 +2078,117 @@ l'intention, et depuis le 132 le runner ne parle que lorsque l'écart est réel.
 l'a tué deux fois avec son propre timeout de dix minutes avant de comprendre que
 le script allait bien. **Corrigé** : chiffré à côté du coût des références.
 
+## Run 16 — quatrième vérification, et le message qui conseille l'inverse de la doc
+
+### 156. ⚠️ Le message d'échec conseille le levier que le SKILL interdit de toucher
+
+`startupHint` (`run.mjs`) colle à un flow rouge : « Vérifie d'abord le temps de
+démarrage (`thresholds.coldStartMs` = 2000 ms, relevé dans `startup.samples`) ».
+Le SKILL.md dit l'inverse, mot pour mot : « Relève `startTimeoutMs` **avant** de
+générer […] **et ne touche pas à `coldStartMs`** : la lenteur doit rester un
+finding, pas disparaître dans un seuil. »
+
+Mesuré : `startTimeoutMs` n'apparaît dans **aucun** message émis par le runner
+(grep des `log(`, `warn(`, `return \``). Le seul nom de clé qu'on donne à
+quelqu'un dont le flow est rouge est donc celui qu'il ne faut pas bouger — et le
+relever *marche*, via `Math.max(20000, coldStartMs * 5)`, en rendant muet le gate
+de performance. C'est exactement le piège que le commentaire de `startTimeoutMs`
+décrit sur seize lignes, et pour lequel la fonction a reçu un levier à elle.
+
+Même famille que le 98 : ni la doc ni le code ne sont faux séparément, c'est leur
+**écart** qui l'est — et aucun test ne peut le voir, puisqu'il n'y a aucun
+comportement à casser.
+
+### 157. ⚠️ L'ancre d'état qui ne remonte pas à Android — absente du skill
+
+Le run a buté sur `Assertion is false: id: categories_filled_root is visible`,
+avec un dump de hiérarchie montrant `categories_empty_root` **contenant**
+`categories_item` : un nœud « vide » plein de contenu.
+
+Faire varier `identifier` sur un `Semantics` **réutilisé** ne se propage pas à la
+couche d'accessibilité Android — le nœud garde l'identifiant de sa première
+construction. L'agent a d'abord soupçonné l'instrumentation, puis **réfuté cette
+hypothèse par une sonde à l'étage 1** : Flutter rendait bien les deux ancres.
+Remède posé : `key: ValueKey<bool>(…)`, qui force un nœud neuf.
+
+Zéro occurrence dans le skill (`ValueKey`, `nœud neuf`, `ne se propage`). C'est un
+défaut **fonctionnel**, pas un trou de prescription : le flow échoue, et le
+message accuse l'ancre.
+
+### 158. La couverture ne croise jamais l'étage 1 et l'étage 2
+
+`coverage.notConfigured` a rendu `[]` — vrai, et flatteur. Les trois relevés
+(`screensDeclared`, `screensConfigured`, `notConfigured`) dérivent **tous** de
+`config.screens` : un état absent de cette liste est invisible aux trois.
+
+Le run en avait quatre, montés à l'étage 1 seul et volontairement hors `screens[]`
+(`runner-break`, `runner-error`, `confirm-sheet`, `category-sheet`) — un arbitrage
+défendable, l'agent l'écrit dans `harness.dart`. Mais **le rapport, lui, ne le dit
+pas** : il affiche « 10 déclarés · 10 avec ancre », quand `visualScreens` n'en
+couvre que 4.
+
+Le compteur ne ment pas : il répond à une question plus étroite que celle qu'on
+lui pose. Même famille que le nombre qui décrit le contenu sans le dériver de la
+donnée.
+
+### 159. Aucun nom de paramètre prescrit pour propager une ancre à un composant partagé
+
+Le SKILL.md écrit `composant partagé, 14 call-sites → <param d'ancre>` : un
+**placeholder**, jamais un nom. Le mécanisme est prescrit — « le composant place
+lui-même l'ancre sur son enfant, et le call-site n'écrit qu'une chaîne » — le
+vocabulaire non.
+
+Conséquence mesurée : ce run a employé `semanticIdentifier:` (19 sites) et
+`anchorPrefix:` (2 composants). Le comparateur d'étalons, lui, cherche
+`semanticId:` / `semanticIdPrefix:` — un nom que **personne n'a jamais employé** :
+son relevé `anchors.byParam` vaut **0 sur les douze runs mesurés** (4 à 16). Il
+n'a jamais rien mesuré, et la cause est ici.
+
+⚠️ Le remède n'est pas évident et ne doit pas être expédié : le nom d'un paramètre
+d'API appartient au projet hôte, et l'imposer serait intrusif. Mais sans
+convention, rien de stable n'est mesurable — ni par un garde du scaffold, ni d'un
+run au suivant.
+
+### 160. Le provider que l'écran résout LUI-MÊME, dont le symptôme est une fausse ancre manquante
+
+`_TypeError: type 'Null' is not a subtype of type 'AppVersionCubit' in type cast`
+au montage d'un écran : celui-ci résolvait son cubit dans `get_it`, si bien que le
+provider posé par le test **au-dessus** était ignoré.
+
+⚠️ **Le symptôme observé était « une ancre manquante »** — un diagnostic qui
+accuse l'instrumentation pour un défaut de montage. Et c'est ce correctif qui a
+fait passer `settings_version` de « absente partout » à « sous le pli » : sans
+lui, on déplaçait une déclaration sur la foi d'une mesure prise sous un montage
+cassé.
+
+Le skill explique comment monter un écran qui a besoin d'un `BlocProvider`
+(`harness.dart`), jamais ce cas-ci — où le provider du test est **masqué** par
+celui que l'écran se donne. Le tell est que l'exception tombe au montage et non à
+l'assertion.
+
 ## Ce qui reste
 
-**Rien.** Les points 149 à 155 sont clos le 24/08/2026.
+**Les points 156 à 160**, inscrits le 24/08/2026 au dépouillement du run 16.
+Aucun n'est encore traité.
 
-⚠️ **Le compteur de sortie : SEPT constats sur sept exigeaient de modifier le
-skill.** Pas de progrès sur ce chiffre — mais deux d'entre eux sont d'une gravité
-que les runs précédents n'avaient pas atteinte : une **promesse fausse** que
-j'avais écrite la veille (149), et une **mesure perdue en silence** (150), c'est-
-à-dire précisément les deux choses que ce chantier existe pour empêcher.
+⚠️ **Le compteur de sortie : CINQ constats, cinq exigent de modifier le skill.**
+Pas encore la sortie — mais le meilleur run depuis le 11 sur deux axes que le
+seul ratio ne montre pas : **aucune régression introduite par mes correctifs**
+(le run 11 en avait deux), et **aucune promesse fausse** (le run 15 en avait une,
+écrite la veille). Deux constats sont fonctionnels (156, 157), trois sont des
+trous de prescription (158, 159, 160).
 
-⚠️ **Ce run a été interrompu par une panne d'API** en pleine passe finale, puis
-**repris** — son travail était sur disque, seul le compte rendu manquait. La
-reprise a été cadrée par trois consignes (ne rien reconstruire de mémoire, dire
-ce que l'interruption laisse inachevé, arrêter l'émulateur) et l'agent les a
-tenues : il signale de lui-même que `perf.json` est antérieur de 29 min au
-rapport et marqué `stale`.
+⚠️ **Trois constats du compte rendu ont été DÉMENTIS en les reproduisant**, et
+c'est ce que le dépouillement rapporte de mieux :
+- les deux grandeurs de démarrage (`am start -W` contre l'attente d'ancre) sont
+  déjà distinguées **explicitement** dans le code, commentaire à l'appui ;
+- l'entrée périmée de `.argus-crop` disparaîtra bien seule : le fichier est
+  **reconstruit** (`Object.fromEntries(visualScreens.map(…))`), jamais fusionné ;
+- rendre public un widget privé pour le monter n'était pas un arbitrage sans
+  instruction : le skill le prescrit, et `_ConfirmSheet` → `ConfirmSheet` est son
+  exemple littéral.
+
+Le reste du compte rendu ne concerne pas le skill : les 55 entrées de dette
+décrivent l'application d'essai (25 débordements, 14 cibles sous 48 dp, 9
+contrastes sous AA, 2 surfaces tapables sans label), et `osv-scanner` absent est
+une affaire de machine — la dimension a été **sautée et dite**, jamais verte.
