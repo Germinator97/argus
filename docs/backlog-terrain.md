@@ -2524,33 +2524,97 @@ qu'un `grep -v` figurait **quelque part** dans la page, si bien que retirer le
 filtre d'une des deux commandes le laissait vert. C'est la **mutation** qui l'a
 dit. Le critère est désormais par commande.
 
+## Run 20 — huit correctifs exercés, et mon compteur de la veille sous-compte
+
+⚠️ **HUIT correctifs vérifiés**, le meilleur rendement du chantier, et plusieurs
+sont cités par l'agent dans son propre raisonnement sans qu'il sache qu'ils sont
+neufs :
+- **171** — « Contre-épreuve du compteur, **avant de lire ce qu'il compte**, sur le
+  `harness.dart` livré : `ArgusScreen(` → 0, `anchor:` → 0 » ;
+- **169** — l'aplat **aux dimensions exactes** (`sips` → 1080×1980), et Maestro rend
+  `threshold not met, current: 0.0%` : « donc la comparaison de pixels a bien eu
+  lieu, elle n'a pas été refusée sur un `Screenshot size mismatch` » ;
+- **168** — `sec.json` porte `stale: false` ;
+- **166** — contre-épreuve accentuée « brûler. » → **2**, avec la mention
+  « (debug ⇒ UTF-8) » ;
+- **165** — commande de release reprise de la doc du projet « plutôt qu'un
+  `--release` nu, **qui aurait produit un faux binaire non obfusqué** » ;
+- **156** — `startTimeoutMs` relevé à 45 000, « et **pas touché à `coldStartMs`** » ;
+- **164** — `notVisited: []`, et « « 8 sur 8 » ne veut pas dire « tout est couvert » » ;
+- **161** — vérifié dans les conditions les plus dures du chantier : **un appareil
+  physique ET deux émulateurs** branchés. `perf.json` et `a11y.json` portent tous
+  deux `emulator-5556`, le bon. Le téléphone n'a jamais été ciblé.
+
+### 172. ⚠️ Le compteur que j'ai prescrit hier SOUS-COMPTE — il ignore les familles interpolées
+
+Le point 171, corrigé la veille, prescrit :
+
+```bash
+grep -rn "identifier: *'" lib/ | grep -v "^\s*///" | wc -l
+```
+
+Mesuré sur le terrain du run 20 :
+
+| relevé | valeur |
+|---|---|
+| ce que rend la commande prescrite | **31** |
+| ancres réellement déclarées dans `harness.dart` | **82** |
+| gabarits interpolés (`'nav_${spec.id}'`, `'session_form_preset_${preset.id}'`) | **2** |
+
+Un gabarit interpolé produit une **famille** — autant d'ancres que d'éléments —
+et la commande n'en compte qu'une occurrence littérale. Le rapport
+d'instrumentation, lui, annonce « 53 commandes posées » : un chiffre que la
+commande prescrite **ne sait pas produire**.
+
+⚠️ **Mon correctif a déplacé le défaut au lieu de le fermer.** Le 171 fermait un
+compteur qui lisait le commentaire ; celui qui le remplace ne ment plus sur ce
+qu'il compte, mais il ne compte pas ce que le rapport demande — et rien ne le
+dit. C'est la cinquième façon dont un garde devient vacant, appliquée cette fois
+à une **prescription** : le phénomène a bougé, la mesure est restée.
+
+### 173. Une image Google Play refuse la locale, et le skill n'en parle pas
+
+```
+adbd cannot run as root in production builds
+Failed to set property 'persist.sys.locale' to 'fr-FR'.
+```
+
+L'AVD `Medium_Phone_API_36.1` tourne une image **production** (Google Play) : la
+locale système y est immuable, même en tentant `adb root`. `locale.deviceLocale:
+fr_FR` reste donc déclaratif, et les chaînes Material restent anglaises.
+
+Le point 154 disait déjà que `deviceLocale` n'a d'effet **qu'avec `autoStart`**.
+C'est une **seconde** raison, indépendante de la première : ici même `autoStart`
+n'y changerait rien, parce que l'image refuse. Rien dans le skill ne distingue
+une image *Google APIs* (rootable, locale modifiable) d'une image *Google Play*
+(verrouillée) — alors que c'est la première chose à regarder quand la locale ne
+prend pas.
+
 ## Ce qui reste
 
-**Rien.** Les points 168 à 171 sont clos le 24/08/2026 — le backlog se vide pour
-la **dix-neuvième** fois.
+**Les points 172 et 173**, inscrits le 24/08/2026 au dépouillement du run 20.
+Aucun n'est encore traité.
 
-⚠️ **CINQ correctifs vérifiés sur le terrain** (156, 157, 162, 164, 167), et un
-sixième (165) qui a envoyé l'agent lire la doc de release du projet, d'où le 168.
-C'est le meilleur rendement du chantier.
+⚠️ **HUIT correctifs vérifiés sur le terrain** (156, 161, 164, 165, 166, 168, 169,
+171) — de loin le meilleur rendement du chantier, et plusieurs sont cités par
+l'agent dans son propre raisonnement. Le **161** l'a été dans les conditions les
+plus dures jamais réunies : un **appareil physique** et deux émulateurs branchés
+en même temps, et les scripts ont ciblé le bon appareil sans aide.
 
-⚠️ **Le compteur de sortie : QUATRE constats, quatre exigeaient une modification.**
-Stable (7 → 5 → 3 → 4 → 4). Leur famille, elle, est plus profonde que les voisins
-du run 18 : **trois des quatre sont des relevés qui mesurent autre chose que ce
-qu'ils annoncent**, et le quatrième est un montage qui déclare une locale que le
-framework ignore.
+⚠️ **Le compteur de sortie tombe à DEUX** (7 → 5 → 3 → 4 → 4 → **2**), le plus bas
+depuis le run 17. Et **trois constats ont été démentis** en les reproduisant : le
+piège du `const` sur `Semantics` est déjà prescrit (`SKILL.md`), l'avertissement
+sur la télémétrie d'un tap exploratoire est déjà dans `mask-dynamic.yaml`, et
+l'appareil physique n'a jamais été ciblé.
 
-⚠️ **Un run coupé par une panne d'API a été REPRIS**, deuxième fois après le 15.
-Les trois consignes tiennent, et l'agent a rendu **huit trous nommés** plutôt que
-de les combler — dont celui devenu le 168.
+⚠️ **Le 172 vise MON correctif de la veille**, et c'est le constat qui vaut le
+plus : le 171 fermait un compteur qui lisait le commentaire, son remplaçant ne
+ment plus sur ce qu'il compte — mais il **ne compte pas ce que le rapport
+demande** (31 contre 82, faute de voir les familles interpolées). *Le phénomène a
+bougé, la mesure est restée.* C'est la cinquième façon dont un garde devient
+vacant, appliquée à une prescription.
 
-⚠️ **Deux gardes écrits ce jour-là sont nés faux, tous deux trop littéraux sur du
-texte, tous deux dénoncés par la MUTATION et non par la relecture** : celui du 166
-comparait deux cellules par égalité, celui du 171 cherchait un filtre « quelque
-part » au lieu de l'exiger sur chaque commande. C'est le motif à retenir : *un
-garde qui lit de la prose doit porter sur toutes les occurrences, jamais sur la
-présence*.
-
-Le reste ne concerne pas le skill : 51 entrées de dette décrivent l'application
-d'essai (dont **41 px de débordement sur la coquille à taille de texte
-nominale**, que tout le monde voit), et `osv-scanner` absent reste une affaire de
-machine.
+Le reste ne concerne pas le skill : 55 entrées de dette décrivent l'application
+d'essai — dont un débordement à taille nominale que l'agent a prouvé
+**préexistant** en retirant les ancres (316 px avant, 316 px après) — et
+`osv-scanner` absent reste une affaire de machine.
