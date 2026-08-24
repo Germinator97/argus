@@ -674,10 +674,21 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
   assert.equal(compte(horsCommentaire, 'ArgusScreen('), 0,
     'idem pour les écrans — c\'est ainsi qu\'un run a rapporté dix-sept écrans pour zéro');
 
-  // Et le SKILL doit prescrire ce filtre, pas laisser chacun l'inventer.
+  // Et le SKILL doit prescrire ce filtre sur CHAQUE comptage, pas quelque part.
+  //
+  // ⚠️ Ce garde vérifiait d'abord la simple PRÉSENCE d'un `grep -v` dans la page :
+  // retirer le filtre d'une des deux commandes le laissait vert, puisque l'autre
+  // le portait encore. C'est la mutation qui l'a dit, pas la relecture — la
+  // deuxième fois qu'un garde trop littéral passe à côté de son sujet.
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
-  assert.match(skill, /grep -v '\^\\s\*\/\/\/'/,
-    'le SKILL ne prescrit plus de commande de comptage excluant les commentaires');
+  const comptages = skill.split('\n').filter((l) => /grep -c .*harness\.dart|harness\.dart.*grep -c/.test(l));
+  assert.ok(comptages.length >= 2,
+    `${comptages.length} commande(s) de comptage sur harness.dart dans le SKILL — si le bloc a été `
+    + 'réécrit, mets ce motif à jour ; sinon ce garde ne garde plus rien');
+  const sansFiltre = comptages.filter((l) => !l.includes('grep -v'));
+  assert.deepEqual(sansFiltre, [],
+    'ces comptages liront le dartdoc d\'exemple et rendront des ancres qui n\'existent pas : '
+    + JSON.stringify(sansFiltre));
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
