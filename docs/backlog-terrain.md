@@ -2202,7 +2202,7 @@ l'absence est écrite plutôt que tue.
 
 ## Run 17 — le défaut que seize runs ne pouvaient pas voir
 
-### 161. ⚠️ Trois scripts ignorent l'AVD déclaré et prennent le premier émulateur venu
+### 161. ✅ Corrigé le 24/08/2026 — ⚠️ Trois scripts ignoraient l'AVD déclaré
 
 `device-matrix.md` promet en titre : « **Désigner un device : `avd`, pas
 `udid`** », puis « `avd` est prioritaire sur `udid` », et consacre un paragraphe
@@ -2233,7 +2233,15 @@ seul émulateur. La consigne « un seul émulateur à la fois », que je tenais 
 de l'hygiène, **masquait le défaut**. C'est un émulateur tiers laissé allumé par
 hasard qui l'a révélé.
 
-### 162. Le scaffold ne prévoit pas « mon app n'a pas d'authentification »
+**Corrigé** : `defaultAndroidDevice(config)` lit `devices[].avd`, et un AVD
+déclaré mais non démarré est un **refus** qui nomme ce qu'il cherchait et ce
+qu'il a trouvé — jamais un repli silencieux. `avdNameFrom` a été **extraite**
+vers `config.mjs` plutôt que recopiée. ⚠️ Le garde décisif porte sur le
+**câblage** et non sur le comportement : `config` est un paramètre *optionnel*,
+donc l'omettre compile, ne casse aucun test et fait retomber la production sur le
+défaut. Il balaie tous les scripts et n'accepte **aucun** appel nu.
+
+### 162. ✅ Corrigé le 24/08/2026 — Le scaffold ne prévoyait pas « mon app n'a pas d'authentification »
 
 `argus.mobile.yaml` pose **cinq** `TODO(argus)` sous `auth.anchors` (écran,
 identifiant, mot de passe, validation, preuve de session). Une app sans
@@ -2251,7 +2259,10 @@ affiche aucun, laisse ce bloc commenté et note… ». Un fichier du scaffold pr
 le cas « ça ne s'applique pas à mon app », son voisin non — et c'est celui qui
 pose le plus de TODO.
 
-### 163. ⚠️ « Une seule vide → le sous-flow skippe » — vrai pour UNE ancre sur cinq
+**Corrigé** : la permission est écrite **à côté des TODO qu'elle concerne** —
+laisse les cinq vides, retire-les, écris pourquoi à leur place.
+
+### 163. ✅ Corrigé le 24/08/2026 — ⚠️ « Une seule vide → le sous-flow skippe » valait pour UNE ancre sur cinq
 
 Trouvé en vérifiant la promesse sur laquelle le 162 allait s'appuyer, au lieu de
 la croire.
@@ -2279,35 +2290,42 @@ quelles (`anchors.x ?? ''`) et `validateConfig` ne les regarde pas.
 famille que ce chantier existe pour fermer, trouvée cette fois dans un commentaire
 de scaffold plutôt que dans le SKILL.
 
+**Corrigé** : la décision passe dans le **code** (`authAnchorsReady`, `run.mjs`),
+le sous-flow ne fait plus que lire `ARGUS_AUTH_READY`. Reconstruire une expression
+à sept variables dans une condition Maestro est ce qui l'avait rendue fausse *et*
+intestable. Le garde parcourt les cinq ancres **une par une** : n'éprouver que
+celle qui marchait est exactement ainsi que les quatre autres avaient survécu.
+
 ## Ce qui reste
 
-**Les points 161 et 162**, inscrits le 24/08/2026 au dépouillement du run 17.
-Aucun n'est encore traité.
+**Rien.** Les points 161 à 163 sont clos le 24/08/2026 — le backlog se vide pour
+la **dix-septième** fois.
 
-⚠️ **Le compteur de sortie : DEUX constats, deux exigent de modifier le skill.**
-Toujours pas zéro, mais la trajectoire est nette — 7/7 au run 15, 5/5 au 16,
-**2/2 au 17**.
+⚠️ **Le compteur de sortie : TROIS constats, trois exigeaient de modifier le
+skill.** Le run en avait rendu deux ; le troisième est né **en vérifiant la
+promesse sur laquelle le deuxième allait s'appuyer**, au lieu de la croire. La
+trajectoire reste bonne — 7/7 au run 15, 5/5 au 16, 3/3 au 17 — mais ce n'est
+toujours pas zéro.
 
 ⚠️ **TROIS des cinq correctifs du run 16 sont visiblement exercés**, et le compte
-rendu les cite sans savoir qu'ils sont neufs :
-- le 157 — l'agent pose `key: ValueKey<String>` sur un layout à deux états et
-  écrit « c'est **prescrit d'office par le skill** » ;
-- le 159 — il nomme ses paramètres `semanticIdentifier` / `anchorPrefix` en les
-  attribuant au « **défaut du skill** », là où le run 16 avait dû inventer ;
-- le 158 — il rend `screensDeclared: 11 · screensConfigured: 11 · visualScreens: 5`
-  **et énumère les trois écarts assumés** au lieu de conclure « tout est couvert ».
+rendu les cite sans savoir qu'ils sont neufs : `key: ValueKey<String>` posée
+« **prescrite d'office par le skill** » (157), les paramètres nommés d'après le
+« **défaut du skill** » (159), et une couverture qui énumère ses trois écarts
+assumés au lieu de conclure « tout est couvert » (158).
 
-Le 156 n'a pas été exercé : le pire relevé de démarrage (13 929 ms) restait sous
-le plafond dérivé, donc le message n'avait aucune raison de sortir.
-
-⚠️ **Ce que le run 17 apprend sur la MÉTHODE, et qui vaut plus que ses deux
+⚠️ **Ce que ce run apprend sur la MÉTHODE, et qui vaut plus que ses trois
 points** : le 161 était invisible aux seize runs précédents parce qu'ils avaient
-tous un seul émulateur. La consigne « un seul émulateur à la fois » est une bonne
-hygiène **et** un angle mort — elle a caché pendant seize runs un défaut qui
-rendrait des mesures fausses en silence. Un émulateur tiers laissé allumé par
-hasard l'a révélé.
+tous **un seul émulateur**. La règle « un seul émulateur à la fois » est une
+bonne hygiène **et** un angle mort — elle a caché pendant seize runs un défaut
+qui rendrait des mesures fausses en silence.
+
+⚠️ **Le harnais de mutation s'est dénoncé lui-même**, et c'est ce pour quoi il
+existe : le correctif 161 ayant déplacé `avdNameFrom` vers un autre fichier, sa
+mutation ne trouvait plus son motif. Il a rapporté « **HARNAIS — motif trouvé 0×
+(attendu 1)** » au lieu de rendre un vert qui n'aurait rien mesuré. Reciblée,
+46/46.
 
 Le reste du compte rendu ne concerne pas le skill : les 51 entrées de dette
-décrivent l'application d'essai, un défaut applicatif y a été trouvé et mesuré
-par sonde (un stepper qui descend à une valeur que le bloc refuse ensuite), et
+décrivent l'application d'essai, un défaut applicatif y a été trouvé **et mesuré
+par sonde** (un stepper qui descend à une valeur que le bloc refuse ensuite), et
 `osv-scanner` absent reste une affaire de machine — dimension **sautée et dite**.
