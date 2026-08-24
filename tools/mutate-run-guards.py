@@ -30,6 +30,12 @@ CIBLES = {
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
     "sec": SCAFFOLD / "sec.mjs",
+    # Le SKILL lui-même est une cible : deux de ses gardes ne comparent pas un
+    # code à un attendu mais deux TEXTES entre eux — le levier que la doc
+    # prescrit contre celui que le runner conseille, le nom prescrit contre
+    # celui que le gabarit montre. Un écart entre deux textes n'a aucun
+    # comportement à casser : sans mutation, rien ne prouve qu'ils gardent.
+    "skill": ROOT / "plugins/argus-mobile/skills/argus-mobile/SKILL.md",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
@@ -171,6 +177,16 @@ MUTATIONS = [
      "                label: Nouvelle référence visuelle, recadrée",
      "                path: ${ARGUS_SCREEN_ID}\n"
      "                label: Nouvelle référence visuelle, recadrée"),
+    # ── Seizième run ────────────────────────────────────────────────────────
+    ("run", "l'indice renomme le levier que la doc interdit de toucher",
+     "    + ` l'ancre qui est fausse. Relève thresholds.startTimeoutMs (plafond effectif`",
+     "    + ` l'ancre qui est fausse. Vérifie d'abord thresholds.coldStartMs (plafond effectif`"),
+    ("report", "la couverture reperd son compte visuel",
+     "    + ` \u00b7 compar\u00e9s visuellement : ${esc(visuels)}`\n",
+     ""),
+    ("skill", "le param\u00e8tre d'ancre redevient un placeholder",
+     "composant partag\u00e9, 14 call-sites \u2192 semanticIdentifier",
+     "composant partag\u00e9, 14 call-sites \u2192 <param d'ancre>"),
 ]
 
 
