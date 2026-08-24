@@ -2545,7 +2545,7 @@ neufs :
   physique ET deux émulateurs** branchés. `perf.json` et `a11y.json` portent tous
   deux `emulator-5556`, le bon. Le téléphone n'a jamais été ciblé.
 
-### 172. ⚠️ Le compteur que j'ai prescrit hier SOUS-COMPTE — il ignore les familles interpolées
+### 172. ✅ Corrigé le 24/08/2026 — ⚠️ Le compteur prescrit la veille SOUS-COMPTAIT les familles
 
 Le point 171, corrigé la veille, prescrit :
 
@@ -2572,7 +2572,23 @@ qu'il compte, mais il ne compte pas ce que le rapport demande — et rien ne le
 dit. C'est la cinquième façon dont un garde devient vacant, appliquée cette fois
 à une **prescription** : le phénomène a bougé, la mesure est restée.
 
-### 173. Une image Google Play refuse la locale, et le skill n'en parle pas
+**Corrigé** : le SKILL dit que le compte de `lib/` est un **plancher**, donne la
+commande qui voit les gabarits, et renvoie à `harness.dart` — où les familles
+sont développées — pour les chiffres que le rapport annonce. Le garde **exécute**
+la commande sur un fichier qui porte un gabarit, au lieu de la relire.
+
+⚠️ **Et j'ai écrit dans le SKILL, en le corrigeant, une affirmation FAUSSE** : que
+la forme en doubles quotes « rend 0 sans rien dire », avec un « mesuré : 0 contre
+2 » à l'appui. Ce zéro venait de **mon** shell, pas de la commande : exécutée
+telle qu'écrite via `bash -c`, la forme échappée rend `1` comme l'autre. C'est le
+**harnais** qui l'a dit — la mutation bâtie sur cette prémisse ne mutait rien, et
+il a rendu « VACANT ». Retirée le jour même, avec son commit.
+
+⚠️ La forme exacte du point **149**, onze runs plus tard : *une promesse technique
+écrite dans un document en corrigeant autre chose, que rien ne mesurait*. Le
+chiffre du constat, lui, tient — il venait du terrain, pas d'une explication.
+
+### 173. ✅ Corrigé le 24/08/2026 — Une image Google Play refuse la locale, et le skill n'en parlait pas
 
 ```
 adbd cannot run as root in production builds
@@ -2590,31 +2606,42 @@ une image *Google APIs* (rootable, locale modifiable) d'une image *Google Play*
 (verrouillée) — alors que c'est la première chose à regarder quand la locale ne
 prend pas.
 
+**Corrigé** : `device-matrix.md` porte un tableau des deux familles d'images —
+*Google APIs* (rootable, locale modifiable) contre *Google Play* (verrouillée) —
+avec les deux messages exacts, et dit de regarder l'image **avant** de chercher
+plus loin.
+
 ## Ce qui reste
 
-**Les points 172 et 173**, inscrits le 24/08/2026 au dépouillement du run 20.
-Aucun n'est encore traité.
+**Rien.** Les points 172 et 173 sont clos le 24/08/2026 — le backlog se vide pour
+la **vingtième** fois.
 
-⚠️ **HUIT correctifs vérifiés sur le terrain** (156, 161, 164, 165, 166, 168, 169,
-171) — de loin le meilleur rendement du chantier, et plusieurs sont cités par
-l'agent dans son propre raisonnement. Le **161** l'a été dans les conditions les
-plus dures jamais réunies : un **appareil physique** et deux émulateurs branchés
-en même temps, et les scripts ont ciblé le bon appareil sans aide.
+⚠️ **HUIT correctifs vérifiés sur le terrain**, le meilleur rendement du chantier,
+dont le **161** dans les conditions les plus dures jamais réunies : un appareil
+**physique** et deux émulateurs branchés ensemble, et les scripts ont ciblé le
+bon sans aide.
 
-⚠️ **Le compteur de sortie tombe à DEUX** (7 → 5 → 3 → 4 → 4 → **2**), le plus bas
-depuis le run 17. Et **trois constats ont été démentis** en les reproduisant : le
-piège du `const` sur `Semantics` est déjà prescrit (`SKILL.md`), l'avertissement
-sur la télémétrie d'un tap exploratoire est déjà dans `mask-dynamic.yaml`, et
-l'appareil physique n'a jamais été ciblé.
+⚠️ **Le compteur de sortie tombe à DEUX** (7 → 5 → 3 → 4 → 4 → **2**), et trois
+constats ont été démentis par la reproduction.
 
-⚠️ **Le 172 vise MON correctif de la veille**, et c'est le constat qui vaut le
-plus : le 171 fermait un compteur qui lisait le commentaire, son remplaçant ne
-ment plus sur ce qu'il compte — mais il **ne compte pas ce que le rapport
-demande** (31 contre 82, faute de voir les familles interpolées). *Le phénomène a
-bougé, la mesure est restée.* C'est la cinquième façon dont un garde devient
-vacant, appliquée à une prescription.
+⚠️ **CE QUE CETTE PASSE APPREND, et qui vaut plus que ses deux points** : en
+corrigeant le 172, j'ai écrit dans le SKILL une **affirmation technique fausse**
+— que la forme en doubles quotes « rend 0 sans rien dire ». Ce zéro venait de
+**mon shell**, pas de la commande. C'est **le harnais de mutation** qui l'a
+dénoncé : la mutation bâtie sur cette prémisse ne mutait rien, et il a rendu
+« VACANT ».
+
+C'est la forme exacte du point 149, onze runs plus tard — *une promesse technique
+écrite en corrigeant autre chose, que rien ne mesurait*. Deux différences, et
+elles comptent : elle a été **trouvée le jour même**, et le constat qu'elle
+accompagnait tient toujours, parce que **son chiffre venait du terrain et non
+d'une explication**.
+
+📌 La règle qui en sort : *tester une commande à la main, dans un autre shell que
+celui qui l'exécutera, n'est pas une mesure.* Le garde l'exécute désormais dans
+les conditions réelles.
 
 Le reste ne concerne pas le skill : 55 entrées de dette décrivent l'application
-d'essai — dont un débordement à taille nominale que l'agent a prouvé
-**préexistant** en retirant les ancres (316 px avant, 316 px après) — et
-`osv-scanner` absent reste une affaire de machine.
+d'essai — dont un débordement à taille nominale prouvé **préexistant** par retrait
+des ancres (316 px avant, 316 px après) — et `osv-scanner` reste une affaire de
+machine.
