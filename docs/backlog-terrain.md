@@ -2404,35 +2404,124 @@ un appareil qui n'a pas changé.
 de la marque, et le correctif y ajoutait un champ. **Étendu, pas supprimé** —
 supprimer est le réflexe qui vide un garde le jour où son sujet bouge.
 
+## Run 19 — cinq correctifs tiennent, et quatre relevés mesurent autre chose
+
+⚠️ **Ce run a été COUPÉ par une panne d'API (529) en pleine séquence device**, puis
+**repris** — son travail était sur disque, seul le compte rendu manquait. Les trois
+consignes de reprise (ne rien reconstruire de mémoire, nommer ce qui reste
+inachevé, arrêter son émulateur seul) ont toutes été tenues. Deuxième fois que
+cette procédure sauve un run, après le 15.
+
+⚠️ **CINQ correctifs vérifiés sur le terrain**, mesurés et non déduits :
+- **156** — `coldStartMs: 2000` **intact** pendant que `startTimeoutMs` monte à
+  45 000, et le projet écrit « la lenteur doit rester un finding, pas disparaître
+  dans un seuil ». Le message corrigé a envoyé l'agent au bon levier ;
+- **157** — `key: ValueKey<bool>(categories.isEmpty)` posé **d'office** ;
+- **162** — les cinq TODO d'auth retirés, le pourquoi écrit à leur place ;
+- **164** — `visited[]` / `notVisited[]` dérivés : **7 écrans sur 7 réellement
+  visités**, `notVisited: []` ;
+- **167** — `.argus-device` porte `"locale": "fr-FR"`.
+
+Le **165** a envoyé l'agent lire la doc de release du projet — c'est là qu'il a
+découvert qu'il ne pouvait pas la reconstruire (elle exige un secret), et il l'a
+**dit** au lieu de scanner sans le signaler. C'est le 168 ci-dessous.
+
+### 168. ⚠️ La dimension sécurité conclut sur un binaire dont RIEN ne dit l'âge
+
+`sec.json` porte `platform`, `root`, `levels`, `boundary`, `findings` — **aucun
+champ ne nomme le binaire scanné, ni sa date**.
+
+Mesuré sur ce run : l'APK release scanné datait de **14:44**, l'instrumentation de
+**15:34**, l'APK debug de **15:59**. Les verdicts « obfusqué », « pas un debug »,
+« 0 secret » décrivaient donc un binaire **construit cinquante minutes avant les
+ancres**, et qui ne les contient pas.
+
+⚠️ **Et le rapport affirme `staleParts: []`.** Le mécanisme de péremption compare
+les dates des relevés **entre eux** ; il ne peut pas voir qu'un relevé frais
+décrit un sujet périmé. *La fraîcheur mesurée n'est pas celle qui compte.*
+
+L'agent l'a signalé de lui-même dans ses inachevés — c'est le 165 qui l'y a
+envoyé — mais rien dans l'outil ne l'aurait dit à quelqu'un qui ne regarde que le
+rapport.
+
+### 169. La contre-épreuve visuelle peut échouer sur les DIMENSIONS, sans jamais exercer le seuil
+
+`SKILL.md` prescrit de « **remplacer une référence par un aplat** et vérifier que
+celle-là seule rougit ». Il ne dit pas **aux dimensions exactes de la référence**.
+
+Ce run a produit un aplat 8×8. L'échec est sorti en
+`Screenshot size mismatch: expected 8x8, actual 1080x1980` — un refus de Maestro
+**avant toute comparaison de pixels**. La discrimination est bien prouvée (seule
+la référence corrompue rougit, la restauration ramène au vert), mais le chemin de
+`visualMatchPercentage: 99` n'a **jamais été emprunté**.
+
+⚠️ Une contre-épreuve qui rougit pour la mauvaise raison a toutes les apparences
+d'une preuve. Celle-ci prouve que la boucle lit la référence, pas qu'elle sait
+comparer.
+
+### 170. `pumpArgus` déclare une locale que `MaterialApp` n'applique pas
+
+Le montage passe `locale: argusLocale` et `localizationsDelegates:` — mais
+**jamais `supportedLocales`** : zéro occurrence dans tout le scaffold.
+
+Or `MaterialApp` résout sa locale effective en croisant `locale` avec
+`supportedLocales`, dont le défaut est `[Locale('en','US')]`. Une locale non
+supportée est **ignorée** : les `MaterialLocalizations` restent en anglais.
+
+Le harnais prétend donc monter l'écran en français et le monte en anglais. Sans
+effet sur un projet dont les libellés sont en dur ou passés par son propre bloc de
+traduction — c'est le cas ici, et l'agent l'a vérifié — mais tout ce qui vient de
+Material (dates, boutons de dialogue, tooltips, `semanticsLabel` implicites) est
+mesuré dans la mauvaise langue, donc à la mauvaise largeur.
+
+⚠️ L'agent a nommé cet écart et **ne l'a pas patché** : « il appartient au cadre,
+pas au projet ». Il avait raison sur les deux points.
+
+### 171. Aucune commande de comptage n'est prescrite, et deux compteurs sont tombés dans le même piège
+
+Le rapport d'instrumentation du §2 est le **premier livrable** du skill et repose
+entièrement sur des comptes — racines, commandes, affichages, composants
+partagés. Le skill ne donne **aucune commande** pour les obtenir : zéro
+`grep`/`git grep` prescrit dans toute la documentation.
+
+Conséquence mesurée deux fois, à seize runs d'écart :
+- ce run a d'abord compté **17 écrans** et deux ancres inexistantes
+  (`home_last_row`, `home_footer_total`) — son motif lisait le **dartdoc
+  d'exemple** de `harness.dart`, qui contient `anchor: 'home_root'` et consorts ;
+- mon propre comparateur d'étalons avait exactement ce défaut au run 3 (13
+  `ArgusScreen(` pour 12 réels), corrigé pour lui seul et jamais remonté au skill.
+
+Le fichier livré rend d'ailleurs `grep -c "anchor:"` = **1**, et cette unique
+occurrence est en commentaire.
+
+⚠️ Même famille que le 168 : *un relevé qui compte autre chose que ce qu'il
+annonce*. Et il est en tête du rapport, donc il donne le ton de tout le reste.
+
 ## Ce qui reste
 
-**Rien.** Les points 164 à 167 sont clos le 24/08/2026 — le backlog se vide pour
-la **dix-huitième** fois.
+**Les points 168 à 171**, inscrits le 24/08/2026 au dépouillement du run 19.
+Aucun n'est encore traité.
 
-⚠️ **LE 161 EST VÉRIFIÉ**, et c'est le résultat qui compte : deux émulateurs,
-l'indice technique **retiré du prompt**, et les deux scripts autrefois fautifs
-ciblent le bon appareil sans aide.
+⚠️ **CINQ correctifs vérifiés** (156, 157, 162, 164, 167), et un sixième — le 165 —
+qui a fait lire à l'agent la doc de release du projet, d'où le 168. C'est le
+meilleur rendement de correctifs du chantier.
 
-⚠️ **Le compteur de sortie : QUATRE constats, quatre exigeaient une modification.**
-Il remonte (7 → 5 → 3 → 4). Ce qui change n'est pas le chiffre mais leur nature :
-trois des quatre sont des **voisins** — une donnée présente et non dérivée, un
-conseil juste pour un mode de build et donné sous l'autre, deux dimensions
-d'identité gravées sur trois.
+⚠️ **Le compteur de sortie : QUATRE constats, quatre exigent une modification.**
+Stable par rapport au 18 (7 → 5 → 3 → 4 → 4). Mais leur **famille** est nouvelle et
+elle est plus profonde que les « voisins » du run précédent : **trois des quatre
+sont des relevés qui mesurent autre chose que ce qu'ils annoncent** — une
+dimension de sécurité qui décrit un binaire dont rien ne dit l'âge, une
+contre-épreuve qui rougit avant toute comparaison, un compteur qui lit un exemple
+en commentaire. Le quatrième (170) est du même bois : un montage qui déclare une
+locale que le framework ignore.
 
-⚠️ **Un défaut de MON outillage a enfin été compris**, après quatre rouges
-intermittents sur un dépôt sain : le banc vérifie que les suites se déclarent non
-branchées en cherchant un motif dans la sortie de `flutter test`. Le reporter
-compact écrit **tout sur une ligne**, réécrite avec `\r` et **tronquée à la
-largeur du terminal** — le motif survivait ou non selon la longueur du chemin
-affiché. Et l'étape n'imprime **aucun exit**, donc chaque `tail -2` que j'ai lu
-passait dessus. Corrigé par `--reporter expanded` : dix lancements verts,
-contre-épreuve rouge sur mutation.
+⚠️ **Un run coupé par une panne d'API a été REPRIS**, pour la deuxième fois du
+chantier après le run 15. Les trois consignes de reprise tiennent : ne rien
+reconstruire de mémoire, nommer ce qui reste inachevé, arrêter son émulateur seul.
+L'agent les a toutes tenues et a rendu **huit trous nommés** dans une section
+dédiée — dont celui qui est devenu le 168.
 
-⚠️ **Un garde neuf est né faux, et seule la MUTATION l'a dit** : celui du 166
-comparait deux cellules par égalité au lieu de comparer les encodages qu'elles
-nomment. Le harnais a rendu « VACANT — aucun garde n'a bougé », ce qui est le
-verdict qu'il existe pour rendre.
-
-Le reste ne concerne pas le skill : 47 entrées de dette décrivent l'application
-d'essai, un défaut applicatif y est mesuré par sonde, et `osv-scanner` absent
-reste une affaire de machine.
+Le reste ne concerne pas le skill : 51 entrées de dette décrivent l'application
+d'essai (dont **un débordement de 41 px sur la coquille à taille de texte
+nominale**, que tout le monde voit), et `osv-scanner` absent reste une affaire de
+machine — dimension **sautée et dite**, jamais verte.
