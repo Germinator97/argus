@@ -945,13 +945,27 @@ un motif dont l'absence serait impossible : un run a pris l'identifiant
 d'application (`com.exemple.app`), qui rend **0** dans le kernel — il vit dans le
 manifeste, pas dans le code Dart. Prends un littéral que l'app affiche.
 
-⚠️ **Deux contre-épreuves, une ACCENTUÉE et une ASCII.** Dart stocke une chaîne
-en Latin-1 quand tous ses points de code tiennent sur un octet, en UTF-16 sinon :
-une seule lettre accentuée fait basculer toute la phrase, et un `grep` UTF-8 rend
-alors `0` sur un texte pourtant présent. Sur une app francophone, le littéral que
-tu choisis a toutes les chances d'être accentué — donc mesure les deux, sinon un
-zéro te fera conclure « le binaire est périmé » alors que c'est l'instrument qui
-ne sait pas lire.
+⚠️ **Deux contre-épreuves, une ACCENTUÉE et une ASCII** — et l'encodage à
+chercher **dépend du mode de build**, ce qui n'allait pas de soi :
+
+| binaire | où | encodage d'un littéral accentué |
+|---|---|---|
+| debug | `assets/flutter_assets/kernel_blob.bin` | **UTF-8** |
+| release (AOT) | `lib/arm64-v8a/libapp.so` | **Latin-1**, ou **UTF-16** dès qu'un point de code dépasse un octet |
+
+En AOT, une seule lettre accentuée fait basculer toute la phrase en UTF-16, et un
+`grep` UTF-8 rend alors `0` sur un texte pourtant présent. **En debug, non** :
+le kernel stocke en UTF-8. Mesuré sur un projet réel — « Première session »
+comptée dans `kernel_blob.bin` : **2 en UTF-8, 0 en latin-1, 0 en utf-16-le**,
+avec une contre-épreuve ASCII à 2 pour prouver que l'instrument voyait quelque
+chose.
+
+⚠️ **Appliquer le conseil AOT sous la commande debug ci-dessus produit donc
+exactement le zéro trompeur qu'il sert à éviter** — on cherche en latin-1, on
+obtient `0`, et on conclut « le binaire est périmé ». Sur une app francophone, le
+littéral que tu choisis a toutes les chances d'être accentué : mesure dans
+l'encodage **du mode que tu as construit**, et fais toujours porter au relevé une
+contre-épreuve dont l'absence serait impossible.
 
 ⚠️ **`argus-run` peut refuser de démarrer, et c'est prévu.** L'installation n'est
 pas une formalité : sur un émulateur dont `/data` est plein, `adb install` rend

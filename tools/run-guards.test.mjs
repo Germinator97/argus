@@ -516,6 +516,42 @@ test('le rapport NOMME les écrans déclarés que rien n\'a atteints', () => {
   assert.ok(!/réellement visités/.test(ancien));
 });
 
+// ── L'encodage prescrit correspond-il au binaire de la commande donnée ? ────
+//
+// Le SKILL montrait comment compter un marqueur dans `kernel_blob.bin` (donc un
+// build DEBUG), puis avertissait deux paragraphes plus bas que Dart stocke en
+// Latin-1 ou UTF-16 — ce qui vaut pour l'AOT. Appliqué sous la commande qui le
+// précède, ce conseil produit EXACTEMENT le zéro trompeur qu'il sert à éviter :
+// on cherche en latin-1, on obtient 0, on conclut « le binaire est périmé ».
+// Mesuré sur un binaire réel : « Première session » dans kernel_blob.bin rend
+// 2 en UTF-8, 0 en latin-1, 0 en utf-16-le. Dix-huitième run.
+//
+// Ce garde n'est pas circulaire : il lie DEUX endroits qui doivent s'accorder —
+// le binaire qu'ouvre la commande d'exemple, et la ligne du tableau qui décrit
+// son encodage.
+test('le binaire de la commande d\'exemple a sa ligne dans le tableau des encodages', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const cmd = skill.match(/unzip -p [^\n]*?([A-Za-z0-9_.]+\.bin)/);
+  assert.ok(cmd, 'la commande d\'exemple qui compte un marqueur a disparu du SKILL — '
+    + 'si elle a été réécrite, mets ce motif à jour ; sinon ce garde ne garde plus rien');
+
+  const lignes = skill.split('\n').filter((l) => /^\| (debug|release)/.test(l));
+  assert.equal(lignes.length, 2,
+    `${lignes.length} ligne(s) de tableau au lieu de 2 — le tableau des encodages a changé de forme`);
+
+  const ligneDuBinaire = lignes.find((l) => l.includes(cmd[1]));
+  assert.ok(ligneDuBinaire,
+    `${cmd[1]} est le binaire que la commande ouvre, et aucune ligne du tableau ne le décrit : `
+    + 'le lecteur appliquera l\'encodage de l\'autre mode');
+
+  // Et les deux modes ne doivent pas annoncer le MÊME encodage : c'est tout
+  // l'intérêt du tableau, et l'écrire une fois pour les deux le viderait.
+  const [a, b] = lignes;
+  assert.notEqual(a.split('|')[3]?.trim(), b.split('|')[3]?.trim(),
+    'debug et release annoncent le même encodage : le tableau ne distingue plus rien');
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans

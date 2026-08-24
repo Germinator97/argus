@@ -69,6 +69,19 @@ build:
   # plutôt que d'éditer la ligne du dessus entre deux runs :
   # androidScan: build/app/outputs/flutter-apk/app-release.apk
   # (ponctuellement : `node scripts/argus/sec.mjs --binary=<chemin>`)
+  #
+  # ⚠️ CONSTRUIS-LE AVEC LA COMMANDE DE RELEASE DU PROJET, pas un `--release` nu.
+  # Le scan conclut sur le binaire qu'on lui donne : construit sans les flags que
+  # ton projet emploie pour publier (typiquement `--obfuscate
+  # --split-debug-info`, souvent avec un `--dart-define-from-file`), il rend un
+  # finding « Binaire AOT non obfusqué » qui décrit TA COMMANDE et non ton
+  # application. Vécu : 76 chemins `package:…` lisibles avec un `--release` nu,
+  # **0** après reconstruction avec les flags documentés du projet — même code,
+  # seuls les flags changeaient. Ce finding-là serait parti en rapport comme un
+  # défaut de l'app.
+  #
+  # Cherche la commande dans le dépôt (script de release, CI, doc de
+  # déploiement) avant d'en inventer une, et note ici celle que tu as employée.
   ios: build/ios/iphonesimulator/Runner.app
   # Commandes de build. DEUX consommateurs, et ils n'en font pas la même chose :
   #   • les scripts de mesure les AFFICHENT quand le binaire manque — aucun
