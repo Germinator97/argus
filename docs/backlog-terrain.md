@@ -2296,36 +2296,114 @@ le sous-flow ne fait plus que lire `ARGUS_AUTH_READY`. Reconstruire une expressi
 intestable. Le garde parcourt les cinq ancres **une par une** : n'éprouver que
 celle qui marchait est exactement ainsi que les quatre autres avaient survécu.
 
+## Run 18 — le correctif de la veille tient, et quatre trous voisins
+
+⚠️ **Ce run vérifie d'abord le 161, et il le vérifie pour de bon.** Deux
+émulateurs branchés, l'indice technique **retiré du prompt** (au run 17 je lui
+avais soufflé « cible par nom d'AVD ») : `perf.json` et `a11y.json` portent tous
+deux `emulator-5556`, le bon, alors que `emulator-5554` était pris par un autre
+projet et aurait été « le premier ». Aucun `--device` forcé nulle part. Le défaut
+d'hier aurait frappé aujourd'hui ; il ne l'a pas fait.
+
+### 164. La couverture dit ce qui est DÉCLARÉ, jamais ce qui a été VISITÉ
+
+`coverage` rend `screensDeclared: 12 · screensConfigured: 12 · notConfigured: []`
+— exact. Le run a mesuré à la main, depuis les `commands.json`, que **8 écrans
+sur 12 sont réellement atteints** : `history-filled`, `categories-filled`,
+`confirm-sheet` et `category-sheet` ont leurs branches `goto.yaml` écrites, et
+rien ne les appelle.
+
+Le point 158 avait ajouté le compte **visuel** et la phrase « N sur N ne veut pas
+dire tout est couvert ». Le run 18 est allé plus loin que mon correctif : la
+donnée est là — **46 `commands.json`**, que le runner produit et relit déjà pour
+`startupSamples` — et rien ne la dérive.
+
+### 165. Le binaire de release est SCANNÉ, jamais construit — et le finding décrit alors ta commande
+
+`argus.mobile.yaml` demande de renseigner `build.androidScan` (« le binaire de
+release, une fois pour toutes ») et exige `requireObfuscation: true`. Il ne dit
+**nulle part** comment le construire.
+
+Le run 18 a construit une release avec `flutter build apk --release` : le scan a
+rendu **major — « Binaire AOT non obfusqué », 76 chemins `package:…` lisibles**.
+Reconstruit avec les flags que le projet documente (`--obfuscate
+--split-debug-info`) : **76 → 0, dimension verte**. Même code, seuls les flags
+changeaient.
+
+⚠️ Le finding décrivait **la commande de build de celui qui mesure**, pas l'app —
+et il aurait été publié comme un défaut de l'application. L'agent l'a rattrapé en
+lisant la doc de release du projet ; rien dans le skill ne l'y envoyait.
+
+### 166. ⚠️ Le conseil sur l'encodage vaut pour l'AOT, sous une commande DEBUG
+
+`SKILL.md` montre comment compter un marqueur dans `kernel_blob.bin` (donc un
+build **debug**), puis avertit, deux paragraphes plus bas : « Dart stocke une
+chaîne en Latin-1 quand tous ses points de code tiennent sur un octet, en UTF-16
+sinon […] un `grep` UTF-8 rend alors `0` sur un texte pourtant présent. »
+
+**Mesuré sur le binaire du run**, littéral accentué « Première session » dans
+`kernel_blob.bin` :
+
+| encodage | occurrences |
+|---|---|
+| UTF-8 | **2** |
+| latin-1 | 0 |
+| utf-16-le | 0 |
+
+Contre-épreuve ASCII (`home_empty_root`) : **2** — l'instrument mesure.
+
+En debug, le kernel stocke en **UTF-8**. Le conseil ne vaut que pour l'AOT
+(`libapp.so`). Quelqu'un qui l'applique sous la commande qui le précède cherche
+en latin-1, obtient `0`, et conclut « le binaire est périmé » — **précisément
+l'erreur que le paragraphe existe pour éviter**.
+
+### 167. `.argus-device` grave le modèle et l'OS, jamais la LOCALE
+
+Le fichier existe pour qu'une référence visuelle porte l'identité de l'appareil
+qui l'a produite. Il contient `model`, `os`, `source` — et rien d'autre.
+
+Or `argus.mobile.yaml` déclarait `deviceLocale: fr_FR` pendant que l'AVD tournait
+en **`en-US`** (`deviceLocale` ne s'applique qu'avec `autoStart`, cf. point 154).
+Les quatre références visuelles du run sont donc nées sous un système **anglais**,
+et **rien ne l'enregistre**. Qui les régénère plus tard sur un appareil en
+français obtient des diffs — formats système, éléments natifs — sans qu'aucune
+trace n'explique l'écart.
+
+⚠️ Le voisin, encore : on grave deux dimensions d'identité et on oublie la
+troisième — celle que la configuration prétend précisément piloter.
+
 ## Ce qui reste
 
-**Rien.** Les points 161 à 163 sont clos le 24/08/2026 — le backlog se vide pour
-la **dix-septième** fois.
+**Les points 164 à 167**, inscrits le 24/08/2026 au dépouillement du run 18.
+Aucun n'est encore traité.
 
-⚠️ **Le compteur de sortie : TROIS constats, trois exigeaient de modifier le
-skill.** Le run en avait rendu deux ; le troisième est né **en vérifiant la
-promesse sur laquelle le deuxième allait s'appuyer**, au lieu de la croire. La
-trajectoire reste bonne — 7/7 au run 15, 5/5 au 16, 3/3 au 17 — mais ce n'est
-toujours pas zéro.
+⚠️ **LE 161 EST VÉRIFIÉ, et c'est le résultat qui compte.** Le run 18 a tourné
+avec deux émulateurs, **sans l'indice technique** que j'avais donné au run 17 —
+« cible le tien par son NOM d'AVD » soufflait la réponse et faisait contourner le
+défaut à la main. Retiré, on mesure ce que le skill prescrit tout seul :
+`perf.json` et `a11y.json` portent tous deux le **bon** appareil, aucun `--device`
+forcé. C'est la différence entre vérifier un correctif et vérifier qu'on sait le
+contourner.
 
-⚠️ **TROIS des cinq correctifs du run 16 sont visiblement exercés**, et le compte
-rendu les cite sans savoir qu'ils sont neufs : `key: ValueKey<String>` posée
-« **prescrite d'office par le skill** » (157), les paramètres nommés d'après le
-« **défaut du skill** » (159), et une couverture qui énumère ses trois écarts
-assumés au lieu de conclure « tout est couvert » (158).
+⚠️ **Trois autres correctifs récents sont visiblement exercés** : les cinq TODO
+d'auth retirés avec le pourquoi écrit à la place (162), les paramètres nommés
+« celle du SKILL » (159), et la phrase « N sur N ne veut pas dire couvert »
+reprise mot pour mot par l'agent (158) — qui l'a **dépassée** en mesurant les
+écrans réellement visités, d'où le 164.
 
-⚠️ **Ce que ce run apprend sur la MÉTHODE, et qui vaut plus que ses trois
-points** : le 161 était invisible aux seize runs précédents parce qu'ils avaient
-tous **un seul émulateur**. La règle « un seul émulateur à la fois » est une
-bonne hygiène **et** un angle mort — elle a caché pendant seize runs un défaut
-qui rendrait des mesures fausses en silence.
+⚠️ **Le compteur de sortie : QUATRE constats, quatre exigent de modifier le
+skill.** Il remonte (7 → 5 → 3 → 4), et il faut le dire tel quel plutôt que de
+raconter une trajectoire. Ce que ce run change n'est pas le chiffre mais leur
+**nature** : trois des quatre sont des *voisins* — une donnée présente et non
+dérivée (164), un conseil juste pour un mode de build et donné sous l'autre
+(166), deux dimensions d'identité gravées sur trois (167).
 
-⚠️ **Le harnais de mutation s'est dénoncé lui-même**, et c'est ce pour quoi il
-existe : le correctif 161 ayant déplacé `avdNameFrom` vers un autre fichier, sa
-mutation ne trouvait plus son motif. Il a rapporté « **HARNAIS — motif trouvé 0×
-(attendu 1)** » au lieu de rendre un vert qui n'aurait rien mesuré. Reciblée,
-46/46.
+⚠️ **Le 166 a été reproduit par la MESURE, pas par la lecture** : littéral
+accentué compté dans les trois encodages sur le binaire du run, avec une
+contre-épreuve ASCII pour prouver que l'instrument mesurait.
 
-Le reste du compte rendu ne concerne pas le skill : les 51 entrées de dette
-décrivent l'application d'essai, un défaut applicatif y a été trouvé **et mesuré
-par sonde** (un stepper qui descend à une valeur que le bloc refuse ensuite), et
-`osv-scanner` absent reste une affaire de machine — dimension **sautée et dite**.
+Le reste ne concerne pas le skill : les 47 entrées de dette décrivent
+l'application d'essai, un défaut applicatif y est **mesuré** (le stepper de pause
+descend à 0, valeur que le bloc refuse ensuite — l'agent a prouvé par mutation
+que l'instrumentation n'en crée aucun), et `osv-scanner` absent reste une affaire
+de machine.
