@@ -206,6 +206,10 @@ MUTATIONS = [
     ("run", "une seule ancre d'authentification redevient exig\u00e9e",
      "  const requises = ['screen', 'user', 'password', 'submit', 'success'];",
      "  const requises = ['user'];"),
+    # ── Vingt-et-unième run ─────────────────────────────────────────────────
+    ("perf", "la taille repese le binaire de test au lieu de la release",
+     "  const pese = binaryToWeigh(platform, config);",
+     "  const pese = { path: config.build.android, isRelease: false };"),
     # ── Dix-huitième run ────────────────────────────────────────────────────
     ("run", "un ecran compte comme visite meme si l'etape n'a pas tourne",
      "      if (String(step?.metadata?.status ?? '').toUpperCase() !== 'COMPLETED') continue;",
