@@ -57,7 +57,11 @@ MUTATIONS = [
     ("run", "le succès ne dit plus qu'il a été mesuré",
      "  if (found) return { status: 'ok', device: { ...found, measured: true } };",
      "  if (found) return { status: 'ok', device: { ...found, measured: false } };"),
-    ("run", "avdNameFrom prend la dernière ligne, donc « OK »",
+    # ⚠️ Cible passée de `run` à `config` au run 17 : `avdNameFrom` a DÉMÉNAGÉ
+    # quand trois autres scripts ont eu besoin d'elle. Le harnais l'a dit de
+    # lui-même — « motif trouvé 0× (attendu 1) », donc HARNAIS et non « garde
+    # vacant » — au lieu de rendre un vert qui n'aurait rien mesuré.
+    ("config", "avdNameFrom prend la dernière ligne, donc « OK »",
      ".find((l) => l !== '' && l !== 'OK') ?? '';",
      ".filter((l) => l !== '').pop() ?? '';"),
     ("run", "startupSamples retient la DERNIÈRE attente",
