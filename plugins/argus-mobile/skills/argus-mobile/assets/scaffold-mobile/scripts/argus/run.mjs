@@ -949,6 +949,36 @@ function startupSamples(bundles, anchor) {
 }
 
 /**
+ * Les écrans que les flows ont RÉELLEMENT atteints, dérivés des étapes exécutées.
+ *
+ * ⚠️ `screensDeclared` et `screensConfigured` répondent à « qu'ai-je écrit dans
+ * `screens[]` ? », jamais à « qu'ai-je testé ? ». Sur un projet réel, « 12 sur
+ * 12 » se lisait comme une couverture complète alors que quatre écrans
+ * n'étaient jamais visités : leurs branches `goto.yaml` existaient, rien ne les
+ * appelait. La donnée était pourtant là — 46 `commands.json` que le runner
+ * produit et relit déjà pour `startupSamples` — et rien ne la dérivait.
+ *
+ * Un écran compte comme atteint quand son ancre de racine apparaît dans une
+ * étape COMPLETED : c'est la preuve qu'un flow l'a eu sous les yeux, et non
+ * qu'un fichier le mentionne.
+ * @param {any[]} bundles @param {any[]} screens @returns {string[]}
+ */
+export function visitedScreens(bundles, screens) {
+  /** @type {Set<string>} */
+  const vues = new Set();
+  for (const bundle of bundles ?? []) {
+    for (const step of bundle?.steps ?? []) {
+      if (String(step?.metadata?.status ?? '').toUpperCase() !== 'COMPLETED') continue;
+      const sel = selectorOf(step);
+      if (sel.startsWith('id=')) vues.add(sel.slice(3));
+    }
+  }
+  return (screens ?? [])
+    .filter((/** @type {any} */ sc) => sc?.anchor && vues.has(sc.anchor))
+    .map((/** @type {any} */ sc) => sc.id);
+}
+
+/**
  * Le démarrage à froid dépasse-t-il le seuil déclaré ? Un seul finding pour le
  * lot : six lignes disant la même chose sur six flows, c'est du bruit qui fait
  * cesser de lire les rapports.
@@ -1485,6 +1515,7 @@ async function main() {
 
   // ── Normalisation ───────────────────────────────────────────────────────
   const bundles = harvest(outputDir, before);
+  const visites = visitedScreens(bundles, config.screens ?? []);
   let baselinesWritten = 0;
   if (opts.updateBaselines) {
     const written = promoteBaselines(bundles, baselineDir);
@@ -1577,6 +1608,13 @@ async function main() {
       notConfigured: (config.screens ?? [])
         .filter((/** @type {any} */ s) => !screens.includes(s))
         .map((/** @type {any} */ s) => s.id),
+      // Ce que les flows ont VU, par opposition à ce que la config déclare. Les
+      // trois lignes du dessus dérivent toutes de `screens[]` et répondent donc
+      // à une question plus étroite que celle qu'on leur pose.
+      visited: visites,
+      notVisited: (config.screens ?? [])
+        .map((/** @type {any} */ s) => s.id)
+        .filter((/** @type {string} */ id) => !visites.includes(id)),
       visualScreens: visualScreens.map((s) => s.id),
       visualMode,
     },

@@ -127,6 +127,12 @@ ni l'autre.
 (écrans déclarés sans ancre sémantique, donc non testés), `visualScreens[]` et
 `visualMode`.
 
+**`coverage`** gagne aussi **`visited[]`** et **`notVisited[]`** — les écrans
+qu'un flow a réellement atteints, dérivés des étapes **COMPLETED** et non des
+fichiers de flow. Un écran déclaré, ancré, dont la branche `goto` existe mais que
+rien n'appelle apparaît dans `notVisited`. Sur un projet réel, « 12 sur 12 » se
+lisait comme une couverture complète avec **quatre** écrans jamais visités.
+
 ⚠️ **Les quatre premiers dérivent tous de `screens[]`**, donc aucun ne voit ce qui
 n'y est pas déclaré : un état monté à l'étage 1 seul lui est invisible. Le rapport
 HTML affiche pour cette raison le compte **comparé visuellement** à côté du compte

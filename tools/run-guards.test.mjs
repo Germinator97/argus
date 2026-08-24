@@ -24,7 +24,7 @@ const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
-  startScreen, startupFindings, startupHint, startupSamples, vanishedHint,
+  startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -450,6 +450,70 @@ test('le sous-flow de connexion LIT la décision, il ne la refait pas', () => {
       assert.ok(!c.includes(nu), `la condition refait la décision au lieu de la lire (${nu}) : ${c}`);
     }
   }
+});
+
+// ── Ce qui est DÉCLARÉ contre ce qui a été VU ───────────────────────────────
+//
+// `screensDeclared`, `screensConfigured` et `notConfigured` dérivent tous de
+// `screens[]` : ils disent ce qu'on a écrit, jamais ce qu'on a testé. Un projet
+// réel affichait « 12 sur 12 » pendant que quatre écrans n'étaient jamais
+// atteints — leurs branches `goto.yaml` existaient, rien ne les appelait. La
+// donnée était là (les `commands.json` que le runner relit déjà) et rien ne la
+// dérivait. Dix-huitième run.
+test('les écrans visités se dérivent des étapes EXÉCUTÉES, pas des fichiers', () => {
+  const screens = [
+    { id: 'home-empty', anchor: 'home_empty_root' },
+    { id: 'history-filled', anchor: 'history_filled_root' },
+    { id: 'sans-ancre' },
+  ];
+  const bundles = [{
+    flow: 'smoke',
+    steps: [
+      { command: { assertVisibleCommand: { selector: { idRegex: 'home_empty_root' } } }, metadata: { status: 'COMPLETED' } },
+      // Une étape SKIPPED ne prouve rien : la branche existait, elle n'a pas tourné.
+      { command: { assertVisibleCommand: { selector: { idRegex: 'history_filled_root' } } }, metadata: { status: 'SKIPPED' } },
+    ],
+  }];
+
+  assert.deepEqual(visitedScreens(bundles, screens), ['home-empty'],
+    'seul un écran dont l\'ancre apparaît dans une étape COMPLETED compte comme visité');
+
+  // L'autre moitié : un garde qui ne vérifie que l'exclusion se satisfait d'une
+  // fonction qui n'inclut jamais rien.
+  const tout = [{ flow: 'f', steps: [
+    { command: { assertVisibleCommand: { selector: { idRegex: 'home_empty_root' } } }, metadata: { status: 'COMPLETED' } },
+    { command: { assertVisibleCommand: { selector: { idRegex: 'history_filled_root' } } }, metadata: { status: 'COMPLETED' } },
+  ] }];
+  assert.deepEqual(visitedScreens(tout, screens), ['home-empty', 'history-filled']);
+
+  // Un écran sans ancre ne peut pas être « visité » : rien ne le prouverait.
+  assert.deepEqual(visitedScreens(tout, [{ id: 'sans-ancre' }]), []);
+  assert.deepEqual(visitedScreens([], screens), []);
+  assert.deepEqual(visitedScreens(null, screens), []);
+});
+
+test('le rapport NOMME les écrans déclarés que rien n\'a atteints', () => {
+  const ligne = coverageLine({
+    screensDeclared: 3, screensConfigured: 3, notConfigured: [],
+    visited: ['home-empty'], notVisited: ['confirm-sheet', 'category-sheet'],
+    visualScreens: ['home-empty'],
+  });
+  assert.match(ligne, /réellement visités par un flow : 1/);
+  assert.match(ligne, /confirm-sheet/, 'un écran jamais atteint doit être NOMMÉ, pas compté');
+
+  // Et sur un run où tout a été vu, aucune alerte ne doit apparaître : un
+  // rapport qui alerte toujours n'alerte plus.
+  const sain = coverageLine({
+    screensDeclared: 2, screensConfigured: 2, notConfigured: [],
+    visited: ['a', 'b'], notVisited: [], visualScreens: ['a'],
+  });
+  assert.ok(!/jamais visités/.test(sain));
+  assert.match(sain, /réellement visités par un flow : 2/);
+
+  // Un rapport d'avant ce relevé n'affiche simplement rien — pas « 0 visités »,
+  // qui se lirait comme un échec alors que la donnée n'existait pas.
+  const ancien = coverageLine({ screensDeclared: 2, screensConfigured: 2, notConfigured: [], visualScreens: [] });
+  assert.ok(!/réellement visités/.test(ancien));
 });
 
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────

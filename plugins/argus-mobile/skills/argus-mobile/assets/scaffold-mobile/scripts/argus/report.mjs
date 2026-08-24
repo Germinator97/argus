@@ -117,12 +117,20 @@ export function coverageLine(coverage) {
   const avecAncre = coverage.screensConfigured ?? '?';
   const visuels = (coverage.visualScreens ?? []).length;
   const sansAncre = coverage.notConfigured ?? [];
+  // ⚠️ Le seul de ces relevés qui dise ce qui a été TESTÉ : les autres décrivent
+  // ce qui a été écrit dans `screens[]`. Un projet réel affichait « 12 sur 12 »
+  // avec quatre écrans que rien n'appelait — leurs branches existaient.
+  const visites = coverage.visited ?? null;
+  const jamais = coverage.notVisited ?? [];
   return `<p class="muted">Écrans déclarés : ${esc(declares)}`
     + ` · avec ancre sémantique : ${esc(avecAncre)}`
+    + (visites ? ` · <strong>réellement visités par un flow : ${esc(visites.length)}</strong>` : '')
     + ` · comparés visuellement : ${esc(visuels)}`
     + (sansAncre.length ? ` · sans ancre, donc non testés : ${esc(sansAncre.join(', '))}` : '')
-    + `<br>Ce relevé ne compte que les écrans <strong>déclarés dans screens[]</strong> :`
-    + ` un état monté à l'étage 1 seul, ou jamais déclaré, n'y apparaît pas.`
+    + (jamais.length ? `<br><span class="badge bad">jamais visités</span> ${esc(jamais.join(', '))}`
+      + ` — déclarés, ancrés, et qu'aucune étape exécutée n'a atteints.` : '')
+    + `<br>Les trois premiers comptes dérivent de <strong>screens[]</strong> : un état monté à`
+    + ` l'étage 1 seul, ou jamais déclaré, n'y apparaît pas.`
     + ` « ${esc(avecAncre)} sur ${esc(declares)} » ne veut donc pas dire « tout est couvert ».</p>`;
 }
 
