@@ -142,14 +142,26 @@ de vraies ancres. Un run a ainsi annoncé dix-sept écrans et deux ancres qui
 n'existent nulle part.
 
 ```bash
-# Ancres posées dans le code (le filtre `///` est indispensable)
+# SITES d'instrumentation dans le code (le filtre `///` est indispensable)
 grep -rn "identifier: *'" lib/ | grep -v "^\s*///" | wc -l
-grep -roh "identifier: *'[^']*'" lib/ | sort -u | wc -l     # distinctes
+
+# ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : compte-les à part.
+#    Les SIMPLE quotes sont obligatoires ici — en doubles, le shell mange `${`
+#    et la commande rend 0 sans rien dire. Mesuré : 0 contre 2 sur le même code.
+grep -rnF 'identifier: ' lib/ | grep -vF '///' | grep -cF '${'
 
 # Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
 ```
+
+⚠️ **LE COMPTE DE `lib/` EST UN PLANCHER, pas le chiffre du rapport.** Une ancre
+écrite `identifier: 'nav_${spec.id}'` est **un** site et **N** ancres — une par
+onglet, par preset, par ligne de liste. Mesuré sur un projet réel : 31 sites
+littéraux dans `lib/` pour **82 ancres** réellement déclarées, l'écart venant de
+deux gabarits. Les chiffres que le rapport annonce (`Racines`, `Commandes`,
+`Affichages`) se lisent donc dans **`harness.dart`**, où les familles sont
+développées ; `lib/` ne dit que « combien d'endroits ont été touchés ».
 
 ⚠️ Et **vérifie ton compteur avant de lire ce qu'il compte** : lance-le sur le
 `harness.dart` **livré**, celui que l'installeur vient de poser. Il ne contient

@@ -691,6 +691,55 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
     + JSON.stringify(sansFiltre));
 });
 
+// ── Le compteur voit-il les FAMILLES, ou seulement les littéraux ? ──────────
+//
+// Le point 171 avait fermé un compteur qui lisait le commentaire ; son
+// remplaçant ne mentait plus sur ce qu'il comptait, mais il ne comptait pas ce
+// que le rapport demande. Une ancre écrite `identifier: 'nav_${spec.id}'` est UN
+// site et N ancres. Mesuré sur un projet réel : 31 sites littéraux dans `lib/`
+// pour 82 ancres déclarées, tout l'écart venant de deux gabarits.
+//
+// ⚠️ Et la première version de la commande corrigée rendait `0` : en doubles
+// quotes le shell mange `${`. Ce garde EXÉCUTE donc la commande telle qu'elle est
+// écrite dans le SKILL, sur un cas qui porte un gabarit — la relire n'aurait rien
+// montré. Vingtième run.
+test('la commande prescrite VOIT un gabarit interpolé', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const ligne = skill.split('\n').find((l) => l.startsWith('grep') && l.includes('${'));
+  assert.ok(ligne, 'le SKILL ne prescrit plus de commande pour compter les gabarits interpolés — '
+    + 'si le bloc a été réécrit, mets ce motif à jour ; sinon ce garde ne garde plus rien');
+
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-compte-'));
+  mkdirSync(join(dossier, 'lib'), { recursive: true });
+  writeFileSync(join(dossier, 'lib', 'avec.dart'),
+    "      identifier: 'nav_${spec.id}',\n      identifier: 'home_root',\n");
+  // ⚠️ `grep -c` imprime son compte ET SORT EN 1 quand ce compte est zéro, donc
+  // `execFileSync` lève sur le cas même que la contre-épreuve doit mesurer. Lire
+  // `e.stdout` plutôt que laisser passer l'exception — c'est le piège du point 70,
+  // dans lequel ce garde est tombé à l'écriture.
+  const lancer = () => {
+    try {
+      return execFileSync('bash', ['-c', ligne], { cwd: dossier, encoding: 'utf8' }).trim();
+    } catch (e) {
+      return String(/** @type {any} */ (e).stdout ?? '').trim();
+    }
+  };
+
+  assert.equal(lancer(), '1',
+    `la commande prescrite rend « ${lancer()} » sur un fichier qui porte UN gabarit : `
+    + 'en doubles quotes le shell mange ${ et elle rendrait 0 sans rien dire');
+
+  // Contre-épreuve : sans gabarit, elle doit rendre 0 et non « tout ».
+  writeFileSync(join(dossier, 'lib', 'avec.dart'), "      identifier: 'home_root',\n");
+  assert.equal(lancer(), '0', 'un fichier sans gabarit ne doit rien rendre — sinon elle compte les littéraux');
+
+  // Et le SKILL doit DIRE que le compte de lib/ est un plancher : sans cette
+  // phrase, les deux chiffres se lisent comme le même, ce qui est le défaut.
+  assert.match(skill, /PLANCHER, pas le chiffre du rapport/,
+    'le SKILL ne dit plus que le compte de lib/ n\'est pas celui du rapport');
+  rmSync(dossier, { recursive: true, force: true });
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans

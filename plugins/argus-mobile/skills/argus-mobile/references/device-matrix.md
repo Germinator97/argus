@@ -107,6 +107,25 @@ recommandée juste en dessous — ce réglage existe, se lit, et n'a **aucun
 effet**. Règle la locale sur l'émulateur avant le run. Le runner le dit
 désormais plutôt que de laisser croire.
 
+⚠️ **Et une image « Google Play » refuse la locale, quoi que tu fasses.** Deux
+familles d'images système, et une seule est réglable :
+
+| image de l'AVD | `adb root` | `persist.sys.locale` |
+|---|---|---|
+| *Google APIs* (ou AOSP) | accepté | modifiable |
+| *Google Play* | **refusé** | **immuable** |
+
+Sur une image Play, la tentative rend `adbd cannot run as root in production
+builds`, puis `Failed to set property 'persist.sys.locale' to 'fr-FR'`. La clé
+`locale.deviceLocale` reste alors purement déclarative : l'app force sa propre
+langue si elle en a une, mais **les chaînes Material restent dans la langue du
+système**, et une référence visuelle née là porte cette langue.
+
+C'est une raison **distincte** de celle ci-dessous : `autoStart` n'y changerait
+rien. Devant une locale qui ne prend pas, regarde l'image AVANT de chercher plus
+loin (`avdmanager list avd` nomme l'image de chaque AVD) — et si tu veux une
+locale figée, crée un AVD sur une image *Google APIs*.
+
 ⚠️ `avd` et `autoStart: true` ne se combinent pas : `maestro start-device`
 **crée son propre AVD** et ne sait pas démarrer le tien. Lance-le toi-même
 (`emulator -avd <nom> &`) ; le runner te le dira plutôt que de faire semblant.
