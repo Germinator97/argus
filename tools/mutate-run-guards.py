@@ -223,10 +223,6 @@ MUTATIONS = [
     ("harness", "la locale declaree redevient inapplicable",
      "      supportedLocales: <Locale>[argusLocale],\n",
      ""),
-    # ── Vingtième run ───────────────────────────────────────────────────────
-    ("skill", "la commande des gabarits repasse en doubles quotes, donc rend 0",
-     "grep -rnF 'identifier: ' lib/ | grep -vF '///' | grep -cF '${'",
-     'grep -rn "identifier: *\'[^\']*\\${" lib/ | grep -v "^\\s*///" | wc -l'),
     ("skill", "la commande de comptage reperd son filtre de commentaires",
      "grep -v '^\\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('",
      "grep -c 'ArgusScreen(' test/argus/harness.dart"),

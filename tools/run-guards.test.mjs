@@ -699,10 +699,11 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
 // site et N ancres. Mesuré sur un projet réel : 31 sites littéraux dans `lib/`
 // pour 82 ancres déclarées, tout l'écart venant de deux gabarits.
 //
-// ⚠️ Et la première version de la commande corrigée rendait `0` : en doubles
-// quotes le shell mange `${`. Ce garde EXÉCUTE donc la commande telle qu'elle est
-// écrite dans le SKILL, sur un cas qui porte un gabarit — la relire n'aurait rien
-// montré. Vingtième run.
+// ⚠️ Ce garde EXÉCUTE la commande telle qu'elle est écrite dans le SKILL, sur un
+// cas qui porte un gabarit. C'est la seule forme qui vaille : en la testant à la
+// main dans un autre shell que celui qui la lira, j'ai mesuré `0` là où elle rend
+// `1`, et j'ai failli inscrire cette fausse mesure dans le SKILL. Une exécution
+// ne mesure que si elle a lieu dans les conditions réelles. Vingtième run.
 test('la commande prescrite VOIT un gabarit interpolé', () => {
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
   const ligne = skill.split('\n').find((l) => l.startsWith('grep') && l.includes('${'));

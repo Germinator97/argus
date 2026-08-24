@@ -146,8 +146,7 @@ n'existent nulle part.
 grep -rn "identifier: *'" lib/ | grep -v "^\s*///" | wc -l
 
 # ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : compte-les à part.
-#    Les SIMPLE quotes sont obligatoires ici — en doubles, le shell mange `${`
-#    et la commande rend 0 sans rien dire. Mesuré : 0 contre 2 sur le même code.
+#    La forme -F évite d'avoir à échapper `${` correctement pour ton shell.
 grep -rnF 'identifier: ' lib/ | grep -vF '///' | grep -cF '${'
 
 # Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
