@@ -2686,28 +2686,118 @@ démarrage de l'app — avec les deux extrêmes mesurés (8,8 s et plusieurs min
 et invite à chronométrer une fois sur son propre projet plutôt qu'à se fier à un
 chiffre relevé ailleurs.
 
+## Run 22 — trois défauts fonctionnels, dont un qui bloque en silence
+
+⚠️ **Le correctif 174 fonctionne, et la chronologie le prouve** : `perf.json` est
+écrit à **22:30:51**, la release n'existe qu'à **22:32:30**. Le script a donc pesé
+le seul binaire disponible et l'a **dit** — `binaryPath: …app-debug.apk`,
+`binaryIsRelease: false`. C'est exactement le comportement voulu… et c'est ce qui
+fait apparaître le 177.
+
+⚠️ **Deux correctifs de plus se voient à l'œuvre** : le runner a **refusé de
+verdir** sur six flows tombés en 0–59 ms sans étape fautive (« 5 exécution(s)
+Maestro en échec sans étape fautive identifiée », exit 2) — la cause était que
+l'agent avait tué le driver Maestro pendant un diagnostic. Et le compteur d'ancres
+distingue les 31 littéraux des 2 gabarits, « le compte de `lib/` est un plancher ».
+
+### 176. ⚠️ `argus-perf` peut attendre INDÉFINIMENT, sans un mot
+
+Mesuré par le run : `make argus-perf` s'est bloqué **3 fois sur 5**, toujours dans
+la boucle des démarrages **à chaud**. Durées relevées avant que l'agent ne tue le
+processus : **12 min 00**, **1 min 48**, puis un troisième à 4 min. La quatrième
+tentative a rendu la mesure complète en **10 s**.
+
+Reproduit par lecture du code, sans device :
+
+```
+grep -n 'timeout' perf.mjs   →  aucune occurrence
+am start -W  →  adb(udid, […])  →  sh()  →  spawnSync(…, { …opts })
+```
+
+`sh()` **transmet déjà** ses options à `spawnSync`, donc `{ timeout }` serait
+supporté sans rien changer d'autre. Il n'est simplement jamais passé.
+
+⚠️ **Le blocage est muet** : le script n'écrit rien, il attend. En CI, le job est
+tenu jusqu'au délai global du runner — et ce qu'on lit alors est « le job a
+expiré », pas « une mesure de démarrage n'a pas rendu la main ».
+
+Le mécanisme exact du blocage n'est **pas attribué** : l'agent a relevé que le
+process de l'app existe, que `Window{… MainActivity}` apparaît dans logcat, mais
+que `topResumedActivity` reste le lanceur. Il l'a écrit sans l'expliquer, et c'est
+la bonne façon de le rapporter. Le défaut à corriger ne dépend pas de cette
+cause : **un script de mesure ne doit pas pouvoir attendre sans fin.**
+
+### 177. L'ordre prescrit garantit que la taille est mesurée sur le DEBUG
+
+Le point 174 a appris à `perf.mjs` à peser `build.androidScan` — la release —
+quand elle est déclarée et présente. Elle ne l'est jamais **au moment où `perf`
+tourne** : rien dans le skill ne dit de construire la release avant, et le déroulé
+naturel la construit pour la **dimension sécurité**, qui vient après.
+
+Chronologie de ce run, à la seconde près :
+
+| | |
+|---|---|
+| `perf.json` écrit | **22:30:51** |
+| `app-release.apk` construit | **22:32:30** |
+| `argus.mobile.yaml` renseigné (`androidScan`) | **23:01:32** |
+
+Le correctif fait donc son travail — il dit « ce n'est pas la release » — mais la
+mesure utile n'est **jamais prise**, et le rapport final porte `92 Mo` alors que la
+release du même code en fait `30,2`. Personne ne relance `perf` après.
+
+⚠️ Un correctif qui rend le relevé honnête sans le rendre juste : il faut soit
+prescrire l'ordre, soit faire dire au rapport que la taille reste à mesurer.
+
+### 178. `goto.yaml` est décrit comme un aiguillage depuis le LANCEMENT, et appelé en cours de flow
+
+Le sous-flow livré porte : « `home` ne demande rien : `launch-clean.yaml` y a déjà
+mené », et sa branche « rien à naviguer » se décide sur l'écran de **départ**.
+C'est vrai au premier appel.
+
+Mais `goto` est appelé **au milieu d'un flow**, après qu'on a navigué ailleurs. Le
+run l'a payé :
+
+```
+[Failed] Argus — accessibilité … (Element not found: Id matching regex: home_start_session)
+```
+
+Après un passage par Catégories puis Réglages, l'ancre de l'accueil n'existe plus
+— et la branche qui prétend « rien à naviguer » ne fait rien. L'agent a corrigé
+ses propres branches en tapant `nav_home` d'abord, et note que `goto` est
+« désormais appelable de n'importe où ».
+
+⚠️ Le gabarit ne dit nulle part que **c'est la condition à tenir**. Il décrit un
+aiguillage depuis l'état initial, alors que son contrat réel est : *amener l'app
+sur cet écran, quel que soit l'endroit d'où on part*.
+
 ## Ce qui reste
 
-**Rien.** Les points 174 et 175 sont clos le 24/08/2026 — le backlog se vide pour
-la **vingt-et-unième** fois.
+**Les points 176 à 178**, inscrits le 24/08/2026 au dépouillement du run 22.
+Aucun n'est encore traité.
 
-⚠️ **DIX correctifs vérifiés**, record du chantier, et le **161** éprouvé dans les
-conditions les plus dures jamais réunies — téléphone personnel branché, piège du
-port survenu pour de vrai, zéro occurrence du mauvais appareil dans les journaux.
+⚠️ **Le compteur de sortie remonte à TROIS** (7 → 5 → 3 → 4 → 4 → 2 → 2 → **3**),
+mais leur **nature** change et c'est ce qui compte : après quatre runs de
+« relevés qui mesurent autre chose », **le 176 est un défaut fonctionnel franc** —
+un script qui peut attendre sans fin et sans un mot. Le chantier n'en avait plus
+trouvé depuis le 161.
 
-⚠️ **Le compteur de sortie reste à DEUX**, au plus bas (7 → 5 → 3 → 4 → 4 → 2 → 2),
-avec un troisième candidat **démenti** : le Makefile documente déjà qu'il aplatit
-les codes de sortie.
+⚠️ **Trois correctifs se voient à l'œuvre dans ce run**, dont deux ce jour-là : le
+**174** a pesé le debug **et l'a dit** (chronologie à l'appui — `perf` tourne
+1 min 39 avant que la release n'existe), le compteur d'ancres distingue littéraux
+et gabarits, et le runner a **refusé de verdir** sur six flows tombés en 0–59 ms
+sans étape fautive.
 
-⚠️ **Les deux constats sont de la même famille, celle qui revient le plus** : *un
-chiffre rendu sur autre chose que ce dont il parle*. Aucun des deux ne ment sur ce
-qu'il mesure — les deux répondent à une question que personne n'a posée.
+⚠️ **Le 177 est né du 174**, et c'est le motif à retenir : *un correctif peut
+rendre un relevé honnête sans le rendre juste*. Dire « ce n'est pas la release »
+est exact, utile, et laisse la mesure utile jamais prise.
 
-⚠️ **Et un garde neuf était aveugle**, une fois de plus dénoncé par la mutation :
-il éprouvait la fonction quand la mutation cassait son **appel**. Deuxième fois
-que ce couple fonction/câblage se présente, après le choix de device — c'est
-devenu un réflexe à avoir : *toute fonction extraite mérite son garde de
-câblage*.
+⚠️ **Ce que le run a bien fait et qu'il faut noter** : devant un blocage qu'il ne
+s'expliquait pas, l'agent a **refusé d'attribuer un mécanisme** — « la seule
+différence est […] je ne l'ai pas prouvé, je ne l'affirme donc pas ». Et il a
+démasqué **son propre instrument** : cinq mesures rendant toutes exactement 40 s,
+un sous-shell tenant le tube ouvert. La contre-épreuve (`adb shell echo` à 23 ms)
+est ce qui l'a dit.
 
-Le reste ne concerne pas le skill : 52 entrées de dette décrivent l'application
+Le reste ne concerne pas le skill : 54 entrées de dette décrivent l'application
 d'essai, et `osv-scanner` reste une affaire de machine.
