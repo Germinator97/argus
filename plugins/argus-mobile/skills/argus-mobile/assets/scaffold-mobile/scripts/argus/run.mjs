@@ -1189,7 +1189,16 @@ export function deviceStamp(platform, udid, spec, lire = adbShell) {
   const model = lire(udid, ['getprop', 'ro.product.model']).stdout.trim();
   const sdk = lire(udid, ['getprop', 'ro.build.version.sdk']).stdout.trim();
   if (!model || !sdk) return declare;
-  return { model, os: `android-${sdk}`, source: 'mesuré' };
+  // ⚠️ LA LOCALE AUSSI, et c'est la plus mouvante des trois. Ce fichier existait
+  // pour qu'une référence porte l'identité de l'appareil qui l'a produite, et il
+  // gravait deux dimensions sur trois. Sur un projet réel, `deviceLocale: fr_FR`
+  // était déclaré pendant que l'AVD tournait en `en-US` — `deviceLocale` ne
+  // s'applique qu'avec `autoStart` — donc les références sont nées sous un
+  // système ANGLAIS et rien ne l'enregistrait. Qui les régénère plus tard sur un
+  // appareil français obtient des diffs (formats système, éléments natifs) sans
+  // qu'aucune trace n'explique l'écart.
+  const locale = lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim();
+  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesuré' };
 }
 
 /**
@@ -1209,8 +1218,15 @@ export function deviceStamp(platform, udid, spec, lire = adbShell) {
  */
 export function baselineDeviceDrift(grave, courant) {
   if (!grave || !grave.model || !grave.os) return null;
-  if (grave.model === courant.model && grave.os === courant.os) return null;
-  return { grave, courant };
+  const memeAppareil = grave.model === courant.model && grave.os === courant.os;
+  // ⚠️ La locale ne se compare que si les DEUX marques la portent : une
+  // référence gravée avant que ce champ n'existe ne doit pas se mettre à crier
+  // rétroactivement — elle deviendrait le bruit qui apprend à ignorer l'alerte.
+  const compareLocale = typeof grave.locale === 'string' && grave.locale !== ''
+    && typeof courant?.locale === 'string' && courant.locale !== '';
+  const memeLocale = !compareLocale || grave.locale === courant.locale;
+  if (memeAppareil && memeLocale) return null;
+  return { grave, courant, localeSeule: memeAppareil && !memeLocale };
 }
 
 /** L'empreinte d'appareil gravée à côté des références, ou null. */
@@ -1481,7 +1497,15 @@ async function main() {
 
     const derive = baselineDeviceDrift(baselineDevice(baselineDir),
       deviceStamp(platform, resolved.udid, spec));
-    if (derive) {
+    if (derive && derive.localeSeule) {
+      warn(`références produites sous la locale système « ${derive.grave.locale} », `
+        + `run en cours sous « ${derive.courant.locale} » — même appareil, même OS.`);
+      warn('  Les formats système et les éléments natifs changent avec elle : les');
+      warn('  comparaisons vont échouer sur la LANGUE, pas sur une régression de l\'app.');
+      warn('  ⚠️ `locale.deviceLocale` ne pilote la locale QU\'AVEC `autoStart` : sur un');
+      warn('  appareil déjà démarré, il la décrit sans l\'imposer. Règle l\'appareil, ou');
+      warn('  régénère les références sous la locale que tu veux figer.');
+    } else if (derive) {
       warn(`références produites sur ${derive.grave.model} / ${derive.grave.os}, `
         + `run en cours sur ${derive.courant.model} / ${derive.courant.os}.`);
       warn('  Une référence est liée au COUPLE appareil + version d\'OS : les comparaisons');

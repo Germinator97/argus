@@ -1233,10 +1233,51 @@ const ADB = (/** @type {Record<string,string>} */ reponses) =>
 test('l\'appareil gravé est MESURÉ, pas recopié depuis la config', () => {
   const stamp = deviceStamp('android', 'emulator-5554',
     { model: 'pixel_6', os: 'android-33' },
-    ADB({ 'ro.product.model': 'Pixel 9a', 'ro.build.version.sdk': '36' }));
-  assert.deepEqual(stamp, { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' },
+    ADB({ 'ro.product.model': 'Pixel 9a', 'ro.build.version.sdk': '36', system_locales: 'fr-FR' }));
+  assert.deepEqual(stamp, { model: 'Pixel 9a', os: 'android-36', locale: 'fr-FR', source: 'mesuré' },
     'devices[].model est recopié à la main : le graver rendrait une empreinte fausse, '
     + 'et le garde qui la relit ne verrait rien');
+});
+
+// ── La troisième dimension d'identité : la LOCALE ───────────────────────────
+//
+// Ce fichier existe pour qu'une référence porte l'identité de l'appareil qui l'a
+// produite, et il en gravait deux sur trois. Sur un projet réel, `deviceLocale:
+// fr_FR` était déclaré pendant que l'AVD tournait en `en-US` — cette clé ne
+// pilote la locale qu'avec `autoStart` — donc les références sont nées sous un
+// système ANGLAIS sans que rien ne l'enregistre. Dix-huitième run.
+test('la locale système est gravée avec l\'appareil', () => {
+  const stamp = deviceStamp('android', 'emulator-5554', { model: 'p', os: 'android-33' },
+    ADB({ 'ro.product.model': 'Pixel 9a', 'ro.build.version.sdk': '36', system_locales: 'en-US' }));
+  assert.equal(stamp.locale, 'en-US',
+    'sans elle, une référence née sous un système anglais est indiscernable d\'une autre');
+});
+
+test('locale changée, même appareil : on le dit, et on dit que c\'est ELLE', () => {
+  const grave = { model: 'Pixel 9a', os: 'android-36', locale: 'en-US', source: 'mesuré' };
+  const courant = { model: 'Pixel 9a', os: 'android-36', locale: 'fr-FR', source: 'mesuré' };
+  const derive = baselineDeviceDrift(grave, courant);
+  assert.ok(derive, 'même appareil mais autre langue : les comparaisons vont échouer sur la LANGUE');
+  assert.equal(derive.localeSeule, true,
+    'le message doit pouvoir nommer la locale plutôt que d\'accuser l\'appareil, qui n\'a pas bougé');
+});
+
+test('locale identique : aucun avertissement — le garde ne coupe qu\'un sens', () => {
+  const m = { model: 'Pixel 9a', os: 'android-36', locale: 'fr-FR', source: 'mesuré' };
+  assert.equal(baselineDeviceDrift(m, { ...m }), null);
+});
+
+test('une marque d\'AVANT ce champ ne se met pas à crier rétroactivement', () => {
+  // Elle n'a pas de `locale` : la comparer à une marque qui en a une ferait
+  // rougir toutes les références existantes, d'un coup, pour rien. C'est ainsi
+  // qu'un avertissement devient le bruit qu'on apprend à ignorer.
+  const ancienne = { model: 'Pixel 9a', os: 'android-36', source: 'mesuré' };
+  const courant = { model: 'Pixel 9a', os: 'android-36', locale: 'fr-FR', source: 'mesuré' };
+  assert.equal(baselineDeviceDrift(ancienne, courant), null);
+
+  // Et l'appareil, lui, doit continuer d'être vu même sans locale gravée.
+  const autre = { model: 'Pixel 6', os: 'android-33', locale: 'fr-FR', source: 'mesuré' };
+  assert.ok(baselineDeviceDrift(ancienne, autre), 'un changement d\'appareil reste un changement');
 });
 
 test('adb muet : on retombe sur la déclaration, et le champ le DIT', () => {
