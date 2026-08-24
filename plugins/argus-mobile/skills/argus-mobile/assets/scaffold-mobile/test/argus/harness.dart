@@ -19,6 +19,19 @@ import 'argus_types.dart';
 /// construit ici avec ses doubles de test — le harnais ne devine pas tes
 /// dépendances.
 ///
+/// ⚠️ **Vérifie que l'écran ACCEPTE le provider que tu poses.** Un écran qui
+/// résout lui-même sa dépendance — `GetIt`, un service locator, un provider
+/// monté ailleurs dans l'app — ignore celui que tu places au-dessus : le tien
+/// est masqué, et le montage lève au lieu de rendre l'écran.
+///
+/// Le symptôme observé est alors *une ancre manquante*, c'est-à-dire un
+/// diagnostic qui accuse l'instrumentation pour un défaut de montage — sur un
+/// projet réel, il a failli faire déplacer une déclaration d'ancre sur la foi
+/// d'une mesure prise sous un montage cassé. Le tell est que l'exception tombe
+/// au MONTAGE (`type 'Null' is not a subtype of type 'XCubit' in type cast`) et
+/// non à l'assertion. Enregistre le double dans le conteneur, ou monte l'écran
+/// par la voie qu'il emprunte vraiment.
+///
 ///     final List<ArgusScreen> argusScreens = <ArgusScreen>[
 ///       ArgusScreen(
 ///         id: 'home',

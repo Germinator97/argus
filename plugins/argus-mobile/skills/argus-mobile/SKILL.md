@@ -708,6 +708,21 @@ il devine mal dès que le premier écran déclaré est l'état plein. Et note en
 présentes **dans plusieurs états** — c'est ce qui permet à un flow de ne pas avoir
 à savoir dans quel état il est tombé.
 
+⚠️ **Deux états d'un même écran posés par UN SEUL `Semantics` : donne-lui une
+`key`.** Si `home_empty_root` et `home_filled_root` sortent du même widget, dont
+l'`identifier` dépend d'une condition, l'étage 1 passe — Flutter reconstruit — et
+l'étage 2 échoue : la couche d'accessibilité **Android garde l'identifiant de la
+PREMIÈRE construction**. Le dump de hiérarchie montre alors un nœud « vide » qui
+contient l'élément plein, et le message accuse l'ancre :
+`Assertion is false: id: home_filled_root is visible`.
+
+Le remède est un paramètre — `key: ValueKey<bool>(items.isEmpty)` sur ce
+`Semantics` — qui force un nœud neuf à chaque bascule. ⚠️ Un run entier a
+soupçonné l'instrumentation avant qu'une sonde à l'étage 1 ne montre que Flutter,
+lui, rendait bien les deux ancres : ce défaut vit **à la frontière**, donc aucun
+test Dart ne l'atteint et aucun garde de ce dépôt ne peut le mesurer. Applique-le
+d'office dès qu'une ancre de racine est calculée plutôt qu'écrite en dur.
+
 **d. Un binaire installable.** Sinon guide : `make argus-build`, qui dérive la
 commande du projet. ⚠️ N'écris pas `flutter build apk --debug` en clair dès
 qu'un `.fvmrc` ou un `.fvm/` existe : la contrainte de SDK du `pubspec.yaml`
