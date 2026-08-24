@@ -643,6 +643,43 @@ test('le rapport de sécurité DATE le binaire qu\'il a jugé', () => {
     'et dire s\'il précède le code, ce que le lecteur du rapport ne peut pas deviner');
 });
 
+// ── Le compteur d'ancres compte-t-il le code, ou l'exemple ? ────────────────
+//
+// Les chiffres du rapport d'instrumentation ouvrent le premier livrable du
+// skill. Aucune commande n'était prescrite pour les obtenir, et DEUX compteurs
+// sont tombés dans le même piège à seize runs d'écart : le dartdoc d'exemple de
+// `harness.dart` porte `anchor: 'home_root'` et consorts, qu'un grep naïf compte
+// comme de vraies ancres. Un run a annoncé dix-sept écrans et deux ancres
+// inexistantes ; mon propre comparateur avait le défaut au run 3.
+//
+// Ce garde ne relit pas la prose : il EXÉCUTE le comptage prescrit sur le
+// fichier livré, qui ne contient aucune vraie ancre.
+test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non', () => {
+  const harnais = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/harness.dart');
+  const lignes = readFileSync(harnais, 'utf8').split('\n');
+
+  const horsCommentaire = lignes.filter((l) => !/^\s*\/\/\//.test(l));
+  const compte = (/** @type {string[]} */ src, /** @type {string} */ motif) =>
+    src.filter((l) => l.includes(motif)).length;
+
+  // ⚠️ CONTRE-ÉPREUVE D'ABORD : si l'exemple ne portait plus d'ancres, le filtre
+  // ne servirait à rien et ce garde passerait au vert sans rien mesurer.
+  assert.ok(compte(lignes, 'anchor:') > 0,
+    'le dartdoc d\'exemple ne porte plus d\'ancre : ce garde ne mesure plus la différence '
+    + 'entre un compteur filtré et un compteur naïf — mets-le à jour ou retire-le');
+
+  assert.equal(compte(horsCommentaire, 'anchor:'), 0,
+    'le harnais LIVRÉ ne contient aucune vraie ancre : un compteur qui en trouve lit le commentaire');
+  assert.equal(compte(horsCommentaire, 'ArgusScreen('), 0,
+    'idem pour les écrans — c\'est ainsi qu\'un run a rapporté dix-sept écrans pour zéro');
+
+  // Et le SKILL doit prescrire ce filtre, pas laisser chacun l'inventer.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /grep -v '\^\\s\*\/\/\/'/,
+    'le SKILL ne prescrit plus de commande de comptage excluant les commentaires');
+});
+
 // ── Contrat d'injection : aucune variable de flow sans producteur ────────────
 //
 // Ce garde ne vérifie pas une valeur, il vérifie un CÂBLAGE — et il le fait dans

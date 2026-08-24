@@ -133,6 +133,29 @@ Instrumentation Semantics — parcours critiques
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
 
+⚠️ **COMPTE-LE AVEC UNE COMMANDE QUI EXCLUT LES COMMENTAIRES**, et jamais à
+l'œil. Ces chiffres ouvrent le rapport, donc ils donnent le ton de tout le
+reste — et deux compteurs sont tombés dans le même piège à seize runs d'écart :
+le dartdoc d'exemple de `harness.dart` porte `anchor: 'home_root'`,
+`commands: <String>['home_start_session', …]`, et un `grep` naïf les compte comme
+de vraies ancres. Un run a ainsi annoncé dix-sept écrans et deux ancres qui
+n'existent nulle part.
+
+```bash
+# Ancres posées dans le code (le filtre `///` est indispensable)
+grep -rn "identifier: *'" lib/ | grep -v "^\s*///" | wc -l
+grep -roh "identifier: *'[^']*'" lib/ | sort -u | wc -l     # distinctes
+
+# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
+grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
+grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
+```
+
+⚠️ Et **vérifie ton compteur avant de lire ce qu'il compte** : lance-le sur le
+`harness.dart` **livré**, celui que l'installeur vient de poser. Il ne contient
+aucune vraie ancre — s'il te rend autre chose que **0**, c'est ton motif qui lit
+le commentaire, pas le projet qui est instrumenté.
+
 ⚠️ **En REGRESS, rends-le DEUX FOIS : l'état TROUVÉ, puis l'état LAISSÉ.** Le
 livrable y est justement que la colonne « à poser » tombe à zéro — un relevé
 unique est alors soit périmé, soit trompeur : « 53 posées / 0 à poser (100 %) »
@@ -916,9 +939,18 @@ Sur un émulateur, la séquence complète approche les vingt minutes. Ça se pr�
 et ça ne se refait qu'une fois : les passages suivants sont un seul `argus-run`.
 
 ⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
-puis **remplacer une référence par un aplat** et vérifier que celle-là seule
-rougit. Sans le troisième temps, le vert du deuxième ne dit pas si la comparaison
-mesure ou si elle dort.
+puis **remplacer une référence par un aplat AUX DIMENSIONS EXACTES de celle
+qu'il remplace** et vérifier que celle-là seule rougit. Sans le troisième temps,
+le vert du deuxième ne dit pas si la comparaison mesure ou si elle dort.
+
+⚠️ **Les dimensions ne sont pas un détail : elles décident de ce que tu prouves.**
+Un aplat de taille quelconque fait échouer Maestro sur
+`Screenshot size mismatch: expected 8x8, actual 1080x1980` — un refus qui tombe
+**avant toute comparaison de pixels**. Le flow rougit, la bonne référence seule
+est touchée, la restauration ramène au vert : tout a l'air probant, et le seuil
+`visualMatchPercentage` n'a **jamais** été emprunté. Relève la taille de la
+référence (`sips -g pixelWidth -g pixelHeight <fichier>`, ou `file`) et fabrique
+l'aplat à cette taille-là.
 
 ⚠️ **QUATRIÈME TEMPS, obligatoire : restaure la référence et REJOUE
 `make argus-run`.** La contre-épreuve écrit `report.json` comme n'importe quel
