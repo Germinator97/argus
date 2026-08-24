@@ -202,6 +202,16 @@ MUTATIONS = [
     ("run", "une seule ancre d'authentification redevient exig\u00e9e",
      "  const requises = ['screen', 'user', 'password', 'submit', 'success'];",
      "  const requises = ['user'];"),
+    # ── Dix-huitième run ────────────────────────────────────────────────────
+    ("run", "un ecran compte comme visite meme si l'etape n'a pas tourne",
+     "      if (String(step?.metadata?.status ?? '').toUpperCase() !== 'COMPLETED') continue;",
+     "      if (false) continue;"),
+    ("run", "la marque d'appareil cesse de graver la locale",
+     "  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesure' };".replace('mesure', 'mesur\u00e9'),
+     "  return { model, os: `android-${sdk}`, source: 'mesure' };".replace('mesure', 'mesur\u00e9')),
+    ("skill", "les deux modes de build annoncent le meme encodage",
+     "| debug | `assets/flutter_assets/kernel_blob.bin` | **UTF-8** |",
+     "| debug | `assets/flutter_assets/kernel_blob.bin` | **Latin-1** |"),
 ]
 
 
