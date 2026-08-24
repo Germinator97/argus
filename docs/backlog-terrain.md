@@ -2200,34 +2200,86 @@ harnais ne devine pas tes dépendances — le point d'usage, pas une note lointa
 ⚠️ Sans garde exécutable pour la même raison que le 157, et pour la même raison
 l'absence est écrite plutôt que tue.
 
+## Run 17 — le défaut que seize runs ne pouvaient pas voir
+
+### 161. ⚠️ Trois scripts ignorent l'AVD déclaré et prennent le premier émulateur venu
+
+`device-matrix.md` promet en titre : « **Désigner un device : `avd`, pas
+`udid`** », puis « `avd` est prioritaire sur `udid` », et consacre un paragraphe
+au piège du port — « `emulator-5554` n'est pas une identité, c'est un numéro de
+port […] Ce piège ne se signale par aucune erreur : le run se déroule
+normalement, sur un autre appareil ».
+
+**Seul `run.mjs` tient cette promesse** (`resolveByAvd`, `resolveNamedDevice`).
+Trois autres sites appellent `defaultAndroidDevice()` (`config.mjs:805`), qui
+prend `listed.find((udid) => udid.startsWith('emulator-'))` — le premier
+émulateur d'`adb devices` — et **ne lit jamais `devices[].avd`** :
+- `perf.mjs:297` — les mesures de démarrage, de mémoire et de poids ;
+- `a11y.mjs:391` — le relevé d'accessibilité sur appareil ;
+- `config.mjs:916` — l'ABI qui cible `--print-build-cmd`.
+
+Son dartdoc montre le raisonnement à moitié fait : elle se protège des appareils
+**réels** (« lancer, arrêter et sonder une app sur l'appareil personnel de
+quelqu'un ») et pas d'un **second émulateur**. Le voisin, encore.
+
+⚠️ **Il n'a crié que par chance.** L'app n'était pas installée sur l'autre AVD,
+donc `perf.mjs` a rendu « activité de lancement introuvable ». Installée des deux
+côtés — le cas courant sur une machine de développement — il aurait mesuré le
+mauvais appareil **en silence**, et le rapport aurait porté des chiffres de
+performance appartenant à une autre app.
+
+⚠️ **Et seize runs ne pouvaient pas le voir** : tous s'étaient déroulés avec un
+seul émulateur. La consigne « un seul émulateur à la fois », que je tenais pour
+de l'hygiène, **masquait le défaut**. C'est un émulateur tiers laissé allumé par
+hasard qui l'a révélé.
+
+### 162. Le scaffold ne prévoit pas « mon app n'a pas d'authentification »
+
+`argus.mobile.yaml` pose **cinq** `TODO(argus)` sous `auth.anchors` (écran,
+identifiant, mot de passe, validation, preuve de session). Une app sans
+authentification — toute app locale — ne peut en remplir aucun, et
+`install-mobile.sh --check` les compte : `✏️ argus.mobile.yaml (5 TODO(argus) à
+traiter)`.
+
+Le comportement, lui, est correct et documenté : « Une seule vide → le sous-flow
+skippe en entier ». Ce qui manque est la **permission de les retirer**. Le run 17
+a tranché seul — TODO supprimés, décision écrite à la place — pour obtenir un
+`--check` propre.
+
+⚠️ **Le voisin le dit déjà** : `.maestro/i18n.yaml:60` porte « Si ton app n'en
+affiche aucun, laisse ce bloc commenté et note… ». Un fichier du scaffold prévoit
+le cas « ça ne s'applique pas à mon app », son voisin non — et c'est celui qui
+pose le plus de TODO.
+
 ## Ce qui reste
 
-**Rien.** Les points 156 à 160 sont clos le 24/08/2026 — le backlog se vide pour
-la **seizième** fois.
+**Les points 161 et 162**, inscrits le 24/08/2026 au dépouillement du run 17.
+Aucun n'est encore traité.
 
-⚠️ **Le compteur de sortie : CINQ constats, cinq exigeaient de modifier le
-skill.** Pas la sortie, donc, et c'est le seizième run d'affilée. Mais deux choses
-que le seul ratio ne montre pas : **aucune régression introduite par mes
-correctifs** (le run 11 en avait deux) et **aucune promesse fausse** (le run 15 en
-avait une, écrite la veille en corrigeant autre chose).
+⚠️ **Le compteur de sortie : DEUX constats, deux exigent de modifier le skill.**
+Toujours pas zéro, mais la trajectoire est nette — 7/7 au run 15, 5/5 au 16,
+**2/2 au 17**.
 
-⚠️ **Trois constats ont été DÉMENTIS en les reproduisant**, et c'est ce que le
-dépouillement rapporte de mieux :
-- les deux grandeurs de démarrage (`am start -W` contre l'attente d'ancre) sont
-  déjà distinguées **explicitement** dans le code, commentaire à l'appui ;
-- l'entrée périmée de `.argus-crop` disparaîtra seule : le fichier est
-  **reconstruit** (`Object.fromEntries(visualScreens.map(…))`), jamais fusionné ;
-- rendre public un widget privé pour le monter n'était pas un arbitrage sans
-  instruction — le skill le prescrit, et `_ConfirmSheet` → `ConfirmSheet` est son
-  exemple littéral.
+⚠️ **TROIS des cinq correctifs du run 16 sont visiblement exercés**, et le compte
+rendu les cite sans savoir qu'ils sont neufs :
+- le 157 — l'agent pose `key: ValueKey<String>` sur un layout à deux états et
+  écrit « c'est **prescrit d'office par le skill** » ;
+- le 159 — il nomme ses paramètres `semanticIdentifier` / `anchorPrefix` en les
+  attribuant au « **défaut du skill** », là où le run 16 avait dû inventer ;
+- le 158 — il rend `screensDeclared: 11 · screensConfigured: 11 · visualScreens: 5`
+  **et énumère les trois écarts assumés** au lieu de conclure « tout est couvert ».
 
-⚠️ **Deux points n'ont PAS de garde exécutable** (157, 160), et l'absence est
-écrite dans le skill au lieu d'être laissée à deviner : tous deux décrivent un
-comportement de plateforme — la couche d'accessibilité d'Android, l'injection de
-Flutter — qui vit à la frontière, hors d'atteinte de tout test de ce dépôt. Un
-garde n'y réasserterait que la prose contre elle-même.
+Le 156 n'a pas été exercé : le pire relevé de démarrage (13 929 ms) restait sous
+le plafond dérivé, donc le message n'avait aucune raison de sortir.
 
-Le reste du compte rendu ne concerne pas le skill : les 55 entrées de dette
-décrivent l'application d'essai (25 débordements, 14 cibles sous 48 dp, 9
-contrastes sous AA, 2 surfaces tapables sans label), et `osv-scanner` absent est
-une affaire de machine — la dimension a été **sautée et dite**, jamais verte.
+⚠️ **Ce que le run 17 apprend sur la MÉTHODE, et qui vaut plus que ses deux
+points** : le 161 était invisible aux seize runs précédents parce qu'ils avaient
+tous un seul émulateur. La consigne « un seul émulateur à la fois » est une bonne
+hygiène **et** un angle mort — elle a caché pendant seize runs un défaut qui
+rendrait des mesures fausses en silence. Un émulateur tiers laissé allumé par
+hasard l'a révélé.
+
+Le reste du compte rendu ne concerne pas le skill : les 51 entrées de dette
+décrivent l'application d'essai, un défaut applicatif y a été trouvé et mesuré
+par sonde (un stepper qui descend à une valeur que le bloc refuse ensuite), et
+`osv-scanner` absent reste une affaire de machine — dimension **sautée et dite**.
