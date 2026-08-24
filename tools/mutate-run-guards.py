@@ -40,6 +40,10 @@ CIBLES = {
     # le CÂBLAGE — un paramètre optionnel non passé est légal, donc rien
     # d'autre ne le verrait.
     "perf": SCAFFOLD / "perf.mjs",
+    # Depuis le run 19 : le harnais Dart aussi — son montage déclare une locale
+    # que `MaterialApp` ignore sans `supportedLocales`, et c'est un garde de
+    # câblage, donc invisible à tout test de comportement.
+    "harness": SCAFFOLD / "../test/argus/argus_harness.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
@@ -212,6 +216,16 @@ MUTATIONS = [
     ("skill", "les deux modes de build annoncent le meme encodage",
      "| debug | `assets/flutter_assets/kernel_blob.bin` | **UTF-8** |",
      "| debug | `assets/flutter_assets/kernel_blob.bin` | **Latin-1** |"),
+    # ── Dix-neuvième run ────────────────────────────────────────────────────
+    ("sec", "un binaire plus vieux que le code passe pour frais",
+     "  return { builtAt, newestSource: newest, stale: builtAt < newest };",
+     "  return { builtAt, newestSource: newest, stale: false };"),
+    ("harness", "la locale declaree redevient inapplicable",
+     "      supportedLocales: <Locale>[argusLocale],\n",
+     ""),
+    ("skill", "la commande de comptage reperd son filtre de commentaires",
+     "grep -v '^\\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('",
+     "grep -c 'ArgusScreen(' test/argus/harness.dart"),
 ]
 
 
