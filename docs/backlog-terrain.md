@@ -2080,7 +2080,7 @@ le script allait bien. **Corrigé** : chiffré à côté du coût des référenc
 
 ## Run 16 — quatrième vérification, et le message qui conseille l'inverse de la doc
 
-### 156. ⚠️ Le message d'échec conseille le levier que le SKILL interdit de toucher
+### 156. ✅ Corrigé le 24/08/2026 — ⚠️ Le message d'échec conseillait le levier que le SKILL interdit
 
 `startupHint` (`run.mjs`) colle à un flow rouge : « Vérifie d'abord le temps de
 démarrage (`thresholds.coldStartMs` = 2000 ms, relevé dans `startup.samples`) ».
@@ -2099,7 +2099,12 @@ Même famille que le 98 : ni la doc ni le code ne sont faux séparément, c'est 
 **écart** qui l'est — et aucun test ne peut le voir, puisqu'il n'y a aucun
 comportement à casser.
 
-### 157. ⚠️ L'ancre d'état qui ne remonte pas à Android — absente du skill
+**Corrigé** : le message nomme `startTimeoutMs`, donne le plafond effectif, et
+dit de ne PAS toucher à `coldStartMs`. Le garde est **dérivé** — il lit le levier
+prescrit dans le SKILL.md plutôt que de le recopier, sinon message et garde
+bougeraient ensemble. Mutation vérifiée : l'ancien texte le fait tomber.
+
+### 157. ✅ Corrigé le 24/08/2026 — ⚠️ L'ancre d'état qui ne remonte pas à Android
 
 Le run a buté sur `Assertion is false: id: categories_filled_root is visible`,
 avec un dump de hiérarchie montrant `categories_empty_root` **contenant**
@@ -2115,7 +2120,13 @@ Zéro occurrence dans le skill (`ValueKey`, `nœud neuf`, `ne se propage`). C'es
 défaut **fonctionnel**, pas un trou de prescription : le flow échoue, et le
 message accuse l'ancre.
 
-### 158. La couverture ne croise jamais l'étage 1 et l'étage 2
+**Corrigé** : écrit là où le gabarit `screens[]` montre `home-empty` à côté de
+`home-filled` — l'endroit exact où quelqu'un déclare deux états et tombe dedans.
+⚠️ **Sans garde exécutable, et c'est écrit dans le SKILL** plutôt que laissé à
+deviner : le fait décrit appartient à la couche d'accessibilité d'Android, donc
+aucun test de ce dépôt ne l'atteint. Un garde n'y réasserterait que la prose.
+
+### 158. ✅ Corrigé le 24/08/2026 — La couverture ne croisait jamais l'étage 1 et l'étage 2
 
 `coverage.notConfigured` a rendu `[]` — vrai, et flatteur. Les trois relevés
 (`screensDeclared`, `screensConfigured`, `notConfigured`) dérivent **tous** de
@@ -2131,7 +2142,13 @@ Le compteur ne ment pas : il répond à une question plus étroite que celle qu'
 lui pose. Même famille que le nombre qui décrit le contenu sans le dériver de la
 donnée.
 
-### 159. Aucun nom de paramètre prescrit pour propager une ancre à un composant partagé
+**Corrigé** : la ligne porte le compte **comparé visuellement** — qui ne dérive
+pas de la même source — et écrit que « N sur N » ne veut pas dire « tout est
+couvert ». Elle a été **extraite** du gabarit HTML en `coverageLine()` exportée,
+car elle vivait là où rien ne pouvait l'exercer : c'est ce qui l'a laissée
+dériver. Trois gardes, les deux sens couverts.
+
+### 159. ✅ Corrigé le 24/08/2026 — Aucun nom de paramètre prescrit pour un composant partagé
 
 Le SKILL.md écrit `composant partagé, 14 call-sites → <param d'ancre>` : un
 **placeholder**, jamais un nom. Le mécanisme est prescrit — « le composant place
@@ -2149,7 +2166,19 @@ d'API appartient au projet hôte, et l'imposer serait intrusif. Mais sans
 convention, rien de stable n'est mesurable — ni par un garde du scaffold, ni d'un
 run au suivant.
 
-### 160. Le provider que l'écran résout LUI-MÊME, dont le symptôme est une fausse ancre manquante
+**Corrigé, arbitrage tranché par Germinator** : un défaut nommé mais
+**dérogeable** — `semanticIdentifier` (aligné sur le `semanticLabel` de Flutter
+et sur le champ qu'il alimente) et `anchorPrefix` pour une famille d'ancres ; un
+projet qui a déjà sa convention la garde et l'**écrit dans le rapport**. Le garde
+n'est pas circulaire : il compare les deux endroits qui doivent s'accorder, la
+prose qui prescrit et le gabarit qui montre.
+
+⚠️ **Le comparateur d'étalons n'est PAS corrigé**, et c'est délibéré : figé par
+sha256 depuis le run 4 pour que les seize relevés restent comparables, le
+modifier ferait bouger la mesure en même temps que l'objet mesuré. Son README
+dit désormais que ce relevé-là ne mesure rien.
+
+### 160. ✅ Corrigé le 24/08/2026 — Le provider que l'écran résout LUI-MÊME
 
 `_TypeError: type 'Null' is not a subtype of type 'AppVersionCubit' in type cast`
 au montage d'un écran : celui-ci résolvait son cubit dans `get_it`, si bien que le
@@ -2166,27 +2195,37 @@ Le skill explique comment monter un écran qui a besoin d'un `BlocProvider`
 celui que l'écran se donne. Le tell est que l'exception tombe au montage et non à
 l'assertion.
 
+**Corrigé** : écrit dans `harness.dart`, juste sous la ligne qui dit que le
+harnais ne devine pas tes dépendances — le point d'usage, pas une note lointaine.
+⚠️ Sans garde exécutable pour la même raison que le 157, et pour la même raison
+l'absence est écrite plutôt que tue.
+
 ## Ce qui reste
 
-**Les points 156 à 160**, inscrits le 24/08/2026 au dépouillement du run 16.
-Aucun n'est encore traité.
+**Rien.** Les points 156 à 160 sont clos le 24/08/2026 — le backlog se vide pour
+la **seizième** fois.
 
-⚠️ **Le compteur de sortie : CINQ constats, cinq exigent de modifier le skill.**
-Pas encore la sortie — mais le meilleur run depuis le 11 sur deux axes que le
-seul ratio ne montre pas : **aucune régression introduite par mes correctifs**
-(le run 11 en avait deux), et **aucune promesse fausse** (le run 15 en avait une,
-écrite la veille). Deux constats sont fonctionnels (156, 157), trois sont des
-trous de prescription (158, 159, 160).
+⚠️ **Le compteur de sortie : CINQ constats, cinq exigeaient de modifier le
+skill.** Pas la sortie, donc, et c'est le seizième run d'affilée. Mais deux choses
+que le seul ratio ne montre pas : **aucune régression introduite par mes
+correctifs** (le run 11 en avait deux) et **aucune promesse fausse** (le run 15 en
+avait une, écrite la veille en corrigeant autre chose).
 
-⚠️ **Trois constats du compte rendu ont été DÉMENTIS en les reproduisant**, et
-c'est ce que le dépouillement rapporte de mieux :
+⚠️ **Trois constats ont été DÉMENTIS en les reproduisant**, et c'est ce que le
+dépouillement rapporte de mieux :
 - les deux grandeurs de démarrage (`am start -W` contre l'attente d'ancre) sont
   déjà distinguées **explicitement** dans le code, commentaire à l'appui ;
-- l'entrée périmée de `.argus-crop` disparaîtra bien seule : le fichier est
+- l'entrée périmée de `.argus-crop` disparaîtra seule : le fichier est
   **reconstruit** (`Object.fromEntries(visualScreens.map(…))`), jamais fusionné ;
 - rendre public un widget privé pour le monter n'était pas un arbitrage sans
-  instruction : le skill le prescrit, et `_ConfirmSheet` → `ConfirmSheet` est son
+  instruction — le skill le prescrit, et `_ConfirmSheet` → `ConfirmSheet` est son
   exemple littéral.
+
+⚠️ **Deux points n'ont PAS de garde exécutable** (157, 160), et l'absence est
+écrite dans le skill au lieu d'être laissée à deviner : tous deux décrivent un
+comportement de plateforme — la couche d'accessibilité d'Android, l'injection de
+Flutter — qui vit à la frontière, hors d'atteinte de tout test de ce dépôt. Un
+garde n'y réasserterait que la prose contre elle-même.
 
 Le reste du compte rendu ne concerne pas le skill : les 55 entrées de dette
 décrivent l'application d'essai (25 débordements, 14 cibles sous 48 dp, 9
