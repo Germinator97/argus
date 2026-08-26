@@ -37,6 +37,7 @@ import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -2980,4 +2981,75 @@ test('le cadrage du gabarit porte la contrainte que la méthodologie exige', () 
   assert.match(cadrage, new RegExp(`\\b${cle}\\b`),
     `la méthodologie exige un « ${exige[1]} explicite » et le bloc CADRAGE ne le demande pas. `
     + 'Ce que le gabarit ne fixe pas, l\'agent le fixe en silence — ici, ce qu\'il coupe faute de temps');
+});
+
+
+// ── La couverture compte-t-elle ce qu'elle avouait ignorer ? ────────────────
+//
+// Les trois comptes de `coverage` dérivent de `screens[]`, donc un état monté à
+// l'étage 1 seul leur est invisible. Le rapport l'AVOUAIT — « un état monté à
+// l'étage 1 seul n'y apparaît pas » — ce qui est vrai et insuffisant : le
+// harnais Dart est dans le même dépôt, le nombre était à portée. Mesuré sur un
+// projet réel : 15 états montables, 7 déclarés, 8 invisibles au rapport.
+
+/** Un harnais d'étage 1 tel qu'un projet l'écrit — exemple commenté compris. */
+const HARNESS = `
+final screens = <ArgusScreen>[
+  ArgusScreen(
+    id: 'shell',
+    builder: (_) => const AppShell(),
+  ),
+  ArgusScreen(
+    id: 'home-empty',
+    anchor: 'home_empty_root',
+  ),
+  // ArgusScreen(
+  //   id: 'exemple-commente',
+  //   anchor: 'jamais',
+  // ),
+  ArgusScreen(
+    id: 'runner-error',
+    builder: (_) => const RunnerError(),
+  ),
+];
+`;
+
+test('la couverture compte les états que l\'étage 1 monte et que screens[] ignore', () => {
+  const seuls = stageOneOnly(HARNESS, ['home-empty']);
+  assert.deepEqual(seuls, ['shell', 'runner-error'],
+    'les états d\'étage 1 non déclarés doivent ressortir, et eux seuls');
+
+  // ⚠️ L'exemple COMMENTÉ ne compte pas : un compteur qui lit sa propre
+  // illustration rend un écart qui n'existe pas. Le chantier l'a payé deux fois.
+  assert.ok(!seuls.includes('exemple-commente'),
+    'un ArgusScreen en commentaire a été compté — retire les commentaires du corpus');
+
+  // L'autre moitié : tout déclaré ⇒ rien à signaler. Sans elle, une fonction qui
+  // rend toujours la liste entière passerait le test ci-dessus.
+  assert.deepEqual(stageOneOnly(HARNESS, ['shell', 'home-empty', 'runner-error']), []);
+  // Et un projet sans harnais d'étage 1 ne fabrique pas d'écart.
+  assert.deepEqual(stageOneOnly('', ['home-empty']), []);
+});
+
+test('run.mjs CÂBLE le relevé dans coverage, et le rapport l\'affiche', () => {
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const appels = [...run.matchAll(/stageOneOnly\(/g)];
+  assert.ok(appels.length >= 2,
+    `${appels.length} occurrence(s) de stageOneOnly — la déclaration et son appel dans coverage sont attendus`);
+  assert.match(run, /harness\.dart/,
+    'le relevé ne lit plus le harnais d\'étage 1 : il ne peut donc rien compter');
+
+  // ⚠️ Et l'affichage, sans quoi le chiffre existe et personne ne le lit — le
+  // symétrique exact du défaut qu'on vient de fermer.
+  const avec = coverageLine({ screensDeclared: 7, screensConfigured: 7, visited: [],
+    stageOneOnly: ['shell', 'runner-error'] });
+  assert.match(avec, /shell/, 'la ligne de couverture doit NOMMER les états d\'étage 1');
+  assert.match(avec, /2 état/, 'et les compter');
+
+  // Sans relevé — projet sans harnais —, l'aveu d'origine reste : il vaut mieux
+  // qu'un silence.
+  const sans = coverageLine({ screensDeclared: 7, screensConfigured: 7, visited: [] });
+  assert.match(sans, /ne veut donc pas dire/,
+    'sans relevé, la ligne doit continuer de dire que ses comptes dérivent de screens[]');
 });

@@ -1333,6 +1333,42 @@ function budgetVerdict(config, startedAt, flows) {
 // 9. Point d'entrée
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Les états que l'étage 1 sait monter et que `screens[]` ne déclare PAS.
+ *
+ * ⚠️ POURQUOI CE RELEVÉ EXISTE. Les trois comptes de `coverage` dérivent tous de
+ * `config.screens` : un état monté à l'étage 1 seul leur est invisible. Le
+ * rapport l'AVOUAIT déjà — « un état monté à l'étage 1 seul n'y apparaît pas » —
+ * mais avouer une limite n'est pas la lever : l'information était disponible, à
+ * deux fichiers de là, et personne n'allait la chercher. Mesuré sur un projet
+ * réel : 15 états montables, 7 déclarés, **8 invisibles au rapport**, dont la
+ * coquille et trois états du runner.
+ *
+ * L'écart n'est PAS un défaut — le SKILL en documente quatre formes légitimes.
+ * C'est pour ça qu'il est rapporté et non transformé en finding : ce qui manque
+ * n'est pas un verdict, c'est le nombre.
+ *
+ * ⚠️ Les commentaires sont retirés du corpus AVANT de compter. Le gabarit livré
+ * porte des exemples commentés, et un compteur qui les lit rend un écart qui
+ * n'existe pas — le chantier a déjà payé cette erreur deux fois.
+ * @param {string} source contenu de `test/argus/harness.dart`
+ * @param {string[]} declares les `id` de `screens[]`
+ * @returns {string[]}
+ */
+export function stageOneOnly(source, declares) {
+  const utile = String(source ?? '').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  /** @type {string[]} */
+  const ids = [];
+  for (const m of utile.matchAll(/ArgusScreen\(/g)) {
+    // La fenêtre couvre l'en-tête du constructeur : `id:` y est nommé en
+    // premier dans le gabarit, mais un projet peut l'écrire après un builder.
+    const id = utile.slice(m.index ?? 0, (m.index ?? 0) + 400).match(/\bid:\s*'([^']+)'/);
+    if (id) ids.push(id[1]);
+  }
+  const connus = new Set(declares ?? []);
+  return [...new Set(ids)].filter((id) => !connus.has(id));
+}
+
 async function main() {
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
@@ -1641,6 +1677,14 @@ async function main() {
         .filter((/** @type {string} */ id) => !visites.includes(id)),
       visualScreens: visualScreens.map((s) => s.id),
       visualMode,
+      // Ce que les trois comptes ci-dessus ne peuvent pas voir, et qui se lisait
+      // « tout est couvert » : les états que l'étage 1 monte sans qu'aucun flow
+      // ne les atteigne. Le chiffre, pas l'aveu.
+      stageOneOnly: stageOneOnly(
+        existsSync(resolve(process.cwd(), 'test/argus/harness.dart'))
+          ? readFileSync(resolve(process.cwd(), 'test/argus/harness.dart'), 'utf8') : '',
+        (config.screens ?? []).map((/** @type {any} */ s) => s.id),
+      ),
     },
     // Ce que l'écran de départ a coûté, flow par flow. Le harnais payait déjà
     // ce temps ; il ne le disait pas.

@@ -122,6 +122,9 @@ export function coverageLine(coverage) {
   // avec quatre écrans que rien n'appelait — leurs branches existaient.
   const visites = coverage.visited ?? null;
   const jamais = coverage.notVisited ?? [];
+  // Les états que l'étage 1 monte et que `screens[]` ignore : le seul relevé de
+  // cette ligne qui ne dérive PAS de la config.
+  const etageUn = coverage.stageOneOnly ?? [];
   return `<p class="muted">Écrans déclarés : ${esc(declares)}`
     + ` · avec ancre sémantique : ${esc(avecAncre)}`
     + (visites ? ` · <strong>réellement visités par un flow : ${esc(visites.length)}</strong>` : '')
@@ -129,9 +132,19 @@ export function coverageLine(coverage) {
     + (sansAncre.length ? ` · sans ancre, donc non testés : ${esc(sansAncre.join(', '))}` : '')
     + (jamais.length ? `<br><span class="badge bad">jamais visités</span> ${esc(jamais.join(', '))}`
       + ` — déclarés, ancrés, et qu'aucune étape exécutée n'a atteints.` : '')
-    + `<br>Les trois premiers comptes dérivent de <strong>screens[]</strong> : un état monté à`
-    + ` l'étage 1 seul, ou jamais déclaré, n'y apparaît pas.`
-    + ` « ${esc(avecAncre)} sur ${esc(declares)} » ne veut donc pas dire « tout est couvert ».</p>`;
+    + (etageUn.length
+      // ⚠️ LE CHIFFRE, PAS L'AVEU. Cette phrase disait « un état monté à l'étage 1
+      // seul n'y apparaît pas » — vrai, et insuffisant : le harnais Dart est dans
+      // le même dépôt, donc le nombre était à portée. Avouer une limite n'est pas
+      // la lever.
+      ? `<br><span class="badge">étage 1 seulement</span> ${esc(etageUn.length)} état(s)`
+        + ` montés sans device et jamais atteints par un flow : ${esc(etageUn.join(', '))}.`
+        + ` L'écart est légitime — le SKILL en documente quatre formes — mais il se`
+        + ` compte : « ${esc(avecAncre)} sur ${esc(declares)} » décrit screens[], pas l'app.`
+      : `<br>Les trois premiers comptes dérivent de <strong>screens[]</strong> : un état monté à`
+        + ` l'étage 1 seul, ou jamais déclaré, n'y apparaît pas.`
+        + ` « ${esc(avecAncre)} sur ${esc(declares)} » ne veut donc pas dire « tout est couvert ».`)
+    + `</p>`;
 }
 
 
