@@ -37,7 +37,7 @@ import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -3031,12 +3031,27 @@ test('la couverture compte les états que l\'étage 1 monte et que screens[] ign
   assert.deepEqual(stageOneOnly('', ['home-empty']), []);
 });
 
-test('run.mjs CÂBLE le relevé dans coverage, et le rapport l\'affiche', () => {
+test('coverage PORTE le relevé, et le rapport l\'affiche', () => {
+  // ⚠️ EXERCÉ, pas lu. La première version de ce garde comptait les occurrences
+  // de `stageOneOnly(` dans le source : la mutation `stageOneOnly: [] ?? …`
+  // laisse le motif intact et vide la valeur, et le harnais l'a rendu VACANT le
+  // jour même. Un garde de câblage qui lit du texte ne voit pas une valeur
+  // neutralisée — il faut construire l'objet et regarder ce qu'il contient.
+  const cov = buildCoverage(
+    { screens: [{ id: 'home-empty' }] }, [{ id: 'home-empty' }], ['home-empty'],
+    [{ id: 'home-empty' }], 'assert', HARNESS,
+  );
+  assert.deepEqual(cov.stageOneOnly, ['shell', 'runner-error'],
+    'coverage doit porter les états que l\'étage 1 monte seul — sinon le rapport '
+    + 'retombe à « tout est couvert » sur les seuls écrans déclarés');
+  assert.equal(cov.screensDeclared, 1);
+  assert.deepEqual(cov.notVisited, [], 'les autres relevés doivent survivre à l\'extraction');
+
   const run = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
-  const appels = [...run.matchAll(/stageOneOnly\(/g)];
-  assert.ok(appels.length >= 2,
-    `${appels.length} occurrence(s) de stageOneOnly — la déclaration et son appel dans coverage sont attendus`);
+  assert.match(run, /coverage: buildCoverage\(/,
+    'main() ne construit plus la couverture par buildCoverage : la fonction peut rester '
+    + 'parfaite pendant que le rapport porte autre chose');
   assert.match(run, /harness\.dart/,
     'le relevé ne lit plus le harnais d\'étage 1 : il ne peut donc rien compter');
 

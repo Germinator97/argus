@@ -1369,6 +1369,45 @@ export function stageOneOnly(source, declares) {
   return [...new Set(ids)].filter((id) => !connus.has(id));
 }
 
+/** Le harnais d'étage 1 du projet, ou une chaîne vide s'il n'y en a pas. */
+function harnessSource() {
+  const chemin = resolve(process.cwd(), 'test/argus/harness.dart');
+  return existsSync(chemin) ? readFileSync(chemin, 'utf8') : '';
+}
+
+/**
+ * L'objet `coverage` du rapport.
+ *
+ * ⚠️ EXTRAIT POUR ÊTRE EXERCÉ. Tant qu'il était construit en ligne dans
+ * `main()`, seul un garde TEXTUEL pouvait le surveiller — et un garde textuel ne
+ * voit pas une valeur neutralisée : la mutation `stageOneOnly: [] ?? …` laisse le
+ * motif intact et vide le relevé. Le harnais de mutation l'a rendu « VACANT » le
+ * jour même où le garde a été écrit.
+ * @param {any} config @param {any[]} avecAncre @param {string[]} visites
+ * @param {any[]} visuels @param {string} visualMode @param {string} harness
+ */
+export function buildCoverage(config, avecAncre, visites, visuels, visualMode, harness) {
+  const declares = config.screens ?? [];
+  return {
+    screensDeclared: declares.length,
+    screensConfigured: avecAncre.length,
+    notConfigured: declares.filter((/** @type {any} */ s) => !avecAncre.includes(s))
+      .map((/** @type {any} */ s) => s.id),
+    // Ce que les flows ont VU, par opposition à ce que la config déclare. Les
+    // trois lignes du dessus dérivent toutes de `screens[]` et répondent donc à
+    // une question plus étroite que celle qu'on leur pose.
+    visited: visites,
+    notVisited: declares.map((/** @type {any} */ s) => s.id)
+      .filter((/** @type {string} */ id) => !visites.includes(id)),
+    visualScreens: visuels.map((/** @type {any} */ s) => s.id),
+    visualMode,
+    // Ce que les quatre comptes ci-dessus ne peuvent pas voir, et qui se lisait
+    // « tout est couvert » : les états que l'étage 1 monte sans qu'aucun flow ne
+    // les atteigne. Le chiffre, pas l'aveu.
+    stageOneOnly: stageOneOnly(harness, declares.map((/** @type {any} */ s) => s.id)),
+  };
+}
+
 async function main() {
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
@@ -1662,30 +1701,7 @@ async function main() {
       findings: Object.fromEntries(['blocker', 'critical', 'major', 'minor', 'info'].map((s) => [s, findings.filter((f) => f.severity === s).length])),
     },
     findings,
-    coverage: {
-      screensDeclared: (config.screens ?? []).length,
-      screensConfigured: screens.length,
-      notConfigured: (config.screens ?? [])
-        .filter((/** @type {any} */ s) => !screens.includes(s))
-        .map((/** @type {any} */ s) => s.id),
-      // Ce que les flows ont VU, par opposition à ce que la config déclare. Les
-      // trois lignes du dessus dérivent toutes de `screens[]` et répondent donc
-      // à une question plus étroite que celle qu'on leur pose.
-      visited: visites,
-      notVisited: (config.screens ?? [])
-        .map((/** @type {any} */ s) => s.id)
-        .filter((/** @type {string} */ id) => !visites.includes(id)),
-      visualScreens: visualScreens.map((s) => s.id),
-      visualMode,
-      // Ce que les trois comptes ci-dessus ne peuvent pas voir, et qui se lisait
-      // « tout est couvert » : les états que l'étage 1 monte sans qu'aucun flow
-      // ne les atteigne. Le chiffre, pas l'aveu.
-      stageOneOnly: stageOneOnly(
-        existsSync(resolve(process.cwd(), 'test/argus/harness.dart'))
-          ? readFileSync(resolve(process.cwd(), 'test/argus/harness.dart'), 'utf8') : '',
-        (config.screens ?? []).map((/** @type {any} */ s) => s.id),
-      ),
-    },
+    coverage: buildCoverage(config, screens, visites, visualScreens, visualMode, harnessSource()),
     // Ce que l'écran de départ a coûté, flow par flow. Le harnais payait déjà
     // ce temps ; il ne le disait pas.
     startup: {
