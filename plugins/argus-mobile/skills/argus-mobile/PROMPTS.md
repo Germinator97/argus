@@ -71,6 +71,11 @@ CADRAGE — ce que je tranche, pour que tu ne le tranches pas en silence
   DEVICE    : émulateur <NOM_AVD>, celui-là et aucun autre
   APP       : <com.exemple.app>  # ou : déduis-le du repo, et DEMANDE-le-moi
                                  #      s'il ne se déduit pas — n'en invente pas
+  BUDGET    : <N> min sur device # ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,
+                                 #   jamais coupé en silence. Si tu dois couper,
+                                 #   garde les parcours critiques et laisse le
+                                 #   long-tail à l'étage 1, qui le mesure sans
+                                 #   device — puis écris ce que tu as laissé.
   Tout le reste : les défauts du skill me vont.
 
 AUTORISATIONS ET LIMITES
@@ -115,6 +120,20 @@ harness déjà posé, les gabarits courts sont dans
 répondre. Les règles ci-dessous valent pour tous.
 
 ---
+
+## Pourquoi le budget est dans le cadrage
+
+La méthodologie l'exige en toutes lettres — « **Budget explicite.** Si le temps
+plafonne avant couverture complète, loggue ce qui a été échantillonné ET ce qui a
+été ignoré. Jamais de troncature silencieuse » — et c'est la seule des contraintes
+de §4 que l'agent ne peut pas déduire du dépôt.
+
+Sans cette ligne, il coupe quand même : il le doit. Mesuré sur un projet réel,
+**quinze états montables réduits à sept** déclarés en étage 2, arbitrage rendu
+sans budget et signalé comme tel dans le compte rendu — *« ce qui aurait levé
+l'ambiguïté : un budget de minutes-device et "si tu dois couper, garde X" »*. Le
+critère de choix, lui, était dans le SKILL et a été appliqué correctement : ce
+n'est pas le comment qui manquait, c'est le combien.
 
 ## Les cinq lignes qu'on ne supprime pas
 

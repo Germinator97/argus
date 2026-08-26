@@ -2940,3 +2940,44 @@ test('aucun `when` du scaffold ne mélange une condition d\'état et une de cont
   }
   assert.ok(blocs >= 8, `${blocs} bloc(s) \`when\` inspectés — l'instrument ne mesure pas`);
 });
+
+
+// ── Le cadrage demande-t-il ce que la méthodologie exige ? ───────────────────
+//
+// Même famille que le garde du levier ci-dessus : deux TEXTES du même skill qui
+// divergent, sans qu'aucun des deux soit faux seul. La méthodologie réclame un
+// budget explicite — « jamais de troncature silencieuse » — et le bloc de
+// cadrage du gabarit tranchait MODE, ENV, PLATFORMS, DEVICE et APP, jamais le
+// temps. L'agent coupe alors quand même, parce qu'il le doit : mesuré sur un
+// projet réel, quinze états montables réduits à sept, arbitrage rendu sans
+// budget et signalé comme tel dans le compte rendu.
+test('le cadrage du gabarit porte la contrainte que la méthodologie exige', () => {
+  // ⚠️ DÉRIVÉ, jamais recopié : le nom de la contrainte est LU dans la
+  // méthodologie. L'écrire ici ferait un garde qui suit le gabarit au lieu de le
+  // surveiller — changer les deux ensemble le laisserait vert.
+  const metho = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md'), 'utf8');
+  const exige = metho.match(/\*\*([A-Za-zÀ-ÿ]+) explicite\.\*\*/);
+  assert.ok(exige, 'la méthodologie ne réclame plus rien « d\'explicite » dans sa stratégie '
+    + 'de passage à l\'échelle — si la phrase a été reformulée, mets ce motif à jour, '
+    + 'sinon ce garde ne garde plus rien');
+  const cle = exige[1].toUpperCase();
+
+  const prompts = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const debut = prompts.indexOf('CADRAGE —');
+  const fin = prompts.indexOf('AUTORISATIONS ET LIMITES', debut);
+  assert.ok(debut !== -1 && fin > debut, 'le bloc CADRAGE a disparu du gabarit');
+  const cadrage = prompts.slice(debut, fin);
+
+  // L'autre moitié : sans elle, un bloc vidé de tout passerait le test suivant.
+  for (const attendue of ['MODE', 'ENV', 'PLATFORMS', 'DEVICE', 'APP']) {
+    assert.match(cadrage, new RegExp(`\\b${attendue}\\b`),
+      `le bloc CADRAGE ne tranche plus ${attendue} — ce garde compare deux textes, `
+      + 'il faut que le premier existe encore');
+  }
+
+  assert.match(cadrage, new RegExp(`\\b${cle}\\b`),
+    `la méthodologie exige un « ${exige[1]} explicite » et le bloc CADRAGE ne le demande pas. `
+    + 'Ce que le gabarit ne fixe pas, l\'agent le fixe en silence — ici, ce qu\'il coupe faute de temps');
+});
