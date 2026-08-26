@@ -2913,7 +2913,7 @@ recopier : changer les deux ensemble ne peut pas le laisser vert, et il vérifie
 que le bloc tranche toujours les cinq autres clés, sans quoi un bloc vidé
 passerait.
 
-### 182. ❌ DÉMENTI — « le plafond d'attente dérivé est trop bas »
+### 182. ⚠️ DÉMENTI À MOITIÉ, ROUVERT EN 185 — « le plafond d'attente dérivé est trop bas »
 
 Le run a perdu une passe device complète (8 min 39, 4 flows sur 6 morts sur
 `Assertion is false: id: home_empty_root is visible`) avec le plafond dérivé de
@@ -2939,6 +2939,22 @@ seuil, c'est la charge de l'hôte — l'agent l'a relevée lui-même
 Et le skill a fait exactement ce qu'il devait : échec **au bon endroit**, message
 nommant `startTimeoutMs`, `coldStartMs` **non touché** pour que la lenteur reste
 un finding. C'est le correctif 156-160, vérifié une fois de plus.
+
+## ⚠️ Ce démenti était FAUX pour moitié — rouvert le 26/08/2026 en 185
+
+Le run 24, sur une machine **peu chargée** (3,49 contre 17,15), a relevé
+**20 039 ms contre un plafond de 20 000** : un flow terminé à **39 ms de marge**,
+et 29 255 ms au run suivant. La charge n'était donc pas la seule variable.
+
+📌 **L'erreur de raisonnement, à retenir** : j'ai isolé UNE variable — la charge —
+vérifié qu'elle expliquait l'écart *entre les runs*, et conclu qu'il n'y en avait
+pas d'autre. Elle expliquait la dispersion, pas la **minceur de la marge**. Isoler
+une variable prouve ce qu'elle explique, jamais ce qu'elle épuise.
+
+Ce qui reste vrai du démenti : le seuil n'est pas « trop bas » dans l'absolu, et
+le run 21 a bien tenu avec lui. Ce qui était faux : en conclure qu'il n'y avait
+rien. Le vrai défaut est que le plafond est dérivé de la **mauvaise grandeur** —
+voir 185.
 
 ### 183. ✅ Corrigé le 26/08/2026 — Rien ne relevait la charge de la MACHINE, donc un run lent ressemblait à un skill lent
 
@@ -2975,11 +2991,100 @@ est branché** alors qu'il ne l'était pas pendant le run — l'agent avait
 explicitement rapporté « aucun appareil physique n'est apparu ». C'est exactement
 ce que ce fichier existe pour capter.
 
+### 184. `argus-lint` ne voit pas les CYCLES d'appels entre flows
+
+Le run a perdu son premier `argus-run` :
+
+```
+[argus-mobile] ✖ 1 exécution(s) Maestro en échec sans étape fautive identifiée
+```
+
+Dossier d'artefacts vide, aucun JUnit. La commande rejouée à la main dit la vraie
+cause : `Parsing Failed at .maestro/_subflows/goto.yaml:277:3` — une branche de
+`goto.yaml` appelait `goto.yaml`. **Maestro rejette le workspace entier au
+démarrage**, donc rien ne s'exécute et il n'y a pas d'étape fautive à nommer.
+
+**Reproduit sans device**, sur un workspace jetable de deux fichiers :
+
+```
+maestro check-syntax .maestro/smoke.yaml                → OK
+maestro check-syntax .maestro/_subflows/goto.yaml       → OK    ← il s'appelle lui-même
+```
+
+`make argus-lint` boucle exactement ainsi, fichier par fichier, et imprime
+« ✔ tous les flows parsent ». La cible **valide chaque fichier et ne résout pas le
+graphe d'appels** : un lint vert ne prouve donc pas qu'un workspace démarre.
+
+Famille dominante du chantier : *un contrôle vert qui mesure autre chose*. Et son
+symptôme est ici particulièrement trompeur, puisque l'échec qui suit ne nomme
+aucune étape — l'endroit où l'on cherche est le dernier flow lancé, pas le
+sous-flow fautif.
+
+### 185. Le plafond d'attente est dérivé du RÉGIME STABILISÉ, pas de ce que chaque flow paie
+
+Mesuré sur ce run, machine peu chargée :
+
+```
+firstLaunchMs : 13 463 ms   ← ce que chaque flow paie : chacun fait clearState
+coldStartMs   :  1 801 ms   ← ce dont le plafond est dérivé (× 5)
+plafond dérivé = max(20 000, coldStartMs × 5) = 20 000 ms
+attentes relevées : 8011 · 8615 · 8627 · 8771 · 18085 · 20039   puis 29 255
+```
+
+`clearState` remet l'app à l'état d'une installation fraîche, donc **chaque flow
+paie un premier lancement**, pas un démarrage stabilisé. Le plafond, lui, se
+dérive de `coldStartMs`, qui décrit le régime stabilisé — 1 801 ms ici, soit
+**7,5 fois moins** que ce que le flow paie réellement. La marge est de 6,5 s sur
+une grandeur qui varie, et un flow a terminé à **39 ms** de l'échec.
+
+⚠️ Le harnais **mesure déjà** la bonne grandeur : `argus-perf` rapporte
+`firstLaunchMs`, et il l'isole exprès du régime stabilisé. Mais `perf` tourne
+APRÈS les flows, et rien ne relie les deux.
+
+⚠️ **Et personne ne pouvait le voir venir** : un flow qui passe à 39 ms près rend
+exactement le même vert qu'un flow qui passe avec dix secondes de marge. Le
+rapport porte `startup.samples` et le plafond ; il ne dit jamais ce qui les
+sépare.
+
+📌 C'est la réouverture du **182**, que j'avais démenti la veille en isolant la
+charge de l'hôte. Elle expliquait la dispersion entre les runs, pas la minceur de
+la marge.
+
+### 186. La clé `budget` existe dans les défauts et manque au gabarit de config
+
+`config.mjs:361` porte `budget: { maxMinutes: 25, maxFlows: 40 }`, et le runner
+publie `run.budget` dans le rapport. Le gabarit `argus.mobile.yaml` livré, lui,
+**ne la montre nulle part** — le mot n'y apparaît que dans des commentaires qui
+parlent d'autre chose (`binarySizeMb`, choix du device).
+
+Conséquence mesurée : le gabarit de prompt demande depuis aujourd'hui de trancher
+un `BUDGET` (point 181), l'agent l'a fait, et il a dû **écrire la clé lui-même**
+sans qu'aucun exemple ne la lui montre. Il est tombé juste ; rien ne le
+garantissait.
+
+Même famille que le 181, à un cran de plus : ce n'est pas la doc qui manque, c'est
+que la valeur par défaut — 25 minutes — gouverne un run sans que personne la voie.
+
 ## Ce qui reste
 
-**Rien.** Les points **180, 181 et 183** sont fermés le 26/08/2026, le jour même
-de leur inscription — le backlog se vide pour la **vingt-troisième** fois. Le
-**182 est démenti** et se garde avec sa mesure.
+**Les points 184, 185 et 186**, inscrits le 26/08/2026 au dépouillement du
+run 24. Le **185 rouvre le 182**, que j'avais démenti la veille.
+
+⚠️ **Les correctifs du jour ont porté, et l'agent s'en est SERVI POUR RAISONNER
+sans savoir qu'ils étaient neufs.** `coverage.stageOneOnly` rend six écrans, et
+son compte rendu écrit : *« `notConfigured: []` ne veut pas dire tout est couvert ;
+le chiffre à lire en regard est `stageOneOnly` »* — c'est-à-dire exactement la
+phrase que le correctif existait pour rendre possible. Le budget de même :
+`run.budget: {maxMinutes: 45, minutes: 9.4, flows: 8}`, et une section entière du
+rapport dit ce qui a été échantillonné **et où c'est écrit**.
+
+⚠️ **Le run est par ailleurs le plus propre du chantier** : 8 flows verts,
+528 tests, sécurité **0 finding** après dérivation des permissions du manifeste
+fusionné, **0 blocker et 0 critical**, et l'appareil physique branché n'apparaît
+dans aucun des six JSON (`grep -c` → 0 partout).
+
+Les points **180, 181 et 183** ont été fermés le 26/08/2026, le jour même de leur
+inscription — le backlog s'était vidé pour la vingt-troisième fois.
 
 ⚠️ **Le 180 était en dessous de la vérité** : le rapport avouait déjà sa limite,
 donc le travail n'était pas de la dire mais de la lever. Et son premier garde est
