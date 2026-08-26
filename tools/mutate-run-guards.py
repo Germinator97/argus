@@ -253,6 +253,27 @@ MUTATIONS = [
     ("perf", "la boucle à chaud ne compte plus ses expirations",
      "    const { totalMs, waitMs, kind } = timedLaunch(udid, component);\n    if (kind === 'timeout') timedOut += 1;\n",
      "    const { totalMs, waitMs, kind } = timedLaunch(udid, component);\n"),
+    # La taille de publication. Le défaut d'origine n'était pas un chiffre faux
+    # mais un VERDICT rendu sur le mauvais binaire — d'où des mutations qui
+    # portent sur la décision de juger, pas sur la mesure.
+    ("perf", "le binaire de test redevient jugé contre le budget",
+     "  if (pese.isRelease) return thresholdFinding(",
+     "  if (true) return thresholdFinding("),
+    ("perf", "la mesure qui reste à prendre redevient bloquante",
+     "    dimension: 'performance', severity: 'info',",
+     "    dimension: 'performance', severity: 'major',"),
+    ("perf", "le geste ignore que la clé est déjà déclarée",
+     "  const gestes = declare\n",
+     "  const gestes = false\n"),
+    ("config", "la commande de release repart en debug",
+     "  const derive = cmd.replace(/--(debug|profile)\\b/g, '--release');",
+     "  const derive = cmd;"),
+    ("config", "le repli perd le mode de publication",
+     "'flutter build apk --release', pinned);",
+     "'flutter build apk', pinned);"),
+    ("sec", "la consigne de build ignore quel binaire manquait",
+     "  const vise = publie !== '' && resolve(root, publie) === binary;",
+     "  const vise = false;"),
 ]
 
 
