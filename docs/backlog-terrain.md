@@ -2700,7 +2700,7 @@ Maestro en échec sans étape fautive identifiée », exit 2) — la cause étai
 l'agent avait tué le driver Maestro pendant un diagnostic. Et le compteur d'ancres
 distingue les 31 littéraux des 2 gabarits, « le compte de `lib/` est un plancher ».
 
-### 176. ⚠️ `argus-perf` peut attendre INDÉFINIMENT, sans un mot
+### 176. ✅ Corrigé le 26/08/2026 — ⚠️ `argus-perf` pouvait attendre INDÉFINIMENT, sans un mot
 
 Mesuré par le run : `make argus-perf` s'est bloqué **3 fois sur 5**, toujours dans
 la boucle des démarrages **à chaud**. Durées relevées avant que l'agent ne tue le
@@ -2727,7 +2727,26 @@ que `topResumedActivity` reste le lanceur. Il l'a écrit sans l'expliquer, et c'
 la bonne façon de le rapporter. Le défaut à corriger ne dépend pas de cette
 cause : **un script de mesure ne doit pas pouvoir attendre sans fin.**
 
-### 177. L'ordre prescrit garantit que la taille est mesurée sur le DEBUG
+**Corrigé au niveau de la CLASSE**, pas d'`am start -W` : `sh()` applique un
+plafond à **toute** commande externe — `SH_TIMEOUT_MS` pour les commandes longues
+et légitimes (`flutter build`, `maestro test`), `PROBE_TIMEOUT_MS` pour les
+sondes, `ARGUS_SH_TIMEOUT_MS` pour relever sans toucher au code.
+
+⚠️ **`timeout` seul NE TIENT PAS son plafond, et c'est une mesure.** Un process
+qui ignore SIGTERM — le signal envoyé par défaut — laisse `spawnSync` attendre sa
+fin naturelle : **9 068 ms** relevés pour un plafond de 300, avec `ETIMEDOUT`
+rendu quand même. Un dépassement qui se **rapporte** sans avoir jamais été borné,
+donc un garde écrit sur le seul drapeau serait resté vert pendant que le harnais
+attend. Le même appel en `killSignal: 'SIGKILL'` rend la main en **306 ms**.
+
+L'expiration s'écrit **quoi qu'en fasse l'appelant** : c'est la seule panne d'ici
+qui ne laisse rien derrière elle — ni stdout, ni code de sortie, ni ligne de log.
+`launchOutcome` a été extraite pour que les quatre verdicts d'`am start -W` soient
+testables sans device, expiration comprise, et `perf.json` porte
+`timedOutLaunches` — une médiane calculée sur les échantillons **survivants** se
+lit sinon comme n'importe quelle autre.
+
+### 177. ✅ Corrigé le 26/08/2026 — L'ordre prescrit garantissait que la taille soit mesurée sur le DEBUG
 
 Le point 174 a appris à `perf.mjs` à peser `build.androidScan` — la release —
 quand elle est déclarée et présente. Elle ne l'est jamais **au moment où `perf`
@@ -2749,7 +2768,20 @@ release du même code en fait `30,2`. Personne ne relance `perf` après.
 ⚠️ Un correctif qui rend le relevé honnête sans le rendre juste : il faut soit
 prescrire l'ordre, soit faire dire au rapport que la taille reste à mesurer.
 
-### 178. `goto.yaml` est décrit comme un aiguillage depuis le LANCEMENT, et appelé en cours de flow
+**Corrigé en cessant de JUGER.** Quand le binaire pesé n'est pas la publication,
+le rapport ne rend plus un `major` faux par construction : il **réclame** la
+mesure — `QAM-PERF-SIZE-UNMEASURED`, severity `info`, parce qu'une release ne se
+construit pas à chaque run et ne doit donc pas faire rougir le gate. Le finding
+porte les gestes exacts, et le chemin proposé est **dérivé** du projet : un flavor
+donne `app-dev-release.apk`, pas le chemin par défaut de Flutter qui n'existerait
+pas chez lui. La mesure du debug reste lisible dans `actual` — elle n'est
+simplement plus comparée à un budget qui ne la concerne pas.
+
+Deux causes, deux messages : « pas déclarée » se répare dans la config,
+« déclarée mais absente » par un build. Rendre le premier quand c'est le second
+envoie éditer une clé qui va déjà bien.
+
+### 178. ✅ Corrigé le 26/08/2026 — `goto.yaml` décrivait un aiguillage depuis le LANCEMENT, et est appelé en cours de flow
 
 Le sous-flow livré porte : « `home` ne demande rien : `launch-clean.yaml` y a déjà
 mené », et sa branche « rien à naviguer » se décide sur l'écran de **départ**.
@@ -2771,10 +2803,52 @@ ses propres branches en tapant `nav_home` d'abord, et note que `goto` est
 aiguillage depuis l'état initial, alors que son contrat réel est : *amener l'app
 sur cet écran, quel que soit l'endroit d'où on part*.
 
+**Corrigé en donnant à `goto` son contrat** : trois branches là où il n'y en avait
+qu'une — on y est (rien à faire), on le demande mais on n'y est plus (le retour du
+projet, avec une assertion qui échoue **ici** plutôt que trois étapes plus loin),
+et aucune ancre déclarée (dit à voix haute, plutôt que supposé). La condition
+regarde désormais l'**écran** et non le scénario : « on demande l'écran de
+départ » ne prouve pas « on est sur l'écran de départ ».
+
+⚠️ **L'imbrication des `when` est une décision, pas un style.** Écrire `true:` et
+`visible:` dans le même `when` demanderait de savoir comment Maestro les
+combine — un ET **supposé**, que rien ici ne mesure sans device. Déroulé sur les
+quatre cas, une lecture en OU ferait échouer un `goto` vers un **autre** écran.
+Deux `when` emboîtés, portant chacun une seule nature de condition, donnent le ET
+sans rien supposer ; un garde empêche désormais de « simplifier » en arrière.
+
+⚠️ **Et `a11y.yaml` affirmait le mécanisme INVERSE** — « chaque `goto.yaml` part
+de là où `launch-clean` a laissé l'app » — en mettant la charge sur chaque
+appelant plutôt que sur le sous-flow dont c'est le travail. C'est ce commentaire,
+écrit pour prévenir du piège, qui l'a laissé vivre deux runs.
+
+Syntaxe **mesurée** et non supposée : `maestro 2.8.0 check-syntax` sur les
+12 flows, avec contre-épreuve — une propriété renommée est rejetée (exit 1).
+
+### 179. ✅ Corrigé le 26/08/2026 (né de la passe du 177) — « construis-le » proposait la commande de DEBUG pour un scan de RELEASE
+
+Trouvé **en corrigeant le 177**, dans le même tissu. Quand le binaire à scanner
+est absent, `sec.mjs` disait « construis-le : `flutter build apk --debug` » —
+c'est-à-dire la commande qui ne produira **jamais** `app-release.apk`.
+
+Une consigne fausse avec toutes les apparences d'une consigne juste : elle
+s'exécute sans erreur, elle reconstruit bien *un* binaire, et le scan suivant
+échoue exactement pareil. Rien ne pouvait la démentir.
+
+Cause : le harnais ne savait construire que ce qu'il **pilote**. `releaseBuildCmd`
+dérive la commande de publication de celle du projet — flavor, ABI et
+`--dart-define` gardés, seul le mode change — et `buildHintFor` choisit celle qui
+produit **le** binaire qu'on vient de chercher en vain.
+
 ## Ce qui reste
 
-**Les points 176 à 178**, inscrits le 24/08/2026 au dépouillement du run 22.
-Aucun n'est encore traité.
+**Rien.** Les points **176 à 179** sont fermés le 26/08/2026 — le backlog se vide
+pour la **vingt-deuxième** fois, avec un jour de retard : la session du 24 s'était
+arrêtée entre le classement et la passe, ce qui n'était jamais arrivé.
+
+Le **179** est né de la passe elle-même, en corrigeant le 177 : un remède se
+périme entre son écriture et son application, et c'est en écrivant qu'on voit ce
+que le relevé ne pouvait pas voir.
 
 ⚠️ **Le compteur de sortie remonte à TROIS** (7 → 5 → 3 → 4 → 4 → 2 → 2 → **3**),
 mais leur **nature** change et c'est ce qui compte : après quatre runs de
@@ -2801,3 +2875,7 @@ est ce qui l'a dit.
 
 Le reste ne concerne pas le skill : 54 entrées de dette décrivent l'application
 d'essai, et `osv-scanner` reste une affaire de machine.
+
+**Prochain numéro libre : 180.** La condition de sortie n'est pas remplie — le
+run 22 a exigé trois correctifs de `plugins/argus-mobile/`, donc c'est une
+**vérification** qui vient, sur le même terrain.
