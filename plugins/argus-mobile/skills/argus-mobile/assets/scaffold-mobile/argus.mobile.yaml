@@ -70,6 +70,11 @@ build:
   # androidScan: build/app/outputs/flutter-apk/app-release.apk
   # (ponctuellement : `node scripts/argus/sec.mjs --binary=<chemin>`)
   #
+  # Elle décide AUSSI de la taille que pèse `argus-perf` : le budget
+  # `binarySizeMb` vise la publication, donc sans cette clé le rapport ne juge
+  # rien — il RÉCLAME la mesure (QAM-PERF-SIZE-UNMEASURED) au lieu d'appliquer
+  # un budget de release au binaire de test, qui en fait couramment le triple.
+  #
   # ⚠️ CONSTRUIS-LE AVEC LA COMMANDE DE RELEASE DU PROJET, pas un `--release` nu.
   # Le scan conclut sur le binaire qu'on lui donne : construit sans les flags que
   # ton projet emploie pour publier (typiquement `--obfuscate

@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
-  missingToolMessage, PROBE_TIMEOUT_MS, sh, warn, writeJson,
+  missingToolMessage, PROBE_TIMEOUT_MS, releaseBuildCmd, sh, warn, writeJson,
 } from './config.mjs';
 
 const MB = 1024 * 1024;
@@ -308,6 +308,53 @@ export function thresholdFinding(id, label, value, budget, unit, dimension = 'pe
   };
 }
 
+/**
+ * Le finding de taille — ou le REFUS d'en juger un.
+ *
+ * ⚠️ UN CORRECTIF PEUT RENDRE UN RELEVÉ HONNÊTE SANS LE RENDRE JUSTE, et c'est
+ * ce qui s'est passé ici. Le rapport disait déjà « mesuré sur un debug », ce qui
+ * est exact — puis jugeait quand même ces 92 Mo contre un budget de publication
+ * que la release du même code tient à 30,2. Un `major` faux par construction,
+ * pendant que la mesure utile n'était jamais prise : rien ne dit de construire
+ * la release avant, et le déroulé la construit pour la dimension SÉCURITÉ, qui
+ * vient après. Chronologie relevée sur un run réel — perf.json à 22:30:51,
+ * app-release.apk à 22:32:30, la clé renseignée à 23:01:32.
+ *
+ * Alors on ne juge plus, on RÉCLAME : un finding `info` (donc sans effet sur le
+ * gate — une release ne se construit pas à chaque run) qui porte les gestes
+ * exacts. Le rapport cesse de contenir un verdict faux et se met à contenir une
+ * tâche visible.
+ * @param {{path:string, isRelease:boolean}} pese @param {number|null} sizeMb
+ * @param {any} config @param {string} platform @param {string} buildCmd
+ * @returns {any|null}
+ */
+export function sizeFinding(pese, sizeMb, config, platform, buildCmd) {
+  const budget = (config?.thresholds ?? {}).binarySizeMb;
+  const variante = /-debug\.(apk|aab)$/i.test(String(pese.path ?? '')) ? 'debug' : '';
+  if (pese.isRelease) return thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, budget, 'Mo', 'performance', variante);
+
+  const cle = platform === 'ios' ? 'iosScan' : 'androidScan';
+  const declare = String((config?.build ?? {})[cle] ?? '');
+  // Le chemin proposé est DÉRIVÉ de celui du binaire de test : un projet à
+  // flavors donne `app-dev-debug.apk`, donc `app-dev-release.apk`, et non le
+  // chemin par défaut de Flutter qui n'existerait pas chez lui.
+  const attendu = String(pese.path ?? '').replace(/-debug\./, '-release.');
+  const gestes = declare
+    ? [`\`${cle}\` déclare ${declare}, mais le fichier n'est pas là — construis-le : ${buildCmd}`]
+    : [`construis la release : ${buildCmd}`,
+      `déclare-la dans argus.mobile.yaml : build.${cle}: ${attendu || '<le binaire que tu publies>'}`];
+  return {
+    id: 'QAM-PERF-SIZE-UNMEASURED', title: 'Taille de publication non mesurée',
+    dimension: 'performance', severity: 'info',
+    expected: budget ? `≤ ${budget} Mo sur le binaire publié` : 'une mesure sur le binaire publié',
+    actual: sizeMb === null
+      ? `aucun binaire pesé (${pese.path || 'aucun chemin déclaré'})`
+      : `${sizeMb} Mo mesurés sur ${pese.path} — un binaire de TEST, sans rapport avec ce que reçoivent les utilisateurs`,
+    suggestedFix: [...gestes, 'puis relance `make argus-perf` : c\'est la seule mesure comparable au budget.'].join('\n'),
+    status: 'open',
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Point d'entrée
 // ═══════════════════════════════════════════════════════════════════════════
@@ -327,16 +374,24 @@ function main() {
   const thresholds = config.thresholds ?? {};
   const pese = binaryToWeigh(platform, config);
   const sizeMb = binarySizeMb(resolve(process.cwd(), pese.path));
+  const buildRelease = releaseBuildCmd(config);
   if (!pese.isRelease) {
-    warn(`taille mesurée sur ${pese.path} — un binaire de TEST. Le budget`
-      + ` binarySizeMb vise ce que tu publies : renseigne build.androidScan pour`
-      + ' que ce chiffre décrive l\'application plutôt que l\'outillage.');
+    // Deux causes, deux messages : « pas déclarée » se répare dans la config,
+    // « déclarée mais absente » se répare par un build. Rendre le premier quand
+    // c'est le second envoie éditer une clé déjà bonne.
+    const cle = platform === 'ios' ? 'iosScan' : 'androidScan';
+    const declare = String((config.build ?? {})[cle] ?? '');
+    warn(`taille mesurée sur ${pese.path} — un binaire de TEST : le budget binarySizeMb vise ce que tu publies.`);
+    warn(declare
+      ? `  build.${cle} déclare ${declare}, absent au moment de la mesure — construis-le : ${buildRelease}`
+      : `  déclare build.${cle} et construis la release : ${buildRelease}`);
+    warn('  Le rapport porte une tâche ouverte (QAM-PERF-SIZE-UNMEASURED), pas un verdict sur ce chiffre.');
   }
 
   // iOS : pas d'équivalent local à `am start -W`. On le DIT et on rapporte
   // `skipped`, plutôt que de rendre un vert qui laisserait croire à une mesure.
   if (platform !== 'android') {
-    const findings = [thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo')].filter(Boolean);
+    const findings = [sizeFinding(pese, sizeMb, config, platform, buildRelease)].filter(Boolean);
     writeJson(reportPath, {
       platform, skipped: true,
       skipReason: 'iOS : aucun équivalent local de `adb shell am start -W` / `dumpsys gfxinfo`. '
@@ -452,7 +507,7 @@ function main() {
     thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
     thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
     thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo', 'performance', variante),
-    thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, thresholds.binarySizeMb, 'Mo', 'performance', variante),
+    sizeFinding(pese, sizeMb, config, platform, buildRelease),
   ].filter(Boolean);
 
   const report = {

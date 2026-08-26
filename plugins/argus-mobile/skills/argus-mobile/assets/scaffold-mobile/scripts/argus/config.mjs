@@ -727,6 +727,27 @@ export function flutterCommandIn(command, pinned) {
 export const flutterCommand = (command) => flutterCommandIn(command, usesFvm());
 
 /**
+ * La commande qui produit le binaire de PUBLICATION, dérivée de celle du projet.
+ *
+ * ⚠️ ELLE MANQUAIT, et son absence coûtait deux choses. Le harnais sait
+ * construire ce qu'il PILOTE (`androidBuildCmd`, un debug) et rien d'autre :
+ * quand une dimension réclamait la release — pour la peser ou la scanner —, le
+ * seul geste qu'elle savait proposer était celui du debug, c'est-à-dire une
+ * commande qui ne produirait jamais le fichier attendu. Le message avait toutes
+ * les apparences d'une consigne juste.
+ *
+ * Dérivée plutôt qu'écrite en dur : un projet qui cible une ABI, un flavor ou
+ * un `--dart-define` garde tout cela, seul le mode change. Le repli ne sert
+ * qu'au projet qui n'a rien déclaré.
+ * @param {any} config @param {boolean} [pinned] @returns {string}
+ */
+export function releaseBuildCmd(config, pinned = usesFvm()) {
+  const cmd = String(config?.build?.androidBuildCmd ?? '').trim();
+  const derive = cmd.replace(/--(debug|profile)\b/g, '--release');
+  return flutterCommandIn(derive.includes('--release') ? derive : 'flutter build apk --release', pinned);
+}
+
+/**
  * Outils optionnels, avec la raison de leur présence et comment les installer.
  * @type {Record<string, {probe:string[], why:string, install:string}>}
  */

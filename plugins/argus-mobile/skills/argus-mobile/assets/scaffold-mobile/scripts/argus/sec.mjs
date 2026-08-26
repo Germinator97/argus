@@ -33,7 +33,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, flutterCommand, loadConfig, log, sh, toolPath, warn, writeJson,
+  artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -381,6 +381,30 @@ export function binaryFreshness(binary, root, mtime = (f) => statSync(f).mtimeMs
  * @param {string} platform @param {any} config @param {string} override
  * @returns {string}
  */
+/**
+ * La commande qui produit LE binaire qu'on vient de chercher en vain.
+ *
+ * ⚠️ Tant qu'elle était toujours `androidBuildCmd` — le DEBUG —, un scan de
+ * release absent envoyait relancer une commande qui ne créerait jamais le
+ * fichier attendu. Une consigne fausse, avec toutes les apparences d'une
+ * consigne juste : elle s'exécute sans erreur, elle reconstruit bien *un*
+ * binaire, et le scan suivant échoue exactement pareil.
+ *
+ * ⚠️ `pinned` est un paramètre pour la même raison qu'ailleurs ici : lu à
+ * l'intérieur, un garde écrit dans un dépôt sans `.fvmrc` n'exercerait jamais
+ * la branche qui préfixe.
+ * @param {string} binary chemin ABSOLU du binaire cherché
+ * @param {string} root @param {any} config @param {boolean} [pinned]
+ * @returns {string}
+ */
+export function buildHintFor(binary, root, config, pinned = usesFvm()) {
+  const publie = String(config?.build?.androidScan ?? '');
+  const vise = publie !== '' && resolve(root, publie) === binary;
+  return vise
+    ? releaseBuildCmd(config, pinned)
+    : flutterCommandIn(config?.build?.androidBuildCmd ?? '', pinned);
+}
+
 export function binaryToScan(platform, config, override = '') {
   const b = config?.build ?? {};
   return platform === 'ios'
@@ -596,7 +620,7 @@ function main() {
   if (platform !== 'android') {
     binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur n\'est pas le binaire signé de l\'App Store. Utilise MobSF sur l\'IPA.' };
   } else if (!existsSync(binary)) {
-    binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${flutterCommand(config.build.androidBuildCmd)}` };
+    binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config)}` };
   } else if (!tools.unzip.present) {
     binaryFacts = { scanned: false, why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
   } else {

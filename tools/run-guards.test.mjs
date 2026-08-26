@@ -27,7 +27,9 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -2749,4 +2751,100 @@ test('perf.mjs LIT son verdict par launchOutcome au lieu de le refaire', () => {
   const boucles = perf.split('\n').filter((l) => /kind === 'timeout'/.test(l));
   assert.equal(boucles.length, 2,
     `${boucles.length} boucle(s) de mesure comptent les expirations au lieu de 2 (à froid ET à chaud)`);
+});
+
+
+// ── La taille de publication : réclamer la mesure, ne pas juger l'outillage ──
+//
+// Un correctif peut rendre un relevé honnête sans le rendre juste. Le rapport
+// disait déjà « mesuré sur un debug » — exact — puis jugeait quand même 92 Mo
+// contre un budget que la release du même code tient à 30,2. Le verdict était
+// faux par construction, et la mesure utile n'était jamais prise : rien ne dit
+// de construire la release avant, et le déroulé la construit pour la dimension
+// sécurité, qui vient après.
+
+const GATE = { failOn: ['blocker', 'critical', 'major'] };
+
+test('la commande de release DÉRIVE de celle du projet — flavor et ABI compris', () => {
+  assert.equal(
+    releaseBuildCmd({ build: { androidBuildCmd: 'flutter build apk --debug --target-platform android-arm64' } }, false),
+    'flutter build apk --release --target-platform android-arm64');
+  // Un projet qui construit DÉJÀ en release n'est pas réécrit.
+  assert.equal(
+    releaseBuildCmd({ build: { androidBuildCmd: 'flutter build appbundle --release --flavor prod' } }, false),
+    'flutter build appbundle --release --flavor prod');
+  // `--profile` est un binaire de test lui aussi.
+  assert.equal(releaseBuildCmd({ build: { androidBuildCmd: 'flutter build apk --profile' } }, false),
+    'flutter build apk --release');
+  // Le repli ne sert qu'au projet qui n'a rien déclaré.
+  assert.equal(releaseBuildCmd({}, false), 'flutter build apk --release');
+  // Et le SDK épinglé : sans le préfixe, la consigne est fausse — la contrainte
+  // du pubspec rejette le flutter du PATH.
+  assert.equal(releaseBuildCmd({ build: { androidBuildCmd: 'flutter build apk --debug' } }, true),
+    'fvm flutter build apk --release');
+});
+
+test('la taille d\'un binaire de TEST ne devient pas un verdict de publication', () => {
+  const config = { thresholds: { binarySizeMb: 60 }, build: { android: 'build/app/outputs/flutter-apk/app-dev-debug.apk' } };
+  const f = sizeFinding({ path: config.build.android, isRelease: false }, 92, config, 'android', 'flutter build apk --release');
+  assert.equal(f.id, 'QAM-PERF-SIZE-UNMEASURED');
+  assert.equal(f.severity, 'info');
+  assert.equal(exitCodeFor([f], GATE), 0, 'une mesure qui reste à prendre ne doit pas faire rougir le gate');
+  // La mesure du debug reste LISIBLE — elle n'est simplement plus jugée.
+  assert.match(f.actual, /92 Mo/);
+  // Et le chemin proposé est dérivé du projet : un flavor donne app-dev-release.
+  assert.match(f.suggestedFix, /app-dev-release\.apk/);
+});
+
+test('… et quand la release est là, elle est jugée normalement', () => {
+  const config = { thresholds: { binarySizeMb: 60 }, build: { androidScan: 'build/app/outputs/flutter-apk/app-release.apk' } };
+  const pese = { path: config.build.androidScan, isRelease: true };
+  const f = sizeFinding(pese, 92, config, 'android', 'x');
+  assert.equal(f.id, 'QAM-PERF-SIZE');
+  assert.equal(f.severity, 'major');
+  assert.equal(exitCodeFor([f], GATE), 1, 'un budget de publication dépassé doit toujours faire rougir');
+  // L'autre moitié : sous le budget, aucun finding. Un garde qui ne teste que
+  // le refus se satisfait d'une fonction qui refuse tout.
+  assert.equal(sizeFinding(pese, 30.2, config, 'android', 'x'), null);
+});
+
+test('déclarée-mais-absente et pas-déclarée-du-tout ne demandent pas le même geste', () => {
+  const build = { android: 'build/app/outputs/flutter-apk/app-debug.apk' };
+  const sans = sizeFinding({ path: build.android, isRelease: false }, 92, { build }, 'android', 'CMD');
+  assert.match(sans.suggestedFix, /déclare-la/, 'sans clé, le geste est d\'abord dans la config');
+  const avec = sizeFinding({ path: build.android, isRelease: false }, 92,
+    { build: { ...build, androidScan: 'build/app/outputs/flutter-apk/app-release.apk' } }, 'android', 'CMD');
+  assert.match(avec.suggestedFix, /n'est pas là/, 'avec la clé, le geste est un build');
+  assert.ok(!/déclare-la/.test(avec.suggestedFix),
+    'une clé déjà bonne ne doit pas être renvoyée à la config : le message enverrait éditer ce qui va bien');
+});
+
+test('perf.mjs ne juge plus la taille en direct', () => {
+  const perf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+  const appels = [...perf.matchAll(/sizeFinding\(/g)];
+  assert.ok(appels.length >= 3,
+    `${appels.length} occurrence(s) de sizeFinding — la déclaration et les DEUX appels (iOS, Android) sont attendus`);
+  const juges = perf.split('\n').filter((l) => /thresholdFinding\('QAM-PERF-SIZE'/.test(l));
+  assert.equal(juges.length, 1,
+    `${juges.length} site(s) jugent QAM-PERF-SIZE : le seul admis est celui de sizeFinding, qui a vérifié le variant`);
+});
+
+test('sec propose la commande qui produit LE binaire cherché, pas l\'autre', () => {
+  const root = '/projet';
+  const config = {
+    build: {
+      android: 'build/app-debug.apk',
+      androidScan: 'build/app-release.apk',
+      androidBuildCmd: 'flutter build apk --debug',
+    },
+  };
+  assert.equal(buildHintFor('/projet/build/app-release.apk', root, config, false), 'flutter build apk --release',
+    'un scan de release absent doit renvoyer à un build de release');
+  assert.equal(buildHintFor('/projet/build/app-debug.apk', root, config, false), 'flutter build apk --debug',
+    'et le binaire piloté garde la commande du projet — corriger un sens ne doit pas casser l\'autre');
+  // Sans clé de publication déclarée, rien ne change pour personne.
+  assert.equal(buildHintFor('/projet/build/app-debug.apk', root,
+    { build: { android: 'build/app-debug.apk', androidBuildCmd: 'flutter build apk --debug' } }, false),
+    'flutter build apk --debug');
 });
