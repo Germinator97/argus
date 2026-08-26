@@ -38,7 +38,7 @@ import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { startupMargin } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
@@ -3101,22 +3101,27 @@ test('la marge du plafond de démarrage se dit AVANT que la suite ne flake', () 
 });
 
 test('le runner AVERTIT sur une marge serrée, en nommant la bonne grandeur', () => {
+  // ⚠️ EXERCÉ, pas lu — leçon apprise la veille sur buildCoverage et refaite le
+  // lendemain : un garde de câblage qui lit la source ne voit pas
+  // `if (false && …)`. Le harnais a rendu « VACANT » deux jours de suite.
+  const lignes = startupMarginWarning([{ ms: 20039 }], 20000).join('\n');
+  assert.match(lignes, /20039 ms/, 'le message doit porter la mesure, pas un verdict nu');
+  assert.match(lignes, /100 %/);
+  // La substance du correctif : nommer la BONNE grandeur.
+  assert.match(lignes, /firstLaunchMs/,
+    'l\'avertissement doit nommer la grandeur dont il faut dériver le plafond');
+  assert.match(lignes, /clearState/, 'et dire POURQUOI chaque flow la paie');
+  assert.match(lignes, /Ne touche PAS `coldStartMs`/,
+    'et redire quelle clé ne pas relever — c\'est elle qui RAPPORTE la lenteur');
+
+  // L'autre moitié : une marge large ne dit RIEN.
+  assert.deepEqual(startupMarginWarning([{ ms: 8771 }], 45000), []);
+
   const run = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
-  assert.match(run, /startupMargin\(startup,/,
-    'main() n\'appelle plus startupMargin : la fonction peut rester juste pendant que '
-    + 'personne ne l\'exerce');
-  // ⚠️ Le message doit renvoyer à `firstLaunchMs`, PAS à `coldStartMs` : c'est
-  // toute la substance du correctif. clearState fait payer un premier lancement
-  // à chaque flow, quand `coldStartMs` décrit le régime stabilisé — 13 463 ms
-  // contre 1 801 sur le même projet.
-  const i = run.indexOf('marge?.serre');
-  const bloc = run.slice(i, i + 1200);
-  assert.match(bloc, /firstLaunchMs/,
-    'l\'avertissement doit nommer la grandeur dont il faut dériver le plafond');
-  assert.match(bloc, /clearState/, 'et dire POURQUOI chaque flow la paie');
-  assert.match(bloc, /Ne touche PAS `coldStartMs`/,
-    'et redire quelle clé ne pas relever — c\'est elle qui RAPPORTE la lenteur');
+  assert.match(run, /startupMarginWarning\(startup,/,
+    'main() n\'appelle plus startupMarginWarning : la fonction peut rester juste '
+    + 'pendant que personne ne l\'exerce');
 });
 
 // ── Le graphe d'appels entre flows ──────────────────────────────────────────

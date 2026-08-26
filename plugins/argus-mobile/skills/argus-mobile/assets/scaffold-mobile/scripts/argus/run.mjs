@@ -1436,6 +1436,29 @@ export function startupMargin(samples, plafondMs) {
   return { pireMs, pct: Math.round((pireMs / plafondMs) * 100), serre: pireMs >= plafondMs * 0.7 };
 }
 
+/**
+ * Les lignes d'avertissement d'une marge trop mince — vides si elle est large.
+ *
+ * ⚠️ SÉPARÉE DE SON APPEL, comme [buildCoverage] et pour la même raison, apprise
+ * la veille et refaite le lendemain : un garde qui vérifie le CÂBLAGE en lisant
+ * la source ne voit pas `if (false && …)`. Le harnais de mutation a rendu
+ * « VACANT » deux jours de suite sur ce motif. Le message se teste donc en
+ * l'appelant, pas en le cherchant dans un fichier.
+ * @param {{ms:number}[]} samples @param {number} plafondMs @returns {string[]}
+ */
+export function startupMarginWarning(samples, plafondMs) {
+  const marge = startupMargin(samples, plafondMs);
+  if (!marge?.serre) return [];
+  return [
+    `la pire attente (${marge.pireMs} ms) a consommé ${marge.pct} % du plafond `
+      + `(${plafondMs} ms) : la suite flakera au prochain hoquet.`,
+    'Relève `thresholds.startTimeoutMs` — et dérive-le de `firstLaunchMs`, que',
+    '`argus-perf` mesure : chaque flow fait clearState, donc chacun paie un PREMIER',
+    'lancement, jamais le régime stabilisé dont `coldStartMs` parle.',
+    'Ne touche PAS `coldStartMs` : c\'est lui qui RAPPORTE la lenteur.',
+  ];
+}
+
 async function main() {
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
@@ -1769,15 +1792,7 @@ async function main() {
     // ⚠️ DIRE LA MARGE, PAS SEULEMENT LES DEUX NOMBRES. Un flow qui passe de
     // justesse est vert, et le rapport portait déjà le pire temps et le plafond
     // sans jamais dire ce qui les sépare : personne ne voit venir le flake.
-    const marge = startupMargin(startup, report.startup.timeoutMs);
-    if (marge?.serre) {
-      warn(`la pire attente (${marge.pireMs} ms) a consommé ${marge.pct} % du plafond `
-        + `(${report.startup.timeoutMs} ms) : la suite flakera au prochain hoquet.`);
-      warn('  Relève `thresholds.startTimeoutMs` — et dérive-le de `firstLaunchMs`, que');
-      warn('  `argus-perf` mesure : chaque flow fait clearState, donc chacun paie un PREMIER');
-      warn('  lancement, jamais le régime stabilisé dont `coldStartMs` parle.');
-      warn('  Ne touche PAS `coldStartMs` : c\'est lui qui RAPPORTE la lenteur.');
-    }
+    for (const ligne of startupMarginWarning(startup, report.startup.timeoutMs)) warn(ligne);
   }
 
   if (report.coverage.notConfigured.length) {
