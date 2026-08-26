@@ -36,6 +36,10 @@ CIBLES = {
     # que la méthodologie exige de trancher — un écart entre deux textes n'a
     # aucun comportement à casser, donc rien d'autre ne peut le voir.
     "prompts": ROOT / "plugins/argus-mobile/skills/argus-mobile/PROMPTS.md",
+    # Depuis le run 24 : le Makefile porte un CÂBLAGE — `argus-lint` doit appeler
+    # le contrôle du graphe d'appels, sans quoi la détection existe et personne
+    # ne l'exécute.
+    "makefile": SCAFFOLD.parent.parent / "Makefile",
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
     "sec": SCAFFOLD / "sec.mjs",
@@ -311,6 +315,25 @@ MUTATIONS = [
     ("prompts", "le cadrage reperd sa ligne de budget",
      "  BUDGET    : <N> min sur device # ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,",
      "  # (budget retiré) ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,"),
+    # ── Vingt-quatrième run ─────────────────────────────────────────────────
+    # ⚠️ Motif recalé : le premier visait `if (marge?.serre)`, et le garde qui
+    # devait tomber lisait la SOURCE — il est resté vert. Même leçon que la
+    # veille sur buildCoverage. On mute désormais la valeur rendue.
+    ("run", "la marge du plafond cesse d'être dite",
+     "  if (!marge?.serre) return [];",
+     "  if (true) return [];"),
+    ("run", "le seuil de marge devient inatteignable",
+     "serre: pireMs >= plafondMs * 0.7 };",
+     "serre: pireMs >= plafondMs * 5 };"),
+    ("config", "le graphe d'appels cesse de voir un cycle",
+     "    const i = chemin.indexOf(n);",
+     "    const i = -1 * (chemin.length + 1);"),
+    ("config", "les commentaires refabriquent des arêtes dans le graphe",
+     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');",
+     "    const utile = String(texte ?? '');"),
+    ("makefile", "argus-lint cesse de contrôler le graphe d'appels",
+     "\t@node scripts/argus/config.mjs --check-flows",
+     "\t@true # contrôle du graphe retiré"),
 ]
 
 
