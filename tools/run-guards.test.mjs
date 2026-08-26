@@ -40,6 +40,7 @@ import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/as
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
@@ -3211,4 +3212,26 @@ test('les findings d\'accessibilité portent la capture de l\'écran mesuré', (
   }
   assert.deepEqual(buildFindings({ tooSmall: [], unlabeled: [] }, 48, 'x.png'), [],
     'aucun défaut ⇒ aucun finding, capture ou pas');
+});
+
+
+// ── « Partiel » ne doit se dire que d'un run VRAIMENT retranché ─────────────
+//
+// Le scaffold livre `excludeTags: [wip, manual]` — des flows qui ne doivent
+// jamais tourner, pas un rétrécissement. En les comptant comme un filtre, tout
+// run normal s'annonçait « filtré (-wip -manual) » et le rapport affichait son
+// bandeau « partiel ». Depuis que la page est publiée, d'autres le lisent.
+test('le périmètre par défaut du scaffold n\'est PAS un run filtré', () => {
+  const normal = runScope([], [], ['wip', 'manual']);
+  assert.equal(normal.scope, 'complet',
+    'un run sans filtre en ligne de commande est complet, même si le workspace exclut des tags');
+  assert.equal(normal.baseline, '-wip -manual',
+    'et ce que le workspace exclut reste DIT : le taire ferait croire qu\'un run complet exécute tout');
+
+  // L'autre moitié, et c'est celle que le point 141 protège : un run retranché à
+  // la main doit toujours se dénoncer, sinon la contre-épreuve visuelle repasse
+  // pour une passe complète.
+  assert.match(runScope(['visual'], [], ['wip', 'manual']).scope, /^filtré \(\+visual\)/);
+  assert.match(runScope([], ['lifecycle'], []).scope, /^filtré \(-lifecycle\)/);
+  assert.equal(runScope([], [], []).scope, 'complet');
 });

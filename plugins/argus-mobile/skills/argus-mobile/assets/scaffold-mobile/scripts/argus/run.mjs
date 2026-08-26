@@ -1459,6 +1459,35 @@ export function startupMarginWarning(samples, plafondMs) {
   ];
 }
 
+/**
+ * Le périmètre d'un run : *complet* ou *filtré*, et par quoi.
+ *
+ * ⚠️ LA DISTINCTION QUI MANQUAIT. Le scaffold livre `excludeTags: [wip, manual]`
+ * — des flows qui ne DOIVENT jamais tourner, pas un rétrécissement de périmètre.
+ * En les comptant comme un filtre, tout run normal s'annonçait « filtré
+ * (-wip -manual) » et le rapport affichait son bandeau « partiel ». Depuis que
+ * la page est publiée, ce bandeau se lit par d'autres : une page qui décrit un
+ * run complet s'annonçait incomplète.
+ *
+ * Un avertissement qui se déclenche TOUJOURS n'avertit plus. Le bandeau existe
+ * pour le point 141 — qu'un run filtré à la main ne passe pas pour complet — et
+ * seule la ligne de commande retranche vraiment.
+ * @param {string[]} include tags demandés en ligne de commande (`--tags`)
+ * @param {string[]} excludeCli tags retranchés en ligne de commande
+ * @param {string[]} excludeConfig tags exclus par le workspace
+ * @returns {{scope:string, baseline:string}}
+ */
+export function runScope(include, excludeCli, excludeConfig) {
+  const retranche = [...include.map((t) => `+${t}`), ...excludeCli.map((t) => `-${t}`)];
+  const base = (excludeConfig ?? []).map((t) => `-${t}`).join(' ');
+  return {
+    scope: retranche.length ? `filtré (${retranche.join(' ')})` : 'complet',
+    // Le périmètre normal du projet reste DIT — le taire ferait croire qu'un run
+    // complet exécute tout ce que le dépôt contient, ce qui est faux aussi.
+    baseline: base,
+  };
+}
+
 async function main() {
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
@@ -1705,9 +1734,10 @@ async function main() {
       // par le skill écrasait donc le rapport avec la régression qu'on venait
       // de fabriquer, et `argus-report` la publiait comme un fait. Rien ne
       // distinguait les deux fichiers. Désormais si.
-      scope: includeTags.length || excludeTags.length
-        ? `filtré (${[...includeTags.map((x) => `+${x}`), ...excludeTags.map((x) => `-${x}`)].join(' ')})`
-        : 'complet',
+      ...(() => {
+        const p = runScope(includeTags, opts.excludeTags.split(',').filter(Boolean), configExcludeTags());
+        return { scope: p.scope, scopeBaseline: p.baseline };
+      })(),
       flavor: config.app.flavor, appId, budget,
       // L'identité vient de l'APPAREIL, jamais de argus.mobile.yaml. Recopier
       // la config ici ferait dire au rapport « Medium_Phone » quel que soit le
