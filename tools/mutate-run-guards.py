@@ -11,6 +11,7 @@ Et la restauration est prouvée par hash, pas annoncée.
 import hashlib
 import re
 import pathlib
+import shutil
 import subprocess
 import sys
 
@@ -27,6 +28,10 @@ CIBLES = {
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
     "i18n": FLOWS / "i18n.yaml",
+    # Depuis le run 22 : l'aiguillage de navigation. Ses gardes lisent une
+    # STRUCTURE de branches — quelle condition décide quoi —, donc rien d'autre
+    # ne peut dire s'ils gardent encore.
+    "goto": FLOWS / "_subflows/goto.yaml",
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
     "sec": SCAFFOLD / "sec.mjs",
@@ -46,6 +51,10 @@ CIBLES = {
     "harness": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
+# Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
+# mutation qui casse le YAML ferait rougir la suite pour une raison sans rapport
+# avec le garde, ce qui se lit comme un succès.
+MAESTRO = shutil.which("maestro")
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
 # de « aucun test n'a tourné » — deux verdicts opposés que la même sortie vide
 # produirait. Écrit à la main, il se périmait au premier test ajouté et TOUTES
@@ -274,6 +283,15 @@ MUTATIONS = [
     ("sec", "la consigne de build ignore quel binaire manquait",
      "  const vise = publie !== '' && resolve(root, publie) === binary;",
      "  const vise = false;"),
+    ("goto", "la branche d'accueil reconclut sans regarder l'écran",
+     "          when:\n            visible:\n              id: ${ARGUS_ANCHOR_HOME}\n",
+     "          when:\n            true: \"${true}\"\n"),
+    ("goto", "la branche de retour cesse d'échouer",
+     "            - assertVisible:\n                id: ${ARGUS_ANCHOR_HOME}\n",
+     "            - assertTrue:\n                condition: \"${true}\"\n"),
+    ("goto", "un même when remélange l'état et le contexte",
+     "          when:\n            visible:",
+     "          when:\n            true: \"${true}\"\n            visible:"),
 ]
 
 
@@ -313,6 +331,11 @@ def main():
             print("  (git checkout restaure depuis HEAD — il DÉTRUIRAIT ce travail.)")
             return 1
 
+    if not MAESTRO:
+        flows = sum(1 for c, *_ in MUTATIONS if CIBLES[c].suffix in (".yaml", ".yml"))
+        print(f"⚠  maestro absent du PATH — les {flows} mutations de flow ne seront pas vérifiées")
+        print("   syntaxiquement : un YAML cassé s'y lira comme un garde qui tombe.")
+
     propres = {k: digest(v) for k, v in CIBLES.items()}
     originaux = {k: v.read_text(encoding="utf-8") for k, v in CIBLES.items()}
     bilan = []
@@ -331,14 +354,21 @@ def main():
             continue
 
         # Une mutation qui casse le build fait rougir pour une raison sans
-        # rapport avec le garde, et ce rouge-là se lit comme un succès. Les
-        # flows Maestro n'ont pas d'équivalent : leur `---` sort du
-        # sous-ensemble YAML du harness, donc aucun parseur d'ici ne les lit.
+        # rapport avec le garde, et ce rouge-là se lit comme un succès. Pour un
+        # flow, c'est `maestro check-syntax` qui le dit — aucun parseur d'ici ne
+        # les lit, leur `---` sortant du sous-ensemble YAML du harness. Quand
+        # maestro manque, on ne vérifie pas : on l'ANNONCE (voir main), plutôt
+        # que de laisser croire que ça l'a été.
+        verif = None
         if cible.suffix == ".mjs":
-            check = sh(["node", "--check", str(cible)])
+            verif = ["node", "--check", str(cible)]
+        elif cible.suffix in (".yaml", ".yml") and MAESTRO:
+            verif = [MAESTRO, "check-syntax", str(cible)]
+        if verif is not None:
+            check = sh(verif)
             if check.returncode != 0:
                 restaure(cle, propre)
-                bilan.append(("HARNAIS", nom, "la mutation ne compile pas"))
+                bilan.append(("HARNAIS", nom, "la mutation ne parse pas"))
                 continue
 
         res = sh(["node", "--test", str(SUITE)])
