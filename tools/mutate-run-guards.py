@@ -350,6 +350,25 @@ MUTATIONS = [
     ("report", "l'icône de la page n'est plus lue à la publication",
      "· icône ${config.artifact.icon || '👁'}`\n      + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');",
      "`\n      + ' — le MÊME à chaque republication');"),
+    # ── Vingt-sixième run ───────────────────────────────────────────────────
+    # ⚠️ Les trois premières visent la VALEUR RENDUE, jamais la ligne d'appel :
+    # les gardes correspondants BÂTISSENT le finding et regardent dedans, donc
+    # une mutation qui laisserait le motif en place doit quand même les faire
+    # tomber. C'est pour ça que `launchTimeFindings` a été extraite.
+    ("perf", "le démarrage à froid repart sans dire sur quel binaire il a mesuré",
+     "thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms', 'performance', variante, hote.phrase),",
+     "thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms', 'performance', '', hote.phrase),"),
+    ("perf", "le démarrage à froid repart sans l'état de la machine qui l'a mesuré",
+     "thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms', 'performance', variante, hote.phrase),",
+     "thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms', 'performance', variante, ''),"),
+    # Le piège que celle-ci ferme : recopier sur un temps de démarrage un
+    # facteur mesuré sur des TAILLES de binaire. Le finding resterait plausible.
+    ("perf", "la réserve du démarrage emprunte le chiffre mesuré sur la taille",
+     "    return '⚠️ Mesuré sur un binaire DEBUG : Flutter y exécute le Dart en JIT, sans compilation AOT. '",
+     "    return '⚠️ Mesuré sur un binaire DEBUG : ce budget décrit la publication, facteur trois. '"),
+    ("perf", "le rapport n'écrit plus ce que le chiffre de démarrage mesure",
+     "      startupMetric: mesure,",
+     "      startupMetric: undefined,"),
 ]
 
 
