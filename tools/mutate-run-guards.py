@@ -230,6 +230,29 @@ MUTATIONS = [
     ("skill", "la commande de comptage reperd son filtre de commentaires",
      "grep -v '^\\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('",
      "grep -c 'ArgusScreen(' test/argus/harness.dart"),
+    # ── Vingt-deuxième run ──────────────────────────────────────────────────
+    # Le plafond d'attente. Deux mutations sur la MÊME ligne, parce que deux
+    # défauts distincts y vivent : ne pas borner du tout, et borner avec un
+    # signal qu'un process peut ignorer — le second rend `timedOut` quand même,
+    # donc un garde écrit sur le seul drapeau resterait vert.
+    ("config", "sh ne passe plus de plafond à spawnSync",
+     "    timeout: plafond, killSignal: 'SIGKILL',",
+     "    killSignal: 'SIGKILL',"),
+    ("config", "le signal de mise à mort redevient SIGTERM",
+     "    timeout: plafond, killSignal: 'SIGKILL',",
+     "    timeout: plafond, killSignal: 'SIGTERM',"),
+    ("config", "le plafond par défaut redevient l'infini",
+     "  return SH_TIMEOUT_MS;\n}",
+     "  return 0;\n}"),
+    ("perf", "les sondes adb repartent sans plafond",
+     "args, { timeout: PROBE_TIMEOUT_MS });",
+     "args);"),
+    ("perf", "une expiration redevient une mesure invalide",
+     "  if (res.timedOut) return { totalMs: null, waitMs: null, kind: 'timeout' };\n",
+     ""),
+    ("perf", "la boucle à chaud ne compte plus ses expirations",
+     "    const { totalMs, waitMs, kind } = timedLaunch(udid, component);\n    if (kind === 'timeout') timedOut += 1;\n",
+     "    const { totalMs, waitMs, kind } = timedLaunch(udid, component);\n"),
 ]
 
 
