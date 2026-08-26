@@ -372,6 +372,31 @@ def restaure(cle, attendu):
 
 def main():
     global NB_TESTS
+
+    # ⚠️ CE SCRIPT MUTE DES FICHIERS SUIVIS ET RESTAURE PAR `git checkout`.
+    # Il ne lisait AUCUN argument : `--help` ne l'aidait pas, il lançait la
+    # passe entière. Vécu — un `--help` de reconnaissance a démarré 80 mutations,
+    # et l'interrompre a laissé `perf.mjs` MUTÉ dans l'arbre de travail, sans
+    # que rien ne le dise. Un flag inconnu doit refuser de démarrer, jamais
+    # tomber dans le comportement le plus destructeur qu'offre le script.
+    args = sys.argv[1:]
+    if args in (["--help"], ["-h"]):
+        print(__doc__ or "harnais de mutation des gardes")
+        print(f"\n  (aucun argument)  joue les {len(MUTATIONS)} mutations")
+        print("  --list            les nomme sans rien muter")
+        print("  --help, -h        ceci")
+        return 0
+    if args == ["--list"]:
+        for i, (cle, *_reste) in enumerate(MUTATIONS, 1):
+            print(f"{i:3}. {cle}")
+        print(f"\n{len(MUTATIONS)} mutations · aucun fichier touché")
+        return 0
+    if args:
+        print(f"✖ argument inconnu : {' '.join(args)}")
+        print("  Ce script MUTE des fichiers suivis — il ne démarre pas sur un doute.")
+        print("  `--help` pour les options, `--list` pour voir les mutations sans rien toucher.")
+        return 2
+
     base = sh(["node", "--test", str(SUITE)])
     m = re.search(r"tests (\d+)", base.stdout + base.stderr)
     if not m:
