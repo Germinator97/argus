@@ -32,6 +32,7 @@ import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -3180,4 +3181,34 @@ test('le scaffold livré ne porte aucun cycle, et argus-lint le VÉRIFIE', () =>
   assert.match(lint, /--check-flows/,
     'argus-lint ne contrôle plus le graphe : il redirait « tous les flows parsent » '
     + 'sur un workspace que Maestro refuse de démarrer');
+});
+
+
+// ── Une preuve visuelle sur les findings d'accessibilité ────────────────────
+//
+// `artifact.evidence` promet « les captures des findings », et le seul
+// producteur de chemins d'images était le finding d'étape Maestro EN ÉCHEC. Un
+// run vert — celui qu'on publie — ne pouvait donc porter aucune image, pendant
+// que 18 PNG dormaient sur le disque et que les findings qui gagnent le plus à
+// être vus n'en attachaient aucun.
+test('les findings d\'accessibilité portent la capture de l\'écran mesuré', () => {
+  const mesure = {
+    tooSmall: [{ element: 'app_settings', widthDp: 40, heightDp: 40, bounds: '[0,0][40,40]' }],
+    unlabeled: [{ element: 'form_name', bounds: '[0,0][10,10]', class: 'EditText' }],
+  };
+  const avec = buildFindings(mesure, 48, 'argus-mobile-report/a11y-settings.png');
+  assert.equal(avec.length, 2);
+  for (const f of avec) {
+    assert.deepEqual(f.evidence, ['argus-mobile-report/a11y-settings.png'],
+      `${f.id} doit porter la capture : sans elle, la page publiée d'un run vert ne montre rien`);
+  }
+
+  // L'autre moitié : pas de capture ⇒ pas de champ fabriqué. Un chemin inventé
+  // compterait comme « preuve manquante » à l'embarquement, ce qui se lit
+  // « il n'y avait pas de preuve » — l'inverse de ce qui s'est passé.
+  for (const f of buildFindings(mesure, 48)) {
+    assert.deepEqual(f.evidence, [], `${f.id} ne doit pas inventer de preuve`);
+  }
+  assert.deepEqual(buildFindings({ tooSmall: [], unlabeled: [] }, 48, 'x.png'), [],
+    'aucun défaut ⇒ aucun finding, capture ou pas');
 });

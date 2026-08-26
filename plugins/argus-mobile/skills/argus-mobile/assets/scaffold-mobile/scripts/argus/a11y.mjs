@@ -26,8 +26,8 @@
  *   node scripts/argus/a11y.mjs --screen=home --device=<udid>
  */
 
-import { readFileSync, realpathSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -323,11 +323,52 @@ function analyse(nodes, dpi, minDp) {
 }
 
 /**
+ * Une capture de l'écran mesuré, pour que les findings aient une PREUVE.
+ *
+ * ⚠️ POURQUOI ELLE EXISTE. `artifact.evidence` promet « les captures des
+ * findings », et le seul producteur de chemins d'images était le finding
+ * d'étape Maestro EN ÉCHEC. Un run vert — celui qu'on publie — ne pouvait donc
+ * porter aucune image, pendant que les findings qui gagnent le plus à être vus
+ * (cible tactile sous le seuil, élément sans label) n'en attachaient aucune.
+ * Relevé sur un projet réel : 18 findings de cibles, 18 PNG sur le disque,
+ * aucun lien entre les deux.
+ *
+ * ⚠️ PAR FICHIER, JAMAIS PAR `exec-out`. `screencap -p` écrit du PNG sur stdout,
+ * et `sh()` décode en UTF-8 : l'image reviendrait corrompue sans qu'aucune
+ * erreur ne le dise. On passe donc par le device puis `pull`, comme le dump.
+ * @param {string} udid @param {string} dir dossier d'artefacts (absolu)
+ * @param {string} ecran identifiant de l'écran mesuré
+ * @returns {string} chemin RELATIF au projet, ou '' si la capture a échoué
+ */
+function captureEcran(udid, dir, ecran) {
+  const distant = '/sdcard/argus-a11y-shot.png';
+  const nom = `a11y-${(ecran || 'ecran').replace(/[^\w.-]/g, '-')}.png`;
+  const local = join(dir, nom);
+  if (!adb(udid, ['shell', 'screencap', '-p', distant]).ok) return '';
+  if (!adb(udid, ['pull', distant, local]).ok) return '';
+  adb(udid, ['shell', 'rm', '-f', distant]);
+  if (!existsSync(local)) return '';
+  // `embedEvidence` résout depuis le cwd : un chemin absolu y serait cherché
+  // sous le projet et manquerait, ce qui compte comme « preuve absente ».
+  return relative(process.cwd(), local);
+}
+
+/**
  * Findings a11y. L'accessibilité est une dimension de premier ordre : une cible
  * trop petite ou non étiquetée est `major`, pas une remarque cosmétique.
- * @param {{tooSmall:any[], unlabeled:any[]}} result @param {number} minDp @returns {any[]}
+ * @param {{tooSmall:any[], unlabeled:any[]}} result @param {number} minDp
+ * @param {string} [preuve] capture de l'écran mesuré, chemin relatif
+ * @returns {any[]}
+ *
+ * ⚠️ SANS GARDE EXÉCUTABLE POUR SON CÂBLAGE, et c'est dit plutôt que tu. La
+ * fonction est éprouvée dans les deux sens par la suite du plugin ; ce qui ne
+ * l'est pas, c'est que `main()` lui passe une capture RÉELLE, parce qu'il faut
+ * un appareil pour en produire une. Le harnais de mutation ne peut donc pas le
+ * couvrir : le lire dans la source serait un garde de texte, et un garde de
+ * texte ne voit pas une valeur neutralisée.
  */
-function buildFindings(result, minDp) {
+export function buildFindings(result, minDp, preuve = '') {
+  const evidence = preuve ? [preuve] : [];
   const findings = [];
   for (const [index, item] of result.tooSmall.entries()) {
     findings.push({
@@ -336,7 +377,7 @@ function buildFindings(result, minDp) {
       selector: item.element, expected: `≥ ${minDp} dp dans les deux dimensions`,
       actual: `${item.widthDp}×${item.heightDp} dp (bounds ${item.bounds})`,
       suggestedFix: 'Agrandir la zone tactile sans forcément agrandir le visuel : padding, ou un parent qui porte le geste.',
-      wcag: 'WCAG 2.1 AA — 2.5.5 Target Size', status: 'open',
+      wcag: 'WCAG 2.1 AA — 2.5.5 Target Size', evidence, status: 'open',
     });
   }
   for (const [index, item] of result.unlabeled.entries()) {
@@ -346,7 +387,7 @@ function buildFindings(result, minDp) {
       selector: item.element, expected: 'un texte ou un content-desc annonçable',
       actual: `aucun (bounds ${item.bounds}, ${item.class})`,
       suggestedFix: 'Côté Flutter : Icon(semanticLabel: …) ou Semantics(label: …). Sans label, TalkBack annonce « bouton », rien de plus.',
-      wcag: 'WCAG 2.1 A — 4.1.2 Name, Role, Value', status: 'open',
+      wcag: 'WCAG 2.1 A — 4.1.2 Name, Role, Value', evidence, status: 'open',
     });
   }
   return findings;
@@ -559,7 +600,11 @@ function main() {
     warn(`aucun contrôle interactif sur cet écran (${appNodes.length} nœuds, ${labelled} annonçables) — rien à mesurer ici, mais la couche sémantique répond.`);
   }
 
-  const findings = buildFindings(result, minDp);
+  // La preuve visuelle, prise SUR L'ÉCRAN QU'ON VIENT DE MESURER — sans elle,
+  // une page publiée par un run vert ne montre jamais rien.
+  const preuve = captureEcran(udid, artifactsDir(config), identity.id);
+  if (!preuve) warn('capture de l\'écran impossible — les findings partiront sans preuve visuelle.');
+  const findings = buildFindings(result, minDp, preuve);
   const report = {
     platform, device: { udid, dpi },
     // Ce qui a été demandé et ce qui a été RECONNU, côte à côte : les
