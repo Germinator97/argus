@@ -2991,7 +2991,7 @@ est branché** alors qu'il ne l'était pas pendant le run — l'agent avait
 explicitement rapporté « aucun appareil physique n'est apparu ». C'est exactement
 ce que ce fichier existe pour capter.
 
-### 184. `argus-lint` ne voit pas les CYCLES d'appels entre flows
+### 184. ✅ Corrigé le 26/08/2026 — `argus-lint` ne voyait pas les CYCLES d'appels entre flows
 
 Le run a perdu son premier `argus-run` :
 
@@ -3020,7 +3020,23 @@ symptôme est ici particulièrement trompeur, puisque l'échec qui suit ne nomme
 aucune étape — l'endroit où l'on cherche est le dernier flow lancé, pas le
 sous-flow fautif.
 
-### 185. Le plafond d'attente est dérivé du RÉGIME STABILISÉ, pas de ce que chaque flow paie
+**Corrigé** : `flowCycles()` résout le graphe d'appels — `runFlow: x.yaml` et
+`runFlow:` + `file:`, chemins relatifs résolus, **commentaires retirés** pour que
+l'exemple commenté du gabarit ne fabrique pas d'arêtes — et
+`config.mjs --check-flows` la câble à `make argus-lint`.
+
+Prouvé **dans les deux sens** : `exit 0` sur le scaffold livré (12 flows, aucun
+cycle) et `exit 1` sur un workspace jetable récursif, en nommant le cycle.
+
+⚠️ **Deux défauts trouvés dans mon propre correctif, par la mesure et non par la
+relecture.** Le contrôle était placé **après** `loadConfig()`, donc il échouait
+sur « argus.mobile.yaml introuvable » dans un workspace jetable — c'est-à-dire
+exactement là où on veut l'éprouver : *un contrôle qu'on ne peut pas voir dire NON
+n'a rien prouvé*. Et `flowCycles` rapportait le même cycle **deux fois**, une par
+point de départ, la clé de déduplication gardant la liste répétée au lieu de
+l'ensemble des fichiers.
+
+### 185. ✅ Corrigé le 26/08/2026 — Le plafond d'attente était dérivé du RÉGIME STABILISÉ, pas de ce que chaque flow paie
 
 Mesuré sur ce run, machine peu chargée :
 
@@ -3050,7 +3066,24 @@ sépare.
 charge de l'hôte. Elle expliquait la dispersion entre les runs, pas la minceur de
 la marge.
 
-### 186. La clé `budget` existe dans les défauts et manque au gabarit de config
+**Corrigé en disant la MARGE**, puisque c'est l'information qui manquait : le
+runner avertit dès que la pire attente consomme 70 % du plafond — un choix, écrit
+comme tel — et son message **nomme la bonne grandeur** : dérive `startTimeoutMs`
+de `firstLaunchMs`, que `argus-perf` mesure déjà, parce que `clearState` fait
+payer un premier lancement à **chaque** flow. Et il redit de ne pas toucher
+`coldStartMs`, qui RAPPORTE la lenteur.
+
+⚠️ **Le plafond lui-même n'est pas relevé, et c'est délibéré** : mettre un autre
+nombre à la place d'un nombre deviné n'aurait rien prouvé. Ce qui manquait n'était
+pas une valeur, c'était de savoir qu'on passait à 39 ms de l'échec.
+
+⚠️ **Mon garde est né vacant — le deuxième jour de suite, sur le même motif.** Il
+vérifiait le câblage en LISANT la source ; la mutation `if (false && marge?.serre)`
+laisse le texte intact. `startupMarginWarning()` est extraite pour que le garde
+l'appelle et lise ce qui revient. La leçon, deux fois payée : *un garde de câblage
+qui lit du texte ne voit pas une valeur neutralisée*.
+
+### 186. ❌ DÉMENTI — « la clé `budget` manque au gabarit de config »
 
 `config.mjs:361` porte `budget: { maxMinutes: 25, maxFlows: 40 }`, et le runner
 publie `run.budget` dans le rapport. Le gabarit `argus.mobile.yaml` livré, lui,
@@ -3062,13 +3095,37 @@ un `BUDGET` (point 181), l'agent l'a fait, et il a dû **écrire la clé lui-mê
 sans qu'aucun exemple ne la lui montre. Il est tombé juste ; rien ne le
 garantissait.
 
-Même famille que le 181, à un cran de plus : ce n'est pas la doc qui manque, c'est
-que la valeur par défaut — 25 minutes — gouverne un run sans que personne la voie.
+**Faux, et c'est le parseur du skill qui l'a dit.** En ajoutant la clé, le
+chargement de la config a rendu :
+
+```
+[argus-mobile] ✖ argus.mobile.yaml:455 — clé « budget » dupliquée
+```
+
+Elle était là depuis toujours, **ligne 439**, avec `maxMinutes: 25` et
+`maxFlows: 40`. Mon `grep` initial la cherchait bien, mais un `head -3` a tronqué
+la sortie aux trois premières occurrences — toutes des commentaires parlant
+d'autre chose. J'ai conclu sur une mesure incomplète.
+
+📌 *Un chiffre issu d'un grep se vérifie en listant ce qu'il a compté.* Ici, il a
+suffi que l'instrument affiche trois lignes au lieu de toutes pour qu'un constat
+naisse. Le correctif a été annulé (`git checkout`) et le gabarit est intact.
+
+📌 Ce qui reste vrai : le **181** — le gabarit de PROMPT ne demandait pas de
+trancher ce budget, et c'est corrigé. La clé, elle, existait.
 
 ## Ce qui reste
 
-**Les points 184, 185 et 186**, inscrits le 26/08/2026 au dépouillement du
-run 24. Le **185 rouvre le 182**, que j'avais démenti la veille.
+**Rien.** Les points **184 et 185** sont fermés le 26/08/2026, le jour même de
+leur inscription — le backlog se vide pour la **vingt-quatrième** fois. Le **186
+est démenti**, et le **185 avait rouvert le 182**.
+
+⚠️ **Deux de mes quatre constats du jour étaient faux ou mal formulés**, et dans
+les deux cas c'est un instrument du skill qui l'a dit : le parseur de config a
+rendu « clé dupliquée » sur le 186, et le harnais de mutation a rendu « VACANT »
+sur mon garde du 185 — **le deuxième jour de suite sur le même motif**.
+
+**Prochain numéro libre : 187.**
 
 ⚠️ **Les correctifs du jour ont porté, et l'agent s'en est SERVI POUR RAISONNER
 sans savoir qu'ils étaient neufs.** `coverage.stageOneOnly` rend six écrans, et
