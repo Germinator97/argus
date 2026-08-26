@@ -3269,7 +3269,7 @@ contraire.
 la quatrième s'est retournée en cours de route : je cherchais une réserve fausse,
 c'est une réserve **absente** qu'il y avait.
 
-### 193. Le verdict de DÉMARRAGE ne dit pas sur quel binaire il a été pris, alors que ses deux voisins le disent
+### 193. ✅ Corrigé le 26/08/2026 — Le verdict de DÉMARRAGE ne dit pas sur quel binaire il a été pris, alors que ses deux voisins le disent
 
 `perf.mjs` dérive un `variante` du chemin de `build.android` — le binaire que le
 runner **installe**, un debug presque toujours. Il le passe à `QAM-PERF-SIZE`
@@ -3295,7 +3295,7 @@ qu'elle laisse dehors.
 une réserve manque **là où elle compte le plus**. Et la forme du chantier : une
 leçon apprise pour deux métriques, jamais étendue aux deux voisines du même appel.
 
-### 194. Rien ne relève l'état de l'HÔTE à côté d'une mesure de démarrage
+### 194. ✅ Corrigé le 26/08/2026 — Rien ne relève l'état de l'HÔTE à côté d'une mesure de démarrage
 
 L'en-tête de `perf.mjs` porte la règle en capitales — « **UN CHIFFRE DE
 PERFORMANCE NE VEUT RIEN DIRE SANS L'ÉTAT OÙ IL EST PRIS** » — et l'applique à une
@@ -3318,7 +3318,7 @@ lecteur de la page ne la verra.
 ⚠️ Un émulateur partage le CPU de l'hôte, un appareil physique non : le relevé n'a
 de sens que sur émulateur, sans quoi il ajoute du bruit sur les vrais téléphones.
 
-### 195. Le gabarit demande un budget sans dire ce qui est incompressible
+### 195. ✅ Corrigé le 26/08/2026 — Le gabarit demande un budget sans dire ce qui est incompressible
 
 `PROMPTS.md` fait de `BUDGET` une des cinq lignes qu'on ne supprime pas et
 explique pourquoi — mais ne dit pas ce que la première passe coûte. `SKILL.md`
@@ -3334,20 +3334,79 @@ et le dépassement a été *dit* comme la méthodologie l'exige. C'est un écart
 **place** : le chiffre est demandé là où l'information qui permet de le calibrer
 n'est pas.
 
+### 196. ✅ Corrigé le 26/08/2026 — Le harnais de mutation lance sa passe sur un drapeau qu'il ne connaît pas
+
+Né de la passe, et vécu en direct : `python3 tools/mutate-run-guards.py --help`,
+tapé pour savoir comment lister les mutations, a **démarré les 80 mutations**.
+`main()` ne lisait aucun argument — tout ce qui n'était pas géré tombait dans le
+seul comportement du script.
+
+L'interrompre a laissé `perf.mjs` **muté dans l'arbre de travail** (la borne
+d'expiration retirée de `measureWarmStarts`), sans un mot. Restauré, prouvé par
+hash — `5fef7541…` attendu, obtenu.
+
+⚠️ **Ce script réécrit des fichiers suivis et les restaure par `git checkout`.**
+C'est précisément celui qui ne doit pas tomber dans son mode le plus destructeur
+sur un doute. Et le piège frappe pendant la **reconnaissance**, quand on cherche
+encore comment l'utiliser.
+
+**Corrigé** : `--help` imprime les options, `--list` nomme les mutations sans
+toucher un fichier, tout le reste sort en 2. Mesuré : **0,04 à 0,06 s** pour les
+trois formes, contre plusieurs minutes pour une vraie passe — et l'arbre reste
+propre. La durée est la preuve qu'aucune mutation n'a démarré.
+
+📌 **Deuxième correction à ma procédure du jour** : ma note disait que le harnais
+réécrit « `run.mjs`, `report.mjs` et `SKILL.md` ». Il porte **treize** cibles, dont
+`perf.mjs` — celle qui est restée mutée. Une liste partielle avait valeur de
+garantie.
+
+### 197. ✅ Corrigé le 26/08/2026 — La phrase qui dit ce que le démarrage MESURE était construite et jetée
+
+`perf.mjs` construisait `const mesure = 'am start -W : jusqu'à la première frame,
+splash de marque compris mais PAS l'initialisation applicative qui suit…'` —
+**et rien ne la lisait**. Elle vivait sous ses trois lignes de commentaire, qui
+expliquent pourquoi elle est indispensable : sans elle, le chiffre se lit en
+regard de `startup.samples` du rapport principal — qui mesure l'écran
+*exploitable* — et l'écart passe pour une contradiction.
+
+Morte avant cette passe, vérifiée dans `HEAD` : une seule occurrence de
+l'identifiant, sa déclaration.
+
+⚠️ **Aucun test ne pouvait la voir**, et c'est ce qui rend le cas instructif :
+une variable inutilisée ne casse rien, ne lève rien, et `node --check` encore
+moins. C'est l'**analyseur de types** qui l'a nommée, en passant, pendant que je
+corrigeais autre chose — le même genre de hasard que l'émulateur du run 17.
+
+**Corrigé** : extraite en `startupMetricLabel()` et écrite dans `perf.json` sous
+`metrics.startupMetric`. Le garde **appelle** la fonction et vérifie la clé, au
+lieu de chercher un motif dans la source.
+
+
 ## Ce qui reste
 
-**Les points 193, 194 et 195**, inscrits le 26/08/2026 au dépouillement du run 26
-— deux qui coûtent (un verdict `critical` publié sans son contexte de mesure, un
-état d'hôte jamais relevé) et un écart de place.
+Les points **193 à 197** sont fermés le 26/08/2026, le jour même de leur
+inscription — le backlog se vide pour la **vingt-sixième** fois. Le run 26 est
+**le premier à REPUBLIER sur une page existante** : l'autre moitié de la boucle,
+jamais empruntée en vingt-cinq runs, et elle tient.
 
-**Le point 192**, né de la passe précédente et laissé **ouvert** avec sa mesure :
+⚠️ **Deux d'entre eux sont nés de la passe** — le 196 en tapant `--help` sur mon
+propre harnais, le 197 par un diagnostic de l'analyseur de types pendant que je
+corrigeais le 193. Aucun des deux n'a été rapporté par le run.
+
+⚠️ **Trois de mes quatre hypothèses de départ sont tombées à la reproduction** :
+le budget dépassé est un comportement que le skill documente (« vingt minutes »,
+plus quatre temps obligatoires), le flow qui a mal navigué avait été écrit par
+l'agent et non livré par le scaffold, et le FVM manqué venait de **mon** cadrage
+— un `ls` aliasé sur un outil qui masque les fichiers gitignorés. Le Makefile,
+lui, a détecté FVM seul.
+
+**Le point 192**, hérité de la passe précédente, reste **ouvert** avec sa mesure :
 le corriger demande un lexer, et le remède évident casse six lectures légitimes.
 
-Les points **187 à 191** sont fermés le 26/08/2026, le jour même de leur
-inscription — le backlog se vide pour la **vingt-cinquième** fois. Le run 25 est
-**le premier à publier sa page de rapport**, en vingt-cinq runs.
+Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
+inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 196.**
+**Prochain numéro libre : 198.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
