@@ -1408,6 +1408,34 @@ export function buildCoverage(config, avecAncre, visites, visuels, visualMode, h
   };
 }
 
+/**
+ * La marge qui restait entre la pire attente et le plafond.
+ *
+ * ⚠️ POURQUOI CE RELEVÉ EXISTE. Un flow qui passe à 39 ms de l'échec rend
+ * exactement le même vert qu'un flow qui passe avec dix secondes de marge — le
+ * rapport portait les deux nombres et jamais ce qui les sépare. Mesuré : 20 039 ms
+ * relevés contre un plafond de 20 000, puis 29 255 ms au passage suivant, sur une
+ * machine peu chargée.
+ *
+ * ⚠️ ET LA CAUSE N'EST PAS LA LENTEUR, C'EST LA GRANDEUR DONT LE PLAFOND SE
+ * DÉRIVE. `clearState` remet l'app à l'état d'une installation fraîche, donc
+ * CHAQUE flow paie un PREMIER lancement — 13 463 ms mesurés — tandis que le
+ * plafond se dérive de `coldStartMs`, qui décrit le régime stabilisé : 1 801 ms
+ * sur le même projet, soit sept fois et demie moins. `argus-perf` mesure déjà la
+ * bonne grandeur (`firstLaunchMs`) et l'isole exprès ; rien ne reliait les deux.
+ *
+ * Le seuil de 70 % est un choix, pas une mesure : il dit « la marge n'est plus
+ * confortable », assez tôt pour qu'on relève avant de flaker.
+ * @param {{ms:number}[]} samples @param {number} plafondMs
+ * @returns {{pireMs:number, pct:number, serre:boolean}|null}
+ */
+export function startupMargin(samples, plafondMs) {
+  const ms = (samples ?? []).map((s) => Number(s?.ms)).filter((n) => Number.isFinite(n));
+  if (ms.length === 0 || !(plafondMs > 0)) return null;
+  const pireMs = Math.round(Math.max(...ms));
+  return { pireMs, pct: Math.round((pireMs / plafondMs) * 100), serre: pireMs >= plafondMs * 0.7 };
+}
+
 async function main() {
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
@@ -1738,6 +1766,18 @@ async function main() {
   if (startup.length > 0) {
     const worst = Math.round(Math.max(...startup.map((s) => s.ms)));
     log(`écran de départ « ${home?.id} » : ${worst} ms au pire sur ${startup.length} flow(s), budget ${report.startup.budgetMs} ms`);
+    // ⚠️ DIRE LA MARGE, PAS SEULEMENT LES DEUX NOMBRES. Un flow qui passe de
+    // justesse est vert, et le rapport portait déjà le pire temps et le plafond
+    // sans jamais dire ce qui les sépare : personne ne voit venir le flake.
+    const marge = startupMargin(startup, report.startup.timeoutMs);
+    if (marge?.serre) {
+      warn(`la pire attente (${marge.pireMs} ms) a consommé ${marge.pct} % du plafond `
+        + `(${report.startup.timeoutMs} ms) : la suite flakera au prochain hoquet.`);
+      warn('  Relève `thresholds.startTimeoutMs` — et dérive-le de `firstLaunchMs`, que');
+      warn('  `argus-perf` mesure : chaque flow fait clearState, donc chacun paie un PREMIER');
+      warn('  lancement, jamais le régime stabilisé dont `coldStartMs` parle.');
+      warn('  Ne touche PAS `coldStartMs` : c\'est lui qui RAPPORTE la lenteur.');
+    }
   }
 
   if (report.coverage.notConfigured.length) {

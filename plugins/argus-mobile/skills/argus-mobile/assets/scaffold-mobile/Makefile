@@ -61,6 +61,10 @@ argus-lint: ## Syntaxe des flows Maestro, sans device
 		maestro check-syntax "$$f"; \
 	done
 	@echo "✔ tous les flows parsent"
+	@# ⚠️ Et le GRAPHE, que `check-syntax` ne résout pas : un sous-flow qui
+	@# s'appelle lui-même passe fichier par fichier, puis Maestro rejette le
+	@# workspace entier au démarrage — sans étape fautive à nommer.
+	@node scripts/argus/config.mjs --check-flows
 
 argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans device)
 	@$(FLUTTER) test test/argus/anchors_test.dart

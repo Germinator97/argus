@@ -38,6 +38,8 @@ import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { startupMargin } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -3067,4 +3069,110 @@ test('coverage PORTE le relevé, et le rapport l\'affiche', () => {
   const sans = coverageLine({ screensDeclared: 7, screensConfigured: 7, visited: [] });
   assert.match(sans, /ne veut donc pas dire/,
     'sans relevé, la ligne doit continuer de dire que ses comptes dérivent de screens[]');
+});
+
+
+// ── La marge du plafond de démarrage ────────────────────────────────────────
+//
+// Un flow qui passe à 39 ms de l'échec rend exactement le même vert qu'un flow
+// qui passe avec dix secondes de marge. Le rapport portait la pire attente ET le
+// plafond, jamais ce qui les sépare — mesuré : 20 039 ms contre 20 000, sur une
+// machine peu chargée, puis 29 255 ms au passage suivant.
+
+test('la marge du plafond de démarrage se dit AVANT que la suite ne flake', () => {
+  const serre = startupMargin([{ ms: 8011 }, { ms: 20039 }], 20000);
+  assert.equal(serre?.pireMs, 20039);
+  assert.equal(serre?.pct, 100);
+  assert.equal(serre?.serre, true, '100 % du plafond consommé doit être signalé');
+
+  // L'autre moitié : une marge confortable ne doit RIEN dire, sinon
+  // l'avertissement devient du bruit et on apprend à l'ignorer.
+  const large = startupMargin([{ ms: 8011 }, { ms: 8771 }], 45000);
+  assert.equal(large?.serre, false);
+  assert.equal(large?.pct, 19);   // 8771 / 45000 — arrondi vérifié, pas supposé
+
+  // La frontière est exercée des deux côtés : sans ça, un seuil déplacé passe.
+  assert.equal(startupMargin([{ ms: 6999 }], 10000)?.serre, false);
+  assert.equal(startupMargin([{ ms: 7000 }], 10000)?.serre, true);
+
+  // Et pas de mesure ⇒ pas de verdict fabriqué.
+  assert.equal(startupMargin([], 20000), null);
+  assert.equal(startupMargin([{ ms: 100 }], 0), null);
+});
+
+test('le runner AVERTIT sur une marge serrée, en nommant la bonne grandeur', () => {
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(run, /startupMargin\(startup,/,
+    'main() n\'appelle plus startupMargin : la fonction peut rester juste pendant que '
+    + 'personne ne l\'exerce');
+  // ⚠️ Le message doit renvoyer à `firstLaunchMs`, PAS à `coldStartMs` : c'est
+  // toute la substance du correctif. clearState fait payer un premier lancement
+  // à chaque flow, quand `coldStartMs` décrit le régime stabilisé — 13 463 ms
+  // contre 1 801 sur le même projet.
+  const i = run.indexOf('marge?.serre');
+  const bloc = run.slice(i, i + 1200);
+  assert.match(bloc, /firstLaunchMs/,
+    'l\'avertissement doit nommer la grandeur dont il faut dériver le plafond');
+  assert.match(bloc, /clearState/, 'et dire POURQUOI chaque flow la paie');
+  assert.match(bloc, /Ne touche PAS `coldStartMs`/,
+    'et redire quelle clé ne pas relever — c\'est elle qui RAPPORTE la lenteur');
+});
+
+// ── Le graphe d'appels entre flows ──────────────────────────────────────────
+//
+// `maestro check-syntax` valide un fichier à la fois : un sous-flow qui
+// s'appelle lui-même passe, `argus-lint` imprime « tous les flows parsent », et
+// Maestro rejette ensuite le WORKSPACE ENTIER au démarrage — sans étape fautive
+// à nommer, donc en envoyant chercher dans le mauvais fichier.
+
+test('un cycle d\'appels entre flows est détecté, direct comme indirect', () => {
+  const direct = flowCycles({ '_subflows/goto.yaml': '- runFlow: goto.yaml' });
+  assert.equal(direct.length, 1, 'un sous-flow qui s\'appelle lui-même est un cycle');
+  assert.deepEqual(direct[0], ['_subflows/goto.yaml', '_subflows/goto.yaml']);
+
+  const indirect = flowCycles({
+    'a.yaml': '- runFlow: _subflows/b.yaml',
+    '_subflows/b.yaml': '- runFlow:\n    file: ../a.yaml',
+  });
+  assert.equal(indirect.length, 1, 'a → b → a est un cycle, et les chemins relatifs se résolvent');
+
+  // L'autre moitié, et c'est celle qui compte : un workspace SAIN ne doit rien
+  // signaler, sinon le contrôle devient du bruit qu'on désactive.
+  assert.deepEqual(flowCycles({
+    'visual.yaml': '- runFlow: _subflows/goto.yaml',
+    '_subflows/goto.yaml': '- runFlow: to-shell.yaml',
+    '_subflows/to-shell.yaml': '- back',
+  }), []);
+
+  // ⚠️ Et les commentaires ne fabriquent pas d'arêtes : le gabarit livré porte
+  // un exemple commenté qui cite `runFlow`.
+  assert.deepEqual(flowCycles({ 'a.yaml': '# - runFlow: a.yaml\n- launchApp' }), []);
+});
+
+test('le scaffold livré ne porte aucun cycle, et argus-lint le VÉRIFIE', () => {
+  const dir = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  /** @type {Record<string,string>} */
+  const flows = {};
+  const lire = (/** @type {string} */ d, /** @type {string} */ prefixe) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) lire(join(d, e.name), `${prefixe}${e.name}/`);
+      else if (/\.ya?ml$/.test(e.name) && e.name !== 'config.yaml') {
+        flows[`${prefixe}${e.name}`] = readFileSync(join(d, e.name), 'utf8');
+      }
+    }
+  };
+  lire(dir, '');
+  assert.ok(Object.keys(flows).length >= 10,
+    `${Object.keys(flows).length} flows lus — l'instrument ne mesure pas`);
+  assert.deepEqual(flowCycles(flows), [], 'le scaffold livré ne doit porter aucun cycle');
+
+  // Le câblage : sans lui, la détection existe et personne ne l'appelle — c'est
+  // exactement le défaut qu'on vient de fermer, un cran plus haut.
+  const makefile = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const lint = makefile.slice(makefile.indexOf('argus-lint:'), makefile.indexOf('argus-guards:'));
+  assert.match(lint, /--check-flows/,
+    'argus-lint ne contrôle plus le graphe : il redirait « tous les flows parsent » '
+    + 'sur un workspace que Maestro refuse de démarrer');
 });

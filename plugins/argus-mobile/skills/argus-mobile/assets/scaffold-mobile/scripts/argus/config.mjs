@@ -1028,7 +1028,105 @@ export const err = (msg) => console.error(`[argus-mobile] ✖ ${msg}`);
 // 5. Mode direct : imprimer la config résolue et l'outillage
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Les cycles d'appels entre flows Maestro.
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE. `maestro check-syntax` valide un fichier
+ * À LA FOIS : un sous-flow qui s'appelle lui-même passe, et `argus-lint`, qui
+ * boucle exactement ainsi, imprime « ✔ tous les flows parsent ». Puis Maestro
+ * rejette le WORKSPACE ENTIER au démarrage — `Parsing Failed at …/goto.yaml` —
+ * donc rien ne s'exécute, aucune étape n'est fautive, et le runner ne peut
+ * rapporter qu'un « échec sans étape fautive identifiée ». On cherche alors dans
+ * le dernier flow lancé, pas dans le sous-flow coupable.
+ *
+ * Reproduit sur un workspace jetable de deux fichiers : `check-syntax` rend `OK`
+ * sur les deux, dont celui qui s'appelle lui-même.
+ *
+ * @param {Record<string,string>} flows chemin relatif au workspace → contenu
+ * @returns {string[][]} un tableau par cycle, du premier fichier au retour
+ */
+export function flowCycles(flows) {
+  const dirOf = (/** @type {string} */ f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
+  const norm = (/** @type {string} */ base, /** @type {string} */ cible) => {
+    const parts = (base ? `${base}/${cible}` : cible).split('/');
+    /** @type {string[]} */
+    const out = [];
+    for (const seg of parts) {
+      if (seg === '.' || seg === '') continue;
+      if (seg === '..') out.pop();
+      else out.push(seg);
+    }
+    return out.join('/');
+  };
+  /** @type {Record<string,string[]>} */
+  const graphe = {};
+  for (const [nom, texte] of Object.entries(flows ?? {})) {
+    // ⚠️ Les commentaires d'abord : le gabarit livré porte des exemples
+    // commentés, et un graphe qui les lit invente des arêtes qui n'existent pas.
+    const utile = String(texte ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    const cibles = [
+      ...[...utile.matchAll(/runFlow:\s*([^\s#{][^\s#]*\.ya?ml)/g)].map((m) => m[1]),
+      ...[...utile.matchAll(/runFlow:[\s\S]{0,120}?file:\s*([^\s#]+\.ya?ml)/g)].map((m) => m[1]),
+    ];
+    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];
+  }
+  /** @type {string[][]} */
+  const cycles = [];
+  const vus = new Set();
+  const explore = (/** @type {string} */ n, /** @type {string[]} */ chemin) => {
+    const i = chemin.indexOf(n);
+    if (i !== -1) {
+      const cycle = [...chemin.slice(i), n];
+      // ⚠️ La clé porte sur l'ENSEMBLE des fichiers du cycle, jamais sur la
+      // liste : le même cycle parcouru depuis deux points de départ donne deux
+      // listes différentes (`a→b→a` et `b→a→b`) et serait rapporté deux fois.
+      const cle = [...new Set(cycle)].sort().join('>');
+      if (!vus.has(cle)) { vus.add(cle); cycles.push(cycle); }
+      return;
+    }
+    for (const suiv of graphe[n] ?? []) explore(suiv, [...chemin, n]);
+  };
+  for (const nom of Object.keys(graphe)) explore(nom, []);
+  return cycles;
+}
+
 function main() {
+  // ⚠️ AVANT `loadConfig()`, à dessein : le graphe d'appels ne dépend d'aucune
+  // config, et l'y coupler faisait échouer le contrôle sur « argus.mobile.yaml
+  // introuvable » — dans un workspace jetable, c'est-à-dire précisément là où on
+  // veut l'éprouver. Un contrôle qu'on ne peut pas voir dire NON n'a rien prouvé.
+  // ── `--check-flows` : le graphe d'appels, que check-syntax ne résout pas. ──
+  if (process.argv.slice(2).includes('--check-flows')) {
+    const racine = resolve(process.cwd(), '.maestro');
+    /** @type {Record<string,string>} */
+    const flows = {};
+    const lire = (/** @type {string} */ dir, /** @type {string} */ prefixe) => {
+      if (!existsSync(dir)) return;
+      for (const e of readdirSync(dir, { withFileTypes: true })) {
+        if (e.isDirectory()) lire(join(dir, e.name), `${prefixe}${e.name}/`);
+        else if (/\.ya?ml$/.test(e.name) && e.name !== 'config.yaml') {
+          flows[`${prefixe}${e.name}`] = readFileSync(join(dir, e.name), 'utf8');
+        }
+      }
+    };
+    lire(racine, '');
+    const n = Object.keys(flows).length;
+    if (n === 0) {
+      err('aucun flow lu sous .maestro/ — le contrôle du graphe n\'a rien mesuré.');
+      process.exit(2);
+    }
+    const cycles = flowCycles(flows);
+    for (const c of cycles) err(`cycle d'appels entre flows : ${c.join(' → ')}`);
+    if (cycles.length) {
+      err('  Maestro rejette le workspace ENTIER au démarrage sur un cycle, donc aucune étape');
+      err('  ne sera fautive et l\'échec accusera le dernier flow lancé. `check-syntax` ne le voit');
+      err('  pas : il valide un fichier à la fois et ne résout pas le graphe.');
+      process.exit(1);
+    }
+    log(`✔ ${n} flows, aucun cycle d'appels`);
+    process.exit(0);
+  }
+
   let config;
   try {
     config = loadConfig();
