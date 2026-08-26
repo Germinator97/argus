@@ -37,6 +37,7 @@ import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageN
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { caveatDebug, hostContext, launchTimeFindings, startupMetricLabel } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -2265,6 +2266,88 @@ test('sur un binaire de publication, le finding reste ce qu\'il était', () => {
   assert.ok(!/DEBUG/.test(f.suggestedFix));
   assert.equal(thresholdFinding('QAM-PERF-SIZE', 'x', 30, 60, 'Mo'), null,
     'et sous le budget, toujours aucun finding');
+});
+
+// ───────────────────────────────────────────────────────────────────────────
+// Le DÉMARRAGE porte son contexte de mesure — variant du binaire ET état de l'hôte
+// ───────────────────────────────────────────────────────────────────────────
+//
+// Run 26, point 193 : la réserve de variant n'était passée qu'à la taille et à
+// la mémoire. Le démarrage — la métrique la PLUS sensible au variant, un debug
+// exécutant le Dart en JIT — partait nu, et c'est lui qui produit le seul
+// `critical` d'une page publiée : « 11 745 ms contre 2 000 », sans un mot sur
+// le binaire mesuré.
+//
+// Ces gardes APPELLENT la construction au lieu de chercher un motif dans la
+// source : un garde de câblage qui lit du texte reste vert devant une valeur
+// neutralisée, leçon payée deux jours de suite sur ce chantier.
+
+test('les deux findings de démarrage nomment le variant ET l\'état de l\'hôte', () => {
+  const hote = hostContext(true);
+  const fs = launchTimeFindings({ medianMs: 11745 }, { medianMs: 4000 },
+    { coldStartMs: 2000, warmStartMs: 1000 }, 'debug', hote);
+  assert.equal(fs.length, 2, 'les deux dépassements doivent produire un finding');
+  for (const f of fs) {
+    assert.match(f.title, /debug/, `${f.id} : le titre doit dire sur quel binaire on a mesuré`);
+    assert.match(f.suggestedFix, /charge hôte/, `${f.id} : et dans quel état était la machine`);
+  }
+});
+
+test('la réserve du démarrage est la sienne, pas celle de la taille', () => {
+  // Le « facteur trois » a été relevé sur des tailles de binaire. Le recopier
+  // sur un temps de démarrage serait un nombre deviné — précisément ce que ce
+  // harnais reproche aux relevés qu'il lit.
+  assert.match(caveatDebug('QAM-PERF-COLD'), /JIT/, 'le démarrage explique POURQUOI un debug ment');
+  assert.ok(!/facteur trois/.test(caveatDebug('QAM-PERF-COLD')),
+    'et n\'emprunte pas un chiffre mesuré sur une autre grandeur');
+  assert.match(caveatDebug('QAM-PERF-SIZE'), /facteur trois/, 'la taille garde le sien, qui est mesuré');
+  assert.ok(!/JIT/.test(caveatDebug('QAM-PERF-MEM')));
+});
+
+test('en release, le contexte hôte reste et la mention debug disparaît', () => {
+  const fs = launchTimeFindings({ medianMs: 11745 }, { medianMs: 4000 },
+    { coldStartMs: 2000, warmStartMs: 1000 }, '', hostContext(true));
+  assert.equal(fs.length, 2);
+  for (const f of fs) {
+    assert.ok(!/debug|DEBUG/.test(f.title + f.suggestedFix), `${f.id} : rien à nuancer sur une release`);
+    assert.match(f.suggestedFix, /charge hôte/, `${f.id} : l'hôte, lui, compte quel que soit le binaire`);
+  }
+});
+
+test('sous les budgets, le démarrage ne produit toujours rien', () => {
+  const fs = launchTimeFindings({ medianMs: 900 }, { medianMs: 500 },
+    { coldStartMs: 2000, warmStartMs: 1000 }, 'debug', hostContext(true));
+  assert.equal(fs.length, 0, 'un contexte de mesure ne doit pas fabriquer de finding');
+});
+
+test('hostContext RELÈVE et ne juge pas', () => {
+  const emu = hostContext(true);
+  assert.equal(typeof emu.loadAvg1, 'number');
+  assert.ok(emu.cpuCount > 0, 'le nombre de cœurs doit être lu, pas supposé');
+  assert.equal(emu.loadPerCpu, Math.round((emu.loadAvg1 / emu.cpuCount) * 100) / 100);
+  assert.match(emu.phrase, /ÉMULATEUR/, 'un émulateur partage le CPU de l\'hôte, et la phrase le dit');
+  const phys = hostContext(false);
+  assert.match(phys.phrase, /physique/, 'un appareil physique a sa charge propre');
+  assert.ok(!/ÉMULATEUR/.test(phys.phrase));
+  // ⚠️ Aucun seuil : « charge > 1 par cœur » aurait été VACANT sur le cas qui
+  // motive ce relevé — 0,53 par cœur pendant qu'un démarrage passait de 1 768
+  // à 11 745 ms. Ce que le lecteur doit pouvoir faire, c'est comparer deux runs.
+  assert.ok(!/trop chargé|surchargé|seuil/i.test(emu.phrase),
+    'le relevé ne rend aucun verdict : il donne de quoi comparer');
+});
+
+test('perf.json ÉCRIT ce que le chiffre de démarrage mesure', () => {
+  // Point 197, né de la passe : la phrase existait, elle était construite dans
+  // une variable locale, et rien ne la lisait — sous les trois lignes de
+  // commentaire qui expliquent pourquoi elle est indispensable.
+  const label = startupMetricLabel();
+  assert.match(label, /am start -W/, 'la phrase doit nommer l\'instrument');
+  assert.match(label, /startup\.samples/, 'et renvoyer à l\'autre grandeur, sinon l\'écart passe pour une contradiction');
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+  const cle = src.match(/startupMetric:\s*(\w+)/);
+  assert.ok(cle, 'plus aucune clé `startupMetric:` dans le rapport — si elle a été renommée, mets ce garde à jour');
+  assert.equal(cle[1], 'mesure', 'la clé doit porter la valeur construite, pas une constante réécrite à côté');
 });
 
 // ───────────────────────────────────────────────────────────────────────────

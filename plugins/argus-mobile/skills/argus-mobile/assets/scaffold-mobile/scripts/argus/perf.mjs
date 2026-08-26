@@ -23,6 +23,7 @@
  */
 
 import { existsSync, realpathSync, statSync } from 'node:fs';
+import { cpus, loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -286,26 +287,110 @@ function binarySizeMb(path) {
  * @param {number} budget @param {string} unit @param {string} [dimension]
  * @returns {any}
  */
-export function thresholdFinding(id, label, value, budget, unit, dimension = 'performance', variante = '') {
+export function thresholdFinding(id, label, value, budget, unit, dimension = 'performance', variante = '', hote = '') {
   if (value === null || value === undefined || value <= budget) return null;
   // ⚠️ Un budget est écrit pour la PUBLICATION. Appliqué à un build debug, il
   // rend un `major` sur une valeur qui n'a aucun rapport avec ce que les
   // utilisateurs reçoivent : mesuré sur un projet réel, 117,5 Mo contre un
-  // budget de 60, quand la release du même projet fait 32,1. La config avertit
-  // déjà pour les permissions ; ces deux métriques-ci sont encore plus
-  // sensibles au variant, et le finding le disait nulle part.
-  const misePlusieurs = variante === 'debug'
-    ? '\n⚠️ Mesuré sur un binaire DEBUG : ce budget décrit la publication. '
-      + 'Compare-le à la release avant de conclure — l\'écart est couramment d\'un facteur trois.'
-    : '';
+  // budget de 60, quand la release du même projet fait 32,1.
+  //
+  // ⚠️ ET LA RÉSERVE MANQUAIT LÀ OÙ ELLE COMPTE LE PLUS. Elle n'était passée
+  // qu'à la taille et à la mémoire ; le DÉMARRAGE, qui est la métrique la plus
+  // sensible au variant — un debug exécute le Dart en JIT, sans AOT — partait
+  // nu. Relevé sur un run publié : un `critical` « 11 745 ms contre 2 000 »
+  // en tête de page, sans que rien ne dise qu'il venait d'un debug, pendant
+  // que le finding mémoire, moins grave, portait bien sa mise en garde.
+  const misePlusieurs = variante === 'debug' ? `\n${caveatDebug(id)}` : '';
   return {
     id, title: `${label} au-dessus du budget${variante === 'debug' ? ' (mesuré sur un debug)' : ''}`, dimension,
     severity: value > budget * 2 ? 'critical' : 'major',
     expected: `≤ ${budget} ${unit}`, actual: `${value} ${unit}${variante ? ` (${variante})` : ''}`,
     suggestedFix: 'Profiler le chemin concerné avant d\'optimiser : un mécanisme plausible mais non isolé fait optimiser à côté.'
-      + misePlusieurs,
+      + misePlusieurs + (hote ? `\n${hote}` : ''),
     status: 'open',
   };
+}
+
+/**
+ * La mise en garde de variant, PAR MÉTRIQUE — parce que le chiffre qui
+ * l'accompagne doit venir d'une mesure, pas d'une généralisation. « Un facteur
+ * trois » a été relevé sur des tailles de binaire ; l'appliquer au démarrage
+ * serait un nombre deviné, exactement ce que ce harnais reproche aux autres.
+ * @param {string} id @returns {string}
+ */
+export function caveatDebug(id) {
+  if (id === 'QAM-PERF-COLD' || id === 'QAM-PERF-WARM') {
+    return '⚠️ Mesuré sur un binaire DEBUG : Flutter y exécute le Dart en JIT, sans compilation AOT. '
+      + 'Un temps de démarrage debug ne dit rien de celui d\'une release — reconstruis en release et '
+      + 're-mesure avant de conclure quoi que ce soit sur l\'app.';
+  }
+  return '⚠️ Mesuré sur un binaire DEBUG : ce budget décrit la publication. '
+    + 'Compare-le à la release avant de conclure — l\'écart est couramment d\'un facteur trois.';
+}
+
+/**
+ * Ce que le chiffre de démarrage MESURE, en toutes lettres.
+ * @returns {string}
+ */
+export function startupMetricLabel() {
+  // ⚠️ Ce que `am start -W` mesure, écrit à côté du chiffre : sans ça, il se lit
+  // en regard de `startup.samples` du rapport principal — qui mesure l'écran
+  // exploitable, splash compris — et l'écart passe pour une contradiction.
+  //
+  // ⚠️ Cette phrase a vécu SANS ATTEINDRE PERSONNE : elle était construite dans
+  // une variable locale que rien ne lisait, sous les trois lignes de commentaire
+  // qui expliquent pourquoi elle est indispensable. Aucun test ne pouvait la
+  // voir — une variable inutilisée ne casse rien, et `node --check` encore moins.
+  return 'am start -W : jusqu\'à la première frame, splash de marque compris mais '
+    + 'PAS l\'initialisation applicative qui suit. Le temps jusqu\'à l\'écran exploitable est '
+    + 'dans startup.samples du rapport principal, et il est normalement plus grand.';
+}
+
+/**
+ * Les deux findings de DÉMARRAGE, construits ensemble.
+ *
+ * ⚠️ Extraits pour qu'un garde puisse les BÂTIR au lieu de chercher un motif
+ * dans la source : un garde de câblage qui lit du texte reste vert devant une
+ * valeur neutralisée (`variante` remplacé par `''` laisse chaque occurrence en
+ * place). Ce chantier a payé cette leçon deux jours de suite.
+ * @param {{medianMs:number|null}} cold @param {{medianMs:number|null}} warm
+ * @param {any} thresholds @param {string} variante
+ * @param {{phrase:string}} hote @returns {any[]}
+ */
+export function launchTimeFindings(cold, warm, thresholds, variante, hote) {
+  return [
+    thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms', 'performance', variante, hote.phrase),
+    thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms', 'performance', variante, hote.phrase),
+  ].filter(Boolean);
+}
+
+/**
+ * L'état de l'HÔTE au moment de la mesure — relevé, jamais jugé.
+ *
+ * ⚠️ Un chiffre de démarrage ne veut rien dire sans lui, et ce harnais l'avait
+ * appris pour une variable seulement : le premier lancement, isolé du régime
+ * stabilisé. La charge de la machine, elle, n'était relevée nulle part — alors
+ * qu'elle a doublé la médiane d'attente d'un run entier (17 233 ms contre 7 552,
+ * 8 134 et 7 781 aux trois précédents, même terrain, même AVD, même app).
+ *
+ * ⚠️ AUCUN SEUIL ICI, ET C'EST DÉLIBÉRÉ. « Charge > 1 par cœur » serait un
+ * nombre deviné, et il serait VACANT sur le cas qui motive ce relevé : la
+ * machine était à 0,53 par cœur pendant qu'un démarrage passait de 1 768 à
+ * 11 745 ms. Ce qui manque au lecteur n'est pas un verdict, c'est de quoi
+ * comparer deux runs entre eux. Un émulateur partage le CPU de l'hôte ; un
+ * appareil physique non, d'où la mention du type de device dans la phrase.
+ * @param {boolean} partageLeCpu @returns {{loadAvg1:number, cpuCount:number, loadPerCpu:number, phrase:string}}
+ */
+export function hostContext(partageLeCpu) {
+  const loadAvg1 = Math.round(loadavg()[0] * 100) / 100;
+  const cpuCount = cpus().length;
+  const loadPerCpu = cpuCount > 0 ? Math.round((loadAvg1 / cpuCount) * 100) / 100 : 0;
+  const phrase = `Mesuré avec une charge hôte de ${loadAvg1} sur ${cpuCount} cœurs (${loadPerCpu} par cœur)`
+    + (partageLeCpu
+      ? ', sur un ÉMULATEUR — qui partage ce CPU. Compare ce chiffre à un relevé pris '
+        + 'à charge comparable avant d\'en conclure quoi que ce soit sur l\'app.'
+      : ', sur un appareil physique — sa charge lui est propre.');
+  return { loadAvg1, cpuCount, loadPerCpu, phrase };
 }
 
 /**
@@ -497,22 +582,30 @@ function main() {
   // Le variant du binaire mesuré : `-debug.apk` dans le chemin suffit à le dire,
   // et c'est ce que le scaffold pointe par défaut.
   const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';
-  // ⚠️ Ce que `am start -W` mesure, écrit à côté du chiffre : sans ça, il se lit
-  // en regard de `startup.samples` du rapport principal — qui mesure l'écran
-  // exploitable, splash compris — et l'écart passe pour une contradiction.
-  const mesure = 'am start -W : jusqu\'à la première frame, splash de marque compris mais '
-    + 'PAS l\'initialisation applicative qui suit. Le temps jusqu\'à l\'écran exploitable est '
-    + 'dans startup.samples du rapport principal, et il est normalement plus grand.';
+  const mesure = startupMetricLabel();
+  // L'état de l'hôte, relevé À L'INSTANT de la mesure et non après coup. Un
+  // `emulator-<port>` partage le CPU de la machine ; un appareil physique non.
+  const hote = hostContext(/^emulator-/.test(udid));
   const findings = [
-    thresholdFinding('QAM-PERF-COLD', 'Démarrage à froid', cold.medianMs, thresholds.coldStartMs, 'ms'),
-    thresholdFinding('QAM-PERF-WARM', 'Démarrage à chaud', warm.medianMs, thresholds.warmStartMs, 'ms'),
+    // ⚠️ `variante` ET `hote` sur les DEUX démarrages : ce sont les métriques
+    // les plus sensibles au binaire mesuré comme à la machine qui mesure, et
+    // ce sont précisément les deux qui partaient sans rien dire de l'un ni de
+    // l'autre — pendant que la mémoire, moins grave, portait sa réserve.
+    ...launchTimeFindings(cold, warm, thresholds, variante, hote),
     thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo', 'performance', variante),
     sizeFinding(pese, sizeMb, config, platform, buildRelease),
   ].filter(Boolean);
 
   const report = {
     platform, device: { udid, ...context }, package: packageName,
+    // ⚠️ Écrit MÊME quand aucun seuil n'est dépassé : c'est ce qui permet de
+    // comparer deux runs entre eux, et c'est cette comparaison — pas un seuil —
+    // qui a démenti un jour un « le plafond est trop bas » parfaitement plausible.
+    host: { loadAvg1: hote.loadAvg1, cpuCount: hote.cpuCount, loadPerCpu: hote.loadPerCpu },
     metrics: {
+      // Ce que `am start -W` mesure, écrit À CÔTÉ du chiffre — la phrase
+      // existait, elle était construite, et elle n'était écrite nulle part.
+      startupMetric: mesure,
       // Isolé du régime stabilisé : c'est un état réel, pas une valeur aberrante.
       firstLaunchMs: cold.firstLaunchMs,
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
