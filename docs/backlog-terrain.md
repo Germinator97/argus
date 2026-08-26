@@ -3114,7 +3114,7 @@ naisse. Le correctif a été annulé (`git checkout`) et le gabarit est intact.
 📌 Ce qui reste vrai : le **181** — le gabarit de PROMPT ne demandait pas de
 trancher ce budget, et c'est corrigé. La clé, elle, existait.
 
-### 187. ⚠️ Une capture ne peut exister que sur ÉCHEC — donc la page publiée n'en a jamais
+### 187. ✅ Corrigé le 26/08/2026 — Une capture ne pouvait exister que sur ÉCHEC, donc la page publiée n'en avait jamais
 
 `artifact.evidence: all` promet « les captures des findings embarquées dans la
 page ». Relevé de **tous** les producteurs du champ `evidence` :
@@ -3145,7 +3145,19 @@ qui n'attachent aucune capture.
 le run 25, personne n'ouvrait ce livrable — et le compte rendu de l'agent portait
 déjà le signal, dans un mot : « aucune capture, **malgré** `evidence: all` ».
 
-### 188. Le bandeau « partiel » se déclenche sur la configuration PAR DÉFAUT
+**Corrigé** : `argus-a11y` parle déjà au device ; il capture désormais l'écran
+qu'il vient de mesurer et l'attache aux deux familles de findings. **Par fichier
+puis `pull`, jamais `exec-out`** : `screencap -p` écrit du PNG sur stdout et
+`sh()` décode en UTF-8 — l'image reviendrait corrompue sans un mot.
+
+⚠️ **Deux choses attrapées dans mon propre correctif.** `node --check` est passé
+sur un appel à une variable **qui n'existait pas** (`ecran` au lieu de
+`identity.id`) — la leçon du run 11 : il prouve qu'un fichier parse, jamais qu'il
+décide juste ; seul l'import, puis le garde, l'ont vu. Et le câblage d'une capture
+RÉELLE **n'a pas de garde exécutable**, parce qu'il faut un appareil pour en
+produire une : c'est écrit dans le code plutôt que laissé passer pour un oubli.
+
+### 188. ✅ Corrigé le 26/08/2026 — Le bandeau « partiel » se déclenchait sur la configuration PAR DÉFAUT
 
 `.maestro/config.yaml` livré porte `excludeTags: [wip, manual]`. Tout run normal
 est donc étiqueté `scope: "filtré (-wip -manual)"`, et le rapport affiche son
@@ -3160,7 +3172,14 @@ rétrécissement de périmètre.
 run 25 il est **publié** : la page destinée à d'autres s'annonce incomplète alors
 qu'elle décrit un run complet.
 
-### 189. `argusLocalizationsDelegates` : la condition écrite est trop étroite
+**Corrigé** : `runScope()` sépare ce que le **workspace** exclut par nature de ce
+qu'une **ligne de commande** retranche. Seul le second fait un run « filtré ». Le
+périmètre du projet reste **dit**, en ligne simple et sans badge — le taire ferait
+croire qu'un run complet exécute tout ce que le dépôt contient, ce qui est faux
+aussi. Et l'autre moitié est gardée : un run filtré à la main se dénonce toujours,
+ce pour quoi le point 141 existe.
+
+### 189. ✅ Corrigé le 26/08/2026 — `argusLocalizationsDelegates` : la condition écrite était trop étroite
 
 Le gabarit dit : « **si** ton app formate des dates ou des nombres localisés
 (`DateFormat(…, 'fr_FR')`, pluriels `intl`), ajoute ici les delegates ».
@@ -3178,7 +3197,7 @@ rouges sur `form_reps_minus` et `form_reps_plus`. C'est la forme exacte du pièg
 « une mesure absurde n'est pas un défaut de disposition, c'est une exception plus
 haut ».
 
-### 190. Un `back` sur la racine met l'app en ARRIÈRE-PLAN au lieu de dépiler
+### 190. ✅ Corrigé le 26/08/2026 — Un `back` sur la racine met l'app en ARRIÈRE-PLAN au lieu de dépiler
 
 L'agent avait écrit `- back: optional: true` en tête de chaque branche de `goto`,
 « au cas où ». Sur Android, quand la pile ne contient que la coquille, `back` ne
@@ -3192,7 +3211,7 @@ scaffold recommande par ailleurs des gestes de navigation défensifs. Le remède
 appliqué par l'agent est le bon et mérite d'être prescrit : conditionner tout
 `back` à `notVisible:` sur l'ancre témoin de la coquille.
 
-### 191. La publication exige un titre et une icône STABLES sans les prescrire
+### 191. ✅ Corrigé le 26/08/2026 — La publication exigeait un titre et une icône STABLES sans les prescrire
 
 `SKILL.md` §g bis demande de « garder le titre et l'icône stables d'un run à
 l'autre ». Il ne dit ni lequel, ni où le noter — `artifact.title` existe, aucune
@@ -3206,10 +3225,42 @@ d'identité — « un favicon qui change fait lire la page comme une autre ».
 runs consécutifs (23 et 24) se sont arrêtés faute de cette décision, en le
 signalant tous deux au §3. Même motif que le **181**.
 
+**Corrigé** : `artifact.icon` existe à côté d'`artifact.title`, et `report.mjs`
+**imprime les deux** au moment de publier — l'identité se lit, elle ne se retient
+pas. `PROMPTS.md` porte une ligne `ARTEFACT`, qui dit que le défaut « non » est
+sûr *et* que tant qu'on ne tranche pas, le livrable n'existe jamais.
+
+### 192. Le garde des clés sans lecteur compte une mention en CHAÎNE comme une lecture
+
+Né de la passe. En ajoutant `artifact.icon`, la mutation qui **retire sa lecture**
+a laissé le garde vert — `VACANT` rendu par le harnais.
+
+Cause : le garde retire les **commentaires** du corpus, pas les **chaînes**. Le
+message de publication écrit `« … argus.mobile.yaml → artifact.title /
+artifact.icon »`, donc le motif du lecteur (`\.icon\b`) y matche. Une clé cette
+par un message d'aide passe pour lue.
+
+⚠️ **Et le durcissement évident est FAUX.** Retirer les chaînes par regex
+(`/'(?:[^'\\]|\\.)*'/`) fait apparaître **six clés mortes qui ne le sont pas** —
+`budget.maxMinutes`, `gate.failOnVisualDiff`, `artifact.maxMb`… Mesuré : une
+apostrophe française dans une chaîne à guillemets doubles (`"aujourd'hui"`) ouvre
+un appariement qui **avale le code** jusqu'à la quote suivante, emportant de
+vraies lectures. Corriger demande un lexer, pas une expression régulière.
+
+📌 Laissé **ouvert** avec sa mesure plutôt que fermé par un remède qui casse
+davantage. La mutation, elle, retire lecture *et* mention, donc le garde reste
+prouvé pour ce qu'il fait — et ce qu'il ne fait pas est désormais écrit.
+
 ## Ce qui reste
 
-**Les points 187 à 191**, inscrits le 26/08/2026 au dépouillement du run 25 —
+**Le point 192**, né de la passe et laissé **ouvert** avec sa mesure : le corriger
+demande un lexer, et le remède évident casse six lectures légitimes.
+
+Les points **187 à 191** sont fermés le 26/08/2026, le jour même de leur
+inscription — le backlog se vide pour la **vingt-cinquième** fois. Le run 25 est
 **le premier à publier sa page de rapport**, en vingt-cinq runs.
+
+**Prochain numéro libre : 193.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la

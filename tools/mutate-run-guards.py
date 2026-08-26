@@ -334,6 +334,22 @@ MUTATIONS = [
     ("makefile", "argus-lint cesse de contrôler le graphe d'appels",
      "\t@node scripts/argus/config.mjs --check-flows",
      "\t@true # contrôle du graphe retiré"),
+    # ── Vingt-cinquième run ─────────────────────────────────────────────────
+    ("a11y", "les findings d'accessibilité repartent sans preuve visuelle",
+     "  const evidence = preuve ? [preuve] : [];",
+     "  const evidence = [];"),
+    ("run", "le périmètre du projet redevient un filtre",
+     "  const retranche = [...include.map((t) => `+${t}`), ...excludeCli.map((t) => `-${t}`)];",
+     "  const retranche = [...include.map((t) => `+${t}`), ...(excludeConfig ?? []).map((t) => `-${t}`)];"),
+    # ⚠️ La mutation doit COMPILER : la première coupait une parenthèse, et le
+    # harnais a rendu « la mutation ne parse pas » plutôt qu'un faux verdict.
+    # ⚠️ La mutation retire la lecture ET la mention : le garde des feuilles de
+    # DEFAULTS retire les COMMENTAIRES du corpus, pas les CHAÎNES, et le message
+    # de publication cite `artifact.icon` en toutes lettres. Muter la seule
+    # lecture le laissait vert — VACANT rendu par le harnais. Voir le point 192.
+    ("report", "l'icône de la page n'est plus lue à la publication",
+     "· icône ${config.artifact.icon || '👁'}`\n      + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');",
+     "`\n      + ' — le MÊME à chaque republication');"),
 ]
 
 
