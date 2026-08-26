@@ -2848,3 +2848,95 @@ test('sec propose la commande qui produit LE binaire cherché, pas l\'autre', ()
     { build: { android: 'build/app-debug.apk', androidBuildCmd: 'flutter build apk --debug' } }, false),
     'flutter build apk --debug');
 });
+
+
+// ── `goto` : un RETOUR, pas un aller depuis l'accueil ───────────────────────
+//
+// Le sous-flow décidait « rien à naviguer » sur le SCÉNARIO — l'écran demandé
+// est-il celui de départ ? — quand la question est l'ÉTAT : l'app y est-elle
+// encore ? Vrai au premier appel, faux à tous les suivants, et l'échec tombait
+// trois étapes plus loin sur « Element not found », en accusant une ancre qui
+// n'avait rien fait.
+
+const FLOWS = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+const GOTO = join(FLOWS, '_subflows/goto.yaml');
+
+/**
+ * Le corps exécutable d'un flow : sans la section de configuration, et SANS LES
+ * COMMENTAIRES — le gabarit porte un exemple commenté qui contient `when:`,
+ * `true:` et `tapOn:`, donc un garde qui lit le fichier brut mesure la doc.
+ */
+function corpsDeFlow(chemin) {
+  const brut = readFileSync(chemin, 'utf8');
+  const i = brut.indexOf('\n---\n');
+  const apres = i === -1 ? brut : brut.slice(i + 5);
+  return apres.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+}
+
+test('goto ne conclut « rien à naviguer » qu\'après avoir REGARDÉ l\'écran', () => {
+  const corps = corpsDeFlow(GOTO);
+  // ⚠️ À TOUT NIVEAU, pas seulement au premier : les branches d'état sont
+  // EMBOÎTÉES dans celle qui décide du contexte, si bien qu'un découpage de
+  // premier niveau les mélange — une sous-branche vidée de son `visible:`
+  // resterait couverte par le `notVisible:` de sa voisine, et le garde serait
+  // vert sur le défaut même qu'il surveille.
+  const branches = corps.split(/^\s*- runFlow:/m).slice(1);
+  assert.ok(branches.length >= 3,
+    `${branches.length} branche(s) dans goto.yaml — si la structure a changé, mets ce motif à jour`);
+
+  // Critère TOTAL et négatif : aucune conclusion « c'est bon » qui n'ait regardé
+  // l'écran, à la seule exception avouée — pas d'ancre déclarée, donc rien à
+  // regarder. C'est le garde de la classe, pas de la branche qu'on vient d'écrire.
+  for (const branche of branches) {
+    if (!/assertTrue:/.test(branche)) continue;
+    const regarde = /[Vv]isible:/.test(branche);
+    const avoue = /ARGUS_ANCHOR_HOME === ''/.test(branche);
+    assert.ok(regarde || avoue,
+      `une branche de goto conclut sans regarder l'écran : ${branche.trim().slice(0, 140)}`);
+  }
+});
+
+test('goto porte la branche du RETOUR, et elle échoue là où le défaut est', () => {
+  const corps = corpsDeFlow(GOTO);
+  assert.match(corps, /notVisible:/,
+    'plus de branche « on n\'y est plus » : le retour redevient muet et l\'échec repart trois étapes plus loin');
+  const retour = corps.slice(corps.indexOf('notVisible:'));
+  assert.match(retour, /assertVisible:/,
+    'la branche de retour doit ÉCHOUER ici — sans assertion, elle ne fait rien et ne dit rien');
+  assert.match(retour, /ARGUS_ANCHOR_HOME/,
+    'et sur l\'ancre de l\'écran de départ, seule chose qui prouve qu\'on y est revenu');
+});
+
+test('aucun `when` du scaffold ne mélange une condition d\'état et une de contexte', () => {
+  // ⚠️ Décision de structure, pas de style : `true:` et `visible:` dans le MÊME
+  // `when` demanderaient de savoir comment Maestro les combine — un ET supposé,
+  // que rien ici ne mesure sans device. Déroulé sur les quatre cas, une lecture
+  // en OU ferait échouer un `goto` vers un autre écran. L'imbrication donne le
+  // ET sans rien supposer, et ce garde empêche quiconque de « simplifier ».
+  const fichiers = [...readdirSync(FLOWS), ...readdirSync(join(FLOWS, '_subflows')).map((f) => join('_subflows', f))]
+    .filter((f) => f.endsWith('.yaml') && !f.endsWith('config.yaml'));
+  assert.ok(fichiers.length >= 10, `${fichiers.length} flows lus — le motif de collecte ne trouve plus rien`);
+
+  let blocs = 0;
+  for (const nom of fichiers) {
+    const lignes = corpsDeFlow(join(FLOWS, nom)).split('\n');
+    for (let i = 0; i < lignes.length; i += 1) {
+      const m = /^(\s*)when:\s*$/.exec(lignes[i]);
+      if (!m) continue;
+      blocs += 1;
+      const cles = [];
+      for (let j = i + 1; j < lignes.length; j += 1) {
+        const ligne = lignes[j];
+        if (ligne.trim() === '') continue;
+        const indent = ligne.length - ligne.trimStart().length;
+        if (indent <= m[1].length) break;
+        const cle = /^\s*([A-Za-z]+):/.exec(ligne);
+        if (cle && indent === m[1].length + 2) cles.push(cle[1]);
+      }
+      const etat = cles.some((c) => c === 'visible' || c === 'notVisible');
+      assert.ok(!(etat && cles.includes('true')),
+        `${nom}:${i + 1} — un même \`when\` porte ${cles.join(' + ')} : emboîte-les plutôt que de supposer comment Maestro les combine`);
+    }
+  }
+  assert.ok(blocs >= 8, `${blocs} bloc(s) \`when\` inspectés — l'instrument ne mesure pas`);
+});

@@ -5,14 +5,16 @@ tags:
   - argus
   - a11y
 ---
-# ⚠️ CHAQUE `goto.yaml` PART DE LÀ OÙ `launch-clean` A LAISSÉ L'APP, pas de là où
-# le bloc précédent s'est arrêté. Enchaîner deux sections sans revenir à l'écran
-# de départ échoue sur « Element not found: Id matching regex: … » — le message
-# qui fait chercher un défaut d'instrumentation qui n'existe pas. Un run y a
-# perdu une passe device complète (~7 min).
+# ⚠️ CHAQUE `goto.yaml` PART DE LÀ OÙ LE BLOC PRÉCÉDENT S'EST ARRÊTÉ, jamais de
+# l'écran de lancement — et c'est à `_subflows/goto.yaml` de ramener l'app, son
+# contrat étant « amener l'app sur cet écran, d'où qu'elle parte ». Sa branche de
+# retour est un TODO du projet : tant qu'elle est vide, enchaîner deux sections
+# qui partent d'écrans différents échoue sur « Element not found: Id matching
+# regex: … », le message qui fait chercher un défaut d'instrumentation qui
+# n'existe pas. Un run y a perdu une passe device complète (~7 min).
 #
-# Le geste : revenir explicitement (`tapOn: id: nav_home`, ou ce qui ramène chez
-# toi) entre deux sections qui partent d'écrans différents.
+# Le geste est dans goto.yaml, branche `notVisible` — pas ici, et pas dispersé
+# dans chaque flow appelant.
 
 # CE QUE CE FLOW MESURE, ET CE QU'IL NE MESURE PAS.
 #

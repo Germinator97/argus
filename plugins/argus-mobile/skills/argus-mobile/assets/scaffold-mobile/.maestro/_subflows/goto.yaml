@@ -6,14 +6,23 @@ appId: ${APP_ID}
 # (« Config Section Required »). Le glob `flows` de config.yaml décide de ce qui
 # s'EXÉCUTE, pas de ce qui se PARSE.
 ---
-# Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`.
+# Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`,
+# QUEL QUE SOIT L'ENDROIT D'OÙ ELLE PART.
+#
+# ⚠️ C'EST LE CONTRAT, ET CE N'EST PAS CELUI QU'ON CROIT. `goto` n'est presque
+# jamais appelé au lancement : il l'est AU MILIEU d'un flow, après que les blocs
+# précédents ont navigué ailleurs. Chaque branche doit donc être écrite comme un
+# RETOUR depuis un écran quelconque, jamais comme un aller depuis l'accueil.
+#
+# Ce que coûte l'oubli : la branche ne fait rien, l'app reste où elle était, et
+# c'est l'étape SUIVANTE qui échoue — sur « Element not found: Id matching
+# regex: … », donc au mauvais endroit et en accusant l'instrumentation. Deux runs
+# y sont passés, dont un qui a perdu une passe device complète (~7 min).
 #
 # Aucun outil ne peut deviner comment on atteint un écran dans TON app : c'est la
 # seule partie du harness qui demande vraiment du travail projet. Chaque branche
 # ci-dessous est un `when` sur l'identifiant d'écran déclaré dans
 # `argus.mobile.yaml → screens[].id`.
-#
-# `home` ne demande rien : `launch-clean.yaml` y a déjà mené.
 #
 # ⚠️ Tu peux taper dès la première ligne d'une branche : `launch-clean.yaml`
 # attend désormais l'ancre de départ, pas seulement la fin des animations. Avant
@@ -21,23 +30,62 @@ appId: ${APP_ID}
 # démarrage — 6,4 à 9,3 s mesurés sur un projet réel — et l'échec sortait en
 # « Element not found », ce qui se lit comme une ancre manquante.
 
+# ── L'écran de départ ───────────────────────────────────────────────────────
+#
+# ⚠️ « On DEMANDE l'écran de départ » et « on EST sur l'écran de départ » sont
+# deux choses différentes, et la première ne prouve pas la seconde. La branche
+# unique d'avant se décidait sur le scénario (`SCREEN_ID === ARGUS_START_SCREEN`)
+# et concluait « rien à naviguer » : vrai au premier appel, faux à tous les
+# suivants.
+#
+# ⚠️ ET L'IMBRICATION EST VOULUE. Écrire `true:` et `visible:` dans le MÊME
+# `when` demanderait de savoir comment Maestro les combine — un ET supposé, que
+# rien ici ne peut mesurer sans device. Déroulé sur les quatre cas, une lecture
+# en OU ferait échouer un `goto` vers un autre écran. Deux `when` emboîtés, qui
+# ne portent chacun qu'une nature de condition, donnent le ET sans rien supposer.
 - runFlow:
     when:
-      # ⚠️ La branche « rien à naviguer » se décide sur l'écran de DÉPART, celui
-      # que `start: true` déclare — le runner l'injecte en `ARGUS_START_SCREEN`.
-      # Elle a longtemps été un `startsWith('home')` : ça sert `home-empty` et
-      # ça MENT sur `home-filled`, qu'aucune branche ne prépare alors que la
-      # condition prétend l'avoir atteint. Le même piège attendait chaque famille
-      # d'états (`history-*`, `categories-*`). Deux passes de commentaires l'ont
-      # décrit avant qu'une troisième ne le ferme : décrire un piège ne le ferme
-      # pas.
-      true: "${typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN}"
+      true: "${(typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN) && typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+    commands:
+      # 1. On y est : rien à faire. La condition regarde l'ÉCRAN, pas le scénario.
+      - runFlow:
+          when:
+            visible:
+              id: ${ARGUS_ANCHOR_HOME}
+          commands:
+            - assertTrue:
+                condition: "${true}"
+                label: Écran de départ déjà affiché — rien à naviguer
+
+      # 2. On le demande, mais on n'y est plus : il faut RAMENER l'app.
+      - runFlow:
+          when:
+            notVisible:
+              id: ${ARGUS_ANCHOR_HOME}
+          commands:
+            # TODO(argus): le retour à l'écran de départ depuis N'IMPORTE OÙ —
+            # l'onglet d'accueil chez la plupart (`- tapOn: { id: nav_home }`),
+            # un `back` répété ailleurs. Mets-le AVANT l'assertion ci-dessous,
+            # qui n'est là que pour faire échouer ICI plutôt que trois étapes
+            # plus loin, sur une ancre qui n'a rien fait de mal.
+            - assertVisible:
+                id: ${ARGUS_ANCHOR_HOME}
+                label: Retour à l'écran de départ — aucune branche ne le fait dans goto.yaml
+
+# 3. Aucune ancre d'accueil déclarée : on ne peut RIEN vérifier. On le dit,
+#    plutôt que de laisser croire à un aiguillage qui aurait eu lieu.
+- runFlow:
+    when:
+      true: "${(typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN) && (typeof ARGUS_ANCHOR_HOME === 'undefined' || ARGUS_ANCHOR_HOME === '')}"
     commands:
       - assertTrue:
           condition: "${true}"
-          label: Écran d'accueil — atteint par le lancement, rien à naviguer
+          label: Écran de départ supposé atteint — aucune ancre déclarée pour le vérifier
 
 # TODO(argus): une branche par écran de argus.mobile.yaml → screens[].
+#
+# ⚠️ Écris-la comme un RETOUR, pas comme un aller : si l'onglet n'est atteignable
+# que depuis l'accueil, ramène d'abord l'app à l'accueil dans la même branche.
 # - runFlow:
 #     when:
 #       true: "${SCREEN_ID === 'profile'}"
