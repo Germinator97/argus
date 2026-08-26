@@ -3114,11 +3114,111 @@ naisse. Le correctif a été annulé (`git checkout`) et le gabarit est intact.
 📌 Ce qui reste vrai : le **181** — le gabarit de PROMPT ne demandait pas de
 trancher ce budget, et c'est corrigé. La clé, elle, existait.
 
+### 187. ⚠️ Une capture ne peut exister que sur ÉCHEC — donc la page publiée n'en a jamais
+
+`artifact.evidence: all` promet « les captures des findings embarquées dans la
+page ». Relevé de **tous** les producteurs du champ `evidence` :
+
+| producteur | ce qu'il y met |
+|---|---|
+| `run.mjs:826` | les artefacts Maestro d'une **étape en échec** — les seules images |
+| `run.mjs:1026` | `[]` — le finding de démarrage |
+| `sec.mjs:74` | un chemin de fichier **source** |
+| `sca.mjs:135` | une source de CVE |
+
+Et `embedEvidence` filtre sur le type MIME : ce qui n'est pas une image est
+ignoré, « le chemin suffit ». **Le seul producteur d'images est donc l'échec.**
+
+Mesuré sur ce run : `report.json` porte **1 finding**, `evidence: []`. Les 23
+findings de la page viennent de l'agrégat des cinq dimensions, et **aucun** ne
+porte d'image. Pendant ce temps **18 PNG existent sur le disque** — les 4
+références visuelles et les captures de la passe visuelle — qu'aucun finding ne
+référence.
+
+⚠️ **Le paradoxe est structurel** : un run vert est précisément celui qu'on
+publie, et c'est celui qui ne peut rien montrer. Les findings qui gagneraient le
+plus à être vus — 18 cibles tactiles sous 48 dp, un contraste à 2,86, un
+débordement de 41 px à taille NOMINALE — viennent de l'étage 1 et d'`argus-a11y`,
+qui n'attachent aucune capture.
+
+📌 Trouvé par Germinator **en regardant la page publiée**, pas par un test. Sans
+le run 25, personne n'ouvrait ce livrable — et le compte rendu de l'agent portait
+déjà le signal, dans un mot : « aucune capture, **malgré** `evidence: all` ».
+
+### 188. Le bandeau « partiel » se déclenche sur la configuration PAR DÉFAUT
+
+`.maestro/config.yaml` livré porte `excludeTags: [wip, manual]`. Tout run normal
+est donc étiqueté `scope: "filtré (-wip -manual)"`, et le rapport affiche son
+bandeau « partiel ».
+
+Ce bandeau vient des points 141-148 : il existe pour qu'un run **filtré à la
+main** — celui de la contre-épreuve visuelle — ne passe pas pour complet. Mais
+`wip` et `manual` désignent des flows qui *ne doivent jamais tourner*, pas un
+rétrécissement de périmètre.
+
+⚠️ Un avertissement qui se déclenche **toujours** n'avertit plus. Et depuis le
+run 25 il est **publié** : la page destinée à d'autres s'annonce incomplète alors
+qu'elle décrit un run complet.
+
+### 189. `argusLocalizationsDelegates` : la condition écrite est trop étroite
+
+Le gabarit dit : « **si** ton app formate des dates ou des nombres localisés
+(`DateFormat(…, 'fr_FR')`, pluriels `intl`), ajoute ici les delegates ».
+
+Le vrai déclencheur, mesuré : **tout écran qui monte un `AppBar` ou un
+`TextField`**, c'est-à-dire n'importe quel écran Material.
+
+```
+The following assertion was thrown building AppBar(...): No MaterialLocalizations found.
+```
+
+⚠️ **Et le symptôme ne désigne pas la cause** : le montage lève, l'arbre reste à
+moitié construit, et ce qui échoue ensuite n'a aucun rapport — quatre gardes
+rouges sur `form_reps_minus` et `form_reps_plus`. C'est la forme exacte du piège
+« une mesure absurde n'est pas un défaut de disposition, c'est une exception plus
+haut ».
+
+### 190. Un `back` sur la racine met l'app en ARRIÈRE-PLAN au lieu de dépiler
+
+L'agent avait écrit `- back: optional: true` en tête de chaque branche de `goto`,
+« au cas où ». Sur Android, quand la pile ne contient que la coquille, `back` ne
+dépile rien : **il met l'app en arrière-plan**. Tout ce qui suit échoue alors en
+accusant une ancre parfaitement correcte —
+`Element not found: Id matching regex: nav_history`, sur une ancre que le dump
+montre présente.
+
+Ni le SKILL ni les sous-flows livrés ne mentionnent ce piège, alors que le
+scaffold recommande par ailleurs des gestes de navigation défensifs. Le remède
+appliqué par l'agent est le bon et mérite d'être prescrit : conditionner tout
+`back` à `notVisible:` sur l'ancre témoin de la coquille.
+
+### 191. La publication exige un titre et une icône STABLES sans les prescrire
+
+`SKILL.md` §g bis demande de « garder le titre et l'icône stables d'un run à
+l'autre ». Il ne dit ni lequel, ni où le noter — `artifact.title` existe, aucune
+clé ne porte l'icône.
+
+Conséquence : l'agent a choisi 📱🔍 et l'a écrit dans son compte rendu, pas dans
+la config. **Le prochain run en choisira un autre**, et la page changera
+d'identité — « un favicon qui change fait lire la page comme une autre ».
+
+📌 Et le gabarit `PROMPTS.md` ne porte aucune ligne `ARTEFACT`, alors que deux
+runs consécutifs (23 et 24) se sont arrêtés faute de cette décision, en le
+signalant tous deux au §3. Même motif que le **181**.
+
 ## Ce qui reste
 
-**Rien.** Les points **184 et 185** sont fermés le 26/08/2026, le jour même de
-leur inscription — le backlog se vide pour la **vingt-quatrième** fois. Le **186
-est démenti**, et le **185 avait rouvert le 182**.
+**Les points 187 à 191**, inscrits le 26/08/2026 au dépouillement du run 25 —
+**le premier à publier sa page de rapport**, en vingt-cinq runs.
+
+⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
+pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
+page**, et le 188 ne coûtait rien tant que le bandeau restait dans un rapport
+local. *Publier un livrable, c'est le faire lire — et c'est la seule façon de
+savoir ce qu'il dit.*
+
+Les points **184 et 185** ont été fermés le 26/08/2026, le jour même de leur
+inscription. Le **186 est démenti**, et le **185 avait rouvert le 182**.
 
 ⚠️ **Deux de mes quatre constats du jour étaient faux ou mal formulés**, et dans
 les deux cas c'est un instrument du skill qui l'a dit : le parseur de config a
