@@ -82,6 +82,22 @@ CADRAGE — ce que je tranche, pour que tu ne le tranches pas en silence
                                  #   garde les parcours critiques et laisse le
                                  #   long-tail à l'étage 1, qui le mesure sans
                                  #   device — puis écris ce que tu as laissé.
+                                 # ⚠️ LA PREMIÈRE PASSE A UN PLANCHER, et il ne
+                                 #   se coupe pas : générer les références puis
+                                 #   prouver la comparaison demande TROIS passes
+                                 #   device complètes — « environ vingt minutes
+                                 #   sur émulateur », dit le SKILL —, plus un
+                                 #   `argus-perf` dont le coût suit le démarrage
+                                 #   de TON app (8,8 s sur une app qui démarre en
+                                 #   1,3 s, plusieurs minutes au-delà de dix).
+                                 #   Un budget en dessous ne raccourcit pas la
+                                 #   séquence : il force un arbitrage entre le
+                                 #   chiffre que tu as écrit et une contre-épreuve
+                                 #   obligatoire. Relevé sur un projet réel :
+                                 #   43 min pour la première passe entière, dont
+                                 #   21 pour les seules références et leur
+                                 #   contre-épreuve. Les passages suivants sont
+                                 #   un seul `argus-run`.
   Tout le reste : les défauts du skill me vont.
 
 AUTORISATIONS ET LIMITES
