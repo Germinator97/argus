@@ -3251,16 +3251,103 @@ vraies lectures. Corriger demande un lexer, pas une expression régulière.
 davantage. La mutation, elle, retire lecture *et* mention, donc le garde reste
 prouvé pour ce qu'il fait — et ce qu'il ne fait pas est désormais écrit.
 
+## Run 26 — la publication tient, et le seul `critical` de la page ne dit pas d'où il vient
+
+Vingt-sixième run, même terrain remis à neuf. Le run 25 avait publié la page pour
+la première fois ; le 26 éprouve **l'autre moitié de la boucle** — republier sur
+l'URL existante au lieu d'en créer une seconde. **Elle tient** : page mise à jour
+sur son URL, titre et icône conservés, **aucune page en double** (vérifié en
+listant les artefacts, pas en croyant le compte rendu).
+
+Le run est propre : 38 tests d'ancres, **383 gardes verts**, 558 tests du projet
+intacts, `flutter analyze` sans issue, **10/10 flows verts**, contre-épreuve
+visuelle prouvée en quatre temps et restauration prouvée par hash. Le Makefile a
+détecté FVM **seul**, alors que le cadrage que je lui avais écrit affirmait le
+contraire.
+
+⚠️ **Trois de mes quatre hypothèses de départ sont tombées à la reproduction**, et
+la quatrième s'est retournée en cours de route : je cherchais une réserve fausse,
+c'est une réserve **absente** qu'il y avait.
+
+### 193. Le verdict de DÉMARRAGE ne dit pas sur quel binaire il a été pris, alors que ses deux voisins le disent
+
+`perf.mjs` dérive un `variante` du chemin de `build.android` — le binaire que le
+runner **installe**, un debug presque toujours. Il le passe à `QAM-PERF-SIZE`
+(l. 334) et à `QAM-PERF-MEM` (l. 509), qui affichent alors « (mesuré sur un
+debug) » et invitent à comparer à la release avant de conclure.
+**`QAM-PERF-COLD` et `QAM-PERF-WARM` (l. 507-508) ne le reçoivent pas.**
+
+Or `am start -W` chronomètre le **paquet installé** : exactement le binaire que la
+mémoire mesure. Et le démarrage est *plus* sensible au variant que la mémoire —
+debug, profile et release donnent couramment un facteur 4 sur le même code.
+
+Mesuré au run 26 : `coldStartMs: 11745` contre un budget de 2000, donc `critical`
+(la sévérité passe au-delà du double). C'est **le seul `critical` de la page
+publiée**, et rien à côté ne dit qu'il vient d'un debug — pendant que le finding
+mémoire, moins grave, porte la réserve.
+
+⚠️ Le commentaire de `thresholdFinding` affirme même l'inverse : « ces deux
+métriques-ci sont **encore plus** sensibles au variant », en parlant de la mémoire
+et de la taille. La phrase est vraie de ce qu'elle compare, et fausse de ce
+qu'elle laisse dehors.
+
+📌 La forme du 188 retournée : là, un bandeau se déclenchait **toujours** ; ici,
+une réserve manque **là où elle compte le plus**. Et la forme du chantier : une
+leçon apprise pour deux métriques, jamais étendue aux deux voisines du même appel.
+
+### 194. Rien ne relève l'état de l'HÔTE à côté d'une mesure de démarrage
+
+L'en-tête de `perf.mjs` porte la règle en capitales — « **UN CHIFFRE DE
+PERFORMANCE NE VEUT RIEN DIRE SANS L'ÉTAT OÙ IL EST PRIS** » — et l'applique à une
+variable : le premier lancement, mesuré séparément du régime stabilisé.
+`deviceContext` relève même l'état de compilation ART, c'est-à-dire le mécanisme
+qu'une mesure avait **réfuté**. La charge de l'hôte, elle, n'est relevée nulle
+part : un `grep` sur tout le skill ne rend aucun `loadavg`, aucun `uptime`.
+
+Or c'est elle qui a coûté une passe device complète au run 23 — médiane de
+démarrage à **17 233 ms** contre 7 552, 8 134 et 7 781 aux trois runs précédents,
+même terrain, même AVD, même app. Le chantier en a tiré un relevé machine **pour
+lui-même**, et ne l'a jamais reporté dans le skill qu'il éprouve.
+
+Le run 26 rejoue la scène : `coldStartSamples: [12184, 10137, 11745]` avec un
+second émulateur allumé et des builds en cours, quand le même binaire sur le même
+AVD donnait **1 768 ms** plus tôt dans la journée. L'agent a refusé de conclure —
+correctement — et a dû écrire sa réserve **à la main** dans sa config, où aucun
+lecteur de la page ne la verra.
+
+⚠️ Un émulateur partage le CPU de l'hôte, un appareil physique non : le relevé n'a
+de sens que sur émulateur, sans quoi il ajoute du bruit sur les vrais téléphones.
+
+### 195. Le gabarit demande un budget sans dire ce qui est incompressible
+
+`PROMPTS.md` fait de `BUDGET` une des cinq lignes qu'on ne supprime pas et
+explique pourquoi — mais ne dit pas ce que la première passe coûte. `SKILL.md`
+l'écrit pourtant : « sur un émulateur, la séquence complète approche les vingt
+minutes », plus un `argus-perf` dont le coût *suit le démarrage de l'app*. Le dev,
+lui, remplit le gabarit **avant** d'avoir lu le skill en entier.
+
+Mesuré : budget de 30 min donné au run 26, **43 min 16 s** consommées (+44 %).
+
+⚠️ **Ce n'est pas un défaut de comportement, et c'était mon hypothèse de départ.**
+Le skill annonce le coût, déclare la contre-épreuve obligatoire en quatre temps,
+et le dépassement a été *dit* comme la méthodologie l'exige. C'est un écart de
+**place** : le chiffre est demandé là où l'information qui permet de le calibrer
+n'est pas.
+
 ## Ce qui reste
 
-**Le point 192**, né de la passe et laissé **ouvert** avec sa mesure : le corriger
-demande un lexer, et le remède évident casse six lectures légitimes.
+**Les points 193, 194 et 195**, inscrits le 26/08/2026 au dépouillement du run 26
+— deux qui coûtent (un verdict `critical` publié sans son contexte de mesure, un
+état d'hôte jamais relevé) et un écart de place.
+
+**Le point 192**, né de la passe précédente et laissé **ouvert** avec sa mesure :
+le corriger demande un lexer, et le remède évident casse six lectures légitimes.
 
 Les points **187 à 191** sont fermés le 26/08/2026, le jour même de leur
 inscription — le backlog se vide pour la **vingt-cinquième** fois. Le run 25 est
 **le premier à publier sa page de rapport**, en vingt-cinq runs.
 
-**Prochain numéro libre : 193.**
+**Prochain numéro libre : 196.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
