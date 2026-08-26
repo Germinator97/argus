@@ -27,10 +27,12 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
@@ -2616,4 +2618,135 @@ test('l\'installeur liste aussi les fichiers OWNED que le PROJET a créés', () 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+// ── Le plafond d'attente : aucune mesure ne doit pouvoir attendre sans fin ──
+//
+// Pourquoi ces gardes existent : `argus-perf` s'est bloqué 3 fois sur 5 dans sa
+// boucle de démarrages à chaud — 12 min, 1 min 48, un troisième tué à 4 min,
+// pendant qu'une quatrième tentative rendait la mesure complète en 10 s. Aucun
+// script ne passait de `timeout` à `spawnSync`, et le blocage était MUET : ce
+// qu'on lit alors en CI est « le job a expiré », jamais « une mesure de
+// démarrage n'a pas rendu la main ».
+//
+// Les commandes de test sont des `node -e`, pas des `sleep` : le plafond doit
+// être mesuré là où la suite tourne, sans rien supposer du système hôte.
+
+const NODE = process.execPath;
+/** Un process qui dort — et, au besoin, qui refuse de mourir poliment. */
+const DORT = (tetu) => ['-e', `${tetu ? 'process.on("SIGTERM",()=>{});' : ''}setTimeout(()=>{},9000)`];
+
+test('le plafond suit trois voies, et l\'appelant l\'emporte sur les deux autres', () => {
+  assert.equal(shTimeoutMs({}, {}), SH_TIMEOUT_MS, 'sans rien, le défaut');
+  assert.equal(shTimeoutMs({}, { ARGUS_SH_TIMEOUT_MS: '1234' }), 1234, 'l\'environnement passe devant le défaut');
+  assert.equal(shTimeoutMs({ timeout: 77 }, { ARGUS_SH_TIMEOUT_MS: '1234' }), 77,
+    'un appelant qui a mesuré sa commande passe devant l\'environnement');
+});
+
+test('une valeur vide, nulle ou absurde ne devient pas un plafond', () => {
+  // `Number('')` vaut 0 et `Number('oui')` vaut NaN : les deux passeraient pour
+  // « pas d'attente du tout », c'est-à-dire une commande tuée avant de démarrer.
+  for (const valeur of ['', '0', '-1', 'oui']) {
+    assert.equal(shTimeoutMs({}, { ARGUS_SH_TIMEOUT_MS: valeur }), SH_TIMEOUT_MS,
+      `ARGUS_SH_TIMEOUT_MS=${JSON.stringify(valeur)} doit retomber sur le défaut`);
+  }
+  assert.equal(shTimeoutMs({ timeout: 0 }, {}), SH_TIMEOUT_MS, 'timeout: 0 est une absence, pas un plafond');
+});
+
+test('sh rend la main au plafond, et le rapporte', () => {
+  const depart = Date.now();
+  const res = sh(NODE, DORT(false), { timeout: 400 });
+  const duree = Date.now() - depart;
+  assert.equal(res.timedOut, true, 'un dépassement doit se voir dans le résultat, pas seulement dans la durée');
+  assert.equal(res.ok, false);
+  assert.ok(duree < 3000, `${duree} ms pour un plafond de 400 : la commande n'a pas été bornée`);
+});
+
+test('le plafond tient MÊME contre un process qui ignore SIGTERM', () => {
+  // ⚠️ Mesuré, pas supposé : `timeout` seul ne borne rien ici. Le signal envoyé
+  // par défaut est SIGTERM, et un process qui l'ignore laisse `spawnSync`
+  // attendre sa fin naturelle — 9 068 ms relevés pour un plafond de 300, avec
+  // `ETIMEDOUT` rendu quand même. C'est le pire des deux mondes : un dépassement
+  // qui se RAPPORTE sans avoir jamais été borné, donc un garde écrit sur le seul
+  // `timedOut` resterait vert pendant que le harnais attend.
+  const depart = Date.now();
+  const res = sh(NODE, DORT(true), { timeout: 400 });
+  const duree = Date.now() - depart;
+  assert.equal(res.timedOut, true);
+  assert.ok(duree < 3000,
+    `${duree} ms pour un plafond de 400 — le signal de mise à mort ne suffit pas à borner l'attente`);
+});
+
+test('et l\'autre moitié : une commande qui répond n\'est pas marquée expirée', () => {
+  // Un plafond qui tue tout aurait passé les trois gardes ci-dessus.
+  const res = sh(NODE, ['-e', 'console.log("vivant")'], { timeout: 10000 });
+  assert.equal(res.timedOut, false);
+  assert.equal(res.ok, true);
+  assert.equal(res.stdout.trim(), 'vivant');
+});
+
+test('sh applique un plafond même quand AUCUN appelant n\'en passe', () => {
+  // Le câblage, pas la fonction : `shTimeoutMs` peut rester parfaite pendant que
+  // `sh` cesse de l'appeler, et c'est un défaut qu'aucun appelant ne verrait —
+  // il tiendrait quinze minutes au lieu de l'infini, donc jamais en test.
+  const avant = process.env.ARGUS_SH_TIMEOUT_MS;
+  process.env.ARGUS_SH_TIMEOUT_MS = '400';
+  try {
+    const depart = Date.now();
+    const res = sh(NODE, DORT(false));
+    const duree = Date.now() - depart;
+    assert.equal(res.timedOut, true, 'le plafond de l\'environnement n\'a pas été appliqué');
+    assert.ok(duree < 3000, `${duree} ms : sh n'a pas passé de plafond à spawnSync`);
+  } finally {
+    if (avant === undefined) delete process.env.ARGUS_SH_TIMEOUT_MS;
+    else process.env.ARGUS_SH_TIMEOUT_MS = avant;
+  }
+});
+
+test('les sondes adb de perf.mjs partent avec le plafond COURT', () => {
+  const perf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+  // Critère total et négatif : aucun `sh('adb'` de ce fichier sans plafond, et
+  // pas « celui que je viens d'écrire en porte un ».
+  const sondes = perf.split('\n').filter((l) => /\bsh\('adb'/.test(l));
+  assert.ok(sondes.length >= 1, 'plus aucun appel adb dans perf.mjs — si le nom a changé, mets ce motif à jour');
+  for (const ligne of sondes) {
+    assert.match(ligne, /timeout:\s*PROBE_TIMEOUT_MS/,
+      `une sonde adb sans plafond court : ${ligne.trim()}`);
+  }
+  assert.ok(PROBE_TIMEOUT_MS < SH_TIMEOUT_MS,
+    'le plafond des sondes doit rester bien en dessous de celui des commandes longues');
+});
+
+test('launchOutcome distingue une expiration d\'une mesure invalide', () => {
+  // Les quatre cas, dont celui qui n'existait pas avant le plafond. Les
+  // confondre envoie chercher un défaut d'activité là où le device n'a pas
+  // répondu — le message d'erreur de perf.mjs branche sur cette distinction.
+  assert.equal(launchOutcome({ timedOut: true, stdout: '' }).kind, 'timeout');
+  assert.equal(launchOutcome({ stdout: 'Warning: Activity not started, intent has been delivered to currently running top-most instance' }).kind, 'none');
+  const chaud = launchOutcome({ stdout: 'Warning: Activity not started, its current task has been brought to the front\nWaitTime: 137' });
+  assert.equal(chaud.kind, 'resumed');
+  assert.equal(chaud.waitMs, 137);
+  const froid = launchOutcome({ stdout: 'Status: ok\nTotalTime: 842\nWaitTime: 871' });
+  assert.equal(froid.kind, 'launched');
+  assert.equal(froid.totalMs, 842);
+  // Une expiration n'est PAS un TotalTime nul : le stdout d'une commande tuée
+  // peut porter n'importe quoi, et c'est le drapeau qui tranche.
+  assert.equal(launchOutcome({ timedOut: true, stdout: 'Status: ok\nTotalTime: 842' }).totalMs, null);
+});
+
+test('perf.mjs LIT son verdict par launchOutcome au lieu de le refaire', () => {
+  const perf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+  const appels = [...perf.matchAll(/launchOutcome\(/g)];
+  assert.ok(appels.length >= 2,
+    `${appels.length} occurrence(s) de launchOutcome — la déclaration et au moins un appel sont attendus`);
+  // Et le compte des expirations doit ressortir : une médiane calculée sur les
+  // échantillons survivants se lit comme n'importe quelle autre.
+  assert.match(perf, /timedOutLaunches/,
+    'perf.json ne porte plus le compte des lancements expirés : le relevé redevient muet');
+  const boucles = perf.split('\n').filter((l) => /kind === 'timeout'/.test(l));
+  assert.equal(boucles.length, 2,
+    `${boucles.length} boucle(s) de mesure comptent les expirations au lieu de 2 (à froid ET à chaud)`);
 });

@@ -29,7 +29,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
-  missingToolMessage, sh, warn, writeJson,
+  missingToolMessage, PROBE_TIMEOUT_MS, sh, warn, writeJson,
 } from './config.mjs';
 
 const MB = 1024 * 1024;
@@ -56,9 +56,14 @@ function parseArgs(argv) {
 
 /**
  * `adb -s <udid> …`, ou sans `-s` si un seul device est branché.
+ *
+ * ⚠️ TOUTES les commandes d'ici sont des SONDES : elles rendent en secondes ou
+ * pas du tout. Le plafond court les distingue des commandes longues et
+ * légitimes du harnais (`flutter build`, `maestro test`), qui gardent celui de
+ * `sh` — et il est ce qui empêche cette boucle de mesure d'attendre sans fin.
  * @param {string} udid @param {string[]} args
  */
-const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args);
+const adb = (udid, args) => sh('adb', udid ? ['-s', udid, ...args] : args, { timeout: PROBE_TIMEOUT_MS });
 
 /**
  * Activité de lancement du paquet. Sans elle, `am start -W` ne sait pas quoi
@@ -88,12 +93,21 @@ function launchComponent(udid, packageName) {
  *       C'EST le démarrage à chaud. Aucune activité n'est créée, donc `am start`
  *       ne rend AUCUN TotalTime — seul `WaitTime` décrit le retour au premier
  *       plan. Rejeter ce cas laissait warmStartMs à null indéfiniment.
- * @param {string} udid @param {string} component
- * @returns {{totalMs:number|null, waitMs:number|null, kind:'launched'|'resumed'|'none'}}
+ *
+ * ⚠️ Et un QUATRIÈME cas, qui n'est pas un verdict d'`am start` : l'expiration.
+ * La commande a été tuée au plafond, donc il n'y a rien à lire — mais ce n'est
+ * PAS la même chose qu'une mesure invalide, et les confondre ferait chercher un
+ * défaut d'activité là où c'est le device qui n'a pas répondu.
+ * ⚠️ SÉPARÉE DE SON APPEL pour être testable : tant que la lecture du verdict
+ * vivait dans la fonction qui parle au device, aucun de ces quatre cas n'était
+ * exercé par quoi que ce soit — il aurait fallu un émulateur, donc rien ne les
+ * exerçait. C'est [timedLaunch] qui mesure, `launchOutcome` qui décide.
+ * @param {{timedOut?:boolean, stdout?:string}} res
+ * @returns {{totalMs:number|null, waitMs:number|null, kind:'launched'|'resumed'|'none'|'timeout'}}
  */
-function timedLaunch(udid, component) {
-  const res = adb(udid, ['shell', 'am', 'start', '-W', '-n', component]);
-  const out = res.stdout;
+export function launchOutcome(res) {
+  if (res.timedOut) return { totalMs: null, waitMs: null, kind: 'timeout' };
+  const out = res.stdout ?? '';
   if (/top-most instance/i.test(out)) return { totalMs: null, waitMs: null, kind: 'none' };
   const total = /TotalTime:\s*(\d+)/.exec(out);
   const wait = /WaitTime:\s*(\d+)/.exec(out);
@@ -101,6 +115,14 @@ function timedLaunch(udid, component) {
   if (/brought to the front/i.test(out)) return { totalMs: null, waitMs, kind: 'resumed' };
   const totalMs = total ? Number.parseInt(total[1], 10) : null;
   return { totalMs: totalMs === 0 ? null : totalMs, waitMs, kind: 'launched' };
+}
+
+/**
+ * Un lancement chronométré sur le device, lu par [launchOutcome].
+ * @param {string} udid @param {string} component
+ */
+function timedLaunch(udid, component) {
+  return launchOutcome(adb(udid, ['shell', 'am', 'start', '-W', '-n', component]));
 }
 
 /** @param {number[]} values @returns {number|null} */
@@ -120,12 +142,17 @@ function median(values) {
 function measureColdStarts(udid, packageName, component, samples) {
   /** @type {number[]} */
   const values = [];
+  let timedOut = 0;
   for (let i = 0; i < samples + 1; i += 1) {
     adb(udid, ['shell', 'am', 'force-stop', packageName]);
-    const { totalMs } = timedLaunch(udid, component);
+    const { totalMs, kind } = timedLaunch(udid, component);
+    if (kind === 'timeout') timedOut += 1;
     if (totalMs !== null) values.push(totalMs);
   }
-  return { firstLaunchMs: values[0] ?? null, samples: values.slice(1), medianMs: median(values.slice(1)) };
+  return {
+    firstLaunchMs: values[0] ?? null, samples: values.slice(1),
+    medianMs: median(values.slice(1)), timedOut,
+  };
 }
 
 /**
@@ -140,13 +167,18 @@ function measureColdStarts(udid, packageName, component, samples) {
 function measureWarmStarts(udid, component, samples) {
   /** @type {number[]} */
   const values = [];
+  let timedOut = 0;
   for (let i = 0; i < samples; i += 1) {
     adb(udid, ['shell', 'input', 'keyevent', 'KEYCODE_HOME']);
     const { totalMs, waitMs, kind } = timedLaunch(udid, component);
+    if (kind === 'timeout') timedOut += 1;
     const value = kind === 'resumed' ? waitMs : totalMs;
     if (value !== null) values.push(value);
   }
-  return { samples: values, medianMs: median(values), metric: 'WaitTime (retour au premier plan)' };
+  return {
+    samples: values, medianMs: median(values),
+    metric: 'WaitTime (retour au premier plan)', timedOut,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -354,6 +386,15 @@ function main() {
   const cold = measureColdStarts(udid, packageName, component, opts.samples);
   log(`  démarrages à chaud (${opts.samples})…`);
   const warm = measureWarmStarts(udid, component, opts.samples);
+  // ⚠️ UNE MESURE QUI A EXPIRÉ N'EST PAS UNE MESURE ABSENTE. Sans cette ligne,
+  // les échantillons restants font une médiane parfaitement lisible, calculée
+  // sur ce qui a bien voulu répondre — un chiffre juste sur un échantillon
+  // amputé, ce qui est la forme la plus discrète d'un relevé faux.
+  const expirations = cold.timedOut + warm.timedOut;
+  if (expirations > 0) {
+    warn(`${expirations} lancement(s) sur ${2 * opts.samples + 1} n'ont pas rendu la main dans le plafond de sonde.`);
+    warn('  Les médianes ci-dessous portent sur les échantillons SURVIVANTS : `timedOutLaunches` les compte dans perf.json.');
+  }
   // ⚠️ L'APP DOIT ÊTRE EN VIE POUR QU'ON PUISSE LA PESER, et rien ne le
   // garantissait ici : `dumpsys meminfo` rend « No process found » sur un
   // processus mort, la regex ne matche pas, et `memoryMb` valait **null** — un
@@ -377,9 +418,24 @@ function main() {
   const context = deviceContext(udid, packageName);
 
   if (cold.medianMs === null && warm.medianMs === null) {
-    err('aucun lancement chronométrable : `am start -W` n\'a rendu que des « Activity not started ».');
-    err(`  Vérifie que ${component} est bien l'activité de lancement et que l'app n'est pas figée.`);
-    writeJson(reportPath, { platform, device: { udid }, package: packageName, skipped: true, skipReason: 'aucun échantillon de démarrage valide', findings: [] });
+    // ⚠️ DEUX CAUSES, DEUX MESSAGES. « Activity not started » envoie vérifier
+    // l'activité de lancement ; une expiration envoie vérifier le device. Rendre
+    // le premier quand c'est le second nomme un symptôme qui n'a pas eu lieu.
+    if (expirations > 0) {
+      err(`aucun lancement chronométrable : ${expirations} commande(s) tuée(s) au plafond de ${Math.round(PROBE_TIMEOUT_MS / 1000)} s.`);
+      err(`  Le device n'a pas répondu — \`adb -s ${udid} shell am start -W -n ${component}\` à la main le dira.`);
+      err('  Relève ARGUS_SH_TIMEOUT_MS si la machine est simplement lente ; ce n\'est pas un défaut de l\'app.');
+    } else {
+      err('aucun lancement chronométrable : `am start -W` n\'a rendu que des « Activity not started ».');
+      err(`  Vérifie que ${component} est bien l'activité de lancement et que l'app n'est pas figée.`);
+    }
+    writeJson(reportPath, {
+      platform, device: { udid }, package: packageName, skipped: true,
+      skipReason: expirations > 0
+        ? `aucun échantillon : ${expirations} lancement(s) expiré(s) au plafond de sonde`
+        : 'aucun échantillon de démarrage valide',
+      timedOutLaunches: expirations, findings: [],
+    });
     process.exit(2);
   }
 
@@ -407,6 +463,10 @@ function main() {
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
       warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
       memoryMb, binarySizeMb: sizeMb,
+      // Combien de lancements ont été tués au plafond : sans ce compte, une
+      // médiane calculée sur deux échantillons au lieu de cinq se lit comme
+      // n'importe quelle autre.
+      timedOutLaunches: expirations,
       // QUEL binaire a été pesé, et s'il s'agit de celui qu'on publierait : sans
       // ces deux-là, « 92 Mo » et « 30 Mo » se lisent comme le même relevé.
       binaryPath: pese.path, binaryIsRelease: pese.isRelease,

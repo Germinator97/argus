@@ -605,21 +605,86 @@ export function activeDevices(config) {
 const IS_WINDOWS = process.platform === 'win32';
 
 /**
- * Exécute une commande et rend {ok, status, stdout, stderr}. Ne lève jamais :
- * un outil manquant est une information, pas un plantage.
+ * Plafonds d'attente d'une commande externe, en millisecondes.
+ *
+ * ⚠️ ILS EXISTENT PARCE QU'UNE MESURE PEUT NE JAMAIS RENDRE LA MAIN. Relevé sur
+ * un projet réel : `argus-perf` s'est bloqué 3 fois sur 5 dans la boucle des
+ * démarrages à chaud — 12 min, 1 min 48, un troisième tué à 4 min — pendant
+ * qu'une quatrième tentative rendait la mesure complète en 10 s. Aucun script
+ * d'ici ne passait de `timeout` à `spawnSync`, donc l'attente n'avait pas de
+ * fin ; et elle était MUETTE : ce qu'on lit alors en CI est « le job a expiré »,
+ * jamais « une mesure de démarrage n'a pas rendu la main ».
+ *
+ * Le mécanisme du blocage n'est pas attribué, et le correctif n'en dépend pas :
+ * un script de mesure ne doit pas POUVOIR attendre sans fin.
+ *
+ * Deux ordres de grandeur, parce qu'il y a deux natures de commandes :
+ *   SH_TIMEOUT_MS     plafond de sécurité des commandes longues et légitimes
+ *                     (`flutter build`, `gradlew`, `maestro test`). Ce n'est pas
+ *                     un budget — il dit seulement « pas l'infini ».
+ *   PROBE_TIMEOUT_MS  les SONDES, qui rendent en secondes ou pas du tout :
+ *                     `adb shell`, `getprop`, `dumpsys`, `--version`.
+ */
+export const SH_TIMEOUT_MS = 15 * 60 * 1000;
+export const PROBE_TIMEOUT_MS = 60 * 1000;
+
+/**
+ * Le plafond effectif d'un appel — séparé de son application POUR ÊTRE TESTÉ.
+ *
+ * Trois voies, dans cet ordre : ce que l'appelant demande (il a mesuré sa
+ * commande), ce que l'environnement impose (`ARGUS_SH_TIMEOUT_MS`, pour relever
+ * sans toucher au code une machine simplement lente), puis le défaut.
+ *
+ * ⚠️ `env` est un PARAMÈTRE et pas une lecture de `process.env`, pour la même
+ * raison que `pinned` l'est dans [flutterCommandIn] : une valeur lue à
+ * l'intérieur ne peut pas varier en test, et un garde qui n'exerce qu'une
+ * branche ne garde que celle-là.
+ * @param {object} [opts] @param {Record<string,string|undefined>} [env]
+ * @returns {number}
+ */
+export function shTimeoutMs(opts = {}, env = process.env) {
+  const demande = Number(/** @type {any} */ (opts).timeout ?? 0);
+  if (demande > 0) return demande;
+  const impose = Number(env.ARGUS_SH_TIMEOUT_MS ?? 0);
+  if (impose > 0) return impose;
+  return SH_TIMEOUT_MS;
+}
+
+/**
+ * Exécute une commande et rend {ok, status, stdout, stderr, timedOut}. Ne lève
+ * jamais : un outil manquant est une information, pas un plantage.
  * @param {string} bin @param {string[]} [args] @param {object} [opts]
- * @returns {{ok:boolean, status:number, stdout:string, stderr:string, error:string|null}}
+ * @returns {{ok:boolean, status:number, stdout:string, stderr:string, error:string|null, timedOut:boolean}}
  */
 export function sh(bin, args = [], opts = {}) {
+  const plafond = shTimeoutMs(opts);
   const res = spawnSync(bin, args, {
     encoding: 'utf8', shell: IS_WINDOWS, maxBuffer: 64 * 1024 * 1024, ...opts,
+    // ⚠️ APRÈS le spread, et en SIGKILL : mesuré, `timeout` seul NE TIENT PAS
+    // son plafond. Un process qui ignore SIGTERM — le signal envoyé par défaut —
+    // laisse `spawnSync` attendre sa fin naturelle : 9 068 ms relevés pour un
+    // plafond de 300, avec `error.code = 'ETIMEDOUT'` rendu quand même, donc un
+    // dépassement qui se RAPPORTE sans avoir jamais été borné. Le même appel en
+    // `killSignal: 'SIGKILL'` rend la main en 306 ms.
+    timeout: plafond, killSignal: 'SIGKILL',
   });
+  // Un dépassement est la seule panne d'ici qui ne laisse rien derrière elle :
+  // ni stdout, ni code de sortie, ni ligne de log. On l'écrit donc quoi qu'en
+  // fasse l'appelant — c'est ce silence-là qui coûte, pas l'attente.
+  const timedOut = /** @type {any} */ (res.error)?.code === 'ETIMEDOUT';
+  if (timedOut) {
+    const duree = plafond >= 1000 ? `${Math.round(plafond / 1000)} s` : `${plafond} ms`;
+    warn(`\`${[bin, ...args].join(' ').slice(0, 120)}\` n'a pas rendu la main en ${duree} — tuée.`);
+    warn('  Ce n\'est pas un résultat : le plafond d\'attente a été atteint, pas la fin du travail.');
+    warn('  ARGUS_SH_TIMEOUT_MS=<ms> le relève si la machine est simplement lente.');
+  }
   return {
     ok: !res.error && res.status === 0,
     status: res.status ?? -1,
     stdout: res.stdout ?? '',
     stderr: res.stderr ?? '',
     error: res.error ? res.error.message : null,
+    timedOut,
   };
 }
 
