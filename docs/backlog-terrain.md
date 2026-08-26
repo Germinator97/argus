@@ -3127,6 +3127,29 @@ sur mon garde du 185 — **le deuxième jour de suite sur le même motif**.
 
 **Prochain numéro libre : 187.**
 
+## ⚠️ LE CRITÈRE DE SORTIE A CHANGÉ — décidé par Germinator le 26/08/2026
+
+L'ancien, du 23/08, était *« un run sans vrai correctif à faire »*. Il ne tombera
+peut-être jamais : un skill est un texte qui fait décider quelqu'un d'autre, donc
+chaque correctif déplace la frontière de ce qu'il reste à décider — 24 runs le
+montrent, et le compte oscille entre 2 et 4 depuis huit runs sans redescendre.
+
+**Le nouveau : *aucun constat ne coûterait quelque chose à quelqu'un qui applique
+le skill sans le connaître*.**
+
+Ce qui compte n'est plus le nombre mais ce que le constat **coûte** :
+- un script qui pend sans un mot (176), un flow qui meurt sur un seuil mal dérivé
+  (185), un verdict rendu sur le mauvais binaire (174) → **ça coûte**, la sortie
+  reste fermée ;
+- un écart entre deux textes du skill (181), un relevé qui pourrait compter ce
+  qu'il avoue ignorer (180) → ça coûte du **temps de lecture**, jamais une
+  mauvaise décision, et la sortie reste ouverte.
+
+📌 Au run 24, les deux points restants sont du second type. La sortie était donc
+**ouverte** — le run 25 est joué pour une autre raison : exercer la **publication
+de l'artefact**, la seule boucle du skill que vingt-quatre runs n'ont jamais
+empruntée.
+
 ⚠️ **Les correctifs du jour ont porté, et l'agent s'en est SERVI POUR RAISONNER
 sans savoir qu'ils étaient neufs.** `coverage.stageOneOnly` rend six écrans, et
 son compte rendu écrit : *« `notConfigured: []` ne veut pas dire tout est couvert ;
