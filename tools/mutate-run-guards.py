@@ -32,6 +32,10 @@ CIBLES = {
     # STRUCTURE de branches — quelle condition décide quoi —, donc rien d'autre
     # ne peut dire s'ils gardent encore.
     "goto": FLOWS / "_subflows/goto.yaml",
+    # Depuis le run 23 : le GABARIT DE PROMPT. Son bloc de cadrage doit porter ce
+    # que la méthodologie exige de trancher — un écart entre deux textes n'a
+    # aucun comportement à casser, donc rien d'autre ne peut le voir.
+    "prompts": ROOT / "plugins/argus-mobile/skills/argus-mobile/PROMPTS.md",
     "report": SCAFFOLD / "report.mjs",
     "a11y": SCAFFOLD / "a11y.mjs",
     "sec": SCAFFOLD / "sec.mjs",
@@ -292,6 +296,21 @@ MUTATIONS = [
     ("goto", "un même when remélange l'état et le contexte",
      "          when:\n            visible:",
      "          when:\n            true: \"${true}\"\n            visible:"),
+    # ── Vingt-troisième run ─────────────────────────────────────────────────
+    # ⚠️ Motif recalé après extraction de `buildCoverage` : le harnais a rendu
+    # « motif trouvé 0× » plutôt qu'un faux vert, ce pour quoi il existe.
+    ("run", "la couverture cesse de compter les états d'étage 1",
+     "    stageOneOnly: stageOneOnly(harness,",
+     "    stageOneOnly: [] ?? stageOneOnly(harness,"),
+    ("run", "le compteur d'étage 1 relit ses propres commentaires",
+     "  const utile = String(source ?? '').split('\\n').filter((l) => !/^\\s*\\/\\//.test(l)).join('\\n');",
+     "  const utile = String(source ?? '');"),
+    ("report", "le compte d'étage 1 n'est plus affiché",
+     "    + (etageUn.length",
+     "    + (false && etageUn.length"),
+    ("prompts", "le cadrage reperd sa ligne de budget",
+     "  BUDGET    : <N> min sur device # ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,",
+     "  # (budget retiré) ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,"),
 ]
 
 
