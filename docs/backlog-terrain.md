@@ -2840,15 +2840,115 @@ dérive la commande de publication de celle du projet — flavor, ABI et
 `--dart-define` gardés, seul le mode change — et `buildHintFor` choisit celle qui
 produit **le** binaire qu'on vient de chercher en vain.
 
+### 180. La couverture ne mesure que ce qu'on lui a DÉCLARÉ
+
+`coverage` porte trois relevés — `notConfigured`, `notVisited`, `visualScreens` —
+et **tous trois se dérivent de `config.screens`** (`run.mjs:1632, 1639, 1642`).
+Sur ce run : `notConfigured: []`, `notVisited: []`, `visualScreens` 4 sur 7. Ça se
+lit comme une couverture complète.
+
+Or le terrain monte **15 états à l'étage 1** et n'en déclare que **7** en étage 2.
+Les **8 autres** — `runner-break`, `runner-end`, `runner-error`, les deux feuilles,
+la coquille, et les deux états pleins que seul `journey-critical` traverse — ne
+figurent dans **aucun** des trois relevés. Ils ne sont ni « non configurés » ni
+« non visités » : ils n'existent pas pour le rapport.
+
+⚠️ Le SKILL **sait** que les deux listes diffèrent — il porte une table des
+**quatre écarts légitimes** entre `argusScreens` et `screens[]` (SKILL.md:664).
+Ce qui manque n'est donc pas la connaissance de l'écart, c'est sa **mesure** :
+rien ne rapproche les deux listes, alors que les deux sont déclarées dans le même
+dépôt et lues par le même harnais.
+
+Famille : *un relevé qui mesure ce qu'on lui a donné et se lit comme s'il mesurait
+ce qui existe*. C'est le run lui-même qui l'a écrit, dans son compte rendu : « ce
+que ce vide ne dit pas ».
+
+### 181. Le gabarit de cadrage n'a pas de ligne « budget device », que la méthodologie exige
+
+`methodology-mobile.md` §4.5 est explicite : « **Budget explicite.** Si le temps
+plafonne avant couverture complète, loggue ce qui a été échantillonné ET ce qui a
+été ignoré. Jamais de troncature silencieuse. »
+
+Le bloc CADRAGE de `PROMPTS.md` tranche `MODE`, `ENV`, `PLATFORMS`, `DEVICE` et
+`APP` — et **rien sur le temps**. L'agent a donc dû couper 15 écrans à 7 sans
+budget, et il l'a dit à la ligne : *« ce qui aurait levé l'ambiguïté : un budget
+de minutes-device et "si tu dois couper, garde X" »*.
+
+⚠️ Ni le document ni le gabarit ne sont faux séparément — c'est leur **écart** qui
+l'est, et aucun test ne peut le voir : un écart entre deux textes n'a aucun
+comportement à casser. Même forme que le point 156.
+
+📌 Son arbitrage, lui, était **juste** : il a appliqué le quatrième écart de la
+table du SKILL (« non atteignable de façon déterministe → étage 1 seulement »)
+sans savoir qu'elle existait. Ce n'est pas le critère qui manquait, c'est le
+budget qui l'aurait rendu inutile de deviner.
+
+### 182. ❌ DÉMENTI — « le plafond d'attente dérivé est trop bas »
+
+Le run a perdu une passe device complète (8 min 39, 4 flows sur 6 morts sur
+`Assertion is false: id: home_empty_root is visible`) avec le plafond dérivé de
+20 s, contre des attentes relevées à `17162 · 20269 · 22824 · 25139 · 26951 ·
+29083 ms`. La lecture naturelle est que `max(20 s, coldStartMs × 5)` sous-estime
+une app à splash de marque.
+
+**Mesuré sur les trois runs précédents, même terrain, même AVD, même app :**
+
+| run | min | médiane | max | plafond |
+|---|---|---|---|---|
+| 20 | 6 389 | **7 552** | 8 617 | 45 000 |
+| 21 | 6 793 | **8 134** | 11 121 | **20 000** (le dérivé) |
+| 22 | 6 691 | **7 781** | 11 882 | 45 000 |
+| 23 | 323 | **17 233** | 24 042 | 60 000 |
+
+Le run 21 a tenu **avec le dérivé** et un pire cas à 11,9 s. Le run 23 démarre
+**2,2× plus lentement** que ses trois prédécesseurs : la variable n'est pas le
+seuil, c'est la charge de l'hôte — l'agent l'a relevée lui-même
+(`load average 17,15`, un second émulateur, un `flutter_tester` d'un autre projet
+à 68 % CPU).
+
+Et le skill a fait exactement ce qu'il devait : échec **au bon endroit**, message
+nommant `startTimeoutMs`, `coldStartMs` **non touché** pour que la lenteur reste
+un finding. C'est le correctif 156-160, vérifié une fois de plus.
+
+### 183. Rien ne relève la charge de la MACHINE, donc un run lent ressemble à un skill lent
+
+Le point précédent a failli être inscrit comme un vrai défaut. Ce qui l'a démenti
+n'est pas une relecture : c'est d'avoir comparé les attentes de démarrage de
+quatre runs. Cette comparaison n'était possible que parce que `startup.samples`
+survit dans les rapports archivés — **par chance, pas par protocole**.
+
+Aucun des six fichiers d'un étalon ne porte l'état de la machine au moment du
+run : charge, appareils branchés, autres processus. Or ce run montre que cette
+variable **double les temps** et **fait échouer des flows**, donc qu'elle produit
+des symptômes indiscernables d'un défaut du skill.
+
+📌 C'est un point sur **ma procédure**, pas sur le skill — comme le 77 (le banc
+qui envoyait la sortie de l'installeur vers `/dev/null`) et comme le contrôle de
+sauvegarde du run 16, qui était vert et mesurait autre chose.
+
 ## Ce qui reste
 
-**Rien.** Les points **176 à 179** sont fermés le 26/08/2026 — le backlog se vide
-pour la **vingt-deuxième** fois, avec un jour de retard : la session du 24 s'était
-arrêtée entre le classement et la passe, ce qui n'était jamais arrivé.
+**Les points 180, 181 et 183**, inscrits le 26/08/2026 au dépouillement du
+run 23. Le **182 est démenti** et se garde avec sa mesure.
 
-Le **179** est né de la passe elle-même, en corrigeant le 177 : un remède se
-périme entre son écriture et son application, et c'est en écrivant qu'on voit ce
-que le relevé ne pouvait pas voir.
+⚠️ **Les quatre correctifs de la veille ont porté, et se lisent dans les
+artefacts** — pas dans le compte rendu : `perf.json` porte `timedOutLaunches: 0`
+là où le run 22 bloquait 3 fois sur 5 (176) ; la taille est mesurée sur
+`app-release.apk`, 28,8 Mo contre un budget de 60, donc **aucun** finding (177) ;
+la branche `notVisible` de `goto.yaml` a été **remplie exactement comme prévu**,
+l'agent y ayant mis son retour et gardé l'assertion qui fait échouer au bon
+endroit (178) ; et la commande de release a été documentée plutôt que devinée,
+« un `--release` nu aurait rendu un finding *non obfusqué* décrivant ma
+commande » (179).
+
+⚠️ **Il est allé plus loin que le correctif** : plutôt que de dupliquer le retour
+dans sept branches, il l'a factorisé dans un sous-flow `to-shell.yaml` — et son
+commentaire y documente un piège que le chantier ne connaissait pas : le bloc du
+runner étant un **singleton d'application**, dépiler la page n'arrête pas le
+chronomètre, qui continue avec son audio par-dessus l'écran suivant.
+
+Les points **176 à 179** ont été fermés le 26/08/2026 — le backlog s'était vidé
+pour la vingt-deuxième fois, avec un jour de retard.
 
 ⚠️ **Le compteur de sortie remonte à TROIS** (7 → 5 → 3 → 4 → 4 → 2 → 2 → **3**),
 mais leur **nature** change et c'est ce qui compte : après quatre runs de
