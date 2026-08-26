@@ -95,14 +95,22 @@ const Map<String, List<String>> argusFonts =
 /// un nom qui n'y figure pas retombe en silence sur la police de test.
 const String argusFontFamily = ''; // TODO(argus): la famille par défaut
 
-/// si ton app formate des dates ou des nombres localisés
-/// (`DateFormat(…, 'fr_FR')`, pluriels `intl`), ajoute ici les delegates —
-/// `flutter_localizations` doit alors être une dépendance du projet.
+/// ⚠️ REMPLIS-LES DÈS QU'UN ÉCRAN MONTE UN `AppBar` OU UN `TextField`, c'est-à-dire
+/// presque toujours. La condition écrite ici n'a longtemps parlé que des dates et
+/// des nombres localisés, et elle était trop étroite : sans delegates, un
+/// `MaterialApp` de test ne fournit pas `MaterialLocalizations`, et le montage
+/// LÈVE — `No MaterialLocalizations found.`
 ///
-/// Un MaterialApp de test nu n'en a aucun : tout formatage localisé y lève
-/// (`Locale data has not been initialized`) alors que l'app vraie ne voit rien,
-/// puisqu'elle les porte. L'alternative sans dépendance est d'appeler
-/// `initializeDateFormatting('fr_FR')` dans un `setUpAll`.
+/// ⚠️ Et le symptôme ne désigne pas la cause. L'exception laisse un arbre à
+/// moitié construit, si bien que ce qui échoue ensuite n'a aucun rapport :
+/// mesuré sur un projet réel, quatre gardes rouges sur deux ancres de
+/// formulaire, alors que le défaut était l'`AppBar` d'un autre écran. Devant un
+/// échec incompréhensible, cherche le PREMIER `EXCEPTION CAUGHT` du journal.
+///
+/// `flutter_localizations` doit alors être une dépendance du projet. Pour le seul
+/// formatage de dates ou de nombres (`DateFormat(…, 'fr_FR')`, pluriels `intl`),
+/// l'alternative sans dépendance reste `initializeDateFormatting('fr_FR')` dans
+/// un `setUpAll` — mais elle ne fournit pas `MaterialLocalizations`.
 const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =
     <LocalizationsDelegate<Object>>[];
 

@@ -442,6 +442,11 @@ function main() {
     log(config.artifact.url
       ? `  à REPUBLIER sur ${config.artifact.url} — publier sans cette URL crée un doublon`
       : '  première publication : reporte ensuite l\'URL dans argus.mobile.yaml → artifact.url');
+    // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
+    // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
+    // republie en choisit d'autres et la page se lit comme une seconde page.
+    log(`  titre « ${config.artifact.title || 'Rapport Argus Mobile'} » · icône ${config.artifact.icon || '👁'}`
+      + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');
   }
 
   const notRun = parts.filter((p) => p.state !== 'ok');

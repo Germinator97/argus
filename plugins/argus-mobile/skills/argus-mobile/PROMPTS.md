@@ -71,6 +71,12 @@ CADRAGE — ce que je tranche, pour que tu ne le tranches pas en silence
   DEVICE    : émulateur <NOM_AVD>, celui-là et aucun autre
   APP       : <com.exemple.app>  # ou : déduis-le du repo, et DEMANDE-le-moi
                                  #      s'il ne se déduit pas — n'en invente pas
+  ARTEFACT  : non               # non | oui — publier la page de rapport, ou pas.
+                                 #   Le défaut du skill est « non » et il est SÛR :
+                                 #   deux runs s'y sont arrêtés en disant que ce
+                                 #   n'était pas à eux d'en décider. Ils avaient
+                                 #   raison — mais tant que tu ne tranches pas, le
+                                 #   livrable n'existe jamais.
   BUDGET    : <N> min sur device # ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,
                                  #   jamais coupé en silence. Si tu dois couper,
                                  #   garde les parcours critiques et laisse le

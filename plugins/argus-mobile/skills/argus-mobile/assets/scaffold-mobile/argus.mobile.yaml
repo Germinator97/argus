@@ -482,6 +482,12 @@ artifact:
   # TODO(argus): le nom de la page. Vide = « Rapport Argus Mobile ». Le garder
   # STABLE : c'est ainsi qu'on la retrouve parmi les autres.
   title: ''
+  # TODO(argus): l'emoji de l'onglet. Vide = 👁. ⚠️ IL VIT ICI ET PAS DANS TA
+  # TÊTE : le skill exige qu'il reste stable d'un run à l'autre, et sans clé pour
+  # le porter, celui qui republiera en choisira un autre — la page changera
+  # d'identité et se lira comme une seconde page. Mesuré : un agent a pris 📱🔍
+  # et l'a écrit dans son compte rendu, nulle part ailleurs.
+  icon: ''
   # Captures des findings embarquées dans la page : all | major | none.
   # « none » laisse les chemins, comme dans le rapport local : rien de l'app ne
   # part, mais la page ne se suffit plus à elle-même.

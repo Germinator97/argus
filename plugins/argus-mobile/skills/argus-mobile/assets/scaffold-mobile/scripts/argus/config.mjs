@@ -361,7 +361,7 @@ const DEFAULTS = {
   budget: { maxMinutes: 25, maxFlows: 40 },
   gate: { failOn: ['blocker', 'critical', 'major'], failOnVisualDiff: true, failOnEmptyRun: true },
   artifacts: { dir: 'argus-mobile-report', baselines: '.maestro/_baselines' },
-  artifact: { enabled: false, url: '', title: '', evidence: 'all', maxMb: 12 },
+  artifact: { enabled: false, url: '', title: '', icon: '', evidence: 'all', maxMb: 12 },
 };
 
 /** @param {any} v @returns {boolean} */

@@ -63,6 +63,16 @@ appId: ${APP_ID}
             notVisible:
               id: ${ARGUS_ANCHOR_HOME}
           commands:
+            # ⚠️ UN `back` SUR LA RACINE NE DÉPILE PAS : IL MET L'APP EN
+            # ARRIÈRE-PLAN. Sur Android, quand la pile ne contient que la
+            # coquille, `- back` sort de l'application — et tout ce qui suit
+            # échoue en accusant une ancre parfaitement correcte. Mesuré sur un
+            # projet réel : « Element not found: Id matching regex: nav_history »
+            # alors que le dump montrait `nav_history` présent.
+            # Conditionne donc TOUT `back` à la présence de ce que tu quittes,
+            # par exemple `when: notVisible: { id: ${ARGUS_ANCHOR_HOME} }` —
+            # l'ancre de départ est le témoin de la coquille.
+            #
             # TODO(argus): le retour à l'écran de départ depuis N'IMPORTE OÙ —
             # l'onglet d'accueil chez la plupart (`- tapOn: { id: nav_home }`),
             # un `back` répété ailleurs. Mets-le AVANT l'assertion ci-dessous,
