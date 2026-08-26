@@ -2840,7 +2840,7 @@ dérive la commande de publication de celle du projet — flavor, ABI et
 `--dart-define` gardés, seul le mode change — et `buildHintFor` choisit celle qui
 produit **le** binaire qu'on vient de chercher en vain.
 
-### 180. La couverture ne mesure que ce qu'on lui a DÉCLARÉ
+### 180. ✅ Corrigé le 26/08/2026 — La couverture ne mesurait que ce qu'on lui avait DÉCLARÉ
 
 `coverage` porte trois relevés — `notConfigured`, `notVisited`, `visualScreens` —
 et **tous trois se dérivent de `config.screens`** (`run.mjs:1632, 1639, 1642`).
@@ -2863,7 +2863,30 @@ Famille : *un relevé qui mesure ce qu'on lui a donné et se lit comme s'il mesu
 ce qui existe*. C'est le run lui-même qui l'a écrit, dans son compte rendu : « ce
 que ce vide ne dit pas ».
 
-### 181. Le gabarit de cadrage n'a pas de ligne « budget device », que la méthodologie exige
+⚠️ **Corrigé en écrivant, et le constat était en dessous.** `coverageLine`
+**avouait déjà** la limite — « un état monté à l'étage 1 seul n'y apparaît pas »,
+écrit lors d'une passe précédente. Ce n'est donc pas « le rapport ne le dit pas »
+mais « il dit qu'il ne sait pas, alors qu'il peut savoir » : le harnais Dart est
+dans le même dépôt, à deux fichiers de là. Même motif que le **177** — *avouer une
+limite n'est pas la lever*.
+
+**Corrigé** : `stageOneOnly()` lit les `ArgusScreen(` du harnais, en **retirant
+les commentaires** du corpus (un compteur qui lit sa propre illustration invente
+un écart — payé deux fois par ce chantier), et `coverage.stageOneOnly` porte les
+états d'étage 1 que `screens[]` ignore. Le rapport les **nomme et les compte**,
+sans en faire un finding : l'écart est légitime, le SKILL en documente quatre
+formes ; ce qui manquait n'était pas un verdict, c'était le nombre.
+
+⚠️ **Le premier garde était VACANT, et le harnais l'a dit le jour même.** Il
+comptait les occurrences de `stageOneOnly(` dans le source ; la mutation
+`stageOneOnly: [] ?? …` laisse chaque occurrence en place et vide la valeur. Un
+garde de câblage qui lit du TEXTE ne voit pas une valeur neutralisée. Remède :
+extraire `buildCoverage()` pour que le garde **construise l'objet** et regarde ce
+qu'il contient. Puis la mutation elle-même est devenue périmée sous le
+refactor — « motif trouvé 0× », rendu comme un défaut du harnais et non comme un
+garde resté vert.
+
+### 181. ✅ Corrigé le 26/08/2026 — Le gabarit de cadrage n'avait pas de ligne « budget device », que la méthodologie exige
 
 `methodology-mobile.md` §4.5 est explicite : « **Budget explicite.** Si le temps
 plafonne avant couverture complète, loggue ce qui a été échantillonné ET ce qui a
@@ -2882,6 +2905,13 @@ comportement à casser. Même forme que le point 156.
 table du SKILL (« non atteignable de façon déterministe → étage 1 seulement »)
 sans savoir qu'elle existait. Ce n'est pas le critère qui manquait, c'est le
 budget qui l'aurait rendu inutile de deviner.
+
+**Corrigé** : le bloc CADRAGE porte une ligne `BUDGET`, avec ce qu'il faut garder
+si on doit couper — les parcours critiques — et l'obligation d'écrire ce qu'on a
+laissé. Le garde **lit la contrainte dans la méthodologie** plutôt que de la
+recopier : changer les deux ensemble ne peut pas le laisser vert, et il vérifie
+que le bloc tranche toujours les cinq autres clés, sans quoi un bloc vidé
+passerait.
 
 ### 182. ❌ DÉMENTI — « le plafond d'attente dérivé est trop bas »
 
@@ -2910,7 +2940,7 @@ Et le skill a fait exactement ce qu'il devait : échec **au bon endroit**, messa
 nommant `startTimeoutMs`, `coldStartMs` **non touché** pour que la lenteur reste
 un finding. C'est le correctif 156-160, vérifié une fois de plus.
 
-### 183. Rien ne relève la charge de la MACHINE, donc un run lent ressemble à un skill lent
+### 183. ✅ Corrigé le 26/08/2026 — Rien ne relevait la charge de la MACHINE, donc un run lent ressemblait à un skill lent
 
 Le point précédent a failli être inscrit comme un vrai défaut. Ce qui l'a démenti
 n'est pas une relecture : c'est d'avoir comparé les attentes de démarrage de
@@ -2926,10 +2956,36 @@ des symptômes indiscernables d'un défaut du skill.
 qui envoyait la sortie de l'installeur vers `/dev/null`) et comme le contrôle de
 sauvegarde du run 16, qui était vert et mesurait autre chose.
 
+**Corrigé** : `~/.argus-etalon/snapshot-machine.sh <N>`, à lancer **avant** le
+sous-agent — charge, appareils branchés, AVD porté par chaque port, six processus
+les plus gourmands. `check-etalons.sh` l'exige comme **septième fichier à partir
+du run 24**, le numéro étant dérivé du nom de fichier pour qu'un run ajouté
+demain hérite du critère sans qu'on y pense ; l'historique reste vert, ses runs
+ayant été pris avant que le geste existe.
+
+Contre-épreuve jouée : un run 24 factice sans son relevé sort en `MANQUE`, le même
+avec le relevé sort `complet`, et les 22 runs réels restent verts.
+
+⚠️ **Une ligne du script mentait à sa première exécution** — « mémoire libre :
+0,0 Go », `Pages free` seul ne décrivant pas macOS, qui garde tout en inactif. Un
+chiffre faux est pire qu'une ligne absente : remplacé par `memory_pressure`.
+
+📌 Et le relevé a trouvé quelque chose dès son essai : **le téléphone personnel
+est branché** alors qu'il ne l'était pas pendant le run — l'agent avait
+explicitement rapporté « aucun appareil physique n'est apparu ». C'est exactement
+ce que ce fichier existe pour capter.
+
 ## Ce qui reste
 
-**Les points 180, 181 et 183**, inscrits le 26/08/2026 au dépouillement du
-run 23. Le **182 est démenti** et se garde avec sa mesure.
+**Rien.** Les points **180, 181 et 183** sont fermés le 26/08/2026, le jour même
+de leur inscription — le backlog se vide pour la **vingt-troisième** fois. Le
+**182 est démenti** et se garde avec sa mesure.
+
+⚠️ **Le 180 était en dessous de la vérité** : le rapport avouait déjà sa limite,
+donc le travail n'était pas de la dire mais de la lever. Et son premier garde est
+né **vacant** — il lisait du texte là où la mutation vidait une valeur.
+
+**Prochain numéro libre : 184.**
 
 ⚠️ **Les quatre correctifs de la veille ont porté, et se lisent dans les
 artefacts** — pas dans le compte rendu : `perf.json` porte `timedOutLaunches: 0`
