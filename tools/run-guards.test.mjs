@@ -3525,3 +3525,58 @@ test('le message de débordement n\'annonce pas ce que `Actual:` dit déjà', ()
   assert.ok(!/thrown/.test(bloc[1]),
     'l\'exception est déjà rendue par `Actual:` — la citer une seconde fois est du bruit');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 202 — un flow où le PROJET écrit ne peut pas appartenir au CADRE
+//
+// `argus.mobile.yaml` dit que la forme de l'authentification « s'écrit, dans
+// _subflows/login.yaml ». Ce fichier n'avait aucun marqueur : `--update` faisait
+// donc `cp src dest` par-dessus le parcours métier. Et l'utilisateur ne pouvait
+// pas se protéger — l'installeur classe d'après la SOURCE, jamais d'après la
+// copie locale.
+//
+// Le garde porte sur la CONSÉQUENCE, pas sur la prose : un flow qui invite à
+// écrire (`TODO(argus)`) doit être `ARGUS:OWNED`.
+//
+// ⚠️ Il est borné à `.maestro/`, et c'est mesuré : hors de là, `ARGUS-MOBILE.md`
+// cite `TODO(argus)` dans une phrase qui EXPLIQUE le mécanisme. Un fichier doit
+// pouvoir parler d'un marqueur sans être classé par ce qu'il en dit.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('tout flow qui invite le projet à écrire est ARGUS:OWNED', () => {
+  const racine = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  /** @param {string} dir @returns {string[]} */
+  const flows = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    return e.isDirectory() ? flows(p) : (e.name.endsWith('.yaml') ? [p] : []);
+  });
+  const tous = flows(racine);
+  assert.ok(tous.length >= 10,
+    `seulement ${tous.length} flow(s) lu(s) — le scaffold a bougé, mets ce garde à jour`);
+
+  const invitants = tous.filter((f) => readFileSync(f, 'utf8').includes('TODO(argus)'));
+  assert.ok(invitants.length > 0,
+    'aucun flow ne porte de TODO(argus) — le garde ne mesurerait rien');
+
+  const nonProteges = invitants
+    .filter((f) => !readFileSync(f, 'utf8').split('\n').slice(0, 20).join('\n').includes('ARGUS:OWNED'))
+    .map((f) => basename(f));
+  assert.deepEqual(nonProteges, [],
+    'un flow où le projet écrit son parcours sera écrasé par `install-mobile.sh --update`');
+});
+
+test('login.yaml porte le marqueur, et la config continue d\'y envoyer', () => {
+  // Les deux moitiés : le fichier est protégé, ET la phrase qui y envoie existe
+  // toujours. Retirer l'une sans l'autre laisse le défaut sous une autre forme.
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const flow = readFileSync(join(base, '.maestro/_subflows/login.yaml'), 'utf8');
+  assert.match(flow.split('\n').slice(0, 20).join('\n'), /ARGUS:OWNED/,
+    'le seul fichier dont le contenu est par construction celui de l\'hôte');
+  assert.match(flow, /TODO\(argus\)/,
+    'et il dit quoi y faire — sinon `check-scaffold.sh` le refuse, à raison');
+  const cfg = readFileSync(join(base, 'argus.mobile.yaml'), 'utf8');
+  assert.match(cfg, /login\.yaml/,
+    'la config doit continuer de nommer le fichier où la forme réelle s\'écrit');
+});

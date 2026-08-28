@@ -1,4 +1,13 @@
 appId: ${APP_ID}
+# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
+#
+# ⚠️ CE MARQUEUR EST LA MOITIÉ QUI MANQUAIT. `argus.mobile.yaml` dit, au-dessus
+# de la clé `auth`, que la forme de l'authentification « ne se déclare pas :
+# elle s'écrit, dans .maestro/_subflows/login.yaml ». Sans marqueur, ce fichier
+# tombait dans la branche `cp` de `--update` : le parcours métier du projet
+# était ÉCRASÉ par la version générique. Et l'utilisateur ne pouvait rien y
+# faire, l'installeur classant d'après la SOURCE et jamais d'après sa copie.
+#
 # ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
 # jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
 # workspace au démarrage, et rejette celui qui n'en a pas
@@ -22,6 +31,17 @@ appId: ${APP_ID}
 # l'y exercer. Cette condition ne testait que le champ identifiant : renseigner
 # celui-là et laisser l'écran vide faisait partir un `assertVisible` sur un id
 # vide — l'échec à mi-parcours que le commentaire promettait justement d'éviter.
+# TODO(argus): RÉÉCRIS CE BLOC si ton authentification n'est pas un formulaire à
+# deux champs. Ce qui suit est un exemple qui marche pour le cas le plus simple ;
+# ce fichier t'appartient, et c'est ici — pas dans une clé de configuration —
+# que se décrit un parcours en plusieurs écrans (identifiant, puis code à usage
+# unique, puis code secret), un SSO ou une biométrie.
+#
+# ⚠️ Les cinq `auth.anchors` ne décrivent qu'un formulaire. Sur un parcours en
+# plusieurs temps, leur seul rôle effectif est d'ouvrir la porte
+# (`ARGUS_AUTH_READY`) et de dire où elle mène (`ARGUS_AUTH_SUCCESS`) : renseigne
+# les trois premières avec les ancres du PREMIER écran, `success` avec celle qui
+# prouve la session ouverte, et écris la vraie séquence ci-dessous.
 - runFlow:
     when:
       true: "${typeof QA_USER !== 'undefined' && QA_USER !== '' && typeof ARGUS_AUTH_READY !== 'undefined' && ARGUS_AUTH_READY !== ''}"

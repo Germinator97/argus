@@ -23,7 +23,7 @@ merge	.gitignore
 cadre	.maestro/_subflows/disable-animations.yaml
 owned	.maestro/_subflows/goto.yaml
 cadre	.maestro/_subflows/launch-clean.yaml
-cadre	.maestro/_subflows/login.yaml
+owned	.maestro/_subflows/login.yaml
 owned	.maestro/_subflows/mask-dynamic.yaml
 owned	.maestro/a11y.yaml
 cadre	.maestro/config.yaml
