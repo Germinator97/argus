@@ -3382,6 +3382,109 @@ corrigeais autre chose — le même genre de hasard que l'émulateur du run 17.
 lieu de chercher un motif dans la source.
 
 
+### 198. Le finding de démarrage des FLOWS ne dit pas sur quel binaire il a mesuré
+
+`QAM-START` est un finding **major** — « l'écran de départ met 10 s à
+apparaître », 10/10 flows au-dessus du seuil au run 27. Il porte `device`,
+`platform`, `osVersion`, une commande de reproduction… et **rien sur le variant
+du binaire**. Or les flows Maestro s'exécutent sur le paquet posé par
+`argus-build`, c'est-à-dire le **debug**.
+
+Mesuré sur le rapport du run 27 : `report.json` contient **0 occurrence** de
+`debug`, `release`, `variant` ou `apk`.
+
+C'est le **193 chez le voisin**. Le remède du 193 avait été posé dans
+`perf.mjs`, où il est correct ; `run.mjs:1006` produit l'autre finding de
+démarrage, et ne l'a jamais reçu. Forme exacte de la règle « une mise en garde
+passée à N-1 appels sur N » — sauf que le N-ième vit dans un **autre fichier**,
+ce qui est précisément ce qui l'a fait manquer.
+
+⚠️ **Aggravant, et c'est ce qui rend le point intéressant** : `report.mjs:267`
+*sait* que les deux grandeurs de démarrage se lisent comme une contradiction, et
+il a été corrigé pour afficher la phrase qui les sépare — première frame contre
+écran exploitable. Mais cette phrase explique l'écart de **grandeur**, pas
+l'écart de **binaire**. Deux causes indépendantes produisent le même symptôme, et
+le rapport n'en nomme qu'une : le lecteur attribue donc tout l'écart à
+l'initialisation applicative, et rien au JIT du debug.
+
+### 199. La variante du binaire est dérivée de la commande de BUILD, jamais du paquet MESURÉ
+
+`perf.mjs:584` :
+
+```js
+// Le variant du binaire mesuré : `-debug.apk` dans le chemin suffit à le dire,
+const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';
+```
+
+Le commentaire dit « le binaire **mesuré** » ; la ligne lit `config.build.android`,
+c'est-à-dire la commande de build **configurée**. Or `perf.mjs` **n'installe
+rien** : `am start -W` chronomètre le paquet déjà posé sur l'appareil. Trois
+sources cohabitent donc dans un seul bloc `metrics`, présentées comme une seule
+mesure :
+
+| valeur | d'où elle vient |
+|---|---|
+| `variante` | la commande de build **configurée** |
+| `binaryIsRelease` | l'**APK sur disque**, pesé |
+| `coldStartMs` / `warmStartMs` / `memoryMb` | le **paquet installé**, chronométré |
+
+**Mesuré le 28/08/2026** sur `Medium_Phone_API_36.1`, `am start -W`, médiane de
+trois lancements à froid après rodage :
+
+| paquet installé | lancements | médiane |
+|---|---|---|
+| debug (`flags=[ DEBUGGABLE … ]`) | 1180 · 1246 · 1213 | **1213 ms** |
+| release (`Success` confirmé, plus de `DEBUGGABLE`) | 525 · 602 · 532 | **532 ms** |
+
+Écart **681 ms, facteur 2,28**. Le `perf.json` du run 27 affirme
+`coldStartMs: 1313` **sous `binaryIsRelease: true`** : ces 1313 ms décrivaient le
+debug.
+
+⚠️ Le fichier ne se contente pas de taire la réserve, **il affirme le
+contraire** — ce qui est pire qu'un silence : un lecteur qui compare son
+démarrage à son budget croit mesurer ce qu'il publie, alors qu'il est 2,28× plus
+rapide. C'est la forme « le garde mesure la DÉCLARATION au lieu de l'EFFET »,
+appliquée cette fois au **remède du 193 lui-même** : la réserve est bien passée
+aux quatre appels, elle transporte simplement une valeur qui ne vient pas de la
+mesure.
+
+### 200. Les captures de preuve ne sont bornées en hauteur nulle part
+
+`report.mjs:251` : `.shot{max-width:100%;display:block;border:…;margin-top:8px}`
+— **aucune `max-height`**. Les preuves sont des captures de téléphone
+(`1080×2400`, ratio 1:2,22), donc rendues à pleine largeur elles occupent
+~2 600 px de haut **chacune**. Le run 27 en embarque **5** dans une page de
+1,13 Mo : un finding de quatre lignes est suivi de trois écrans de défilement, et
+la page cesse d'être parcourable — ce qui est pourtant son seul usage.
+
+Trouvé par Germinator **en regardant la page publiée**, comme le 187.
+
+⚠️ **Ce défaut a été CRÉÉ par le correctif du 187.** Tant qu'une capture ne
+pouvait exister que sur échec, la page publiée n'en portait jamais, et le défaut
+de dimensionnement était hors d'atteinte de toute mesure. Le remède déplace le
+mode de panne : c'est la cinquième façon pour un garde de devenir vacant,
+observée ici sur le livrable au lieu du test.
+
+⚠️ **Et le cas qui compte n'est pas celui qu'on observe.** Relevé sur les 26 runs
+archivés (instrument validé par contre-épreuve sur le run 27 : 7 findings dont 5
+avec preuve, exactement ce que la page rend) :
+
+| | |
+|---|---|
+| findings dépouillés | **320** |
+| portant plus d'une preuve | **0** — maximum observé : 1 |
+| par dimension | a11y 199 · performance 82 · security 39 · **visual 0** |
+
+Lu seul, ce relevé dit que le multi-captures n'existe pas. Mais `run.mjs:826`
+attache à un finding **tous** les artefacts de son flow — pour un échec visuel :
+référence, capture actuelle et diff, soit trois images. Si aucun run n'en a
+produit, c'est qu'**aucune régression visuelle n'a encore été attrapée** : celle
+du run 27 a dû être forcée à l'aplat magenta. Le cas multi-captures est donc le
+cas **nominal** du mode REGRESS, et le jour où il se produit la page empile
+~8 000 px. Conclure de l'absence d'observation à l'absence de besoin aurait été
+l'erreur.
+
+
 ## Ce qui reste
 
 Les points **193 à 197** sont fermés le 26/08/2026, le jour même de leur
@@ -3406,7 +3509,7 @@ le corriger demande un lexer, et le remède évident casse six lectures légitim
 Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
 inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 198.**
+**Prochain numéro libre : 201.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
