@@ -66,9 +66,16 @@ Branche <ma-branche>, arbre de travail propre.
 
 CADRAGE — ce que je tranche, pour que tu ne le tranches pas en silence
   MODE      : REGRESS            # REGRESS installer la garde | EXPLORE auditer | DEMO filmer
-  ENV       : local              # local | staging | prod — commande les garde-fous
+  ENV       : local              # local | staging | prod — commande les garde-fous.
+                                 #   Se dérive de VERS QUOI l'app pointe, pas de là où
+                                 #   tu es : une API distante partagée n'est pas `local`,
+                                 #   même lancée depuis ton poste.
   PLATFORMS : android            # android | ios | les deux
   DEVICE    : émulateur <NOM_AVD>, celui-là et aucun autre
+  FLAVOR    : <dev>              # si le projet en a. À NE PAS omettre : c'est lui
+                                 #   qui décide de l'identifiant d'application
+                                 #   (`applicationIdSuffix`), donc « déduis-le du
+                                 #   repo » n'a plus de réponse unique sans lui.
   APP       : <com.exemple.app>  # ou : déduis-le du repo, et DEMANDE-le-moi
                                  #      s'il ne se déduit pas — n'en invente pas
   ARTEFACT  : non               # non | oui — publier la page de rapport, ou pas.
@@ -111,7 +118,26 @@ AUTORISATIONS ET LIMITES
   parallèle.
 - Ce projet utilise <FVM | le SDK Flutter système> : emploie la bonne commande.
 - <les comptes de test, s'il en faut : identifiants dans $QA_USER et $QA_PASS —
-  ne les écris nulle part>
+  ne les écris nulle part. DIS D'OÙ ILS VIENNENT : un fichier hors dépôt à
+  sourcer, un gestionnaire de secrets. Citer deux noms de variables ne suffit
+  pas — l'agent ne peut pas les inventer.>
+
+SI L'APPLICATION CONSOMME UNE API — cinq lignes, et aucune ne se déduit du dépôt
+- Vers quelle API elle doit pointer, et l'adresse EXACTE que le binaire doit
+  porter. ⚠️ `localhost` ne désigne pas la même machine depuis un émulateur :
+  Android le voit en `10.0.2.2`, et un appareil physique en Wi-Fi voudra l'IP LAN
+  du poste. C'est la valeur vue DU DEVICE qu'il faut donner.
+- Les injections de build obligatoires, mot pour mot. Beaucoup d'applications
+  refusent de démarrer sans elles — et l'agent obtient alors un binaire qui ne
+  s'ouvre pas, ce qu'il attribuera à son instrumentation.
+- Ce qu'il n'a PAS le droit de faire au backend : « tu consommes l'API, tu ne
+  l'administres pas — ni sa base, ni ses conteneurs ». L'étage 2 tape le vrai
+  serveur ; sans cette limite, l'administrer est dans le périmètre.
+- Ce que l'authentification COÛTE, si tu le sais : un quota, une limite de débit,
+  un code à usage unique réellement envoyé. `clearState` impose une reconnexion
+  par flow, et une suite complète peut à elle seule dépasser la limite.
+- Où lire la documentation DU PROJET. Les flavors et la configuration de build y
+  vivent, et le prompt n'envoie lire que le skill.
 
 Avant de lancer quoi que ce soit sur un device, prouve l'instrumentation sans
 device (`make argus-anchors`) et donne-moi le relevé.

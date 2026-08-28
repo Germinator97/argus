@@ -3671,3 +3671,40 @@ test('tous les flows ne se connectent pas — le levier du coût existe', () => 
   assert.ok(sansAuth.length > 0,
     'tous les flows appellent login.yaml : la phrase qui dit le contraire est devenue fausse');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 208 — le gabarit doit cadrer une application qui consomme une API
+//
+// Il n'en disait RIEN : zéro mention d'API, de flavor ou d'injection de build,
+// pour un bloc de cadrage à sept lignes. Un agent non interactif tranchait donc
+// seul l'adresse du backend, le flavor dont dépend l'identifiant d'application,
+// et jusqu'au droit d'administrer le serveur.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le gabarit cadre une app qui consomme une API', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const bloc = src.match(/^CADRAGE[\s\S]*?Tout le reste/m);
+  assert.ok(bloc, 'le bloc CADRAGE a disparu du gabarit — mets ce garde à jour');
+
+  assert.match(bloc[0], /^\s*FLAVOR\s*:/m,
+    'sans flavor, « déduis l\'identifiant du repo » n\'a plus de réponse unique');
+  assert.match(bloc[0], /pointe/,
+    'ENV doit dire d\'où se dérive son choix : vers quoi l\'app pointe');
+
+  for (const [quoi, motif] of [
+    ['l\'adresse vue DU DEVICE', /10\.0\.2\.2/],
+    ['les injections de build obligatoires', /injections de build/],
+    ['la limite sur le backend', /administres pas/],
+    ['le coût de l\'authentification', /clearState.{0,80}reconnexion/s],
+    ['la doc DU projet', /documentation DU PROJET/],
+  ]) {
+    assert.match(src, motif, `le gabarit doit dire : ${quoi}`);
+  }
+
+  // ⚠️ La moitié qu'on oublie : ces lignes ne servent QUE si le projet a une
+  // API. Elles sont donc conditionnelles, pas ajoutées au cadrage de tous.
+  assert.match(src, /SI L'APPLICATION CONSOMME UNE API/,
+    'le bloc doit rester conditionnel — une app locale n\'a rien à y répondre');
+});
