@@ -57,6 +57,9 @@ CIBLES = {
     # que `MaterialApp` ignore sans `supportedLocales`, et c'est un garde de
     # câblage, donc invisible à tout test de comportement.
     "harness": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart",
+    # Depuis le run 28 : le test de disposition. Son message d'échec est de la
+    # PROSE dans du Dart, donc rien d'autre ne peut dire si elle se lit encore.
+    "layout": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/layout_test.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -404,6 +407,15 @@ MUTATIONS = [
     ("report", "la visionneuse perd sa sortie au clavier",
      "  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermer(); });",
      "  // sortie clavier retirée"),
+    # ⚠️ Les DEUX sens, et c'est tout l'intérêt du 201 : le garde doit tomber
+    # sur le défaut d'origine ET sur le correctif qui « marche ». Interpoler
+    # pour de bon doublerait ce que `Actual:` affiche déjà.
+    ("layout", "le message de débordement réimprime le nom de la variable",
+     '                    "le widget fautif n\'est presque jamais celui de l\'écran.",',
+     '                    "le widget fautif n\'est presque jamais celui de l\'écran.\\n\\$thrown",'),
+    ("layout", "le message double ce que `Actual:` affiche déjà",
+     '                    "le widget fautif n\'est presque jamais celui de l\'écran.",',
+     '                    "le widget fautif n\'est presque jamais celui de l\'écran.\\n$thrown",'),
 ]
 
 
