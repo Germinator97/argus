@@ -390,6 +390,20 @@ MUTATIONS = [
     ("run", "le site d'appel cesse de LIRE le variant sur l'appareil",
      "      platform === 'android' ? installedVariant(resolved.udid, appId) : ''),",
      "      ''),"),
+    # ⚠️ Le style d'AVANT, remis tel quel : `max-width` seul ne borne rien sur
+    # une capture de téléphone. C'est la forme exacte du défaut, pas une
+    # approximation — le garde doit tomber sur ce que la page portait vraiment.
+    ("report", "les preuves reperdent leur plafond de hauteur",
+     "  .shot{height:240px;width:auto;max-width:100%;object-fit:contain;object-position:top;display:block;border:1px solid var(--line);border-radius:6px;background:#0b0d11;cursor:zoom-in}",
+     "  .shot{max-width:100%;display:block;border:1px solid var(--line);border-radius:6px;margin-top:8px}"),
+    # Sans la rangée, trois preuves s'empilent : c'est le cas du mode REGRESS.
+    ("report", "les preuves s'empilent au lieu de tenir en rangée",
+     "${vignettes.length ? `<div class=\"shots\">${vignettes.map((/** @type {string} */ e) => `<img class=\"shot\" src=\"${shots.get(e)}\" alt=\"preuve : ${esc(e)}\" loading=\"lazy\">`).join('')}</div>` : ''}",
+     "${vignettes.map((/** @type {string} */ e) => `<img class=\"shot\" src=\"${shots.get(e)}\" alt=\"preuve : ${esc(e)}\" loading=\"lazy\">`).join('')}"),
+    # Une sortie en moins suffit : un overlay qui n'en offre qu'une enferme.
+    ("report", "la visionneuse perd sa sortie au clavier",
+     "  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermer(); });",
+     "  // sortie clavier retirée"),
 ]
 
 
