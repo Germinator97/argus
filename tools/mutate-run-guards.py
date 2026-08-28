@@ -60,6 +60,14 @@ CIBLES = {
     # Depuis le run 28 : le test de disposition. Son message d'échec est de la
     # PROSE dans du Dart, donc rien d'autre ne peut dire si elle se lit encore.
     "layout": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/layout_test.dart",
+    # Depuis le run 29, le premier sur un projet qui consomme une API. Ces
+    # quatre-là portent des décisions que rien d'autre ne peut exercer : à qui
+    # appartient le parcours d'authentification, ce qu'on asserte après lui, et
+    # ce qui part dans une référence visuelle commitée.
+    "login": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/login.yaml",
+    "lifecycle": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/lifecycle.yaml",
+    "yamlconf": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml",
+    "gitignore": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.gitignore",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -416,6 +424,30 @@ MUTATIONS = [
     ("layout", "le message double ce que `Actual:` affiche déjà",
      '                    "le widget fautif n\'est presque jamais celui de l\'écran.",',
      '                    "le widget fautif n\'est presque jamais celui de l\'écran.\\n$thrown",'),
+    # ── Vingt-neuvième run — le premier terrain qui consomme une API ────────
+    ("login", "le parcours d'authentification redevient propriété du CADRE",
+     "# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.",
+     "# (marqueur retiré)"),
+    # ⚠️ Ancré sur le `label:` voisin, qui est unique : le seul identifiant
+    # apparaît SIX fois dans ce flow, et le harnais exige un motif unique —
+    # c'est ce qui distingue « le garde ne tombe pas » de « rien n'a muté ».
+    ("lifecycle", "après la connexion, on réasserte l'écran de départ",
+     "          id: ${ARGUS_ANCHOR_AFTER_AUTH}\n          label: L'écran est retrouvé tel qu'il était",
+     "          id: ${ARGUS_ANCHOR_HOME}\n          label: L'écran est retrouvé tel qu'il était"),
+    # ⚠️ Celle-ci vise la VALEUR RENDUE : un remède qui viserait TOUJOURS
+    # `success` casserait toutes les applications sans authentification.
+    ("run", "l'ancre post-connexion cesse de retomber sur l'écran de départ",
+     "  return String(anchors?.success || home?.anchor || '');",
+     "  return String(anchors?.success || '');"),
+    ("prompts", "le cadrage reperd la ligne du flavor",
+     "  FLAVOR    : <dev>              # si le projet en a. À NE PAS omettre : c'est lui",
+     "  # FLAVOR retiré"),
+    ("skill", "le cas du composant qui vit dans un autre dépôt disparaît",
+     "⚠️ **ET SI LE COMPOSANT VIT DANS UN AUTRE DÉPÔT, LE BON REMÈDE T'EST INTERDIT.**",
+     "Et voilà pour les composants partagés."),
+    ("gitignore", "le remède proposé redevient une clé qui n'existe pas",
+     "#   - rendre la zone déterministe avant capture (`_subflows/mask-dynamic.yaml`) ;",
+     "#   - masquer la zone (`dynamicRegions`), ce qui la retire de la comparaison ;"),
 ]
 
 
