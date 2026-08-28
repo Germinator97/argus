@@ -3542,6 +3542,146 @@ message pour vérifier qu'aucun `$` littéral n'y survit — sur les trois fragm
 pas sur celui qu'on vient de toucher.
 
 
+### 202. `_subflows/login.yaml` est classé CADRE — alors que la config prescrit d'y écrire le parcours métier
+
+`argus.mobile.yaml` le dit en toutes lettres, au-dessus de la clé `auth` :
+
+> « La forme de l'authentification (formulaire, OTP, SSO, biométrie) ne se
+> déclare pas : elle **s'écrit**, dans `.maestro/_subflows/login.yaml`. »
+
+Or ce fichier ne porte **aucun marqueur de classement**, quand ses deux voisins
+qu'on personnalise aussi — `goto.yaml` et `mask-dynamic.yaml` — sont
+`ARGUS:OWNED`. C'est une asymétrie, pas une décision : relevé sur les treize
+flows livrés, `login.yaml` est le seul fichier que la doc invite à réécrire et
+que l'installeur croit sien.
+
+Conséquence mesurée dans `install-mobile.sh` : un fichier sans marqueur tombe
+dans `update) cp "$src" "$dest"` (l. 181) — **le parcours d'authentification du
+projet est écrasé** au prochain `--update`.
+
+⚠️ **Et l'utilisateur ne peut rien y faire**, ce qui est la moitié qui compte :
+l'installeur classe d'après `head -20 "$src"` (l. 134 et 150), c'est-à-dire la
+**source livrée**, jamais la copie locale. Poser `ARGUS:OWNED` dans son propre
+`login.yaml` ne protège donc de rien — le run qui l'a fait ne s'en est tiré que
+parce que son fichier avait cessé de ressembler à celui d'origine.
+
+C'est la forme exacte de la règle « un outil qui écrit chez l'hôte doit
+reconnaître SA copie », appliquée au seul fichier dont le contenu est, par
+construction, celui de l'hôte.
+
+### 203. Après la connexion, deux flows assertent l'écran de DÉPART
+
+`lifecycle.yaml` fait `runFlow: _subflows/login.yaml` (l. 13) puis
+`assertVisible: id: ${ARGUS_ANCHOR_HOME}` (l. 28). Or `ARGUS_ANCHOR_HOME` porte
+l'ancre de l'écran `start: true` — sur une application authentifiée, **celui
+qu'on vient de quitter**.
+
+Périmètre mesuré, et il n'est pas d'un fichier : sur les treize flows livrés,
+**deux** enchaînent les deux gestes — `lifecycle.yaml` (4 occurrences) et
+`journey-critical.yaml` (3). `launch-clean.yaml`, lui, attend
+`ARGUS_ANCHOR_HOME` **avant** la connexion, ce qui est juste.
+
+⚠️ Le symptôme trompe deux fois. L'échec dit `Assertion is false: id: <ancre> is
+visible` **avec une capture de l'accueil parfaitement affiché**, donc il accuse
+l'instrumentation ; et le message d'aide prescrit de relever `startTimeoutMs`,
+pour une lenteur qui n'existe pas.
+
+📌 **Le remède proposé par le run était d'ajouter une clé `postAuthAnchor`. La
+mesure l'a écarté** : `auth.anchors.success` existe déjà — « ancre prouvant que
+la session est ouverte » — et le runner l'injecte sous `ARGUS_AUTH_SUCCESS`
+(`run.mjs:584`). Elle n'est simplement consommée **que par `login.yaml`**,
+pendant que huit fichiers lisent `ARGUS_ANCHOR_HOME`. Ajouter une clé aurait
+doublé celle qui manquait de lecteurs.
+
+### 204. `auth.anchors` décrit un FORMULAIRE, pas un parcours
+
+Les cinq clés livrées — `screen`, `user`, `password`, `submit`, `success` —
+supposent un écran unique à deux champs. Un parcours en trois écrans (identifiant
+→ code à usage unique → code secret) n'a nulle part où se décrire : il faut les
+remplir avec les ancres du premier écran pour débloquer `ARGUS_AUTH_READY`, et
+écrire ailleurs que c'est leur seul rôle.
+
+Ce n'est pas un défaut de `login.yaml`, qui est fait pour porter la forme réelle
+(cf. 202) : c'est que les cinq clés **prétendent la décrire** alors qu'elles ne
+servent qu'à ouvrir la porte. Le commentaire qui les accompagne dit « ancres
+sémantiques du formulaire de connexion » — vrai du cas simple, trompeur des
+autres.
+
+### 205. Rien ne dit ce que l'authentification COÛTE à chaque flow
+
+`clearState: true` avant chaque flow est la première règle anti-flake du skill,
+et elle est juste. Sur une application authentifiée, elle impose une
+**reconnexion par flow** — donc autant d'allers-retours vers l'API que de flows.
+
+Relevé sur un projet réel : l'endpoint d'envoi du code à usage unique est borné
+à **trois appels par minute**, et une suite complète en consomme déjà trois. Les
+flows suivants échouent alors sur une limite de débit, c'est-à-dire sur un
+symptôme qui ne ressemble à rien de ce que le skill décrit.
+
+Mesuré : **zéro** occurrence de `quota`, `rate limit`, `coût d'authentification`
+ou `session partagée` dans la configuration livrée. Il n'y a pas de clé pour
+déclarer qu'une authentification est chère, ni de recette pour la partager entre
+flows.
+
+⚠️ Même famille : un code à usage unique **réel** est un effet de bord
+**sortant**. Le skill interdit bien « les SMS/OTP réels vers des numéros tiers »,
+mais ne dit nulle part comment un flow d'authentification l'évite — un
+`ENV` mal choisi suffit à envoyer de vrais messages.
+
+### 206. Les données servies par l'API entrent dans les références visuelles COMMITÉES
+
+Le `.gitignore` livré porte une exception explicite et justifiée :
+`!/.maestro/_baselines/` — « les baselines visuelles se COMMITENT. Sans elles, la
+dimension ne compare rien ». C'est vrai.
+
+Mais sur une application qui consomme une API, la capture de l'écran principal
+**contient les données servies** : sur un projet réel, une référence de 320 Ko
+portait des noms de clients et des numéros de commande. Le skill envisage le cas
+d'un « compte de test » ; il n'envisage pas un **jeu de données** servi par un
+backend, qui se retrouve versionné dans le dépôt du projet.
+
+Ce n'est pas un défaut à corriger en silence : c'est une décision que le skill
+doit faire prendre — masquer, cadrer plus serré, ou assumer — avant que la
+première référence ne soit écrite.
+
+### 207. Le skill prescrit de toucher aux composants partagés, sans dire ce qu'est un paquet VOISIN
+
+`SKILL.md` traite abondamment le design system — « dans un design system, il est
+à l'intérieur du composant », « composant partagé, 14 call-sites →
+semanticIdentifier ». Tous ses exemples vivent **dans le même dépôt**
+(`lib/…/shared/bouton.dart`).
+
+Un projet réel peut tirer ses composants d'un paquet dans un **autre dépôt**,
+partagé avec des applications en production. La prescription du skill s'y
+applique mot pour mot, et elle est alors **inapplicable sans arbitrage** : il
+faut décider si l'on modifie l'API publique d'un paquet tiers.
+
+Conséquence mesurée quand on décide de ne pas y toucher : **six ancres de
+commande restent inertes** — posées au call-site autour d'un composant qui
+construit son propre nœud —, inscrites en dette faute de pouvoir poser le
+paramètre une couche plus bas. Le skill ne dit ni que le cas existe, ni ce qu'il
+coûte, ni comment l'inscrire.
+
+### 208. Le gabarit de prompt n'a AUCUNE ligne pour une application qui consomme une API
+
+Mesuré : **zéro** occurrence de `API`, `backend`, `flavor` ou `dart-define` dans
+`PROMPTS.md`. Son bloc `CADRAGE` porte sept lignes — `MODE`, `ENV`, `PLATFORMS`,
+`DEVICE`, `APP`, `ARTEFACT`, `BUDGET` — et aucune ne suffit :
+
+| ce qu'il faut trancher | pourquoi le gabarit n'y répond pas |
+|---|---|
+| le **flavor** | l'identifiant d'application en dépend (`applicationIdSuffix`), donc « APP : déduis-le du repo » n'a plus de réponse unique |
+| l'**adresse de l'API** | rien dans un dépôt ne dit vers quoi pointer — et `localhost` ne désigne pas la même machine depuis un émulateur |
+| les **injections de build** obligatoires | sans elles l'application peut refuser de démarrer : l'agent obtient un binaire qui ne s'ouvre pas |
+| d'**où viennent** les identifiants | le gabarit cite `$QA_USER`/`$QA_PASS` sans dire comment ils arrivent dans l'environnement |
+| la **limite** sur le backend | l'étage 2 tape le vrai serveur : sans consigne, l'administrer est dans le périmètre |
+
+⚠️ `ENV` mérite mieux que son commentaire actuel. Il explique `local | staging |
+prod` sans dire que le choix se dérive de **vers quoi l'application pointe** —
+la question même que pose une API. C'est le pendant exact du point 195 : une
+ligne existe, mais elle ne dit pas ce qui la décide.
+
+
 ## Ce qui reste
 
 **Le run 28 ne rend QU'UN constat, et il ne coûte rien** — un jeton littéral dans
@@ -3621,7 +3761,7 @@ le corriger demande un lexer, et le remède évident casse six lectures légitim
 Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
 inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 202.**
+**Prochain numéro libre : 209.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
