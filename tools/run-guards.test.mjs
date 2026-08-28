@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -3467,4 +3467,61 @@ test('la visionneuse a TROIS sorties, et le garde les nomme', () => {
   assert.match(LIGHTBOX, /t === lb/, 'sortie 2 : le clic hors de l\'image');
   assert.match(LIGHTBOX, /'Escape'/, 'sortie 3 : la touche Échap');
   assert.match(LIGHTBOX, /aria-modal="true"/, 'et elle se déclare comme modale');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 201 — aucune interpolation DÉSARMÉE dans le Dart livré
+//
+// `"…\$thrown"` imprime le littéral : dans une chaîne Dart à guillemets doubles,
+// `\$` échappe le dollar. Le fragment fautif était en guillemets doubles parce
+// qu'il porte des apostrophes françaises — le délimiteur était imposé par la
+// ponctuation, pas choisi, et c'est ce qui a désarmé l'interpolation sans que
+// personne le voie. Ses deux voisins, en guillemets simples, interpolent bien.
+//
+// Garde TOTAL et NÉGATIF : zéro occurrence dans tout le scaffold, jamais une
+// liste des formes déjà vues. Et il compte d'abord ce qu'il a lu — sans ce
+// compte, un dossier renommé le rendrait vert en ne lisant plus rien.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('aucun `$` échappé devant un identifiant dans le Dart du scaffold', () => {
+  const racine = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  /** @param {string} dir @returns {string[]} */
+  const dartFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    return e.isDirectory() ? dartFiles(p) : (e.name.endsWith('.dart') ? [p] : []);
+  });
+  const fichiers = dartFiles(racine);
+  assert.ok(fichiers.length >= 5,
+    `seulement ${fichiers.length} fichier(s) Dart lu(s) — le scaffold a bougé, mets ce garde à jour`);
+
+  const fautifs = [];
+  for (const f of fichiers) {
+    const src = readFileSync(f, 'utf8');
+    // `\$` suivi de ce qui ressemble à un nom : `\$ ` ou `\$1` resteraient
+    // légitimes (un vrai symbole dollar), et ne sont donc pas comptés.
+    for (const [i, ligne] of src.split('\n').entries()) {
+      if (/\\\$[a-zA-Z_{]/.test(ligne)) fautifs.push(`${basename(f)}:${i + 1}`);
+    }
+  }
+  assert.deepEqual(fautifs, [],
+    'interpolation désarmée : le message imprimera le nom de la variable au lieu de sa valeur');
+});
+
+test('le message de débordement n\'annonce pas ce que `Actual:` dit déjà', () => {
+  // ⚠️ La moitié qu'on oublie : le remède était de RETIRER le jeton, pas de le
+  // réparer. `expect(thrown, isNull)` affiche l'exception entière dans
+  // `Actual:` — mesuré sur un vrai échec :
+  //   Actual: FlutterError:<A RenderFlex overflowed by 55 pixels on the right.>
+  // L'interpoler pour de bon la doublerait. Ce garde échouerait donc AUSSI sur
+  // un correctif qui « marche ».
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/layout_test.dart'), 'utf8');
+  const bloc = src.match(/reason:\s*\n([\s\S]{0,400}?)\);/);
+  assert.ok(bloc, 'le `reason:` du test de débordement a disparu — mets ce garde à jour');
+  assert.match(bloc[1], /error-causing widget/,
+    'le message doit continuer de dire où chercher le vrai coupable');
+  assert.ok(!/thrown/.test(bloc[1]),
+    'l\'exception est déjà rendue par `Actual:` — la citer une seconde fois est du bruit');
 });

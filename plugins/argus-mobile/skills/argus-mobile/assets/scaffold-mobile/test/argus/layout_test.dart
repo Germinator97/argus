@@ -65,7 +65,7 @@ void main() {
                 reason:
                     'Débordement sur ${screen.id} en $label.\n'
                     'Cherche « The relevant error-causing widget was » dans la sortie : '
-                    "le widget fautif n'est presque jamais celui de l'écran.\n\$thrown",
+                    "le widget fautif n'est presque jamais celui de l'écran.",
               );
             });
           }, skip: argusShouldSkip);
