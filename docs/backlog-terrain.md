@@ -3542,7 +3542,7 @@ message pour vérifier qu'aucun `$` littéral n'y survit — sur les trois fragm
 pas sur celui qu'on vient de toucher.
 
 
-### 202. `_subflows/login.yaml` est classé CADRE — alors que la config prescrit d'y écrire le parcours métier
+### 202. ✅ Corrigé le 28/08/2026 — `_subflows/login.yaml` est classé CADRE — alors que la config prescrit d'y écrire le parcours métier
 
 `argus.mobile.yaml` le dit en toutes lettres, au-dessus de la clé `auth` :
 
@@ -3569,7 +3569,7 @@ C'est la forme exacte de la règle « un outil qui écrit chez l'hôte doit
 reconnaître SA copie », appliquée au seul fichier dont le contenu est, par
 construction, celui de l'hôte.
 
-### 203. Après la connexion, deux flows assertent l'écran de DÉPART
+### 203. ✅ Corrigé le 28/08/2026 — Après la connexion, deux flows assertent l'écran de DÉPART
 
 `lifecycle.yaml` fait `runFlow: _subflows/login.yaml` (l. 13) puis
 `assertVisible: id: ${ARGUS_ANCHOR_HOME}` (l. 28). Or `ARGUS_ANCHOR_HOME` porte
@@ -3593,7 +3593,7 @@ la session est ouverte » — et le runner l'injecte sous `ARGUS_AUTH_SUCCESS`
 pendant que huit fichiers lisent `ARGUS_ANCHOR_HOME`. Ajouter une clé aurait
 doublé celle qui manquait de lecteurs.
 
-### 204. `auth.anchors` décrit un FORMULAIRE, pas un parcours
+### 204. ✅ Corrigé le 28/08/2026 — `auth.anchors` décrit un FORMULAIRE, pas un parcours
 
 Les cinq clés livrées — `screen`, `user`, `password`, `submit`, `success` —
 supposent un écran unique à deux champs. Un parcours en trois écrans (identifiant
@@ -3607,7 +3607,7 @@ servent qu'à ouvrir la porte. Le commentaire qui les accompagne dit « ancres
 sémantiques du formulaire de connexion » — vrai du cas simple, trompeur des
 autres.
 
-### 205. Rien ne dit ce que l'authentification COÛTE à chaque flow
+### 205. ✅ Corrigé le 28/08/2026 — Rien ne dit ce que l'authentification COÛTE à chaque flow
 
 `clearState: true` avant chaque flow est la première règle anti-flake du skill,
 et elle est juste. Sur une application authentifiée, elle impose une
@@ -3628,7 +3628,7 @@ flows.
 mais ne dit nulle part comment un flow d'authentification l'évite — un
 `ENV` mal choisi suffit à envoyer de vrais messages.
 
-### 206. Les données servies par l'API entrent dans les références visuelles COMMITÉES
+### 206. ✅ Corrigé le 28/08/2026 — Les données servies par l'API entrent dans les références visuelles COMMITÉES
 
 Le `.gitignore` livré porte une exception explicite et justifiée :
 `!/.maestro/_baselines/` — « les baselines visuelles se COMMITENT. Sans elles, la
@@ -3644,7 +3644,7 @@ Ce n'est pas un défaut à corriger en silence : c'est une décision que le skil
 doit faire prendre — masquer, cadrer plus serré, ou assumer — avant que la
 première référence ne soit écrite.
 
-### 207. Le skill prescrit de toucher aux composants partagés, sans dire ce qu'est un paquet VOISIN
+### 207. ✅ Corrigé le 28/08/2026 — Le skill prescrit de toucher aux composants partagés, sans dire ce qu'est un paquet VOISIN
 
 `SKILL.md` traite abondamment le design system — « dans un design system, il est
 à l'intérieur du composant », « composant partagé, 14 call-sites →
@@ -3662,7 +3662,7 @@ construit son propre nœud —, inscrites en dette faute de pouvoir poser le
 paramètre une couche plus bas. Le skill ne dit ni que le cas existe, ni ce qu'il
 coûte, ni comment l'inscrire.
 
-### 208. Le gabarit de prompt n'a AUCUNE ligne pour une application qui consomme une API
+### 208. ✅ Corrigé le 28/08/2026 — Le gabarit de prompt n'a AUCUNE ligne pour une application qui consomme une API
 
 Mesuré : **zéro** occurrence de `API`, `backend`, `flavor` ou `dart-define` dans
 `PROMPTS.md`. Son bloc `CADRAGE` porte sept lignes — `MODE`, `ENV`, `PLATFORMS`,
@@ -3683,6 +3683,36 @@ ligne existe, mais elle ne dit pas ce qui la décide.
 
 
 ## Ce qui reste
+
+Les points **202 à 208** sont fermés le 28/08/2026, le jour même de leur
+inscription — le backlog se vide pour la **vingt-huitième** fois. Le run 29 est
+le **premier sur un projet qui consomme une API**, le chantier ouvert depuis le
+22/08, et il rouvre le compteur que le run 28 avait refermé : c'est ce qu'on
+attendait de lui.
+
+⚠️ **Sept constats, et aucun ne pouvait apparaître sur une application locale.**
+Ils tiennent en une phrase : *le harnais suppose partout qu'après le lancement on
+est déjà chez soi*. `login.yaml` appartenait au cadre alors que la config y
+envoie écrire, deux flows assertaient l'écran de connexion après s'être
+connectés, les cinq `auth.anchors` décrivent un formulaire, et rien ne disait ce
+qu'une reconnexion par flow coûte à un backend qui compte les appels.
+
+📌 **Le 203 a corrigé le remède du run.** Il proposait une clé `postAuthAnchor` ;
+la mesure a montré que `auth.anchors.success` existe déjà, est déjà injectée
+sous `ARGUS_AUTH_SUCCESS`, et qu'elle est simplement lue par **un** fichier
+quand huit lisent `ARGUS_ANCHOR_HOME`. Ajouter une clé aurait doublé celle qui
+manquait de lecteurs.
+
+⚠️ **Trois de mes propres gestes ont été pris en défaut pendant la passe**, tous
+par un instrument et jamais par une relecture :
+- le garde écrit pour vérifier que les remèdes cités existent a fait tomber **ma
+  propre mise en garde**, rédigée deux minutes plus tôt : elle proposait
+  `dynamicRegions`, clé retirée au point 11 parce que rien ne la lisait ;
+- un motif de garde sur de la prose **enjambait un retour à la ligne**, donc il
+  ne pouvait pas matcher — la prose est reformatée à chaque édition ;
+- mon script d'édition a **tronqué le harnais de mutation** de 93 lignes,
+  `main()` compris, en remplaçant la fin du fichier au lieu d'y insérer. Il était
+  commité : c'est la seule raison pour laquelle ça n'a rien coûté.
 
 **Le run 28 ne rend QU'UN constat, et il ne coûte rien** — un jeton littéral dans
 un message d'échec, sur un rapport qui dit déjà tout ce qu'il faut une ligne plus
