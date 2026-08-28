@@ -3382,7 +3382,7 @@ corrigeais autre chose — le même genre de hasard que l'émulateur du run 17.
 lieu de chercher un motif dans la source.
 
 
-### 198. Le finding de démarrage des FLOWS ne dit pas sur quel binaire il a mesuré
+### 198. ✅ Corrigé le 28/08/2026 — Le finding de démarrage des FLOWS ne dit pas sur quel binaire il a mesuré
 
 `QAM-START` est un finding **major** — « l'écran de départ met 10 s à
 apparaître », 10/10 flows au-dessus du seuil au run 27. Il porte `device`,
@@ -3407,7 +3407,7 @@ l'écart de **binaire**. Deux causes indépendantes produisent le même symptôm
 le rapport n'en nomme qu'une : le lecteur attribue donc tout l'écart à
 l'initialisation applicative, et rien au JIT du debug.
 
-### 199. La variante du binaire est dérivée de la commande de BUILD, jamais du paquet MESURÉ
+### 199. ✅ Corrigé le 28/08/2026 — La variante du binaire est dérivée de la commande de BUILD, jamais du paquet MESURÉ
 
 `perf.mjs:584` :
 
@@ -3448,7 +3448,7 @@ appliquée cette fois au **remède du 193 lui-même** : la réserve est bien pas
 aux quatre appels, elle transporte simplement une valeur qui ne vient pas de la
 mesure.
 
-### 200. Les captures de preuve ne sont bornées en hauteur nulle part
+### 200. ✅ Corrigé le 28/08/2026 — Les captures de preuve ne sont bornées en hauteur nulle part
 
 `report.mjs:251` : `.shot{max-width:100%;display:block;border:…;margin-top:8px}`
 — **aucune `max-height`**. Les preuves sont des captures de téléphone
@@ -3485,7 +3485,49 @@ cas **nominal** du mode REGRESS, et le jour où il se produit la page empile
 l'erreur.
 
 
+**Corrigé** : `installedVariant(udid, packageName)` dans `config.mjs` lit
+`flags=[ … ]` sur l'appareil et rend `'debug' | 'release' | ''`. Le vide dit
+« pas mesuré » et **jamais** « release » — confondre les deux reconstruirait le
+défaut en silence, dans le sens flatteur. `perf.json` gagne
+`metrics.measuredVariant` **à côté** de `binaryIsRelease`, si bien que le paquet
+chronométré et le binaire pesé se lisent l'un contre l'autre au lieu de se
+contredire. `QAM-START` reçoit la même valeur, et `caveatDebug` le reconnaît
+plutôt que `run.mjs` ne recopie la phrase — les trois démarrages ne peuvent plus
+diverger. Sept mutations, dont « une lecture ratée se lit release » et « le site
+d'appel cesse de LIRE le variant ».
+
+**Corrigé (200)** : les vignettes tiennent dans une rangée qui replie, bornées
+en hauteur et en ratio ; un clic ouvre la capture en grand dans une visionneuse
+à **trois sorties** — croix, clic extérieur, Échap. Sans image embarquée, ni
+rangée ni visionneuse : `evidence: none` ne laisse pas de gouttière morte. Le
+garde qui compte le plus est celui des **trois** preuves, le cas nominal du mode
+REGRESS que vingt-six runs n'ont jamais produit.
+
+
 ## Ce qui reste
+
+Les points **198 à 200** sont fermés le 28/08/2026, le jour même de leur
+inscription — le backlog se vide pour la **vingt-septième** fois. Le run 27 était
+une **vérification** : 194, 195 et 197 ont porté sur le terrain, et **193 était
+en place sans être exercé**, le démarrage ayant atterri à 1313 ms sous un budget
+de 2000. C'est en cherchant pourquoi qu'on a trouvé le 199.
+
+⚠️ **Les trois points ne font qu'un défaut dit à trois endroits**, et aucun
+n'avait été rapporté par le run : le 199 est sorti d'une mesure prise pour
+vérifier le 193, le 198 de la lecture du voisin qu'elle a entraînée, et le 200
+de Germinator regardant la page publiée.
+
+⚠️ **Le 199 corrige le remède du 193**, ce qui est le cas le plus instructif du
+lot : la réserve était bien passée aux quatre appels — le correctif tenait — mais
+elle transportait une valeur dérivée de la **commande de build** au lieu du
+**paquet mesuré**. Un garde qui vérifie qu'une réserve est *présente* ne dit rien
+de ce qu'elle *contient*.
+
+⚠️ **Et le 200 a été créé par le correctif du 187.** Tant qu'une capture ne
+pouvait exister que sur un échec, la page publiée n'en portait aucune, donc rien
+ne pouvait être trop haut. Le remède déplace le mode de panne.
+
+Le **192** reste ouvert, seul, avec sa mesure.
 
 Les points **193 à 197** sont fermés le 26/08/2026, le jour même de leur
 inscription — le backlog se vide pour la **vingt-sixième** fois. Le run 26 est
