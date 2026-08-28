@@ -3682,6 +3682,95 @@ la question même que pose une API. C'est le pendant exact du point 195 : une
 ligne existe, mais elle ne dit pas ce qui la décide.
 
 
+### 209. Le scan de secrets classe BLOCKER une lecture depuis un fichier gitignoré
+
+Le scaffold livre `'[sS]tore[pP]assword\s*=\s*\S+'`. Il matche
+`storePassword = keystoreProperties.getProperty("storePassword")` — une ligne
+qui **lit** la valeur depuis un fichier hors dépôt — et rend un finding
+`blocker` prescrivant de « révoquer la clé, elle est dans l'historique git ».
+
+Arrivé aux **deux runs** du terrain, avec deux remèdes différents : le premier a
+inscrit le fichier dans `allowSecretsIn`, le second a resserré le motif en
+notant que la dispense « aurait dispensé le fichier entier de tout scan ». Le
+second a raison — mais la mesure va plus loin que lui.
+
+**Les quatre candidats, sur six cas** (exécutés, dont le pipeline JS réel) :
+
+| motif | faux positifs | faux négatifs |
+|---|---|---|
+| livré | **3** | 1 |
+| `= ` requis (remède du run 30) | **1** | 1 |
+| `=` optionnel, non ancré | 2 | 0 |
+| **`(?m)^\s*…\s*=?\s*["\']`** | **0** | **0** |
+
+⚠️ **Le faux positif que le remède du run laissait est instructif : un
+COMMENTAIRE qui parle du motif.** L'agent en avait justement écrit un dans sa
+propre configuration — son remède se serait signalé lui-même. C'est le piège que
+ce chantier connaît sous une autre forme : *un fichier doit pouvoir parler d'un
+mécanisme sans être classé par ce qu'il en dit.*
+
+📌 **Aucun changement de code n'est nécessaire** : `compilePattern` accepte déjà
+les drapeaux inline `(?m)`, et aucun motif livré n'emploie `^` ni `$`, donc le
+drapeau n'a aucun effet de bord. Et le motif ancré **gagne** un cas que les deux
+autres manquaient — la forme Groovy `storePassword 'valeur'`, sans `=`.
+
+### 210. Une boucle de micro-tâches fige l'étage 1 SANS UN MOT, et aucun plafond ne la coupe
+
+Relevé sur un projet réel : `flutter test test/argus` s'est figé **dix minutes**,
+`flutter_tester` à ~10 % de CPU, aucune sortie. La cause était dans le projet —
+un champ de saisie de code à usage unique dont le service rend
+`Future.value(null)` **immédiatement** hors Android, si bien que la boucle qui
+l'interroge réempile une micro-tâche sans délai.
+
+⚠️ **Et le remède habituel ne marche pas.** En temps simulé, une boucle de
+micro-tâches **affame la boucle d'événements** : aucun timer ne s'exécute plus,
+donc aucun `timeout:` sur `testWidgets` ne se déclenche. Les quinze
+`testWidgets` du scaffold n'en portent d'ailleurs aucun, et en ajouter ne
+changerait rien.
+
+⚠️ Un plafond **externe** ne se pose pas non plus : `argus-guards` lance
+`flutter test` nu, et `timeout` n'existe ni sur macOS par défaut ni sans
+coreutils — vérifié sur la machine du chantier, ni `timeout` ni `gtimeout`. Le
+poser quand même donnerait une protection qui ne protège que sur Linux, ce qui
+est pire qu'aucune.
+
+Reste ce que le skill peut vraiment faire : **nommer le symptôme et son
+diagnostic**, là où on lance l'étage 1. Une suite qui pend sans un mot se
+diagnostique en une phrase quand on sait quoi chercher, et se cherche une heure
+quand on ne le sait pas.
+
+### 211. `ACCESS_FINE_LOCATION` est interdite par défaut, alors qu'elle est métier pour toute une famille d'applications
+
+`forbiddenPermissions` livre quatre entrées, dont `ACCESS_FINE_LOCATION`. Sur les
+**deux** runs du terrain, l'agent a dû la retirer : la position est une exigence
+du produit — le serveur refuse l'opération sans elle.
+
+Les trois autres (`READ_SMS`, `RECEIVE_SMS`, `READ_CONTACTS`) sont d'une autre
+nature : leur présence est presque toujours un signal. La localisation, non —
+livraison, transport, cartographie, terrain. Laisser le défaut produit un
+`critical` permanent sur une exigence légitime, et l'agent doit le désarmer sans
+que rien lui dise que c'est prévu.
+
+📌 Ce n'est pas une clé à supprimer : c'est un **défaut à justifier**. Une liste
+de permissions interdites n'a de sens que si l'on sait laquelle relève du signal
+et laquelle relève du métier.
+
+### 212. Le gabarit ne dit pas si l'agent a le droit d'écrire dans un paquet VOISIN
+
+Le point 207 a fait dire au SKILL quoi faire quand le composant vit dans un autre
+dépôt : ne pas trancher seul, inscrire la dette. Le run suivant l'a lu et
+appliqué — il cite la phrase presque mot pour mot.
+
+Mais il termine par : *« ce qui aurait levé l'ambiguïté : une ligne disant si
+j'avais le droit d'y écrire »*. Le skill dit quoi faire ; le **cadrage** ne dit
+pas ce qui est permis. Mesuré : **zéro** occurrence de « paquet voisin », « autre
+dépôt » ou « paquet partagé » dans `PROMPTS.md`.
+
+C'est la forme exacte du point 208, une passe plus tard : une chose que l'agent
+doit trancher seul et qui ne se déduit d'aucun dépôt. Deux runs de suite ont
+laissé **six et cinq ancres inertes** faute de cette ligne.
+
+
 ## Ce qui reste
 
 Les points **202 à 208** sont fermés le 28/08/2026, le jour même de leur
@@ -3791,7 +3880,7 @@ le corriger demande un lexer, et le remède évident casse six lectures légitim
 Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
 inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 209.**
+**Prochain numéro libre : 213.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
