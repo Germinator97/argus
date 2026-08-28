@@ -582,6 +582,20 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_AUTH_PASS: anchors.password ?? '',
     ARGUS_AUTH_SUBMIT: anchors.submit ?? '',
     ARGUS_AUTH_SUCCESS: anchors.success ?? '',
+    // L'écran qu'on doit voir APRÈS `login.yaml` — et ce n'est PAS l'écran de
+    // départ. Sur une app authentifiée, `ARGUS_ANCHOR_HOME` porte l'ancre de
+    // l'écran `start: true`, donc celui de CONNEXION : deux flows l'assertaient
+    // juste après s'être connectés, c'est-à-dire l'écran qu'ils venaient de
+    // quitter. L'échec accusait alors l'instrumentation — capture de l'accueil
+    // à l'appui — et conseillait de relever `startTimeoutMs`, pour une lenteur
+    // qui n'existait pas.
+    //
+    // ⚠️ Dérivée ICI et pas recopiée dans chaque flow : la décision « après
+    // authentification, ce n'est plus l'écran de départ » est une, et les deux
+    // `when` qui l'auraient portée auraient divergé au premier flow ajouté.
+    // Sans authentification configurée, `success` est vide et la valeur retombe
+    // sur l'écran de départ, qui est alors le bon.
+    ARGUS_ANCHOR_AFTER_AUTH: anchorAfterAuth(anchors, home),
     // ⚠️ LA DÉCISION VIT ICI, pas dans la condition du sous-flow. Le commentaire
     // de `argus.mobile.yaml` promettait « une seule vide → le sous-flow skippe
     // en entier, plutôt que d'échouer à mi-parcours sur un champ introuvable » ;
@@ -979,6 +993,24 @@ export function visitedScreens(bundles, screens) {
   return (screens ?? [])
     .filter((/** @type {any} */ sc) => sc?.anchor && vues.has(sc.anchor))
     .map((/** @type {any} */ sc) => sc.id);
+}
+
+/**
+ * L'ancre qu'on doit voir APRÈS `login.yaml`.
+ *
+ * ⚠️ Ce n'est PAS l'écran de départ. Sur une application authentifiée, l'écran
+ * `start: true` est celui de CONNEXION — l'asserter après s'être connecté, c'est
+ * viser celui qu'on vient de quitter. Deux flows le faisaient, et l'échec
+ * accusait l'instrumentation, capture de l'accueil à l'appui, en conseillant de
+ * relever `startTimeoutMs` pour une lenteur qui n'existait pas.
+ *
+ * ⚠️ Sans authentification configurée, `success` est vide et l'on retombe sur
+ * l'écran de départ — qui est alors le bon. Les deux moitiés comptent : un
+ * remède qui viserait toujours `success` casserait toutes les apps locales.
+ * @param {any} anchors @param {any} home @returns {string}
+ */
+function anchorAfterAuth(anchors, home) {
+  return String(anchors?.success || home?.anchor || '');
 }
 
 /**
@@ -1894,5 +1926,6 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
+  anchorAfterAuth,
   startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

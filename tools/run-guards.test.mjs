@@ -43,6 +43,7 @@ import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceSta
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
@@ -3579,4 +3580,55 @@ test('login.yaml porte le marqueur, et la config continue d\'y envoyer', () => {
   const cfg = readFileSync(join(base, 'argus.mobile.yaml'), 'utf8');
   assert.match(cfg, /login\.yaml/,
     'la config doit continuer de nommer le fichier où la forme réelle s\'écrit');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 203 — après la connexion, ce n'est plus l'écran de départ
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('anchorAfterAuth vise la session ouverte, et retombe sur le départ sans auth', () => {
+  // Le cas qui motive : l'écran `start: true` est celui de CONNEXION.
+  assert.equal(anchorAfterAuth({ success: 'home_root' }, { anchor: 'login_root' }), 'home_root');
+  // ⚠️ L'autre moitié : sans authentification configurée, l'écran de départ EST
+  // le bon. Un remède qui viserait toujours `success` casserait toute app locale.
+  assert.equal(anchorAfterAuth({ success: '' }, { anchor: 'home_root' }), 'home_root');
+  assert.equal(anchorAfterAuth({}, { anchor: 'home_root' }), 'home_root');
+  assert.equal(anchorAfterAuth({}, null), '', 'rien de configuré : on ne fabrique pas d\'ancre');
+});
+
+test('aucun flow n\'asserte l\'écran de départ APRÈS s\'être connecté', () => {
+  const dir = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  /** @param {string} d @returns {string[]} */
+  const flows = (d) => readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+    const p = join(d, e.name);
+    return e.isDirectory() ? flows(p) : (e.name.endsWith('.yaml') ? [p] : []);
+  });
+  const tous = flows(dir);
+  assert.ok(tous.length >= 10, `${tous.length} flow(s) lu(s) — le scaffold a bougé`);
+
+  const fautifs = tous.filter((f) => {
+    const src = readFileSync(f, 'utf8');
+    return src.includes('login.yaml') && src.includes('ARGUS_ANCHOR_HOME');
+  }).map((f) => basename(f));
+  assert.deepEqual(fautifs, [],
+    'ce flow se connecte puis asserte l\'écran qu\'il vient de quitter — l\'échec accusera l\'instrumentation');
+
+  // ⚠️ Et le garde doit voir que quelqu'un se connecte : sans ça il resterait
+  // vert le jour où plus aucun flow n'appelle login, en ne mesurant rien.
+  const connectants = tous.filter((f) => readFileSync(f, 'utf8').includes('login.yaml'));
+  assert.ok(connectants.length >= 2,
+    'aucun flow n\'appelle login.yaml — ce garde ne mesure plus rien');
+});
+
+test('launch-clean attend toujours l\'écran de départ, lui', () => {
+  // La moitié qu'un balayage trop large aurait emportée : AVANT la connexion,
+  // l'écran de départ est exactement ce qu'il faut attendre.
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'), 'utf8');
+  assert.match(src, /ARGUS_ANCHOR_HOME/,
+    'le lancement à état vide vise bien l\'écran de départ, et doit continuer');
+  assert.ok(!src.includes('login.yaml'),
+    'et il ne se connecte pas — c\'est ce qui rend son attente correcte');
 });

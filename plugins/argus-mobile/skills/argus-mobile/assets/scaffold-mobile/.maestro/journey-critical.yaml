@@ -21,11 +21,11 @@ tags:
 
 - runFlow:
     when:
-      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+      true: "${typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined' && ARGUS_ANCHOR_AFTER_AUTH !== ''}"
     commands:
       - extendedWaitUntil:
           visible:
-            id: ${ARGUS_ANCHOR_HOME}
+            id: ${ARGUS_ANCHOR_AFTER_AUTH}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Point de départ du parcours
 
@@ -63,7 +63,7 @@ tags:
 
 - runFlow:
     when:
-      true: "${typeof ARGUS_ANCHOR_HOME === 'undefined' || ARGUS_ANCHOR_HOME === ''}"
+      true: "${typeof ARGUS_ANCHOR_AFTER_AUTH === 'undefined' || ARGUS_ANCHOR_AFTER_AUTH === ''}"
     commands:
       - assertTrue:
           condition: "${true}"

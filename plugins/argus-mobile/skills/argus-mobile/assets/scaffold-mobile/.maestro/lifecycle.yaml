@@ -22,10 +22,10 @@ tags:
 
 - runFlow:
     when:
-      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+      true: "${typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined' && ARGUS_ANCHOR_AFTER_AUTH !== ''}"
     commands:
       - assertVisible:
-          id: ${ARGUS_ANCHOR_HOME}
+          id: ${ARGUS_ANCHOR_AFTER_AUTH}
           label: L'écran est retrouvé tel qu'il était
 
 # ── 2. Mort du processus et restauration ───────────────────────────────────
@@ -41,11 +41,11 @@ tags:
 
 - runFlow:
     when:
-      true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
+      true: "${typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined' && ARGUS_ANCHOR_AFTER_AUTH !== ''}"
     commands:
       - extendedWaitUntil:
           visible:
-            id: ${ARGUS_ANCHOR_HOME}
+            id: ${ARGUS_ANCHOR_AFTER_AUTH}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: L'app repart proprement après mort du processus
       # TODO(argus): asserte ici la DONNÉE restaurée, pas seulement l'écran.
