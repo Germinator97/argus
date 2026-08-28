@@ -448,6 +448,22 @@ MUTATIONS = [
     ("gitignore", "le remède proposé redevient une clé qui n'existe pas",
      "#   - rendre la zone déterministe avant capture (`_subflows/mask-dynamic.yaml`) ;",
      "#   - masquer la zone (`dynamicRegions`), ce qui la retire de la comparaison ;"),
+    # ── Trentième run — la vérification du terrain à API ────────────────────
+    # ⚠️ Celle-ci vise la VALEUR : le garde compile le motif et le confronte à
+    # six lignes, donc remettre la forme large doit le faire tomber même si le
+    # motif « existe » toujours.
+    ("yamlconf", "le motif de keystore redevient large et attrape les lectures",
+     "    - '(?m)^\\s*[sS]tore[pP]assword\\s*=?\\s*[\"'']'",
+     "    - '[sS]tore[pP]assword\\s*=\\s*\\S+'"),
+    ("yamlconf", "la localisation redevient interdite par défaut",
+     "    - android.permission.READ_CONTACTS",
+     "    - android.permission.READ_CONTACTS\n    - android.permission.ACCESS_FINE_LOCATION"),
+    ("skill", "le diagnostic de la suite qui pend disparaît",
+     "affame la boucle",
+     "ralentit la boucle"),
+    ("prompts", "le cadrage cesse de demander la permission sur un paquet voisin",
+     "- <si le projet tire ses composants d'un paquet VOISIN",
+     "- <ligne retirée"),
 ]
 
 
@@ -543,6 +559,17 @@ def main():
         verif = None
         if cible.suffix == ".mjs":
             verif = ["node", "--check", str(cible)]
+        elif cible.name == "argus.mobile.yaml":
+            # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
+            # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
+            # section de flow. La cible existait depuis le run 29 sans qu'aucune
+            # mutation ne l'exerce, donc personne ne pouvait le savoir : une
+            # cible sans mutation est vacante, comme un garde sans épreuve.
+            # C'est le parseur du skill qui fait foi ici.
+            verif = ["node", "-e",
+                     "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
+                     + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
+                     + "')).catch(e => { console.error(e.message); process.exit(1); })"]
         elif cible.suffix in (".yaml", ".yml") and MAESTRO:
             verif = [MAESTRO, "check-syntax", str(cible)]
         if verif is not None:
