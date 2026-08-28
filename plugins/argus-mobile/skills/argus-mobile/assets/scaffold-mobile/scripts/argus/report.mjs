@@ -194,21 +194,58 @@ function perfRows(perf) {
   }).join('');
 }
 
+/**
+ * La visionneuse des preuves. Les vignettes sont bornées pour que la page reste
+ * parcourable ; celle-ci rend la capture lisible quand on la demande.
+ *
+ * ⚠️ TROIS SORTIES, et c'est la seule chose qui compte ici : la croix, le clic
+ * hors de l'image, et Échap. Un overlay plein cadre recouvre tout ce qui est
+ * sous lui — y compris la barre par laquelle on croyait pouvoir revenir — et
+ * c'est le défaut qu'on ferme ailleurs dans ce rapport, pas celui qu'on ajoute.
+ *
+ * ⚠️ Un seul écouteur, délégué au document : les vignettes sont rendues dans
+ * des cartes que ce script ne connaît pas, et brancher chaque image aurait
+ * laissé muettes celles d'un futur bloc. Le geste porte sur la classe.
+ */
+export const LIGHTBOX = `<div class="lb" id="argus-lb" role="dialog" aria-modal="true" aria-label="preuve agrandie">
+<button class="lb-x" type="button" aria-label="Fermer la preuve">&times;</button><img alt=""></div>
+<script>
+(function () {
+  var lb = document.getElementById('argus-lb');
+  if (!lb) return;
+  var img = lb.querySelector('img');
+  function fermer() { lb.classList.remove('on'); img.removeAttribute('src'); }
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || !t.classList) return;
+    if (t.classList.contains('shot')) { img.src = t.src; img.alt = t.alt; lb.classList.add('on'); return; }
+    if (t === lb || t.classList.contains('lb-x')) fermer();
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') fermer(); });
+})();
+</script>`;
+
 /** @param {any[]} findings @param {Map<string,string>} shots @returns {string} */
-function findingCards(findings, shots = new Map()) {
+export function findingCards(findings, shots = new Map()) {
   if (findings.length === 0) return '<p class="muted">Aucun finding. 🎉</p>';
   return SEVERITIES.map((severity) => {
     const group = findings.filter((f) => f.severity === severity);
     if (group.length === 0) return '';
-    const cards = group.map((f) => `<div class="card ${severity}">
+    const cards = group.map((f) => {
+      // Rendu SEULEMENT s'il y a des images : avec `evidence: none` le rapport
+      // ne porte que des chemins, et une rangée vide laisserait une gouttière
+      // morte sous chaque finding.
+      const vignettes = (f.evidence ?? []).filter((/** @type {string} */ e) => shots.has(e));
+      return `<div class="card ${severity}">
       <div class="card-h"><span class="badge ${severity}">${severity}</span> <strong>${esc(f.title)}</strong> <span class="muted">${esc(f.id)}</span></div>
       <div class="meta">${esc(f.dimension ?? '')}${f.screen ? ` · écran ${esc(f.screen)}` : ''}${f.selector ? ` · ${esc(f.selector)}` : ''}${f.device ? ` · ${esc(f.device)}` : ''}${f.platform ? ` · ${esc(f.platform)}` : ''}</div>
       <table class="kv"><tr><th>attendu</th><td>${esc(f.expected)}</td></tr><tr><th>constaté</th><td>${esc(f.actual)}</td></tr></table>
       ${f.suggestedFix ? `<div class="fix">${esc(f.suggestedFix)}</div>` : ''}
-      ${(f.evidence ?? []).length ? `<div class="meta">preuve : ${(f.evidence ?? []).map((/** @type {string} */ e) => esc(e)).join(' · ')}</div>` : ''}${(f.evidence ?? []).filter((/** @type {string} */ e) => shots.has(e)).map((/** @type {string} */ e) => `<img class="shot" src="${shots.get(e)}" alt="preuve : ${esc(e)}" loading="lazy">`).join('')}
+      ${(f.evidence ?? []).length ? `<div class="meta">preuve : ${(f.evidence ?? []).map((/** @type {string} */ e) => esc(e)).join(' · ')}</div>` : ''}${vignettes.length ? `<div class="shots">${vignettes.map((/** @type {string} */ e) => `<img class="shot" src="${shots.get(e)}" alt="preuve : ${esc(e)}" loading="lazy">`).join('')}</div>` : ''}
       ${(f.repro ?? []).length ? `<pre>${(f.repro ?? []).map((/** @type {string} */ r) => esc(r)).join('\n')}</pre>` : ''}
       ${f.wcag ? `<div class="meta">${esc(f.wcag)}</div>` : ''}
-    </div>`).join('');
+    </div>`;
+    }).join('');
     return `<h3>${severity} (${group.length})</h3>${cards}`;
   }).join('');
 }
@@ -220,7 +257,8 @@ function findingCards(findings, shots = new Map()) {
 const TITLE = 'Argus Mobile — rapport QA';
 
 /** Le style, partagé par les deux rendus. */
-const STYLE = `<style>
+// Exporté pour que les gardes LISENT le style rendu au lieu d'un motif de source.
+export const STYLE = `<style>
   :root{--bg:#0f1115;--card:#181b22;--fg:#e7e9ee;--muted:#8b93a7;--ok:#2ecc71;--bad:#e85d26;--warn:#f1c40f;--line:#262b36}
   *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   .wrap{max-width:1100px;margin:0 auto;padding:32px 20px}
@@ -248,7 +286,25 @@ const STYLE = `<style>
   .badge.minor,.badge.info{background:rgba(139,147,167,.18);color:var(--muted)}
   .badge.good{background:rgba(46,204,113,.18);color:var(--ok)}
   pre{background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
-  .shot{max-width:100%;display:block;border:1px solid var(--line);border-radius:6px;margin-top:8px}
+  /* ⚠️ UNE HAUTEUR, sinon la page cesse d'être parcourable. Une preuve est une
+     capture de téléphone — 1080×2400, ratio 1:2,22 — donc rendue à pleine
+     largeur elle occupe ~2 600 px de haut À ELLE SEULE, et un finding de quatre
+     lignes se retrouve suivi de trois écrans de défilement. Le rapport n'a
+     jamais eu d'autre usage que d'être parcouru.
+     ⚠️ Le défaut est né du correctif qui a rendu les captures possibles sur un
+     run vert : tant qu'aucune image n'était rendue, rien ne pouvait être trop
+     haut. Un remède déplace le mode de panne plus souvent qu'il ne le supprime.
+     ⚠️ Et la rangée compte autant que la hauteur. Un finding porte tous les
+     artefacts de son flow : pour un échec visuel, référence + capture + diff.
+     Aucun des 320 findings des 26 runs archivés n'en portait plus d'un, parce
+     qu'aucune régression visuelle n'avait encore été attrapée — c'est-à-dire
+     que le cas non observé est le cas NOMINAL du mode REGRESS. */
+  .shots{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .shot{height:240px;width:auto;max-width:100%;object-fit:contain;object-position:top;display:block;border:1px solid var(--line);border-radius:6px;background:#0b0d11;cursor:zoom-in}
+  .lb{position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;z-index:99;padding:24px}
+  .lb.on{display:flex}
+  .lb img{max-width:92vw;max-height:88vh;object-fit:contain;border-radius:6px}
+  .lb-x{position:absolute;top:12px;right:16px;font:inherit;font-size:26px;line-height:1;color:#fff;background:rgba(0,0,0,.55);border:1px solid var(--line);border-radius:6px;padding:2px 12px;cursor:pointer}
   .ok-list{list-style:none;padding:0}.ok-list li{margin:4px 0}
   .muted{color:var(--muted)}footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
 </style>`;
@@ -303,7 +359,8 @@ function renderBody(context) {
   ${ok.length ? `<ul class="ok-list">${ok.map((/** @type {any} */ p) => `<li>${esc(p.label)} <span class="muted">— exécutée, aucun finding</span></li>`).join('')}</ul>` : '<p class="muted">Aucune dimension n\'a tourné sans finding.</p>'}
 
   <footer>Généré par Argus Mobile (Claude Code) · ${esc(generatedAt)}</footer>
-</div>`;
+</div>
+${shots.size ? LIGHTBOX : ''}`;
 }
 
 /** Le rapport tel qu'il s'ouvre depuis le disque, enveloppe comprise.

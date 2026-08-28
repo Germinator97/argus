@@ -31,6 +31,7 @@ import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, releaseBuildCmd, sh, shTi
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -3399,4 +3400,71 @@ test('un contexte de mesure ne fabrique jamais de finding', () => {
   assert.equal(
     startupFindings(sous, { id: 'x', udid: 'y', os: 'z' }, 'android', config, 'debug').length, 0,
     '2500 ms moins 2000 de splash assumé passe sous le budget : rien à signaler');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 200 — la page publiée doit rester PARCOURABLE
+//
+// Trouvé en regardant la page, comme le 187 — et créé PAR le correctif du 187 :
+// tant qu'une capture ne pouvait exister que sur échec, la page n'en portait
+// jamais, donc rien ne pouvait être trop haut. Ces gardes appellent le rendu.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Un finding porteur de N preuves, dont M sont embarquées. */
+const findingAvec = (evidence) => ({
+  severity: 'major', id: 'QAM-DEMO', title: 'un titre', dimension: 'a11y',
+  expected: 'e', actual: 'a', evidence,
+});
+
+test('la hauteur des vignettes est bornée, pas seulement leur largeur', () => {
+  const regle = STYLE.match(/\.shot\{([^}]*)\}/);
+  assert.ok(regle, '.shot a disparu du style — si la classe a été renommée, mets ce garde à jour');
+  // ⚠️ `max-width:100%` seul ne borne RIEN sur une capture de téléphone : à
+  // 1080×2400 elle est rendue sur ~2 600 px de haut, et un finding de quatre
+  // lignes se retrouve suivi de trois écrans de défilement.
+  assert.match(regle[1], /(^|;)\s*height:/,
+    'une preuve doit avoir une hauteur, sinon la page cesse d\'être parcourable');
+  assert.match(regle[1], /object-fit:\s*contain/,
+    'et garder son ratio : une capture déformée ne prouve plus ce qu\'elle montre');
+});
+
+test('N preuves tiennent dans UNE rangée, une comme trois', () => {
+  const shots = new Map([
+    ['ref.png', 'data:image/png;base64,AAA'],
+    ['actuel.png', 'data:image/png;base64,BBB'],
+    ['diff.png', 'data:image/png;base64,CCC'],
+  ]);
+  // ⚠️ Le cas de trois est le cas NOMINAL du mode REGRESS — un échec visuel
+  // porte référence, capture et diff. Aucun des 320 findings des 26 runs
+  // archivés n'en portait plus d'un, parce qu'aucune régression visuelle
+  // n'avait encore été attrapée : l'absence d'observation n'est pas l'absence
+  // de besoin, et c'est exactement ce cas-là qui empilerait ~8 000 px.
+  const trois = findingCards([findingAvec(['ref.png', 'actuel.png', 'diff.png'])], shots);
+  assert.equal((trois.match(/class="shot"/g) ?? []).length, 3, 'les trois preuves sont rendues');
+  assert.equal((trois.match(/class="shots"/g) ?? []).length, 1, 'dans une seule rangée');
+
+  const une = findingCards([findingAvec(['ref.png'])], shots);
+  assert.equal((une.match(/class="shot"/g) ?? []).length, 1);
+  assert.equal((une.match(/class="shots"/g) ?? []).length, 1, 'le cas à une preuve passe par la même rangée');
+});
+
+test('sans capture embarquée, ni rangée ni gouttière vide', () => {
+  // C'est `evidence: none`, et le rapport local : les chemins restent, les
+  // images non. Une rangée vide laisserait un blanc sous chaque finding.
+  const html = findingCards([findingAvec(['ref.png'])], new Map());
+  assert.match(html, /preuve : ref\.png/, 'le chemin de la preuve reste lisible');
+  assert.ok(!/class="shots"/.test(html), 'mais aucune rangée n\'est ouverte');
+  assert.ok(!/class="shot"/.test(html), 'et aucune vignette');
+});
+
+test('la visionneuse a TROIS sorties, et le garde les nomme', () => {
+  // ⚠️ Un overlay plein cadre recouvre tout ce qui est sous lui, barre de
+  // retour comprise. C'est le défaut qu'on ferme ailleurs dans ce rapport ;
+  // l'ajouter ici en n'offrant qu'une sortie serait le rejouer.
+  assert.ok(LIGHTBOX.length > 200, 'la visionneuse est vide — ce garde ne mesurerait rien');
+  assert.match(LIGHTBOX, /class="lb-x"/, 'sortie 1 : la croix');
+  assert.match(LIGHTBOX, /t === lb/, 'sortie 2 : le clic hors de l\'image');
+  assert.match(LIGHTBOX, /'Escape'/, 'sortie 3 : la touche Échap');
+  assert.match(LIGHTBOX, /aria-modal="true"/, 'et elle se déclare comme modale');
 });
