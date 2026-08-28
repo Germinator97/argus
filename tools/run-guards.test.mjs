@@ -3708,3 +3708,31 @@ test('le gabarit cadre une app qui consomme une API', () => {
   assert.match(src, /SI L'APPLICATION CONSOMME UNE API/,
     'le bloc doit rester conditionnel — une app locale n\'a rien à y répondre');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Point 207 — le bon remède suppose qu'on peut éditer le composant
+//
+// Tous les exemples du skill vivent dans le même dépôt (`lib/…/shared/`). Un
+// projet mature tire son design system d'un paquet VOISIN, parfois partagé avec
+// une application en production : la recette s'y applique mot pour mot et
+// devient un arbitrage. Six ancres inertes ont été inscrites en dette faute de
+// pouvoir poser un paramètre une couche plus bas.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le skill dit quoi faire quand le composant vit dans un autre dépôt', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // Le cas est nommé…
+  assert.match(src, /AUTRE DÉPÔT/,
+    'le cas du paquet voisin doit être nommé, pas laissé à l\'analogie');
+  // …et il prescrit les deux gestes, pas seulement le constat.
+  assert.match(src, /Ne tranche pas seul/,
+    'modifier l\'API publique d\'un paquet tiers n\'est pas une décision de QA');
+  assert.match(src, /known_issues\.dart/,
+    'et le coût s\'inscrit en dette plutôt que de rester tu');
+  // ⚠️ La moitié qui compte : il doit dire que l'ancre POSÉE reste utile, sinon
+  // le lecteur la retire et perd le `tapOn` en plus de la preuve.
+  assert.match(src, /inerte/,
+    'l\'ancre reste trouvable par Maestro — c\'est ce qu\'elle PROUVE qui disparaît');
+});

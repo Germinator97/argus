@@ -531,6 +531,28 @@ IconButton(
 )
 ```
 
+⚠️ **ET SI LE COMPOSANT VIT DANS UN AUTRE DÉPÔT, LE BON REMÈDE T'EST INTERDIT.**
+Tout ce qui précède suppose que tu peux éditer le composant. Un projet mature
+tire souvent son design system d'un paquet **voisin** — dépendance par chemin,
+dépôt distinct, partagé avec d'autres applications parfois en production. La
+recette s'y applique mot pour mot, et devient un **arbitrage** : modifier l'API
+publique d'un paquet tiers n'est pas une décision de QA.
+
+Ne tranche pas seul. Demande, et en attendant **inscris le coût** plutôt que de
+le taire — la dette assumée est faite pour ça :
+
+- pose quand même l'ancre au call-site : Maestro la trouvera, le `tapOn` marchera,
+  et l'accessibilité n'est pas dégradée puisque le libellé du bouton reste lu ;
+- mais elle est **inerte**, donc elle ne prouve plus rien : `make argus-anchors`
+  la rougit avec son nom, et c'est cette ligne-là qui va dans `known_issues.dart` ;
+- écris dans le fichier de dette **où** est le remède — « une ligne dans
+  `<paquet>`, un paramètre optionnel non cassant » —, pour que la personne qui
+  peut le faire sache exactement quoi.
+
+Relevé sur un projet réel : **six ancres de commande** inscrites ainsi, faute de
+pouvoir poser un paramètre une couche plus bas. C'est un résultat honnête ; le
+taire aurait produit six ancres qui ont l'air de garder quelque chose.
+
 ⚠️ `tooltip:` ne remplace pas le libellé — mesuré : il remplit le champ
 `tooltip` du nœud et laisse `label` **vide**. Un bouton icône avec tooltip reste
 donc anonyme pour TalkBack. Pose `label:` sur le même `Semantics`.
