@@ -3736,3 +3736,77 @@ test('le skill dit quoi faire quand le composant vit dans un autre dépôt', () 
   assert.match(src, /inerte/,
     'l\'ancre reste trouvable par Maestro — c\'est ce qu\'elle PROUVE qui disparaît');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Points 209 à 212 — ce que le second terrain a rendu en vérification
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le motif de keystore discrimine une LECTURE d\'un SECRET', () => {
+  // ⚠️ Ce garde EXERCE le motif tel que le scan le compilera — il ne le lit pas.
+  // La version livrée jusqu'ici rendait `blocker` sur
+  // `storePassword = props.getProperty("storePassword")`, une ligne qui lit une
+  // valeur hors dépôt, et prescrivait de « révoquer la clé ».
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const motifs = [...src.matchAll(/^\s*- '(\(\?m\)[^']*(?:''[^']*)*)'/gm)].map((m) => m[1].replace(/''/g, "'"));
+  const keystore = motifs.filter((m) => /assword/.test(m));
+  assert.equal(keystore.length, 2,
+    `${keystore.length} motif(s) de mot de passe trouvé(s), 2 attendus — mets ce garde à jour`);
+
+  for (const source of keystore) {
+    const inline = /^\(\?([imsux]+)\)/.exec(source);
+    const re = new RegExp(inline ? source.slice(inline[0].length) : source,
+      inline ? inline[1].replace(/[^ims]/g, '') : '');
+    const quoi = /tore\[pP\]assword/.test(source) ? 'storePassword' : 'keyPassword';
+    // ce qui doit être IGNORÉ
+    for (const sain of [
+      `${quoi} = keystoreProperties.getProperty("${quoi}")`,
+      `${quoi} = System.getenv("SECRET")`,
+      `// ${quoi} = "…" en dur matche toujours`,
+    ]) {
+      assert.ok(!re.test(sain), `faux positif sur une ligne saine : ${sain}`);
+    }
+    // ce qui doit être ATTRAPÉ — les deux moitiés, dont la forme Groovy sans `=`
+    for (const secret of [`        ${quoi} = "secret123"`, `        ${quoi} 'secret123'`]) {
+      assert.ok(re.test(secret), `secret manqué : ${secret}`);
+    }
+  }
+});
+
+test('la localisation n\'est plus interdite par défaut, les trois autres le restent', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const bloc = src.match(/forbiddenPermissions:\n((?:\s+-\s+\S+\n)+)/);
+  assert.ok(bloc, 'forbiddenPermissions a disparu — mets ce garde à jour');
+  const perms = bloc[1].split('\n').map((l) => l.trim().replace(/^-\s*/, '')).filter(Boolean);
+  // ⚠️ Les deux moitiés. Retirer la localisation ne doit pas vider la liste :
+  // les trois autres sont d'une autre nature — leur présence est un signal.
+  assert.ok(!perms.includes('android.permission.ACCESS_FINE_LOCATION'),
+    'la localisation est métier pour toute une famille d\'apps — deux projets ont dû la désarmer');
+  for (const p of ['READ_SMS', 'RECEIVE_SMS', 'READ_CONTACTS']) {
+    assert.ok(perms.some((x) => x.endsWith(p)), `${p} doit rester interdite par défaut`);
+  }
+  assert.match(src, /ACCESS_FINE_LOCATION/,
+    'et le défaut doit rester REMETTABLE : la ligne est commentée, pas supprimée');
+});
+
+test('le skill nomme la suite qui pend, et dit qu\'aucun plafond ne sauve', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(src, /micro-tâches/, 'le symptôme doit être nommé par sa cause');
+  assert.match(src, /affame la boucle/, 'et par le mécanisme, sinon on cherche un test lent');
+  // ⚠️ La moitié qui compte : dire que le remède habituel NE MARCHE PAS, sinon
+  // le lecteur passe une heure à poser des timeouts qui ne se déclenchent pas.
+  assert.match(src, /déclenche pas/, 'un timeout est lui-même un timer');
+  assert.match(src, /Completer\(\)/, 'et le remède réel est dans le double');
+});
+
+test('le gabarit demande si l\'agent peut écrire dans un paquet voisin', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  assert.match(src, /paquet VOISIN/,
+    'le skill dit quoi faire sans la permission ; le cadrage doit dire si elle existe');
+  assert.match(src, /ancres inertes/,
+    'et ce que son absence coûte, mesuré sur deux projets');
+});

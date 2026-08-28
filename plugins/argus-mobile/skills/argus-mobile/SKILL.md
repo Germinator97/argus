@@ -932,6 +932,25 @@ make argus-run         # et RELANCE : c'est ce passage-là qui compare
 make argus-report      # rapport HTML
 ```
 
+⚠️ **Et si `make argus-guards` ne rend JAMAIS la main, ne cherche pas un test
+lent : cherche une boucle de micro-tâches.** Le symptôme est net —
+`flutter_tester` tourne à quelques pour cent de CPU, aucune sortie, aucun
+timeout. Relevé sur un projet réel : dix minutes avant qu'on l'interrompe.
+
+La cause est un widget qui interroge un service en boucle, et dont le service
+rend un `Future` **déjà complété** sur la plateforme hôte — typiquement un
+`Future.value(null)` hors Android. La boucle réempile alors une micro-tâche sans
+jamais attendre de délai, et en temps simulé cela **affame la boucle
+d'événements** : plus aucun timer ne s'exécute.
+
+⚠️ **Aucun plafond ne t'en sortira**, et c'est ce qu'il faut savoir avant de le
+chercher : un `timeout:` sur `testWidgets` est lui-même un timer, donc il ne se
+déclenche pas ; et un plafond externe n'est pas portable (`timeout` n'existe pas
+sur macOS sans coreutils). Le remède est dans le **double** : fais rendre à ce
+service un `Future` qui ne se complète **jamais** (`Completer()` sans
+`complete`), ce que fait le vrai service tant qu'il attend. Sur le projet
+mesuré : deux secondes au lieu de l'infini.
+
 ⚠️ **L'ordre est délibéré, et il coûte un run de plus — dis-le plutôt que de le
 laisser passer pour une erreur.** Un premier `argus-run` sans références ne
 compare rien : la dimension visuelle s'y annonce non exécutée, ce qui est honnête

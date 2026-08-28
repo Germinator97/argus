@@ -406,7 +406,15 @@ security:
     - android.permission.READ_SMS
     - android.permission.RECEIVE_SMS
     - android.permission.READ_CONTACTS
-    - android.permission.ACCESS_FINE_LOCATION
+  # ⚠️ `ACCESS_FINE_LOCATION` N'EST PLUS INTERDITE PAR DÉFAUT, et c'est une
+  # décision. Les trois ci-dessus sont d'une autre nature : leur présence est
+  # presque toujours un signal. La localisation, non — livraison, transport,
+  # cartographie, intervention sur le terrain : le serveur y refuse souvent
+  # l'opération sans elle. La laisser interdite produisait un `critical`
+  # permanent sur une exigence légitime, que deux projets réels ont dû désarmer
+  # sans que rien leur dise que c'était prévu.
+  # Ajoute-la ci-dessus si TON application n'a aucune raison de localiser :
+  #   - android.permission.ACCESS_FINE_LOCATION
   # Drapeaux du manifeste Android exigés en release.
   requireDebuggableOff: true
   requireCleartextDisabled: true
@@ -432,8 +440,16 @@ security:
     - 'ya29\.[0-9A-Za-z\-_]+'                                     # jeton OAuth Google
     - 'eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.'            # JWT signé en dur
     - 'sk-[A-Za-z0-9]{32,}'                                       # clé de type OpenAI
-    - '[sS]tore[pP]assword\s*=\s*\S+'                             # keystore Android
-    - '[kK]ey[pP]assword\s*=\s*\S+'
+    # ⚠️ ANCRÉS EN DÉBUT DE LIGNE, et le `=` est optionnel. Mesuré sur six cas :
+    #   `…=\s*\S+`     → 3 faux positifs (une LECTURE `= props.getProperty("…")`,
+    #                      une lecture d'environnement, et un commentaire qui parle
+    #                      du motif) et 1 faux négatif (la forme Groovy sans `=`).
+    #   `…=\s*[quote]` → 1 faux positif (le commentaire) et 1 faux négatif.
+    #   celui-ci       → 0 et 0.
+    # Le drapeau `(?m)` est lu par `compilePattern`, et aucun autre motif livré
+    # n'emploie `^` ni `$` : il n'a donc aucun effet de bord.
+    - '(?m)^\s*[sS]tore[pP]assword\s*=?\s*["'']'                    # keystore Android
+    - '(?m)^\s*[kK]ey[pP]assword\s*=?\s*["'']'
   # Fichiers où un motif ci-dessus est ATTENDU et légitime : la clé `AIza` de
   # google-services.json est une clé client publique, pas une fuite. Sans cette
   # liste, chaque run remonterait le même faux positif — et un rapport qui crie

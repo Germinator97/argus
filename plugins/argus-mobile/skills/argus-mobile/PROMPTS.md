@@ -117,6 +117,11 @@ AUTORISATIONS ET LIMITES
 - Un seul émulateur à la fois, celui nommé ci-dessus. N'en lance jamais deux en
   parallèle.
 - Ce projet utilise <FVM | le SDK Flutter système> : emploie la bonne commande.
+- <si le projet tire ses composants d'un paquet VOISIN — dépendance par chemin,
+  dépôt distinct, design system partagé : dis si l'agent a le droit d'y écrire.
+  Le skill lui dit quoi faire sans cette permission — poser l'ancre au call-site
+  et inscrire la dette — mais il ne peut pas deviner si le paquet est à toi. Deux
+  projets réels y ont laissé six et cinq ancres inertes faute de cette ligne.>
 - <les comptes de test, s'il en faut : identifiants dans $QA_USER et $QA_PASS —
   ne les écris nulle part. DIS D'OÙ ILS VIENNENT : un fichier hors dépôt à
   sourcer, un gestionnaire de secrets. Citer deux noms de variables ne suffit
