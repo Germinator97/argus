@@ -3771,6 +3771,109 @@ doit trancher seul et qui ne se déduit d'aucun dépôt. Deux runs de suite ont
 laissé **six et cinq ancres inertes** faute de cette ligne.
 
 
+### 213. Le défaut de plateforme est `'android'` EN DUR, et il ignore `platforms:`
+
+`config.mjs`, aux **deux** sites qui servent le Makefile :
+
+```js
+const platform = arg('--platform') || 'android';   // l. 1188, --print-build-cmd
+const platform = (…'--platform='…) || 'android';   // l. 1199, --print-binary
+```
+
+Et le Makefile ne passe **jamais** `--platform`. Sur un projet déclaré
+`platforms: [ios]`, mesuré avec la configuration du scaffold **livré** :
+
+| commande | rendu | attendu |
+|---|---|---|
+| `--print-build-cmd` | `flutter build apk --debug` | `flutter build ios --debug --simulator` |
+| `--print-binary` | `…/app-debug.apk` | `…/iphonesimulator/Runner.app` |
+
+⚠️ **Les valeurs iOS existent et sont justes** — `--platform=ios` les rend
+correctement. C'est le défaut qui les ignore, pas la configuration qui manque.
+
+Ce que ça coûte : `make argus-build` construit un **APK sur un projet iOS**, la
+preuve de taille porte sur un binaire qui n'a rien à voir, et le runner installe
+ensuite autre chose que ce qui vient d'être construit. Un build de vingt
+secondes pour rien, puis le temps de comprendre pourquoi.
+
+📌 Le run l'a corrigé sur son terrain, en dérivant le défaut de
+`config.platforms?.[0]`, et a vérifié dans les deux sens. Le correctif est bon ;
+il vit dans un fichier du CADRE, donc il repart à la remise à neuf s'il n'est pas
+remonté ici.
+
+⚠️ **Et un second symptôme rapporté était FAUX** — je l'ai cru avant de mesurer
+proprement. `--print-binary` semblait rendre une *commande* au lieu d'un chemin ;
+c'était ma configuration de test qui portait la commande sous la clé du chemin.
+`build.android` est le binaire, `build.androidBuildCmd` la commande : deux clés
+voisines, et un montage bâclé les confond.
+
+### 214. La garde de fraîcheur du binaire est INERTE sur iOS
+
+`Makefile`, cible `argus-build` :
+
+```make
+APK="$(node scripts/argus/config.mjs --print-binary)"
+BEFORE=$(wc -c < "$APK" …)
+BEFOREH=$(shasum -a 256 "$APK" …)
+```
+
+Sur iOS, le binaire est `Runner.app` — un **répertoire**. `wc -c` y rend 0 et
+`shasum` échoue : la comparaison avant/après compare donc `0` à `0`, et la garde
+qui doit dire « taille inchangée ⇒ lance `flutter clean` » ne peut plus rien
+dire. Elle ne se tait pas : elle affirme `0 → 0 octets`, ce qui se lit comme une
+mesure.
+
+C'est le mode de panne que ce chantier connaît le mieux — un instrument qui rend
+un chiffre sans avoir mesuré. Relevé à la main sur le terrain : le bundle pèse
+**198 128 Ko**.
+
+### 215. `releaseBuildCmd()` et `buildHintFor()` conseillent un build ANDROID sur un projet iOS
+
+Deux fonctions du cadre ne lisent que les clés Android :
+
+- `config.mjs:776` — `String(config?.build?.androidBuildCmd ?? '')`, avec un repli
+  littéral `flutter build apk --release` ;
+- `sec.mjs:401` — `String(config?.build?.androidScan ?? '')` puis
+  `config?.build?.androidBuildCmd`.
+
+Conséquence sur un projet iOS : quand la taille de publication manque, `perf.mjs`
+prescrit `flutter build apk --release` — une commande qui, si on la suit, produit
+un APK et laisse la mesure iOS toujours absente. La consigne s'exécute sans
+erreur, ce qui est la pire forme : elle a toutes les apparences d'une consigne
+juste.
+
+### 216. `iosScan` est lue par QUATRE sites et documentée NULLE PART
+
+Mesuré sur le scaffold livré : `grep -c iosScan argus.mobile.yaml` → **0**,
+contre **3** lectures dans `perf.mjs` et **1** dans `sec.mjs`. Sa jumelle
+`androidScan`, elle, est déclarée.
+
+Un message d'erreur envoie pourtant la renseigner. L'utilisateur cherche donc
+une clé dans un fichier qui ne la mentionne pas — et le seul moyen d'apprendre
+qu'elle existe est de lire le code des scripts.
+
+C'est la forme symétrique du point 11 : là on avait des clés déclarées que rien
+ne lisait, ici une clé lue que rien ne déclare. Les deux se trouvent par le même
+garde, dérivé, et une seule des deux directions était couverte.
+
+### 217. Le saut de l'analyse binaire iOS explique par une raison qui peut être FAUSSE
+
+`sec.mjs:620` saute dès que `platform !== 'android'` — ce qui est correct,
+l'analyse iOS n'est pas couverte. Mais le message affirme :
+
+> « analyse binaire iOS non couverte : un `.app` de **simulateur** n'est pas le
+> binaire signé de l'App Store. »
+
+Or `iosScan` peut parfaitement pointer un build **device release**
+(`build/ios/iphoneos/Runner.app`), ce que le run a fait. Le lecteur qui a pris la
+peine de construire une release se voit alors expliquer qu'il a un build de
+simulateur.
+
+Le saut est bon ; sa justification décrit un cas qui n'est pas forcément le sien.
+Une raison fausse dans un message honnête coûte plus qu'une raison absente : elle
+fait chercher au mauvais endroit.
+
+
 ## Ce qui reste
 
 Les points **209 à 212** sont fermés le 28/08/2026 — le backlog se vide pour la
@@ -3922,7 +4025,7 @@ le corriger demande un lexer, et le remède évident casse six lectures légitim
 Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
 inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 213.**
+**Prochain numéro libre : 218.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
