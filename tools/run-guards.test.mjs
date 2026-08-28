@@ -43,6 +43,7 @@ import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argu
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -3317,4 +3318,85 @@ test('le périmètre par défaut du scaffold n\'est PAS un run filtré', () => {
   assert.match(runScope(['visual'], [], ['wip', 'manual']).scope, /^filtré \(\+visual\)/);
   assert.match(runScope([], ['lifecycle'], []).scope, /^filtré \(-lifecycle\)/);
   assert.equal(runScope([], [], []).scope, 'complet');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Points 198 et 199 — le variant vient de la MESURE, et il le dit partout
+//
+// Le 193 avait fait dire aux findings de `perf.mjs` sur quel binaire ils
+// mesuraient. Deux choses lui manquaient, et un run les a trouvées ensemble :
+// la valeur qu'il transportait était dérivée de la commande de build (199), et
+// le finding de démarrage produit par `run.mjs` ne la recevait pas du tout
+// (198). Ces gardes APPELLENT les deux constructions.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('installedVariant LIT le paquet posé, et ne suppose rien quand il ne lit pas', () => {
+  // `dumpsys package` rend plusieurs lignes `flags=` : une en hexadécimal, qui
+  // ne nomme rien, et une entre crochets, qui porte les drapeaux.
+  const debuggable = () => ({ stdout: '  flags=0x0\n  flags=[ DEBUGGABLE HAS_CODE ALLOW_BACKUP ]\n' });
+  const publiee = () => ({ stdout: '  flags=0x0\n  flags=[ HAS_CODE ALLOW_BACKUP KILL_AFTER_RESTORE ]\n' });
+  const absent = () => ({ stdout: 'Unable to find package: com.exemple.app\n' });
+
+  assert.equal(installedVariant('emulator-5554', 'com.exemple.app', debuggable), 'debug');
+  assert.equal(installedVariant('emulator-5554', 'com.exemple.app', publiee), 'release');
+  // ⚠️ La moitié qui compte : un paquet absent ne doit PAS se lire « release ».
+  // Ce serait le défaut d'origine reconstruit en silence, et dans le sens le
+  // plus flatteur — un rapport qui se dit propre sans avoir rien mesuré.
+  assert.equal(installedVariant('emulator-5554', 'com.exemple.app', absent), '',
+    'une lecture qui échoue rend la chaîne vide, jamais une supposition');
+  assert.equal(installedVariant('emulator-5554', '', debuggable), '',
+    'sans nom de paquet il n\'y a rien à lire');
+  // `pkgFlags=[ … ]` porte les mêmes drapeaux sous un autre nom selon l'API.
+  assert.equal(installedVariant('x', 'com.exemple.app',
+    () => ({ stdout: '  pkgFlags=[ DEBUGGABLE HAS_CODE ]\n' })), 'debug');
+});
+
+test('le variant n\'est plus dérivé de la commande de build', () => {
+  // ⚠️ Ce garde lit la SOURCE, ce qui ne voit pas une valeur neutralisée. Il ne
+  // tient que parce que la construction est extraite et exercée juste au-dessus :
+  // ici on vérifie le CÂBLAGE, là on vérifie ce que la fonction rend.
+  for (const f of ['perf.mjs', 'run.mjs']) {
+    const src = readFileSync(join(RACINE,
+      'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus', f), 'utf8');
+    assert.ok(src.length > 1000, `${f} : source non lue — ce garde ne mesurerait rien`);
+    assert.match(src, /installedVariant\(/,
+      `${f} : le variant doit être LU sur l'appareil, pas déduit d'une configuration`);
+    assert.ok(!/-debug\\\.\(apk\|aab\)\$\/i\.test\(String\(config\.build/.test(src),
+      `${f} : la commande de build dit ce qu'on aurait construit, jamais ce qui a été mesuré`);
+  }
+});
+
+test('QAM-START dit sur quel binaire il a mesuré, dans les deux sens', () => {
+  const samples = [{ flow: 'smoke', ms: 9512, status: 'COMPLETED' }];
+  const device = { id: 'android-emu', udid: 'emulator-5554', os: 'android-36' };
+  const config = { thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } };
+
+  const [dbg] = startupFindings(samples, device, 'android', config, 'debug');
+  assert.ok(dbg, 'un dépassement doit produire le finding');
+  assert.match(dbg.title, /debug/, 'le titre doit nommer le binaire mesuré');
+  assert.match(dbg.actual, /\(debug\)/, 'et le relevé aussi');
+  assert.match(dbg.suggestedFix, /JIT/,
+    'la réserve du démarrage explique POURQUOI un debug ment — elle n\'emprunte pas celle de la taille');
+  assert.ok(!/facteur trois/.test(dbg.suggestedFix),
+    'ce chiffre-là a été mesuré sur des tailles de binaire, pas sur un temps');
+
+  // ⚠️ L'autre moitié : sur une release, il ne reste rien à nuancer. Un remède
+  // qui mentionnerait « debug » partout serait aussi faux que le silence.
+  const [rel] = startupFindings(samples, device, 'android', config, 'release');
+  assert.ok(!/debug/i.test(rel.title + rel.suggestedFix), 'rien à nuancer sur une release');
+  assert.match(rel.actual, /\(release\)/, 'mais on dit quand même ce qui a été mesuré');
+
+  // Et quand la lecture n'a pas abouti, on ne raconte rien.
+  const [inc] = startupFindings(samples, device, 'android', config, '');
+  assert.ok(!/debug|release/i.test(inc.title + (inc.suggestedFix ?? '')),
+    'sans mesure du variant, le finding se tait plutôt que de supposer');
+});
+
+test('un contexte de mesure ne fabrique jamais de finding', () => {
+  const sous = [{ flow: 'smoke', ms: 2500, status: 'COMPLETED' }];
+  const config = { thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } };
+  assert.equal(
+    startupFindings(sous, { id: 'x', udid: 'y', os: 'z' }, 'android', config, 'debug').length, 0,
+    '2500 ms moins 2000 de splash assumé passe sous le budget : rien à signaler');
 });

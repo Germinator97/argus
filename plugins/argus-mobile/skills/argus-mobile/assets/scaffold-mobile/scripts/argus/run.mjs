@@ -30,9 +30,12 @@ import { fileURLToPath } from 'node:url';
 
 import {
   activeDevices, adbShell, artifactsDir, avdNameFrom, buildCmdForAbi, configuredScreens, detectTools,
-  deviceAbi, err, exitCodeFor, flutterCommand, loadConfig, log, missingToolMessage, parseYaml,
+  deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml,
   sh, validateConfig, warn, writeJson,
 } from './config.mjs';
+// La réserve de variant vit là où elle a été écrite ; la recopier ici l'aurait
+// laissée diverger de celle des deux autres démarrages, qui disent la même chose.
+import { caveatDebug } from './perf.mjs';
 
 /**
  * Faut-il avertir que `locale.deviceLocale` restera sans effet ?
@@ -982,11 +985,16 @@ export function visitedScreens(bundles, screens) {
  * Le démarrage à froid dépasse-t-il le seuil déclaré ? Un seul finding pour le
  * lot : six lignes disant la même chose sur six flows, c'est du bruit qui fait
  * cesser de lire les rapports.
+ * ⚠️ `variante` est le binaire RÉELLEMENT posé sur l'appareil, lu par
+ * `installedVariant`. Ces flows s'exécutent sur le paquet qu'`argus-build` a
+ * installé — donc un debug par défaut, où Flutter tourne en JIT. Le finding
+ * partait sans le dire pendant que ses deux jumeaux de `perf.mjs` le disaient.
  * @param {Array<{flow:string, ms:number, status:string}>} samples
  * @param {any} device @param {string} platform @param {any} config
+ * @param {'debug'|'release'|''} [variante]
  * @returns {any[]}
  */
-function startupFindings(samples, device, platform, config) {
+function startupFindings(samples, device, platform, config, variante = '') {
   const budget = config.thresholds?.coldStartMs ?? 2000;
   // ⚠️ Le plancher de marque n'est PAS un assouplissement du seuil : c'est une
   // durée que le produit a DÉCIDÉ d'imposer, et qui n'a donc rien à voir avec
@@ -1004,7 +1012,9 @@ function startupFindings(samples, device, platform, config) {
   const dont = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
   return [{
     id: 'QAM-START',
-    title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître${dont} (seuil ${budget} ms)`,
+    title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître${dont} (seuil ${budget} ms)`
+      + (variante === 'debug' ? ' (mesuré sur un debug)' : ''),
+    suggestedFix: variante === 'debug' ? caveatDebug('QAM-START') : '',
     severity: 'major',
     dimension: 'performance',
     screen: 'démarrage',
@@ -1016,7 +1026,7 @@ function startupFindings(samples, device, platform, config) {
     expected: floor > 0
       ? `écran de départ visible sous ${budget} ms hors splash de marque (thresholds.coldStartMs + brandedSplashMs)`
       : `écran de départ visible sous ${budget} ms (thresholds.coldStartMs)`,
-    actual: `${over.length}/${samples.length} flows au-dessus du seuil : `
+    actual: `${over.length}/${samples.length} flows au-dessus du seuil${variante ? ` (${variante})` : ''} : `
       + over.map((s) => (floor > 0
         ? `${s.flow} ${Math.round(s.ms)} ms (${Math.round(net(s))} hors splash)`
         : `${s.flow} ${Math.round(s.ms)} ms`)).join(', ')
@@ -1717,7 +1727,11 @@ async function main() {
   const startup = startupSamples(bundles, home?.anchor ?? '');
   const findings = [
     ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
-    ...startupFindings(startup, reportDevice, platform, config),
+    // Le variant est LU sur l'appareil, pas déduit de la commande de build :
+    // ces flows tournent sur ce qu'`argus-build` a posé. Sur iOS la lecture
+    // rend '' — le finding ne dira rien plutôt que de supposer.
+    ...startupFindings(startup, reportDevice, platform, config,
+      platform === 'android' ? installedVariant(resolved.udid, appId) : ''),
   ];
   const budget = budgetVerdict(config, startedAt, bundles.length);
   for (const line of budget.warnings) warn(line);

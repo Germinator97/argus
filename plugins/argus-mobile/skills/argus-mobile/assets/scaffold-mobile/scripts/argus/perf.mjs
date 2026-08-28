@@ -29,7 +29,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, loadConfig, log,
+  artifactsDir, defaultAndroidDevice, detectTools, err, exitCodeFor, installedVariant, loadConfig, log,
   missingToolMessage, PROBE_TIMEOUT_MS, releaseBuildCmd, sh, warn, writeJson,
 } from './config.mjs';
 
@@ -319,7 +319,11 @@ export function thresholdFinding(id, label, value, budget, unit, dimension = 'pe
  * @param {string} id @returns {string}
  */
 export function caveatDebug(id) {
-  if (id === 'QAM-PERF-COLD' || id === 'QAM-PERF-WARM') {
+  // ⚠️ `QAM-START` est ici parce qu'il mesure la MÊME chose sur le même
+  // binaire, depuis un autre fichier : le remède posé sur les deux
+  // démarrages de `perf.mjs` avait laissé dehors celui que `run.mjs`
+  // produit à partir des flows. Une mise en garde passée à N-1 appels sur N.
+  if (id === 'QAM-PERF-COLD' || id === 'QAM-PERF-WARM' || id === 'QAM-START') {
     return '⚠️ Mesuré sur un binaire DEBUG : Flutter y exécute le Dart en JIT, sans compilation AOT. '
       + 'Un temps de démarrage debug ne dit rien de celui d\'une release — reconstruis en release et '
       + 're-mesure avant de conclure quoi que ce soit sur l\'app.';
@@ -579,9 +583,17 @@ function main() {
     process.exit(2);
   }
 
-  // Le variant du binaire mesuré : `-debug.apk` dans le chemin suffit à le dire,
-  // et c'est ce que le scaffold pointe par défaut.
-  const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';
+  // Le variant du paquet MESURÉ, lu sur l'appareil — et non déduit de la
+  // commande de build, qui dit ce qu'on aurait construit et pas ce qui a été
+  // chronométré. Ce script n'installe rien : peser une release sans la poser
+  // laissait `binaryIsRelease: true` au-dessus d'un chrono de debug, mesuré à
+  // 1213 ms contre 532 sur le même appareil.
+  const variante = installedVariant(udid, packageName);
+  if (!variante) {
+    warn('variant du paquet installé non lu — les findings de démarrage et de mémoire partiront sans le dire.');
+    warn(`  \`adb -s ${udid} shell dumpsys package ${packageName}\` doit rendre une ligne \`flags=[ … ]\`.`);
+    warn('  Le rapport ne dira RIEN plutôt que de supposer une release : une absence de mesure n\'est pas un bon résultat.');
+  }
   const mesure = startupMetricLabel();
   // L'état de l'hôte, relevé À L'INSTANT de la mesure et non après coup. Un
   // `emulator-<port>` partage le CPU de la machine ; un appareil physique non.
@@ -618,6 +630,14 @@ function main() {
       // QUEL binaire a été pesé, et s'il s'agit de celui qu'on publierait : sans
       // ces deux-là, « 92 Mo » et « 30 Mo » se lisent comme le même relevé.
       binaryPath: pese.path, binaryIsRelease: pese.isRelease,
+      // ⚠️ ET CE N'EST PAS LE MÊME BINAIRE que celui qui a été chronométré. Ces
+      // deux clés-ci décrivent l'APK PESÉ sur le disque ; `coldStartMs`,
+      // `warmStartMs` et `memoryMb` décrivent le paquet POSÉ sur l'appareil, que
+      // ce script n'installe pas. Peser une release sans la poser rendait donc
+      // `binaryIsRelease: true` au-dessus d'un chrono de debug — le fichier
+      // n'omettait pas la réserve, il AFFIRMAIT le contraire. Les deux valeurs
+      // cohabitent désormais nommément, et se lisent l'une contre l'autre.
+      measuredVariant: variante,
     },
     thresholds, findings,
   };

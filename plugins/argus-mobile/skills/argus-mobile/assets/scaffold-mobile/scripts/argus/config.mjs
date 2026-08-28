@@ -570,6 +570,37 @@ export function deviceAbi(udid, lire = adbShell) {
   return /^[a-z0-9_-]+$/i.test(abi) ? abi : '';
 }
 
+/**
+ * Le variant du paquet INSTALLÉ, lu sur l'appareil : `'debug'`, `'release'`, ou
+ * chaîne vide quand la lecture n'a pas abouti.
+ *
+ * ⚠️ CETTE VALEUR NE SE DÉDUIT PAS DE LA COMMANDE DE BUILD, et c'est tout
+ * l'objet de cette fonction. `am start -W` chronomètre — et `dumpsys meminfo`
+ * pèse — le paquet POSÉ sur l'appareil, qu'aucun de ces scripts n'installe. La
+ * commande configurée dit ce qu'on aurait construit, jamais ce qui a été
+ * mesuré. Les deux divergent dès qu'on pèse une release sans la poser, et le
+ * rapport affirme alors `binaryIsRelease: true` au-dessus d'un chrono de debug.
+ * Mesuré sur `Medium_Phone_API_36.1`, médiane de trois lancements à froid :
+ * **1213 ms** installé en debug contre **532 ms** en release, facteur 2,28.
+ *
+ * ⚠️ Un échec rend `''`, JAMAIS `'release'`. Confondre « pas mesuré » avec
+ * « c'est une release » reconstruirait le défaut qu'on ferme, en silence et
+ * dans le sens le plus flatteur — un paquet absent rendrait alors un rapport
+ * qui se dit propre.
+ * @param {string} udid @param {string} packageName @param {typeof adbShell} [lire]
+ * @returns {'debug'|'release'|''}
+ */
+export function installedVariant(udid, packageName, lire = adbShell) {
+  if (!packageName) return '';
+  const out = lire(udid, ['dumpsys', 'package', packageName]).stdout ?? '';
+  // `dumpsys package` rend PLUSIEURS lignes `flags=`, dont une en hexadécimal
+  // (`flags=0x0`) qui ne nomme rien. Seule celle entre crochets porte les
+  // drapeaux lisibles — `flags=[ DEBUGGABLE HAS_CODE … ]`, `pkgFlags=[ … ]`.
+  const drapeaux = out.match(/[Ff]lags=\[([^\]]*)\]/);
+  if (!drapeaux) return '';
+  return /\bDEBUGGABLE\b/.test(drapeaux[1]) ? 'debug' : 'release';
+}
+
 export function ciEmulator(config, defauts = { apiLevel: '33', profile: 'pixel_6' }) {
   const device = activeDevices(config).find((/** @type {any} */ d) => d?.platform === 'android');
   if (!device) {
