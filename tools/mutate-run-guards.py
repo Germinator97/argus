@@ -369,6 +369,27 @@ MUTATIONS = [
     ("perf", "le rapport n'écrit plus ce que le chiffre de démarrage mesure",
      "      startupMetric: mesure,",
      "      startupMetric: undefined,"),
+    # ── Vingt-septième run ──────────────────────────────────────────────────
+    # ⚠️ Celles-ci visent la SOURCE de la valeur, pas sa présence. Le remède du
+    # 193 passait déjà la réserve aux quatre appels — elle transportait
+    # simplement une valeur dérivée de la commande de build. Un garde qui se
+    # contente de voir « il y a un variant » resterait vert sur les deux
+    # premières : c'est ce qui rend le point 199 instructif.
+    ("perf", "le variant redevient déduit de la commande de build",
+     "  const variante = installedVariant(udid, packageName);",
+     r"  const variante = /-debug\.(apk|aab)$/i.test(String(config.build?.android ?? '')) ? 'debug' : '';"),
+    # La moitié qu'on oublie de garder : une lecture qui échoue doit se taire.
+    # « release » est la supposition flatteuse — un rapport qui se dit propre
+    # sans avoir rien mesuré, exactement le défaut d'origine remis en silence.
+    ("config", "une lecture ratée du paquet se lit désormais « release »",
+     "  const drapeaux = out.match(/[Ff]lags=\\[([^\\]]*)\\]/);\n  if (!drapeaux) return '';",
+     "  const drapeaux = out.match(/[Ff]lags=\\[([^\\]]*)\\]/);\n  if (!drapeaux) return 'release';"),
+    ("run", "QAM-START repart sans dire sur quel binaire il a mesuré",
+     "      + (variante === 'debug' ? ' (mesuré sur un debug)' : ''),",
+     "      + '',"),
+    ("run", "le site d'appel cesse de LIRE le variant sur l'appareil",
+     "      platform === 'android' ? installedVariant(resolved.udid, appId) : ''),",
+     "      ''),"),
 ]
 
 
