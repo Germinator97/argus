@@ -3682,7 +3682,7 @@ la question même que pose une API. C'est le pendant exact du point 195 : une
 ligne existe, mais elle ne dit pas ce qui la décide.
 
 
-### 209. Le scan de secrets classe BLOCKER une lecture depuis un fichier gitignoré
+### 209. ✅ Corrigé le 28/08/2026 — Le scan de secrets classe BLOCKER une lecture depuis un fichier gitignoré
 
 Le scaffold livre `'[sS]tore[pP]assword\s*=\s*\S+'`. Il matche
 `storePassword = keystoreProperties.getProperty("storePassword")` — une ligne
@@ -3714,7 +3714,7 @@ les drapeaux inline `(?m)`, et aucun motif livré n'emploie `^` ni `$`, donc le
 drapeau n'a aucun effet de bord. Et le motif ancré **gagne** un cas que les deux
 autres manquaient — la forme Groovy `storePassword 'valeur'`, sans `=`.
 
-### 210. Une boucle de micro-tâches fige l'étage 1 SANS UN MOT, et aucun plafond ne la coupe
+### 210. ✅ Corrigé le 28/08/2026 — Une boucle de micro-tâches fige l'étage 1 SANS UN MOT, et aucun plafond ne la coupe
 
 Relevé sur un projet réel : `flutter test test/argus` s'est figé **dix minutes**,
 `flutter_tester` à ~10 % de CPU, aucune sortie. La cause était dans le projet —
@@ -3739,7 +3739,7 @@ diagnostic**, là où on lance l'étage 1. Une suite qui pend sans un mot se
 diagnostique en une phrase quand on sait quoi chercher, et se cherche une heure
 quand on ne le sait pas.
 
-### 211. `ACCESS_FINE_LOCATION` est interdite par défaut, alors qu'elle est métier pour toute une famille d'applications
+### 211. ✅ Corrigé le 28/08/2026 — `ACCESS_FINE_LOCATION` est interdite par défaut, alors qu'elle est métier pour toute une famille d'applications
 
 `forbiddenPermissions` livre quatre entrées, dont `ACCESS_FINE_LOCATION`. Sur les
 **deux** runs du terrain, l'agent a dû la retirer : la position est une exigence
@@ -3755,7 +3755,7 @@ que rien lui dise que c'est prévu.
 de permissions interdites n'a de sens que si l'on sait laquelle relève du signal
 et laquelle relève du métier.
 
-### 212. Le gabarit ne dit pas si l'agent a le droit d'écrire dans un paquet VOISIN
+### 212. ✅ Corrigé le 28/08/2026 — Le gabarit ne dit pas si l'agent a le droit d'écrire dans un paquet VOISIN
 
 Le point 207 a fait dire au SKILL quoi faire quand le composant vit dans un autre
 dépôt : ne pas trancher seul, inscrire la dette. Le run suivant l'a lu et
@@ -3772,6 +3772,48 @@ laissé **six et cinq ancres inertes** faute de cette ligne.
 
 
 ## Ce qui reste
+
+Les points **209 à 212** sont fermés le 28/08/2026 — le backlog se vide pour la
+**vingt-neuvième** fois. Le run 30 est la **première vérification du terrain
+n° 2**, et les **sept** correctifs de la veille ont porté, mesurés sur le terrain
+et non déduits du compte rendu :
+
+| | mesuré au run 30 |
+|---|---|
+| 202 | `login.yaml` porte `ARGUS:OWNED` et **8 références** du parcours que l'agent y a écrit |
+| 203 | les deux flows assertent l'ancre post-connexion · **0** occurrence de l'ancienne |
+| 205 | *« `visual: false`, et le motif n'est pas la disposition — c'est le COÛT »* |
+| 206 | *« l'écran affiche les données d'UNE livraison servie »* |
+| 207 | *« modifier l'API publique d'un paquet partagé n'est pas une décision de QA »* — la phrase du skill, reprise, et la dette inscrite avec le dépôt où vit le remède |
+| 208 | flavor déduit, adresse `10.0.2.2` employée, aucune question posée |
+
+📌 **Les deux mises en garde ont fait exactement ce qu'on leur demandait** :
+faire prendre la décision, pas la prendre. L'agent écrit ses raisons dans la
+configuration, à l'endroit où elles se relisent.
+
+⚠️ **Le 209 est le cas où la mesure a battu le remède rapporté.** Le run avait
+resserré le motif — et avait raison de préférer ça à une dispense. Mais une
+matrice de six cas, exercée dans le vrai pipeline, départage quatre candidats :
+livré **3/1**, remède du run **1/1**, et la forme ancrée **0/0**, qui gagne en
+prime la forme Groovy sans `=`. Le faux positif qu'elle supprime est **un
+commentaire qui parle du motif** — l'agent en avait écrit un dans sa propre
+configuration, si bien que son remède se serait signalé lui-même.
+
+⚠️ **Le 210 repart sans garde exécutable, et le skill l'écrit.** Une boucle de
+micro-tâches affame la boucle d'événements sous temps simulé : aucun `timeout:`
+ne peut s'y déclencher, et aucun plafond externe n'est portable — ni `timeout` ni
+`gtimeout` sur la machine du chantier. Ce que le skill peut faire, c'est nommer
+le symptôme et son mécanisme.
+
+⚠️ **Et deux de mes gardes sont nés faux, tous deux dénoncés par leur propre
+échec** : `/store/` ne matche pas `[sS]tore` — la chaîne littérale n'est pas dans
+le motif —, si bien qu'un garde éprouvait les lignes `keyPassword` contre le
+motif `storePassword` ; et une assertion sur de la prose enjambait encore un
+retour à la ligne. **Le harnais a aussi révélé une cible VACANTE** : `yamlconf`
+existait depuis le run 29 sans qu'aucune mutation ne la vise, et sa validation
+passait par `maestro check-syntax`, qui ne sait lire que des flows.
+
+Le **192** reste ouvert, seul, avec sa mesure.
 
 Les points **202 à 208** sont fermés le 28/08/2026, le jour même de leur
 inscription — le backlog se vide pour la **vingt-huitième** fois. Le run 29 est
