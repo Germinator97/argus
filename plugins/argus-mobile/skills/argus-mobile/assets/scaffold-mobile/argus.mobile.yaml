@@ -317,6 +317,26 @@ locale:
 # La forme de l'authentification (formulaire, OTP, SSO, biométrie) ne se déclare
 # pas : elle s'écrit, dans `.maestro/_subflows/login.yaml`. Un champ qui la
 # nomme sans que rien ne le lise laisse croire que le harnais s'y adapte.
+# ⚠️ CE QUE L'AUTHENTIFICATION COÛTE À CHAQUE FLOW, et il faut le savoir avant
+# d'écrire la suite. `clearState: true` avant chaque flow est la première règle
+# anti-flake du harnais, et elle est juste — mais sur une application
+# authentifiée elle impose une RECONNEXION PAR FLOW, donc autant d'allers-retours
+# vers ton backend que tu as de flows.
+#
+# Relevé sur un projet réel : l'endpoint d'envoi du code à usage unique était
+# borné à TROIS appels par minute, et une suite complète en consommait déjà
+# trois. Les flows suivants échouaient alors sur une limite de débit — un
+# symptôme qui ne ressemble à rien de ce que ce harnais décrit, et qu'on cherche
+# longtemps du côté de l'instrumentation.
+#
+# Le levier n'est pas une clé, c'est un choix : tous les flows n'ont pas besoin
+# d'être authentifiés. Ceux qui mesurent le lancement, la locale ou la
+# résilience s'en passent souvent. Retire `runFlow: _subflows/login.yaml` de
+# ceux-là et écris pourquoi dans le flow — ils t'appartiennent.
+#
+# ⚠️ Et un code à usage unique RÉEL est un effet de bord SORTANT. Contre un
+# backend partagé, chaque exécution envoie un vrai message à un vrai numéro.
+# `env: local` n'est pas qu'une étiquette : c'est ce qui dit que tu as le droit.
 auth:
   secretsFromEnv:
     - QA_USER

@@ -20,6 +20,15 @@
 # visuelle n'a aucune référence et se saute à chaque run — un harness de
 # non-régression visuelle sans référence versionnée ne garde rien.
 !/.maestro/_baselines/
+# ⚠️ ET CE QUI EST DEDANS PART AVEC. Si ton application sert des données, la
+# référence de son écran principal les CONTIENT — noms, numéros, montants —, et
+# elle est commitée. Relevé sur un projet réel : une référence de 320 Ko portait
+# des noms de clients et des numéros de commande servis par le backend.
+# Trois issues, à trancher AVANT de générer la première référence :
+#   - rendre la zone déterministe avant capture (`_subflows/mask-dynamic.yaml`) ;
+#   - cadrer plus serré (`visualCropOn`) sur ce qui ne varie pas ;
+#   - assumer, si le jeu de données est un fixture public.
+# Ne rien décider revient à choisir la troisième sans le savoir.
 
 # ...MAIS PAS les images de diff. Une comparaison en échec écrit
 # `<écran>_diff.png` À CÔTÉ des références, dans le dossier qu'on vient

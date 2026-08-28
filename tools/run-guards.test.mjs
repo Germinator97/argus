@@ -3632,3 +3632,42 @@ test('launch-clean attend toujours l\'écran de départ, lui', () => {
   assert.ok(!src.includes('login.yaml'),
     'et il ne se connecte pas — c\'est ce qui rend son attente correcte');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Points 205 et 206 — les mises en garde citent des clés qui doivent EXISTER
+//
+// Ce chantier a déjà payé une consigne qui rangeait une valeur « près de sa
+// clé » — une clé qui n'existait pas. Une mise en garde qui nomme un levier
+// inexistant envoie chercher ce qu'on ne trouvera pas.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('les leviers proposés face aux données servies existent vraiment', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const ignore = readFileSync(join(base, '.gitignore'), 'utf8');
+  const cfg = readFileSync(join(base, 'argus.mobile.yaml'), 'utf8');
+
+  // ⚠️ Ce garde a fait tomber sa propre mise en garde, écrite deux minutes plus
+  // tôt : elle proposait `dynamicRegions`, une clé RETIRÉE du scaffold parce que
+  // rien ne la lisait. Un remède se relit contre le code du JOUR.
+  assert.match(ignore, /visualCropOn/, 'le cadrage reste un levier cité');
+  assert.match(cfg, /^\s*visualCropOn:/m,
+    '`visualCropOn` est proposé comme remède : il doit exister dans la configuration');
+  assert.match(ignore, /mask-dynamic\.yaml/, 'et le masquage passe par le sous-flow, pas par une clé');
+  assert.ok(existsSync(join(base, '.maestro/_subflows/mask-dynamic.yaml')),
+    'le sous-flow de masquage est cité comme remède : il doit être livré');
+  assert.ok(!/dynamicRegions/.test(ignore),
+    'clé retirée du scaffold — la citer renvoie chercher ce qui n\'existe pas');
+});
+
+test('tous les flows ne se connectent pas — le levier du coût existe', () => {
+  // La mise en garde dit « tous les flows n'ont pas besoin d'être
+  // authentifiés ». C'est une affirmation sur le scaffold : elle se vérifie.
+  const dir = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  const flows = readdirSync(dir).filter((f) => f.endsWith('.yaml'));
+  assert.ok(flows.length >= 5, `${flows.length} flow(s) — le scaffold a bougé`);
+  const sansAuth = flows.filter((f) => !readFileSync(join(dir, f), 'utf8').includes('login.yaml'));
+  assert.ok(sansAuth.length > 0,
+    'tous les flows appellent login.yaml : la phrase qui dit le contraire est devenue fausse');
+});
