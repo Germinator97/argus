@@ -3504,7 +3504,77 @@ garde qui compte le plus est celui des **trois** preuves, le cas nominal du mode
 REGRESS que vingt-six runs n'ont jamais produit.
 
 
+### 201. ✅ Corrigé le 28/08/2026 — Le message de débordement imprime `$thrown` en toutes lettres
+
+`layout_test.dart:68`. Le `reason:` est fait de trois fragments concaténés, et le
+troisième passe en **guillemets doubles** parce qu'il porte des apostrophes
+françaises (`n'est`, `l'écran`). Dans une chaîne Dart à guillemets doubles,
+`\$thrown` **échappe** le `$` : le littéral est imprimé.
+
+Les deux premiers fragments, eux, sont en guillemets simples et interpolent
+correctement (`${screen.id}`, `$label`). C'est le changement de délimiteur — imposé
+par la ponctuation, pas choisi — qui a désarmé l'interpolation du troisième.
+
+**Reproduit en exécutant**, pas en lisant : une ligne retirée de
+`known_issues.dart` sur le terrain fait rougir le test, et la sortie donne
+
+```
+Expected: null
+  Actual: FlutterError:<A RenderFlex overflowed by 55 pixels on the right.>
+Débordement sur categories-empty en compact 360×640 · texte ×2.0.
+Cherche « The relevant error-causing widget was » dans la sortie : le widget
+fautif n'est presque jamais celui de l'écran.
+$thrown
+```
+
+⚠️ **Et c'est la mesure qui tranche entre les deux remèdes**, là où la lecture ne
+le pouvait pas. Interpoler pour de bon **doublerait** ce que `Actual:` affiche une
+ligne plus haut — l'exception est déjà là, en entier. Le jeton n'ajoutait donc
+rien même quand il fonctionnait : il est **retiré**, pas réparé.
+
+📌 Le run l'a signalé sans proposer de remède, en écrivant que les deux
+possibles « ne disent pas la même chose » et qu'il ne trancherait pas dans un
+fichier du CADRE. C'est exactement le bon partage : le symptôme est observé, le
+remède se décide là où l'on voit les deux sorties.
+
+**Corrigé** : le jeton retiré, et un garde qui **appelle** la construction du
+message pour vérifier qu'aucun `$` littéral n'y survit — sur les trois fragments,
+pas sur celui qu'on vient de toucher.
+
+
 ## Ce qui reste
+
+**Le run 28 ne rend QU'UN constat, et il ne coûte rien** — un jeton littéral dans
+un message d'échec, sur un rapport qui dit déjà tout ce qu'il faut une ligne plus
+haut. **La condition de sortie révisée le 26/08 est donc remplie pour la première
+fois du chantier** : *aucun constat ne coûterait quelque chose à quelqu'un qui
+applique le skill sans le connaître*.
+
+Les quatre correctifs de la veille ont porté, mesurés dans les artefacts et non
+déduits du compte rendu :
+
+| | attendu | mesuré au run 28 |
+|---|---|---|
+| 199 · `measuredVariant` à côté de `binaryIsRelease` | présent | `'debug'` / `true` — le fichier dit enfin que le paquet chronométré n'est pas le binaire pesé |
+| 198 · `QAM-START` nomme son binaire | présent | titre, `actual` et `suggestedFix` ; `report.json` passe de **0 à 3** occurrences de « debug » |
+| 200 · vignettes en rangée, bornées | 5 / 5 / oui | **5 / 5 / oui** |
+| 200 · visionneuse à trois sorties | 3 | **3** — croix, clic extérieur, Échap |
+
+⚠️ **Deux anomalies du run 28 ne viennent pas du skill mais de MA procédure**, et
+il faut les écrire ici pour qu'elles ne repartent pas en constat :
+
+- L'agent a trouvé un `app-release.apk` daté de 14:11 contenant des chaînes qu'il
+  croyait avoir écrites à 15:30. **`build/` n'est pas dans la liste d'effacement
+  du terrain** : l'APK du run 27 avait survécu, et le run 27 posait les mêmes
+  ancres sur le même terrain — d'où des chaînes parfaitement plausibles. Le skill,
+  lui, l'aurait dit : `binaryFreshness` compare la mtime du binaire à la plus
+  récente des sources `lib/**/*.dart`, donc `stale: true`. L'agent a reconstruit
+  avant que le scan ne tourne, ce qui a rendu la question sans objet.
+- Le refus d'installation (`INSTALL_FAILED_UPDATE_INCOMPATIBLE`) vient de **la
+  release que j'avais installée** pour mesurer le point 199. Le garde-fou du skill
+  a fonctionné : le runner s'est arrêté au lieu de piloter le binaire précédent.
+
+Le **192** reste ouvert, seul, avec sa mesure.
 
 Les points **198 à 200** sont fermés le 28/08/2026, le jour même de leur
 inscription — le backlog se vide pour la **vingt-septième** fois. Le run 27 était
@@ -3551,7 +3621,7 @@ le corriger demande un lexer, et le remède évident casse six lectures légitim
 Les points **187 à 191** ont été fermés le 26/08/2026, le jour même de leur
 inscription. Le run 25 est **le premier à publier sa page de rapport**.
 
-**Prochain numéro libre : 201.**
+**Prochain numéro libre : 202.**
 
 ⚠️ **Trois des cinq viennent de la publication**, et deux d'entre eux n'étaient
 pas atteignables autrement : le 187 a été trouvé par Germinator **en regardant la
