@@ -557,20 +557,22 @@ MUTATIONS = [
      "\tnode scripts/argus/config.mjs --check-anchors; \\"),
     ("run", "235 · le conseil de locale reparle d'émulateur sur iOS",
      "      ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'",
-     "      ? '  Règle la locale sur l\'émulateur avant le run.'"),
+     "      ? '  Regle la locale sur l emulateur avant le run.'"),
     ("run", "236 · la ligne de démarrage cesse de dire le splash assumé",
      "      + (splash > 0 ? ` + ${splash} ms de splash assumé (soit ${report.startup.budgetMs + splash} ms au total)` : ''));",
      "      + '');"),
     # ── Run 32 — les six points, plus le défaut que la passe avait CRÉÉ ─────
     # 219 : les DEUX moitiés — le relevé, et son câblage dans la cible.
+    # ⚠️ CES DEUX MOTIFS ONT ÉTÉ PÉRIMÉS par la réécriture du 225-227 et par
+    # celle de la cible au 234 — le harnais a rendu « motif trouvé 0× », donc
+    # HARNAIS et non VACANT. Deuxième fois de la journée que la distinction
+    # évite de chercher un garde manquant qui existe.
     ("config", "le croisement des ancres cesse d'exclure le dartdoc",
-     "        if (ligne.trimStart().startsWith('///')) continue;\n"
-     "        for (const m of ligne.matchAll(/identifier:\\s*'([^']*)'/g)) {",
-     "        if (false) continue;\n"
-     "        for (const m of ligne.matchAll(/identifier:\\s*'([^']*)'/g)) {"),
+     "  const src = dartSansCommentaires(brut);",
+     "  const src = brut;"),
     ("makefile", "argus-anchors cesse d'appeler le croisement posé → déclaré",
-     "\t@node scripts/argus/config.mjs --check-anchors",
-     "\t@true # plus de croisement"),
+     "\tnode scripts/argus/config.mjs --check-anchors || rc=$$?; \\",
+     "\ttrue; \\"),
     # 220 : la commande prescrite doit citer des drapeaux qui EXISTENT.
     ("skill", "la commande d'itération cite un drapeau inexistant",
      "node scripts/argus/run.mjs --tags=journey --no-install",
@@ -701,6 +703,14 @@ def main():
                      "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
                      + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
                      + "')).catch(e => { console.error(e.message); process.exit(1); })"]
+        elif cible.name == "argus-mobile.yml":
+            # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
+            # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
+            # `check-syntax` le rejette toujours et TOUTE mutation rendait
+            # « ne parse pas ». La cible existait sans qu'aucune mutation ne
+            # puisse aboutir. C'est un YAML : on le parse comme tel.
+            verif = ["python3", "-c",
+                     "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
         elif cible.suffix in (".yaml", ".yml") and MAESTRO:
             verif = [MAESTRO, "check-syntax", str(cible)]
         if verif is not None:
