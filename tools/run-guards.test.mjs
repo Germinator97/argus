@@ -983,6 +983,69 @@ test('toute clé de argus.mobile.yaml est lue par au moins un script', () => {
     'clés déclarées, documentées, et que rien ne lit : les renseigner ne change rien, mais elles se lisent comme des réglages');
 });
 
+// ── …et aucune clé LUE que rien ne déclare — la direction symétrique ─────────
+//
+// Point 216. Le garde ci-dessus balaie « déclarée mais sans lecteur » ; l'autre
+// sens n'était couvert par rien, et `iosScan` y a vécu : QUATRE sites la
+// lisaient, le scaffold ne la mentionnait nulle part, et un message d'erreur
+// envoyait pourtant la renseigner. Le seul moyen d'apprendre qu'elle existait
+// était de lire le code des scripts.
+//
+// ⚠️ LE MOTIF A ÉTÉ RESSERRÉ APRÈS MESURE. Sa première version cherchait
+// `build?.X` sans l'ancrer sur `config`, et rapportait une clé `version` —
+// qui venait de la chaîne `'ro.build.version.sdk'`, une propriété système
+// Android. Un motif trop large ne fait pas que compter faux : celui-là allait
+// faire DÉCLARER dans le scaffold une clé qui n'existe pas.
+
+/** Les clés que les scripts lisent réellement sous `build:`. @returns {string[]} */
+function buildKeysRead() {
+  const code = codeDesScripts();
+  /** @type {Set<string>} */
+  const cles = new Set();
+  // 1. l'accès pointé, ancré sur `config` — c'est l'ancrage qui écarte
+  //    `ro.build.version.sdk` et les autres `build.` qui ne sont pas la config.
+  for (const m of code.matchAll(/config\s*\??\.\s*build\s*\??\.\s*([A-Za-z_]\w*)/g)) cles.add(m[1]);
+  // 2. le sélecteur DYNAMIQUE : `(config.build ?? {})[cle]`, où `cle` sort d'un
+  //    ternaire sur la plateforme. Aucun accès pointé ne le montre — c'est
+  //    précisément la forme sous laquelle `iosScan` se cachait.
+  for (const m of code.matchAll(/platform === 'ios' \? '([A-Za-z_]\w*)' : '([A-Za-z_]\w*)'/g)) {
+    cles.add(m[1]); cles.add(m[2]);
+  }
+  // 3. l'alias local, résolu PAR SA PORTÉE et non par un motif large : `b` seul
+  //    attrapait trois identifiants sans rapport.
+  for (const m of code.matchAll(/const b = config\??\.build \?\? \{\};/g)) {
+    const depuis = code.slice(m.index);
+    const portee = depuis.slice(0, depuis.indexOf('\n}') + 1);
+    for (const x of portee.matchAll(/(?<![\w$.])b\s*\??\.\s*([A-Za-z_]\w*)/g)) cles.add(x[1]);
+  }
+  return [...cles].sort();
+}
+
+test('toute clé build LUE par un script est déclarée dans le scaffold livré', () => {
+  const lues = buildKeysRead();
+
+  // ⚠️ NON-VACANCE, DÉRIVÉE : les clés que DEFAULTS déclare sous `build` sont
+  // forcément lues quelque part. Si le collecteur en rate une, il est cassé —
+  // et ce contrôle-ci le dit AVANT que l'assertion suivante ne rende un vert
+  // qui ne mesurerait rien. Dérivé plutôt qu'écrit à la main : une liste
+  // recopiée ici se périmerait à la première clé ajoutée.
+  const declarees = Object.keys(new Function(`return (${defaultsSource()});`)().build ?? {});
+  assert.ok(declarees.length >= 4, `DEFAULTS.build a changé de forme (${declarees.length} clés)`);
+  const ratees = declarees.filter((k) => !lues.includes(k));
+  assert.deepEqual(ratees, [],
+    'le collecteur ne voit plus des clés que DEFAULTS déclare — il est cassé, '
+    + 'et l\'assertion suivante rendrait un vert qui ne mesure rien');
+
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  // Déclarée OU commentée : une clé optionnelle se documente en commentaire,
+  // c'est ce que fait déjà `androidScan`. Ce qui est interdit, c'est le silence.
+  const muettes = lues.filter((k) => !new RegExp(`\\b${k}\\s*:`).test(yaml));
+  assert.deepEqual(muettes, [],
+    'clés que les scripts LISENT et que le scaffold ne mentionne nulle part : '
+    + 'un message peut envoyer les renseigner, on ne les trouve qu\'en lisant le code');
+});
+
 test('le budget d\'exécution se compare vraiment à ce qui a été dépensé', () => {
   const config = { budget: { maxMinutes: 25, maxFlows: 40 } };
   const ilYA = (/** @type {number} */ minutes) => new Date(Date.now() - minutes * 60000);

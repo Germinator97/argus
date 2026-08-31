@@ -88,6 +88,13 @@ build:
   # Cherche la commande dans le dépôt (script de release, CI, doc de
   # déploiement) avant d'en inventer une, et note ici celle que tu as employée.
   ios: build/ios/iphonesimulator/Runner.app
+  # Sa jumelle iOS, LUE PAR QUATRE SITES et déclarée nulle part jusqu'au run 31 :
+  # un message d'erreur envoyait la renseigner, et le seul moyen d'apprendre
+  # qu'elle existait était de lire le code des scripts.
+  # iosScan: build/ios/iphoneos/Runner.app
+  # ⚠️ `iphoneos`, pas `iphonesimulator` : c'est le build DEVICE qui se publie.
+  # Un `.app` de simulateur ne dit rien de ce que reçoivent les utilisateurs —
+  # il ne porte ni la même architecture ni la même signature.
   # Commandes de build. DEUX consommateurs, et ils n'en font pas la même chose :
   #   • les scripts de mesure les AFFICHENT quand le binaire manque — aucun
   #     `.mjs` n'exécute un build, ni avec ni sans confirmation ;
