@@ -3230,7 +3230,7 @@ signalant tous deux au §3. Même motif que le **181**.
 pas. `PROMPTS.md` porte une ligne `ARTEFACT`, qui dit que le défaut « non » est
 sûr *et* que tant qu'on ne tranche pas, le livrable n'existe jamais.
 
-### 192. Le garde des clés sans lecteur compte une mention en CHAÎNE comme une lecture
+### 192. ✅ Corrigé le 31/08/2026 — Le garde des clés sans lecteur compte une mention en CHAÎNE comme une lecture
 
 Né de la passe. En ajoutant `artifact.icon`, la mutation qui **retire sa lecture**
 a laissé le garde vert — `VACANT` rendu par le harnais.
@@ -3250,6 +3250,30 @@ vraies lectures. Corriger demande un lexer, pas une expression régulière.
 📌 Laissé **ouvert** avec sa mesure plutôt que fermé par un remède qui casse
 davantage. La mutation, elle, retire lecture *et* mention, donc le garde reste
 prouvé pour ce qu'il fait — et ce qu'il ne fait pas est désormais écrit.
+
+### ✅ Fermé le 31/08/2026 — par un balayage, pas par une regex
+
+Le diagnostic tenait : il fallait scanner de **gauche à droite**, la première
+quote rencontrée décidant. Les sept fausses mortes de la regex ont été
+**re-mesurées le jour même** — mêmes sept, le constat n'avait pas vieilli.
+
+Le balayage retire commentaires et littéraux, **garde le code des `${…}`**
+(`${config.artifact.icon}` EST une lecture), scanne **fichier par fichier**
+(un état mal refermé mangerait le fichier suivant) et saute le shebang, dont le
+`#!/usr/bin/env` se lit sinon comme un littéral de regex.
+
+⚠️ **Deux versions du scanner ont été écrites, et la première était fausse** —
+elle recursait sur le contenu des `${}` en comptant les accolades à part, et
+perdait **8 clés** dont les lectures étaient bien réelles. Ce qui l'a démasquée
+n'est pas une relecture mais l'**oracle à deux sens** : « zéro morte » ET « la
+mention connue a disparu ». La première version échouait la moitié gauche.
+
+**Épreuve décisive** : la mutation du harnais ne retire plus que **la lecture**,
+en laissant la mention dans le message — le cas qui restait vert. Elle tombe.
+
+📌 **Deux corpus désormais**, chacun avec sa raison : le garde des clés mortes
+retire les chaînes, le collecteur du point 216 les **garde** — chez lui, ce sont
+des noms de clés, pas de la prose.
 
 ## Run 26 — la publication tient, et le seul `critical` de la page ne dit pas d'où il vient
 
@@ -3954,6 +3978,19 @@ le code.
 
 
 ## Ce qui reste
+
+## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
+
+**Il n'y aura pas de troisième terrain : les deux couvrent la totalité.** Le plan
+du 19/08 en prévoyait trois ; `le-terrain-local` (local, puis iOS) et `un-projet-avec-api` (avec
+API) ont exercé entre eux tout ce que le skill sait faire — les deux étages, les
+cinq dimensions, les deux plateformes, la publication de la page, et le seul
+volet qui n'avait jamais tourné (le backend).
+
+Ce qui reste ouvert n'est donc plus du terrain mais du **périmètre**, et il est
+désormais **écrit et gardé** : le SKILL porte un tableau de ce que chaque
+plateforme reçoit vraiment, dérivé du code — le jour où quelqu'un implémente
+l'accessibilité iOS, le garde rougit et force sa mise à jour.
 
 Les points **213 à 217** sont fermés le 31/08/2026 — le backlog se vide pour la
 **trentième** fois. C'est la passe du **premier run iOS**, et les cinq points
