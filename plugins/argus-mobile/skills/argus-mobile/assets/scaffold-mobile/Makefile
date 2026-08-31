@@ -47,13 +47,18 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	BKIND=$$(printf '%s' "$$M" | cut -f1); BEFORE=$$(printf '%s' "$$M" | cut -f2); \
 	BEFOREH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "→ $$CMD"; \
-	START=$$(date +%s); eval "$$CMD"; ELAPSED=$$(( $$(date +%s) - START )); \
+	START=$$(date +%s); eval "$$CMD"; RC=$$?; ELAPSED=$$(( $$(date +%s) - START )); \
 	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
 	AKIND=$$(printf '%s' "$$M" | cut -f1); AFTER=$$(printf '%s' "$$M" | cut -f2); \
 	AFTERH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "  paquet   $$APK"; \
+	if [ "$$RC" -ne 0 ]; then \
+	  echo "  ✖ LE BUILD A ÉCHOUÉ (exit $$RC) après $${ELAPSED}s — son erreur est au-dessus."; \
+	  echo "      Rien à corriger dans la config : c'est le build qu'il faut lire."; \
+	  exit $$RC; \
+	fi; \
 	if [ "$$AKIND" = absent ]; then \
-	  echo "  ✖ AUCUN PAQUET à cet emplacement après $${ELAPSED}s — le build n'a rien écrit là."; \
+	  echo "  ✖ BUILD RÉUSSI, MAIS AUCUN PAQUET ici après $${ELAPSED}s — il a écrit ailleurs."; \
 	  echo "      Vérifie que build.android / build.ios désigne ce que la commande produit."; \
 	  exit 1; \
 	fi; \

@@ -3237,6 +3237,63 @@ test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () =>
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── « le build a échoué » n'est pas « la config est fausse » ────────────────
+//
+// ⚠️ DÉFAUT INTRODUIT PAR LE CORRECTIF DU POINT 214, et rapporté par le run
+// suivant. `eval "$CMD"` ne voyait pas son code de sortie : un build qui LÈVE
+// tombait dans la branche « aucun paquet ici » et envoyait vérifier une config
+// parfaitement juste. L'ancienne version se taisait (« 0 → 0 octets ») ; la
+// mienne parlait, et parlait faux — ce qui est pire, parce qu'on la croit.
+//
+// Le garde EXÉCUTE la recette sur les deux causes : elles rendent le même
+// symptôme (rien à l'emplacement déclaré) et doivent rendre des messages
+// différents. Un garde qui lirait la source ne verrait pas laquelle sort.
+
+test('argus-build distingue un build QUI ÉCHOUE d\'un build qui écrit AILLEURS', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-build-'));
+  cpSync(join(scaffold, 'scripts'), join(dossier, 'scripts'), { recursive: true });
+  cpSync(join(scaffold, 'Makefile'), join(dossier, 'Makefile'));
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+  const config = (/** @type {string} */ cmd) => writeFileSync(join(dossier, 'argus.mobile.yaml'),
+    yaml.replace(/^ {2}androidPackage: ''.*$/m, '  androidPackage: com.exemple.monapp')
+      .replace(/^ {2}androidBuildCmd: .*$/m, `  androidBuildCmd: ${cmd}`));
+
+  const lancer = () => {
+    try {
+      return execFileSync('make', ['argus-build'], { cwd: dossier, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    } catch (e) {
+      const err = /** @type {any} */ (e);
+      return String(err.stdout ?? '') + String(err.stderr ?? '');
+    }
+  };
+
+  // ── cause 1 : le build LÈVE. La config n'y est pour rien. ────────────────
+  writeFileSync(join(dossier, 'echoue.sh'), 'echo "Exception: native assets" >&2\nexit 1\n');
+  config('bash echoue.sh');
+  const echoue = lancer();
+  assert.match(echoue, /LE BUILD A ÉCHOUÉ/, 'un build qui lève n\'est plus signalé comme tel');
+  assert.doesNotMatch(echoue, /Vérifie que build\.android/,
+    'un build qui LÈVE envoie encore vérifier la config — elle est juste, c\'est le build qu\'il faut lire');
+
+  // ── cause 2 : le build RÉUSSIT, mais pas là où la config le dit. ─────────
+  writeFileSync(join(dossier, 'ailleurs.sh'), 'mkdir -p build/autre && echo x > build/autre/app.apk\n');
+  config('bash ailleurs.sh');
+  const ailleurs = lancer();
+  assert.match(ailleurs, /Vérifie que build\.android/, 'le cas « écrit ailleurs » ne renvoie plus vers la config');
+  assert.doesNotMatch(ailleurs, /LE BUILD A ÉCHOUÉ/, 'un build réussi est annoncé comme ayant échoué');
+
+  // ⚠️ Et le chemin NOMINAL doit rester silencieux : un garde qui ne verrait
+  // que les deux échecs se satisferait d'une recette qui crie toujours.
+  writeFileSync(join(dossier, 'ok.sh'),
+    'mkdir -p build/app/outputs/flutter-apk && head -c 2048 /dev/urandom > build/app/outputs/flutter-apk/app-debug.apk\n');
+  config('bash ok.sh');
+  const nominal = lancer();
+  assert.doesNotMatch(nominal, /✖/, `un build sain ne doit rien signaler — reçu : ${nominal.slice(0, 300)}`);
+  assert.match(nominal, /paquet créé|paquet réécrit/, 'un build sain ne dit plus ce qu\'il a produit');
+  rmSync(dossier, { recursive: true, force: true });
+});
+
 test('le Makefile INTERROGE la mesure au lieu de la refaire à sa façon', () => {
   const mk = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
