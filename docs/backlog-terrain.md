@@ -4004,6 +4004,126 @@ config*. Le garde **exécute** la recette sur les deux, **plus le chemin
 nominal** : un garde qui ne verrait que les deux échecs accepterait une recette
 qui crie toujours.
 
+### 219. Rien ne croise les ancres POSÉES avec les ancres DÉCLARÉES
+
+`make argus-anchors` monte les écrans déclarés et vérifie que leurs ancres
+arrivent dans l'arbre : c'est **déclaré → présent**. L'inverse n'existe nulle
+part — mesuré : aucun script ne lit les `identifier:` posés dans `lib/`.
+
+⚠️ **Le skill le SAIT et l'écrit** (§ sur les composants partagés) :
+
+> `make argus-anchors` attrape ce défaut à condition que l'ancre soit déclarée
+> en `commands:` sur l'`ArgusScreen`. **C'est la moitié de son intérêt.**
+
+La moitié manquante n'a aucun instrument. Le run 32 l'a payée : une ancre posée
+dans `lib/`, parfaitement ciblable, **gardée par rien** — elle n'apparaît dans
+aucun relevé, donc rien ne signale qu'elle n'est pas couverte.
+
+Une ancre non déclarée n'est pas une ancre en échec, c'est une **absence** —
+exactement ce contre quoi le skill met en garde partout ailleurs. C'est la
+**forme symétrique du 216** (une clé lue que rien ne déclare), et son remède a la
+même forme : un garde dérivé, total et négatif.
+
+📌 **Le run le met en premier de ses sept points.**
+
+### 220. Aucun moyen documenté d'itérer sur UN flow
+
+`--flow` n'existe pas. Le runner accepte `--tags`, `--include-tags`,
+`--exclude-tags`, `--no-install` — et **aucun de ces quatre n'apparaît dans le
+SKILL, ni dans `references/`, ni dans `ARGUS-MOBILE.md`**. Mesuré à zéro
+occurrence.
+
+Ce que le skill dit après un flow rouge : *« Reprends ensuite la séquence à
+`argus-run` »*, ce qui se lit comme un run complet.
+
+Coût relevé sur le terrain : **310–315 s** pour un run complet contre **87 s**
+en filtré — facteur **3,6**, à chaque itération sur un flow qu'on met au point.
+L'agent a dû lire `run.mjs` pour les trouver.
+
+📌 Le refus de `--flow` est propre — le runner imprime son aide. C'est la
+documentation qui manque, pas la surface.
+
+### 221. ⚠️ DÉPLACÉ — ce n'est pas la table des écarts, c'est le TODO de `goto`
+
+Le run rapporte « un cinquième écart légitime absent de la table §2c-bis » : sur
+une app à base locale, `clearState` avant chaque flow rend tout état « plein »
+inatteignable par `goto`.
+
+**Reproduit — le symptôme est juste, le diagnostic porte à côté.** La table
+§2c-bis a bien quatre cas, mais son **troisième** couvre déjà la déclaration :
+*« État atteignable seulement après un parcours → `screens[]` oui,
+`argusScreens` oui »*. Rien ne manque de ce côté.
+
+Ce qui manque est ailleurs, et c'est plus net : `goto.yaml:95` prescrit
+
+```yaml
+# TODO(argus): une branche par écran de argus.mobile.yaml → screens[].
+```
+
+— une branche **par écran**, alors qu'un état que seul le parcours crée n'en
+admet aucune. Et **`goto` n'apparaît pas une seule fois dans le SKILL** : rien
+ne dit ce que devient un tel état, ni que l'absence de branche est légitime.
+
+L'agent a inventé le remède (pas de branche, assertions dans
+`journey-critical`, un bloc écrit dans `goto.yaml` expliquant l'absence) et
+obtenu 11/11 visités. Il a eu raison — mais il l'a inventé.
+
+### 222. Un splash de marque décide du gate, et la reconnaissance ne dit pas de le chercher
+
+`thresholds.brandedSplashMs` est déclarée (défaut `0`), lue par **trois**
+scripts, documentée dans `argus.mobile.yaml`. Mais le mot « splash » n'apparaît
+**qu'une fois** dans le SKILL, dans un tout autre contexte — aucune étape de §2
+ne dit d'aller chercher une durée de splash imposée.
+
+Mesuré sur le même projet, à deux runs d'écart :
+
+| | verdict de démarrage |
+|---|---|
+| run précédent, clé à `0` | `QAM-START` **major** — « l'écran de départ met 3 s à apparaître » |
+| run 32, clé à `2000` | max **3415 ms**, budget 2000, **0 finding** |
+
+La valeur est en clair dans `lib/main.dart` (`_kMinSplashDuration`). Sans elle,
+un run honnête publie un `major` qui **décrit une décision produit**, pas un
+défaut.
+
+### 223. Le défaut d'`artifact.title` RENOMME une page existante
+
+§3g-bis, point 4 :
+
+> **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
+> ou « Rapport Argus Mobile » s'il est vide.
+
+Suivie à la lettre sur une page qui existe déjà sous un autre nom, cette
+consigne **renomme en croyant stabiliser** : la page du projet s'appelait
+« Argus Mobile — <projet> », `title` était vide, et le défaut vaut « Rapport Argus
+Mobile ».
+
+⚠️ Le défaut est correct pour une **première** publication et faux pour une
+**republication** — le seul cas où la consigne parle de stabilité. Rien ne dit
+de lire le titre actuel avant la première republication. L'agent ne l'a vu que
+parce que l'outil l'obligeait à lire la page.
+
+### 224. Le gabarit du rapport n'a pas de case pour le nom du paramètre — que le skill prescrit d'écrire
+
+Le skill prescrit explicitement :
+
+> Si le projet a déjà sa convention, garde-la — et **écris-la dans le rapport
+> d'instrumentation, à la ligne du composant partagé**.
+
+Or la forme exacte, donnée « sans quoi deux agents en rendent deux », est :
+
+```
+    dont partagées   : <C> composant(s) couvrant <S> call-sites
+```
+
+**Aucun emplacement pour le nom.** Suivre la forme exacte perd l'information ;
+l'écrire dévie de la forme. Le run 32 a fait les deux : il a inventé un
+`(sur 27)` dans la ligne et listé les noms de paramètres ailleurs.
+
+C'est le mécanisme que le skill documente déjà pour « dont partagées » —
+**une information prescrite sans case se fait inventer** — appliqué à la ligne
+qui l'a fait naître.
+
 ## Ce qui reste
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
