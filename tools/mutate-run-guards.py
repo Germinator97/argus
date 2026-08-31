@@ -293,12 +293,16 @@ MUTATIONS = [
     ("perf", "le geste ignore que la clé est déjà déclarée",
      "  const gestes = declare\n",
      "  const gestes = false\n"),
+    # ⚠️ Ces deux motifs ont été REMIS À JOUR au run 31 : le 215 a réécrit le
+    # corps de `releaseBuildCmd` pour qu'elle lise les deux plateformes, et le
+    # harnais a rendu « motif trouvé 0× » — il s'est dénoncé au lieu de rendre
+    # un VACANT, qui aurait fait chercher un garde manquant qui existait.
     ("config", "la commande de release repart en debug",
-     "  const derive = cmd.replace(/--(debug|profile)\\b/g, '--release');",
-     "  const derive = cmd;"),
+     "    .replace(/--(debug|profile)\\b/g, '--release')",
+     "    .replace(/--(jamais)\\b/g, '--release')"),
     ("config", "le repli perd le mode de publication",
-     "'flutter build apk --release', pinned);",
-     "'flutter build apk', pinned);"),
+     "  const repli = cible === 'ios' ? 'flutter build ios --release' : 'flutter build apk --release';",
+     "  const repli = cible === 'ios' ? 'flutter build ios' : 'flutter build apk';"),
     ("sec", "la consigne de build ignore quel binaire manquait",
      "  const vise = publie !== '' && resolve(root, publie) === binary;",
      "  const vise = false;"),
