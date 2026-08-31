@@ -464,6 +464,63 @@ MUTATIONS = [
     ("prompts", "le cadrage cesse de demander la permission sur un paquet voisin",
      "- <si le projet tire ses composants d'un paquet VOISIN",
      "- <ligne retirée"),
+    # ── Trente-et-unième run — le premier sur iOS ───────────────────────────
+    # ⚠️ DEUX mutations pour un seul correctif, parce que le garde a deux
+    # moitiés qui peuvent mourir séparément. La première vise la DÉCISION ; la
+    # seconde débranche UN des deux sites d'appel en y remettant le littéral,
+    # et c'est elle qui prouve que le garde exerce le câblage. Une décision
+    # juste que personne n'appelle est exactement le défaut du point 213.
+    ("config", "le défaut de plateforme redevient 'android' en dur",
+     "  return flag || config?.platforms?.[0] || 'android';",
+     "  return flag || 'android';"),
+    ("config", "--print-binary rebranche son propre défaut Android",
+     "    const platform = platformFor(config, process.argv.slice(2));\n"
+     "    console.log(platform === 'ios' ? config.build.ios : config.build.android);",
+     "    const platform = (process.argv.slice(2).find((a) => a.startsWith('--platform=')) ?? '')"
+     ".split('=')[1] || 'android';\n"
+     "    console.log(platform === 'ios' ? config.build.ios : config.build.android);"),
+    # 215 — les deux fonctions qui ne lisaient que les clés Android.
+    ("config", "le repli de release redevient Android-seul",
+     "  const repli = cible === 'ios' ? 'flutter build ios --release' : 'flutter build apk --release';",
+     "  const repli = 'flutter build apk --release';"),
+    ("config", "--simulator cesse de sauter dans la release iOS",
+     "    .replace(/\\s--simulator\\b/g, '');",
+     "    .replace(/\\s--jamais-present\\b/g, '');"),
+    ("sec", "l'indice de build relit androidScan sur un projet iOS",
+     "  const cle = cible === 'ios' ? 'iosScan' : 'androidScan';",
+     "  const cle = 'androidScan';"),
+    # 216 — la clé lue et déclarée nulle part.
+    ("yamlconf", "la déclaration d'iosScan disparaît du scaffold",
+     "  # iosScan: build/ios/iphoneos/Runner.app",
+     "  # (rien ici)"),
+    # 214 — peser un paquet qui est un répertoire. La dernière vise le CÂBLAGE :
+    # la mesure peut être juste et la recette refaire la sienne à côté.
+    ("config", "un répertoire se repèse comme un fichier",
+     "  if (!statSync(chemin).isDirectory()) {",
+     "  if (true) {"),
+    ("config", "l'empreinte d'un bundle oublie les CHEMINS",
+     "      lignes.push(`${sous} ${createHash('sha256').update(buf).digest('hex')}`);",
+     "      lignes.push(`${createHash('sha256').update(buf).digest('hex')}`);"),
+    ("config", "« absent » redevient une empreinte qui se compare",
+     "  if (!chemin || !existsSync(chemin)) return { kind: 'absent', bytes: 0, digest: '', files: 0 };",
+     "  if (!chemin || !existsSync(chemin)) return { kind: 'absent', bytes: 0, digest: 'e3b0c442', files: 0 };"),
+    ("makefile", "la recette refait sa propre mesure au lieu de l'interroger",
+     "\tM=\"$$(node scripts/argus/config.mjs --measure-binary)\"; \\\n"
+     "\tBKIND=$$(printf '%s' \"$$M\" | cut -f1); BEFORE=$$(printf '%s' \"$$M\" | cut -f2); \\",
+     "\tM=\"$$(wc -c < \"$$APK\" 2>/dev/null || echo 0)\"; \\\n"
+     "\tBKIND=file; BEFORE=$$M; \\"),
+    # 217 — une raison qui affirmait un cas qui n'est pas forcément le sien.
+    # ⚠️ La troisième est née d'une mutation : les deux premières passaient
+    # pendant que le site d'appel pouvait être débranché sans un mot.
+    ("sec", "la raison du saut iOS redevient « simulateur » pour tout le monde",
+     "  if (/iphonesimulator/.test(rel)) {",
+     "  if (rel !== '@@jamais@@') {"),
+    ("sec", "l'avertissement simulateur disparaît quand il est VRAI",
+     "    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `",
+     "    return `${socle} Et ${rel} est un bundle : il ne porte ni l'architecture `"),
+    ("sec", "le site d'appel rebranche un message figé",
+     "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: plan.why };",
+     "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur.' };"),
 ]
 
 
