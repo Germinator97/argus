@@ -233,7 +233,9 @@ echo
 # Outillage : on informe, on ne bloque pas. Un outil absent donne une dimension
 # sautée et mentionnée dans le rapport, jamais un faux vert.
 echo "Outillage détecté :"
-for tool in node flutter maestro adb osv-scanner; do
+# ⚠️ `xcrun` MANQUAIT à cette liste alors que `config.mjs` le vérifie, lui : un
+# projet iOS voyait donc « ✔ adb » et rien sur l'outil dont il dépend vraiment.
+for tool in node flutter maestro adb xcrun osv-scanner; do
   if command -v "$tool" >/dev/null 2>&1; then
     echo "  ✔ $tool"
   else

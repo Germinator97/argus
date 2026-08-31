@@ -3638,6 +3638,60 @@ test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (23
     'e2e-ios s\'allumerait tout seul sur un runner macOS — ~10x le coût d\'un Linux');
 });
 
+test('le bloc auth dit ce qu\'une suite authentifiée COÛTE (241, 244)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+
+  // ⚠️ DÉRIVÉ : c'est `clearState` avant chaque flow qui crée le coût. S'il
+  // disparaissait du lancement, ce passage deviendrait sans objet — et ce garde
+  // le dirait plutôt que de veiller sur une prose périmée.
+  const clean = readFileSync(join(scaffold, '.maestro/_subflows/launch-clean.yaml'), 'utf8');
+  assert.match(clean, /clearState: true/, 'launch-clean ne purge plus — le passage sur le coût est périmé');
+
+  const auth = yaml.slice(yaml.indexOf('\nauth:'), yaml.indexOf('\nauth:') + 4200);
+  assert.ok(auth.length > 1000, 'le bloc auth a disparu ou raccourci — ce garde ne mesure plus rien');
+  // Le coût, là où il se décide — pas trois fichiers plus loin.
+  assert.match(auth, /RÉINSTALLER l'app/,
+    'le bloc auth ne dit pas ce que clearState coûte sur iOS — c\'est pourtant lui qui décide d\'une limite de débit');
+  assert.match(auth, /3 appels par minute|limite de débit/,
+    'le bloc auth ne dit plus qu\'une suite peut épuiser un quota d\'envoi');
+  // Le cas que rien ne couvrait : besoin d'auth SANS inclure login.
+  assert.match(auth, /n'inclut PAS\s*\n?\s*#?\s*`?login\.yaml`?/,
+    'le cas du flow qui a besoin de la connexion sans l\'inclure n\'est toujours pas traité (241)');
+  assert.match(auth, /Trois issues/, 'le cas est nommé mais aucune issue n\'est proposée');
+});
+
+test('le bloc device iOS ne se contredit pas, et l\'outillage nomme xcrun (243)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+  const bloc = yaml.slice(yaml.indexOf('# - id: ios-sim') - 600, yaml.indexOf('# - id: ios-sim') + 400);
+  assert.ok(bloc.includes('# - id: ios-sim'), 'le bloc device iOS a disparu');
+  assert.doesNotMatch(bloc, /#\s+autoStart: true/,
+    'le gabarit iOS prescrit encore autoStart: true, que ce même fichier déconseille sur un device nommé');
+  assert.match(bloc, /autoStart: false/, 'le gabarit iOS ne prescrit plus rien pour autoStart');
+
+  // ⚠️ MON PREMIER CRITÈRE ÉTAIT TROP LARGE — « tout outil que TOOLS vérifie
+  // doit être listé » exigeait aussi `aapt2`, `apkanalyzer` et `unzip`, qui
+  // n'appartiennent qu'au scan binaire et pas au démarrage. Il aurait fait
+  // AJOUTER trois outils sans objet, comme le motif non ancré du point 226.
+  // Le constat réel est une ASYMÉTRIE : `adb` était listé, `xcrun` non — deux
+  // pilotes de plateforme, un seul nommé.
+  const cfg = readFileSync(join(SCRIPTS_DIR, 'config.mjs'), 'utf8');
+  const bloctools = cfg.slice(cfg.indexOf('export const TOOLS'), cfg.indexOf('export const TOOLS') + 1400);
+  for (const pilote of ['adb', 'xcrun']) {
+    assert.match(bloctools, new RegExp(`\\b${pilote}: \\{ probe:`),
+      `${pilote} n'est plus vérifié par le harnais — ce garde n'a plus de référence`);
+  }
+  const install = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh'), 'utf8');
+  const ligne = install.split('\n').find((l) => l.includes('for tool in')) ?? '';
+  assert.ok(ligne, 'l\'installeur ne cherche plus d\'outils');
+  const pilotes = ['adb', 'xcrun'].filter((t) => ligne.includes(t));
+  assert.deepEqual(pilotes, ['adb', 'xcrun'],
+    'l\'installeur nomme un pilote de plateforme sans l\'autre : un projet iOS voyait « ✔ adb » '
+    + 'et rien sur celui dont il dépend');
+});
+
 // ── Une édition programmatique doit avoir où s'ancrer ───────────────────────
 //
 // Point 239. Les deux fichiers OWNED portent leur ligne de déclaration mot pour

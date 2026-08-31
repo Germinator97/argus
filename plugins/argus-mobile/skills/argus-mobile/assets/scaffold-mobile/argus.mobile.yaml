@@ -185,12 +185,17 @@ devices:
     os: android-33
     autoStart: false
     role: primary
+  # ⚠️ LE BLOC iOS PRESCRIVAIT `autoStart: true`, que ce fichier déconseille
+  # ailleurs dès qu'un appareil est nommé — deux consignes du même fichier qui
+  # se contredisaient. Un simulateur se désigne par son `udid`, qui est un UUID
+  # STABLE (contrairement à un port Android), donc démarre-le toi-même et laisse
+  # `autoStart: false`. Le relever : `xcrun simctl list devices available`.
   # - id: ios-sim
   #   platform: ios
-  #   udid: ''
-  #   model: iPhone-16
-  #   os: iOS-18-2
-  #   autoStart: true
+  #   udid: ''            # l'UUID rendu par `xcrun simctl list devices`
+  #   model: iPhone 17
+  #   os: iOS-26-3
+  #   autoStart: false
   #   role: secondary
 
 # ── Écrans clés ────────────────────────────────────────────────────────────
@@ -380,6 +385,25 @@ auth:
   # sous-flow ne regardait que le champ identifiant. La décision se prend
   # désormais dans `run.mjs` (`authAnchorsReady`), où un garde l'exerce ancre par
   # ancre — le YAML ne fait plus que la lire.
+  #
+  # ⚠️ CE QU'UNE SUITE AUTHENTIFIÉE COÛTE — à lire ICI, pas trois fichiers plus
+  # loin. `launch-clean.yaml` fait `clearState` avant CHAQUE flow, donc CHAQUE
+  # flow se reconnecte. Deux conséquences que rien ne rappelait à cet endroit :
+  #   · sur iOS, `clearState` fait RÉINSTALLER l'app par Maestro — plus lent
+  #     qu'un `pm clear` Android, et c'est ce qui décide si une suite tient sous
+  #     une limite de débit ;
+  #   · si ton API borne l'envoi du code (typique : 3 appels par minute), une
+  #     suite de six flows en consomme six. Compte AVANT de lancer.
+  #
+  # ⚠️ ET LE CAS QUI N'ÉTAIT PRÉVU NULLE PART : un flow qui n'inclut PAS
+  # `login.yaml` mais dont les écrans sont derrière la connexion — la régression
+  # visuelle, typiquement. Le conseil « retire login des flows qui n'en ont pas
+  # besoin » ne le couvre pas : il en a besoin, il ne l'inclut simplement pas.
+  # Trois issues, à trancher et à ÉCRIRE :
+  #   · l'inclure — une reconnexion de plus par run, la plus simple ;
+  #   · ne garder en visuel que les écrans AVANT la connexion, et dire pourquoi ;
+  #   · sortir ce flow de la suite et le lancer à part, hors `clearState`.
+  # Aucune n'est bonne dans l'absolu : celle qui compte est celle que tu écris.
   #
   # ⚠️ SI TON APP N'A AUCUNE AUTHENTIFICATION, c'est un cas prévu, pas un oubli :
   # laisse les cinq vides, RETIRE les cinq TODO ci-dessous et écris à leur place
