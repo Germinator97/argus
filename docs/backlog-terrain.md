@@ -4004,7 +4004,7 @@ config*. Le garde **exécute** la recette sur les deux, **plus le chemin
 nominal** : un garde qui ne verrait que les deux échecs accepterait une recette
 qui crie toujours.
 
-### 219. Rien ne croise les ancres POSÉES avec les ancres DÉCLARÉES
+### 219. ✅ Corrigé le 31/08/2026 — Rien ne croise les ancres POSÉES avec les ancres DÉCLARÉES
 
 `make argus-anchors` monte les écrans déclarés et vérifie que leurs ancres
 arrivent dans l'arbre : c'est **déclaré → présent**. L'inverse n'existe nulle
@@ -4026,7 +4026,24 @@ même forme : un garde dérivé, total et négatif.
 
 📌 **Le run le met en premier de ses sept points.**
 
-### 220. Aucun moyen documenté d'itérer sur UN flow
+📌 **Fermé par `--check-anchors`**, que `make argus-anchors` appelle AVANT la
+suite Dart : les deux moitiés dans la même cible. Le contrôle exclut le dartdoc
+(deux compteurs du chantier s'y étaient fait prendre) et les gabarits interpolés,
+qu'on ne peut pas confronter à un littéral.
+
+⚠️ **L'échappatoire ne pouvait pas vivre où on l'attendrait.** `harness.dart` et
+`known_issues.dart` sont **OWNED** : y ajouter un symbole ferait cesser de
+compiler les suites déjà installées — le piège que la scission du harnais en
+trois fichiers avait déjà documenté. Elle vit donc en config
+(`anchors.allowUndeclared`), lue **défensivement** : une installation sans la clé
+obtient `[]` et ne casse pas.
+
+⚠️ **Le garde a trouvé un défaut de MA propre implémentation avant qu'elle ne
+parte** : extraire toutes les chaînes d'une ligne attrapait aussi `id: 'home'`,
+donc une ancre homonyme d'un identifiant d'écran serait passée pour déclarée.
+Le relevé ne lit plus que le segment qui suit chaque clé.
+
+### 220. ✅ Corrigé le 31/08/2026 — Aucun moyen documenté d'itérer sur UN flow
 
 `--flow` n'existe pas. Le runner accepte `--tags`, `--include-tags`,
 `--exclude-tags`, `--no-install` — et **aucun de ces quatre n'apparaît dans le
@@ -4043,7 +4060,19 @@ L'agent a dû lire `run.mjs` pour les trouver.
 📌 Le refus de `--flow` est propre — le runner imprime son aide. C'est la
 documentation qui manque, pas la surface.
 
-### 221. ⚠️ DÉPLACÉ — ce n'est pas la table des écarts, c'est le TODO de `goto`
+📌 **Fermé en §3g**, avec la commande à copier et le coût mesuré à côté — une
+consigne sans sa raison ne se suit pas. Le garde est **dérivé** : chaque drapeau
+de la commande doit être accepté par `run.mjs`, donc un drapeau renommé dans le
+code fait rougir la doc.
+
+⚠️ **Ce garde est né faux, de la façon la plus documentée du dépôt** : sa
+première version collectait les drapeaux de la **prose**, donc elle attrapait
+`--flow` dans ma propre phrase disant qu'il n'existe pas. Troisième fois de ce
+chantier que le motif matche sa propre mention — et la règle avait été écrite le
+matin même. Il porte désormais sur le **bloc de commande**, ce que le lecteur
+copie.
+
+### 221. ✅ Corrigé le 31/08/2026 — ⚠️ DÉPLACÉ : ce n'est pas la table des écarts, c'est le TODO de `goto`
 
 Le run rapporte « un cinquième écart légitime absent de la table §2c-bis » : sur
 une app à base locale, `clearState` avant chaque flow rend tout état « plein »
@@ -4068,7 +4097,7 @@ L'agent a inventé le remède (pas de branche, assertions dans
 `journey-critical`, un bloc écrit dans `goto.yaml` expliquant l'absence) et
 obtenu 11/11 visités. Il a eu raison — mais il l'a inventé.
 
-### 222. Un splash de marque décide du gate, et la reconnaissance ne dit pas de le chercher
+### 222. ✅ Corrigé le 31/08/2026 — Un splash de marque décide du gate, et la reconnaissance ne dit pas de le chercher
 
 `thresholds.brandedSplashMs` est déclarée (défaut `0`), lue par **trois**
 scripts, documentée dans `argus.mobile.yaml`. Mais le mot « splash » n'apparaît
@@ -4086,7 +4115,7 @@ La valeur est en clair dans `lib/main.dart` (`_kMinSplashDuration`). Sans elle,
 un run honnête publie un `major` qui **décrit une décision produit**, pas un
 défaut.
 
-### 223. Le défaut d'`artifact.title` RENOMME une page existante
+### 223. ✅ Corrigé le 31/08/2026 — Le défaut d'`artifact.title` RENOMME une page existante
 
 §3g-bis, point 4 :
 
@@ -4103,7 +4132,7 @@ Mobile ».
 de lire le titre actuel avant la première republication. L'agent ne l'a vu que
 parce que l'outil l'obligeait à lire la page.
 
-### 224. Le gabarit du rapport n'a pas de case pour le nom du paramètre — que le skill prescrit d'écrire
+### 224. ✅ Corrigé le 31/08/2026 — Le gabarit du rapport n'a pas de case pour le nom du paramètre
 
 Le skill prescrit explicitement :
 
@@ -4125,6 +4154,42 @@ C'est le mécanisme que le skill documente déjà pour « dont partagées » —
 qui l'a fait naître.
 
 ## Ce qui reste
+
+Les points **218 à 224** sont fermés le 31/08/2026 — le backlog se vide pour la
+**trente-et-unième** fois, dans la même journée que la passe précédente. Le run
+32 est une **vérification iOS**, et son premier résultat est que **les cinq
+correctifs du matin ont tenu** : gate `pass`, 10 flows, 11/11 écrans visités,
+0 finding fonctionnel, 27 min 39 s sur 50. Deux preuves valent mieux que le
+verdict — le binaire est **pesé à 202 570 334 octets** alors que c'est un
+répertoire (donc le 214 tient), et le tableau de couverture iOS écrit le matin
+est jugé « **tenu, mot pour mot** » par un lecteur qui ignorait qu'il était neuf.
+
+⚠️ **ET LA PASSE DU MATIN AVAIT CRÉÉ UN DÉFAUT** — le 218, rapporté l'après-midi
+par le run suivant. Le plus court aller-retour du chantier entre un correctif et
+sa conséquence. Ce qu'il enseigne n'est pas l'oubli d'un `$?` : c'est que
+**l'ancienne version se taisait et que la mienne accuse**. Un remède ne supprime
+pas toujours un mode de panne ; celui-ci l'a rendu bavard, donc crédible.
+
+**Ce que la reproduction a corrigé au rapport :**
+
+| | ce que le run disait / ce que la mesure a établi |
+|---|---|
+| **221** | « un cinquième écart absent de la table §2c-bis » → le **cas 3 couvre déjà** la déclaration ; ce qui n'a aucune instruction est le TODO de `goto.yaml`, qui prescrit une branche par écran pour un état qui n'en admet aucune |
+| **219** | « rien ne croise posé et déclaré » → **exact, et le skill l'écrivait déjà** : « c'est la moitié de son intérêt ». La moitié manquante n'avait aucun instrument |
+| **224** | « pas de case dans le gabarit » → **exact, et c'est une contradiction interne** : le skill prescrit d'écrire le nom, et donne une forme « exacte » qui ne peut pas le porter |
+
+⚠️ **Deux gardes écrits ce jour-là sont nés faux**, tous deux attrapés à
+l'écriture : celui du 220 collectait les drapeaux de la **prose**, donc il
+matchait `--flow` dans ma propre phrase disant qu'il n'existe pas — troisième
+fois de ce chantier, et la règle avait été écrite le matin. Et le relevé du 219
+comptait `id: 'home'` comme une ancre déclarée, ce qui l'aurait rendu trop
+permissif ; c'est son propre garde qui l'a dit, avant livraison.
+
+📌 **Une contrainte de structure a décidé d'un remède** : l'échappatoire du 219
+ne pouvait pas vivre dans `harness.dart` ni `known_issues.dart`, tous deux
+**OWNED** — y ajouter un symbole ferait cesser de compiler les suites déjà
+installées. Elle vit en config, lue défensivement. La structure du scaffold est
+une contrainte de conception, pas un détail d'installation.
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
