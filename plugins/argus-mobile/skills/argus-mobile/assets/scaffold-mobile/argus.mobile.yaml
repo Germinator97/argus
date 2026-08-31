@@ -575,7 +575,21 @@ artifact:
   enabled: false
   # Renseignée à la première publication, puis réutilisée : sans elle, chaque
   # run créerait une page de plus au lieu de mettre la sienne à jour.
+  #
+  # ⚠️ UNE PAGE PAR PLATEFORME. Un rapport décrit UN run, donc une plateforme ;
+  # republier un run iOS sur l'URL du rapport Android ne les réunit pas, il
+  # REMPLACE l'un par l'autre — et le premier n'existe plus nulle part. Vécu.
+  # Deux formes se lisent, l'ancienne continue de marcher :
+  #     url: 'https://…'                                  ← mono-plateforme
+  #     url: { ios: 'https://…', android: 'https://…' }
+  # `title:` accepte les deux formes de la même façon.
   url: ''
+  # La page garde ses runs passés en onglets — jusqu'à 30, mesures seulement,
+  # sans les captures (elles pèsent ~625 Ko par run, la page est plafonnée à
+  # 16 Mo). L'historique vit DANS la page publiée : `argus-mobile-report/` est
+  # ignoré par git et effacé entre deux runs, rien d'autre ne survit. D'où :
+  #     make argus-report ARGS="--previous=<la page publiée, enregistrée>"
+  # Sans `--previous`, republier ÉCRASE les onglets ; le rapport t'avertit.
   # TODO(argus): le nom de la page. Vide = « Rapport Argus Mobile ». Le garder
   # STABLE : c'est ainsi qu'on la retrouve parmi les autres.
   title: ''

@@ -4340,7 +4340,50 @@ qui appartiennent au scan binaire et pas au démarrage. Il m'aurait fait **ajout
 trois outils sans objet**, même forme que le motif non ancré du 226. Le constat
 réel est une **asymétrie** entre les deux pilotes de plateforme.
 
+### 245-250. ✅ Corrigés le 31/08/2026 — la page écrasait le rapport de l'autre plateforme
+
+Signalés par Germinator en regardant les pages publiées, pas par un run : « je
+constate que le rapport des runs android a été effacé pour celui de l'ios ».
+
+| | |
+|---|---|
+| **245** | **une seule `artifact.url` pour un rapport qui décrit UN run**, donc une plateforme. Republier un run iOS dessus ne réunissait pas les deux, il **remplaçait** l'un par l'autre — et le premier n'existait plus nulle part. `artifactFor(config, platform)` lit désormais `url: { ios: …, android: … }`, la forme mono continuant de marcher |
+| **246** | la page ne gardait **aucun** run passé. Elle est pourtant le seul support qui survive : `argus-mobile-report/` est gitignoré et effacé entre deux runs, un runner de CI est jetable. L'historique vit donc **dans la page**, en JSON embarqué, et `--previous` le relit |
+| **247** | un onglet passé porte ses **mesures**, pas ses **captures** — et il le DIT. Mesuré : 652 386 octets pour un run, dont ~625 Ko d'images, contre 1 645 pour ses données ; trente runs avec leurs preuves feraient sauter le plafond de 16 Mo. Une page qui le tait laisse lire son silence comme « ce run n'avait pas de preuve » |
+| **248** | le plafond **annonce ce qu'il retire**, dérivé de ce qui entre. « Les 30 derniers » écrit en dur quand il y en a douze est le compteur faux que ce dépôt traque partout ailleurs |
+| **249** | sans `--previous`, une republication **efface les onglets en silence** : la page produite est valide, elle a juste un onglet. Rien ne lève, rien ne rougit. `pertePossible()` est le seul signal qui existe — extraite de `main()` exprès, pour qu'un garde l'**appelle** au lieu de chercher son texte |
+| **250** | le geste **documenté** n'était pas le geste **outillé** : SKILL.md prescrivait `make argus-report ARGS=…` pendant que la recette lançait `report.mjs` nu. Ni l'un ni l'autre faux seul — c'est l'écart qui l'est, et rien ne pouvait le voir |
+
+⚠️ **Le 250 est né en écrivant le 249.** J'ai documenté `ARGS="--previous=…"`
+comme un acquis, puis vérifié le Makefile : il n'y avait pas de `ARGS`. C'est
+exactement le mode de panne que la règle « geste documenté / geste outillé »
+décrit, appliqué à moi-même — et il n'a coûté que dix minutes parce que la
+vérification a précédé la livraison, pas parce que je m'en souvenais.
+
+⚠️ **Fusionner les deux plateformes dans UNE page était le mauvais remède**, et
+c'était le premier qui venait : il aurait fallu afficher un run d'une autre date
+à côté du courant, les deux ayant l'air aussi frais. Une page par plateforme est
+honnête par construction — elle décrit un run, un seul. C'est le choix qu'a
+tranché Germinator (« une page par plateforme »), et il est meilleur que celui
+que j'aurais pris.
+
 ## Ce qui reste
+
+Les points **245 à 250** sont fermés le 31/08/2026 — backlog vide pour la
+**trente-quatrième** fois, **cinquième passe de la journée**. Aucun ne vient d'un
+run : les six sortent d'une observation de Germinator sur les pages publiées,
+comme le 187 et le 200 avant eux. C'est la troisième fois que la **publication**
+— et non l'exécution — est ce qui trouve le défaut, ce qui confirme la règle du
+livrable que personne ne regarde : une page non lue n'est pas éprouvée.
+
+⚠️ **Ces six points ont été écrits DEUX FOIS.** Le harnais de mutation tournait
+en fond ; il restaure ses cibles par `git checkout`, donc depuis `HEAD`. Il a
+effacé les trois morceaux non commités au moment précis où ils marchaient. La
+règle connue — « commiter AVANT de muter » — visait la passe de mutation ; sa
+moitié manquante est qu'un harnais **lancé en fond** ouvre la même fenêtre sur
+tout le temps où l'on continue de travailler. Le harnais l'a d'ailleurs dit à sa
+façon : `120/141`, avec des `HARNAIS · la suite n'a pas tourné entièrement` en
+série. Il n'a pas rendu un faux chiffre, il a refusé de conclure.
 
 Les points **237 à 244** sont fermés le 31/08/2026 — backlog vide pour la
 **trente-troisième** fois, quatrième passe de la journée. Le run 34 est la

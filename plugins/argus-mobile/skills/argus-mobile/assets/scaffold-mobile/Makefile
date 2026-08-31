@@ -129,8 +129,12 @@ argus-sec: ## MASVS statique (sources + binaire)
 argus-sca: ## CVE des dépendances Dart et natives
 	@node scripts/argus/sca.mjs
 
-argus-report: ## Agrège tout en rapport HTML
-	@node scripts/argus/report.mjs
+# `ARGS` passe les drapeaux du rapport, `--previous=<page>` en tête : c'est lui
+# qui rend les onglets des runs passés. ⚠️ Une variable donnée EN LIGNE DE
+# COMMANDE descend dans les sous-make, donc `make argus-run ARGS=…` la fait
+# suivre jusqu'ici — c'est ce qui évite d'avoir à relancer le rapport à part.
+argus-report: ## Agrège tout en rapport HTML (ARGS=--previous=<page publiée>)
+	@node scripts/argus/report.mjs $(ARGS)
 
 # ⚠️ PAS une liste de prérequis. `argus-run` sort en 1 ou 2 dès qu'un finding
 # atteint le seuil du gate — c'est son travail —, et make s'arrête là : le

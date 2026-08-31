@@ -978,6 +978,34 @@ export function measureBinary(chemin) {
 }
 
 /**
+ * L'identité de la page publiée POUR CETTE PLATEFORME — son URL et son titre.
+ *
+ * ⚠️ IL N'Y EN AVAIT QU'UNE, et un rapport est par plateforme. Un run iOS
+ * republiait donc par-dessus le rapport Android, qui disparaissait : la page
+ * disait bien « ios », mais les résultats Android n'existaient plus nulle part.
+ * L'unité de la page et l'unité du rapport ne coïncidaient pas.
+ *
+ * ⚠️ Fusionner les deux plateformes dans UNE page aurait demandé d'y afficher un
+ * run d'une autre date à côté du courant, les deux ayant l'air frais — le piège
+ * du relevé périmé que ce harnais traque ailleurs. Une page par plateforme est
+ * honnête par construction : elle décrit un run, un seul.
+ *
+ * Les deux formes se lisent, et l'ancienne continue de marcher :
+ *   artifact: { url: 'https://…' }                      ← mono-plateforme
+ *   artifact: { url: { ios: 'https://…', android: '…' } }
+ * @param {any} config @param {string} platform @returns {{url:string, title:string}}
+ */
+export function artifactFor(config, platform) {
+  const a = config?.artifact ?? {};
+  const choisir = (/** @type {any} */ v) => {
+    if (typeof v === 'string') return v;
+    if (v && typeof v === 'object') return String(v[platform] ?? '');
+    return '';
+  };
+  return { url: choisir(a.url), title: choisir(a.title) };
+}
+
+/**
  * La commande de build que le projet déclare pour cette plateforme.
  *
  * Extraite parce qu'elle était recopiée trois fois — `--print-build-cmd`, le

@@ -1218,14 +1218,43 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
    — captures d'écran comprises — à un service tiers. La page est privée par
    défaut, ce qui veut dire « non partagée », pas « restée sur la machine ».
    Sur une app sous contrat, ce n'est pas à toi d'en décider.
-2. **`artifact.url` renseignée → republie DESSUS**, en la passant en `url`.
-   Publier sans elle ne met pas la page à jour : ça en crée une seconde, et
-   le lien déjà distribué devient celui d'un rapport figé.
-3. **Sinon**, publie, puis **reporte l'URL obtenue dans `argus.mobile.yaml` →
-   `artifact.url`**. C'est toi qui édites ce fichier, pas le script : il
-   t'appartient, il porte des commentaires, et un script qui réécrit du YAML
-   les perd.
-4. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
+2. **UNE PAGE PAR PLATEFORME.** `artifact.url` accepte les deux formes :
+
+   ```yaml
+   url: 'https://…'                              # projet mono-plateforme
+   url: { ios: 'https://…', android: 'https://…' }   # les deux
+   ```
+
+   ⚠️ **Un rapport décrit UN run, donc UNE plateforme.** Republier un run iOS
+   sur l'URL d'un run Android ne les réunit pas : il **remplace** l'un par
+   l'autre, et le premier n'existe plus nulle part. Vécu — « je constate que le
+   rapport des runs android a été effacé pour celui de l'ios ». Rien ne le
+   signale : la page produite est valide, elle dit bien « ios », et la perte ne
+   se voit qu'en cherchant l'autre.
+
+3. **AVANT de lancer `make argus-report`, RÉCUPÈRE LA PAGE PUBLIÉE** — c'est
+   elle qui porte l'historique, et rien d'autre ne le porte :
+
+   ```
+   Artifact  action: "read"  url: <artifact.url de la plateforme>
+   make argus-report ARGS="--previous=<le fichier que read a écrit>"
+   ```
+
+   La page embarque ses runs passés dans un `<script type="application/json">` ;
+   `--previous` les relit et les rend en onglets. **Sans lui, la republication
+   les efface** — `report.mjs` te le crie (`une page existe … et --previous n'a
+   pas été passé`), parce que cette perte-là est silencieuse par nature : la
+   nouvelle page est valide, elle a juste un seul onglet.
+
+   Une page volumineuse (≈ 650 Ko dès qu'elle embarque ses captures) revient
+   sous forme de **fichier local**, dont `read` donne le chemin — c'est celui
+   qu'attend `--previous`.
+
+4. **Sinon**, publie, puis **reporte l'URL obtenue dans `argus.mobile.yaml` →
+   `artifact.url`**, sous la clé de la plateforme. C'est toi qui édites ce
+   fichier, pas le script : il t'appartient, il porte des commentaires, et un
+   script qui réécrit du YAML les perd.
+5. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
    ou « Rapport Argus Mobile » s'il est vide. C'est ainsi qu'on retrouve la
    page ; la renommer à chaque run donne l'impression d'une page différente.
 

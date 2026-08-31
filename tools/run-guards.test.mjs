@@ -33,6 +33,8 @@ import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { artifactFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -5076,4 +5078,126 @@ test('le gabarit demande si l\'agent peut écrire dans un paquet voisin', () => 
     'le skill dit quoi faire sans la permission ; le cadrage doit dire si elle existe');
   assert.match(src, /ancres inertes/,
     'et ce que son absence coûte, mesuré sur deux projets');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// La page publiée : une PAR PLATEFORME, et elle garde ses runs passés (245-250)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Un contexte de run minimal, mais complet pour ce que la page en tire. */
+function ctxRun({ plateforme = 'android', gate = 'pass', quand = '2026-08-31T10:00:00.000Z' } = {}) {
+  return {
+    generatedAt: quand, gate, shots: new Map(), evidenceNote: '', coverage: null, perf: null,
+    run: { platform: plateforme, appId: 'com.exemple', scope: 'complet', devices: [], startup: {} },
+    counts: { critical: 0, high: 1, medium: 0, low: 0 },
+    parts: [{ file: 'a11y.json', state: 'ok', findings: [1] }],
+    findings: [{ id: 'Q-1', severity: 'high', title: 'un défaut', dimension: 'a11y', screen: 'accueil', evidence: ['/tmp/x.png'] }],
+  };
+}
+const pageDe = (o, historique = []) => renderArtifact({ ...ctxRun(o), record: runRecord(ctxRun(o)), historique });
+
+test('une page PAR PLATEFORME, et la forme mono continue de marcher (245)', () => {
+  // ⚠️ Le défaut fermé : une seule `artifact.url` pour un rapport qui décrit UN
+  // run, donc UNE plateforme. Le run iOS republiait sur l'URL du run Android,
+  // qui disparaissait — « je constate que le rapport des runs android a été
+  // effacé pour celui de l'ios ». Rien ne le signalait : la page était valide.
+  const deux = { artifact: { url: { ios: 'https://a/ios', android: 'https://a/dro' },
+    title: { ios: 'T iOS', android: 'T Android' } } };
+  assert.equal(artifactFor(deux, 'ios').url, 'https://a/ios');
+  assert.equal(artifactFor(deux, 'android').url, 'https://a/dro');
+  assert.notEqual(artifactFor(deux, 'ios').url, artifactFor(deux, 'android').url,
+    'les deux plateformes doivent avoir des pages DIFFÉRENTES — sinon l\'une écrase l\'autre');
+  assert.equal(artifactFor(deux, 'ios').title, 'T iOS', 'le titre suit la plateforme, comme l\'URL');
+
+  // ⚠️ L'AUTRE MOITIÉ : un projet mono-plateforme écrit une chaîne, et rien ne
+  // doit l'obliger à la transformer en objet. Casser ça casserait tous les
+  // projets déjà configurés — un correctif qui coupe trop.
+  const un = { artifact: { url: 'https://a/seule', title: 'T' } };
+  assert.equal(artifactFor(un, 'ios').url, 'https://a/seule');
+  assert.equal(artifactFor(un, 'android').url, 'https://a/seule');
+  assert.equal(artifactFor({}, 'ios').url, '', 'et sans config, une chaîne vide, pas une exception');
+});
+
+test('l\'historique survit à une republication, et une page étrangère ne le casse pas (246)', () => {
+  // L'historique ne peut vivre QUE dans la page : `argus-mobile-report/` est
+  // gitignoré et effacé entre deux runs, un runner de CI est jetable.
+  const p1 = pageDe({ gate: 'warn', quand: '2026-08-29T10:00:00.000Z' });
+  const h1 = historiqueDe(p1);
+  assert.equal(h1.length, 1, 'une page doit porter son propre run');
+  const p2 = pageDe({ gate: 'fail', quand: '2026-08-30T10:00:00.000Z' }, h1);
+  const h2 = historiqueDe(p2);
+  assert.equal(h2.length, 2, 'la republication doit AJOUTER, pas remplacer');
+  assert.deepEqual(h2.map((r) => r.gate), ['fail', 'warn'], 'le plus récent d\'abord');
+  assert.match(p2, /id="passe-1"/, 'et le run passé doit être RENDU, pas seulement stocké');
+
+  // ⚠️ L'AUTRE MOITIÉ : rendre `[]` plutôt que lever. Un historique vide fait
+  // perdre le PASSÉ ; une exception ferait perdre le RUN. Le premier se voit.
+  assert.deepEqual(historiqueDe('<h1>une autre page</h1>'), [], 'page étrangère');
+  assert.deepEqual(historiqueDe(''), [], 'page vide');
+  assert.deepEqual(historiqueDe(`<script type="application/json" id="argus-runs">{oops</scr` + `ipt>`), [],
+    'JSON abîmé — on repart de zéro, on ne meurt pas');
+});
+
+test('le run courant est le premier onglet, et le seul à porter ses preuves (247)', () => {
+  const p = pageDe({ gate: 'pass' }, historiqueDe(pageDe({ gate: 'fail' })));
+  const onglets = [...p.matchAll(/<button role="tab" aria-selected="(true|false)"/g)].map((m) => m[1]);
+  assert.ok(onglets.length >= 2, 'deux runs doivent donner deux onglets — sinon ce garde ne mesure rien');
+  assert.deepEqual(onglets, ['true', 'false'],
+    'ouvrir la page doit montrer ce qui vient d\'être mesuré, jamais un relevé d\'il y a trois semaines');
+  assert.match(p, /<section id="passe-0" role="tabpanel">/, 'le courant est visible');
+  assert.match(p, /<section id="passe-1" role="tabpanel" hidden>/, 'les passés sont masqués');
+
+  // ⚠️ Un onglet passé DIT qu'il n'a pas ses preuves. Mesuré : 652 386 octets
+  // pour un run, dont ~625 Ko de captures, contre 1 645 pour ses données —
+  // trente runs avec leurs images feraient sauter le plafond de 16 Mo. Une page
+  // qui le TAIT laisse lire son silence comme « ce run n'avait pas de preuve ».
+  assert.match(p, /pas ses captures/, 'la page doit dire ce qu\'elle ne garde pas');
+  const record = runRecord(ctxRun({}));
+  assert.ok(!('evidence' in record.findings[0]),
+    'un finding archivé ne doit pas traîner ses chemins de capture — c\'est ce qui tient dans 16 Mo');
+  assert.equal(record.findings[0].title, 'un défaut', 'mais son TEXTE reste : c\'est ce qui se relit');
+});
+
+test('le plafond retient 30 runs et ANNONCE ce qu\'il retire (248)', () => {
+  let h = [];
+  for (let i = 0; i < 41; i++) h = historiqueDe(pageDe({ quand: `2026-07-${String((i % 28) + 1).padStart(2, '0')}T10:00:00.000Z` }, h));
+  assert.equal(h.length, 30, 'le plafond doit tenir');
+  // ⚠️ Le compte des runs retirés se DÉRIVE de ce qui entre, il ne s'annonce
+  // pas : « les 30 derniers » quand il y en a douze est le compteur faux que ce
+  // projet traque partout ailleurs.
+  const p = pageDe({}, h);
+  const m = p.match(/(\d+) run\(s\) plus ancien\(s\) retiré/);
+  assert.ok(m, 'la page doit dire combien de runs elle a retirés');
+  assert.equal(Number(m[1]), h.length - 29, 'et le compte doit être JUSTE, pas plausible');
+  // L'autre moitié : sous le plafond, aucune coupe à annoncer.
+  assert.doesNotMatch(pageDe({}, h.slice(0, 3)), /plus ancien\(s\) retiré/,
+    'ne pas annoncer une coupe qui n\'a pas eu lieu');
+});
+
+test('sans --previous, la republication AVERTIT qu\'elle va effacer (249)', () => {
+  // ⚠️ Cette perte-là est silencieuse par nature : la page produite est valide,
+  // elle a juste un seul onglet. Rien ne lève, rien ne rougit, et on l'apprend
+  // en rouvrant la page. L'avertissement est le seul signal qui existe.
+  const dit = pertePossible('', 'https://a/ios');
+  assert.ok(dit, 'une page existe et --previous manque : il FAUT le dire');
+  assert.match(dit, /--previous/, 'et nommer le remède, pas seulement le symptôme');
+  // Les deux autres moitiés : un avertissement qui crie toujours s'ignore.
+  assert.equal(pertePossible('/tmp/page.html', 'https://a/ios'), null, 'historique repris : rien à perdre');
+  assert.equal(pertePossible('', ''), null, 'première publication : rien à écraser');
+});
+
+test('le geste documenté est le geste outillé : ARGS arrive jusqu\'au rapport (250)', () => {
+  // ⚠️ Le piège fermé : SKILL.md prescrivait `make argus-report ARGS=…` pendant
+  // que la recette lançait `node scripts/argus/report.mjs` nu. Ni l'un ni
+  // l'autre n'est faux seul — c'est leur ÉCART qui l'est, et rien ne peut le
+  // voir : il n'y a aucun comportement à casser, donc aucun test à faire rougir.
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const recette = mk.match(/^argus-report:.*\n((?:\t.*\n)+)/m);
+  assert.ok(recette, 'la recette argus-report a disparu — mets ce garde à jour');
+  assert.match(recette[1], /report\.mjs \$\(ARGS\)/,
+    'la recette doit transmettre ARGS, sinon --previous n\'atteint jamais le script');
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /ARGS="--previous=/, 'et le skill doit prescrire le geste que la recette offre');
+  assert.match(skill, /UNE PAGE PAR PLATEFORME/, 'et dire pourquoi une page ne vaut pas pour les deux');
 });

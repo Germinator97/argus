@@ -22,7 +22,7 @@ import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
+import { artifactFor, artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -379,8 +379,180 @@ ${STYLE}</head><body>${renderBody(context)}</body></html>`;
  * c'est là qu'il est lu.
  * @param {any} context @returns {string}
  */
-function renderArtifact(context) {
-  return `<title>${context.title || TITLE}</title>\n${STYLE}\n${renderBody(context)}\n`;
+/**
+ * L'HISTORIQUE DES RUNS VIT DANS LA PAGE ELLE-MÊME, et il ne peut pas vivre
+ * ailleurs.
+ *
+ * ⚠️ POURQUOI. `argus-mobile-report/` est ignoré par git et effacé entre deux
+ * runs ; un runner de CI est jetable par construction. Le seul support qui
+ * survit d'un run à l'autre est la page publiée. Elle porte donc ses propres
+ * données, en JSON, et la génération suivante les relit.
+ *
+ * ⚠️ CE QU'UN ONGLET PASSÉ NE PORTE PAS : ses preuves. Mesuré sur un rapport
+ * réel — la page pèse **652 386 octets**, dont ~625 Ko de captures embarquées
+ * en data-URI pour UN run, quand ses données tiennent en **1 645**. Garder les
+ * images de chaque run ferait sauter la limite de 16 Mo en vingt-cinq passes.
+ * Un onglet passé montre donc ce qui a été MESURÉ, pas sa photographie — et il
+ * le DIT, plutôt que de laisser croire que l'image manque.
+ */
+const HISTORIQUE_MAX = 30;
+const MARQUE_HISTO = 'argus-runs';
+
+/**
+ * L'avertissement dû quand une republication s'apprête à EFFACER l'historique.
+ *
+ * ⚠️ Extrait de `main()` exprès : laissé dedans, il ne serait gardable qu'en
+ * cherchant son texte dans la source — le barreau le plus faible, celui qu'une
+ * valeur neutralisée (`if (false && …)`) laisse vert. Ici le garde APPELLE et
+ * lit ce qui revient.
+ * @param {string} prevPath @param {string} url @returns {string|null}
+ */
+export function pertePossible(prevPath, url) {
+  if (prevPath) return null;   // l'historique est repris : rien à perdre
+  if (!url) return null;       // aucune page n'existe : rien à écraser
+  return `une page existe (${url}) et --previous n'a pas été passé :`
+    + ' cette republication EFFACERAIT ses onglets. Enregistre la page publiée,'
+    + ' puis relance report.mjs avec --previous=<fichier>';
+}
+
+/** L'enregistrement compact d'un run — ce qu'un onglet passé sait montrer. */
+export function runRecord(context) {
+  const { run, counts, gate, parts, findings, generatedAt } = context;
+  return {
+    at: generatedAt,
+    platform: String(run?.platform ?? ''),
+    appId: String(run?.appId ?? ''),
+    scope: String(run?.scope ?? 'complet'),
+    gate,
+    counts,
+    dimensions: (parts ?? []).map((/** @type {any} */ p) => ({
+      source: p.file, state: p.state, reason: p.reason ?? '', findings: p.findings.length,
+    })),
+    // Les findings SANS leurs preuves : c'est le texte qui se relit six mois
+    // plus tard, pas la capture.
+    findings: (findings ?? []).map((/** @type {any} */ f) => ({
+      id: f.id, severity: f.severity, title: f.title, dimension: f.dimension ?? '', screen: f.screen ?? '',
+    })),
+  };
+}
+
+/**
+ * L'historique porté par une page déjà publiée.
+ *
+ * ⚠️ Rend `[]` sur tout ce qui n'est pas une page à nous — page absente, HTML
+ * sans la marque, JSON abîmé. Un historique vide fait perdre le PASSÉ ; une
+ * exception ferait perdre le RUN. Le premier se voit, le second non.
+ * @param {string} html @returns {any[]}
+ */
+export function historiqueDe(html) {
+  const ouvre = `<script type="application/json" id="${MARQUE_HISTO}">`;
+  const i = String(html ?? '').indexOf(ouvre);
+  if (i < 0) return [];
+  const j = html.indexOf('</scr' + 'ipt>', i);
+  if (j < 0) return [];
+  try {
+    const lu = JSON.parse(html.slice(i + ouvre.length, j));
+    return Array.isArray(lu) ? lu : [];
+  } catch { return []; }
+}
+
+/** L'historique embarqué, pour que la génération suivante le relise. */
+function embarqueHistorique(records) {
+  // ⚠️ `</scr`+`ipt>` dans une donnée fermerait la balise : on l'échappe. C'est
+  // le seul caractère qui peut casser un JSON embarqué dans du HTML.
+  const json = JSON.stringify(records).replace(/<\//g, '<\\/');
+  return `<script type="application/json" id="${MARQUE_HISTO}">${json}</scr` + `ipt>`;
+}
+
+const STYLE_ONGLETS = `<style>
+.onglets{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;border-bottom:1px solid var(--bord);padding-bottom:0}
+.onglets button{font:inherit;font-size:13px;padding:8px 14px;border:1px solid transparent;border-bottom:none;
+  border-radius:6px 6px 0 0;background:none;color:var(--doux);cursor:pointer;margin-bottom:-1px}
+.onglets button:hover{color:var(--texte)}
+.onglets button[aria-selected=true]{background:var(--carte);border-color:var(--bord);color:var(--texte);font-weight:600}
+.onglets .pastille{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+.pastille.pass{background:#16a34a}.pastille.warn{background:#d97706}.pastille.fail{background:#dc2626}
+.passe-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--doux);margin:0 0 16px}
+.sans-preuve{font-size:13px;color:var(--doux);border-left:3px solid var(--bord);padding:8px 12px;margin:16px 0}
+</style>`;
+
+/**
+ * Le panneau d'un run PASSÉ — ses mesures, sans ses preuves.
+ *
+ * ⚠️ Il DIT que les captures ne sont pas gardées. Une page qui les tait laisse
+ * lire son silence comme « ce run n'en avait pas », ce qui est faux : il en
+ * avait, elles ont été écartées pour tenir dans les 16 Mo de la page.
+ */
+function panneauPasse(r, i) {
+  const badge = String(r.gate || 'pass');
+  const cnt = r.counts || {};
+  const dims = (r.dimensions || []).map((d) => {
+    const etat = d.state === 'ok' ? `${d.findings} finding(s)` : `non exécutée — ${d.reason || '?'}`;
+    return `<tr><td>${esc(d.source)}</td><td>${esc(etat)}</td></tr>`;
+  }).join('');
+  const finds = (r.findings || []).map((f) => `<tr><td>${esc(f.id)}</td><td>${esc(f.severity)}</td>`
+    + `<td>${esc(f.title)}</td><td>${esc(f.dimension)}</td><td>${esc(f.screen)}</td></tr>`).join('');
+  return `<section id="passe-${i}" role="tabpanel" hidden><div class="wrap">
+  <p class="passe-meta"><span><strong>${esc(badge.toUpperCase())}</strong></span>
+    <span>${esc(String(r.at || '').replace('T', ' ').slice(0, 16))}</span>
+    <span>plateforme ${esc(r.platform || '?')}</span>
+    <span>${esc(r.appId || '')}</span>
+    <span>portée ${esc(r.scope || 'complet')}</span></p>
+  <p>${Number(cnt.critical || 0)} critical · ${Number(cnt.high || 0)} high · ${Number(cnt.medium || 0)} medium · ${Number(cnt.low || 0)} low</p>
+  <h2>Dimensions</h2><table><tr><th>source</th><th>état</th></tr>${dims || '<tr><td colspan="2">—</td></tr>'}</table>
+  <h2>Findings</h2>${finds
+    ? `<table><tr><th>id</th><th>sévérité</th><th>titre</th><th>dimension</th><th>écran</th></tr>${finds}</table>`
+    : '<p class="muted">aucun</p>'}
+  <p class="sans-preuve">Run archivé : ses mesures sont conservées, <strong>pas ses captures</strong>.
+    Un seul run porte ses preuves — le courant — parce qu'elles pèsent à elles seules plusieurs
+    centaines de kilo-octets et que la page est plafonnée à 16 Mo.</p>
+</div></section>`;
+}
+
+/**
+ * La page publiable : le run courant, puis un onglet par run archivé.
+ *
+ * ⚠️ Le run courant est le PREMIER onglet et il est sélectionné : ouvrir la page
+ * doit montrer ce qui vient d'être mesuré, jamais un relevé d'il y a trois
+ * semaines qui aurait l'air aussi frais que lui.
+ */
+export function renderArtifact(context) {
+  const record = context.record;
+  const passes = (context.historique ?? []).slice(0, HISTORIQUE_MAX - 1);
+  const tous = record ? [record, ...passes] : passes;
+  const etiquette = (r, i) => {
+    const quand = String(r.at || '').replace('T', ' ').slice(5, 16);
+    const nom = i === 0 ? 'Run courant' : quand;
+    return `<button role="tab" aria-selected="${i === 0}" aria-controls="passe-${i}" id="ong-${i}">`
+      + `<span class="pastille ${esc(String(r.gate || 'pass'))}"></span>${esc(nom)}`
+      + `<span class="muted"> · ${esc(String(r.platform || '?'))}</span></button>`;
+  };
+  const onglets = tous.length > 1
+    ? `<div class="onglets" role="tablist">${tous.map(etiquette).join('')}</div>`
+    : '';
+  const archives = passes.map((r, i) => panneauPasse(r, i + 1)).join('\n');
+  // ⚠️ Le compte des runs perdus se DÉRIVE, il ne s'annonce pas : dire « les 30
+  // derniers » quand il y en a douze est le compteur faux que ce projet traque.
+  const perdus = Math.max(0, (context.historique ?? []).length - passes.length);
+  const coupe = perdus
+    ? `<p class="muted">${perdus} run(s) plus ancien(s) retiré(s) — la page en garde ${HISTORIQUE_MAX}.</p>`
+    : '';
+  const script = tous.length > 1 ? `<script>
+(function () {
+  var ongs = Array.prototype.slice.call(document.querySelectorAll('.onglets button'));
+  var pans = ongs.map(function (b) { return document.getElementById(b.getAttribute('aria-controls')); });
+  function montre(i) {
+    ongs.forEach(function (b, j) { b.setAttribute('aria-selected', String(j === i)); });
+    pans.forEach(function (p, j) { if (p) p.hidden = j !== i; });
+  }
+  ongs.forEach(function (b, i) { b.addEventListener('click', function () { montre(i); }); });
+  montre(0);
+}());
+</scr` + `ipt>` : '';
+  return `<title>${context.title || TITLE}</title>\n${STYLE}\n${STYLE_ONGLETS}\n`
+    + `<div class="wrap">${onglets}</div>\n`
+    + `<section id="passe-0" role="tabpanel">${renderBody(context)}${coupe}</section>\n`
+    + `${archives}\n${script}\n${embarqueHistorique(tous)}\n`;
 }
 
 /** @param {number} bytes @returns {string} */
@@ -493,12 +665,42 @@ function main() {
     if (shot.missing) notes.push(`${shot.missing} introuvable(s) sur le disque`);
     const evidenceNote = notes.length ? `<p class="muted">Preuves : ${esc(notes.join(' · '))}</p>` : '';
     const artifactPath = join(dir, 'report.artifact.html');
-    writeFileSync(artifactPath, renderArtifact({ ...context, shots: shot.shots, evidenceNote, title: config.artifact.title }), 'utf8');
+
+    // L'HISTORIQUE vient de la page DÉJÀ PUBLIÉE, que l'agent enregistre avant
+    // de republier (`--previous=<fichier>`). Rien d'autre ne survit : le dossier
+    // de rapport est ignoré par git et effacé entre deux runs.
+    const prevArg = process.argv.find((x) => x.startsWith('--previous='));
+    const prevPath = prevArg ? prevArg.slice('--previous='.length) : '';
+    let historique = [];
+    if (prevPath) {
+      if (existsSync(prevPath)) {
+        historique = historiqueDe(readFileSync(prevPath, 'utf8'));
+        log(`  historique repris : ${historique.length} run(s) depuis ${prevPath}`);
+      } else warn(`--previous=${prevPath} : fichier absent — l'historique repart de zéro`);
+    }
+    // ⚠️ CE SILENCE-LÀ COÛTE LE PASSÉ. Une page existe (son URL est déclarée),
+    // on va republier par-dessus, et sans `--previous` la nouvelle n'a qu'un
+    // onglet : les runs précédents ne sont pas « masqués », ils sont ÉCRASÉS.
+    // Rien ne lève, la page est valide, et la perte ne se voit qu'en la rouvrant.
+    const ident = artifactFor(config, String(context.run?.platform ?? ''));
+    const perte = pertePossible(prevPath, ident.url);
+    if (perte) warn(perte);
+
+    writeFileSync(artifactPath, renderArtifact({
+      ...context, shots: shot.shots, evidenceNote,
+      title: ident.title || config.artifact.title,
+      record: runRecord(context), historique,
+    }), 'utf8');
     log(`page publiable : ${artifactPath}`);
     for (const note of notes) log(`  · ${note}`);
-    log(config.artifact.url
-      ? `  à REPUBLIER sur ${config.artifact.url} — publier sans cette URL crée un doublon`
-      : '  première publication : reporte ensuite l\'URL dans argus.mobile.yaml → artifact.url');
+    // ⚠️ UNE PAGE PAR PLATEFORME. Un rapport décrit un run, donc une plateforme ;
+    // republier un run iOS sur l'URL d'un run Android ne les réunit pas, il
+    // remplace l'un par l'autre — et le premier n'existe plus nulle part.
+    const plateforme = String(context.run?.platform ?? 'android');
+    log(ident.url
+      ? `  à REPUBLIER sur ${ident.url} — publier sans cette URL crée un doublon`
+      : `  première publication : reporte l'URL dans argus.mobile.yaml → `
+        + `artifact.url.${plateforme} — une page PAR PLATEFORME, pas une pour les deux`);
     // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
     // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
     // republie en choisit d'autres et la page se lit comme une seconde page.
