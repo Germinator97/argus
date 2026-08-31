@@ -427,7 +427,23 @@ export function sizeFinding(pese, sizeMb, config, platform, buildCmd) {
   // Le chemin proposé est DÉRIVÉ de celui du binaire de test : un projet à
   // flavors donne `app-dev-debug.apk`, donc `app-dev-release.apk`, et non le
   // chemin par défaut de Flutter qui n'existerait pas chez lui.
-  const attendu = String(pese.path ?? '').replace(/-debug\./, '-release.');
+  // ⚠️ CETTE DÉRIVATION ÉTAIT DE FORME ANDROID, et elle prescrivait le contraire
+  // de ce que la config interdit (point 228). Elle remplace `-debug.` par
+  // `-release.` ; un chemin iOS n'en contient pas, donc le remplacement était un
+  // no-op et le finding disait `build.iosScan: …/iphonesimulator/Runner.app` —
+  // pendant que le commentaire de cette clé dit « `iphoneos`, PAS
+  // `iphonesimulator` : un .app de simulateur ne porte ni la même architecture
+  // ni la même signature ». La prescription est partie telle quelle dans un
+  // rapport PUBLIÉ.
+  //
+  // Elle DÉRIVE du chemin mesuré des deux côtés, plutôt que de figer un nom :
+  // un projet dont la cible ne s'appelle pas `Runner` garderait sinon le nom
+  // par défaut dans une consigne qui le concerne.
+  const attendu = platform === 'ios'
+    ? (String(pese.path ?? '').includes('iphonesimulator')
+      ? String(pese.path).replace('iphonesimulator', 'iphoneos')
+      : 'build/ios/iphoneos/Runner.app')
+    : String(pese.path ?? '').replace(/-debug\./, '-release.');
   const gestes = declare
     ? [`\`${cle}\` déclare ${declare}, mais le fichier n'est pas là — construis-le : ${buildCmd}`]
     : [`construis la release : ${buildCmd}`,

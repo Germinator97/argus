@@ -3480,6 +3480,41 @@ test('le croisement survit à dart format, aux paramètres nommés et aux apostr
   rmSync(dossier, { recursive: true, force: true });
 });
 
+test('la taille ne prescrit pas le binaire que la config INTERDIT (228)', () => {
+  // ⚠️ La dérivation était de forme Android (`-debug.` → `-release.`), donc un
+  // no-op sur un chemin iOS : le finding prescrivait `iphonesimulator` pendant
+  // que le commentaire de la clé dit « `iphoneos`, PAS `iphonesimulator` ».
+  // La prescription fausse est partie dans un rapport PUBLIÉ.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  // ⚠️ DÉRIVÉ DE LA CONFIG : si le commentaire change d'avis, ce garde suit.
+  // L'y coder en dur ferait deux sources qui divergeraient en silence — le
+  // défaut même qu'on ferme.
+  assert.match(yaml, /`iphoneos`, pas `iphonesimulator`/,
+    'la config ne dit plus quel build iOS se publie — ce garde n\'a plus de référence');
+
+  const cfg = { thresholds: { binarySizeMb: 60 } };
+  const prescrit = (/** @type {string} */ p, /** @type {string} */ plat) =>
+    String(sizeFinding({ path: p, isRelease: false }, 92, cfg, plat, 'cmd')?.suggestedFix ?? '');
+
+  const ios = prescrit('build/ios/iphonesimulator/Runner.app', 'ios');
+  assert.match(ios, /iosScan: build\/ios\/iphoneos\//,
+    'la taille ne prescrit plus un build device sur iOS');
+  assert.doesNotMatch(ios.split('\n').find((l) => l.includes('déclare-la')) ?? '', /iphonesimulator/,
+    'la taille prescrit encore le simulateur — ce que la config INTERDIT');
+
+  // Le nom de cible est DÉRIVÉ, pas figé : un projet dont l'app ne s'appelle pas
+  // Runner garderait sinon le nom par défaut dans une consigne qui le concerne.
+  assert.match(prescrit('build/ios/iphonesimulator/MonApp.app', 'ios'), /iphoneos\/MonApp\.app/,
+    'le nom de la cible est figé au lieu d\'être dérivé du chemin mesuré');
+
+  // ⚠️ L'AUTRE MOITIÉ : Android ne bouge pas. C'est la direction qu'un correctif
+  // de plateforme casse en silence.
+  assert.match(prescrit('build/app/outputs/flutter-apk/app-dev-debug.apk', 'android'),
+    /androidScan: build\/app\/outputs\/flutter-apk\/app-dev-release\.apk/,
+    'la dérivation Android a changé — flavor compris');
+});
+
 test('la cible argus-anchors APPELLE ce contrôle, elle ne fait pas que tester', () => {
   const mk = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
