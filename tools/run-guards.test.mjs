@@ -3238,6 +3238,49 @@ test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () =>
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Ce que le SKILL prescrit pour itérer doit EXISTER dans le runner ────────
+//
+// Point 220. Le skill disait « reprends la séquence à `argus-run` », ce qui se
+// lit comme un run complet — 310 s contre 87 en filtré, facteur 3,6 à chaque
+// itération. Les drapeaux existaient ; aucun n'était documenté nulle part, et
+// l'agent a dû lire `run.mjs` pour les trouver.
+//
+// Le garde est DÉRIVÉ : il prend les drapeaux que le SKILL nomme et exige que
+// le runner les accepte. Un drapeau renommé dans le code fait rougir la doc.
+
+test('les drapeaux que le SKILL prescrit pour itérer existent dans le runner', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const runner = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+
+  const bloc = skill.slice(skill.indexOf('ET SI C\'EST UN SEUL FLOW'));
+  assert.ok(bloc.length > 200, 'le SKILL ne dit plus comment itérer sur un seul flow (point 220)');
+  // ⚠️ CE GARDE EST NÉ FAUX, et de la façon la plus documentée du dépôt : sa
+  // première version collectait les drapeaux de la PROSE, donc elle attrapait
+  // `--flow` dans ma propre phrase disant qu'il n'existe pas. Il porte donc sur
+  // le BLOC DE COMMANDE — ce que le lecteur copie —, jamais sur ce qu'on en dit.
+  const commande = bloc.slice(bloc.indexOf('```bash'), bloc.indexOf('```', bloc.indexOf('```bash') + 7));
+  assert.ok(commande.includes('run.mjs'), 'le bloc ne porte plus de commande à copier');
+  const prescrits = [...commande.matchAll(/(--[a-z-]+)/g)].map((m) => m[1]);
+  assert.ok(prescrits.length >= 2,
+    `la commande ne porte plus de drapeaux (${prescrits.length}) — si sa forme a changé, mets ce garde à jour`);
+
+  // ⚠️ DÉRIVÉ : chaque drapeau nommé doit être accepté par le runner. C'est ce
+  // qui empêche la doc de citer un drapeau qui n'existe pas — le défaut exact
+  // qu'un `--flow` inventé aurait produit.
+  const acceptes = new Set([...runner.matchAll(/'(--[a-z-]+)'/g)].map((m) => m[1]));
+  const fantomes = prescrits.filter((f) => !acceptes.has(f));
+  assert.deepEqual(fantomes, [],
+    'le SKILL prescrit des drapeaux que le runner n\'accepte pas — ils échoueront chez le lecteur');
+
+  // L'autre moitié : le coût mesuré doit rester, sinon la consigne n'a pas de
+  // raison, et une consigne sans raison ne se suit pas.
+  assert.match(bloc.slice(0, 900), /310|87/, 'le SKILL ne dit plus ce que coûte un run complet');
+  // …et le lecteur doit être détourné de `--flow`, qui n'existe pas : sans
+  // cette phrase, il l'essaie, et c'est ce qui a coûté la lecture de run.mjs.
+  assert.match(bloc.slice(0, 900), /n'a pas de `--flow`/,
+    'le SKILL ne dit plus que `--flow` n\'existe pas — le lecteur l\'essaiera');
+});
+
 // ── L'autre moitié de `make argus-anchors` ──────────────────────────────────
 //
 // Point 219. La suite Dart monte les écrans DÉCLARÉS et vérifie que leurs

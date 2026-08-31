@@ -1123,6 +1123,20 @@ un changement de flags ⇒ `flutter clean`, puis relance.
 Reprends ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être
 rejouées.
 
+⚠️ **ET SI C'EST UN SEUL FLOW QUE TU METS AU POINT, ne rejoue pas tout.** Un
+`argus-run` complet coûte **310 s** là où le même run filtré en coûte **87** —
+facteur 3,6, à chaque itération. Le runner n'a pas de `--flow` (il refuse
+proprement et imprime son aide), mais il a de quoi faire :
+
+```bash
+node scripts/argus/run.mjs --tags=journey --no-install   # le flow seul, app déjà posée
+```
+
+`--tags` / `--include-tags` / `--exclude-tags` filtrent, `--no-install` saute la
+pose du binaire quand il n'a pas changé. ⚠️ **Le rapport d'un run filtré porte
+son périmètre et un bandeau « partiel »** : c'est voulu, et ça veut dire que le
+DERNIER run avant `argus-report` doit être complet.
+
 **g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
 `argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et
 n'en parle pas à chaque run. Quand il vaut `true`, `make argus-report` écrit en
