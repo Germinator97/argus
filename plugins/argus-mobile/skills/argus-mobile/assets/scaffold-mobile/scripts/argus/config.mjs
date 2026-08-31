@@ -758,6 +758,30 @@ export function flutterCommandIn(command, pinned) {
 export const flutterCommand = (command) => flutterCommandIn(command, usesFvm());
 
 /**
+ * La plateforme sur laquelle une commande porte quand personne ne l'a dite.
+ *
+ * ⚠️ LE DÉFAUT ÉTAIT `'android'` EN DUR, aux deux sites qui servent le Makefile
+ * — lequel ne passe jamais `--platform`. Un projet déclaré `platforms: [ios]`
+ * voyait donc `make argus-build` construire un APK, la preuve de taille porter
+ * sur un binaire sans rapport, et le runner installer autre chose que ce qui
+ * venait d'être bâti. Rien ne levait : les valeurs iOS existaient et étaient
+ * justes, c'est le défaut qui les court-circuitait avant qu'on les atteigne.
+ *
+ * D'où une fonction plutôt que deux littéraux : elle a une valeur de retour,
+ * donc un garde peut l'appeler et lire ce qui revient. Un garde qui lirait la
+ * source resterait vert sur une valeur neutralisée.
+ *
+ * `argv` est vide par défaut pour que l'appelant NON-CLI (une dimension qui
+ * veut simplement savoir sur quoi porte le projet) n'hérite pas des arguments
+ * du processus par accident.
+ * @param {any} config @param {string[]} [argv] @returns {string}
+ */
+export function platformFor(config, argv = []) {
+  const flag = (argv.find((a) => a.startsWith('--platform=')) ?? '').split('=')[1] ?? '';
+  return flag || config?.platforms?.[0] || 'android';
+}
+
+/**
  * La commande qui produit le binaire de PUBLICATION, dérivée de celle du projet.
  *
  * ⚠️ ELLE MANQUAIT, et son absence coûtait deux choses. Le harnais sait
@@ -1185,7 +1209,7 @@ function main() {
   if (printCmd) {
     const arg = (/** @type {string} */ name) =>
       (process.argv.slice(2).find((a) => a.startsWith(`${name}=`)) ?? '').split('=')[1] ?? '';
-    const platform = arg('--platform') || 'android';
+    const platform = platformFor(config, process.argv.slice(2));
     const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
     const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice(config).udid : '');
     const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(udid));
@@ -1196,7 +1220,7 @@ function main() {
   // Le chemin du binaire que cette commande produit — pour que l'appelant
   // puisse MESURER le paquet avant et après, au lieu de croire « ✓ Built ».
   if (process.argv.slice(2).includes('--print-binary')) {
-    const platform = (process.argv.slice(2).find((a) => a.startsWith('--platform=')) ?? '').split('=')[1] || 'android';
+    const platform = platformFor(config, process.argv.slice(2));
     console.log(platform === 'ios' ? config.build.ios : config.build.android);
     return;
   }

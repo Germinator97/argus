@@ -14,7 +14,7 @@
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { test } from 'node:test';
@@ -27,7 +27,7 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, platformFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -2844,6 +2844,69 @@ test('perf.mjs LIT son verdict par launchOutcome au lieu de le refaire', () => {
     `${boucles.length} boucle(s) de mesure comptent les expirations au lieu de 2 (à froid ET à chaud)`);
 });
 
+
+// ── Sur quelle plateforme une commande porte-t-elle quand on ne l'a pas dite ─
+//
+// Point 213, premier run iOS. Le défaut valait `'android'` EN DUR aux deux
+// sites que le Makefile appelle — lequel ne passe jamais `--platform`. Un
+// projet `platforms: [ios]` construisait donc un APK, et le runner installait
+// ensuite autre chose que ce qui venait d'être bâti.
+//
+// ⚠️ CE GARDE A DEUX MOITIÉS, et la seconde est celle qui compte. La première
+// exerce la décision ; la seconde LANCE le script sur une config dérivée du
+// scaffold LIVRÉ, parce qu'une décision juste que personne n'appelle est
+// exactement le défaut qu'on vient de corriger. Un garde qui n'aurait que la
+// première resterait vert si l'on remettait le littéral aux deux sites.
+
+test('sans `--platform`, la plateforme est celle que le projet DÉCLARE', () => {
+  // Le drapeau prime sur tout : c'est lui qu'on tape pour l'autre plateforme.
+  assert.equal(platformFor({ platforms: ['ios'] }, ['--platform=android']), 'android');
+  assert.equal(platformFor({ platforms: ['android'] }, ['--platform=ios']), 'ios');
+  // Sans drapeau, la déclaration décide — le cœur du 213.
+  assert.equal(platformFor({ platforms: ['ios'] }), 'ios');
+  assert.equal(platformFor({ platforms: ['ios', 'android'] }), 'ios');
+  assert.equal(platformFor({ platforms: ['android'] }), 'android');
+  // Un projet qui n'a rien déclaré garde le comportement d'avant.
+  assert.equal(platformFor({}), 'android');
+  assert.equal(platformFor({ platforms: [] }), 'android');
+  // `argv` vide par défaut : un appelant non-CLI n'hérite pas du processus.
+  assert.equal(platformFor({ platforms: ['ios'] }, []), 'ios');
+});
+
+test('le Makefile, qui ne passe JAMAIS `--platform`, reçoit bien les valeurs iOS', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-plateforme-'));
+  // ⚠️ LA CONFIG VIENT DU SCAFFOLD LIVRÉ. Une config écrite à la main pour aller
+  // vite a produit un faux constat au run 31 — elle portait la commande sous la
+  // clé du chemin. On ne réécrit donc que la ligne qui distingue les deux
+  // plateformes, et on garde tout le reste tel qu'il est livré.
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+  assert.match(yaml, /^platforms:\n {2}- android$/m,
+    'le scaffold ne déclare plus `platforms: [android]` — si le bloc a bougé, mets ce montage '
+    + 'à jour ; sinon la bascule ci-dessous ne bascule rien et ce garde ne mesure plus rien');
+  cpSync(join(scaffold, 'scripts'), join(dossier, 'scripts'), { recursive: true });
+  writeFileSync(join(dossier, 'argus.mobile.yaml'), yaml
+    .replace(/^platforms:\n {2}- android$/m, 'platforms:\n  - ios')
+    .replace(/^ {2}androidPackage: ''.*$/m, '  androidPackage: com.exemple.monapp')
+    .replace(/^ {2}iosBundleId: ''.*$/m, '  iosBundleId: com.exemple.monapp'));
+
+  const lancer = (/** @type {string[]} */ args) =>
+    execFileSync('node', ['scripts/argus/config.mjs', ...args], { cwd: dossier, encoding: 'utf8' }).trim();
+
+  // Sans drapeau — exactement ce que fait `make argus-build`.
+  assert.equal(lancer(['--print-build-cmd']), 'flutter build ios --debug --simulator',
+    'un projet iOS se voit encore prescrire un build Android (point 213)');
+  assert.equal(lancer(['--print-binary']), 'build/ios/iphonesimulator/Runner.app',
+    'un projet iOS se voit encore désigner un APK (point 213)');
+
+  // ⚠️ L'AUTRE MOITIÉ : dériver le défaut de la déclaration ne doit pas rendre
+  // le drapeau inopérant. Sans ces deux lignes, un correctif qui IGNORE
+  // `--platform` passerait pour bon.
+  assert.equal(lancer(['--print-build-cmd', '--platform=android']), 'flutter build apk --debug');
+  assert.equal(lancer(['--print-binary', '--platform=android']),
+    'build/app/outputs/flutter-apk/app-debug.apk');
+  rmSync(dossier, { recursive: true, force: true });
+});
 
 // ── La taille de publication : réclamer la mesure, ne pas juger l'outillage ──
 //
