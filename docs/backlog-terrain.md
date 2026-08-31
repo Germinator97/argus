@@ -4262,7 +4262,112 @@ compte comme un défaut »*. Cinq sont revenues.
 📌 Le **234 est de moi**, posé au run 32 : un garde qui empêche un autre garde de
 s'exécuter coûte plus qu'il ne rapporte.
 
+### 237. ✅ Corrigé le 31/08/2026 — L'indice de démarrage n'envisageait pas une app CASSÉE
+
+Le message oppose « ancre fausse » à « écran lent » et envoie relever
+`startTimeoutMs`. L'écran peut n'être ni l'un ni l'autre. Mesuré : l'app affichait
+« Service indisponible » à chaque lancement, un fichier de configuration absent
+du bundle — **relever le plafond n'y aurait jamais rien changé**, et le run a
+cherché une lenteur qui n'existait pas.
+
+📌 Trois causes désormais, la plus chère en premier — et le geste qui tranche en
+une seconde ne coûte rien : **Maestro écrit une capture à l'instant de l'échec**.
+L'indice nomme son chemin, au lieu de laisser quelqu'un la reprendre à la main.
+Le garde **dérive** ce chemin de la structure d'artefacts documentée dans
+`run.mjs`, pour qu'il ne puisse pas se périmer en silence.
+
+### 238. ✅ Corrigé le 31/08/2026 — 🚨 Le double prescrit par le skill CACHAIT un gel de production
+
+Le skill prescrit un `Completer` non complété pour un service interrogé en
+boucle, afin que l'étage 1 n'affame pas la boucle d'événements. **Juste pour le
+harnais, faux comme modèle de la plateforme** : le vrai service rend un `Future`
+**déjà complété** sur iOS, et c'est précisément pourquoi la boucle s'emballe. Le
+remplacer fait passer l'étage 1 au vert **sur l'écran même qui gèle l'app**.
+
+Sonde bornée, même boucle, seule la complétion change :
+
+```
+Future.value(null)         → 100 001 appels en 200 ms
+Completer non complété     →         1 appel  en 200 ms
+```
+
+Sur device : *« process main thread busy for 30.0s »*.
+
+📌 **Le besoin du double EST le symptôme.** Trois gestes désormais, dans l'ordre :
+mesurer le vrai service, inscrire le défaut, **puis** écrire le double.
+
+⚠️ C'est le **seul cas connu** où une consigne de ce skill produisait un faux
+vert, et il n'a été trouvé que parce qu'un run a suivi la consigne à la lettre.
+
+### 239. ✅ Corrigé le 31/08/2026 — Le dartdoc porte la déclaration mot pour mot, et plus HAUT que la vraie
+
+`harness.dart` et `known_issues.dart` portent chacun leur ligne de déclaration
+dans leur dartdoc. Un `indexOf` ou un `sed` ancré dessus matche donc le
+**commentaire** d'abord. Vécu : **deux fichiers détruits, deux reconstructions**.
+
+Les deux formes ne sont pas identiques dans le scaffold **livré** — la vraie
+déclaration se replie après `=`. Elles le deviennent quand le projet remplit le
+fichier et que `dart format` recolle la ligne, **c'est-à-dire le chemin normal**.
+
+📌 Un marqueur `// ARGUS:DECLARATION`, unique et jamais en dartdoc, est posé
+au-dessus de la vraie. Le SKILL prévenait pour **compter** ; le geste dangereux
+est d'**écrire**, et il le dit maintenant.
+
+### 240. ✅ Corrigé le 31/08/2026 — Aucun point d'accroche pour câbler un double
+
+`ArgusScreen` n'avait pas de crochet de cycle de vie. Un écran qui résout ses
+dépendances lui-même (`get_it`) ignore tout provider posé au-dessus : le seul
+endroit restant était le corps de `build()`, appelé N fois — d'où une fonction
+idempotente qu'un projet réel a dû inventer.
+
+⚠️ **Écrit d'abord, le crochet n'était câblé qu'à DEUX sites sur SEIZE.** Il
+aurait marché pour l'indice de pli et n'aurait rien fait dans les suites — un
+défaut invisible, puisque rien ne casse. Les seize passent désormais par
+`argusMonte`, et le garde les **compte**.
+
+### 241-244. ✅ Corrigés le 31/08/2026 — trois choses justes, mal placées, et une contradiction
+
+| | |
+|---|---|
+| **241** | « retire `login.yaml` des flows qui n'en ont pas besoin » ne couvre pas le cas qui se produit : un flow qui n'inclut PAS login mais dont les écrans sont derrière lui — la régression visuelle. Il en a besoin, il ne l'inclut simplement pas. Trois issues nommées ; celle qui compte est celle qu'on écrit |
+| **242** | **`sec.mjs` faisait échouer le gate sur une plateforme hors périmètre.** Les deux audits de sources tournaient quoi qu'on déclare : sur `platforms: [ios]`, le manifeste Android rendait un `major`, et `major` est dans `gate.failOn`. Image inversée des 213-217. Ce qui n'est plus jugé **se dit** — un audit absent ressemble sinon à un audit qui n'a rien trouvé |
+| **243** | le gabarit de device iOS prescrivait `autoStart: true`, que le même fichier déconseille sur un appareil nommé ; et l'installeur cherchait `adb` **sans** `xcrun` — un projet iOS voyait « ✔ adb » et rien sur l'outil dont il dépend |
+| **244** | `clearState` **réinstalle** l'app sur iOS et tourne avant chaque flow, donc chaque flow se reconnecte : c'est ce qui décide si une suite tient sous une limite de débit, et ça vivait dans un commentaire de `launch-clean.yaml`. C'est près du bloc `auth:` que ça se lit |
+
+⚠️ **Le premier critère du garde 243 était trop large** — « tout outil que
+`TOOLS` vérifie doit être listé » aurait forcé `aapt2`, `apkanalyzer` et `unzip`,
+qui appartiennent au scan binaire et pas au démarrage. Il m'aurait fait **ajouter
+trois outils sans objet**, même forme que le motif non ancré du 226. Le constat
+réel est une **asymétrie** entre les deux pilotes de plateforme.
+
 ## Ce qui reste
+
+Les points **237 à 244** sont fermés le 31/08/2026 — backlog vide pour la
+**trente-troisième** fois, quatrième passe de la journée. Le run 34 est la
+**PREMIÈRE combinaison API × iOS** du chantier : les runs 29-30 étaient une API
+sur Android, les 31-33 iOS sans backend. La case n'avait jamais été exercée, et
+elle rend huit points dont aucun ne pouvait apparaître ailleurs.
+
+⚠️ **LE 238 EST LE SEUL CAS CONNU OÙ UNE CONSIGNE DE CE SKILL PRODUISAIT UN FAUX
+VERT.** Le double qu'il prescrit pour empêcher l'étage 1 de geler masque le gel
+de production qu'il modélise à l'envers. Il n'a été trouvé que parce qu'un run a
+suivi la consigne **à la lettre** — c'est-à-dire par le seul chemin qui pouvait
+le révéler.
+
+📌 **Deux constats de ce run appartiennent au PROJET, pas au skill**, et le second
+compte : la page OTP gèle l'app sur iOS, et son remède vit dans un paquet
+**partagé avec une autre application**. Mesuré par sonde bornée — 100 001 appels
+en 200 ms contre 1. C'est le mécanisme du point 210, cette fois en production.
+
+📌 **Le cadrage a de nouveau rapporté une classe entière.** La question ajoutée
+au run 33 — *« signale-moi ce qui était juste mais MAL PLACÉ »* — a rendu trois
+points de plus (241, 243, 244). Deux runs de suite qu'une seule ligne de prompt
+produit une catégorie de défauts que rien d'autre ne trouve.
+
+⚠️ **Et deux gardes ont failli faire agir à tort**, tous deux par un critère
+**trop large** : celui du 243 aurait fait ajouter trois outils sans objet, et le
+crochet du 240 n'était câblé qu'à deux sites sur seize — il aurait marché là où
+personne ne regarde et rien fait là où tout se joue.
 
 Les points **225 à 236** sont fermés le 31/08/2026 — le backlog se vide pour la
 **trente-deuxième** fois, et c'est la **troisième passe de la journée**. Le run
