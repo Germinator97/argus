@@ -415,6 +415,30 @@ export function buildHintFor(binary, root, config, pinned = usesFvm(), platform 
 }
 
 /**
+ * Faut-il analyser ce binaire, et sinon pourquoi — la décision, pas son effet.
+ *
+ * ⚠️ EXTRAITE PARCE QU'UN GARDE NE POUVAIT PAS L'ATTEINDRE. La raison iOS était
+ * juste et calculée par une fonction éprouvée, mais le site qui l'appelle
+ * pouvait la débrancher sans qu'un seul garde ne bouge — mesuré par mutation :
+ * remettre le message figé laissait la suite verte. C'est la forme exacte du
+ * point 213, une décision correcte que personne n'appelle, et le seul remède
+ * est de rendre le CÂBLAGE lisible en valeur plutôt qu'en texte.
+ * @param {string} platform @param {string} binary @param {string} root
+ * @param {any} config @param {boolean} unzipPresent
+ * @returns {{scan:boolean, why:string}}
+ */
+export function binaryScanPlan(platform, binary, root, config, unzipPresent) {
+  if (platform !== 'android') return { scan: false, why: iosBinarySkipReason(binary, root) };
+  if (!existsSync(binary)) {
+    return { scan: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config, undefined, platform)}` };
+  }
+  if (!unzipPresent) return { scan: false, why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
+  return { scan: true, why: '' };
+}
+
+/**
+ * Pourquoi l'analyse binaire ne conclut pas sur iOS — sans rien affirmer de faux.
+/**
  * Pourquoi l'analyse binaire ne conclut pas sur iOS — sans rien affirmer de faux.
  *
  * ⚠️ LE MESSAGE AFFIRMAIT « un .app de SIMULATEUR » (point 217). Le saut est
@@ -655,12 +679,9 @@ function main() {
   // `build.android` (le comportement d'avant, pour ne rien casser).
   const binary = resolve(root, binaryToScan(platform, config, opts.binary));
   const tools = detectTools(['unzip', 'aapt2']);
-  if (platform !== 'android') {
-    binaryFacts = { scanned: false, why: iosBinarySkipReason(binary, root) };
-  } else if (!existsSync(binary)) {
-    binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config)}` };
-  } else if (!tools.unzip.present) {
-    binaryFacts = { scanned: false, why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
+  const plan = binaryScanPlan(platform, binary, root, config, tools.unzip.present);
+  if (!plan.scan) {
+    binaryFacts = { scanned: false, why: plan.why };
   } else {
     const result = auditApk(binary, config);
     binaryFindings = result.findings;

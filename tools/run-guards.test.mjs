@@ -34,7 +34,7 @@ import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditApk, auditObfuscation, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -2946,6 +2946,80 @@ test('le saut de l\'analyse iOS décrit le binaire QU\'ON A, pas celui qu\'on su
   const vide = iosBinarySkipReason('', root);
   assert.doesNotMatch(vide, /simulateur|build device/i,
     'sans chemin, la raison qualifie quand même un binaire qu\'elle n\'a pas vu');
+});
+
+test('la décision de sauter le scan est CÂBLÉE, pas seulement juste', () => {
+  // ⚠️ CE GARDE EXISTE À CAUSE D'UNE MUTATION. La raison iOS était juste et
+  // éprouvée, mais le site qui l'appelle pouvait la débrancher sans qu'un seul
+  // garde ne bouge : remettre le message figé laissait la suite verte. C'est la
+  // forme exacte du point 213 — une décision correcte que personne n'appelle.
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-plan-'));
+  const apk = join(dossier, 'app-release.apk');
+  writeFileSync(apk, 'PK');
+  const config = { platforms: ['android'], build: { androidBuildCmd: 'flutter build apk --debug' } };
+
+  // iOS : on ne scanne pas, et la raison est celle que la fonction dédiée rend —
+  // c'est cette égalité qui prouve le câblage, et non la présence d'un nom.
+  const ios = binaryScanPlan('ios', '/p/build/ios/iphoneos/Runner.app', '/p', config, true);
+  assert.equal(ios.scan, false);
+  assert.equal(ios.why, iosBinarySkipReason('/p/build/ios/iphoneos/Runner.app', '/p'));
+
+  // Android, binaire présent, unzip là : on scanne. Sans ce cas, un plan qui
+  // refuserait TOUT passerait — c'est la moitié qu'on oublie.
+  assert.deepEqual(binaryScanPlan('android', apk, dossier, config, true), { scan: true, why: '' });
+
+  // Les deux refus qui restent, chacun avec sa raison propre.
+  const absent = binaryScanPlan('android', join(dossier, 'nulle-part.apk'), dossier, config, true);
+  assert.equal(absent.scan, false);
+  assert.match(absent.why, /binaire absent/);
+  assert.match(absent.why, /flutter build apk/, 'le refus ne dit plus comment le construire');
+
+  const sansUnzip = binaryScanPlan('android', apk, dossier, config, false);
+  assert.equal(sansUnzip.scan, false);
+  assert.match(sansUnzip.why, /unzip absent/);
+  rmSync(dossier, { recursive: true, force: true });
+});
+
+test('et sec.mjs, LANCÉ POUR DE VRAI, sort la raison qui décrit ce build-là', () => {
+  // ⚠️ LES DEUX GARDES CI-DESSUS NE SUFFISENT PAS, et une mutation l'a dit :
+  // la décision peut être juste, sa fonction éprouvée, et le site d'appel la
+  // débrancher sans que rien ne bouge. Seule une exécution voit le câblage.
+  // Le montage reproduit le scénario du run 31 : projet iOS dont `iosScan`
+  // désigne un build DEVICE — le cas où l'ancien message mentait.
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-sec-ios-'));
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+  assert.match(yaml, /^ {2}# iosScan: /m,
+    'le scaffold ne porte plus la ligne `# iosScan:` — si elle a bougé, mets ce montage à jour ; '
+    + 'sinon la substitution ci-dessous ne substitue rien et le garde ne mesure plus rien');
+  cpSync(join(scaffold, 'scripts'), join(dossier, 'scripts'), { recursive: true });
+  writeFileSync(join(dossier, 'argus.mobile.yaml'), yaml
+    .replace(/^platforms:\n {2}- android$/m, 'platforms:\n  - ios')
+    .replace(/^ {2}androidPackage: ''.*$/m, '  androidPackage: com.exemple.monapp')
+    .replace(/^ {2}iosBundleId: ''.*$/m, '  iosBundleId: com.exemple.monapp')
+    .replace(/^ {2}# iosScan: .*$/m, '  iosScan: build/ios/iphoneos/Runner.app'));
+  mkdirSync(join(dossier, 'build/ios/iphoneos/Runner.app'), { recursive: true });
+  writeFileSync(join(dossier, 'build/ios/iphoneos/Runner.app/Runner'), 'x');
+
+  // ⚠️ `2>&1`, ET C'EST LE MONTAGE QUI A ÉCHOUÉ D'ABORD : l'avertissement part
+  // sur stderr, qu'`execFileSync` ne rend pas quand la commande sort en 0. Le
+  // garde a donc rougi sur une sortie amputée, pas sur un défaut du code.
+  let sortie = '';
+  try {
+    sortie = execFileSync('bash', ['-c', 'node scripts/argus/sec.mjs 2>&1'],
+      { cwd: dossier, encoding: 'utf8' });
+  } catch (e) {
+    // Le script peut sortir non nul sur ses findings : c'est sa sortie qu'on lit,
+    // pas son code — sans ce rattrapage le garde tomberait pour la mauvaise raison.
+    const err = /** @type {any} */ (e);
+    sortie = String(err.stdout ?? '') + String(err.stderr ?? '');
+  }
+  const ligne = sortie.split('\n').find((l) => l.includes('analyse du binaire non faite'));
+  assert.ok(ligne, `sec.mjs ne dit plus pourquoi il n'a pas analysé — sortie : ${sortie.slice(0, 400)}`);
+  assert.doesNotMatch(ligne, /simulateur/i,
+    'sec.mjs explique encore un build DEVICE par un .app de simulateur (point 217)');
+  assert.match(ligne, /build device/, 'la raison servie par sec.mjs ne décrit plus le binaire déclaré');
+  rmSync(dossier, { recursive: true, force: true });
 });
 
 // ── Peser un paquet qui est un RÉPERTOIRE ───────────────────────────────────
