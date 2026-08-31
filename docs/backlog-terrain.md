@@ -3771,7 +3771,7 @@ doit trancher seul et qui ne se déduit d'aucun dépôt. Deux runs de suite ont
 laissé **six et cinq ancres inertes** faute de cette ligne.
 
 
-### 213. Le défaut de plateforme est `'android'` EN DUR, et il ignore `platforms:`
+### 213. ✅ Corrigé le 31/08/2026 — Le défaut de plateforme est `'android'` EN DUR, et il ignore `platforms:`
 
 `config.mjs`, aux **deux** sites qui servent le Makefile :
 
@@ -3801,13 +3801,26 @@ secondes pour rien, puis le temps de comprendre pourquoi.
 il vit dans un fichier du CADRE, donc il repart à la remise à neuf s'il n'est pas
 remonté ici.
 
+📌 **Corrigé en extrayant `platformFor()`** plutôt qu'en réparant deux fois le
+littéral : elle rend une valeur, donc un garde l'appelle et lit ce qui revient.
+Un garde qui aurait lu la source serait resté vert sur une valeur neutralisée.
+
+⚠️ **La machinerie iOS était DÉJÀ entièrement câblée** — `iosBuildCmd` et
+`build.ios` avaient chacun leur branche aux deux sites. Seul le défaut les
+court-circuitait avant qu'on les atteigne, ce qui explique que la fonction se
+lise comme correcte : il n'y manquait rien, il y avait une valeur de trop.
+
+⚠️ **Il a fallu DEUX mutations**, et c'est la seconde qui enseigne : débrancher
+un seul des deux sites d'appel laisse le garde de décision vert. Seul le garde
+qui LANCE le script sur une config iOS dérivée du scaffold livré le voit.
+
 ⚠️ **Et un second symptôme rapporté était FAUX** — je l'ai cru avant de mesurer
 proprement. `--print-binary` semblait rendre une *commande* au lieu d'un chemin ;
 c'était ma configuration de test qui portait la commande sous la clé du chemin.
 `build.android` est le binaire, `build.androidBuildCmd` la commande : deux clés
 voisines, et un montage bâclé les confond.
 
-### 214. La garde de fraîcheur du binaire est INERTE sur iOS
+### 214. ✅ Corrigé le 31/08/2026 — La garde de fraîcheur du binaire est INERTE sur iOS
 
 `Makefile`, cible `argus-build` :
 
@@ -3827,7 +3840,26 @@ C'est le mode de panne que ce chantier connaît le mieux — un instrument qui r
 un chiffre sans avoir mesuré. Relevé à la main sur le terrain : le bundle pèse
 **198 128 Ko**.
 
-### 215. `releaseBuildCmd()` et `buildHintFor()` conseillent un build ANDROID sur un projet iOS
+📌 **La mesure a déménagé dans `measureBinary()`**, que la recette INTERROGE au
+lieu d'en tenir une seconde version — l'écart entre le geste documenté et le
+geste outillé étant précisément ce qui a produit ce point. Un bundle se résume
+par les empreintes triées de ses entrées, **chemin compris**.
+
+Exercé pour de vrai sur quatre cas. Le décisif : **160 026 → 160 026 octets,
+empreinte différente** — même taille, contenu réécrit. C'est ce que produit un
+rebuild, et c'est exactement ce que l'ancienne version ne pouvait pas voir.
+
+⚠️ **`kind: 'absent'` existe pour que la recette puisse SE TAIRE** : un build qui
+n'écrit rien à l'emplacement déclaré sort maintenant en erreur, au lieu
+d'imprimer un zéro qui se lit comme une mesure.
+
+⚠️ **Deux gardes sont nés faux dans l'heure.** Celui du Makefile cherchait
+`wc -c` absent de la recette — et matchait le **commentaire** qui explique
+pourquoi on l'a retiré. Et la promesse « chemin compris » repartait sans son
+garde : la mutation qui retire le chemin du résumé est restée **verte** jusqu'à
+ce qu'on ajoute le cas du fichier déplacé.
+
+### 215. ✅ Corrigé le 31/08/2026 — `releaseBuildCmd()` et `buildHintFor()` conseillent un build ANDROID sur un projet iOS
 
 Deux fonctions du cadre ne lisent que les clés Android :
 
@@ -3842,7 +3874,22 @@ un APK et laisse la mesure iOS toujours absente. La consigne s'exécute sans
 erreur, ce qui est la pire forme : elle a toutes les apparences d'une consigne
 juste.
 
-### 216. `iosScan` est lue par QUATRE sites et documentée NULLE PART
+📌 **C'est la forme exacte du défaut que le dartdoc de `releaseBuildCmd`
+décrivait déjà** — « le harnais sait construire ce qu'il pilote et rien d'autre »
+— revenue par l'autre plateforme. Une mise en garde écrite ne ferme pas le piège
+qu'elle décrit.
+
+⚠️ **`--simulator` saute** dans la dérivation : un `.app` de simulateur ne se
+publie pas, donc le garder aurait fait de cette fonction une prescription
+incapable de tenir sa promesse. `flutter build ios --debug --simulator` rend
+donc `flutter build ios --release`, et un flavor déjà déclaré survit.
+
+📌 **`projectBuildCmd()` extraite au passage** : l'aiguillage ios/android était
+recopié **trois** fois — `--print-build-cmd`, le message d'installation du
+runner, la dérivation de release. Trois copies divergent une par une, et celle
+qu'on oublie est celle qui compte.
+
+### 216. ✅ Corrigé le 31/08/2026 — `iosScan` est lue par QUATRE sites et documentée NULLE PART
 
 Mesuré sur le scaffold livré : `grep -c iosScan argus.mobile.yaml` → **0**,
 contre **3** lectures dans `perf.mjs` et **1** dans `sec.mjs`. Sa jumelle
@@ -3856,7 +3903,20 @@ C'est la forme symétrique du point 11 : là on avait des clés déclarées que 
 ne lisait, ici une clé lue que rien ne déclare. Les deux se trouvent par le même
 garde, dérivé, et une seule des deux directions était couverte.
 
-### 217. Le saut de l'analyse binaire iOS explique par une raison qui peut être FAUSSE
+📌 **Le garde est dérivé, pas une liste de cas** : il collecte les clés que les
+scripts lisent réellement — accès pointé, sélecteur dynamique `[cle]`, et alias
+local résolu **par sa portée** — et exige que chacune paraisse dans
+`argus.mobile.yaml`, déclarée ou commentée. Sa non-vacance l'est aussi : toute
+clé de `DEFAULTS.build` doit être retrouvée par le collecteur, sinon il se
+dénonce au lieu de rendre un vert qui ne mesure rien.
+
+⚠️ **LE MOTIF A FAILLI FAIRE AGIR À TORT.** Sa première version n'était pas
+ancrée sur `config` et rapportait une clé `version` — qui venait de la chaîne
+`'ro.build.version.sdk'`, une propriété système Android. Sans la vérification,
+j'ajoutais au scaffold la déclaration d'une clé **qui n'existe pas**. Un motif
+trop large ne fait pas que compter faux.
+
+### 217. ✅ Corrigé le 31/08/2026 — Le saut de l'analyse binaire iOS explique par une raison qui peut être FAUSSE
 
 `sec.mjs:620` saute dès que `platform !== 'android'` — ce qui est correct,
 l'analyse iOS n'est pas couverte. Mais le message affirme :
@@ -3873,8 +3933,76 @@ Le saut est bon ; sa justification décrit un cas qui n'est pas forcément le si
 Une raison fausse dans un message honnête coûte plus qu'une raison absente : elle
 fait chercher au mauvais endroit.
 
+📌 **Trois formulations désormais** — device, simulateur, indéterminé — et aucune
+n'affirme plus que ce que le chemin montre. Le garde exige **l'autre moitié** :
+retirer l'affirmation fausse ne doit pas faire perdre l'avertissement quand il
+est **vrai**, sans quoi un correctif qui se contente de supprimer le mot
+« simulateur » passerait.
+
+⚠️ **DEUX CORRECTIFS ONT ÉTÉ NÉCESSAIRES, ET C'EST LA MUTATION QUI L'A DIT.** Le
+premier était juste et sa fonction éprouvée — mais le site d'appel pouvait être
+débranché, message figé remis, et **la suite entière restait verte**. Forme
+exacte du 213 rencontrée une heure plus tôt : une décision correcte que personne
+n'appelle. D'où `binaryScanPlan()`, qui rend une valeur, **et** un troisième
+garde qui LANCE `sec.mjs` de bout en bout sur le scénario du run 31.
+
+⚠️ **Ce garde-là a rougi sur son propre montage d'abord** : l'avertissement part
+sur `stderr`, qu'`execFileSync` ne rend pas quand la commande sort en 0. Il
+lisait une sortie amputée. Son message disait ce qu'il avait vraiment reçu — ce
+qui l'a rendu diagnosticable en une lecture, au lieu de m'envoyer chercher dans
+le code.
+
 
 ## Ce qui reste
+
+Les points **213 à 217** sont fermés le 31/08/2026 — le backlog se vide pour la
+**trentième** fois. C'est la passe du **premier run iOS**, et les cinq points
+tiennent toujours en une phrase : *tout ce qui avait un défaut supposait
+Android.* Aucun n'a été démenti par la reproduction ; tous les cinq étaient
+encore vrais dans le code du jour, trois jours après avoir été inscrits.
+
+**Ce que la passe a ajouté aux constats, et que le run n'avait pas vu :**
+
+| | ce que la mesure a trouvé en plus |
+|---|---|
+| 213 | la machinerie iOS était **déjà câblée** aux deux sites : il n'y manquait rien, il y avait une valeur de trop |
+| 214 | le cas décisif n'est pas le poids mais **l'empreinte à poids égal** — 160 026 → 160 026 octets, contenu réécrit |
+| 215 | l'aiguillage ios/android était recopié **trois** fois ; et `--simulator` devait sauter, sinon la consigne ne pouvait pas tenir |
+| 216 | le motif du garde, non ancré, allait faire **déclarer une clé qui n'existe pas** (`version`, tirée de `ro.build.version.sdk`) |
+| 217 | le premier correctif était juste **et débranchable sans qu'un garde bouge** — il en a fallu un second |
+
+⚠️ **TROIS GARDES SONT NÉS FAUX DANS LA MÊME PASSE**, chacun d'une façon déjà
+répertoriée, ce qui ne les a pas empêchés de se reproduire :
+- celui du Makefile cherchait `wc -c` absent de la recette — et matchait **le
+  commentaire qui explique pourquoi on l'a retiré** ;
+- la promesse « empreinte, chemin compris » repartait **sans son garde** : la
+  mutation qui retire le chemin est restée verte jusqu'à ce qu'on ajoute le cas
+  du fichier déplacé ;
+- celui qui lance `sec.mjs` lisait une sortie **amputée de `stderr`**, donc il a
+  rougi sur son propre montage. Son message disait ce qu'il avait vraiment reçu,
+  et c'est ce qui l'a rendu diagnosticable en une lecture.
+
+⚠️ **ET J'AI DÉTRUIT DEUX ÉDITIONS NON COMMITÉES AVEC `git checkout`** — la
+déclaration `iosScan` et le garde du 216, d'un coup, au moment précis où je
+prouvais qu'ils marchaient. Quatrième fois dans ce projet. La cause n'est pas
+l'oubli de la règle : mon aide-mémoire de mutation ad hoc n'avait pas le
+garde-fou que le **vrai** harnais porte, lequel refuse de démarrer sur une cible
+sale. Un outil qui mute doit porter ce refus, pas compter sur la mémoire de qui
+l'appelle.
+
+⚠️ **Et le même aide-mémoire annonçait « TOMBE » quoi qu'il arrive** : il
+cherchait `# fail 0` là où le rapporteur écrit `ℹ fail 0`, donc son motif ne
+matchait jamais. Sept verdicts ont dû être rejoués. Ce qui l'a démasqué n'est
+pas une relecture mais une **absence** — une mutation « tombée » sans qu'aucune
+ligne `✖` ne l'accompagne. Un instrument se prouve avant d'être lu : la version
+corrigée décide sur le **code de sortie**, et sait rendre VACANT sur une
+mutation inoffensive.
+
+📌 **Le harnais complet, lui, ne s'est pas laissé prendre** : deux mutations
+préexistantes visaient le corps de `releaseBuildCmd`, réécrit par le 215, et il
+a rendu **HARNAIS — « motif trouvé 0× »** au lieu de VACANT. C'est exactement la
+distinction qui évite de partir chercher un garde manquant qui existe.
+**114/116 avant remise à jour, 116/116 après.**
 
 Les points **209 à 212** sont fermés le 28/08/2026 — le backlog se vide pour la
 **vingt-neuvième** fois. Le run 30 est la **première vérification du terrain
