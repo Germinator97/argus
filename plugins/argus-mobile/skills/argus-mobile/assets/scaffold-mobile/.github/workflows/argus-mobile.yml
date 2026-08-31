@@ -24,6 +24,46 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ⚠️ LES JOBS SUIVENT `platforms:`, ils ne le supposent plus (point 230).
+  # Deux d'entre eux n'ont de sens que sur Android — build APK, émulateur — et
+  # tournaient inconditionnellement : sur un projet `platforms: [ios]` ils ne
+  # pouvaient que rougir. Et le job iOS, lui, était éteint par un `if: false`
+  # écrit en dur, que rien ne reliait à la configuration : l'allumer était un
+  # geste manuel dont rien ne rappelait l'existence.
+  #
+  # Ce job INTERROGE la configuration au lieu d'y grepper — même source que les
+  # scripts, donc le geste outillé ne peut pas diverger du geste configuré.
+  cadre:
+    name: Ce que le projet déclare
+    runs-on: ubuntu-latest
+    outputs:
+      android: ${{ steps.p.outputs.android }}
+      ios: ${{ steps.p.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - id: p
+        run: |
+          PLATS="$(node scripts/argus/config.mjs --print-platforms)"
+          echo "plateformes déclarées : $PLATS"
+          case " $PLATS " in
+            *" android "*) echo "android=true"  >> "$GITHUB_OUTPUT" ;;
+            *) echo "android=false" >> "$GITHUB_OUTPUT"
+               echo "::notice::Android non déclaré — MASVS et e2e-android se sautent." ;;
+          esac
+          case " $PLATS " in
+            *" ios "*) echo "ios=true" >> "$GITHUB_OUTPUT"
+               # ⚠️ ON NE DÉPENSE PAS SON ARGENT À SA PLACE. Un runner macOS coûte
+               # ~10× un Linux : le job iOS reste derrière un opt-in explicite,
+               # mais l'oubli est désormais SIGNALÉ au lieu d'être silencieux.
+               if [ "${{ vars.ARGUS_IOS_CI }}" != "true" ]; then
+                 echo "::warning::ios est déclaré mais e2e-ios est éteint. Pose la variable de dépôt ARGUS_IOS_CI=true pour l'activer (runner macOS, ~10x le coût d'un Linux)."
+               fi ;;
+            *) echo "ios=false" >> "$GITHUB_OUTPUT" ;;
+          esac
+
   # ── Étage 1 : les gardes sans device ────────────────────────────────────
   # Quelques secondes, aucun émulateur. Couvre les cibles tactiles, les
   # contrastes et la disposition à 130 % et 200 % de taille de texte —
@@ -67,6 +107,8 @@ jobs:
   # Ne demande ni device ni binaire pour le niveau A (sources).
   security:
     name: MASVS et CVE
+    needs: cadre
+    if: needs.cadre.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -123,6 +165,8 @@ jobs:
   # ── Étage 2 : la suite Maestro sur émulateur Android ────────────────────
   e2e-android:
     name: e2e Android (émulateur)
+    needs: cadre
+    if: needs.cadre.outputs.android == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -257,11 +301,15 @@ jobs:
           if-no-files-found: warn
 
   # ── Étage 2 bis : iOS, optionnel ────────────────────────────────────────
-  # Désactivé par défaut : un runner macOS coûte dix fois un runner Linux.
-  # Active-le quand la plateforme ios figure dans argus.mobile.yaml.
+  # ⚠️ IL ÉTAIT ÉTEINT PAR UN `if: false` ÉCRIT EN DUR, que rien ne reliait à
+  # `platforms:` — l'allumer était un geste manuel dont rien ne rappelait
+  # l'existence. Il suit désormais la configuration, ET un opt-in explicite :
+  # un runner macOS coûte ~10× un Linux, et ce n'est pas à ce workflow de
+  # dépenser à ta place. Ce qui change, c'est qu'un oubli est SIGNALÉ.
   e2e-ios:
     name: e2e iOS (simulateur)
-    if: false
+    needs: cadre
+    if: needs.cadre.outputs.ios == 'true' && vars.ARGUS_IOS_CI == 'true'
     runs-on: macos-latest
     timeout-minutes: 60
     steps:

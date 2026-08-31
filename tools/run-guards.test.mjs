@@ -3514,6 +3514,53 @@ test('le README du scaffold n\'enseigne pas ce que le SKILL mesure comme piège 
     'le README ne montre plus le cas où l\'enveloppe fusionne, qui est le cas simple');
 });
 
+test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (230)', () => {
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+
+  // Découpe en blocs de job — un job commence en colonne 2, deux espaces.
+  const debut = wf.indexOf('\njobs:');
+  assert.ok(debut > 0, 'le workflow n\'a plus de bloc jobs:');
+  /** @type {Record<string,string>} */
+  const jobs = {};
+  const corps = wf.slice(debut);
+  const bornes = [...corps.matchAll(/\n {2}([a-z][a-z0-9-]*):\n/g)];
+  assert.ok(bornes.length >= 4, `moins de 4 jobs trouvés (${bornes.length}) — si le format a changé, mets ce garde à jour`);
+  bornes.forEach((m, i) => {
+    const fin = i + 1 < bornes.length ? bornes[i + 1].index : corps.length;
+    jobs[m[1]] = corps.slice(m.index, fin);
+  });
+
+  // ⚠️ DÉRIVÉ DU CONTENU : c'est ce qu'un job FAIT qui décide s'il lui faut la
+  // condition, jamais son nom. Un job renommé garde donc son exigence.
+  const androidOnly = Object.entries(jobs).filter(([, t]) =>
+    /android-emulator-runner|build apk|--platform=android/.test(t));
+  assert.ok(androidOnly.length >= 2,
+    `aucun job Android détecté (${androidOnly.length}) — le motif ne mesure plus rien`);
+  for (const [nom, texte] of androidOnly) {
+    assert.match(texte, /if:\s*needs\.cadre\.outputs\.android == 'true'/,
+      `le job « ${nom} » construit un APK ou démarre un émulateur sans se conditionner : `
+      + 'sur un projet iOS-seul il ne peut que rougir');
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ : l'étage 1 ne dépend d'AUCUNE plateforme. Le conditionner
+  // priverait un projet iOS de la seule dimension qui tourne partout.
+  assert.ok(jobs.guards, 'le job guards a disparu');
+  assert.doesNotMatch(jobs.guards, /needs\.cadre\.outputs\.(android|ios)/,
+    'l\'étage 1 est conditionné à une plateforme — il tourne pourtant partout');
+
+  // Et le job iOS ne doit plus être éteint par un LITTÉRAL que rien ne relie
+  // à la config : c'est ce qui en faisait un geste manuel qu'on oublie.
+  assert.ok(jobs['e2e-ios'], 'le job e2e-ios a disparu');
+  assert.doesNotMatch(jobs['e2e-ios'], /if:\s*false/,
+    'e2e-ios est de nouveau éteint en dur — rien ne rappelle de l\'allumer');
+  assert.match(jobs['e2e-ios'], /needs\.cadre\.outputs\.ios == 'true'/,
+    'e2e-ios ne suit plus la plateforme déclarée');
+  // …et l'opt-in de coût reste explicite : on ne dépense pas à sa place.
+  assert.match(jobs['e2e-ios'], /vars\.ARGUS_IOS_CI/,
+    'e2e-ios s\'allumerait tout seul sur un runner macOS — ~10x le coût d\'un Linux');
+});
+
 test('la taille ne prescrit pas le binaire que la config INTERDIT (228)', () => {
   // ⚠️ La dérivation était de forme Android (`-debug.` → `-release.`), donc un
   // no-op sur un chemin iOS : le finding prescrivait `iphonesimulator` pendant

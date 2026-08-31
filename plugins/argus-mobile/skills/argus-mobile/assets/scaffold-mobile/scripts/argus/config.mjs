@@ -1449,6 +1449,18 @@ function main() {
     return;
   }
 
+  // ── `--print-platforms` : ce que le projet déclare, pour la CI. ──────────
+  //
+  // La CI livrée porte deux jobs qui n'ont de sens que sur Android (build APK,
+  // émulateur) et un qui tourne partout (l'étage 1). Sur un projet iOS-seul,
+  // les deux premiers ne pouvaient que rougir (point 230). Ils se conditionnent
+  // désormais à cette sortie — le workflow INTERROGE la config au lieu d'y
+  // grepper, pour que le geste outillé et le geste configuré ne divergent pas.
+  if (process.argv.slice(2).includes('--print-platforms')) {
+    console.log((config.platforms ?? []).join(' '));
+    return;
+  }
+
   // ── `--check-anchors` : les ancres POSÉES que rien ne DÉCLARE. ───────────
   //
   // La moitié manquante de `make argus-anchors`, qui ne prouvait que
