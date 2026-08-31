@@ -213,6 +213,19 @@ l'installation : le fichier n'existe pas encore. Compte-le donc depuis `lib/`, e
 dis-le — c'est un plancher, et le seul disponible à ce moment-là. La colonne
 « à poser » vient, elle, de ta lecture des widgets interactifs.
 
+⚠️ **ET LA MÊME PRUDENCE VAUT POUR ÉDITER, pas seulement pour compter.** Le
+piège ci-dessus est décrit pour un `grep` ; le geste dangereux est l'**écriture**.
+`harness.dart` et `known_issues.dart` portent chacun, dans leur dartdoc, la ligne
+de déclaration **mot pour mot** — et plus HAUT dans le fichier que la vraie. Un
+`indexOf` ou un `sed` ancré sur la déclaration matche donc le **commentaire**
+d'abord et réécrit la doc à la place du code. Vécu : **deux fichiers détruits,
+deux reconstructions**.
+
+Les deux fichiers portent pour cela un marqueur **`// ARGUS:DECLARATION`**,
+unique et jamais en dartdoc, posé juste au-dessus de la vraie déclaration.
+Ancre-toi dessus, ou insère avant le `];` de fermeture — jamais sur la
+déclaration elle-même.
+
 ⚠️ **En REGRESS, rends-le DEUX FOIS : l'état TROUVÉ, puis l'état LAISSÉ.** Le
 livrable y est justement que la colonne « à poser » tombe à zéro — un relevé
 unique est alors soit périmé, soit trompeur : « 53 posées / 0 à poser (100 %) »

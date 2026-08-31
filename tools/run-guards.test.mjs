@@ -3638,6 +3638,47 @@ test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (23
     'e2e-ios s\'allumerait tout seul sur un runner macOS — ~10x le coût d\'un Linux');
 });
 
+// ── Une édition programmatique doit avoir où s'ancrer ───────────────────────
+//
+// Point 239. Les deux fichiers OWNED portent leur ligne de déclaration mot pour
+// mot dans leur dartdoc, et plus HAUT que la vraie. Un `indexOf` ancré dessus
+// matche le commentaire et réécrit la doc à la place du code : deux fichiers
+// détruits sur un projet réel. Le SKILL prévenait pour COMPTER, pas pour ÉCRIRE.
+
+test('les fichiers du projet portent un point d\'ancrage d\'édition unique (239)', () => {
+  const argus = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  for (const [f, decl] of [['harness.dart', 'final List<ArgusScreen> argusScreens ='],
+    ['known_issues.dart', 'const Set<String> argusKnownIssues =']]) {
+    const src = readFileSync(join(argus, f), 'utf8');
+    const lignes = src.split('\n');
+
+    // ⚠️ NON-VACANCE : le piège doit EXISTER, sinon ce garde ne mesure rien.
+    // C'est le dartdoc qui porte la déclaration en double — s'il cessait, le
+    // marqueur deviendrait sans objet et il faudrait le dire, pas le garder.
+    const enDoc = lignes.filter((l) => l.trimStart().startsWith('///') && l.includes(decl)).length;
+    assert.ok(enDoc >= 1,
+      `${f} : le dartdoc ne porte plus la déclaration en double — le marqueur n'a plus d'objet`);
+
+    // Le marqueur est unique, et jamais en commentaire de doc.
+    const marques = lignes.filter((l) => l.includes('ARGUS:DECLARATION'));
+    assert.equal(marques.length, 1, `${f} : ${marques.length} marqueur(s) au lieu d'un — un point d'ancrage se doit d'être unique`);
+    assert.ok(!marques[0].trimStart().startsWith('///'),
+      `${f} : le marqueur est dans un dartdoc, donc il tombe dans le piège qu'il ferme`);
+
+    // …et il précède la VRAIE déclaration, pas une autre.
+    const iMarque = lignes.findIndex((l) => l.includes('ARGUS:DECLARATION'));
+    const iDecl = lignes.findIndex((l, k) => k > iMarque && !l.trimStart().startsWith('///') && l.includes(decl));
+    assert.ok(iDecl > iMarque && iDecl - iMarque < 14,
+      `${f} : le marqueur ne précède pas la déclaration (marqueur ${iMarque + 1}, déclaration ${iDecl + 1})`);
+  }
+
+  // Et le SKILL doit dire que le geste dangereux est l'ÉCRITURE, pas le comptage.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /LA MÊME PRUDENCE VAUT POUR ÉDITER/,
+    'le SKILL ne prévient que pour compter — or c\'est l\'écriture qui détruit');
+  assert.match(skill, /ARGUS:DECLARATION/, 'le SKILL ne nomme pas le marqueur sur lequel s\'ancrer');
+});
+
 // ── Une plateforme hors périmètre ne doit pas faire échouer le gate ─────────
 //
 // Point 242, image inversée des 213-217 : là, tout supposait Android ; ici,

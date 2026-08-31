@@ -62,6 +62,16 @@ import 'argus_types.dart';
 /// Tant que cette liste est vide, les suites se marquent SKIPPÉES avec la
 /// raison. Elles ne passent pas au vert : un garde qui ne garde rien est pire
 /// qu'un garde absent, parce qu'il rassure.
+// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.
+//
+// ⚠️ N'ANCRE JAMAIS UNE ÉDITION SUR LA LIGNE DE DÉCLARATION ELLE-MÊME. Le
+// dartdoc ci-dessus en porte un exemplaire mot pour mot, plus HAUT dans le
+// fichier : un `indexOf` ou un `sed` sur la déclaration matche donc le
+// COMMENTAIRE d'abord, et réécrit la doc au lieu du code. Vécu sur un projet
+// réel : deux fichiers détruits, deux reconstructions. Le SKILL prévenait pour
+// COMPTER (`grep -v '///'`) — pas pour ÉDITER, et c'est le geste dangereux.
+//
+// Ce marqueur est unique dans le fichier : ancre-toi dessus.
 final List<ArgusScreen> argusScreens =
     <ArgusScreen>[]; // TODO(argus): tes écrans
 

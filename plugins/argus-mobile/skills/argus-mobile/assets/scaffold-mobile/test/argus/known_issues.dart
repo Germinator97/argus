@@ -49,5 +49,15 @@
 ///
 /// Vide est le bon état par défaut : sur un projet neuf il n'y a rien à
 /// assumer, et le premier défaut doit se corriger, pas s'inscrire.
+// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.
+//
+// ⚠️ N'ANCRE JAMAIS UNE ÉDITION SUR LA LIGNE DE DÉCLARATION ELLE-MÊME. Le
+// dartdoc ci-dessus en porte un exemplaire mot pour mot, plus HAUT dans le
+// fichier : un `indexOf` ou un `sed` sur la déclaration matche donc le
+// COMMENTAIRE d'abord, et réécrit la doc au lieu du code. Vécu sur un projet
+// réel : deux fichiers détruits, deux reconstructions. Le SKILL prévenait pour
+// COMPTER (`grep -v '///'`) — pas pour ÉDITER, et c'est le geste dangereux.
+//
+// Ce marqueur est unique dans le fichier : ancre-toi dessus.
 const Set<String> argusKnownIssues =
     <String>{}; // TODO(argus): la dette assumée
