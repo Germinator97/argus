@@ -524,6 +524,10 @@ MUTATIONS = [
     ("sec", "l'avertissement simulateur disparaît quand il est VRAI",
      "    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `",
      "    return `${socle} Et ${rel} est un bundle : il ne porte ni l'architecture `"),
+    # ── Run 32 — le défaut que la passe précédente avait CRÉÉ ───────────────
+    ("makefile", "la recette cesse de lire le code de sortie du build",
+     "\tSTART=$$(date +%s); eval \"$$CMD\"; RC=$$?; ELAPSED=$$(( $$(date +%s) - START )); \\",
+     "\tSTART=$$(date +%s); eval \"$$CMD\"; RC=0; ELAPSED=$$(( $$(date +%s) - START )); \\"),
     ("sec", "le site d'appel rebranche un message figé",
      "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: plan.why };",
      "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur.' };"),
