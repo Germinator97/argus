@@ -134,6 +134,19 @@ tu tapes, non — utilise `fvm flutter` partout dès que l'un des deux existe. E
 CI, c'est l'inverse : l'action installe la version demandée dans le PATH du
 runner, donc pas de `fvm` là-bas (il n'y est pas installé).
 
+⚠️ **CHERCHE AUSSI UNE DURÉE DE SPLASH IMPOSÉE, dans `main()` ou le premier
+écran.** Beaucoup d'apps tiennent leur écran de marque un minimum de temps —
+`Future.wait([init, Future.delayed(const Duration(seconds: 2))])`, un
+`_kMinSplashDuration`. Cette durée est une **décision produit**, pas une
+lenteur : elle entre pourtant en entier dans le démarrage que `am start -W`
+chronomètre.
+
+Renseigne-la dans `thresholds.brandedSplashMs` : le runner la soustrait avant de
+juger. Sans elle, un run parfaitement honnête publie un `major` qui **décrit le
+choix du designer**. Mesuré sur un même projet à deux runs d'écart — clé à `0` :
+`QAM-START major, « 3 s pour afficher l'écran de départ »` ; clé à `2000` :
+3415 ms relevés, budget 2000, **zéro finding**. Le verdict change, l'app non.
+
 **b. Audit d'instrumentation Semantics.** C'est le livrable de cette étape.
 Cherche dans `lib/` les `Semantics(identifier:` et `semanticLabel:` déjà posés,
 puis les widgets interactifs qui n'en ont pas : `ElevatedButton`, `TextButton`,
@@ -154,7 +167,7 @@ agents en rendent deux, et aucun des deux ne se compare à l'autre :
 Instrumentation Semantics — parcours critiques
   Racines d'état     : <R> posées / <RESTE_R> à poser   ← l'essentiel de la production
   Commandes          : <Y> posées / <RESTE> à poser  (<Y/(Y+RESTE)> %)
-    dont partagées   : <C> composant(s) couvrant <S> call-sites
+    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre `<NOM>`
   Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
@@ -1156,6 +1169,15 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
 4. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
    ou « Rapport Argus Mobile » s'il est vide. C'est ainsi qu'on retrouve la
    page ; la renommer à chaque run donne l'impression d'une page différente.
+
+   ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le
+   défaut « Rapport Argus Mobile » est juste pour une PREMIÈRE publication et
+   faux pour une republication : si la page s'appelle autre chose et que
+   `artifact.title` est vide, suivre cette consigne la **renomme en croyant la
+   stabiliser** — vécu, une page « Argus Mobile — <projet> » redevenue
+   « Rapport Argus Mobile » en silence. Republier sur `artifact.url` te fait de
+   toute façon lire la page : relève le titre à ce moment-là et **reporte-le
+   dans `artifact.title`** avant de publier.
 
 ⚠️ **En CI, personne ne publie** : le job n'a pas d'agent. Il produit le
 fichier et s'arrête là. Ne promets pas une URL dans un contexte automatisé.

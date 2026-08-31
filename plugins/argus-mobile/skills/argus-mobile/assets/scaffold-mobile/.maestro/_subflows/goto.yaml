@@ -92,10 +92,29 @@ appId: ${APP_ID}
           condition: "${true}"
           label: Écran de départ supposé atteint — aucune ancre déclarée pour le vérifier
 
-# TODO(argus): une branche par écran de argus.mobile.yaml → screens[].
+# TODO(argus): une branche par écran de argus.mobile.yaml → screens[]
+# QU'UN FLOW PEUT ATTEINDRE SEUL. Certains n'en admettent aucune : voir plus bas.
 #
 # ⚠️ Écris-la comme un RETOUR, pas comme un aller : si l'onglet n'est atteignable
 # que depuis l'accueil, ramène d'abord l'app à l'accueil dans la même branche.
+#
+# ⚠️ ET CERTAINS ÉCRANS N'ADMETTENT PAS DE BRANCHE — c'est légitime, et le laisser
+# implicite fait inventer un remède. Sur une application à données locales,
+# `launch-clean.yaml` fait `clearState` avant CHAQUE flow : tout état « plein »
+# (une liste qui a des éléments, un historique qui a des entrées) est donc
+# inatteignable par navigation — la donnée n'existe pas encore. Il n'est pas
+# hors périmètre pour autant : il est atteint par le parcours qui LA CRÉE.
+#
+# Ce qu'il faut faire, et qui n'est pas d'écrire une branche :
+#   · aucune branche `goto` — elle échouerait à tous les coups ;
+#   · les assertions de cet écran vivent dans le flow qui crée la donnée
+#     (typiquement `journey-critical.yaml`), après la création ;
+#   · écris ici, en une ligne, quels écrans sont dans ce cas et pourquoi —
+#     sinon le prochain lecteur croira à un oubli et ajoutera la branche.
+#
+# ⚠️ Un écran dans ce cas reste déclaré dans `screens[]` : c'est le troisième
+# écart légitime de la table §2c-bis du SKILL, et `coverage` le comptera visité
+# dès que le parcours l'aura traversé.
 # - runFlow:
 #     when:
 #       true: "${SCREEN_ID === 'profile'}"

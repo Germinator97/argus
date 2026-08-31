@@ -3238,6 +3238,85 @@ test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () =>
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── `goto` prescrivait une branche par écran, même pour ceux qui n'en ont pas ─
+//
+// Point 221, et le run l'avait mal situé : la table §2c-bis couvre déjà la
+// DÉCLARATION d'un état atteint après un parcours (son cas 3). Ce qui n'avait
+// aucune instruction, c'est `goto.yaml`, dont le TODO demandait « une branche
+// par écran » — impossible pour un état que seul le parcours crée, puisque
+// `clearState` efface la donnée avant chaque flow. L'agent a inventé le remède.
+
+test('goto dit ce qu\'il advient d\'un écran qu\'aucune branche ne peut atteindre (221)', () => {
+  const flows = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  // ⚠️ DÉRIVÉ : c'est `clearState` qui crée le cas. S'il disparaissait du
+  // lancement, le passage de goto.yaml deviendrait sans objet — et ce garde
+  // le dirait, au lieu de veiller sur une prose devenue inutile.
+  const clean = readFileSync(join(flows, '_subflows/launch-clean.yaml'), 'utf8');
+  assert.match(clean, /clearState/,
+    'launch-clean ne purge plus l\'état — le passage de goto.yaml sur les états « pleins » est périmé');
+
+  const goto = readFileSync(join(flows, '_subflows/goto.yaml'), 'utf8');
+  assert.match(goto, /N'ADMETTENT PAS DE BRANCHE/,
+    'goto.yaml ne dit plus que certains écrans n\'admettent aucune branche (221)');
+  const bloc = goto.slice(goto.indexOf('N\'ADMETTENT PAS DE BRANCHE'), goto.indexOf('N\'ADMETTENT PAS DE BRANCHE') + 1400);
+  assert.match(bloc, /clearState/, 'le passage ne nomme plus la CAUSE — sans elle, il se lit comme un caprice');
+  assert.match(bloc, /journey-critical/, 'le passage ne dit pas OÙ vont les assertions de ces écrans');
+
+  // ⚠️ L'AUTRE MOITIÉ : le TODO doit continuer à demander une branche pour les
+  // écrans qui, eux, en admettent une. Un correctif qui dirait « pas de
+  // branche » tout court viderait le sous-flow de son travail.
+  assert.match(goto, /une branche par écran/,
+    'le TODO ne demande plus de branche du tout — il en faut pour les écrans atteignables');
+});
+
+// ── Trois promesses de doc, chacune avec son garde ──────────────────────────
+
+test('la reconnaissance envoie chercher le splash imposé qui décide du gate (222)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // ⚠️ DÉRIVÉ : la clé est lue par les scripts, donc le SKILL doit dire d'aller
+  // la chercher. Le jour où elle disparaît du code, ce garde le dit.
+  const lue = readdirSync(SCRIPTS_DIR).filter((f) => f.endsWith('.mjs'))
+    .some((f) => readFileSync(join(SCRIPTS_DIR, f), 'utf8').includes('brandedSplashMs'));
+  assert.equal(lue, true, 'brandedSplashMs n\'est plus lue par aucun script — le passage du SKILL est périmé');
+
+  const bloc = skill.slice(skill.indexOf('CHERCHE AUSSI UNE DURÉE DE SPLASH'));
+  assert.ok(bloc.length > 300, 'la reconnaissance ne dit plus de chercher un splash imposé (222)');
+  const debut = bloc.slice(0, 1200);
+  assert.match(debut, /brandedSplashMs/, 'le passage ne nomme plus la clé où reporter la durée');
+  // La mesure qui fait comprendre POURQUOI : sans elle, la consigne est un ordre.
+  assert.match(debut, /3415|major/, 'le passage ne dit plus ce que la clé change au verdict');
+  // ⚠️ Et il doit être dans la RECONNAISSANCE : c'est le moment où on peut
+  // encore lire main.dart. Ailleurs, on a déjà publié le finding.
+  assert.ok(skill.indexOf('CHERCHE AUSSI UNE DURÉE DE SPLASH') < skill.indexOf('## 3.'),
+    'le passage a quitté la reconnaissance — il arrive après le verdict qu\'il sert à éviter');
+});
+
+test('le gabarit du rapport porte le nom de paramètre que le SKILL prescrit d\'écrire (224)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // La prescription doit exister…
+  assert.match(skill, /écris-la dans le rapport d'instrumentation/,
+    'le SKILL ne prescrit plus d\'écrire le nom du paramètre');
+  // …et le gabarit, donné « dans cette forme exacte », doit avoir où l'écrire.
+  const ligne = skill.split('\n').find((l) => l.includes('dont partagées'));
+  assert.ok(ligne, 'la ligne « dont partagées » a disparu du gabarit');
+  assert.match(ligne, /param/i,
+    'le gabarit n\'a pas de case pour le nom du paramètre, que le SKILL prescrit pourtant '
+    + 'd\'y écrire — une information prescrite sans case se fait inventer');
+});
+
+test('le titre se LIT avant la première republication, il ne se suppose pas (223)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const bloc = skill.slice(skill.indexOf('Garde le titre et l\'icône stables'));
+  assert.ok(bloc.length > 400, 'le passage sur la stabilité du titre a disparu');
+  const debut = bloc.slice(0, 1200);
+  assert.match(debut, /LIS SON TITRE ACTUEL/,
+    'rien ne dit plus de lire le titre existant : le défaut RENOMME la page en croyant la stabiliser');
+  // ⚠️ L'AUTRE MOITIÉ : la consigne d'origine reste vraie pour une PREMIÈRE
+  // publication. Un correctif qui la supprimerait laisserait le titre au hasard.
+  assert.match(debut, /Rapport Argus Mobile/,
+    'le défaut n\'est plus nommé — il reste juste pour une première publication');
+});
+
 // ── Ce que le SKILL prescrit pour itérer doit EXISTER dans le runner ────────
 //
 // Point 220. Le skill disait « reprends la séquence à `argus-run` », ce qui se
