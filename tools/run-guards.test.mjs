@@ -3131,6 +3131,52 @@ test('et sec.mjs, LANCÉ POUR DE VRAI, sort la raison qui décrit ce build-là',
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Le tableau de couverture iOS dit-il ce que les scripts FONT ? ───────────
+//
+// Le SKILL annonce, plateforme par plateforme, ce qui tourne et ce qui se
+// rapporte `skipped`. C'est une promesse : elle est vraie le jour où on l'écrit
+// et fausse le lendemain, sans que rien ne le dise. Elle est donc DÉRIVÉE du
+// code — le jour où quelqu'un implémente l'accessibilité iOS, la mesure change
+// et ce garde rougit, ce qui force la mise à jour du tableau.
+
+test('ce que le SKILL promet par plateforme est ce que les scripts font', () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const debut = skill.indexOf('### Ce que chaque plateforme reçoit VRAIMENT');
+  assert.ok(debut > 0, 'le tableau de couverture par plateforme a disparu du SKILL — '
+    + 'si la section a été renommée, mets ce garde à jour ; sinon il ne garde plus rien');
+  const tableau = skill.slice(debut, debut + 2000);
+
+  /** Un script SAUTE-t-il tout hors Android ? @param {string} f */
+  const sauteHorsAndroid = (f) => {
+    const s = readFileSync(join(SCRIPTS_DIR, f), 'utf8');
+    return /if \(platform !== 'android'\)/.test(s) && /skipped: true/.test(s);
+  };
+
+  // ── Non-vacance : le motif doit distinguer, sinon il ne mesure rien. ──────
+  assert.equal(sauteHorsAndroid('a11y.mjs'), true, 'a11y.mjs ne saute plus hors Android — le tableau est périmé');
+  assert.equal(sauteHorsAndroid('perf.mjs'), true, 'perf.mjs ne saute plus hors Android — le tableau est périmé');
+  assert.equal(sauteHorsAndroid('sca.mjs'), false, 'sca.mjs saute désormais hors Android — le tableau le dit couvert des deux côtés');
+
+  // ── Ce que le tableau doit porter, ligne par ligne. ───────────────────────
+  assert.match(tableau, /accessibilité \*\*sur appareil\*\* \| ✔ \| ✖/,
+    'le tableau ne dit plus que l\'accessibilité device est Android-seule');
+  assert.match(tableau, /démarrage et mémoire\*\* \| ✔ \| ✖/,
+    'le tableau ne dit plus que démarrage et mémoire sont Android-seuls');
+  assert.match(tableau, /sécurité, \*\*binaire\*\* \| ✔[^|]*\| ✖/,
+    'le tableau ne dit plus que l\'analyse binaire iOS n\'est pas couverte');
+  // ⚠️ L'AUTRE MOITIÉ : un tableau qui dirait ✖ partout serait « exact » et
+  // inutile. Ce qui TOURNE sur iOS doit y figurer comme tel.
+  assert.match(tableau, /parcours fonctionnels[^|]*\| ✔ \| ✔/, 'les flows tournent sur iOS, le tableau doit le dire');
+  assert.match(tableau, /régression visuelle \| ✔ \| ✔/, 'le visuel tourne sur iOS, le tableau doit le dire');
+  assert.match(tableau, /dépendances vulnérables \(SCA\) \| ✔ \| ✔/, 'le SCA ne lit pas la plateforme');
+
+  // Et la promesse du `description` ne doit pas rouvrir ce qu'on vient de fermer.
+  const entete = skill.slice(0, skill.indexOf('\n---', 4));
+  assert.doesNotMatch(entete, /APK\/IPA/,
+    'le description promet à nouveau « APK/IPA » sans qualifier — l\'analyse binaire iOS n\'existe pas');
+});
+
 // ── Peser un paquet qui est un RÉPERTOIRE ───────────────────────────────────
 //
 // Point 214. Le Makefile mesurait par `wc -c` et `shasum` : le premier rend 0

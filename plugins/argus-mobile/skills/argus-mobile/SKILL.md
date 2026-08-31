@@ -1,6 +1,6 @@
 ---
 name: argus-mobile
-description: Agent QA/QE complet ("Argus Mobile") pour tester des applications MOBILES Flutter (Android + iOS) — audit live exploratoire, démo vidéo, et surtout installation d'un harness Maestro de non-régression (parcours E2E sur le binaire compilé, régression visuelle par device, accessibilité, performance de démarrage, sécurité OWASP MASVS, conditions réelles, rapports JSON/JUnit/HTML, CI). Utilise ce skill dès que l'utilisateur veut tester ou auditer une app mobile, une app Flutter, un APK ou un IPA ; mettre en place des tests end-to-end mobiles, Maestro, Appium ou Espresso/XCUITest (capte l'intention même s'il nomme un autre outil) ; de la régression visuelle mobile ; de l'accessibilité TalkBack ou VoiceOver ; mesurer un temps de démarrage à froid ; auditer la sécurité d'un APK/IPA (permissions, secrets en dur, cleartext, obfuscation, MASVS/MASTG) ; ou brancher du QA mobile en CI — même s'il ne dit ni "Argus" ni "Maestro". Pour une application WEB, c'est le skill `argus` qu'il faut, pas celui-ci. Couvre trois modes : EXPLORE (audit exhaustif), DEMO (capture vidéo) et REGRESS (suite déterministe avec gating CI).
+description: Agent QA/QE complet ("Argus Mobile") pour tester des applications MOBILES Flutter (Android + iOS) — audit live exploratoire, démo vidéo, et surtout installation d'un harness Maestro de non-régression (parcours E2E sur le binaire compilé, régression visuelle par device, accessibilité, performance de démarrage, sécurité OWASP MASVS, conditions réelles, rapports JSON/JUnit/HTML, CI). Utilise ce skill dès que l'utilisateur veut tester ou auditer une app mobile, une app Flutter, un APK ou un IPA ; mettre en place des tests end-to-end mobiles, Maestro, Appium ou Espresso/XCUITest (capte l'intention même s'il nomme un autre outil) ; de la régression visuelle mobile ; de l'accessibilité TalkBack ou VoiceOver ; mesurer un temps de démarrage à froid ; auditer la sécurité d'un APK (sources ET binaire) ou d'un IPA (sources et configuration ; l'analyse binaire iOS n'est pas couverte) ; ou brancher du QA mobile en CI — même s'il ne dit ni "Argus" ni "Maestro". Pour une application WEB, c'est le skill `argus` qu'il faut, pas celui-ci. Couvre trois modes : EXPLORE (audit exhaustif), DEMO (capture vidéo) et REGRESS (suite déterministe avec gating CI).
 ---
 
 # Argus Mobile — Agent QA/QE Flutter (audit live · démo · non-régression CI)
@@ -46,6 +46,32 @@ SDK), `android/app/build.gradle(.kts)` (`applicationId`, flavors),
 `ios/Runner.xcodeproj` (`PRODUCT_BUNDLE_IDENTIFIER`, schemes), présence des
 dossiers `android/` et `ios/`. **N'invente jamais de bundleId** : s'il ne se
 déduit pas, demande-le.
+
+### Ce que chaque plateforme reçoit VRAIMENT
+
+⚠️ **`platforms: [ios]` ne donne pas la même chose que `[android]`, et il faut le
+dire AVANT d'installer** — pas au moment où trois dimensions se rapportent
+`skipped`. Ce n'est pas un défaut : c'est le périmètre, et il est assumé.
+
+| dimension | Android | iOS |
+|---|---|---|
+| parcours fonctionnels (flows Maestro) | ✔ | ✔ |
+| régression visuelle | ✔ | ✔ |
+| dépendances vulnérables (SCA) | ✔ | ✔ — le scan ne lit pas la plateforme |
+| sécurité, **sources** | ✔ manifeste Android | ✔ `Info.plist` |
+| sécurité, **binaire** | ✔ APK (`unzip` + `aapt2`) | ✖ — passe par MobSF sur l'IPA |
+| performance, **taille** | ✔ | ✔ via `build.iosScan` |
+| performance, **démarrage et mémoire** | ✔ | ✖ — `am start -W` n'a pas d'équivalent local |
+| accessibilité **sur appareil** | ✔ | ✖ |
+
+Les gardes de l'étage 1 (`flutter test`), eux, ne dépendent d'aucune plateforme :
+contraste, cibles tactiles, débordements et ancres se mesurent dans la VM Dart.
+**C'est là que vit la majeure partie de l'accessibilité** — la dimension marquée
+✖ ci-dessus est celle qui interroge l'appareil.
+
+Chaque dimension non couverte se rapporte `skipped` **avec sa raison**, jamais
+verte : un run iOS annonce donc honnêtement ce qu'il n'a pas mesuré. Le vérifier
+plutôt que le supposer — c'est ce que fait la ligne `coverage` du rapport.
 
 ⚠️ **QUAND LA MISSION A DÉJÀ TRANCHÉ, CE DIALOGUE N'A PAS LIEU — et c'est là
 qu'il manque le plus.** Une consigne du type « installe le harness sur ce
