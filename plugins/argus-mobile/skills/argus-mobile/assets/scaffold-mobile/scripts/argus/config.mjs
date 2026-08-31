@@ -758,6 +758,78 @@ export function flutterCommandIn(command, pinned) {
  */
 export const flutterCommand = (command) => flutterCommandIn(command, usesFvm());
 
+/** Les `identifier:` posés dans lib/, littéraux seuls. @param {string} root @returns {string[]} */
+export function posedAnchors(root) {
+  /** @type {Set<string>} */
+  const poses = new Set();
+  (function marcher(/** @type {string} */ dir) {
+    let entrees;
+    try { entrees = readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of entrees) {
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) { marcher(abs); continue; }
+      if (!e.name.endsWith('.dart')) continue;
+      for (const ligne of readFileSync(abs, 'utf8').split('\n')) {
+        // ⚠️ Le filtre `///` est indispensable : le dartdoc d'exemple de
+        // `harness.dart` porte de vraies ancres, et deux compteurs du chantier
+        // s'y sont fait prendre à seize runs d'écart.
+        if (ligne.trimStart().startsWith('///')) continue;
+        for (const m of ligne.matchAll(/identifier:\s*'([^']*)'/g)) {
+          // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
+          // peut pas le confronter à un littéral, donc on ne le compte pas.
+          if (m[1].includes('${') || m[1] === '') continue;
+          poses.add(m[1]);
+        }
+      }
+    }
+  })(join(root, 'lib'));
+  return [...poses].sort();
+}
+
+/** Les ancres DÉCLARÉES dans harness.dart. @param {string} root @returns {string[]} */
+export function declaredAnchors(root) {
+  /** @type {Set<string>} */
+  const dec = new Set();
+  let src2 = '';
+  try { src2 = readFileSync(join(root, 'test/argus/harness.dart'), 'utf8'); } catch { return []; }
+  // ⚠️ On n'extrait PAS toutes les chaînes de la ligne : `ArgusScreen(id: 'home',
+  // anchor: 'home_root',` en porte deux, et compter `'home'` rendrait le
+  // contrôle trop permissif — une ancre homonyme d'un id d'écran passerait
+  // pour déclarée. On ne lit donc que le SEGMENT qui suit chaque clé.
+  const CLES = /\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\s*:/g;
+  for (const ligne of src2.split('\n')) {
+    if (ligne.trimStart().startsWith('///')) continue;
+    const bornes = [...ligne.matchAll(CLES)].map((m) => ({ debut: m.index + m[0].length }));
+    for (let i = 0; i < bornes.length; i++) {
+      const fin = i + 1 < bornes.length ? bornes[i + 1].debut : ligne.length;
+      for (const m of ligne.slice(bornes[i].debut, fin).matchAll(/'([^']*)'/g)) {
+        if (m[1] !== '') dec.add(m[1]);
+      }
+    }
+  }
+  return [...dec].sort();
+}
+
+/**
+ * Les ancres POSÉES que rien ne DÉCLARE — la moitié que `make argus-anchors`
+ * ne voyait pas.
+ *
+ * ⚠️ POINT 219. `anchors_test.dart` monte les écrans déclarés et vérifie que
+ * leurs ancres arrivent dans l'arbre : c'est **déclaré → présent**. L'inverse
+ * n'existait nulle part, et le skill l'écrivait lui-même — « c'est la moitié de
+ * son intérêt ». Une ancre posée que rien ne déclare n'est pas une ancre en
+ * échec : c'est une **absence**, donc elle n'apparaît dans aucun relevé.
+ *
+ * L'échappatoire vit en config et se lit défensivement (`?? []`) : une
+ * installation existante n'a pas la clé, et ne doit pas casser pour autant.
+ * @param {string} root @param {any} config @returns {string[]}
+ */
+export function undeclaredAnchors(root, config) {
+  const permis = new Set(((config?.anchors ?? {}).allowUndeclared ?? []).map(String));
+  const declarees = new Set(declaredAnchors(root));
+  return posedAnchors(root).filter((a) => !declarees.has(a) && !permis.has(a));
+}
+
 /**
  * La plateforme sur laquelle une commande porte quand personne ne l'a dite.
  *
@@ -1297,6 +1369,27 @@ function main() {
     const platform = platformFor(config, process.argv.slice(2));
     console.log(platform === 'ios' ? config.build.ios : config.build.android);
     return;
+  }
+
+  // ── `--check-anchors` : les ancres POSÉES que rien ne DÉCLARE. ───────────
+  //
+  // La moitié manquante de `make argus-anchors`, qui ne prouvait que
+  // déclaré → présent (point 219). Sort en 1 pour que la cible échoue : une
+  // ancre non déclarée est une absence, donc rien d'autre ne la signale.
+  if (process.argv.slice(2).includes('--check-anchors')) {
+    const orphelines = undeclaredAnchors(process.cwd(), config);
+    if (orphelines.length === 0) {
+      log(`✔ toute ancre posée dans lib/ est déclarée (${posedAnchors(process.cwd()).length} littérales)`);
+      return;
+    }
+    err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);
+    for (const a of orphelines) err(`    ${a}`);
+    err('  Une ancre non déclarée n\'est pas en échec — elle est ABSENTE de tout relevé,');
+    err('  donc aucun garde ne dit qu\'elle n\'est pas couverte. Deux issues :');
+    err('    · la déclarer sur son ArgusScreen (commands: / displays: / anchor:) ;');
+    err('    · si elle est hors périmètre exprès, l\'inscrire dans');
+    err('      argus.mobile.yaml → anchors.allowUndeclared, avec la raison à côté.');
+    process.exit(1);
   }
 
   // ── `--measure-binary` : ce que pèse le paquet, fichier OU répertoire. ────

@@ -109,6 +109,14 @@ build:
   androidBuildCmd: flutter build apk --debug
   iosBuildCmd: flutter build ios --debug --simulator
 
+# ── Ancres : l'échappatoire du contrôle POSÉ → DÉCLARÉ ─────────────────────
+# `make argus-anchors` refuse une ancre posée dans lib/ que rien ne déclare —
+# elle serait invisible à tout relevé. Si l'une l'est EXPRÈS (écran hors
+# périmètre, ancre posée pour un outil tiers), inscris-la ici avec sa raison.
+# anchors:
+#   allowUndeclared:
+#     - debug_overlay_root   # posée pour l'inspecteur maison, hors périmètre QA
+
 # ── Plateformes activées ───────────────────────────────────────────────────
 # Retire `ios` si tu n'as pas de Mac / Xcode. Une plateforme désactivée est
 # rapportée `skipped`, jamais verte.

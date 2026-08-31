@@ -27,7 +27,8 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, measureBinary, platformFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
+  posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -3235,6 +3236,76 @@ test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () =>
   assert.equal(rien.kind, 'absent');
   assert.equal(rien.digest, '', 'un paquet absent ne doit pas porter d\'empreinte — elle se comparerait');
   rmSync(dossier, { recursive: true, force: true });
+});
+
+// ── L'autre moitié de `make argus-anchors` ──────────────────────────────────
+//
+// Point 219. La suite Dart monte les écrans DÉCLARÉS et vérifie que leurs
+// ancres arrivent dans l'arbre — déclaré → présent. L'inverse n'existait nulle
+// part, et le skill l'écrivait lui-même : « c'est la moitié de son intérêt ».
+// Une ancre posée que rien ne déclare n'est pas une ancre en échec, c'est une
+// ABSENCE — elle n'apparaît dans aucun relevé, donc rien ne la signale. Même
+// classe que le 216, et même remède : un critère total et négatif.
+
+test('une ancre posée dans lib/ que rien ne déclare est signalée', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-ancres-'));
+  mkdirSync(join(dossier, 'lib', 'presentation'), { recursive: true });
+  mkdirSync(join(dossier, 'test', 'argus'), { recursive: true });
+  writeFileSync(join(dossier, 'lib/presentation/page.dart'), [
+    "/// dartdoc d'exemple : identifier: 'ancre_du_commentaire'",
+    "Semantics(identifier: 'home_root', child: C(",
+    "  Semantics(identifier: 'home_start_session', child: B()),",
+    "  Semantics(identifier: 'category_sheet_submit', child: B()),",
+    "  Semantics(identifier: 'nav_${spec.id}', child: T()),",
+    '));',
+  ].join('\n'));
+  writeFileSync(join(dossier, 'test/argus/harness.dart'), [
+    "/// ArgusScreen(anchor: 'ancre_du_dartdoc', commands: <String>['jamais_posee'])",
+    "ArgusScreen(id: 'home', anchor: 'home_root',",
+    "  commands: <String>['home_start_session'], build: () => const HomePage()),",
+  ].join('\n'));
+
+  // ── le relevé des POSÉES : ni le dartdoc, ni le gabarit interpolé ────────
+  const poses = posedAnchors(dossier);
+  assert.deepEqual(poses, ['category_sheet_submit', 'home_root', 'home_start_session'],
+    'le relevé compte le dartdoc, ou le gabarit interpolé, ou en oublie');
+  // Non-vacance : sans ces deux pièges dans le montage, le filtre ne mesure rien.
+  assert.ok(!poses.includes('ancre_du_commentaire'), 'le filtre /// ne filtre plus');
+  assert.ok(!poses.some((a) => a.includes('$')), 'un gabarit interpolé est compté comme une ancre');
+
+  // ── le relevé des DÉCLARÉES, dartdoc exclu lui aussi ─────────────────────
+  const dec = declaredAnchors(dossier);
+  assert.deepEqual(dec, ['home_root', 'home_start_session'],
+    'les déclarées comptent le dartdoc d\'exemple, ou en oublient');
+
+  // ── le cœur : celle que rien ne déclare, et elle SEULE ───────────────────
+  assert.deepEqual(undeclaredAnchors(dossier, {}), ['category_sheet_submit']);
+  // ⚠️ L'AUTRE MOITIÉ : un contrôle qui refuserait TOUT passerait le test
+  // ci-dessus. Les deux ancres correctement déclarées ne doivent rien produire.
+  assert.ok(!undeclaredAnchors(dossier, {}).includes('home_root'),
+    'une ancre déclarée est signalée comme orpheline — le contrôle refuse tout');
+
+  // ── l'échappatoire, et sa lecture DÉFENSIVE ──────────────────────────────
+  assert.deepEqual(
+    undeclaredAnchors(dossier, { anchors: { allowUndeclared: ['category_sheet_submit'] } }), []);
+  // Une installation existante n'a pas la clé : elle ne doit pas casser.
+  assert.deepEqual(undeclaredAnchors(dossier, { anchors: {} }), ['category_sheet_submit']);
+  assert.deepEqual(undeclaredAnchors(dossier, undefined), ['category_sheet_submit']);
+  rmSync(dossier, { recursive: true, force: true });
+});
+
+test('la cible argus-anchors APPELLE ce contrôle, elle ne fait pas que tester', () => {
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const recette = mk.slice(mk.indexOf('\nargus-anchors:'));
+  const corps = recette.slice(0, recette.indexOf('\n\n'))
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.ok(corps.includes('argus-anchors:'), 'la cible argus-anchors a disparu');
+  // ⚠️ Une décision juste que personne n'appelle est le défaut du 213 et du 217.
+  assert.match(corps, /--check-anchors/,
+    'argus-anchors ne croise plus posé → déclaré : la moitié manquante l\'est de nouveau');
+  assert.match(corps, /test test\/argus\/anchors_test\.dart/,
+    'argus-anchors ne lance plus la suite qui prouve déclaré → présent');
 });
 
 // ── « le build a échoué » n'est pas « la config est fausse » ────────────────

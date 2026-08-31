@@ -87,6 +87,10 @@ argus-lint: ## Syntaxe des flows Maestro, sans device
 	@node scripts/argus/config.mjs --check-flows
 
 argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans device)
+# Deux moitiés, et la seconde manquait (point 219) : le test prouve
+# DÉCLARÉ → PRÉSENT, ce contrôle-ci prouve POSÉ → DÉCLARÉ. Une ancre posée que
+# rien ne déclare est une ABSENCE — elle ne rougit nulle part.
+	@node scripts/argus/config.mjs --check-anchors
 	@$(FLUTTER) test test/argus/anchors_test.dart
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
