@@ -226,9 +226,13 @@ MUTATIONS = [
      "                path: ${ARGUS_SCREEN_ID}\n"
      "                label: Nouvelle référence visuelle, recadrée"),
     # ── Seizième run ────────────────────────────────────────────────────────
+    # ⚠️ MOTIF REMIS À JOUR AU RUN 34 : le 237 a réécrit ce message pour y
+    # nommer une troisième cause, et le harnais a rendu « motif trouvé 0× » —
+    # donc HARNAIS et non VACANT. Troisième fois de la journée que la
+    # distinction évite de chercher un garde manquant qui existe.
     ("run", "l'indice renomme le levier que la doc interdit de toucher",
-     "    + ` l'ancre qui est fausse. Relève thresholds.startTimeoutMs (plafond effectif`",
-     "    + ` l'ancre qui est fausse. Vérifie d'abord thresholds.coldStartMs (plafond effectif`"),
+     "    + ` thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`",
+     "    + ` thresholds.coldStartMs (plafond effectif ${plafond} ms), dérivé du`"),
     ("report", "la couverture reperd son compte visuel",
      "    + ` \u00b7 compar\u00e9s visuellement : ${esc(visuels)}`\n",
      ""),
