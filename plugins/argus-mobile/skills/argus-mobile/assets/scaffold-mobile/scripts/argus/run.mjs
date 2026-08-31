@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   activeDevices, adbShell, artifactsDir, avdNameFrom, buildCmdForAbi, configuredScreens, detectTools,
-  deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml,
+  deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml, projectBuildCmd,
   sh, validateConfig, warn, writeJson,
 } from './config.mjs';
 // La réserve de variant vit là où elle a été écrite ; la recopier ici l'aurait
@@ -1633,7 +1633,7 @@ async function main() {
       // La commande PROPOSÉE est ciblée sur l'ABI de l'appareil qu'on vient de
       // résoudre : un fat APK embarque quatre ABI dont trois ne seront jamais
       // lues, et pèse deux fois plus (84,9 Mo contre 39,7 mesurés).
-      const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
+      const brute = projectBuildCmd(config, platform);
       const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(resolved.udid));
       err(`  Construis le binaire : ${flutterCommand(ciblee)}`);
       process.exit(2);

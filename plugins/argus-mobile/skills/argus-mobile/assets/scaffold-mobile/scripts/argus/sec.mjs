@@ -33,7 +33,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
+  artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, platformFor, projectBuildCmd,
+  releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -397,12 +398,20 @@ export function binaryFreshness(binary, root, mtime = (f) => statSync(f).mtimeMs
  * @param {string} root @param {any} config @param {boolean} [pinned]
  * @returns {string}
  */
-export function buildHintFor(binary, root, config, pinned = usesFvm()) {
-  const publie = String(config?.build?.androidScan ?? '');
+export function buildHintFor(binary, root, config, pinned = usesFvm(), platform = '') {
+  // ⚠️ NE LISAIT QUE LES CLÉS ANDROID (point 215). Sur un projet iOS elle
+  // conseillait de construire un APK pour obtenir un `.app` — la consigne
+  // s'exécute sans erreur et ne produit jamais le fichier attendu.
+  const cible = platform || platformFor(config);
+  const cle = cible === 'ios' ? 'iosScan' : 'androidScan';
+  // ⚠️ La clé de SCAN, pas `binaryToScan` : celle-ci retombe sur le binaire de
+  // TEST quand la clé manque, ce qui ferait prescrire une release pour le
+  // debug qu'on pilote.
+  const publie = String(config?.build?.[cle] ?? '');
   const vise = publie !== '' && resolve(root, publie) === binary;
   return vise
-    ? releaseBuildCmd(config, pinned)
-    : flutterCommandIn(config?.build?.androidBuildCmd ?? '', pinned);
+    ? releaseBuildCmd(config, pinned, cible)
+    : flutterCommandIn(projectBuildCmd(config, cible), pinned);
 }
 
 export function binaryToScan(platform, config, override = '') {

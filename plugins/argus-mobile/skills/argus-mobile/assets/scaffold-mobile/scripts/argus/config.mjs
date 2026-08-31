@@ -782,6 +782,20 @@ export function platformFor(config, argv = []) {
 }
 
 /**
+ * La commande de build que le projet déclare pour cette plateforme.
+ *
+ * Extraite parce qu'elle était recopiée trois fois — `--print-build-cmd`, le
+ * message d'installation du runner, et la dérivation de release. C'est le motif
+ * du VOISIN : trois copies qui divergent une par une, et celle qu'on oublie est
+ * celle qui compte.
+ * @param {any} config @param {string} platform @returns {string}
+ */
+export function projectBuildCmd(config, platform) {
+  const b = config?.build ?? {};
+  return String((platform === 'ios' ? b.iosBuildCmd : b.androidBuildCmd) ?? '').trim();
+}
+
+/**
  * La commande qui produit le binaire de PUBLICATION, dérivée de celle du projet.
  *
  * ⚠️ ELLE MANQUAIT, et son absence coûtait deux choses. Le harnais sait
@@ -794,12 +808,26 @@ export function platformFor(config, argv = []) {
  * Dérivée plutôt qu'écrite en dur : un projet qui cible une ABI, un flavor ou
  * un `--dart-define` garde tout cela, seul le mode change. Le repli ne sert
  * qu'au projet qui n'a rien déclaré.
- * @param {any} config @param {boolean} [pinned] @returns {string}
+ *
+ * ⚠️ ELLE NE LISAIT QUE LES CLÉS ANDROID (point 215), repli littéral compris :
+ * sur un projet iOS, la seule chose qu'elle savait conseiller était
+ * `flutter build apk --release`. Suivie, elle produit un APK et laisse la
+ * mesure iOS toujours absente — une consigne qui s'exécute sans erreur, donc
+ * qui a toutes les apparences d'une consigne juste. C'est la forme exacte du
+ * défaut que ce dartdoc décrivait déjà, revenue par l'autre plateforme.
+ *
+ * ⚠️ Et `--simulator` SAUTE. Un `.app` de simulateur ne se publie pas : le
+ * garder ferait de cette fonction une prescription qui ne peut pas tenir sa
+ * promesse, ce qui est pire que ne rien prescrire.
+ * @param {any} config @param {boolean} [pinned] @param {string} [platform] @returns {string}
  */
-export function releaseBuildCmd(config, pinned = usesFvm()) {
-  const cmd = String(config?.build?.androidBuildCmd ?? '').trim();
-  const derive = cmd.replace(/--(debug|profile)\b/g, '--release');
-  return flutterCommandIn(derive.includes('--release') ? derive : 'flutter build apk --release', pinned);
+export function releaseBuildCmd(config, pinned = usesFvm(), platform = '') {
+  const cible = platform || platformFor(config);
+  const repli = cible === 'ios' ? 'flutter build ios --release' : 'flutter build apk --release';
+  const derive = projectBuildCmd(config, cible)
+    .replace(/--(debug|profile)\b/g, '--release')
+    .replace(/\s--simulator\b/g, '');
+  return flutterCommandIn(derive.includes('--release') ? derive : repli, pinned);
 }
 
 /**
@@ -1210,7 +1238,7 @@ function main() {
     const arg = (/** @type {string} */ name) =>
       (process.argv.slice(2).find((a) => a.startsWith(`${name}=`)) ?? '').split('=')[1] ?? '';
     const platform = platformFor(config, process.argv.slice(2));
-    const brute = platform === 'ios' ? config.build.iosBuildCmd : config.build.androidBuildCmd;
+    const brute = projectBuildCmd(config, platform);
     const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice(config).udid : '');
     const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(udid));
     console.log(flutterCommand(ciblee));

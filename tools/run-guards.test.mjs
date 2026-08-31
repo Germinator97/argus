@@ -2938,6 +2938,57 @@ test('la commande de release DÉRIVE de celle du projet — flavor et ABI compri
     'fvm flutter build apk --release');
 });
 
+test('sur un projet iOS, la release conseillée est une release iOS — sans simulateur', () => {
+  // Point 215. La fonction ne lisait que les clés Android, repli littéral
+  // compris : un projet iOS s'entendait conseiller `flutter build apk
+  // --release`. Suivie, la consigne s'exécute sans erreur, produit un APK, et
+  // laisse la mesure iOS toujours absente — la pire forme d'une consigne fausse.
+  const livre = {
+    platforms: ['ios'],
+    build: { iosBuildCmd: 'flutter build ios --debug --simulator', androidBuildCmd: 'flutter build apk --debug' },
+  };
+  // ⚠️ `--simulator` SAUTE : un .app de simulateur ne se publie pas, donc le
+  // garder ferait de cette commande une prescription qui ne peut pas tenir.
+  assert.equal(releaseBuildCmd(livre, false), 'flutter build ios --release');
+  assert.equal(releaseBuildCmd({ platforms: ['ios'] }, false), 'flutter build ios --release');
+  // Ce que le projet a déjà déclaré survit — flavor compris.
+  assert.equal(releaseBuildCmd({ platforms: ['ios'], build: { iosBuildCmd: 'flutter build ipa --release --flavor prod' } }, false),
+    'flutter build ipa --release --flavor prod');
+
+  // ⚠️ L'AUTRE MOITIÉ. Rendre la fonction sensible à iOS ne doit rien changer à
+  // Android : c'est la direction qu'un correctif de plateforme casse en silence.
+  assert.equal(releaseBuildCmd(livre, false, 'android'), 'flutter build apk --release');
+  assert.equal(releaseBuildCmd({ platforms: ['android'], build: { androidBuildCmd: 'flutter build apk --debug' } }, false),
+    'flutter build apk --release');
+});
+
+test('l\'indice de build d\'un scan iOS ne renvoie pas vers un APK', () => {
+  const root = '/projet';
+  const config = {
+    platforms: ['ios'],
+    build: {
+      iosScan: 'build/ios/iphoneos/Runner.app',
+      iosBuildCmd: 'flutter build ios --debug --simulator',
+      androidScan: 'build/app/outputs/flutter-apk/app-release.apk',
+      androidBuildCmd: 'flutter build apk --debug',
+    },
+  };
+  // Le binaire visé EST celui qu'on publie → la commande de release iOS.
+  assert.equal(buildHintFor('/projet/build/ios/iphoneos/Runner.app', root, config, false),
+    'flutter build ios --release');
+  // Un autre binaire → la commande de build ordinaire du projet, côté iOS.
+  assert.equal(buildHintFor('/projet/build/ios/iphonesimulator/Runner.app', root, config, false),
+    'flutter build ios --debug --simulator');
+  // ⚠️ Et la clé de SCAN, jamais `binaryToScan` : celle-ci retomberait sur le
+  // binaire de test quand la clé manque, et prescrirait une release pour lui.
+  assert.equal(buildHintFor('/projet/build/ios/iphoneos/Runner.app', root,
+    { platforms: ['ios'], build: { iosBuildCmd: 'flutter build ios --debug --simulator' } }, false),
+  'flutter build ios --debug --simulator');
+  // L'autre moitié : Android forcé explicitement reste Android.
+  assert.equal(buildHintFor('/projet/build/app/outputs/flutter-apk/app-release.apk', root, config, false, 'android'),
+    'flutter build apk --release');
+});
+
 test('la taille d\'un binaire de TEST ne devient pas un verdict de publication', () => {
   const config = { thresholds: { binarySizeMb: 60 }, build: { android: 'build/app/outputs/flutter-apk/app-dev-debug.apk' } };
   const f = sizeFinding({ path: config.build.android, isRelease: false }, 92, config, 'android', 'flutter build apk --release');

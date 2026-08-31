@@ -463,7 +463,7 @@ function main() {
   const thresholds = config.thresholds ?? {};
   const pese = binaryToWeigh(platform, config);
   const sizeMb = binarySizeMb(resolve(process.cwd(), pese.path));
-  const buildRelease = releaseBuildCmd(config);
+  const buildRelease = releaseBuildCmd(config, undefined, platform);
   if (!pese.isRelease) {
     // Deux causes, deux messages : « pas déclarée » se répare dans la config,
     // « déclarée mais absente » se répare par un build. Rendre le premier quand
