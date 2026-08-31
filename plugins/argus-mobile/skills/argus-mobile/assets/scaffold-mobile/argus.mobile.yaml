@@ -116,6 +116,13 @@ build:
 # anchors:
 #   allowUndeclared:
 #     - debug_overlay_root   # posée pour l'inspecteur maison, hors périmètre QA
+#
+# Et si ton projet pose ses ancres par un paramètre dont le nom ne finit PAS par
+# « identifier » (le contrôle reconnaît `identifier`, `semanticIdentifier`,
+# `accessibilityIdentifier`… par leur forme), nomme-le ici — sinon tes ancres
+# de composant partagé sont invisibles, ce qui est précisément le trou que ce
+# contrôle existe pour fermer.
+#   paramNames: [qaId, anchorId]
 
 # ── Plateformes activées ───────────────────────────────────────────────────
 # Retire `ios` si tu n'as pas de Mac / Xcode. Une plateforme désactivée est

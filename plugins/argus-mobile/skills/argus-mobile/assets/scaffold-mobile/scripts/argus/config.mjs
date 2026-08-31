@@ -758,8 +758,64 @@ export function flutterCommandIn(command, pinned) {
  */
 export const flutterCommand = (command) => flutterCommandIn(command, usesFvm());
 
-/** Les `identifier:` posés dans lib/, littéraux seuls. @param {string} root @returns {string[]} */
-export function posedAnchors(root) {
+/**
+ * Le code Dart, commentaires ôtés — les chaînes gardées.
+ *
+ * ⚠️ UN FILTRE DE LIGNES NE SUFFIT PAS, et c'est la troisième fois que ce
+ * chantier le paie. Retirer les lignes qui COMMENCENT par `//` laisse passer le
+ * commentaire de FIN de ligne, et une apostrophe française y ouvre un faux
+ * littéral : `'home_start', // n'existe qu'en debug` a rendu deux ancres
+ * fantômes (`existe qu`, `est voulu`). Il faut balayer de GAUCHE À DROITE —
+ * dans une chaîne, `//` n'ouvre pas de commentaire ; hors d'une chaîne, il
+ * mange jusqu'au bout de la ligne. Aucune expression régulière ne fait ça.
+ * @param {string} src @returns {string}
+ */
+export function dartSansCommentaires(src) {
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const c = src[i];
+    const d = src[i + 1];
+    if (c === '/' && d === '/') { while (i < n && src[i] !== '\n') i += 1; continue; }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) { if (src[i] === '\n') out += '\n'; i += 1; }
+      i += 2; continue;
+    }
+    if (c === '\'' || c === '"') {
+      const q = c;
+      out += c; i += 1;
+      while (i < n && src[i] !== q) {
+        if (src[i] === '\\' && i + 1 < n) { out += src[i] + src[i + 1]; i += 2; continue; }
+        out += src[i]; i += 1;
+      }
+      if (i < n) { out += src[i]; i += 1; }
+      continue;
+    }
+    out += c; i += 1;
+  }
+  return out;
+}
+
+/** Les `identifier:` posés dans lib/, littéraux seuls. @param {string} root @param {any} [config] @returns {string[]} */
+export function posedAnchors(root, config = undefined) {
+  // ⚠️ `[a-zA-Z]*[Ii]dentifier:` ET NON `identifier:`. Le motif minuscule ne
+  // voyait que `Semantics(identifier: …)` et ratait `semanticIdentifier: '…'`,
+  // c'est-à-dire le nom que le SKILL prescrit pour un composant partagé — donc
+  // exactement l'angle mort qu'il décrit deux paragraphes plus haut, « sans nom
+  // stable elles sont invisibles à tout relevé ». Mesuré sur un projet réel :
+  // 20 ancres posées par paramètre, dans 8 fichiers, invisibles au contrôle.
+  //
+  // ⚠️ `anchorPrefix` reste DEHORS, et c'est voulu : un préfixe n'est pas une
+  // ancre, il en nomme une famille. Le compter rapporterait un littéral que
+  // rien ne déclare — un faux positif, pas une trouvaille.
+  //
+  // Un projet dont la convention ne finit pas par « identifier » l'inscrit dans
+  // `anchors.paramNames` : le SKILL dit de GARDER la convention du projet, donc
+  // la refuser ici rendrait le contrôle muet là où il compte le plus.
+  const sur = ((config?.anchors ?? {}).paramNames ?? []).map(String).filter(Boolean);
+  const motif = new RegExp(`(?:${['[a-zA-Z]*[Ii]dentifier', ...sur].join('|')}):\\s*'([^']*)'`, 'g');
   /** @type {Set<string>} */
   const poses = new Set();
   (function marcher(/** @type {string} */ dir) {
@@ -769,42 +825,64 @@ export function posedAnchors(root) {
       const abs = join(dir, e.name);
       if (e.isDirectory()) { marcher(abs); continue; }
       if (!e.name.endsWith('.dart')) continue;
-      for (const ligne of readFileSync(abs, 'utf8').split('\n')) {
-        // ⚠️ Le filtre `///` est indispensable : le dartdoc d'exemple de
-        // `harness.dart` porte de vraies ancres, et deux compteurs du chantier
-        // s'y sont fait prendre à seize runs d'écart.
-        if (ligne.trimStart().startsWith('///')) continue;
-        for (const m of ligne.matchAll(/identifier:\s*'([^']*)'/g)) {
-          // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
-          // peut pas le confronter à un littéral, donc on ne le compte pas.
-          if (m[1].includes('${') || m[1] === '') continue;
-          poses.add(m[1]);
-        }
+      // Le dartdoc d'exemple porte de VRAIES ancres — deux compteurs du chantier
+      // s'y sont fait prendre à seize runs d'écart. Le balayage les ôte, ainsi
+      // que les commentaires de fin de ligne, que le filtre `///` laissait passer.
+      for (const m of dartSansCommentaires(readFileSync(abs, 'utf8')).matchAll(motif)) {
+        // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
+        // peut pas le confronter à un littéral, donc on ne le compte pas.
+        if (m[1].includes('${') || m[1] === '') continue;
+        poses.add(m[1]);
       }
     }
   })(join(root, 'lib'));
   return [...poses].sort();
 }
 
-/** Les ancres DÉCLARÉES dans harness.dart. @param {string} root @returns {string[]} */
+/**
+ * Les ancres DÉCLARÉES dans harness.dart.
+ *
+ * ⚠️ LA VERSION D'ORIGINE LISAIT LIGNE À LIGNE, et elle accusait le projet.
+ * `dart format` replie toute liste qui dépasse 80 colonnes : une déclaration de
+ * dix commandes devient onze lignes, et un lecteur ligne à ligne n'en voit
+ * AUCUNE. Mesuré sur un projet réel : **27 ancres lues au lieu de 68**, et cinq
+ * ancres parfaitement déclarées rapportées « que RIEN ne déclare ». Un garde
+ * qui accuse pour un défaut de son propre analyseur est pire qu'aucun garde.
+ *
+ * On lit donc le fichier ENTIER, et on ne capture que ce qui SUIT chaque clé :
+ * soit un littéral (`anchor: 'x'`), soit une liste dont on suit les crochets
+ * (`commands: <String>[ … ]`). Capturer jusqu'à la clé suivante serait trop
+ * permissif — `ArgusScreen(id: 'home', anchor: …` porte deux chaînes, et
+ * compter `'home'` ferait passer pour déclarée une ancre homonyme d'un id.
+ * @param {string} root @returns {string[]}
+ */
 export function declaredAnchors(root) {
   /** @type {Set<string>} */
   const dec = new Set();
-  let src2 = '';
-  try { src2 = readFileSync(join(root, 'test/argus/harness.dart'), 'utf8'); } catch { return []; }
-  // ⚠️ On n'extrait PAS toutes les chaînes de la ligne : `ArgusScreen(id: 'home',
-  // anchor: 'home_root',` en porte deux, et compter `'home'` rendrait le
-  // contrôle trop permissif — une ancre homonyme d'un id d'écran passerait
-  // pour déclarée. On ne lit donc que le SEGMENT qui suit chaque clé.
-  const CLES = /\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\s*:/g;
-  for (const ligne of src2.split('\n')) {
-    if (ligne.trimStart().startsWith('///')) continue;
-    const bornes = [...ligne.matchAll(CLES)].map((m) => ({ debut: m.index + m[0].length }));
-    for (let i = 0; i < bornes.length; i++) {
-      const fin = i + 1 < bornes.length ? bornes[i + 1].debut : ligne.length;
-      for (const m of ligne.slice(bornes[i].debut, fin).matchAll(/'([^']*)'/g)) {
-        if (m[1] !== '') dec.add(m[1]);
-      }
+  let brut = '';
+  try { brut = readFileSync(join(root, 'test/argus/harness.dart'), 'utf8'); } catch { return []; }
+  const src = dartSansCommentaires(brut);
+  const CLES = /\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\s*:\s*/g;
+  for (const m of src.matchAll(CLES)) {
+    const i = m.index + m[0].length;
+    if (src[i] === '\'') {
+      const fin = src.indexOf('\'', i + 1);
+      if (fin > i) dec.add(src.slice(i + 1, fin));
+      continue;
+    }
+    // `<String>[` ou `[` : on suit les crochets pour ne pas déborder sur la clé
+    // suivante. Une liste vide (`const <String>[]`) est légale et rend zéro.
+    const crochet = src.indexOf('[', i);
+    if (crochet < 0 || crochet - i > 24) continue;
+    let profondeur = 0;
+    let ferme = -1;
+    for (let k = crochet; k < src.length; k += 1) {
+      if (src[k] === '[') profondeur += 1;
+      else if (src[k] === ']') { profondeur -= 1; if (profondeur === 0) { ferme = k; break; } }
+    }
+    if (ferme < 0) continue;
+    for (const lit of src.slice(crochet + 1, ferme).matchAll(/'([^']*)'/g)) {
+      if (lit[1] !== '') dec.add(lit[1]);
     }
   }
   return [...dec].sort();
@@ -827,7 +905,7 @@ export function declaredAnchors(root) {
 export function undeclaredAnchors(root, config) {
   const permis = new Set(((config?.anchors ?? {}).allowUndeclared ?? []).map(String));
   const declarees = new Set(declaredAnchors(root));
-  return posedAnchors(root).filter((a) => !declarees.has(a) && !permis.has(a));
+  return posedAnchors(root, config).filter((a) => !declarees.has(a) && !permis.has(a));
 }
 
 /**
@@ -1379,7 +1457,7 @@ function main() {
   if (process.argv.slice(2).includes('--check-anchors')) {
     const orphelines = undeclaredAnchors(process.cwd(), config);
     if (orphelines.length === 0) {
-      log(`✔ toute ancre posée dans lib/ est déclarée (${posedAnchors(process.cwd()).length} littérales)`);
+      log(`✔ toute ancre posée dans lib/ est déclarée (${posedAnchors(process.cwd(), config).length} littérales)`);
       return;
     }
     err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);

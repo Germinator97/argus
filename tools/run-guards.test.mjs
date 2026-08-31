@@ -3416,6 +3416,70 @@ test('une ancre posée dans lib/ que rien ne déclare est signalée', () => {
   rmSync(dossier, { recursive: true, force: true });
 });
 
+test('le croisement survit à dart format, aux paramètres nommés et aux apostrophes (225-227)', () => {
+  // ⚠️ TROIS DÉFAUTS DE CE CONTRÔLE, trouvés par le run qui l'a étrenné.
+  // Le pire n'est pas qu'il rate : c'est qu'il ACCUSAIT. Lu ligne à ligne, il
+  // ne voyait rien d'une liste que `dart format` avait repliée — 27 ancres
+  // lues au lieu de 68, et cinq déclarations correctes rapportées orphelines.
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-ancres3-'));
+  mkdirSync(join(dossier, 'lib'), { recursive: true });
+  mkdirSync(join(dossier, 'test', 'argus'), { recursive: true });
+
+  writeFileSync(join(dossier, 'test/argus/harness.dart'), [
+    "/// Exemple : ArgusScreen(anchor: 'ancre_du_dartdoc', commands: <String>['jamais_posee'])",
+    "ArgusScreen(",
+    "  id: 'home',",
+    "  anchor: 'home_root',",
+    '  commands: <String>[',            // ⚠️ repliée par dart format : le cœur du 225
+    "    'home_start',        // n'existe qu'en debug — c'est voulu",
+    "    // Elle N'EXISTE PAS en release — et c'est voulu.",
+    "    'home_settings',",
+    '  ],',
+    '  displays: const <String>[],',
+    '),',
+  ].join('\n'));
+  writeFileSync(join(dossier, 'lib/p.dart'), [
+    "/// dartdoc : Semantics(identifier: 'ancre_du_commentaire')",
+    "Semantics(identifier: 'home_root', child: C(",
+    "  FocusButton(semanticIdentifier: 'home_start'),",
+    "  NumberStepper(anchorPrefix: 'stepper'),",
+    "  FocusToggle(semanticIdentifier: 'home_settings'),",
+    "  Semantics(identifier: 'orpheline_reelle', child: B()),",
+    "  Tab(semanticIdentifier: 'nav_${spec.id}'),",
+    '));',
+  ].join('\n'));
+
+  // ── 225 : la liste repliée est LUE, donc plus de fausse accusation ───────
+  const dec = declaredAnchors(dossier);
+  assert.ok(dec.includes('home_start') && dec.includes('home_settings'),
+    `une liste repliée par dart format n'est plus lue — le contrôle accuse à tort. Vu : ${JSON.stringify(dec)}`);
+  assert.ok(!dec.includes('home'), 'l\'id de l\'écran repasse pour une ancre déclarée');
+  assert.ok(!dec.includes('ancre_du_dartdoc'), 'le dartdoc d\'exemple repasse pour une déclaration');
+
+  // ── 227 : AUCUN fantôme, deux formes de commentaire à apostrophe ─────────
+  const fantomes = dec.filter((a) => /\s/.test(a));
+  assert.deepEqual(fantomes, [],
+    'une apostrophe française dans un commentaire ouvre encore un faux littéral');
+
+  // ── 226 : les ancres posées par PARAMÈTRE sont vues ──────────────────────
+  const poses = posedAnchors(dossier);
+  assert.ok(poses.includes('home_start') && poses.includes('home_settings'),
+    `les ancres posées par \`semanticIdentifier\` sont invisibles — l'angle mort que ce contrôle devait fermer. Vu : ${JSON.stringify(poses)}`);
+  // ⚠️ L'AUTRE MOITIÉ : `anchorPrefix` reste DEHORS. Un préfixe n'est pas une
+  // ancre ; le compter produirait un faux positif, pas une trouvaille.
+  assert.ok(!poses.includes('stepper'), 'un préfixe de famille est compté comme une ancre');
+  assert.ok(!poses.includes('ancre_du_commentaire'), 'le dartdoc repasse pour une ancre posée');
+  assert.ok(!poses.some((a) => a.includes('$')), 'un gabarit interpolé est compté comme une ancre');
+
+  // ── et le verdict : la SEULE vraie orpheline ─────────────────────────────
+  assert.deepEqual(undeclaredAnchors(dossier, {}), ['orpheline_reelle']);
+
+  // ── la convention maison, que le SKILL dit de GARDER ─────────────────────
+  assert.ok(posedAnchors(dossier, { anchors: { paramNames: ['anchorPrefix'] } }).includes('stepper'),
+    'un projet ne peut pas déclarer sa propre convention de paramètre');
+  rmSync(dossier, { recursive: true, force: true });
+});
+
 test('la cible argus-anchors APPELLE ce contrôle, elle ne fait pas que tester', () => {
   const mk = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
