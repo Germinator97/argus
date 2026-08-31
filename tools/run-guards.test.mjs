@@ -3480,6 +3480,40 @@ test('le croisement survit à dart format, aux paramètres nommés et aux apostr
   rmSync(dossier, { recursive: true, force: true });
 });
 
+test('le README du scaffold n\'enseigne pas ce que le SKILL mesure comme piège (229)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const readme = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/ARGUS-MOBILE.md'), 'utf8');
+
+  // ⚠️ DÉRIVÉ : c'est la table du SKILL qui décide de ce qui est un piège. Si
+  // elle changeait d'avis, ce garde suivrait au lieu de figer une opinion.
+  assert.match(skill, /<code>ElevatedButton<\/code>|`ElevatedButton`/,
+    'le SKILL ne classe plus ElevatedButton — ce garde n\'a plus de référence');
+  assert.match(skill, /aucune action/,
+    'la table du SKILL ne dit plus qu\'un tel nœud reste sans action');
+
+  // La forme piège peut FIGURER dans le README — il faut bien la montrer —
+  // mais jamais sous un ✅. C'est le voisinage qui compte, pas la présence :
+  // chercher la forme seule attraperait la mise en garde qui la corrige.
+  const lignes = readme.split('\n');
+  for (let i = 0; i < lignes.length; i += 1) {
+    if (!/Semantics\(identifier: '[^']*', child: ElevatedButton/.test(lignes[i])) continue;
+    const avant = lignes.slice(Math.max(0, i - 8), i).join('\n');
+    assert.doesNotMatch(avant, /✅/,
+      `ARGUS-MOBILE.md donne encore la forme inerte comme bonne (ligne ${i + 1}) — `
+      + 'c\'est le fichier que le prochain développeur du projet ouvre');
+    assert.match(avant, /INERTE|piège/,
+      `la forme inerte est montrée sans être nommée comme telle (ligne ${i + 1})`);
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ : la bonne forme doit être là. Un README qui ne montrerait
+  // que le piège laisserait le lecteur sans réponse.
+  assert.match(readme, /child: Semantics\(/,
+    'le README ne montre plus la forme qui MARCHE — l\'ancre sur l\'enfant');
+  assert.match(readme, /Semantics\(identifier: 'card_open', child: InkWell/,
+    'le README ne montre plus le cas où l\'enveloppe fusionne, qui est le cas simple');
+});
+
 test('la taille ne prescrit pas le binaire que la config INTERDIT (228)', () => {
   // ⚠️ La dérivation était de forme Android (`-debug.` → `-release.`), donc un
   // no-op sur un chemin iOS : le finding prescrivait `iphonesimulator` pendant

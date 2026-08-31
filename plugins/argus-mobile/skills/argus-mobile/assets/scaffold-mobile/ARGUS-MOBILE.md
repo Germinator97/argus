@@ -70,14 +70,36 @@ d'accessibilité. Les `Key` Flutter n'y sont **pas exposées** : un flow qui cib
 une Key échoue, toujours.
 
 ```dart
-// ✅ ciblable par `- tapOn: { id: login_button }`
+// ❌ invisible à Maestro
+ElevatedButton(key: const Key('login_button'), …)
+
+// ⚠️ CIBLABLE, MAIS INERTE — cet exemple était donné ici comme LA bonne forme,
+//    alors que le SKILL le MESURE comme le piège. Un composant qui déclare déjà
+//    un rôle de bouton pose une frontière sémantique : enveloppé par
+//    l'extérieur, il rend un nœud qui porte l'identifiant, un label VIDE et
+//    AUCUNE action — pendant que la vraie commande reste anonyme en dessous.
+//    Le `tapOn` marche quand même (Maestro tape au centre du rect), donc rien
+//    ne le signale ; seul VoiceOver annonce un bouton sans nom.
 Semantics(identifier: 'login_button', child: ElevatedButton(…))
+
+// ✅ un seul nœud : ancre + action + libellé. L'ancre va sur l'ENFANT que le
+//    composant reçoit, jamais autour de lui.
+ElevatedButton(
+  onPressed: _valider,
+  child: Semantics(
+    identifier: 'login_button',
+    label: 'Se connecter',
+    child: const Text('Se connecter'),
+  ),
+)
+
+// ✅ sur un composant qui n'ajoute qu'un GESTE (InkWell, InkResponse,
+//    GestureDetector, ListTile), l'enveloppe fusionne : un seul nœud, ancré
+//    et actif.
+Semantics(identifier: 'card_open', child: InkWell(onTap: …, child: …))
 
 // ✅ pour une icône sans texte
 Icon(Icons.add, semanticLabel: 'fabAddIcon')
-
-// ❌ invisible à Maestro
-ElevatedButton(key: const Key('login_button'), …)
 ```
 
 Sur une **racine d'écran**, la recette complète est :
