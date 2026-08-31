@@ -965,12 +965,121 @@ function codeDesScripts() {
   }).join('\n');
 }
 
+/**
+ * Le code des scripts, littéraux de chaîne ôtés EN PLUS des commentaires.
+ *
+ * ⚠️ POINT 192, resté ouvert deux passes. Le corpus ci-dessus retire les
+ * commentaires, pas les CHAÎNES — si bien qu'une clé simplement CITÉE par un
+ * message d'aide passait pour lue. Mesuré : la mutation qui retire la seule
+ * lecture de `artifact.icon` laissait le garde vert, parce que le message de
+ * publication écrit « argus.mobile.yaml → artifact.title / artifact.icon ».
+ *
+ * ⚠️ ET LE DURCISSEMENT ÉVIDENT EST FAUX — c'est ce qui l'avait fait laisser
+ * ouvert. Retirer les chaînes par regex (`/'(?:[^'\\]|\\.)*'/`) fait
+ * apparaître SEPT clés mortes qui ne le sont pas : une apostrophe française
+ * dans une chaîne à guillemets doubles (`"aujourd'hui"`) ouvre un appariement
+ * qui avale le code jusqu'à la quote suivante. Il faut donc balayer de GAUCHE À
+ * DROITE — la première quote rencontrée décide —, ce qu'une expression
+ * régulière ne sait pas faire.
+ *
+ * Ce que ce balayage garde délibérément : le CODE des `${…}`, qui est du vrai
+ * code (`${config.artifact.icon}` EST une lecture), et les bornes des chaînes,
+ * pour que la syntaxe alentour reste lisible.
+ *
+ * ⚠️ Il se scanne FICHIER PAR FICHIER, jamais sur la concaténation : un état
+ * mal refermé en fin de fichier mangerait le suivant. Et le shebang saute — son
+ * `#!/usr/bin/env` se lit sinon comme un littéral de regex, `/usr/` compris.
+ */
+function codeSansLitteraux(source) {
+  const src = source.startsWith('#!') ? source.slice(source.indexOf('\n')) : source;
+  const n = src.length;
+  let out = '', i = 0, prev = '';
+  /** Pile : nombre d'accolades ouvertes dans le `${}` courant, par template. */
+  const tpl = [];
+  const garder = (/** @type {string} */ c) => { out += c; if (!/\s/.test(c)) prev = c; };
+  while (i < n) {
+    const c = src[i], d = src[i + 1];
+    if (c === '\n') { out += '\n'; i++; continue; }
+    if (c === '/' && d === '/') { while (i < n && src[i] !== '\n') i++; continue; }
+    if (c === '/' && d === '*') {
+      i += 2;
+      while (i < n && !(src[i] === '*' && src[i + 1] === '/')) { if (src[i] === '\n') out += '\n'; i++; }
+      i += 2; out += ' '; continue;
+    }
+    if (c === '\'' || c === '"') {
+      const q = c; i++;
+      while (i < n && src[i] !== q) { if (src[i] === '\\') i++; if (src[i] === '\n') out += '\n'; i++; }
+      i++; out += q + q; prev = q; continue;
+    }
+    if (c === '`') {                       // on entre dans un template : texte sauté
+      tpl.push(0); i++;
+      while (i < n) {
+        if (src[i] === '\\') { i += 2; continue; }
+        if (src[i] === '\n') { out += '\n'; i++; continue; }
+        if (src[i] === '`') { tpl.pop(); i++; break; }
+        if (src[i] === '$' && src[i + 1] === '{') { out += ' '; i += 2; break; }  // ${ → retour au code
+        i++;
+      }
+      continue;
+    }
+    if (c === '}' && tpl.length && tpl[tpl.length - 1] === 0) {
+      // fin du `${}` : on retourne au texte du template, sans le consommer
+      out += ' '; i++;
+      while (i < n) {
+        if (src[i] === '\\') { i += 2; continue; }
+        if (src[i] === '\n') { out += '\n'; i++; continue; }
+        if (src[i] === '`') { tpl.pop(); i++; break; }
+        if (src[i] === '$' && src[i + 1] === '{') { out += ' '; i += 2; break; }
+        i++;
+      }
+      continue;
+    }
+    if (tpl.length) {                      // suivi des accolades DANS un ${}
+      if (c === '{') tpl[tpl.length - 1]++;
+      else if (c === '}') tpl[tpl.length - 1]--;
+    }
+    if (c === '/' && /[=(,:[!&|?{};+\-*%^~<>]/.test(prev)) {
+      i++; let classe = false;
+      while (i < n) {
+        if (src[i] === '\\') { i += 2; continue; }
+        if (src[i] === '[') classe = true;
+        else if (src[i] === ']') classe = false;
+        else if (src[i] === '/' && !classe) { i++; break; }
+        else if (src[i] === '\n') break;
+        i++;
+      }
+      out += ' '; prev = '/'; continue;
+    }
+    garder(c); i++;
+  }
+  return out;
+}
+
+/** Les scripts, commentaires ET littéraux ôtés — scannés un par un. */
+function codeSansChaines() {
+  const bloc = defaultsSource();
+  return readdirSync(SCRIPTS_DIR).filter((f) => f.endsWith('.mjs'))
+    .map((f) => codeSansLitteraux(readFileSync(join(SCRIPTS_DIR, f), 'utf8').replace(bloc, '')))
+    .join('\n');
+}
+
 test('toute clé de argus.mobile.yaml est lue par au moins un script', () => {
   const leaves = defaultsLeaves();
   assert.ok(leaves.length >= 40, `relevé vide ou tronqué (${leaves.length}) — DEFAULTS a-t-il changé de forme ?`);
 
-  const code = codeDesScripts();
+  // ⚠️ Corpus SANS LES CHAÎNES (point 192) : une clé citée par un message d'aide
+  // n'est pas une clé lue. Le collecteur du point 216, lui, garde les littéraux
+  // — ils SONT des noms de clés chez lui. Deux corpus, deux raisons.
+  const code = codeSansChaines();
   assert.ok(code.length > 10000, 'corpus vide : les scripts ont-ils bougé de dossier ?');
+  // Non-vacance du balayage : s'il avalait le code, TOUTES les clés paraîtraient
+  // mortes et l'assertion suivante crierait — mais s'il n'avalait RIEN, elle
+  // resterait verte sans rien mesurer. On exige donc que la mention connue soit
+  // bien partie, et que le corpus reste de taille plausible.
+  assert.doesNotMatch(code, /argus\.mobile\.yaml → artifact\.title/,
+    'le balayage ne retire plus les chaînes — une clé citée par un message repasse pour lue');
+  assert.ok(code.length > codeDesScripts().length * 0.45,
+    `le balayage a mangé le code (${code.length} contre ${codeDesScripts().length}) : ses états ne se referment pas`);
 
   // Lue = ACCÉDÉE (`config.x?.y`), pas mentionnée. C'est la forme réelle d'un
   // lecteur, et la seule qu'un commentaire ne peut pas imiter une fois les
