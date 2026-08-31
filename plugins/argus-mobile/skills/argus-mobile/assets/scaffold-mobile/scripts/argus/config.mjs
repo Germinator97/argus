@@ -19,7 +19,8 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -782,6 +783,51 @@ export function platformFor(config, argv = []) {
 }
 
 /**
+ * Ce que pèse un paquet, et de quoi il est fait — fichier OU répertoire.
+ *
+ * ⚠️ UN `.app` EST UN RÉPERTOIRE, et c'est tout le point 214. Le Makefile
+ * mesurait par `wc -c` et `shasum`, qui rendent l'un 0 et l'autre une erreur
+ * sur un dossier : la garde de fraîcheur affichait donc « 0 → 0 octets » sur
+ * chaque build iOS. Elle ne se taisait pas, elle affirmait — et un chiffre qui
+ * n'a rien mesuré se lit exactement comme un chiffre qui a mesuré.
+ *
+ * `kind` existe pour que l'appelant puisse DIRE « absent » au lieu d'imprimer
+ * un zéro : c'est la différence entre se taire et mentir.
+ * @param {string} chemin
+ * @returns {{kind:'absent'|'file'|'dir', bytes:number, digest:string, files:number}}
+ */
+export function measureBinary(chemin) {
+  if (!chemin || !existsSync(chemin)) return { kind: 'absent', bytes: 0, digest: '', files: 0 };
+  if (!statSync(chemin).isDirectory()) {
+    const buf = readFileSync(chemin);
+    return { kind: 'file', bytes: buf.length, digest: createHash('sha256').update(buf).digest('hex'), files: 1 };
+  }
+  // Un bundle se résume par le hash de SES ENTRÉES, chemin compris et TRIÉES :
+  // deux bundles de même taille dont un fichier a bougé doivent différer, et
+  // l'ordre de lecture du système de fichiers n'est pas stable.
+  /** @type {string[]} */
+  const lignes = [];
+  let bytes = 0;
+  (function marcher(/** @type {string} */ dir, /** @type {string} */ rel) {
+    for (const e of readdirSync(dir, { withFileTypes: true }).sort((x, y) => (x.name < y.name ? -1 : 1))) {
+      const abs = join(dir, e.name);
+      const sous = rel ? `${rel}/${e.name}` : e.name;
+      // Un lien symbolique se résume par sa CIBLE, jamais suivi : un bundle iOS
+      // en porte, et les suivre ferait boucler ou compter deux fois.
+      if (e.isSymbolicLink()) { lignes.push(`${sous} @symlink`); continue; }
+      if (e.isDirectory()) { marcher(abs, sous); continue; }
+      const buf = readFileSync(abs);
+      bytes += buf.length;
+      lignes.push(`${sous} ${createHash('sha256').update(buf).digest('hex')}`);
+    }
+  })(chemin, '');
+  return {
+    kind: 'dir', bytes, files: lignes.length,
+    digest: createHash('sha256').update(lignes.join('\n')).digest('hex'),
+  };
+}
+
+/**
  * La commande de build que le projet déclare pour cette plateforme.
  *
  * Extraite parce qu'elle était recopiée trois fois — `--print-build-cmd`, le
@@ -1250,6 +1296,26 @@ function main() {
   if (process.argv.slice(2).includes('--print-binary')) {
     const platform = platformFor(config, process.argv.slice(2));
     console.log(platform === 'ios' ? config.build.ios : config.build.android);
+    return;
+  }
+
+  // ── `--measure-binary` : ce que pèse le paquet, fichier OU répertoire. ────
+  //
+  // ⚠️ Le Makefile mesurait lui-même, par `wc -c` et `shasum`. Les deux
+  // échouent sur un `.app`, qui est un RÉPERTOIRE : la garde de fraîcheur
+  // annonçait « 0 → 0 octets » à chaque build iOS (point 214). La mesure vit
+  // donc ici, où un garde peut l'appeler et lire ce qu'elle rend — le Makefile
+  // l'INTERROGE au lieu de la recopier, pour que le geste outillé et le geste
+  // mesuré ne puissent plus diverger.
+  //
+  // Une ligne, trois champs séparés par des tabulations : `kind`, `bytes`,
+  // `digest`. `kind=absent` existe pour que l'appelant puisse DIRE qu'il n'y a
+  // rien, au lieu d'imprimer un zéro qui se lit comme une mesure.
+  if (process.argv.slice(2).includes('--measure-binary')) {
+    const platform = platformFor(config, process.argv.slice(2));
+    const chemin = platform === 'ios' ? config.build.ios : config.build.android;
+    const m = measureBinary(resolve(process.cwd(), String(chemin ?? '')));
+    console.log([m.kind, m.bytes, m.digest].join('\t'));
     return;
   }
 

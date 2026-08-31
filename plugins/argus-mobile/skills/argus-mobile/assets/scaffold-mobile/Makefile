@@ -35,23 +35,38 @@ argus-doctor: ## Config résolue + outillage détecté
 
 
 argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du device
+# ⚠️ LA MESURE N'EST PLUS FAITE ICI, et c'est le point 214. `wc -c` rend 0 sur un
+# répertoire et `shasum` y échoue — or un `.app` iOS EST un répertoire, si bien
+# que cette garde annonçait « 0 → 0 octets » à chaque build iOS. Elle ne se
+# taisait pas : elle affirmait, et un chiffre qui n'a rien mesuré se lit comme un
+# chiffre qui a mesuré. `--measure-binary` traite les deux formes, un garde
+# l'exerce, et le Makefile l'INTERROGE au lieu de recopier sa propre version.
 	@CMD="$$(node scripts/argus/config.mjs --print-build-cmd)"; \
 	APK="$$(node scripts/argus/config.mjs --print-binary)"; \
-	BEFORE=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); BEFORE=$${BEFORE:-0}; \
-	BEFOREH=$$(shasum -a 256 "$$APK" 2>/dev/null | cut -d' ' -f1 || true); \
+	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
+	BKIND=$$(printf '%s' "$$M" | cut -f1); BEFORE=$$(printf '%s' "$$M" | cut -f2); \
+	BEFOREH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "→ $$CMD"; \
 	START=$$(date +%s); eval "$$CMD"; ELAPSED=$$(( $$(date +%s) - START )); \
-	AFTER=$$(wc -c < "$$APK" 2>/dev/null | tr -d ' ' || true); AFTER=$${AFTER:-0}; \
-	AFTERH=$$(shasum -a 256 "$$APK" 2>/dev/null | cut -d' ' -f1 || true); \
+	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
+	AKIND=$$(printf '%s' "$$M" | cut -f1); AFTER=$$(printf '%s' "$$M" | cut -f2); \
+	AFTERH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "  paquet   $$APK"; \
+	if [ "$$AKIND" = absent ]; then \
+	  echo "  ✖ AUCUN PAQUET à cet emplacement après $${ELAPSED}s — le build n'a rien écrit là."; \
+	  echo "      Vérifie que build.android / build.ios désigne ce que la commande produit."; \
+	  exit 1; \
+	fi; \
 	echo "  $$BEFORE → $$AFTER octets en $${ELAPSED}s"; \
-	if [ -n "$$BEFOREH" ] && [ "$$BEFOREH" = "$$AFTERH" ]; then \
-	  echo "  ⚠️  PAQUET INTACT — le fichier n'a pas été réécrit (même sha256)."; \
+	if [ "$$BKIND" = absent ]; then \
+	  echo "  ✔ paquet créé — rien à cet emplacement avant le build."; \
+	elif [ "$$BEFOREH" = "$$AFTERH" ]; then \
+	  echo "  ⚠️  PAQUET INTACT — le paquet n'a pas été réécrit (même empreinte)."; \
 	  echo "      Si la commande vient de changer (ciblage d'ABI, flavor, flags), rien"; \
 	  echo "      n'a été re-packagé : \`$(FLUTTER) clean\` puis relance."; \
-	elif [ -n "$$AFTERH" ]; then \
-	  echo "  ✔ paquet réécrit (sha256 différent) — deux tailles égales ne veulent pas"; \
-	  echo "    dire deux paquets identiques, c'est le hash qui tranche."; \
+	else \
+	  echo "  ✔ paquet réécrit (empreinte différente) — deux tailles égales ne veulent pas"; \
+	  echo "    dire deux paquets identiques, c'est l'empreinte qui tranche."; \
 	fi
 
 

@@ -27,7 +27,7 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, platformFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, exitCodeFor, measureBinary, platformFor, releaseBuildCmd, sh, shTimeoutMs } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -2907,6 +2907,81 @@ test('perf.mjs LIT son verdict par launchOutcome au lieu de le refaire', () => {
     `${boucles.length} boucle(s) de mesure comptent les expirations au lieu de 2 (à froid ET à chaud)`);
 });
 
+
+// ── Peser un paquet qui est un RÉPERTOIRE ───────────────────────────────────
+//
+// Point 214. Le Makefile mesurait par `wc -c` et `shasum` : le premier rend 0
+// sur un répertoire, le second y échoue. Or un `.app` iOS EST un répertoire, si
+// bien que la garde de fraîcheur affichait « 0 → 0 octets » à chaque build iOS.
+// Elle ne se taisait pas — elle affirmait, et un chiffre qui n'a rien mesuré se
+// lit exactement comme un chiffre qui a mesuré. C'est le mode de panne que ce
+// chantier connaît le mieux.
+
+test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-mesure-'));
+  const app = join(dossier, 'Runner.app');
+  mkdirSync(join(app, 'Frameworks'), { recursive: true });
+  writeFileSync(join(app, 'Runner'), 'x'.repeat(1000));
+  writeFileSync(join(app, 'Info.plist'), 'a');
+  writeFileSync(join(app, 'Frameworks', 'Flutter'), 'y'.repeat(500));
+
+  const m = measureBinary(app);
+  assert.equal(m.kind, 'dir');
+  assert.equal(m.bytes, 1501, 'le poids d\'un bundle est celui de son contenu, pas 0');
+  assert.equal(m.files, 3);
+  assert.match(m.digest, /^[0-9a-f]{64}$/);
+
+  // ⚠️ LE CAS DÉCISIF, et celui que l'ancienne mesure ne pouvait pas voir : même
+  // taille, contenu différent. C'est exactement ce qu'un rebuild produit, et
+  // c'est pourquoi la garde parle d'empreinte et non de taille.
+  writeFileSync(join(app, 'Info.plist'), 'b');
+  const apres = measureBinary(app);
+  assert.equal(apres.bytes, m.bytes, 'le montage doit garder la taille constante, sinon il ne mesure pas ce cas');
+  assert.notEqual(apres.digest, m.digest, 'deux bundles de même taille et de contenu différent ont la même empreinte');
+
+  // Un fichier ordinaire n'a pas changé de comportement : c'est l'autre moitié.
+  const apk = join(dossier, 'app-debug.apk');
+  writeFileSync(apk, 'z'.repeat(4096));
+  const f = measureBinary(apk);
+  assert.equal(f.kind, 'file');
+  assert.equal(f.bytes, 4096);
+  assert.equal(f.files, 1);
+  assert.match(f.digest, /^[0-9a-f]{64}$/);
+
+  // ⚠️ « absent » se DIT, il ne s'imprime pas en zéro : c'est la différence
+  // entre se taire et mentir, et c'est tout le point 214.
+  const rien = measureBinary(join(dossier, 'nulle-part.apk'));
+  assert.equal(rien.kind, 'absent');
+  assert.equal(rien.digest, '', 'un paquet absent ne doit pas porter d\'empreinte — elle se comparerait');
+  rmSync(dossier, { recursive: true, force: true });
+});
+
+test('le Makefile INTERROGE la mesure au lieu de la refaire à sa façon', () => {
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const recette = mk.slice(mk.indexOf('\nargus-build:'));
+  // ⚠️ LES COMMENTAIRES SONT ÔTÉS, et ce garde est né faux sans ce retrait : le
+  // commentaire qui explique POURQUOI `wc -c` a été retiré contient `wc -c`, si
+  // bien que l'assertion tombait sur ma propre mention du symbole. C'est la
+  // façon la plus courante pour un garde de naître vacant — ici elle l'a fait
+  // rougir, ce qui est le sens chanceux.
+  const corps = recette.slice(0, recette.indexOf('\n\n'))
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.ok(corps.includes('argus-build:'), 'la cible argus-build a disparu du Makefile');
+
+  // Le geste OUTILLÉ doit être le geste MESURÉ : la recette appelle la source,
+  // elle n'en tient pas une seconde version.
+  assert.match(corps, /--measure-binary/,
+    'argus-build ne demande plus la mesure au script — il en refait donc une, '
+    + 'et c\'est l\'écart entre les deux qui a produit le point 214');
+  // ⚠️ Et surtout : plus aucune mesure locale. Ces deux-là sont muettes sur un
+  // répertoire, ce qui est la cause exacte du défaut.
+  assert.doesNotMatch(corps, /wc -c/, 'wc -c rend 0 sur un .app — il est revenu dans la recette');
+  assert.doesNotMatch(corps, /shasum/, 'shasum échoue sur un .app — il est revenu dans la recette');
+  // Le cas « rien produit » doit RESTER distingué : sans lui, un build qui
+  // n'écrit rien affiche « 0 octets » et se lit comme une mesure.
+  assert.match(corps, /AUCUN PAQUET/, 'la recette ne distingue plus « absent » de « pesé à zéro »');
+});
 
 // ── Sur quelle plateforme une commande porte-t-elle quand on ne l'a pas dite ─
 //
