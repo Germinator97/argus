@@ -34,7 +34,7 @@ import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditApk, auditObfuscation, binaryFreshness, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -2907,6 +2907,46 @@ test('perf.mjs LIT son verdict par launchOutcome au lieu de le refaire', () => {
     `${boucles.length} boucle(s) de mesure comptent les expirations au lieu de 2 (à froid ET à chaud)`);
 });
 
+
+// ── La raison d'un saut ne doit rien affirmer qu'on n'ait vérifié ───────────
+//
+// Point 217. Le saut de l'analyse binaire iOS est bon — le scan lit un APK, il
+// n'a pas d'équivalent — mais il l'expliquait par « un .app de SIMULATEUR ».
+// Or `iosScan` peut pointer un build device release, ce que le premier run iOS
+// a fait : celui qui avait pris la peine de construire une release s'entendait
+// expliquer qu'il avait un build de simulateur.
+//
+// Une raison FAUSSE dans un message honnête coûte plus qu'une raison absente :
+// elle fait chercher au mauvais endroit.
+
+test('le saut de l\'analyse iOS décrit le binaire QU\'ON A, pas celui qu\'on suppose', () => {
+  const root = '/projet';
+  const device = iosBinarySkipReason('/projet/build/ios/iphoneos/Runner.app', root);
+  const simu = iosBinarySkipReason('/projet/build/ios/iphonesimulator/Runner.app', root);
+
+  // ⚠️ LE CŒUR DU POINT : un build device ne doit PAS être appelé simulateur.
+  assert.doesNotMatch(device, /simulateur/i,
+    'un build device s\'entend encore dire qu\'il est un simulateur');
+  assert.match(device, /build device/, 'la raison ne dit plus ce que le chemin montre');
+  assert.match(device, /iphoneos\/Runner\.app/, 'la raison ne nomme pas le binaire dont elle parle');
+
+  // ⚠️ L'AUTRE MOITIÉ, et elle compte autant : corriger l'affirmation fausse ne
+  // doit pas faire perdre l'avertissement quand il est VRAI. Un correctif qui
+  // se contenterait de retirer le mot « simulateur » passerait sans elle.
+  assert.match(simu, /SIMULATEUR/, 'un vrai .app de simulateur n\'est plus signalé comme tel');
+
+  // Les deux disent pourquoi le scan ne conclut pas — c'est la part qui, elle,
+  // est vraie dans tous les cas.
+  for (const r of [device, simu, iosBinarySkipReason('', root)]) {
+    assert.match(r, /analyse binaire iOS non couverte/);
+    assert.match(r, /MobSF|IPA/, 'la raison ne dit plus quoi faire à la place');
+  }
+
+  // Rien de déclaré : ne rien affirmer du tout sur ce qu'on n'a pas.
+  const vide = iosBinarySkipReason('', root);
+  assert.doesNotMatch(vide, /simulateur|build device/i,
+    'sans chemin, la raison qualifie quand même un binaire qu\'elle n\'a pas vu');
+});
 
 // ── Peser un paquet qui est un RÉPERTOIRE ───────────────────────────────────
 //

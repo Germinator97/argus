@@ -414,6 +414,35 @@ export function buildHintFor(binary, root, config, pinned = usesFvm(), platform 
     : flutterCommandIn(projectBuildCmd(config, cible), pinned);
 }
 
+/**
+ * Pourquoi l'analyse binaire ne conclut pas sur iOS — sans rien affirmer de faux.
+ *
+ * ⚠️ LE MESSAGE AFFIRMAIT « un .app de SIMULATEUR » (point 217). Le saut est
+ * bon — le scan lit un APK, il n'a pas d'équivalent iOS — mais sa raison
+ * décrivait un cas qui n'est pas forcément celui du lecteur : `iosScan` peut
+ * pointer un build device release, et c'est ce que le premier run iOS avait
+ * fait. Celui qui a pris la peine de construire une release s'entendait donc
+ * expliquer qu'il avait un build de simulateur.
+ *
+ * Une raison FAUSSE dans un message honnête coûte plus qu'une raison absente :
+ * elle fait chercher au mauvais endroit. D'où trois formulations, et aucune qui
+ * décide à la place de ce que le chemin montre.
+ * @param {string} binary @param {string} root @returns {string}
+ */
+export function iosBinarySkipReason(binary, root) {
+  const rel = binary ? relative(root, binary) : '';
+  const socle = 'analyse binaire iOS non couverte : le scan lit un APK (unzip + aapt2), '
+    + 'il n\'a pas d\'équivalent pour un bundle iOS.';
+  if (/iphonesimulator/.test(rel)) {
+    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `
+      + 'ni la signature de ce que reçoivent les utilisateurs. Utilise MobSF sur l\'IPA.';
+  }
+  if (/iphoneos/.test(rel)) {
+    return `${socle} ${rel} est bien un build device — passe-le à MobSF, ou exporte l'IPA.`;
+  }
+  return `${socle} Utilise MobSF sur l'IPA${rel ? ` (déclaré : ${rel})` : ''}.`;
+}
+
 export function binaryToScan(platform, config, override = '') {
   const b = config?.build ?? {};
   return platform === 'ios'
@@ -627,7 +656,7 @@ function main() {
   const binary = resolve(root, binaryToScan(platform, config, opts.binary));
   const tools = detectTools(['unzip', 'aapt2']);
   if (platform !== 'android') {
-    binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur n\'est pas le binaire signé de l\'App Store. Utilise MobSF sur l\'IPA.' };
+    binaryFacts = { scanned: false, why: iosBinarySkipReason(binary, root) };
   } else if (!existsSync(binary)) {
     binaryFacts = { scanned: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config)}` };
   } else if (!tools.unzip.present) {
