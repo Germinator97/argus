@@ -2939,6 +2939,18 @@ test('un bundle .app se pèse comme un paquet, pas comme un fichier vide', () =>
   assert.equal(apres.bytes, m.bytes, 'le montage doit garder la taille constante, sinon il ne mesure pas ce cas');
   assert.notEqual(apres.digest, m.digest, 'deux bundles de même taille et de contenu différent ont la même empreinte');
 
+  // ⚠️ ET LE CHEMIN COMPTE, pas seulement le contenu. Le dartdoc le promet
+  // (« chemin compris et triées ») ; sans ce cas, la promesse repartait sans
+  // son garde — et un fichier DÉPLACÉ dans le bundle rendait la même empreinte.
+  // Mesuré : la mutation qui retire le chemin du résumé restait verte.
+  rmSync(join(app, 'Frameworks', 'Flutter'));
+  writeFileSync(join(app, 'Flutter'), 'y'.repeat(500));
+  const deplace = measureBinary(app);
+  assert.equal(deplace.bytes, apres.bytes, 'le montage doit garder la taille constante pour isoler le chemin');
+  assert.equal(deplace.files, apres.files, '… et le nombre de fichiers, sinon on mesure autre chose');
+  assert.notEqual(deplace.digest, apres.digest,
+    'un fichier déplacé dans le bundle rend la même empreinte : le chemin ne compte pas');
+
   // Un fichier ordinaire n'a pas changé de comportement : c'est l'autre moitié.
   const apk = join(dossier, 'app-debug.apk');
   writeFileSync(apk, 'z'.repeat(4096));
