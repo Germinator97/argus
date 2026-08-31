@@ -68,6 +68,11 @@ CIBLES = {
     "lifecycle": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/lifecycle.yaml",
     "yamlconf": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml",
     "gitignore": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.gitignore",
+    # Depuis le run 33 : le README du scaffold enseignait comme ✅ ce que le
+    # SKILL mesure comme piège, et le workflow livré supposait Android. Deux
+    # fichiers que le PROJET lit, et qu'aucune mutation ne visait.
+    "readme": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/ARGUS-MOBILE.md",
+    "ci": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -524,6 +529,38 @@ MUTATIONS = [
     ("sec", "l'avertissement simulateur disparaît quand il est VRAI",
      "    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `",
      "    return `${socle} Et ${rel} est un bundle : il ne porte ni l'architecture `"),
+    # ── Run 33 — dont TROIS défauts du contrôle écrit au run 32 ─────────────
+    # ⚠️ Le pire n'était pas qu'il rate : il ACCUSAIT une déclaration correcte.
+    ("config", "225 · le relevé des déclarées redevient ligne à ligne",
+     "  const src = dartSansCommentaires(brut);",
+     "  const src = dartSansCommentaires(brut).split('\\n')[0];"),
+    ("config", "226 · le motif reperd les paramètres nommés",
+     "['[a-zA-Z]*[Ii]dentifier', ...sur]",
+     "['identifier', ...sur]"),
+    ("config", "227 · le balayage cesse de voir les commentaires",
+     "    if (c === '/' && d === '/') { while (i < n && src[i] !== '\\n') i += 1; continue; }",
+     "    if (false) { while (i < n && src[i] !== '\\n') i += 1; continue; }"),
+    ("perf", "228 · la prescription de taille redevient Android-seule",
+     "  const attendu = platform === 'ios'",
+     "  const attendu = false"),
+    ("readme", "229 · la forme inerte redevient la bonne forme",
+     "// ⚠️ CIBLABLE, MAIS INERTE",
+     "// ✅ la bonne forme"),
+    ("ci", "230 · un job Android cesse de suivre la plateforme",
+     "  security:\n    name: MASVS et CVE\n    needs: cadre\n    if: needs.cadre.outputs.android == 'true'\n",
+     "  security:\n    name: MASVS et CVE\n    needs: cadre\n"),
+    ("ci", "230 bis · le job iOS est de nouveau éteint en dur",
+     "    if: needs.cadre.outputs.ios == 'true' && vars.ARGUS_IOS_CI == 'true'",
+     "    if: false"),
+    ("makefile", "234 · le croisement rebloque le test Dart",
+     "\tnode scripts/argus/config.mjs --check-anchors || rc=$$?; \\",
+     "\tnode scripts/argus/config.mjs --check-anchors; \\"),
+    ("run", "235 · le conseil de locale reparle d'émulateur sur iOS",
+     "      ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'",
+     "      ? '  Règle la locale sur l\'émulateur avant le run.'"),
+    ("run", "236 · la ligne de démarrage cesse de dire le splash assumé",
+     "      + (splash > 0 ? ` + ${splash} ms de splash assumé (soit ${report.startup.budgetMs + splash} ms au total)` : ''));",
+     "      + '');"),
     # ── Run 32 — les six points, plus le défaut que la passe avait CRÉÉ ─────
     # 219 : les DEUX moitiés — le relevé, et son câblage dans la cible.
     ("config", "le croisement des ancres cesse d'exclure le dartdoc",
