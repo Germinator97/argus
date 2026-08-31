@@ -524,7 +524,34 @@ MUTATIONS = [
     ("sec", "l'avertissement simulateur disparaît quand il est VRAI",
      "    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `",
      "    return `${socle} Et ${rel} est un bundle : il ne porte ni l'architecture `"),
-    # ── Run 32 — le défaut que la passe précédente avait CRÉÉ ───────────────
+    # ── Run 32 — les six points, plus le défaut que la passe avait CRÉÉ ─────
+    # 219 : les DEUX moitiés — le relevé, et son câblage dans la cible.
+    ("config", "le croisement des ancres cesse d'exclure le dartdoc",
+     "        if (ligne.trimStart().startsWith('///')) continue;\n"
+     "        for (const m of ligne.matchAll(/identifier:\\s*'([^']*)'/g)) {",
+     "        if (false) continue;\n"
+     "        for (const m of ligne.matchAll(/identifier:\\s*'([^']*)'/g)) {"),
+    ("makefile", "argus-anchors cesse d'appeler le croisement posé → déclaré",
+     "\t@node scripts/argus/config.mjs --check-anchors",
+     "\t@true # plus de croisement"),
+    # 220 : la commande prescrite doit citer des drapeaux qui EXISTENT.
+    ("skill", "la commande d'itération cite un drapeau inexistant",
+     "node scripts/argus/run.mjs --tags=journey --no-install",
+     "node scripts/argus/run.mjs --flow=journey --no-install"),
+    # 221-224 : quatre promesses de doc, chacune gardée.
+    ("goto", "goto reperd le cas de l'écran qu'aucune branche n'atteint",
+     "# ⚠️ ET CERTAINS ÉCRANS N'ADMETTENT PAS DE BRANCHE",
+     "# ⚠️ Note sans objet"),
+    ("skill", "la reconnaissance reperd le splash imposé",
+     "⚠️ **CHERCHE AUSSI UNE DURÉE DE SPLASH IMPOSÉE, dans `main()` ou le premier",
+     "⚠️ **Note sans objet, dans `main()` ou le premier"),
+    ("skill", "le titre cesse de se lire avant une republication",
+     "   ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le",
+     "   ⚠️ **Note sans objet.** Le"),
+    ("skill", "le gabarit reperd la case du nom de paramètre",
+     "    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre `<NOM>`",
+     "    dont partagées   : <C> composant(s) couvrant <S> call-sites"),
+    # ── Le défaut que la passe précédente avait CRÉÉ ────────────────────────
     ("makefile", "la recette cesse de lire le code de sortie du build",
      "\tSTART=$$(date +%s); eval \"$$CMD\"; RC=$$?; ELAPSED=$$(( $$(date +%s) - START )); \\",
      "\tSTART=$$(date +%s); eval \"$$CMD\"; RC=0; ELAPSED=$$(( $$(date +%s) - START )); \\"),
