@@ -3638,6 +3638,62 @@ test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (23
     'e2e-ios s\'allumerait tout seul sur un runner macOS — ~10x le coût d\'un Linux');
 });
 
+// ── Une plateforme hors périmètre ne doit pas faire échouer le gate ─────────
+//
+// Point 242, image inversée des 213-217 : là, tout supposait Android ; ici,
+// Android s'invitait là où on ne l'avait pas demandé. Les deux audits de
+// sources tournaient quelle que soit la plateforme, donc sur `platforms: [ios]`
+// le manifeste Android rendait un `major` — et `major` est dans `gate.failOn`.
+
+test('sec.mjs ne juge que les plateformes déclarées, et DIT le reste (242)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+  assert.match(yaml, /^platforms:\n {2}- android$/m,
+    'le scaffold ne déclare plus `platforms: [android]` — le montage ne bascule plus rien');
+
+  const monter = (/** @type {string} */ plats) => {
+    const d = mkdtempSync(join(tmpdir(), 'argus-sec-plat-'));
+    mkdirSync(join(d, 'android/app/src/main'), { recursive: true });
+    mkdirSync(join(d, 'ios/Runner'), { recursive: true });
+    cpSync(join(scaffold, 'scripts'), join(d, 'scripts'), { recursive: true });
+    writeFileSync(join(d, 'argus.mobile.yaml'), yaml
+      .replace(/^platforms:\n {2}- android$/m, `platforms:\n${plats}`)
+      .replace(/^ {2}androidPackage: ''.*$/m, '  androidPackage: com.exemple.a')
+      .replace(/^ {2}iosBundleId: ''.*$/m, '  iosBundleId: com.exemple.a'));
+    // ⚠️ Une permission que la config n'attend PAS : c'est elle qui produit le
+    // `major`. Sans elle le montage rendrait 0 partout et ne mesurerait rien.
+    writeFileSync(join(d, 'android/app/src/main/AndroidManifest.xml'),
+      '<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+      + '<uses-permission android:name="android.permission.CAMERA"/>\n'
+      + '<application android:label="a"/>\n</manifest>\n');
+    writeFileSync(join(d, 'ios/Runner/Info.plist'), '<plist><dict></dict></plist>\n');
+    let out = '';
+    try {
+      out = execFileSync('bash', ['-c', 'node scripts/argus/sec.mjs 2>&1'], { cwd: d, encoding: 'utf8' });
+    } catch (e) { const x = /** @type {any} */ (e); out = String(x.stdout ?? '') + String(x.stderr ?? ''); }
+    rmSync(d, { recursive: true, force: true });
+    return out;
+  };
+
+  // ── iOS seul : le manifeste Android n'est pas jugé, et on le DIT ─────────
+  const ios = monter('  - ios');
+  assert.match(ios, /0 finding\(s\)/,
+    `un projet iOS échoue encore sur une permission Android — reçu : ${ios.slice(0, 300)}`);
+  assert.match(ios, /non jugé — le manifeste Android/,
+    'ce qui n\'est pas jugé se tait : un audit absent ressemble à un audit qui n\'a rien trouvé');
+
+  // ── ⚠️ L'AUTRE MOITIÉ : Android déclaré, le manifeste EST jugé ───────────
+  // Sans ce cas, un correctif qui n'auditerait plus rien passerait.
+  const android = monter('  - android');
+  assert.match(android, /1 finding\(s\)/, 'la permission Android n\'est plus jugée quand android EST déclaré');
+  assert.match(android, /non jugé — l'Info\.plist iOS/, 'l\'audit iOS sauté ne se dit pas');
+
+  // ── Les deux : rien n'est sauté, donc rien à annoncer ────────────────────
+  const deux = monter('  - android\n  - ios');
+  assert.match(deux, /1 finding\(s\)/, 'le manifeste Android n\'est plus jugé quand les deux sont déclarés');
+  assert.doesNotMatch(deux, /non jugé/, 'un run qui juge tout annonce quand même des absences');
+});
+
 test('la taille ne prescrit pas le binaire que la config INTERDIT (228)', () => {
   // ⚠️ La dérivation était de forme Android (`-debug.` → `-release.`), donc un
   // no-op sur un chemin iOS : le finding prescrivait `iphonesimulator` pendant

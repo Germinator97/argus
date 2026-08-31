@@ -659,11 +659,29 @@ function main() {
   const platform = opts.platform || (config.platforms ?? ['android'])[0];
   const reportPath = join(artifactsDir(config), 'sec.json');
 
-  const sourceFindings = [
-    ...auditAndroidManifest(root, config),
-    ...auditIosPlist(root),
-    ...auditSecrets(root, config),
-  ];
+  // ⚠️ LES DEUX AUDITS DE SOURCES TOURNAIENT QUELLE QUE SOIT LA PLATEFORME, et
+  // c'est le gate qui payait (point 242). Sur un projet `platforms: [ios]`, le
+  // manifeste Android était jugé et rendait un `major` « Permissions non
+  // prévues » — or `major` est dans `gate.failOn` par défaut : **une plateforme
+  // explicitement hors périmètre faisait échouer le run**. Mesuré sur un
+  // scaffold neuf : 1 finding, major, sur une plateforme qu'on avait dit
+  // d'ignorer.
+  //
+  // C'est l'image inversée des points 213-217 : là, tout supposait Android ;
+  // ici, Android s'invite là où on ne l'a pas demandé.
+  //
+  // ⚠️ On ne se contente PAS de retirer l'audit : ce qui n'est pas jugé se DIT.
+  // Un audit silencieusement absent ressemble trait pour trait à un audit qui
+  // n'a rien trouvé — c'est le mode de panne que ce script traque ailleurs.
+  const plateformes = (config.platforms ?? ['android']).map(String);
+  /** @type {string[]} */
+  const nonJuges = [];
+  const sourceFindings = [...auditSecrets(root, config)];
+  if (plateformes.includes('android')) sourceFindings.push(...auditAndroidManifest(root, config));
+  else nonJuges.push('le manifeste Android (android n\'est pas dans platforms)');
+  if (plateformes.includes('ios')) sourceFindings.push(...auditIosPlist(root));
+  else nonJuges.push('l\'Info.plist iOS (ios n\'est pas dans platforms)');
+  for (const quoi of nonJuges) warn(`non jugé — ${quoi}`);
 
   let binaryFindings = [];
   /** @type {any} */
