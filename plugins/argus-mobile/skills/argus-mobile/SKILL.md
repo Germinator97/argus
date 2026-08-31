@@ -206,6 +206,13 @@ développées ; `lib/` ne dit que « combien d'endroits ont été touchés ».
 aucune vraie ancre — s'il te rend autre chose que **0**, c'est ton motif qui lit
 le commentaire, pas le projet qui est instrumenté.
 
+⚠️ **ET L'ÉTAT TROUVÉ, LUI, SE COMPTE DEPUIS `lib/` — forcément.** Le paragraphe
+ci-dessus dit que les chiffres « se lisent dans `harness.dart` » ; c'est vrai de
+l'état LAISSÉ, et impossible pour l'état TROUVÉ, qui est antérieur à
+l'installation : le fichier n'existe pas encore. Compte-le donc depuis `lib/`, et
+dis-le — c'est un plancher, et le seul disponible à ce moment-là. La colonne
+« à poser » vient, elle, de ta lecture des widgets interactifs.
+
 ⚠️ **En REGRESS, rends-le DEUX FOIS : l'état TROUVÉ, puis l'état LAISSÉ.** Le
 livrable y est justement que la colonne « à poser » tombe à zéro — un relevé
 unique est alors soit périmé, soit trompeur : « 53 posées / 0 à poser (100 %) »
@@ -1135,6 +1142,15 @@ un changement de flags ⇒ `flutter clean`, puis relance.
 
 Reprends ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être
 rejouées.
+
+⚠️ **`hideKeyboard` REFERME UNE FEUILLE MODALE SUR iOS.** Mesuré : sur un
+`showModalBottomSheet`, la commande ne masque pas le clavier — elle ferme la
+feuille, **et valide au passage**. La capture de l'étape suivante montre alors la
+donnée créée et l'ancre de la feuille introuvable, ce qui se lit comme un défaut
+d'instrumentation. Coût relevé : deux flows rouges et une passe device de 220 s.
+Sur Android le même appel est inoffensif — c'est donc un piège qui n'apparaît
+qu'en changeant de plateforme, comme `setAirplaneMode` dans l'autre sens.
+Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleurs.
 
 ⚠️ **ET SI C'EST UN SEUL FLOW QUE TU METS AU POINT, ne rejoue pas tout.** Un
 `argus-run` complet coûte **310 s** là où le même run filtré en coûte **87** —

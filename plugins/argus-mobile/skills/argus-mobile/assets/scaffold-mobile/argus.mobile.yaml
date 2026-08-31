@@ -386,6 +386,12 @@ auth:
   # pourquoi (« app locale, aucun compte »). Sinon `install-mobile.sh --check`
   # compte cinq points à traiter qui n'en sont pas — et un TODO sans objet
   # apprend à ignorer les autres.
+  # ⚠️ SUR UNE APP SANS COMPTE, LAISSE-LES VIDES — et sache ce que ça fait.
+  # Tout `journey-critical.yaml` est gardé par `ARGUS_ANCHOR_AFTER_AUTH`, si
+  # bien qu'à la lecture on croit que le parcours entier va se sauter. Il ne se
+  # saute pas : le runner fait retomber cette variable sur l'ancre d'accueil
+  # quand aucune ancre d'auth n'est déclarée. Le comportement est bon ; c'est de
+  # ne le lire NULLE PART qui coûte — il ne se découvrait qu'en ouvrant run.mjs.
   anchors:
     screen: ''     # TODO(argus): ancre de l'écran de connexion
     user: ''       # TODO(argus): champ identifiant

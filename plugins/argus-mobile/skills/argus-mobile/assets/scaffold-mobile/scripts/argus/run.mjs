@@ -54,7 +54,7 @@ import { caveatDebug } from './perf.mjs';
  * @param {string|null} surDevice ce que l'appareil rend, `null` si illisible
  * @returns {string[]} les lignes à avertir, vide si le silence est justifié
  */
-export function localeWarnings(demandee, autoStart, surDevice) {
+export function localeWarnings(demandee, autoStart, surDevice, platform = 'android') {
   if (!demandee || autoStart) return [];
   const normaliser = (/** @type {string} */ v) => v.trim().toLowerCase().replace(/_/g, '-').split(',')[0];
   if (surDevice && normaliser(surDevice) === normaliser(demandee)) return [];
@@ -64,7 +64,12 @@ export function localeWarnings(demandee, autoStart, surDevice) {
   return [
     `locale.deviceLocale = « ${demandee} » n'aura AUCUN effet : elle ne s'applique `
       + `qu'au démarrage du device, et seul \`autoStart: true\` le démarre — or ${constat}.`,
-    '  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.',
+    // ⚠️ « l'émulateur » sur iOS ne désigne rien (point 235) : un conseil qui
+    // nomme un objet inexistant se lit comme une consigne pour quelqu'un
+    // d'autre, et on cesse de lire les suivantes.
+    platform === 'ios'
+      ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'
+      : '  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.',
   ];
 }
 
@@ -1595,7 +1600,7 @@ async function main() {
       ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
       : '';
     for (const ligne of localeWarnings(
-      String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null,
+      String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null, platform,
     )) warn(ligne);
   }
 
@@ -1864,7 +1869,16 @@ async function main() {
   }
   if (startup.length > 0) {
     const worst = Math.round(Math.max(...startup.map((s) => s.ms)));
-    log(`écran de départ « ${home?.id} » : ${worst} ms au pire sur ${startup.length} flow(s), budget ${report.startup.budgetMs} ms`);
+    // ⚠️ ELLE SE LISAIT COMME UN DÉPASSEMENT (point 236). « 3445 ms au pire,
+    // budget 2000 » sans un mot du splash assumé : le lecteur voit un verdict
+    // raté là où le harnais, lui, ne produit aucun finding — parce qu'il
+    // soustrait ce splash. Le finding le DIT déjà (« hors splash de marque ») ;
+    // la ligne de console, elle, ne le disait pas. Deux textes du même run qui
+    // ne racontent pas la même chose.
+    const splash = Math.max(0, Number(report.startup.brandedSplashMs ?? 0));
+    log(`écran de départ « ${home?.id} » : ${worst} ms au pire sur ${startup.length} flow(s), `
+      + `budget ${report.startup.budgetMs} ms`
+      + (splash > 0 ? ` + ${splash} ms de splash assumé (soit ${report.startup.budgetMs + splash} ms au total)` : ''));
     // ⚠️ DIRE LA MARGE, PAS SEULEMENT LES DEUX NOMBRES. Un flow qui passe de
     // justesse est vert, et le rapport portait déjà le pire temps et le plafond
     // sans jamais dire ce qui les sépare : personne ne voit venir le flake.

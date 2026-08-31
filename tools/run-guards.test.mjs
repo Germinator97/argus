@@ -3514,6 +3514,83 @@ test('le README du scaffold n\'enseigne pas ce que le SKILL mesure comme piège 
     'le README ne montre plus le cas où l\'enveloppe fusionne, qui est le cas simple');
 });
 
+test('trois informations justes qui arrivaient trop tard (231-233, 236)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const run = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+
+  // 231 — le repli de l'ancre post-auth ne se lisait que dans run.mjs.
+  // ⚠️ DÉRIVÉ : c'est l'existence du repli DANS LE CODE qui rend la phrase
+  // nécessaire. S'il disparaissait, la phrase deviendrait fausse et ce garde
+  // le dirait, au lieu de veiller sur une prose sans objet.
+  assert.match(run, /anchorAfterAuth/, 'le repli post-auth a disparu du runner — la phrase du YAML est périmée');
+  const bloc = yaml.slice(yaml.indexOf('SUR UNE APP SANS COMPTE'), yaml.indexOf('SUR UNE APP SANS COMPTE') + 700);
+  assert.ok(bloc.length > 200, 'le YAML ne dit plus ce que des ancres d\'auth vides produisent (231)');
+  assert.match(bloc, /ARGUS_ANCHOR_AFTER_AUTH/, 'le passage ne nomme plus la variable qui garde le parcours');
+  assert.match(bloc, /ancre d'accueil/, 'le passage ne dit plus SUR QUOI le runner retombe');
+
+  // 232 — hideKeyboard referme une feuille modale sur iOS.
+  assert.match(skill, /`hideKeyboard` REFERME UNE FEUILLE MODALE SUR iOS/,
+    'le piège iOS de hideKeyboard n\'est plus documenté (232)');
+  assert.match(skill.slice(skill.indexOf('hideKeyboard` REFERME')), /220 s|deux flows rouges/,
+    'le passage ne dit plus ce que ce piège a coûté — une consigne sans sa mesure ne se suit pas');
+
+  // 233 — l'état TROUVÉ ne peut pas se lire dans harness.dart.
+  assert.match(skill, /L'ÉTAT TROUVÉ, LUI, SE COMPTE DEPUIS `lib\/`/,
+    'le SKILL demande encore de lire l\'état trouvé dans un fichier qui n\'existe pas encore (233)');
+
+  // 236 — la ligne de démarrage dit ce qu'elle assume.
+  // ⚠️ Le finding, lui, le disait DÉJÀ : deux textes du même run qui ne
+  // racontaient pas la même chose. C'est cette égalité-là qu'on garde.
+  assert.match(run, /hors splash de marque/, 'le finding ne dit plus qu\'il retranche le splash');
+  assert.match(run, /de splash assumé/,
+    'la ligne de console ne dit toujours pas ce qu\'elle assume — elle se lit comme un dépassement (236)');
+  // …et elle ne le dit QUE s'il y en a un : une mention à zéro serait du bruit.
+  assert.match(run, /splash > 0 \?/, 'la mention du splash n\'est plus conditionnelle');
+});
+
+test('argus-anchors lance ses DEUX moitiés, même si la première échoue (234)', () => {
+  // ⚠️ Chaînées par `make`, le croisement bloquait le test Dart — et sur un
+  // projet fraîchement instrumenté c'est justement lui qui échoue le plus.
+  // Le test, celui qui trouve les ancres absorbées et sous le pli, ne tournait
+  // alors jamais : il a fallu deux passes à un run pour découvrir sept ancres
+  // sous le pli qu'il aurait nommées du premier coup.
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const recette = mk.slice(mk.indexOf('\nargus-anchors:'));
+  const corps = recette.slice(0, recette.indexOf('\n\n'))
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.match(corps, /--check-anchors/, 'le croisement a disparu de la cible');
+  assert.match(corps, /test test\/argus\/anchors_test\.dart/, 'le test Dart a disparu de la cible');
+  // Les deux gestes doivent être TOLÉRANTS à l'échec l'un de l'autre…
+  assert.match(corps, /--check-anchors \|\| rc=/,
+    'le croisement bloque de nouveau le test Dart : un garde qui empêche un autre garde de tourner');
+  assert.match(corps, /anchors_test\.dart \|\| rc=/, 'le test Dart n\'accumule plus son code de sortie');
+  // …et la cible doit RESTER rouge si l'un des deux a échoué.
+  assert.match(corps, /exit \$\$rc/,
+    'la cible ne rend plus le code de sortie accumulé — elle passerait au vert sur un échec');
+});
+
+test('un conseil ne nomme pas un objet que la plateforme n\'a pas (235)', () => {
+  assert.match(localeWarnings('fr_FR', false, 'en_US', 'android').join('\n'), /émulateur/,
+    'le conseil Android ne parle plus d\'émulateur');
+  const ios = localeWarnings('fr_FR', false, 'en_US', 'ios').join('\n');
+  assert.doesNotMatch(ios, /émulateur|\bavd\b/i,
+    'le conseil iOS parle encore d\'un émulateur ou d\'un AVD — la plateforme n\'en a pas');
+  assert.match(ios, /simulateur/, 'le conseil iOS ne nomme pas ce que la plateforme A');
+  // ⚠️ CÂBLAGE : un paramètre optionnel jamais passé retombe sur son défaut, et
+  // tous les tests resteraient verts. C'est le site d'appel qu'on lit ici.
+  const run = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+  // ⚠️ Pas de `[^)]*` : l'appel contient `?? ''` — donc une parenthèse — et le
+  // motif s'arrêtait avant d'atteindre l'argument cherché. On lit la fenêtre
+  // qui suit l'appel, ce qui ne dépend pas de sa ponctuation interne.
+  const i = run.indexOf('localeWarnings(', run.indexOf('export function localeWarnings') + 40);
+  assert.ok(i > 0, 'le runner n\'appelle plus localeWarnings');
+  assert.match(run.slice(i, i + 260), /,\s*platform\s*,?\s*\n?\s*\)/,
+    'le runner ne passe plus la plateforme à localeWarnings — le conseil retombe sur Android');
+});
+
 test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (230)', () => {
   const wf = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');

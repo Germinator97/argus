@@ -90,8 +90,17 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 # Deux moitiés, et la seconde manquait (point 219) : le test prouve
 # DÉCLARÉ → PRÉSENT, ce contrôle-ci prouve POSÉ → DÉCLARÉ. Une ancre posée que
 # rien ne déclare est une ABSENCE — elle ne rougit nulle part.
-	@node scripts/argus/config.mjs --check-anchors
-	@$(FLUTTER) test test/argus/anchors_test.dart
+# ⚠️ LES DEUX MOITIÉS TOURNENT, MÊME SI LA PREMIÈRE ÉCHOUE (point 234). Chaînées
+# par `make`, le croisement bloquait le test — et sur un projet fraîchement
+# instrumenté c'est justement lui qui échoue le plus, tant qu'`allowUndeclared`
+# n'est pas rempli. Le test Dart, celui qui trouve les ancres absorbées et
+# les ancres sous le pli, ne tournait alors JAMAIS : il a fallu deux passes à un
+# run pour découvrir sept ancres sous le pli qu'il aurait nommées du premier coup.
+# Un garde qui en empêche un autre de s'exécuter coûte plus qu'il ne rapporte.
+	@rc=0; \
+	node scripts/argus/config.mjs --check-anchors || rc=$$?; \
+	$(FLUTTER) test test/argus/anchors_test.dart || rc=$$?; \
+	exit $$rc
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 	@$(FLUTTER) test test/argus
