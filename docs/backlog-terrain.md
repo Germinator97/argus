@@ -4153,7 +4153,153 @@ C'est le mécanisme que le skill documente déjà pour « dont partagées » —
 **une information prescrite sans case se fait inventer** — appliqué à la ligne
 qui l'a fait naître.
 
+### 225-227. ✅ Corrigés le 31/08/2026 — le contrôle d'ancres écrit le matin ACCUSAIT
+
+Trois défauts du croisement posé au run 32, tous trouvés par le run qui l'a
+étrenné. Le pire n'est pas qu'il rate : **il accusait**.
+
+**225 — `declaredAnchors` lisait ligne à ligne**, et `dart format` replie toute
+liste au-delà de 80 colonnes. Une déclaration de dix commandes devient onze
+lignes et le lecteur n'en voit **aucune**. Mesuré sur le terrain : **27 ancres
+lues au lieu de 68**, et **cinq déclarations parfaitement correctes rapportées
+« que RIEN ne déclare »**. Un garde qui accuse pour un défaut de son propre
+analyseur coûte plus qu'aucun garde.
+
+**226 — le motif ne voyait pas les paramètres nommés.** Il cherchait
+`identifier:` en minuscules ; `semanticIdentifier:` porte un I majuscule. **20
+ancres posées par paramètre, dans 8 fichiers, invisibles** — et le skill écrit
+deux paragraphes plus haut que ce sont précisément celles-là qui « sont
+invisibles à tout relevé sans nom stable ». *L'instrument portait l'angle mort
+qu'il servait à fermer.*
+
+⚠️ `anchorPrefix` reste **dehors**, et c'est un arbitrage : un préfixe n'est pas
+une ancre, le compter rendrait un faux positif. Un projet dont la convention
+diffère l'inscrit dans `anchors.paramNames` — le skill dit de **garder** la
+convention du projet, la refuser rendrait le contrôle muet là où il compte.
+
+**227 — il fabriquait des ancres fantômes**, une apostrophe française dans un
+commentaire ouvrant un faux littéral (`"est voulu\n      "`). Il ne se voit
+qu'**une fois 225 corrigé** : le premier masque le second.
+
+📌 **Le remède du 227 est celui du 192, écrit le matin même** : un balayage
+**gauche-à-droite**, pas un filtre de lignes. Le correctif rapporté ne retirait
+que les commentaires de ligne entière ; mesuré, un commentaire de **fin de
+ligne** produisait encore deux fantômes. Dans une chaîne, `//` n'ouvre rien ;
+hors d'une chaîne, il mange la ligne. Aucune expression régulière ne fait ça.
+
+⚠️ **Et le garde a trouvé un quatrième défaut à l'écriture** : extraire toutes
+les chaînes d'une ligne attrapait aussi `id: 'home'`, donc une ancre homonyme
+d'un identifiant d'écran serait passée pour déclarée.
+
+### 228. ✅ Corrigé le 31/08/2026 — la taille prescrivait le binaire que la config INTERDIT
+
+La dérivation du chemin de release est de forme Android (`-debug.` →
+`-release.`) : un chemin iOS n'en contient pas, donc no-op. Le finding disait
+`build.iosScan: build/ios/iphonesimulator/Runner.app` pendant que le commentaire
+de cette clé — écrit le matin même — dit « **`iphoneos`, pas `iphonesimulator`**
+: un `.app` de simulateur ne porte ni la même architecture ni la même
+signature ». Deux textes de nous, contradictoires.
+
+⚠️ **La prescription fausse est partie dans un rapport PUBLIÉ.**
+
+📌 Elle **dérive** désormais du chemin mesuré des deux côtés plutôt que de figer
+un nom : un projet dont la cible ne s'appelle pas `Runner` recevrait sinon le nom
+par défaut dans une consigne qui le concerne. Le garde lit l'exigence **dans le
+commentaire de la config**, pour que les deux ne puissent plus diverger.
+
+### 229. ✅ Corrigé le 31/08/2026 — le README enseignait comme ✅ ce que le SKILL mesure comme piège
+
+`Semantics(identifier: …, child: ElevatedButton(…))` y était donné sous un ✅
+comme LA bonne forme. La table mesurée du skill dit l'inverse : un composant qui
+déclare déjà un rôle de bouton pose une frontière sémantique, donc l'enveloppe
+rend un nœud portant l'identifiant, un label **vide** et **aucune action** —
+pendant que la vraie commande reste anonyme en dessous. Le `tapOn` marche quand
+même, donc rien ne le signale ; seul VoiceOver en souffre.
+
+**C'est le fichier que le prochain développeur du projet ouvre.**
+
+📌 La forme piège reste montrée — il faut bien la montrer — mais jamais sous un
+✅, et toujours nommée. Le garde lit le **voisinage** (huit lignes au-dessus) et
+non la forme seule : la chercher attraperait la mise en garde qui la corrige.
+
+### 230. ✅ Corrigé le 31/08/2026 — ⚠️ LARGEMENT DÉMENTI : la CI n'est pas Android-seule
+
+Le run rapporte « la CI livrée est **Android seul** … ce workflow ne peut pas
+tourner ». **Reproduit : faux.** Le workflow porte un job `e2e-ios` complet, sur
+`macos-latest`, avec lecture de la version FVM, `flutter build ios --simulator`
+et Maestro. **Troisième fois de la journée** qu'un symptôme juste vient avec un
+diagnostic à côté.
+
+Ce qui est vrai est plus étroit, et se corrige : `security` et `e2e-android`
+tournaient **inconditionnellement**, donc sur un projet `platforms: [ios]` ils ne
+pouvaient que rougir ; et `e2e-ios` était éteint par un **`if: false` écrit en
+dur**, que rien ne reliait à la configuration — l'allumer était un geste manuel
+dont rien ne rappelait l'existence.
+
+📌 Un job `cadre` **interroge** la config (`--print-platforms`), même source que
+les scripts. Les jobs Android se **sautent** au lieu d'échouer ; l'étage 1 reste
+inconditionnel puisqu'il tourne partout.
+
+⚠️ **On ne dépense pas l'argent d'autrui** : un runner macOS coûte ~10× un Linux,
+donc le job iOS reste derrière un opt-in explicite (`vars.ARGUS_IOS_CI`). Ce qui
+change, c'est que l'oubli est désormais **signalé**.
+
+### 231-236. ✅ Corrigés le 31/08/2026 — cinq informations justes qui arrivaient trop tard
+
+Le run le demandait explicitement : *« signale-moi aussi ce qui était juste mais
+mal placé — une information exacte qu'on ne trouve qu'après en avoir eu besoin
+compte comme un défaut »*. Cinq sont revenues.
+
+| | |
+|---|---|
+| **231** | tout `journey-critical` est gardé par `ARGUS_ANCHOR_AFTER_AUTH` : on croit que le parcours va se sauter sur une app sans compte. Il ne se saute pas — le runner retombe sur l'ancre d'accueil. **Le comportement est bon ; ne le lire nulle part est le défaut**, il ne se découvrait qu'en ouvrant `run.mjs` |
+| **232** | `hideKeyboard` sur iOS ne masque pas un clavier au-dessus d'une feuille modale : il **la referme, en validant**. La capture suivante montre la donnée créée et l'ancre introuvable — ça se lit comme un défaut d'instrumentation. Coût : deux flows rouges, 220 s de device |
+| **233** | §2b dit que les chiffres « se lisent dans `harness.dart` » et réclame l'état **TROUVÉ**, qui est antérieur à l'installation : le fichier n'existe pas encore |
+| **234** | `argus-anchors` chaînait ses deux moitiés : le croisement **bloquait** le test Dart — et sur un projet fraîchement instrumenté c'est justement lui qui échoue. Le test qui trouve les ancres absorbées et sous le pli ne tournait **jamais** : il a fallu deux passes pour découvrir sept ancres qu'il aurait nommées d'un coup |
+| **235** | le conseil de locale nommait « l'émulateur » sur une plateforme qui n'en a pas |
+| **236** | « 3445 ms au pire, budget 2000 » se lit comme un dépassement, alors que le harnais ne produit **aucun** finding — il retranche le splash assumé. Le finding le disait ; **la ligne de console, non** |
+
+📌 Le **234 est de moi**, posé au run 32 : un garde qui empêche un autre garde de
+s'exécuter coûte plus qu'il ne rapporte.
+
 ## Ce qui reste
+
+Les points **225 à 236** sont fermés le 31/08/2026 — le backlog se vide pour la
+**trente-deuxième** fois, et c'est la **troisième passe de la journée**. Le run
+33 est une vérification iOS, et **six correctifs sur sept ont tenu** : gate
+`pass`, 9/9 flows, 0 finding, 509/509 tests, 25 min 26 s sur 50, boucle visuelle
+prouvée en quatre temps avec restauration par empreinte.
+
+Les six se lisent dans ce que l'agent a ÉCRIT, sans savoir qu'ils étaient neufs :
+titre relevé **avant** republication (223), `--tags … --no-install` employé avec
+son facteur mesuré (220), `brandedSplashMs` trouvé parce que §2 dit de le
+chercher (222), la case du paramètre remplie (224), le build en échec qui
+n'envoie plus vérifier la config (218).
+
+⚠️ **LE SEPTIÈME, LE 219, ÉTAIT CASSÉ DE TROIS FAÇONS** — et c'est le seul
+instrument que la passe précédente avait écrit. Il **accusait** cinq déclarations
+correctes, ratait 20 ancres posées par paramètre, et fabriquait des fantômes. Un
+outil neuf a détruit plus de confiance qu'il n'en a produit, le jour même.
+
+📌 **Trois constats sur douze ont été DÉPLACÉS par la reproduction**, et le motif
+se répète : le symptôme est presque toujours juste, le diagnostic beaucoup moins.
+Le 230 est le cas le plus net — « la CI est Android seule » est **faux**, elle
+porte un job iOS complet ; ce qui manquait, c'est que les jobs suivent
+`platforms:` au lieu de le supposer.
+
+📌 **Et cinq points sont d'une classe que le cadrage a fait apparaître.** J'avais
+ajouté au prompt : *« signale-moi aussi ce qui était juste mais MAL PLACÉ »*.
+Cinq sont revenues (231-236), dont une qui coûtait 220 s de device. Une question
+posée en plus rapporte une classe de défauts entière — c'est la leçon de « où le
+skill t'a-t-il laissé décider seul ? », appliquée à un autre axe.
+
+⚠️ **Le run s'est déroulé sur un environnement dégradé**, et la chronologie est
+dans `run33-machine.txt` : cinq crashs dans la journée, dont un **SpringBoard**
+en plein `XCTAutomationSession` — la couche que Maestro pilote. Le simulateur
+n'avait pas redémarré depuis le run 32, soit 2 h 48. Un des remèdes de flow du
+run (un second appui « au cas où ») est probablement un contournement de ce
+crash, pas d'un défaut de l'app. Les deux passes finales, elles, sont
+postérieures au crash et vertes.
 
 Les points **218 à 224** sont fermés le 31/08/2026 — le backlog se vide pour la
 **trente-et-unième** fois, dans la même journée que la passe précédente. Le run
