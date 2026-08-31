@@ -277,6 +277,36 @@ test('l\'indice ne s\'affiche que sur l\'ancre de départ', () => {
   assert.equal(startupHint('id=home_root', '', CONFIG), '');
 });
 
+// ── L'indice nomme-t-il la cause qui coûte le plus ? ────────────────────────
+//
+// Point 237. Le message opposait « ancre fausse » à « écran lent » et envoyait
+// relever un plafond. Or l'écran peut n'être ni l'un ni l'autre : une app qui
+// ne démarre pas. Vécu — « Service indisponible » à chaque lancement, faute
+// d'un fichier de configuration absent du bundle. Relever le plafond n'y aurait
+// JAMAIS rien changé, et un run a cherché une lenteur qui n'existait pas.
+
+test('l\'indice de démarrage nomme les TROIS causes, et la capture qui tranche (237)', () => {
+  const h = startupHint('id=home_root', 'home_root', CONFIG);
+  assert.ok(h, 'l\'indice ne se produit plus sur l\'ancre de départ');
+
+  // La cause qui coûte le plus, et le geste qui la tranche en une seconde.
+  assert.match(h, /L'app ne démarre PAS/, 'l\'indice n\'envisage toujours pas une app cassée (237)');
+  assert.match(h, /screenshots\//,
+    'l\'indice ne dit pas OÙ est la capture — un run a dû la reprendre à la main');
+  // ⚠️ DÉRIVÉ : le chemin nommé doit être celui que le runner écrit vraiment.
+  // Le citer sans ce lien ferait une consigne qui se périme en silence.
+  const run = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+  assert.match(run, /screenshots\/, screen-hierarchy\//,
+    'la structure des artefacts Maestro a changé — le chemin que l\'indice nomme est peut-être faux');
+
+  // ⚠️ L'AUTRE MOITIÉ : les deux causes d'origine restent nommées. Un correctif
+  // qui n'aurait gardé que la nouvelle ferait perdre les deux leviers utiles.
+  assert.match(h, /startTimeoutMs/, 'l\'indice ne nomme plus le levier de lenteur');
+  assert.match(h, /argus-anchors/, 'l\'indice ne dit plus comment vérifier l\'ancre sans device');
+  assert.match(h, /Ne touche PAS à thresholds\.coldStartMs/,
+    'l\'indice ne protège plus le seuil que le SKILL interdit de relever');
+});
+
 // ── Le message conseille-t-il le geste que la doc prescrit ? ─────────────────
 //
 // Ce garde ne vérifie ni une valeur ni un refus : il vérifie que deux TEXTES ne

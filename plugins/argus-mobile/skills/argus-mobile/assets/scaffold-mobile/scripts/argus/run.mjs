@@ -895,11 +895,27 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
   // deux textes n'a aucun comportement à casser. Trouvé au seizième run.
   const plafond = startTimeoutMs(config);
   const froid = config.thresholds?.coldStartMs ?? 2000;
-  return ` — c'est l'écran de DÉPART qui n'est pas arrivé à temps, pas forcément`
-    + ` l'ancre qui est fausse. Relève thresholds.startTimeoutMs (plafond effectif`
-    + ` ${plafond} ms), dérivé du maximum que montre startup.samples du rapport.`
-    + ` Ne touche PAS à thresholds.coldStartMs (${froid} ms) : la lenteur de`
-    + ` démarrage doit rester un finding, pas disparaître dans un seuil.`;
+  // ⚠️ ET IL MANQUAIT LA TROISIÈME HYPOTHÈSE, celle qui coûte le plus (point
+  // 237). Ce message opposait « ancre fausse » à « écran lent » et envoyait
+  // relever un plafond — or l'écran peut n'être ni l'un ni l'autre : une app
+  // qui ne démarre pas. Vécu sur un projet réel : « Service indisponible » à
+  // chaque lancement faute d'un fichier de configuration absent du bundle.
+  // Relever le plafond n'y aurait JAMAIS rien changé, et l'agent a perdu du
+  // temps à chercher une lenteur qui n'existait pas.
+  //
+  // Le geste qui tranche en une seconde ne coûte rien : Maestro écrit une
+  // capture À L'INSTANT de l'échec. On la NOMME, plutôt que de laisser
+  // quelqu'un la chercher ou la reprendre à la main.
+  return ` — trois causes possibles, et la plus chère n'est pas celle qu'on`
+    + ` cherche. (1) L'app ne démarre PAS : REGARDE D'ABORD la capture que`
+    + ` Maestro vient de prendre, dans argus-mobile-report/maestro/<horodatage>/`
+    + `<nom du flow>/screenshots/ — si elle montre une erreur de l'app, aucun`
+    + ` plafond n'y changera rien. (2) L'écran de départ est LENT : relève`
+    + ` thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`
+    + ` maximum que montre startup.samples du rapport. (3) L'ancre est fausse :`
+    + ` \`make argus-anchors\` le dit sans device. Ne touche PAS à`
+    + ` thresholds.coldStartMs (${froid} ms) : la lenteur de démarrage doit`
+    + ` rester un finding, pas disparaître dans un seuil.`;
 }
 
 /**
