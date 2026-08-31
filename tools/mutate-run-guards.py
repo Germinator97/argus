@@ -358,13 +358,15 @@ MUTATIONS = [
      "  const retranche = [...include.map((t) => `+${t}`), ...(excludeConfig ?? []).map((t) => `-${t}`)];"),
     # ⚠️ La mutation doit COMPILER : la première coupait une parenthèse, et le
     # harnais a rendu « la mutation ne parse pas » plutôt qu'un faux verdict.
-    # ⚠️ La mutation retire la lecture ET la mention : le garde des feuilles de
-    # DEFAULTS retire les COMMENTAIRES du corpus, pas les CHAÎNES, et le message
-    # de publication cite `artifact.icon` en toutes lettres. Muter la seule
-    # lecture le laissait vert — VACANT rendu par le harnais. Voir le point 192.
-    ("report", "l'icône de la page n'est plus lue à la publication",
-     "· icône ${config.artifact.icon || '👁'}`\n      + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');",
-     "`\n      + ' — le MÊME à chaque republication');"),
+    # ⚠️ CETTE MUTATION A CHANGÉ AU RUN 31, et c'est elle qui prouve le 192.
+    # Elle retirait AUTREFOIS la lecture ET la mention, parce que retirer la
+    # seule lecture laissait le garde vert : le corpus gardait les chaînes, et
+    # le message de publication cite `artifact.icon` en toutes lettres. Depuis
+    # que le corpus est balayé, elle ne retire plus QUE la lecture — la mention
+    # reste dans le message, et le garde doit tomber quand même.
+    ("report", "l'icône de la page n'est plus lue, la mention RESTE",
+     "· icône ${config.artifact.icon || '👁'}",
+     "· icône 👁"),
     # ── Vingt-sixième run ───────────────────────────────────────────────────
     # ⚠️ Les trois premières visent la VALEUR RENDUE, jamais la ligne d'appel :
     # les gardes correspondants BÂTISSENT le finding et regardent dedans, donc
