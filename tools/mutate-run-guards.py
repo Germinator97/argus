@@ -73,6 +73,9 @@ CIBLES = {
     # fichiers que le PROJET lit, et qu'aucune mutation ne visait.
     "readme": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/ARGUS-MOBILE.md",
     "ci": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml",
+    # Depuis le run 34 : l'installeur cherchait un pilote de plateforme sans
+    # l'autre, et rien ne mutait ce fichier.
+    "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -529,6 +532,30 @@ MUTATIONS = [
     ("sec", "l'avertissement simulateur disparaît quand il est VRAI",
      "    return `${socle} Et ${rel} est un .app de SIMULATEUR : il ne porte ni l'architecture `",
      "    return `${socle} Et ${rel} est un bundle : il ne porte ni l'architecture `"),
+    # ── Run 34 — la PREMIÈRE combinaison API × iOS du chantier ──────────────
+    ("run", "237 · l'indice reperd la cause « app cassée »",
+     "    + ` cherche. (1) L'app ne démarre PAS : REGARDE D'ABORD la capture que`",
+     "    + ` cherche. (1) Rien à signaler ici, voir la capture que`"),
+    ("run", "237 · l'indice cesse de nommer la capture qui tranche",
+     "    + `<nom du flow>/screenshots/ — si elle montre une erreur de l'app, aucun`",
+     "    + `<nom du flow>/ — si elle montre une erreur de l'app, aucun`"),
+    # ⚠️ Le 238 est le seul cas connu où une consigne du skill produisait un
+    # FAUX VERT : le double qui sauve l'étage 1 masquait un gel de production.
+    ("skill", "238 · la mise en garde sur le double disparaît",
+     "🚨 **ET CE DOUBLE CACHE UN DÉFAUT DE PRODUCTION — écris-le avant de continuer.**",
+     "📌 **Note sans objet.**"),
+    ("harness", "240 · argusMonte cesse de jouer le setUp",
+     "  screen.setUp?.call();\n  return screen.build();",
+     "  return screen.build();"),
+    ("yamlconf", "241 · le cas du flow qui a besoin de login sans l'inclure disparaît",
+     "  # ⚠️ ET LE CAS QUI N'ÉTAIT PRÉVU NULLE PART : un flow qui n'inclut PAS",
+     "  # ⚠️ Note sans objet : un flow qui inclut"),
+    ("sec", "242 · les deux audits de sources retournent inconditionnellement",
+     "  if (plateformes.includes('android')) sourceFindings.push(...auditAndroidManifest(root, config));",
+     "  if (true) sourceFindings.push(...auditAndroidManifest(root, config));"),
+    ("installeur", "243 · l'installeur reperd xcrun",
+     "for tool in node flutter maestro adb xcrun osv-scanner; do",
+     "for tool in node flutter maestro adb osv-scanner; do"),
     # ── Run 33 — dont TROIS défauts du contrôle écrit au run 32 ─────────────
     # ⚠️ Le pire n'était pas qu'il rate : il ACCUSAIT une déclaration correcte.
     ("config", "225 · le relevé des déclarées redevient ligne à ligne",
@@ -692,6 +719,11 @@ def main():
         verif = None
         if cible.suffix == ".mjs":
             verif = ["node", "--check", str(cible)]
+        elif cible.suffix == ".sh":
+            # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
+            # validateur laisse passer une mutation qui casse la syntaxe, et le
+            # rouge qui suit se lit comme un garde qui tombe.
+            verif = ["bash", "-n", str(cible)]
         elif cible.name == "argus.mobile.yaml":
             # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
             # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
