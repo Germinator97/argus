@@ -628,6 +628,32 @@ MUTATIONS = [
     ("sec", "le site d'appel rebranche un message figé",
      "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: plan.why };",
      "  if (!plan.scan) {\n    binaryFacts = { scanned: false, why: 'analyse binaire iOS non couverte : un .app de simulateur.' };"),
+    # ── La page publiée : une par plateforme, et son historique (245-250) ──
+    # ⚠️ Ces sept-là gardent une PERTE, pas un comportement : la page produite
+    # reste valide dans tous les cas mutés. Rien ne lève, rien ne rougit —
+    # c'est en la rouvrant qu'on découvre ce qui a disparu. Aucun autre
+    # instrument que la mutation ne peut dire s'ils gardent encore.
+    ("config", "artifactFor rend la même page aux deux plateformes",
+     "    if (v && typeof v === 'object') return String(v[platform] ?? '');",
+     "    if (v && typeof v === 'object') return String(Object.values(v)[0] ?? '');"),
+    ("report", "la republication n'embarque que le run courant",
+     "    + `${archives}\\n${script}\\n${embarqueHistorique(tous)}\\n`;",
+     "    + `${archives}\\n${script}\\n${embarqueHistorique(record ? [record] : [])}\\n`;"),
+    ("report", "le dernier onglet est sélectionné, pas le run courant",
+     '    return `<button role="tab" aria-selected="${i === 0}" aria-controls="passe-${i}" id="ong-${i}">`',
+     '    return `<button role="tab" aria-selected="${i === tous.length - 1}" aria-controls="passe-${i}" id="ong-${i}">`'),
+    ("report", "un run archivé traîne ses chemins de capture",
+     "      id: f.id, severity: f.severity, title: f.title, dimension: f.dimension ?? '', screen: f.screen ?? '',",
+     "      id: f.id, severity: f.severity, title: f.title, dimension: f.dimension ?? '', screen: f.screen ?? '', evidence: f.evidence ?? [],"),
+    ("report", "le compte des runs retirés devient plausible et faux",
+     "  const perdus = Math.max(0, (context.historique ?? []).length - passes.length);",
+     "  const perdus = (context.historique ?? []).length;"),
+    ("report", "l'avertissement de perte se déclenche à l'envers",
+     "  if (prevPath) return null;   // l'historique est repris : rien à perdre",
+     "  if (!prevPath) return null;   // l'historique est repris : rien à perdre"),
+    ("makefile", "argus-report cesse de transmettre ARGS",
+     "\t@node scripts/argus/report.mjs $(ARGS)",
+     "\t@node scripts/argus/report.mjs"),
 ]
 
 
@@ -662,13 +688,39 @@ def main():
         print(__doc__ or "harnais de mutation des gardes")
         print(f"\n  (aucun argument)  joue les {len(MUTATIONS)} mutations")
         print("  --list            les nomme sans rien muter")
+        print("  --only=3,7        ne joue QUE ces mutations (numéros de --list)")
+        print("                    — c'est le raccourci SÛR : il garde le refus de")
+        print("                      démarrer sur un arbre sale et la preuve de")
+        print("                      restauration. Une copie jetable ne les a pas.")
         print("  --help, -h        ceci")
         return 0
     if args == ["--list"]:
-        for i, (cle, *_reste) in enumerate(MUTATIONS, 1):
-            print(f"{i:3}. {cle}")
+        for i, (cle, nom, *_reste) in enumerate(MUTATIONS, 1):
+            print(f"{i:3}. {cle:9} {nom}")
         print(f"\n{len(MUTATIONS)} mutations · aucun fichier touché")
         return 0
+
+    # ⚠️ `--only` EXISTE POUR QU'ON N'ÉCRIVE PAS DE COPIE JETABLE. Sans lui,
+    # prouver UN garde coûtait la passe entière, donc on écrivait dix lignes de
+    # shell qui font « la même chose » — sauf qu'elles n'ont ni le refus de
+    # démarrer sur un arbre sale, ni la preuve de restauration par hash, ni la
+    # distinction TOMBE/VACANT/HARNAIS. Ce sont ces dix lignes-là qui ont détruit
+    # du travail deux fois dans une même séance. Le raccourci sûr est celui que
+    # l'outil offre ; celui qu'on se fabrique laisse dehors ce qui le rend sûr.
+    choisies = None
+    if len(args) == 1 and args[0].startswith("--only="):
+        brut = args[0][len("--only="):]
+        try:
+            nums = sorted({int(x) for x in brut.split(",") if x.strip()})
+        except ValueError:
+            print(f"✖ --only attend des numéros séparés par des virgules, reçu : {brut}")
+            return 2
+        hors = [n for n in nums if not 1 <= n <= len(MUTATIONS)]
+        if not nums or hors:
+            print(f"✖ --only : {hors or 'aucun numéro'} hors des 1-{len(MUTATIONS)} (voir --list)")
+            return 2
+        choisies = nums
+        args = []
     if args:
         print(f"✖ argument inconnu : {' '.join(args)}")
         print("  Ce script MUTE des fichiers suivis — il ne démarre pas sur un doute.")
@@ -701,7 +753,15 @@ def main():
     originaux = {k: v.read_text(encoding="utf-8") for k, v in CIBLES.items()}
     bilan = []
 
-    for cle, nom, avant, apres in MUTATIONS:
+    # ⚠️ Le sous-ensemble est ANNONCÉ. Une passe partielle qui rend « 7/7 » se
+    # lit comme une passe complète — le relevé tronqué qui se prend pour une
+    # mesure. Le bilan final le redit, pour qu'on ne le lise pas hors contexte.
+    jouees = MUTATIONS if choisies is None else [MUTATIONS[n - 1] for n in choisies]
+    if choisies is not None:
+        print(f"⚠  PASSE PARTIELLE : {len(jouees)}/{len(MUTATIONS)} mutations"
+              f" (--only={','.join(map(str, choisies))}) — ce n'est PAS une passe complète.\n")
+
+    for cle, nom, avant, apres in jouees:
         cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
         occurrences = original.count(avant)
         if occurrences != 1:
