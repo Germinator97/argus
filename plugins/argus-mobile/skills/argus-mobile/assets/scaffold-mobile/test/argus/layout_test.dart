@@ -52,7 +52,7 @@ void main() {
           ) async {
             await pumpArgus(
               tester,
-              screen.build(),
+              argusMonte(screen),
               viewport: viewport,
               textScale: scale,
               debugLabel: screen.id,
@@ -75,7 +75,7 @@ void main() {
           ) async {
             await pumpArgus(
               tester,
-              screen.build(),
+              argusMonte(screen),
               viewport: viewport,
               textScale: scale,
               debugLabel: screen.id,

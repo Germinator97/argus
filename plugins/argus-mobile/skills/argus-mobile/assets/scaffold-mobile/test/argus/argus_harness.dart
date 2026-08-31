@@ -445,6 +445,19 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
 /// Rend l'indice à coller au message d'échec, ou `''` si l'ancre est vraiment
 /// absente. Laisse l'écran remonté sur le gabarit de référence : ce qui suit
 /// l'appel mesure là.
+/// Le widget d'un écran, son `setUp` joué d'abord.
+///
+/// ⚠️ Un écran qui résout ses dépendances lui-même (`get_it`, un service
+/// locator) ignore tout provider posé au-dessus de lui : il n'y avait donc
+/// AUCUN endroit où enregistrer un double, sinon le corps de `build()` — appelé
+/// N fois (point 240). Ce point d'accroche vaut pour tous les montages, et il
+/// est nommé plutôt qu'écrit en ligne : un `(setUp(), build()).$2` est correct
+/// et illisible dans un fichier que le projet relit.
+Widget argusMonte(ArgusScreen screen) {
+  screen.setUp?.call();
+  return screen.build();
+}
+
 Future<String> argusFoldHint(
   WidgetTester tester,
   ArgusScreen screen,
@@ -455,7 +468,7 @@ Future<String> argusFoldHint(
 
   await pumpArgus(
     tester,
-    screen.build(),
+    argusMonte(screen),
     viewport: argusViewports.last,
     debugLabel: screen.id,
   );
@@ -465,7 +478,7 @@ Future<String> argusFoldHint(
   // Remonter sur le gabarit de référence : ce qui suit le mesure.
   await pumpArgus(
     tester,
-    screen.build(),
+    argusMonte(screen),
     viewport: argusViewports.first,
     debugLabel: screen.id,
   );

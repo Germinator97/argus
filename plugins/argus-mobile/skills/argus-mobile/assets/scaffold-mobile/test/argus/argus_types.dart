@@ -30,7 +30,31 @@ class ArgusScreen {
     this.displays = const <String>[],
     this.displaysAfterScroll = const <String>[],
     this.priority = 'p0',
+    this.setUp,
   });
+
+  /// Ce qu'il faut FAIRE avant de monter cet écran — enregistrer un double,
+  /// poser un état. Appelé **une fois par montage**, avant `build()`.
+  ///
+  /// ⚠️ IL N'Y AVAIT AUCUN ENDROIT POUR ÇA (point 240), et le manque ne se voit
+  /// qu'avec un conteneur d'injection : un écran qui résout ses dépendances
+  /// lui-même (`get_it`, un service locator) ignore tout provider posé
+  /// au-dessus de lui. Le seul point d'accroche restant était le corps de
+  /// `build()` — appelé N fois, donc il fallait inventer une fonction
+  /// idempotente, ce qu'un projet réel a dû faire.
+  ///
+  /// ```dart
+  /// ArgusScreen(
+  ///   id: 'reglages',
+  ///   setUp: () => sl.registerSingleton<VersionCubit>(FakeVersionCubit()),
+  ///   build: () => const SettingsPage(),
+  /// )
+  /// ```
+  ///
+  /// Le harnais ne défait rien après coup : c'est à toi de rendre
+  /// l'enregistrement idempotent (`if (sl.isRegistered<T>()) return;`) si le
+  /// même double sert plusieurs écrans.
+  final void Function()? setUp;
 
   /// Doit correspondre à `screens[].id` de argus.mobile.yaml, pour que les deux
   /// étages parlent des mêmes écrans dans le rapport.

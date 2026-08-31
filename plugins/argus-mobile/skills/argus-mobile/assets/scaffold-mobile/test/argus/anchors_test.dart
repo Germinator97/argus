@@ -155,7 +155,7 @@ void main() {
       argusCollecteDebut();
       await pumpArgus(
         tester,
-        screen.build(),
+        argusMonte(screen),
         viewport: argusViewports.first,
         debugLabel: screen.id,
       );
@@ -243,7 +243,7 @@ void main() {
         argusCollecteDebut();
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -335,7 +335,7 @@ void main() {
       for (final String ancre in screen.displaysAfterScroll) {
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.last,
           debugLabel: screen.id,
         );
@@ -344,7 +344,7 @@ void main() {
 
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -418,7 +418,7 @@ void main() {
         // Le grand gabarit d'abord : c'est là qu'elle doit exister.
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.last,
           debugLabel: screen.id,
         );
@@ -430,7 +430,7 @@ void main() {
 
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -490,7 +490,7 @@ void main() {
       final SemanticsHandle handle = tester.ensureSemantics();
       await pumpArgus(
         tester,
-        screen.build(),
+        argusMonte(screen),
         viewport: argusViewports.first,
         debugLabel: screen.id,
       );

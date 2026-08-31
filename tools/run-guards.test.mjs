@@ -3692,6 +3692,52 @@ test('le bloc device iOS ne se contredit pas, et l\'outillage nomme xcrun (243)'
     + 'et rien sur celui dont il dépend');
 });
 
+test('le double qui sauve l\'étage 1 est présenté comme un SYMPTÔME (238)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // ⚠️ NON-VACANCE : le remède doit toujours être prescrit, sinon la mise en
+  // garde n'a plus d'objet et il faut la retirer, pas la garder.
+  assert.match(skill, /`Completer\(\)` sans\n`complete`/,
+    'le SKILL ne prescrit plus le double — la mise en garde du 238 est sans objet');
+
+  const bloc = skill.slice(skill.indexOf('CE DOUBLE CACHE UN DÉFAUT DE PRODUCTION'));
+  assert.ok(bloc.length > 400,
+    'le SKILL ne dit plus que ce double masque un défaut de production (238) — un run a payé '
+    + 'un étage 1 VERT sur l\'écran qui gèle l\'app');
+  const debut = bloc.slice(0, 1600);
+  assert.match(debut, /100 001|LE BESOIN DU DOUBLE EST LE SYMPTÔME/,
+    'le passage ne porte plus la mesure qui l\'établit');
+  // Les trois gestes, dans l'ordre : mesurer, inscrire, PUIS doubler.
+  for (const geste of [/\*\*mesure\*\*/, /\*\*inscris-le\*\*/, /\*\*puis\*\* écris le double/]) {
+    assert.match(debut, geste, 'le passage ne prescrit plus les trois gestes dans l\'ordre');
+  }
+});
+
+test('le crochet de montage est câblé à TOUS les sites, pas à deux (240)', () => {
+  const argus = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  const types = readFileSync(join(argus, 'argus_types.dart'), 'utf8');
+  assert.match(types, /final void Function\(\)\? setUp;/,
+    'ArgusScreen n\'a plus de point d\'accroche : un écran qui résout par get_it n\'a nulle part où poser son double');
+
+  const harness = readFileSync(join(argus, 'argus_harness.dart'), 'utf8');
+  assert.match(harness, /Widget argusMonte\(ArgusScreen screen\) \{[\s\S]{0,120}screen\.setUp\?\.call\(\);/,
+    'argusMonte ne joue plus le setUp avant de construire');
+
+  // ⚠️ LE CÂBLAGE EST TOUT L'ENJEU. Écrit d'abord, ce crochet n'était branché
+  // qu'à DEUX sites sur seize : il aurait marché pour l'indice de pli et n'aurait
+  // rien fait dans les suites — un défaut invisible, puisque rien ne casse.
+  const suites = ['layout_test.dart', 'a11y_test.dart', 'anchors_test.dart', 'argus_harness.dart'];
+  let montages = 0;
+  for (const f of suites) {
+    const src2 = readFileSync(join(argus, f), 'utf8');
+    montages += (src2.match(/argusMonte\(screen\)/g) ?? []).length;
+    // Le seul `screen.build()` toléré est celui DANS argusMonte.
+    const directs = src2.split('\n').filter((l) => l.includes('screen.build()') && !l.includes('return screen.build();'));
+    assert.deepEqual(directs.map((l) => l.trim()), [],
+      `${f} monte encore un écran sans jouer son setUp — le crochet y est inerte`);
+  }
+  assert.ok(montages >= 14, `seulement ${montages} montages câblés — le compte a chuté, un site est passé au travers`);
+});
+
 // ── Une édition programmatique doit avoir où s'ancrer ───────────────────────
 //
 // Point 239. Les deux fichiers OWNED portent leur ligne de déclaration mot pour

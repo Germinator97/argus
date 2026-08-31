@@ -52,7 +52,7 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -70,7 +70,7 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -99,7 +99,7 @@ void main() {
           final SemanticsHandle handle = tester.ensureSemantics();
           await pumpArgus(
             tester,
-            screen.build(),
+            argusMonte(screen),
             viewport: argusViewports.first,
             debugLabel: screen.id,
           );
@@ -122,7 +122,7 @@ void main() {
         final SemanticsHandle handle = tester.ensureSemantics();
         await pumpArgus(
           tester,
-          screen.build(),
+          argusMonte(screen),
           viewport: argusViewports.first,
           debugLabel: screen.id,
         );
@@ -143,7 +143,7 @@ void main() {
           final SemanticsHandle handle = tester.ensureSemantics();
           await pumpArgus(
             tester,
-            screen.build(),
+            argusMonte(screen),
             viewport: argusViewports.first,
             textScale: 2,
             debugLabel: screen.id,

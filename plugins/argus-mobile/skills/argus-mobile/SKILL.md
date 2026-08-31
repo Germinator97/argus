@@ -1010,6 +1010,36 @@ service un `Future` qui ne se complète **jamais** (`Completer()` sans
 `complete`), ce que fait le vrai service tant qu'il attend. Sur le projet
 mesuré : deux secondes au lieu de l'infini.
 
+🚨 **ET CE DOUBLE CACHE UN DÉFAUT DE PRODUCTION — écris-le avant de continuer.**
+Le remède ci-dessus est bon pour le harnais et **faux comme modèle de la
+plateforme**. Le vrai service ne rend pas un `Future` en attente sur iOS : il
+rend un `Future` **déjà complété**, et c'est justement pourquoi la boucle
+s'emballe. En le remplaçant par un `Completer` non complété, tu fais passer
+l'étage 1 au vert **sur l'écran même qui gèle l'application en vrai**.
+
+Vécu sur un projet réel, sonde bornée, même boucle, seule la complétion change :
+
+```
+double « iOS »     (Future.value(null))  →  100 001 appels en 200 ms
+double « Android » (Completer non complété) →      1 appel  en 200 ms
+```
+
+Sur device, l'écran ne répondait plus : *« process main thread busy for 30.0s »*.
+
+⚠️ **LE BESOIN DU DOUBLE EST LE SYMPTÔME.** Si tu dois écrire ce `Completer`
+pour que l'étage 1 tienne, c'est que tu viens de trouver une boucle qui tourne
+sur un futur complété — donc un gel probable sur la plateforme où il l'est.
+Trois gestes, dans cet ordre :
+1. **mesure** le vrai service sur ta plateforme (une sonde bornée, un compteur
+   d'appels sur 200 ms suffit — le chiffre ci-dessus a été obtenu ainsi) ;
+2. **inscris-le** dans `known_issues.dart` ou remonte-le, selon à qui appartient
+   le code ;
+3. **puis** écris le double, avec la raison à côté.
+
+Écrire le double sans les deux premiers rend l'étage 1 vert et laisse le défaut
+en production — c'est le seul cas connu où une consigne de ce skill produit un
+faux vert, et il est là parce qu'un run l'a payé.
+
 ⚠️ **L'ordre est délibéré, et il coûte un run de plus — dis-le plutôt que de le
 laisser passer pour une erreur.** Un premier `argus-run` sans références ne
 compare rien : la dimension visuelle s'y annonce non exécutée, ce qui est honnête
