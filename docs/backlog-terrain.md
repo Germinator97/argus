@@ -3977,6 +3977,33 @@ qui l'a rendu diagnosticable en une lecture, au lieu de m'envoyer chercher dans
 le code.
 
 
+### 218. ✅ Corrigé le 31/08/2026 — « le build a échoué » était dit « ta config est fausse »
+
+**Né de la passe 213–217, et rapporté par le run suivant** — le plus court
+aller-retour du chantier entre un correctif et son défaut.
+
+Le correctif du 214 lisait la mesure avant/après du paquet, mais `eval "$CMD"`
+n'a jamais vu son **code de sortie**. Un build qui LÈVE tombait donc dans la
+branche « aucun paquet ici » :
+
+```
+Exception: The native assets specification … references objective_c
+  ✖ AUCUN PAQUET à cet emplacement après 30s
+      Vérifie que build.android / build.ios désigne ce que la commande produit.
+```
+
+La config était juste. L'agent a perdu ~2 min à la vérifier.
+
+⚠️ **L'ancienne version se TAISAIT** (« 0 → 0 octets », aucune branche). La
+mienne **parlait, et parlait faux** — ce qui est pire, parce qu'on la croit. Un
+correctif ne supprime pas toujours un mode de panne : ici il l'a rendu bavard.
+
+Deux causes rendent le même symptôme — rien à l'emplacement déclaré — et elles
+disent désormais des choses différentes : *lire le build*, ou *vérifier la
+config*. Le garde **exécute** la recette sur les deux, **plus le chemin
+nominal** : un garde qui ne verrait que les deux échecs accepterait une recette
+qui crie toujours.
+
 ## Ce qui reste
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
