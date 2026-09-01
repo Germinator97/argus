@@ -827,9 +827,22 @@ export function posedAnchors(root, config = undefined) {
   // `anchors.paramNames` : le SKILL dit de GARDER la convention du projet, donc
   // la refuser ici rendrait le contrôle muet là où il compte le plus.
   const sur = ((config?.anchors ?? {}).paramNames ?? []).map(String).filter(Boolean);
-  const motif = new RegExp(`(?:${['[a-zA-Z]*[Ii]dentifier', ...sur].join('|')}):\\s*'([^']*)'`, 'g');
+  // ⚠️ ON NE CAPTURE PLUS UN LITTÉRAL COLLÉ À LA CLÉ, ON LIT L'ARGUMENT ENTIER.
+  // Le motif d'avant exigeait `identifier: 'x'` et rendait donc INVISIBLE
+  // `identifier: cond ? 'a' : 'b'` — c'est-à-dire la forme que le §2c-bis
+  // PRESCRIT quand deux états sortent du même `Semantics`. Mesuré sur un projet
+  // réel : **59 ancres posées, 54 vues, et le contrôle restait VERT** en
+  // annonçant « 54 littérales ». Le chiffre était honnête ; il ne disait pas
+  // qu'il en manquait cinq. Un garde vert par accident, sur la forme même que
+  // le skill recommande.
+  const cle = new RegExp(`(?:${['[a-zA-Z]*[Ii]dentifier', ...sur].join('|')}):`, 'g');
   /** @type {Set<string>} */
   const poses = new Set();
+  // Les arguments où la clé est présente mais dont AUCUN littéral ne se laisse
+  // lire (`identifier: widget.anchorId`). On ne peut rien en dire — alors on le
+  // DIT, plutôt que de les compter zéro en silence.
+  /** @type {Set<string>} */
+  const opaques = new Set();
   (function marcher(/** @type {string} */ dir) {
     let entrees;
     try { entrees = readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -840,15 +853,56 @@ export function posedAnchors(root, config = undefined) {
       // Le dartdoc d'exemple porte de VRAIES ancres — deux compteurs du chantier
       // s'y sont fait prendre à seize runs d'écart. Le balayage les ôte, ainsi
       // que les commentaires de fin de ligne, que le filtre `///` laissait passer.
-      for (const m of dartSansCommentaires(readFileSync(abs, 'utf8')).matchAll(motif)) {
-        // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
-        // peut pas le confronter à un littéral, donc on ne le compte pas.
-        if (m[1].includes('${') || m[1] === '') continue;
-        poses.add(m[1]);
+      const texte = dartSansCommentaires(readFileSync(abs, 'utf8'));
+      for (const m of texte.matchAll(cle)) {
+        const arg = argumentApres(texte, m.index + m[0].length);
+        const litteraux = [...arg.matchAll(/'([^']*)'/g)].map((x) => x[1])
+          // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
+          // peut pas le confronter à un littéral, donc on ne le compte pas.
+          .filter((v) => v !== '' && !v.includes('${'));
+        if (litteraux.length === 0) {
+          const nu = arg.trim();
+          if (nu) opaques.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
+          continue;
+        }
+        for (const v of litteraux) poses.add(v);
       }
     }
   })(join(root, 'lib'));
-  return [...poses].sort();
+  const liste = [...poses].sort();
+  // Les opaques voyagent à côté, jamais dans la liste : ce ne sont pas des
+  // ancres, ce sont des endroits où l'on ne sait pas s'il y en a.
+  Object.defineProperty(liste, 'opaques', { value: [...opaques].sort(), enumerable: false });
+  return liste;
+}
+
+/**
+ * Le texte de l'argument qui suit une clé nommée, borné à sa virgule.
+ *
+ * ⚠️ LA BORNE EST TOUT L'ENJEU. Lire jusqu'à la clé suivante attraperait le
+ * `label:` d'à côté et compterait « Ajouter au panier » comme une ancre : un
+ * faux positif là où l'on corrigeait un faux négatif. On s'arrête donc à la
+ * première virgule de MÊME niveau — parenthèses, crochets et chaînes suivis —
+ * ce qui laisse passer un ternaire (`a ? 'x' : 'y'`) et rien de plus.
+ * @param {string} src @param {number} debut @returns {string}
+ */
+function argumentApres(src, debut) {
+  let profondeur = 0;
+  for (let i = debut; i < src.length; i += 1) {
+    const c = src[i];
+    if (c === '\'' || c === '"') {                    // une chaîne : on la saute entière
+      const quote = c;
+      i += 1;
+      while (i < src.length && src[i] !== quote) i += (src[i] === '\\' ? 2 : 1);
+      continue;
+    }
+    if (c === '(' || c === '[' || c === '{') profondeur += 1;
+    else if (c === ')' || c === ']' || c === '}') {
+      if (profondeur === 0) return src.slice(debut, i);
+      profondeur -= 1;
+    } else if (c === ',' && profondeur === 0) return src.slice(debut, i);
+  }
+  return src.slice(debut);
 }
 
 /**
@@ -1754,7 +1808,19 @@ function main() {
   if (process.argv.slice(2).includes('--check-anchors')) {
     const orphelines = undeclaredAnchors(process.cwd(), config);
     if (orphelines.length === 0) {
-      log(`✔ toute ancre posée dans lib/ est déclarée (${posedAnchors(process.cwd(), config).length} littérales)`);
+      // ⚠️ LE COMPTE SEUL A DÉJÀ MENTI. « 54 littérales » était exact et taisait
+      // qu'il en manquait cinq, invisibles au motif d'alors. On dit donc aussi
+      // ce qu'on n'a PAS pu lire : un endroit où la clé est là sans littéral
+      // analysable n'est pas une absence d'ancre, c'est une absence de mesure.
+      const vues = posedAnchors(process.cwd(), config);
+      log(`✔ toute ancre posée dans lib/ est déclarée (${vues.length} lue(s))`);
+      for (const o of vues.opaques ?? []) {
+        warn(`  ancre NON LISIBLE, donc non vérifiée : ${o}`);
+      }
+      if ((vues.opaques ?? []).length) {
+        warn('  Une ancre calculée à l\'exécution ne peut pas être confrontée à une déclaration.');
+        warn('  Rends-la littérale, ou inscris-la dans anchors.allowUndeclared avec sa raison.');
+      }
       return;
     }
     for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);

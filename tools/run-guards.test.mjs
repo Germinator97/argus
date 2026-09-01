@@ -14,7 +14,7 @@
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { test } from 'node:test';
@@ -4064,8 +4064,35 @@ test('le Makefile, qui ne passe JAMAIS `--platform`, reçoit bien les valeurs iO
     .replace(/^ {2}androidPackage: ''.*$/m, '  androidPackage: com.exemple.monapp')
     .replace(/^ {2}iosBundleId: ''.*$/m, '  iosBundleId: com.exemple.monapp'));
 
-  const lancer = (/** @type {string[]} */ args) =>
-    execFileSync('node', ['scripts/argus/config.mjs', ...args], { cwd: dossier, encoding: 'utf8' }).trim();
+  // ⚠️ CE GARDE N'ÉTAIT PAS HERMÉTIQUE, et son verdict dépendait de ce qui était
+  // branché sur la machine. `--print-build-cmd` interroge `adb devices` pour
+  // cibler l'ABI ; sans émulateur allumé la commande sort nue, avec un émulateur
+  // elle porte `--target-platform android-arm64`. Le garde a donc passé pendant
+  // des mois SANS JAMAIS exercer le ciblage — et il est tombé le jour où deux
+  // runs ont laissé leurs émulateurs allumés, en accusant un correctif sans
+  // rapport. Un test dont le résultat dépend d'une variable qu'il ne contrôle
+  // pas ne mesure ni l'un ni l'autre de ses états.
+  //
+  // On fixe donc l'environnement : un PATH sans `adb` (aucun device), et un
+  // `adb` factice (un device). Les DEUX états sont désormais exercés.
+  // ⚠️ DEUX dossiers, et c'est le montage qui a menti la première fois : mettre
+  // le faux `adb` dans le PATH censé être VIDE le rendait joignable des deux
+  // côtés, donc les deux états ciblaient l'ABI et l'assertion « sans device »
+  // tombait sur mon propre montage, pas sur le code.
+  const faux = mkdtempSync(join(tmpdir(), 'argus-adb-'));
+  const vide = mkdtempSync(join(tmpdir(), 'argus-sans-adb-'));
+  // `process.execPath` et non 'node' : le PATH réduit ne contient pas node non plus.
+  const lancerSans = (/** @type {string[]} */ args) =>
+    execFileSync(process.execPath, ['scripts/argus/config.mjs', ...args],
+      { cwd: dossier, encoding: 'utf8', env: { ...process.env, PATH: vide } }).trim();
+  writeFileSync(join(faux, 'adb'),
+    '#!/bin/sh\ncase "$*" in\n  "devices") printf \'List of devices attached\\nemulator-5554\\tdevice\\n\' ;;\n'
+    + '  *"abi"*) echo arm64-v8a ;;\n  *"avd name"*) echo Pixel_9a ;;\n  *) echo "" ;;\nesac\n', 'utf8');
+  chmodSync(join(faux, 'adb'), 0o755);
+  const lancerAvec = (/** @type {string[]} */ args) =>
+    execFileSync(process.execPath, ['scripts/argus/config.mjs', ...args],
+      { cwd: dossier, encoding: 'utf8', env: { ...process.env, PATH: `${faux}:${process.env.PATH}` } }).trim();
+  const lancer = lancerSans;
 
   // Sans drapeau — exactement ce que fait `make argus-build`.
   assert.equal(lancer(['--print-build-cmd']), 'flutter build ios --debug --simulator',
@@ -4079,6 +4106,20 @@ test('le Makefile, qui ne passe JAMAIS `--platform`, reçoit bien les valeurs iO
   assert.equal(lancer(['--print-build-cmd', '--platform=android']), 'flutter build apk --debug');
   assert.equal(lancer(['--print-binary', '--platform=android']),
     'build/app/outputs/flutter-apk/app-debug.apk');
+
+  // ⚠️ ET L'AUTRE ÉTAT, celui qu'aucune exécution n'avait jamais exercé : device
+  // branché ⇒ la commande CIBLE l'ABI. C'est le geste par défaut d'`argus-build`
+  // depuis le point 267, et rien ne le mesurait.
+  assert.equal(lancerAvec(['--print-build-cmd', '--platform=android']),
+    'flutter build apk --debug --target-platform android-arm64',
+    'un device branché doit faire cibler l\'ABI : c\'est le geste par défaut, plus rapide et '
+    + 'plus léger, et il n\'était exercé dans aucun état');
+  // Le binaire, lui, ne bouge pas : seul le build change.
+  assert.equal(lancerAvec(['--print-binary', '--platform=android']),
+    'build/app/outputs/flutter-apk/app-debug.apk');
+
+  rmSync(faux, { recursive: true, force: true });
+  rmSync(vide, { recursive: true, force: true });
   rmSync(dossier, { recursive: true, force: true });
 });
 
@@ -6487,6 +6528,59 @@ test('le signal sur app.name ne parle QUE si personne n\'a choisi (298)', () => 
   assert.match(avant, /AFFICHE/,
     'le gabarit ne dit pas que app.name est le nom AFFICHÉ : il prescrivait le nom du paquet Dart, '
     + 'et c\'est cette phrase-là qui a produit le titre publié');
+});
+
+test('le croisement voit les ancres CONDITIONNELLES, et dit ce qu\'il ne lit pas (299)', () => {
+  // 🔴 UN GARDE QUI RENDAIT VERT PAR ACCIDENT, sur la forme que le skill
+  // PRESCRIT. Le motif exigeait `identifier: 'x'` collé à la clé, donc
+  // `identifier: cond ? 'a' : 'b'` lui était invisible — or c'est exactement ce
+  // que le §2c-bis recommande quand deux états sortent du même `Semantics`.
+  // Mesuré sur un projet réel : **59 posées, 54 vues, verdict VERT**, avec un
+  // « 54 littérales » honnête qui taisait les cinq manquantes.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-299-'));
+  try {
+    mkdirSync(join(dir, 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'lib/x.dart'), [
+      "Semantics(identifier: 'home_root', label: 'NE DOIT PAS COMPTER', child: X());",
+      "Semantics(identifier: vide ? 'etat_a' : 'etat_b', label: 'NON PLUS', child: Y());",
+      'Semantics(identifier: widget.anchorId, child: Z());',
+      "Semantics(identifier: 'liste_\\${i}', child: W());",
+    ].join('\n'), 'utf8');
+
+    const vues = posedAnchors(dir);
+    // Le cœur du correctif : les deux branches du ternaire sont des ancres.
+    assert.deepEqual(vues, ['etat_a', 'etat_b', 'home_root'],
+      `les ancres conditionnelles restent invisibles (${JSON.stringify(vues)}) : le contrôle rendrait `
+      + 'vert sur la forme même que le §2c-bis prescrit');
+
+    // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui rend le remède sûr : lire l'argument
+    // entier ne doit PAS déborder sur la clé suivante. Sans borne, `label:`
+    // deviendrait une ancre — un faux positif là où l'on corrigeait un faux
+    // négatif, et le pire des deux puisqu'il accuse.
+    assert.ok(!vues.some((a) => /NE DOIT PAS|NON PLUS/.test(a)),
+      `un libellé voisin a été compté comme ancre (${JSON.stringify(vues)}) : la borne de `
+      + 'l\'argument ne tient pas');
+
+    // Ce qu'on ne sait PAS lire doit être DIT. Une clé sans littéral analysable
+    // n'est pas une absence d'ancre, c'est une absence de mesure — et la taire
+    // déplace simplement le trou.
+    const opaques = vues.opaques ?? [];
+    assert.equal(opaques.length, 2,
+      `2 arguments non lisibles attendus, ${opaques.length} rapporté(s) : ${JSON.stringify(opaques)}`);
+    assert.ok(opaques.some((o) => o.includes('widget.anchorId')), 'une ancre calculée doit être signalée');
+    assert.ok(opaques.some((o) => o.includes('liste_')), 'un gabarit interpolé aussi');
+    for (const o of opaques) {
+      assert.match(o, /x\.dart/, 'et chaque signalement doit porter son FICHIER, sinon il est inactionnable');
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // ⚠️ LE CÂBLAGE : la branche verte doit imprimer les opaques. C'est là que le
+  // silence coûtait — un « ✔ » qui ne dit pas ce qu'il n'a pas regardé.
+  const conf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  assert.match(conf, /for \(const o of vues\.opaques \?\? \[\]\)/,
+    'le verdict vert n\'énumère plus les ancres non lisibles : il redevient un « ✔ » qui tait '
+    + 'ce qu\'il n\'a pas pu mesurer');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
