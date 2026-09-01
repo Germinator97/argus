@@ -759,6 +759,20 @@ MUTATIONS = [
      "      `à REPUBLIER sur ${url} — publier sans cette URL crée un doublon`,"),
     # L'autre moitié : une PREMIÈRE publication n'est pas garantie neuve non
     # plus, et c'est la seule branche que le run 37 empruntait.
+    # ⚠️ Ces trois-là rejouent le défaut que j'ai commis DEUX FOIS : donner un
+    # chiffre unique comme critère. La mutation ne remet pas le mauvais chiffre,
+    # elle retire le SECOND — ce qui suffit à refaire du premier un critère.
+    ("skill", "le tell de la boucle redevient un chiffre unique",
+     "il a mesuré **42,9 %** pour le **même** défaut, et a failli écarter le bon\ndiagnostic à cause du chiffre qu'on lui avait donné.",
+     "il ne l'a pas retrouvé."),
+    ("skill", "le coût des baselines redevient un chiffre unique",
+     "Deux terrains l'ont mesurée à **5 min 50** et\n**4 min 22** — l'ordre de grandeur",
+     "Un terrain l'a mesurée à **5 min 50** — l'ordre de grandeur"),
+    # Et celle-ci renvoie le geste au loin, c'est-à-dire l'état que l'annotation
+    # du 264 laissait intact.
+    ("skill", "le geste du troisième temps repart au loin",
+     "```bash\nnode scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six\n```",
+     "Le raccourci est décrit plus bas, dans le paragraphe sur la mise au point\nd'un flow isolé."),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
