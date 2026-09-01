@@ -323,7 +323,11 @@ test('l\'indice nomme le levier que le SKILL prescrit, pas celui qu\'il interdit
   // suit le message au lieu de le surveiller : changer les deux ensemble le
   // laisserait vert. Le nom est LU dans la doc, qui est la source.
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
-  const prescrit = skill.match(/Relève\s+`([A-Za-z.]+)`/);
+  // ⚠️ Un mot peut s'intercaler (« Relève ALORS `x` ») : le motif d'origine
+  // exigeait le backtick collé et il est tombé sur une reformulation du 259 —
+  // un correctif JUSTE. Le phénomène mesuré n'avait pas bougé, seule sa
+  // formulation ; c'est l'ancrage qui était trop serré, pas le garde.
+  const prescrit = skill.match(/Relève(?:\s+\w+)?\s+`([A-Za-z.]+)`/);
   assert.ok(prescrit, 'le SKILL.md ne prescrit plus de levier pour le flow rouge sur un démarrage lent. '
     + 'Si la phrase a été reformulée, mets ce motif à jour — sinon ce garde ne garde plus rien.');
   const interdit = skill.match(/ne\s+touche pas à `([A-Za-z.]+)`/);
