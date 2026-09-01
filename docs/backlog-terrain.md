@@ -4436,9 +4436,50 @@ exactement son rôle depuis qu'il **construit** son gabarit avec la fonction : l
 format a changé, donc la doc doit suivre. Un garde qui aurait cité la chaîne
 aurait accusé un correctif juste, pour la deuxième fois.
 
+### 255. ✅ Corrigé le 01/09/2026 — un dépôt PUBLIC qui nommait ses terrains d'essai
+
+Règle absolue posée par Germinator : **argus ne mentionne jamais le nom ni
+l'identifiant d'un projet sur lequel il est exercé** — chantier ou autre. Les
+terrains ne sont pas publics, et l'un d'eux est sous contrat.
+
+**Douze fuites**, dont **trois introduites le matin même** par la passe 252-254.
+Elles vivaient dans le contenu (identifiant d'application, nom de paquet Dart,
+titre de page), dans **l'historique** (163 blobs pour la seule forme la plus
+fréquente) et dans **deux messages de commit**.
+
+⚠️ **Le premier instrument a rendu `0` pour tout.** Un pipeline
+`rev-list --objects | cat-file` mal formé ne mesurait rien, et ce zéro se lisait
+exactement comme « l'historique est propre ». C'est la **contre-épreuve** — un
+motif dont la présence est certaine — qui l'a dénoncé : elle rendait `0` aussi.
+
+**Deux gardes, et aucun ne NOMME ce qu'il interdit** — citer les coupables
+réintroduirait dans le dépôt public ce qu'on vient d'en retirer :
+
+| | |
+|---|---|
+| **forme** | il ne connaît que ce qui est **autorisé** : il balaie tous les fichiers suivis pour les formes d'identifiant d'application et compare l'ensemble à une liste blanche **par égalité, dans les deux sens** — un exemple qui disparaît doit sortir de la liste, sinon elle enregistre des permissions pour des valeurs qui n'existent plus. Il a trouvé une fuite que le `grep` manuel avait ratée, **avant même d'être fini** |
+| **noms** | ils n'ont aucune forme reconnaissable. Sa liste ne peut pas vivre ici, donc elle est **hors dépôt**, et le garde **échoue bruyamment** quand elle manque plutôt que de rendre un vert silencieux. Son message donne le **rang** du terme, jamais le terme : ce message atterrit dans les journaux de CI, c'est-à-dire l'endroit qu'on protège |
+
+⚠️ **Le commentaire du second garde citait deux mots interdits** — la première
+façon pour un garde de naître vacant, en matchant sa propre mention.
+
+⚠️ **LIMITE MESURÉE, ÉCRITE DANS LA LISTE** : un nom qui est aussi du
+vocabulaire technique courant ne peut pas y entrer. L'un d'eux apparaît **quinze
+fois** dans le plugin web au sens de l'accessibilité clavier, et l'inscrire
+ferait rougir du code juste. Un garde qui crie au loup finit désactivé. Pour
+ceux-là, seules les **formes identifiantes** sont purgées — dix, relevées dans
+l'historique et non supposées.
+
+📌 **L'historique a été réécrit** (317 commits, contenu et messages), avec la
+séquence complète que ce dépôt documente : suppression de `refs/original`,
+expiration du reflog, `gc --prune=now`, puis contrôle sur **tous les objets**
+avec témoin. Sans les trois premiers gestes, le contrôle relit les copies que
+`filter-branch` laisse exprès et rend le même compte qu'avant — on croit la
+purge ratée alors qu'elle a réussi.
+
 ## Ce qui reste
 
-Les points **251 à 254** sont fermés le 01/09/2026 — backlog vide pour la
+Les points **251 à 255** sont fermés le 01/09/2026 — backlog vide pour la
 **trente-cinquième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
 s'était noté, et les deux autres sont nés en le fermant — le 252 d'une remarque
 de Germinator sur la page qu'il venait d'ouvrir, le 253 d'un `grep` fait pour
