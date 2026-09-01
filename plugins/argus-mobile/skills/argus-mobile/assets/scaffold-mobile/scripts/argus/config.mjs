@@ -921,6 +921,83 @@ export function undeclaredAnchors(root, config) {
 }
 
 /**
+ * Le nom que l'application AFFICHE — celui qu'un humain reconnaît.
+ *
+ * ⚠️ LE SKILL PRESCRIVAIT LA MAUVAISE SOURCE, et son gabarit le disait en
+ * toutes lettres : « Nom du paquet Dart (pubspec.yaml → name) ». Ce nom-là est
+ * un identifiant technique — `acme_colis`, `focus` — et il se retrouve
+ * dans le TITRE de la page publiée, c'est-à-dire dans la seule chose qui
+ * distingue deux rapports dans une galerie. Vu par Germinator sur une page
+ * publiée : le titre disait « Colis » quand l'app s'appelle
+ * « Acme Colis ».
+ *
+ * Or ce nom existe, il est déclaré, et le harnais ne le lisait nulle part.
+ * Quatre sources, dans l'ordre où elles sont sûres :
+ *   1. `CFBundleDisplayName` de l'Info.plist iOS — le plus explicite ;
+ *   2. `resValue("string", "app_name", …)` d'un build.gradle Android ;
+ *   3. `<string name="app_name">` d'un strings.xml ;
+ *   4. `android:label="…"` LITTÉRAL du manifeste (jamais `@string/…`, qui est
+ *      une indirection : la suivre donnerait le nom de la clé, pas la valeur).
+ *
+ * Rend '' quand rien n'est trouvé — un projet peut n'avoir aucun nom affiché, et
+ * inventer serait pire que se taire.
+ * @param {string} root @returns {string}
+ */
+export function nomAffiche(root) {
+  const lire = (rel) => { try { return readFileSync(join(root, rel), 'utf8'); } catch { return ''; } };
+
+  // 1. iOS — la clé est suivie de sa valeur dans le <dict>.
+  const plist = lire('ios/Runner/Info.plist');
+  const ios = /<key>CFBundleDisplayName<\/key>\s*<string>([^<]*)<\/string>/.exec(plist);
+  if (ios && ios[1].trim()) return ios[1].trim();
+
+  // 2. Android — le nom peut être injecté par Gradle plutôt que par une ressource.
+  for (const g of ['android/app/build.gradle.kts', 'android/app/build.gradle']) {
+    const m = /resValue\(?\s*["']string["']\s*,\s*["']app_name["']\s*,\s*["']([^"']+)["']/.exec(lire(g));
+    if (m && m[1].trim()) return m[1].trim();
+  }
+
+  // 3. Android — la ressource classique, sur toutes les variantes livrées.
+  for (const v of ['main', 'release', 'debug']) {
+    const m = /<string name="app_name">([^<]*)<\/string>/.exec(lire(`android/app/src/${v}/res/values/strings.xml`));
+    if (m && m[1].trim()) return m[1].trim();
+  }
+
+  // 4. Le manifeste, mais seulement s'il porte un LITTÉRAL.
+  const label = /android:label="([^"@][^"]*)"/.exec(lire('android/app/src/main/AndroidManifest.xml'));
+  if (label && label[1].trim()) return label[1].trim();
+
+  return '';
+}
+
+/**
+ * Le message dû quand `app.name` porte l'identifiant technique alors que l'app
+ * affiche autre chose. Vide sinon.
+ *
+ * ⚠️ IL NE SORT QUE SI PERSONNE N'A CHOISI. La condition est que `app.name`
+ * égale EXACTEMENT le nom du paquet Dart, c'est-à-dire le défaut que
+ * l'installeur pose et que nul n'a touché. Dès qu'il vaut autre chose — le nom
+ * affiché, ou n'importe quoi d'autre —, c'est une décision et on se tait.
+ * Sans cette condition l'avertissement serait INACQUITTABLE, et un
+ * avertissement qu'on ne peut pas fermer finit ignoré en emmenant les autres.
+ * @param {string} root @param {any} config @returns {string}
+ */
+export function nomTechniqueEnTitre(root, config) {
+  const configure = String(config?.app?.name ?? '').trim();
+  if (!configure) return '';
+  let paquet = '';
+  try {
+    paquet = (/^name:\s*(\S+)/m.exec(readFileSync(join(root, 'pubspec.yaml'), 'utf8')) ?? [])[1] ?? '';
+  } catch { return ''; }
+  if (configure !== paquet) return '';          // quelqu'un a choisi : on se tait
+  const affiche = nomAffiche(root);
+  if (!affiche || affiche === configure) return '';
+  return `app.name vaut « ${configure} » — le nom du paquet Dart. L'application s'affiche `
+    + `« ${affiche} », et c'est ce nom-là qui distingue ton rapport des autres dans une `
+    + 'galerie : le titre de la page publiée en dérive.';
+}
+
+/**
  * Les familles de fichiers dont la PRÉSENCE ne prouve pas l'EMBARQUEMENT.
  *
  * ⚠️ CE N'EST PAS UNE LISTE DE FICHIERS FIREBASE, ET C'EST VOULU. Le cas vécu
@@ -1715,6 +1792,12 @@ function main() {
   // commande de vérification préalable — coûte quelques millisecondes et
   // épargne une passe device entière. Le rapport le porte aussi (dimension
   // `configuration` de sec.json), mais il arrive après.
+  // ⚠️ LE TITRE D'UNE PAGE PUBLIÉE EST CE QUI LA DISTINGUE. Vu par Germinator
+  // sur une page en ligne : le titre disait « Colis » là où l'app s'appelle
+  // « Acme Colis » — le nom du paquet Dart au lieu du nom affiché.
+  const nomTech = nomTechniqueEnTitre(dirname(config.__file), config);
+  if (nomTech) warn(nomTech);
+
   const orphelins = configNonEmbarquee(dirname(config.__file), config);
   if (orphelins.length) {
     console.log('\nConfiguration présente mais NON EMBARQUÉE :');

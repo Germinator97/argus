@@ -59,6 +59,15 @@ SDK), `android/app/build.gradle(.kts)` (`applicationId`, flavors),
 dossiers `android/` et `ios/`. **N'invente jamais de bundleId** : s'il ne se
 déduit pas, demande-le.
 
+⚠️ **`app.name` EST LE NOM AFFICHÉ, PAS LE NOM DU PAQUET DART.** Le gabarit
+prescrivait l'inverse, et ce nom finit dans le **titre de la page publiée** —
+donc dans la seule chose qui distingue ton rapport des autres. Vu sur une page
+en ligne : un titre qui disait « Colis » pour une app nommée « Acme Colis ». Le nom affiché se lit dans `ios/Runner/Info.plist`
+(`CFBundleDisplayName`), dans un `resValue("string", "app_name", …)` du
+`build.gradle`, dans un `<string name="app_name">`, ou dans un `android:label`
+littéral. `node scripts/argus/config.mjs` te le signale — mais seulement tant
+que `app.name` porte encore le défaut : dès que tu as choisi, il se tait.
+
 ### Ce que chaque plateforme reçoit VRAIMENT
 
 ⚠️ **`platforms: [ios]` ne donne pas la même chose que `[android]`, et il faut le

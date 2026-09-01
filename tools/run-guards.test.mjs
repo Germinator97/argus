@@ -29,6 +29,7 @@ import {
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -6392,6 +6393,100 @@ test('le contrôle de config est un MÉCANISME, pas une liste Firebase (297)', (
   assert.match(conf, /const orphelins = configNonEmbarquee\(/,
     'config.mjs ne signale plus rien au §3d : le défaut ne se verrait qu\'APRÈS une passe device, '
     + 'ce qui est exactement le coût qu\'on voulait supprimer');
+});
+
+test('le nom du titre est celui que l\'app AFFICHE, pas le paquet Dart (298)', () => {
+  // ⚠️ LE GABARIT PRESCRIVAIT LA MAUVAISE SOURCE, noir sur blanc : « Nom du
+  // paquet Dart (pubspec.yaml → name) ». Or ce nom finit dans le TITRE de la
+  // page publiée, donc dans la seule chose qui distingue un rapport des autres
+  // dans une galerie. Vu par Germinator sur une page en ligne : un titre qui
+  // disait « Colis » pour une app nommée « Acme Colis ».
+  const dir = mkdtempSync(join(tmpdir(), 'argus-298-'));
+  const ecrire = (rel, contenu) => {
+    mkdirSync(join(dir, rel.split('/').slice(0, -1).join('/')), { recursive: true });
+    writeFileSync(join(dir, rel), contenu, 'utf8');
+  };
+  try {
+    // Les quatre sources, chacune seule : une seule qui marche ne prouve rien
+    // sur les autres, et les projets réels ne les portent pas toutes.
+    ecrire('ios/Runner/Info.plist',
+      '<dict><key>CFBundleDisplayName</key>\n\t<string>Acme Colis</string></dict>\n');
+    assert.equal(nomAffiche(dir), 'Acme Colis', 'source 1 : CFBundleDisplayName');
+
+    rmSync(join(dir, 'ios'), { recursive: true, force: true });
+    ecrire('android/app/build.gradle.kts', 'resValue("string", "app_name", "Acme Colis")\n');
+    assert.equal(nomAffiche(dir), 'Acme Colis', 'source 2 : resValue du build.gradle');
+
+    rmSync(join(dir, 'android'), { recursive: true, force: true });
+    ecrire('android/app/src/main/res/values/strings.xml', '<string name="app_name">Focus</string>\n');
+    assert.equal(nomAffiche(dir), 'Focus', 'source 3 : strings.xml');
+
+    rmSync(join(dir, 'android'), { recursive: true, force: true });
+    ecrire('android/app/src/main/AndroidManifest.xml', '<application android:label="Focus">\n');
+    assert.equal(nomAffiche(dir), 'Focus', 'source 4 : android:label littéral');
+
+    // ⚠️ ET L'INDIRECTION NE COMPTE PAS. `android:label="@string/app_name"` est
+    // un renvoi : le suivre naïvement donnerait « @string/app_name » comme nom
+    // affiché, soit un titre pire que celui qu'on corrige.
+    ecrire('android/app/src/main/AndroidManifest.xml', '<application android:label="@string/app_name">\n');
+    assert.equal(nomAffiche(dir), '', 'une indirection @string/ ne doit JAMAIS être prise pour un nom');
+
+    // Un projet qui n'affiche rien : on se tait plutôt que d'inventer.
+    rmSync(join(dir, 'android'), { recursive: true, force: true });
+    assert.equal(nomAffiche(dir), '', 'sans aucune source, rendre \'\' — inventer serait pire');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('le signal sur app.name ne parle QUE si personne n\'a choisi (298)', () => {
+  // ⚠️ UN AVERTISSEMENT INACQUITTABLE FINIT IGNORÉ, et il emmène les autres —
+  // c'est la leçon du 291, appliquée le jour même à l'avertissement qu'on
+  // ajoute. Celui-ci se ferme tout seul : il ne sort que tant que `app.name`
+  // porte EXACTEMENT le défaut posé par l'installeur.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-298-sig-'));
+  const ecrire = (rel, contenu) => {
+    mkdirSync(join(dir, rel.split('/').slice(0, -1).join('/')), { recursive: true });
+    writeFileSync(join(dir, rel), contenu, 'utf8');
+  };
+  try {
+    ecrire('pubspec.yaml', 'name: acme_colis\n');
+    ecrire('ios/Runner/Info.plist',
+      '<dict><key>CFBundleDisplayName</key>\n\t<string>Acme Colis</string></dict>\n');
+
+    const surLeDefaut = nomTechniqueEnTitre(dir, { app: { name: 'acme_colis' } });
+    assert.ok(surLeDefaut, 'sur le défaut non touché, le signal doit sortir — sinon il ne sert à rien');
+    assert.match(surLeDefaut, /Acme Colis/,
+      'et il doit DIRE le nom affiché : « ton nom est mauvais » sans donner le bon ne sert à rien');
+
+    // ⚠️ LES TROIS FAÇONS DE SE TAIRE, et ce sont elles qui rendent le signal
+    // acquittable.
+    assert.equal(nomTechniqueEnTitre(dir, { app: { name: 'Acme Colis' } }), '',
+      'le nom affiché choisi : plus rien à dire');
+    assert.equal(nomTechniqueEnTitre(dir, { app: { name: 'Colis Acme' } }), '',
+      'un AUTRE nom est une décision délibérée — se taire, sinon l\'avertissement est inacquittable');
+    assert.equal(nomTechniqueEnTitre(dir, { app: { name: '' } }), '',
+      'pas de nom configuré : ce n\'est pas le défaut visé');
+
+    // Et sans nom affiché nulle part, aucun conseil à donner.
+    rmSync(join(dir, 'ios'), { recursive: true, force: true });
+    assert.equal(nomTechniqueEnTitre(dir, { app: { name: 'acme_colis' } }), '',
+      'sans nom affiché, se taire plutôt que de conseiller l\'inconnu');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // ⚠️ LE CÂBLAGE : la fonction peut rester juste pendant que personne ne l'appelle.
+  const conf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  assert.match(conf, /const nomTech = nomTechniqueEnTitre\(/,
+    'config.mjs ne signale plus le nom technique : le défaut ne se verrait qu\'une fois la page publiée');
+
+  // Et le gabarit ne doit plus PRESCRIRE la mauvaise source.
+  const gabarit = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const i = gabarit.indexOf('\n  name:');
+  assert.notEqual(i, -1, 'la clé app.name a disparu du gabarit — mets ce garde à jour');
+  const avant = gabarit.slice(Math.max(0, i - 700), i).replace(/\s+/g, ' ');
+  assert.match(avant, /AFFICHE/,
+    'le gabarit ne dit pas que app.name est le nom AFFICHÉ : il prescrivait le nom du paquet Dart, '
+    + 'et c\'est cette phrase-là qui a produit le titre publié');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

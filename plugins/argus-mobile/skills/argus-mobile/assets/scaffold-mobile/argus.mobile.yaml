@@ -43,7 +43,15 @@ run:
 
 # ── L'application sous test ────────────────────────────────────────────────
 app:
-  # Nom du paquet Dart (pubspec.yaml → name). Sert d'étiquette dans les rapports.
+  # Le nom que l'application AFFICHE — pas celui du paquet Dart.
+  # ⚠️ C'est lui qui va dans le TITRE de la page publiée, donc la seule chose qui
+  # distingue ton rapport des autres dans une galerie. `acme_colis` et
+  # `focus` sont des identifiants techniques ; « Acme Colis » et
+  # « Focus » sont des noms. Vécu : un titre publié disait « Colis ».
+  # Où le lire : ios/Runner/Info.plist → CFBundleDisplayName, ou côté Android
+  # `resValue("string", "app_name", …)` du build.gradle, ou <string name="app_name">
+  # d'un strings.xml, ou android:label s'il porte un littéral.
+  # `node scripts/argus/config.mjs` te le signale s'il reste sur le nom du paquet.
   name: mon_app
   # Identifiant Android (applicationId) et iOS (CFBundleIdentifier). C'est ce que
   # Maestro met dans `appId:` en tête de chaque flow. REQUIS pour la plateforme
