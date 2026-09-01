@@ -4546,7 +4546,81 @@ contrôle de couverture qui l'a vu — 38 et 36 fichiers manquants — pas moi, 
 `check-etalons.sh` rendait « 0 manquant » puisqu'il vérifie la présence des
 fichiers, jamais leur contenu.
 
+### 275-295. ✅ Corrigés le 01/09/2026 — la vague iOS : le geste le plus destructeur du parcours n'était nulle part
+
+**Runs 37 et 38**, iOS, en parallèle, agents vierges, sur les deux mêmes
+terrains que la vague Android — commits de base identiques (`5f0ed193` et
+`884c7328`), ce qui compte pour le 275.
+
+⚠️ **Ces constats ont failli être perdus.** Les six fichiers d'un étalon
+décrivent le TERRAIN ; le **compte rendu de l'agent** n'en fait pas partie et ne
+vit donc que dans la session, qui a été vidée après la vague. Ils ont survécu
+dans `~/.argus-etalon/run35-38-constats.md`. **Le compte rendu est le septième
+fichier**, et la procédure le dit désormais.
+
+| | le plus grave, et il n'était pas dans le skill |
+|---|---|
+| **275** | 🚨 **une publication sans `url` peut atterrir sur la page d'un AUTRE run et la remplacer.** L'outil rapproche par **chemin de fichier**, et les deux plateformes d'un terrain écrivaient le même `report.artifact.html` — un run iOS a donc effacé la page Android de son propre terrain, titre passé de « — Android » à « — iOS ». Mesuré indépendamment par les deux runs. Le message du script disait « publier sans cette URL crée un doublon » : **l'inverse exact du danger**. Le skill protégeait contre l'écrasement DÉLIBÉRÉ et pas du tout contre celui PAR DÉFAUT, qui ne demande aucune erreur |
+
+**Trois de mes correctifs du matin même, mis à l'épreuve l'après-midi :**
+
+| | |
+|---|---|
+| **276** | le **260** et le **263** ont échoué de la même façon — j'ai remplacé un nombre deviné par un nombre **mesuré dans un seul état**. « 120,6 % de CPU » n'a pas été retrouvé par un run sur machine partagée (**42,9 %**, même défaut), et « vingt minutes » a fait sur-budgéter deux runs au point d'envisager de couper la contre-épreuve visuelle. La leçon n'est pas la valeur : **une** valeur ne reconnaît rien |
+| **277** | le **264** — j'avais **annoté** l'éloignement du raccourci au lieu de le **déplacer**. Le run suivant a fait l'aller-retour quand même et l'a écrit mot pour mot |
+| **278** | le **270 est ROUVERT : mon démenti était faux.** J'avais mesuré `--check` sur un terrain **en retard**, où il imprime la liste des fichiers *en retard* — pas celle des fichiers *OWNED* dont le constat parlait. *J'ai mesuré autre chose que ce que le constat visait, et démenti un constat juste* |
+
+**Ce que les runs ont trouvé, par ordre de coût :**
+
+| | |
+|---|---|
+| **279** | `startTimeoutMs` se dérive de `firstLaunchMs`, **que iOS ne produit pas** — `perf.mjs` y rend un `skipReason`. C'est le **259 corrigé le matin** qui a créé cet angle mort ; la table du §1 l'annonçait, à neuf cents lignes de là. La bonne grandeur existe pourtant et se trouve une ligne plus haut : la pire attente que le runner vient de relever |
+| **280** | le TODO du retour à l'accueil vit dans une branche que `SCREEN_ID === ARGUS_START_SCREEN` rend inatteignable pour un écran **nommé** — rempli en croyant traiter le cas général : un flow rouge, ~160 s de device, une fausse piste vers « l'ancre est absente » |
+| **281** | `--check-anchors` disait « que RIEN ne déclare » d'ancres écrites noir sur blanc dans `screens[]`. Le signal est bon — « déclaré » veut dire « monté par l'étage 1 » — mais le mot le rendait indéchiffrable. ⚠️ Le remède qui vient à l'esprit (faire lire `screens[]` au croisement) est le **mauvais** : l'ancre passerait un contrôle que l'étage 1 ne monte jamais |
+| **282** | « sept fichiers » de flows, il y en a **huit**. Un compteur périmé s'affiche exactement comme un compteur juste |
+| **283** | §2c « demande confirmation avant d'éditer du code applicatif » contre §1 « ne t'arrête pas pour demander ». **Trois runs successifs ont tranché seuls** — 111 à 257 lignes dans le code de quelqu'un, chacun sous sa propre règle, aucun n'ayant tort |
+| **284** | une URL **déclarée dont la page n'existe plus** n'avait aucun cas : `read` rend « artifact not found » pendant que le script annonce « à REPUBLIER sur <url morte> ». Les deux runs l'ont rencontré le même jour — **par mon erreur de cadrage**, qui leur avait donné deux URL mortes comme « pages existantes » |
+| **285** | **le seul « débrouille-toi » du parcours** : le §2c disait OÙ poser les doubles et jamais COMMENT les écrire, ce que 90 % des projets Flutter/BLoC devront produire. Et c'est là que se décide la boucle de micro-tâches — un run l'a heurtée au **premier `argus-anchors`**, cinq minutes après son premier double |
+| **286** | le dépannage de build est **entièrement Android**. L'échec iOS rencontré (`native assets … references objective_c`) ne ressemble à rien de ce qui est décrit |
+| **287** | une coquille **qui EST l'écran de départ** n'avait pas de case : la table dit « pas d'ancre », mais celle-ci rend l'accueil et c'est elle que `launch-clean.yaml` attend |
+| **288** | aucune **règle d'arrêt** du périmètre — 8 écrans retenus sur ~13 sans critère —, et aucun pour l'écran dont le contenu suit l'horloge (6 passés en `visual: false`, à raison). La règle ne porte pas sur les écrans mais sur l'**étage** |
+| **289** | générer les références devient **infaisable** quand un flow gèle (6 min 20 par passage). Le §3g l'autorisait « en esprit » sans donner la commande |
+| **290** | le chemin du kernel **iOS** n'est nulle part — et là-bas le binaire est un **répertoire**, donc pas d'`unzip` |
+| **291** | l'avertissement sur les captures sortait **dix fois par run** sans qu'aucune clé n'enregistre qu'on avait vérifié. Un avertissement inacquittable finit ignoré, et il emmène les autres : ce que le skill reproche aux TODO sans objet, appliqué à sa propre sortie |
+| **292** | le point 5 du §3g-bis **se retourne** quand la page n'existe pas : « lis son titre actuel d'abord » a fait renseigner `artifact.title` d'un titre **inventé** |
+| **293** | l'outil de publication réclame une passe de conception, le §3g-bis dit de publier tel quel. Un run s'est arrêté entre les deux, faute d'arbitrage écrit — or réécrire la page **détruit son historique embarqué** |
+| **294-295** | deux choses justes au mauvais endroit : le diagnostic des trois causes à des centaines de lignes de la séquence, et `hideKeyboard` — un piège de flow **iOS** — logé entre deux paragraphes sur la taille des **APK Android** |
+
+⚠️ **CE QUE LA MUTATION A TROUVÉ, ET QUE LA RELECTURE N'AURAIT PAS VU** : **quatre**
+de mes gardes étaient **vacants**, tous pour la même raison — le motif matchait une
+**mention** au lieu de la valeur. Un garde de câblage cherchait
+`ancresOrphelinesReport(orphelines, config)`, motif que la **déclaration** de la
+fonction contient mot pour mot ; un autre acceptait le **titre** d'un paragraphe
+(« ET SANS INTERLOCUTEUR ? ») qui pose la question sans y répondre ; un troisième
+acceptait `MockCubit<` cité dans un commentaire voisin. Ancrés sur l'usage
+(`for (const ligne of …(`, `extends MockBloc<`) ou sur une structure — une même
+LIGNE qui porte le cas ET le geste —, ils tombent.
+
+⚠️ **Et un garde a rougi sur un retour à la ligne** : le markdown est enveloppé à
+~78 colonnes, donc « deux fois de suite » y vit sur deux lignes et un motif
+multi-mots ne le trouve pas. Les gardes de prose écrits ce jour-là aplatissent
+désormais les blancs — ils avaient tous la même fragilité, ils ne l'avaient
+simplement pas encore montrée.
+
 ## Ce qui reste
+
+Les points **275 à 295** sont fermés le 01/09/2026 — backlog vide pour la
+**trente-septième** fois. Tous viennent des deux runs iOS, et **cinq d'entre eux
+portent sur des correctifs écrits le matin même** : le 259 a créé l'angle mort
+du 279, le 260 et le 263 ont échangé un nombre deviné contre un nombre mesuré
+dans un seul état (276), le 264 a annoté au lieu de déplacer (277), et le 270 —
+que j'avais démenti — était juste (278). **Un correctif est une hypothèse tant
+qu'un terrain ne l'a pas exercé**, et le délai entre l'écriture et la mise à
+l'épreuve était ici de quelques heures.
+
+📌 Le 275 est le plus grave jamais trouvé sur ce chantier, et il n'était **pas
+dans le skill** : le geste le plus destructeur du parcours — publier sans passer
+l'URL — y était décrit comme le plus anodin.
 
 Les points **251 à 274** sont fermés le 01/09/2026 — backlog vide pour la
 **trente-sixième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
