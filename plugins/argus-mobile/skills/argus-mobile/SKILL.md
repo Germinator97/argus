@@ -339,6 +339,27 @@ prix d'entrée de l'automatisation, et qu'il améliore l'accessibilité réelle 
 passage. **Demande confirmation avant d'éditer du code applicatif** — c'est le
 code de production de quelqu'un.
 
+⚠️ **ET SANS INTERLOCUTEUR ?** Cette consigne contredisait le §1 (« ne t'arrête
+PAS pour demander »), et **trois runs successifs ont tranché seuls** — entre 111
+et 257 lignes ajoutées au code de quelqu'un, chacun avec sa propre règle, aucun
+n'ayant tort. La contradiction était à moi, pas à eux. La règle, alignée sur ce
+que le §1 dit déjà du cadrage et sur le repli du paquet voisin (§2f) :
+
+- **Un interlocuteur répond** → demande, comme ci-dessus. Rien ne change.
+- **Personne ne répond** (agent non interactif, run en aveugle) → **instrumente,
+  et rends-en compte.** Attendre une réponse qui ne viendra pas ne rend rien du
+  tout, et c'est pire qu'un choix assumé.
+
+Ce que tu t'autorises alors, et **rien d'autre** : ajouter des `Semantics`
+(`identifier:`, `container:`, `explicitChildNodes:`) et les enveloppes qu'ils
+exigent. Pas de changement de comportement, pas de renommage, pas de
+refactoring « au passage » — ces ajouts-là se relisent en diff et se retirent en
+une commande, ce qui est exactement ce qui les rend acceptables sans accord.
+
+Et **écris en tête du rapport ce que tu as touché** : les fichiers, le nombre de
+lignes, et la phrase qui dit que ça n'a pas été validé. Un run qui instrumente
+sans le dire laisse quelqu'un découvrir le diff sans savoir d'où il vient.
+
 ⚠️ **L'absorption avale le texte, pas les commandes** — et c'est ce qui la rend
 difficile à voir. Mesuré sur Flutter 3.32, même écran, seul le drapeau change :
 

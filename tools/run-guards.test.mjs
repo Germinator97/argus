@@ -5924,6 +5924,50 @@ test('le nombre de flows annoncé par le SKILL est celui du scaffold (282)', () 
     + 'exactement comme un compteur juste.');
 });
 
+test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () => {
+  // ⚠️ TROIS RUNS SUCCESSIFS ONT TRANCHÉ SEULS, et aucun n'avait tort : le §2c
+  // disait « demande confirmation avant d'éditer du code applicatif » pendant
+  // que le §1 disait « ne t'arrête PAS pour demander ». Entre 111 et 257 lignes
+  // ajoutées au code de quelqu'un, chacun avec sa propre règle. La
+  // contradiction était dans le skill, pas dans leur jugement.
+  //
+  // Le garde ne vise pas CETTE phrase-là : il balaie toutes les injonctions de
+  // demander et exige que chacune dise quoi faire quand personne ne répond.
+  // Étroit-plus-ce-qu'on-a-vu laisserait passer la prochaine.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+
+  const INJONCTION = /\*\*Demande confirmation|\bNe tranche pas seul\b/;
+  const sites = skill.map((l, i) => (INJONCTION.test(l) ? i : -1)).filter((i) => i >= 0);
+  // ⚠️ Sans cette assertion, une reformulation vide le garde en silence : zéro
+  // site, zéro boucle, zéro assertion, et le vert ne dit plus rien.
+  assert.ok(sites.length >= 2,
+    `${sites.length} injonction(s) de demander trouvée(s) dans le SKILL — il y en avait deux. `
+    + 'Reformulées ? mets ce garde à jour plutôt que de le laisser mesurer le vide.');
+
+  // Ce qui compte comme repli : dire ce qu'on fait quand la réponse ne vient pas.
+  const REPLI = /sans interlocuteur|non interactif|en attendant|Personne ne répond/i;
+  for (const i of sites) {
+    const paragraphe = skill.slice(i, i + 30).join('\n');
+    assert.match(paragraphe, REPLI,
+      `« ${skill[i].trim().slice(0, 70)}… » (ligne ${i + 1}) demande sans dire quoi faire si personne `
+      + 'ne répond. Le §1 prescrit de trancher ; une consigne qui l\'ignore fait décider chaque '
+      + 'run à sa façon, sur le code de quelqu\'un d\'autre.');
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ : lever la contradiction ne doit pas supprimer la
+  // prudence. Le repli doit BORNER ce qu'on s'autorise, sinon « tranche seul »
+  // devient un permis de refactorer.
+  const iCode = skill.findIndex((l) => /\*\*Demande confirmation avant d'éditer du code applicatif\*\*/.test(l));
+  assert.notEqual(iCode, -1, 'la consigne sur le code applicatif a été reformulée — garde à mettre à jour');
+  const bloc = skill.slice(iCode, iCode + 30).join('\n');
+  assert.match(bloc, /Semantics/,
+    'le repli doit dire CE QU\'ON S\'AUTORISE : sans borne, « tranche seul » autorise tout');
+  assert.match(bloc, /rapport/,
+    'et exiger que ce qui a été touché soit rendu — sinon quelqu\'un découvre le diff sans '
+    + 'savoir d\'où il vient');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run
