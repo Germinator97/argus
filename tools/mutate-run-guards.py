@@ -693,8 +693,26 @@ MUTATIONS = [
      "return ident.title || titreDuRapport(run);",
      "return ident.title || 'Rapport Argus Mobile';"),
     ("skill", "le SKILL cesse de décrire le titre par défaut que le code produit",
-     "ou, s'il est vide, `<appId> — <plateforme> — rapport QA`",
+     "ou, s'il est vide, `<nom du projet> — <plateforme> — rapport QA`",
      "ou un titre par défaut"),
+
+    # ── 254 · le nom du projet, et la plateforme qui ne se répète plus ────────
+    ("report", "le titre reperd le nom du projet au profit de l'identifiant",
+     "return [run?.name || run?.appId, run?.platform, 'rapport QA']",
+     "return [run?.appId, run?.platform, 'rapport QA']"),
+    # ⚠️ Le CÂBLAGE, pas la fonction : celle-ci reste juste, elle ne reçoit
+    # simplement plus le nom. Seul le garde qui LANCE report.mjs le voit.
+    ("report", "le nom de la config n'atteint plus le run",
+     "const run = { ...brut, name: brut.name || config.app?.name || '' };",
+     "const run = { ...brut };"),
+    ("report", "l'onglet réécrit la plateforme que le titre porte déjà",
+     "+ (detonne ? `<span class=\"muted\"> · ${esc(plate || '?')}</span>` : '') + '</button>';",
+     "+ `<span class=\"muted\"> · ${esc(plate || '?')}</span>` + '</button>';"),
+    # ⚠️ L'AUTRE MOITIÉ : la retirer sans condition supprime le seul signal
+    # qu'une page a mélangé deux plateformes.
+    ("report", "l'onglet cesse de signaler une plateforme qui détonne",
+     "+ (detonne ? `<span class=\"muted\"> · ${esc(plate || '?')}</span>` : '') + '</button>';",
+     "+ '</button>';"),
 ]
 
 
