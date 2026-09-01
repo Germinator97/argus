@@ -395,10 +395,25 @@ que le §1 dit déjà du cadrage et sur le repli du paquet voisin (§2f) :
   tout, et c'est pire qu'un choix assumé.
 
 Ce que tu t'autorises alors, et **rien d'autre** : ajouter des `Semantics`
-(`identifier:`, `container:`, `explicitChildNodes:`) et les enveloppes qu'ils
-exigent. Pas de changement de comportement, pas de renommage, pas de
-refactoring « au passage » — ces ajouts-là se relisent en diff et se retirent en
-une commande, ce qui est exactement ce qui les rend acceptables sans accord.
+(`identifier:`, `container:`, `explicitChildNodes:`, `label:` sur un nœud
+anonyme) et les enveloppes qu'ils exigent. Pas de changement de comportement,
+pas de refactoring « au passage » — ces ajouts-là se relisent en diff et se
+retirent en une commande, ce qui est exactement ce qui les rend acceptables
+sans accord.
+
+⚠️ **UNE EXCEPTION, ET ELLE EST NOMMÉE : rendre PUBLIC un widget privé.**
+`_ConfirmSheet` → `ConfirmSheet` est un renommage, donc la phrase ci-dessus
+l'interdisait — alors que le paragraphe « l'état qui ne se monte pas seul » le
+recommande comme **première** option. Un run a buté sur cette contradiction, a
+tranché restrictif à raison, et deux états sont restés hors de l'étage 1.
+Elle était à moi : borner « ce qu'on s'autorise » sans relire ce que le skill
+recommande ailleurs rouvre exactement la contradiction qu'on venait de fermer.
+
+Le critère qui les départage n'est pas « est-ce un renommage » mais **« est-ce
+que ça change ce que le programme FAIT »** : passer un widget de privé à public
+ne change ni son rendu, ni son comportement, ni aucun appelant — c'est une
+visibilité. Elle se relit en diff et se retire en une commande, comme le reste.
+Tout autre renommage (une méthode, un champ, une classe métier) reste interdit.
 
 Et **écris en tête du rapport ce que tu as touché** : les fichiers, le nombre de
 lignes, et la phrase qui dit que ça n'a pas été validé. Un run qui instrumente
@@ -1157,14 +1172,41 @@ make argus-anchors
 make argus-guards      # étage 1, sans device, quelques secondes
 make argus-build       # ⚠️ APRÈS la dernière édition de lib/ — voir plus bas
 make argus-run         # étage 2, sur émulateur
+                       # ⚠️ s'il avertit sur le PLAFOND D'ATTENTE : `make argus-perf` ICI,
+                       #    puis relève startTimeoutMs AVANT les références (voir plus bas)
 make argus-baselines   # références visuelles — ⚠️ LIS L'ENCADRÉ CI-DESSOUS D'ABORD
 make argus-run         # et RELANCE : c'est ce passage-là qui compare
+<la commande de RELEASE de ton projet>   # 🚨 PAS `make argus-build`, qui bâtit le debug
 make argus-perf        # démarrage, mémoire, taille — sur device, ~30 s
 make argus-a11y        # cibles tactiles et libellés — sur device, ~30 s
 make argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes
 make argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque
 make argus-report      # rapport HTML
 ```
+
+🚨 **LA RELEASE MANQUAIT À CETTE LISTE, ET DEUX DIMENSIONS EN DÉPENDENT.** Deux
+runs indépendants, sur deux terrains sans rapport, l'ont construite **hors
+séquence** parce qu'ils n'avaient pas le choix — c'est le signal le plus fort
+qu'un couple de runs puisse donner.
+
+`make argus-build` bâtit le **debug**, celui que le harnais pilote. Or
+`argus-sec` ne conclut que sur un binaire de **publication**, et `binarySizeMb`
+juge ce qui sort. En suivant la liste à la lettre :
+
+| | binaire jugé | après la release | budget |
+|---|---|---|---|
+| un terrain | 62,2 Mo | **27,1 Mo** | 60 |
+| l'autre | 126 Mo | **79,1 Mo** | 60 |
+
+Le premier bascule d'un `major` **faux** à un vert ; le second reste rouge, mais
+pour la bonne raison. Et sans release, MASVS s'arrête en disant qu'un scan de
+sécurité sur un debug ne dit rien de la publication — un verdict honnête qui
+décrit **ton outillage** et pas ton app.
+
+⚠️ **La commande est celle de TON projet** (`--release --obfuscate
+--split-debug-info`, un `--dart-define-from-file`, un flavor…) : le harnais ne
+l'invente pas, il la lit dans `build.androidScan` / `build.iosScan`. Deux
+minutes de build changent deux verdicts.
 
 ⚠️ **SI `argus-run` ÉCHOUE SUR L'ANCRE DE DÉPART, NE DEVINE PAS : LE RUNNER TE
 DONNE L'ORDRE.** Il imprime les trois causes possibles, de la plus probable à la

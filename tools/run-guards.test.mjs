@@ -6029,7 +6029,9 @@ test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () =
   // devient un permis de refactorer.
   const iCode = skill.findIndex((l) => /\*\*Demande confirmation avant d'éditer du code applicatif\*\*/.test(l));
   assert.notEqual(iCode, -1, 'la consigne sur le code applicatif a été reformulée — garde à mettre à jour');
-  const bloc = skill.slice(iCode, iCode + 30).join(' ').replace(/\s+/g, ' ');
+  // 40 lignes : le repli a gagné son exception nommée (302), et la phrase sur le
+  // compte rendu vit désormais à +35. Mesuré, pas élargi au hasard.
+  const bloc = skill.slice(iCode, iCode + 40).join(' ').replace(/\s+/g, ' ');
   assert.match(bloc, /Semantics/,
     'le repli doit dire CE QU\'ON S\'AUTORISE : sans borne, « tranche seul » autorise tout');
   assert.match(bloc, /rapport/,
@@ -6642,6 +6644,84 @@ test('l\'échec d\'installation NOMME sa cause, et l\'indice arrive (301)', () =
   assert.ok(appel && /stderr/.test(appel[1]) && /stdout/.test(appel[1]),
     'les deux flux doivent être passés : adb met son « Failure » sur stdout et sa stack sur stderr, '
     + `et un « || » n'en garderait qu'un (${appel?.[1] ?? '—'})`);
+});
+
+test('la séquence construit la RELEASE, et sait quand insérer perf (302-304)', () => {
+  // 🚨 DEUX RUNS INDÉPENDANTS, DEUX TERRAINS SANS RAPPORT, MÊME DÉFAUT. Les deux
+  // ont dû construire la release HORS séquence parce que `make argus-build`
+  // bâtit le debug, alors que `argus-sec` ne conclut que sur un binaire de
+  // publication et que `binarySizeMb` juge ce qui sort. Suivie à la lettre, la
+  // liste faisait rendre un `major` qui décrit l'outillage : 62,2 Mo au lieu de
+  // 27,1 sur un terrain, 126 au lieu de 79,1 sur l'autre.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+
+  const debut = skill.findIndex((l) => l.trim() === 'make argus-anchors');
+  assert.notEqual(debut, -1, 'la séquence de commandes est introuvable — mets ce garde à jour');
+  const fin = skill.findIndex((l, i) => i > debut && l.trim() === '```');
+  assert.ok(fin > debut, 'la fin du bloc de séquence est introuvable');
+  const bloc = skill.slice(debut, fin);
+
+  // La release est DANS le bloc, et avant les dimensions qui en dépendent.
+  const iRelease = bloc.findIndex((l) => /RELEASE/i.test(l));
+  assert.notEqual(iRelease, -1,
+    'la séquence ne construit toujours pas la release : `argus-sec` scannera un debug et '
+    + '`binarySizeMb` jugera le mauvais binaire — les deux runs ont dû le faire eux-mêmes');
+  // ⚠️ La COMMANDE, pas sa mention : le bloc porte aussi un commentaire qui dit
+  // « `make argus-perf` ICI », et un `includes` le trouvait en premier — le
+  // piège du motif qui matche une mention, une fois de plus.
+  const commande = (/** @type {string} */ nom) => bloc.findIndex((l) => l.trimStart().startsWith(`make ${nom}`));
+  const iSec = commande('argus-sec');
+  const iPerf = commande('argus-perf');
+  assert.ok(iRelease < iSec, 'la release doit précéder argus-sec, qui la scanne');
+  assert.ok(iRelease < iPerf, 'et argus-perf, qui pèse le binaire livré');
+
+  // ⚠️ Et elle ne doit PAS être présentée comme `make argus-build`, qui bâtit
+  // le debug : c'est cette confusion même qui a coûté deux verdicts.
+  // ⚠️ Le DÉBUT de la ligne, pas son contenu : elle porte justement la mise en
+  // garde « PAS `make argus-build` », que le motif nu matchait. Troisième fois
+  // dans cette passe qu'un garde attrape le texte qui interdit ce qu'il traque.
+  assert.ok(!bloc[iRelease].trimStart().startsWith('make argus-build'),
+    'la ligne de release ne peut pas ÊTRE `make argus-build` — c\'est la commande du debug');
+
+  // 304 : l'arête manquante. Le chemin nominal n'a jamais besoin de perf tôt ;
+  // le chemin « démarrage lent » l'exige, et il est fréquent.
+  const iRun = commande('argus-run');
+  const avantBaselines = bloc.slice(iRun, commande('argus-baselines')).join(' ');
+  assert.match(avantBaselines, /argus-perf/,
+    'la séquence ne dit pas d\'insérer argus-perf quand le plafond d\'attente est frôlé : le run '
+    + 'doit alors casser l\'ordre prescrit pour dériver son seuil, sans savoir que c\'est permis');
+});
+
+test('le repli sans interlocuteur NOMME l\'exception qu\'il doit tolérer (302)', () => {
+  // ⚠️ MA PROPRE CONTRADICTION, ROUVERTE PAR MON PROPRE CORRECTIF. Le repli du
+  // 283 disait « rien d'autre … pas de renommage » ; deux paragraphes plus haut
+  // le skill recommande comme PREMIÈRE option de rendre public un widget privé,
+  // ce qui EST un renommage. Un run a tranché restrictif, à raison, et deux
+  // états sont restés hors de l'étage 1. Borner « ce qu'on s'autorise » sans
+  // relire ce que le skill recommande ailleurs rouvre la contradiction qu'on
+  // venait de fermer.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // Le skill recommande toujours de rendre le contenu public — sinon ce garde
+  // compare deux absences.
+  assert.match(skill, /Rendre le contenu public/,
+    'le skill ne recommande plus de rendre un widget privé public : ce garde ne mesure plus rien');
+
+  const i = skill.indexOf('Ce que tu t\'autorises alors');
+  assert.notEqual(i, -1, 'le repli sans interlocuteur a été reformulé — mets ce garde à jour');
+  const bloc = skill.slice(i, i + 1800).replace(/\s+/g, ' ');
+
+  assert.match(bloc, /rendre PUBLIC un widget privé|rendre public un widget privé/i,
+    'le repli interdit le renommage sans nommer l\'exception que le skill recommande ailleurs : '
+    + 'celui qui applique les deux à la lettre se bloque, et tranche seul');
+  // ⚠️ L'AUTRE MOITIÉ : l'exception doit rester BORNÉE. « Plus de renommage
+  // interdit » transformerait le repli en permis de refactorer.
+  assert.match(bloc, /change ce que le programme FAIT|comportement/i,
+    'l\'exception doit donner son CRITÈRE, sinon elle s\'étend à tout renommage');
+  assert.match(bloc, /reste interdit|Tout autre renommage/i,
+    'et redire ce qui demeure interdit — sinon lever une contradiction ouvre une porte');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
