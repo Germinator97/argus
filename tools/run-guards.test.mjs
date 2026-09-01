@@ -6053,6 +6053,43 @@ test('le SKILL donne le GESTE des doubles, et la boucle est dite là où on les 
     'et il faut nommer le phénomène, sinon celui qui le rencontrera ne fera pas le lien');
 });
 
+test('le dépannage de build a son pendant iOS, pas seulement Android (286)', () => {
+  // ⚠️ TROIS ÉCRANS DE DIAGNOSTIC, TOUS ANDROID. Le §3g décrivait
+  // `INSTALL_FAILED_INSUFFICIENT_STORAGE`, le ciblage d'ABI et le marqueur dans
+  // `kernel_blob.bin` — et rien pour l'autre plateforme. Un run iOS s'est
+  // arrêté sur un échec (`native assets … references objective_c`) dont le
+  // symptôme ne ressemble à rien de ce qui est décrit, et l'a résolu seul.
+  //
+  // C'est l'asymétrie du § « ajouter un contrôle d'un côté sans le répliquer
+  // de l'autre » : une omission, pas un choix. Le garde vérifie la PARITÉ des
+  // gestes dont les deux plateformes ont besoin.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const PAIRES = [
+    { quoi: 'désinstaller pour libérer la place',
+      android: /adb -s <udid> uninstall/, ios: /xcrun simctl uninstall/ },
+    { quoi: 'compter un marqueur dans le binaire',
+      android: /flutter-apk\/app-debug\.apk/, ios: /App\.framework\/flutter_assets\/kernel_blob\.bin/ },
+  ];
+  for (const { quoi, android, ios } of PAIRES) {
+    // ⚠️ D'abord le côté Android : s'il a disparu, ce garde compare deux
+    // absences et son vert ne dit rien.
+    assert.match(skill, android, `« ${quoi} » : le geste Android a disparu — ce garde ne compare plus rien`);
+    assert.match(skill, ios,
+      `« ${quoi} » n'a pas son pendant iOS. Un run iOS doit alors le retrouver seul, et le `
+      + 'symptôme qu\'il rencontre ne ressemble à rien de ce que le skill décrit.');
+  }
+
+  // Et l'échec de build propre à iOS, qui n'a aucun équivalent Android.
+  assert.match(skill, /native assets/,
+    'l\'échec `native assets … references objective_c` n\'est nulle part : il est fréquent '
+    + 'après un changement de dépendances, ne nomme aucun coupable utile, et se résout par '
+    + 'le geste qu\'on essaie en dernier');
+  assert.match(skill, /flutter clean && flutter pub get/,
+    'et son remède doit être écrit à côté, sinon le diagnostic ne sert à rien');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run

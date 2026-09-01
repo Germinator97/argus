@@ -1315,6 +1315,22 @@ unzip -p build/app/outputs/flutter-apk/app-debug.apk assets/flutter_assets/kerne
   | grep -a -c "home_empty_root"        # en release : lib/arm64-v8a/libapp.so
 ```
 
+⚠️ **SUR iOS, LE BINAIRE EST UN RÉPERTOIRE — pas d'`unzip`, et le chemin n'est
+pas celui-là.** Il manquait, et un run a dû le retrouver seul :
+
+```bash
+# debug (simulateur) — mesuré : le kernel vit sous App.framework
+grep -a -c "home_empty_root" \
+  build/ios/iphonesimulator/Runner.app/Frameworks/App.framework/flutter_assets/kernel_blob.bin
+```
+
+⚠️ **Ne devine pas le chemin des autres variantes** — device contre simulateur,
+debug contre release, et l'AOT qui n'est plus un kernel. Demande-le au disque :
+`find build/ios -name kernel_blob.bin` en debug, et en release cherche le binaire
+AOT (`find build/ios -path '*App.framework/App'`). La règle des encodages du
+tableau ci-dessus vaut telle quelle — un run l'a re-vérifiée sur iOS : accentué
+= 2, ASCII = 3, impossible = 0.
+
 ⚠️ **Pipe, ne capture jamais** — `$(unzip …)` tronque au premier octet nul et
 rend `0` pour n'importe quel motif. Et fais porter au relevé une **contre-épreuve**,
 un motif dont l'absence serait impossible : un run a pris l'identifiant
@@ -1342,6 +1358,30 @@ obtient `0`, et on conclut « le binaire est périmé ». Sur une app francophon
 littéral que tu choisis a toutes les chances d'être accentué : mesure dans
 l'encodage **du mode que tu as construit**, et fais toujours porter au relevé une
 contre-épreuve dont l'absence serait impossible.
+
+⚠️ **CE QUI SUIT EST ANDROID — et le dépannage iOS n'existait pas du tout.**
+Trois écrans de diagnostic (`INSTALL_FAILED_INSUFFICIENT_STORAGE`, ciblage
+d'ABI, marqueur dans le kernel) et rien pour l'autre plateforme : un run iOS
+s'est arrêté sur un échec dont le symptôme ne ressemblait à rien de ce qui est
+décrit ici.
+
+```
+Exception: The native assets specification … references objective_c,
+which was not found in build/native_assets/ios/
+```
+
+Il est **fréquent après un changement de dépendances**, il ne nomme aucun
+coupable utile, et il se résout par le geste qu'on n'essaie qu'en dernier :
+
+```bash
+flutter clean && flutter pub get     # puis reconstruire
+```
+
+⚠️ Le pendant iOS de « le disque est plein » n'est pas `adb uninstall` mais
+`xcrun simctl uninstall <udid> <bundleId>`, et un simulateur qui refuse de
+lancer se remet d'aplomb par `xcrun simctl shutdown <udid>` puis un nouveau
+`boot` — suivi de `open -a Simulator`, sans quoi aucune fenêtre n'apparaît et
+l'on croit à un plantage.
 
 ⚠️ **`argus-run` peut refuser de démarrer, et c'est prévu.** L'installation n'est
 pas une formalité : sur un émulateur dont `/data` est plein, `adb install` rend
