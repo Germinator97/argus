@@ -28,6 +28,18 @@ demande un réglage device. Ces deux-là sont couvertes par une couche
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 1. Au lancement : cadrer l'intention (dialogue OBLIGATOIRE)
+
+🚨 **SI L'APPLICATION S'AUTHENTIFIE, COMPTE LES APPELS AVANT DE LANCER.**
+`clearState` s'exécute avant chaque flow, donc **chaque flow se reconnecte**.
+Si l'API borne l'envoi d'un code — typique : trois appels par minute — une suite
+de six flows en consomme six, et elle se fait couper au milieu. Ce n'est pas une
+question de configuration : c'est une question à poser **avant** d'écrire le
+premier flow, parce que la réponse change le nombre de flows qu'on écrit.
+
+⚠️ Cette information existait, exacte et complète — dans un commentaire de
+`argus.mobile.yaml`, c'est-à-dire dans un fichier qui **n'existe pas encore**
+quand on planifie. Un run l'a lue après avoir dû raisonner seul dessus, et c'est
+un des rares endroits où il aurait pu casser quelque chose d'irrattrapable.
 ═══════════════════════════════════════════════════════════════════════════════
 N'agis jamais à l'aveugle. Pose d'abord les questions qui changent l'issue (via
 `AskUserQuestion` si disponible, sinon en clair). L'objectif d'abord :
@@ -725,6 +737,21 @@ qu'elle n'a pas tourné, dis que l'instrumentation est *proposée*, jamais
 
 ⚠️ **Combien d'états déclarer — la règle d'arrêt.** « Une racine par état » n'en
 a pas, et sans elle on en déclare treize. Le coût n'est pas nul : chaque état
+
+⚠️ **CINQUIÈME ÉCART LÉGITIME : l'état est atteignable, mais il COÛTE.** Les
+quatre écarts documentés parlent de la NATURE de l'état — inatteignable, non
+déterministe, hors périmètre. Aucun ne parle du prix. Un run a rencontré cinq
+états parfaitement atteignables par un flow, mais au prix de plusieurs dizaines
+de secondes de chronomètre **à chaque exécution** : ils tombent entre le
+troisième écart (« atteignable après un parcours » ⇒ dans `screens[]`) et le
+quatrième (« non atteignable de façon déterministe » ⇒ dehors), et ni l'un ni
+l'autre ne tranche. Il a décidé seul, et sa décision déplaçait **cinq écrans sur
+onze**.
+
+La règle : un état dont l'atteinte coûte plus que ce qu'il prouve reste à
+l'étage 1, et **on l'écrit** — dans `screens[]` avec sa raison, pas en le
+retirant en silence. Un écran absent sans raison se lit comme un oubli ; un
+écran absent avec sa raison est une décision.
 `visual: true` ajoute un passage Maestro complet, soit ~40 s de CI, et treize
 états font neuf minutes pour une seule dimension. Deux critères, dans cet ordre :
 
@@ -743,6 +770,14 @@ figure comme les autres. Lis-le en regard de `coverage.visualScreens` et du
 relevé `startup`, qui eux nomment ce qui a réellement été affiché.
 
 ⚠️ **`argusScreens` et `screens[]` ne se correspondent PAS un pour un**, et
+
+⚠️ **« Laisser `argusScreens` vide » N'EST PAS L'OPTION NEUTRE.** Les suites se
+marquent alors skippées — c'est ce que dit le dartdoc, et c'est vrai. Mais le
+croisement POSÉ → DÉCLARÉ de `make argus-anchors`, lui, **rougit dès qu'une
+ancre existe dans `lib/`**, ce que le mode REGRESS impose par ailleurs. Les deux
+mécanismes interagissent et rien ne le disait. Deux issues : déclarer au moins
+un écran, ou assumer les ancres restantes en `allowUndeclared` **avec leur
+raison** — la seconde est légitime, elle n'est pas un contournement.
 vouloir les aligner casse les deux. **Quatre** écarts légitimes, dans les deux
 sens :
 
@@ -894,6 +929,14 @@ prétendre le contraire fait chercher ailleurs ce qu'on ne trouve pas. Ils porte
 tous le marqueur `ARGUS:OWNED` et **l'installeur te les liste en sortant**, avec
 le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
 
+⚠️ **UN TODO SANS OBJET SE FERME, il ne se supprime pas.** Certains flows livrés
+n'ont rien à recevoir sur un projet donné — pas d'authentification, rien qui
+flotte au-dessus des écrans. L'inventaire de l'installeur les comptait
+indéfiniment comme « à traiter », si bien que le seul relevé que la personne
+suivante lira affichait du travail inachevé qui était achevé. Écris
+`TODO(argus): SANS OBJET — <la raison>` : le compteur l'exclut, et la raison
+reste lisible.
+
 | | Fichier | Ce qu'on y met |
 |---|---|---|
 | **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
@@ -984,9 +1027,9 @@ point de vue, l'élément aura simplement disparu.
 ```bash
 make argus-anchors
 make argus-guards      # étage 1, sans device, quelques secondes
-make argus-build       # `fvm flutter` si le projet l'épingle — ne l'écris pas à la main
+make argus-build       # ⚠️ APRÈS la dernière édition de lib/ — voir plus bas
 make argus-run         # étage 2, sur émulateur
-make argus-baselines   # références visuelles (1re fois, sur le device de la CI)
+make argus-baselines   # références visuelles — ⚠️ LIS L'ENCADRÉ CI-DESSOUS D'ABORD
 make argus-run         # et RELANCE : c'est ce passage-là qui compare
 make argus-perf        # démarrage, mémoire, taille — sur device, ~30 s
 make argus-a11y        # cibles tactiles et libellés — sur device, ~30 s
@@ -994,6 +1037,32 @@ make argus-sec         # MASVS statique sur le binaire — sans device, quelques
 make argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque
 make argus-report      # rapport HTML
 ```
+
+⚠️ **NE CONSTRUIS PAS TANT QUE `lib/` BOUGE.** La séquence place `argus-build`
+au bon endroit, mais rien ne disait de ne pas paralléliser pour gagner du temps.
+Un run l'a fait et a payé deux flows rouges sur un **binaire périmé** — qui ne se
+distingue d'un défaut d'instrumentation par aucun symptôme. Le geste qui tranche
+est en revanche excellent et coûte vingt secondes : compter un marqueur dans le
+binaire, avec une contre-épreuve, **en pipant et jamais en capturant**.
+
+🚨 **AVANT `argus-baselines` : QUE VONT CONTENIR TES RÉFÉRENCES ?** Elles se
+commitent — c'est voulu, une référence non versionnée ne compare rien. Mais sur
+une application qui SERT DES DONNÉES, la capture de l'écran principal les
+contient : un run a mesuré **320 Ko de noms de clients et de numéros de
+commande** prêts à partir dans le dépôt. Sur un projet sous contrat, publier ça
+n'est pas une décision de QA.
+
+Trois issues, et **ne rien décider revient à choisir la troisième sans le
+savoir** :
+
+| | |
+|---|---|
+| `visual: false` sur l'écran | tu perds la comparaison visuelle de cet écran, tu gardes tout le reste. Écris la raison à côté |
+| jeu de données de test dédié | le mieux, quand l'API en a un — la référence devient stable en prime |
+| ne rien faire | les données servies partent dans le dépôt, et l'historique git les garde |
+
+⚠️ **Cette question se décide ICI**, pas au moment de commiter : après
+`argus-baselines`, les fichiers existent déjà.
 
 ⚠️ **LES QUATRE CIBLES DU MILIEU NE SONT PAS FACULTATIVES, et rien ne te le dira
 si tu les sautes.** Le rapport juge **cinq** dimensions ; `argus-run` n'en
@@ -1235,6 +1304,14 @@ d'instrumentation. Coût relevé : deux flows rouges et une passe device de 220 
 Sur Android le même appel est inoffensif — c'est donc un piège qui n'apparaît
 qu'en changeant de plateforme, comme `setAirplaneMode` dans l'autre sens.
 Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleurs.
+
+⚠️ **ET IL FAUT BIEN REFERMER CE CLAVIER.** Le proscrire sans remplaçant laisse
+le problème entier : un clavier ouvert recouvre le bouton de validation, et
+`tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
+sur un run : **taper dans une zone vide de l'écran** — `tapOn: point: 50%,25%`,
+au-dessus des champs et hors de toute commande. Vérifie sur ta capture que ce
+point ne tombe sur rien de tapable ; si l'écran n'a aucune zone morte, remonte
+le bouton plutôt que de masquer le clavier.
 
 ⚠️ **ET SI C'EST UN SEUL FLOW QUE TU METS AU POINT, ne rejoue pas tout.** Un
 `argus-run` complet coûte **310 s** là où le même run filtré en coûte **87** —

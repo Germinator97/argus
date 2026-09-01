@@ -378,8 +378,14 @@ auth:
   # pas y en avoir : la séquence réelle s'écrit dans `login.yaml`, qui
   # t'appartient. Leur rôle se réduit alors à deux choses, et c'est suffisant :
   # ouvrir la porte (`ARGUS_AUTH_READY` exige les cinq) et dire où elle mène
-  # (`success`, la seule ancre POST-connexion du harnais). Renseigne les trois
-  # premières avec les ancres du PREMIER écran.
+  # (`success`, la seule ancre POST-connexion du harnais).
+  #
+  # ⚠️ « Renseigne les trois premières avec les ancres du PREMIER écran » était la
+  # consigne, et elle est IMPOSSIBLE dès que chaque écran n'a qu'UN champ — le cas
+  # même qu'elle prétend traiter. Ces clés nomment des RÔLES dans la séquence, pas
+  # des types de champ : le premier champ qu'on remplit, le second, ce qui valide.
+  # Un run a mis l'ancre du second facteur dans `password` et l'a écrit à côté :
+  # c'est la bonne réponse. Écris chez toi ce que chacune désigne.
   #
   # ⚠️ Cette phrase a longtemps été fausse pour QUATRE des cinq : la condition du
   # sous-flow ne regardait que le champ identifiant. La décision se prend
@@ -422,6 +428,9 @@ auth:
     password: ''   # TODO(argus): champ mot de passe
     submit: ''     # TODO(argus): bouton de validation
     success: ''    # TODO(argus): ancre prouvant que la session est ouverte
+    #                ⚠️ Ces cinq clés nomment des RÔLES, pas des types de champ —
+    #                lis l'encadré au-dessus de `auth:` avant de les remplir.
+
 
 # ── Sécurité (MASVS statique — détection, jamais exploitation) ─────────────
 # ⚠️ Uniquement sur TES propres builds. Jamais de reverse-engineering d'une app

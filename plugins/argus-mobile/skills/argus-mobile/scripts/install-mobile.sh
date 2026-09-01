@@ -309,7 +309,13 @@ while IFS= read -r src; do
   # un premier motif `^[^/]*TODO` avait fait tomber le compte à zéro sur un
   # fichier qui en portait quatre. Deux instruments successifs pour un compteur
   # de quatre lignes.
-  restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep -c 'TODO(argus):' || true)"
+  # ⚠️ UN TODO SANS OBJET DOIT POUVOIR SE FERMER. Deux flows livrés n'ont rien à
+  # recevoir sur certains projets (pas d'authentification, rien qui flotte au-
+  # dessus des écrans), et l'inventaire continuait d'imprimer « 1 TODO(argus) à
+  # traiter » pour eux — indéfiniment, sans moyen d'écrire que c'est traité. Le
+  # seul inventaire que la personne suivante lira affichait donc du travail
+  # inachevé qui était achevé. `TODO(argus): SANS OBJET — <raison>` le ferme.
+  restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET' || true)"
   restant="${restant:-0}"
   if [ "$restant" -gt 0 ]; then
     echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"

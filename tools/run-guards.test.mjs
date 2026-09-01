@@ -5555,6 +5555,42 @@ test('le SKILL et le runner prescrivent la MÊME base de dérivation (259)', () 
     'le SKILL ne présente plus les trois causes dans l\'ordre du runner');
 });
 
+test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
+  // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
+  // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run
+  // avait REMPLIS en gardant le gabarit d'origine en commentaire. Le seul relevé
+  // que la personne suivante lira affichait du travail inachevé qui était achevé,
+  // sans moyen d'écrire « traité : sans objet ».
+  //
+  // ⚠️ Ce garde EXÉCUTE la commande de comptage extraite de l'installeur, il ne
+  // lit pas un motif : c'est la valeur rendue qui compte, pas la ligne d'appel.
+  const installeur = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh'), 'utf8');
+  const m = /restant="\$\(([^)]*\|\|[^)]*)\)"/.exec(installeur)
+    ?? /restant="\$\((.+)\)"/.exec(installeur);
+  assert.ok(m, 'la commande de comptage des TODO a changé de forme — ce garde ne mesure plus rien');
+  const commande = m[1].replace(/"\$TARGET\/\$rel"/g, '"$FICHIER"');
+
+  const dir = mkdtempSync(join(tmpdir(), 'argus-todo-'));
+  try {
+    const compte = (contenu) => {
+      writeFileSync(join(dir, 'f.yaml'), contenu, 'utf8');
+      return Number(execFileSync('bash', ['-c', `FICHIER='${join(dir, 'f.yaml')}'; ${commande}`],
+        { encoding: 'utf8' }).trim());
+    };
+    assert.equal(compte('# TODO(argus): remplir\n'), 1, 'un TODO ouvert doit compter');
+    assert.equal(compte('# TODO(argus): SANS OBJET — pas d\'authentification ici\n'), 0,
+      'un TODO déclaré SANS OBJET doit se fermer, sinon il reste au relevé pour toujours');
+    assert.equal(compte('# TODO(argus): remplir\n# TODO(argus): SANS OBJET — rien\n'), 1,
+      'les deux doivent coexister : fermer l\'un ne ferme pas l\'autre');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // La convention ne sert à rien si personne ne sait qu'elle existe.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /SANS OBJET/,
+    'le SKILL ne dit pas comment fermer un TODO sans objet : la convention existe et reste introuvable');
+});
+
 test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {
   // Le premier utilisateur du parseur, c'est le fichier que l'installeur pose.
   // S'il ne parse pas, TOUS les scripts sortent en 2 et plus rien ne lit la
