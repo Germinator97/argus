@@ -5234,6 +5234,45 @@ test('le titre ANNONCÉ est le titre PUBLIÉ, dans les trois formes (253)', () =
     'et le repli du rendu est le même que celui de titrePublie');
 });
 
+test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisième barreau)', () => {
+  // ⚠️ CE GARDE EXISTE PARCE QUE LE PRÉCÉDENT NE SUFFISAIT PAS. La mutation qui
+  // redonne au journal son propre calcul du titre — le défaut du 253, mot pour
+  // mot — laissait toute la suite VERTE : `titrePublie()` restait juste, et
+  // c'est son CÂBLAGE au journal que plus rien ne tenait. Garde qui lit du
+  // texte < garde qui appelle < exécution du programme ; les deux premiers
+  // étaient là, le troisième manquait.
+  //
+  // Il ne lit donc aucun motif de source : il LANCE report.mjs et compare ce
+  // que le journal annonce à ce que le fichier porte.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-titre-'));
+  try {
+    writeFileSync(join(dir, 'argus.mobile.yaml'),
+      'app:\n  id: com.exemple\nartifact:\n  enabled: true\n  title:\n', 'utf8');
+    // ⚠️ Chemin ABSOLU et racine figée AVANT le changement de dossier : un
+    // chemin relatif ne survit pas au `cwd`, et `realpathSync` des deux côtés
+    // décide si le script se reconnaît comme point d'entrée.
+    const script = join(RACINE,
+      'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs');
+    // ⚠️ stderr COMPRIS : un garde voisin a déjà rougi sur son propre montage
+    // pour avoir lu une sortie amputée.
+    const sortie = execFileSync(process.execPath, [script],
+      { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+    const annonce = (sortie.match(/titre « (.*?) »/) ?? [])[1];
+    assert.ok(annonce, `le journal ne dit plus quel titre il publie — ou le programme n'a pas tourné.\n${sortie}`);
+
+    const page = readFileSync(join(dir, 'argus-mobile-report', 'report.artifact.html'), 'utf8');
+    const publie = (page.match(/<title>(.*?)<\/title>/) ?? [])[1];
+    assert.ok(publie, 'la page publiable ne porte pas de <title> — le montage est cassé, pas le code');
+
+    assert.equal(annonce, publie,
+      'le titre ANNONCÉ n\'est pas le titre PUBLIÉ : le seul lecteur de cette ligne est '
+      + 'celui qui va republier, donc celui que l\'écart trompe');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {
   // ⚠️ CE GARDE FIGE UNE EXÉCUTION, PAS UNE HYPOTHÈSE. Les gardes voisins
   // montent la page telle que `renderArtifact` la rend ; personne ne la montait
