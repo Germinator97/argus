@@ -822,6 +822,20 @@ function findingsFrom(bundles, device, platform, config, startupAnchor = '') {
       const meta = step.metadata ?? {};
       const { key, body } = commandBody(step);
       const selector = selectorOf(step);
+      // ⚠️ LE BON DIAGNOSTIC DOIT SORTIR EN CONSOLE, PAS SEULEMENT DANS LE
+      // RAPPORT. Il était rattaché au champ `actual` du finding — donc lisible
+      // à la fin, dans le HTML — pendant que la console ne portait que
+      // `startupMarginWarning` : « relève le plafond ». Un run l'a suivi et a
+      // relevé à 20, 45 puis 90 s ; la pire attente est venue se coller au
+      // plafond à 80 ms près à chaque fois, parce que l'app affichait « Service
+      // indisponible » et ne démarrait pas du tout. TROIS passes device pour
+      // un diagnostic que le rapport nommait déjà en cause n° 1.
+      // Les deux textes existaient ; seul le mauvais arrivait en premier.
+      const indice = startupHint(selector, startupAnchor, config, key);
+      if (indice && !indiceDeDemarrageDit) {
+        indiceDeDemarrageDit = true;
+        warn(`échec sur l'écran de départ${indice}`);
+      }
       findings.push({
         id: `QAM-${String(findings.length + 1).padStart(3, '0')}`,
         title: body?.label ?? describeCommand(key, body, selector) ?? `étape ${meta.sequenceNumber ?? index}`,
@@ -877,6 +891,11 @@ const SELECTOR_COMMANDS = new Set([
  * @param {string} selector @param {string} startupAnchor @param {any} config
  * @returns {string}
  */
+// ⚠️ Un indice répété à chaque flow en échec n'est plus un indice : sur une suite
+// où l'app ne démarre pas, il sortirait six fois de suite et noierait le reste.
+// Un process = un run, donc un drapeau de module suffit.
+let indiceDeDemarrageDit = false;
+
 function startupHint(selector, startupAnchor, config, commandKey = '') {
   if (!startupAnchor || selector !== `id=${startupAnchor}`) return '';
   // ⚠️ ET SEULEMENT SI L'ÉTAPE ATTENDAIT. Collé à n'importe quelle étape portant

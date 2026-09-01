@@ -5481,6 +5481,44 @@ test('toute dimension que le rapport JUGE est lancée par la séquence du skill 
     + 'le skill à la lettre publiera un rapport à moitié muet, sans que rien ne le signale');
 });
 
+test('le diagnostic de démarrage sort en CONSOLE, pas seulement dans le rapport (258)', () => {
+  // ⚠️ CE POINT A COÛTÉ TROIS PASSES DEVICE À UN RUN. Trois flows mouraient sur
+  // « id: <ancre> is visible ». La console ne portait qu'un seul conseil —
+  // « relève thresholds.startTimeoutMs » — et il a relevé à 20, 45 puis 90 s ;
+  // la pire attente est venue se coller au plafond à 80 ms près à chaque fois.
+  // L'app affichait « Service indisponible » et ne démarrait pas du tout.
+  //
+  // Le bon diagnostic EXISTAIT, exact et hiérarchisé, et nomme cette cause en
+  // n° 1 — mais rattaché au champ `actual` d'un finding, donc lisible dans le
+  // rapport HTML, à la fin. Les deux textes coexistaient ; seul le mauvais
+  // arrivait en premier, par le canal qu'on lit d'abord.
+  //
+  // ⚠️ LIMITE ASSUMÉE DE CE GARDE : il lit la SOURCE. Le troisième barreau
+  // serait d'exécuter run.mjs, qui pilote un device — hors d'atteinte d'ici.
+  // Il ne voit donc pas une valeur neutralisée, seulement un débranchement.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+
+  // Le hint doit être CONSTRUIT une fois et passé aux deux canaux.
+  const appels = [...run.matchAll(/startupHint\(/g)].length;
+  assert.ok(appels >= 2, `startupHint n'est appelé que ${appels} fois — le garde ne mesure plus rien`);
+
+  // Canal 1 : le finding, pour le rapport.
+  assert.match(run, /actual:[\s\S]{0,200}?(startupHint\(|indice)/,
+    'le diagnostic ne va plus dans le finding — le rapport perdrait sa cause n° 1');
+
+  // Canal 2 : la console, celui qu'on lit en premier. C'est CELUI qui manquait.
+  assert.match(run, /warn\([^)]*indice/,
+    'le diagnostic ne sort plus en CONSOLE : un run le lira à la fin, dans le rapport, '
+    + 'après avoir suivi le seul conseil que la console lui donne — relever un plafond '
+    + 'qui n\'y changera rien');
+
+  // ⚠️ L'AUTRE MOITIÉ : un indice répété à chaque flow en échec n'est plus un
+  // indice. Sur une suite où l'app ne démarre pas, il sortirait six fois.
+  assert.match(run, /indiceDeDemarrageDit/,
+    'plus de garde-fou contre la répétition : l\'indice sortirait à chaque flow');
+});
+
 test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {
   // Le premier utilisateur du parseur, c'est le fichier que l'installeur pose.
   // S'il ne parse pas, TOUS les scripts sortent en 2 et plus rien ne lit la
