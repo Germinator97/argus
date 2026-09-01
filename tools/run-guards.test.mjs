@@ -5953,14 +5953,24 @@ test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () =
     `${sites.length} injonction(s) de demander trouvée(s) dans le SKILL — il y en avait deux. `
     + 'Reformulées ? mets ce garde à jour plutôt que de le laisser mesurer le vide.');
 
-  // Ce qui compte comme repli : dire ce qu'on fait quand la réponse ne vient pas.
-  const REPLI = /sans interlocuteur|non interactif|en attendant|Personne ne répond/i;
+  // ⚠️ DEUX FAÇONS DONT CE GARDE A ÉTÉ VACANT, ET LA MUTATION A TROUVÉ LES DEUX.
+  // 1. Chercher « sans interlocuteur » acceptait le TITRE — qui pose le cas sans
+  //    le trancher : retirer la réponse laissait le garde vert.
+  // 2. Chercher un verbe seul acceptait « un run qui INSTRUMENTE sans le dire »,
+  //    une phrase du paragraphe voisin qui ne prescrit rien.
+  // Le critère est donc STRUCTUREL : il faut UNE MÊME LIGNE qui porte à la fois
+  // le cas (personne ne répond) et le geste. Une prose qui parle du cas ailleurs
+  // et d'un geste ailleurs ne prescrit rien.
+  const CAS = /répond|interlocuteur|non interactif|en attendant/i;
+  const GESTE = /\b(instrumente|tranche|inscris|poursuis|publie)\b/i;
   for (const i of sites) {
-    const paragraphe = skill.slice(i, i + 30).join(' ').replace(/\s+/g, ' ');
-    assert.match(paragraphe, REPLI,
+    const paragraphe = skill.slice(i, i + 30);
+    const prescrit = paragraphe.some((l) => CAS.test(l) && GESTE.test(l));
+    assert.ok(prescrit,
       `« ${skill[i].trim().slice(0, 70)}… » (ligne ${i + 1}) demande sans dire quoi faire si personne `
       + 'ne répond. Le §1 prescrit de trancher ; une consigne qui l\'ignore fait décider chaque '
-      + 'run à sa façon, sur le code de quelqu\'un d\'autre.');
+      + 'run à sa façon, sur le code de quelqu\'un d\'autre. Il faut une ligne qui nomme le cas ET '
+      + 'donne le geste.');
   }
 
   // ⚠️ L'AUTRE MOITIÉ : lever la contradiction ne doit pas supprimer la
@@ -5995,7 +6005,10 @@ test('le §3g-bis connaît la page MORTE, et lit avant de renommer (284, 292)', 
   const para = skill.slice(i, j).replace(/\s+/g, ' ');
 
   // Le troisième cas existe, et il dit les trois gestes qui le composent.
-  assert.match(para, /n'existe plus|url morte|URL EST DÉCLARÉE ET LA PAGE N'EXISTE PLUS/i,
+  // ⚠️ Le motif doit désigner le CAS, pas une tournure qui vit ailleurs dans le
+  // paragraphe : « n'existe plus » y apparaît deux fois, et la première version
+  // de ce garde restait verte avec le troisième cas retiré.
+  assert.match(para, /TROISIÈME CAS/,
     'le §3g-bis ne connaît toujours que « présente » et « absente » : une page supprimée '
     + 'n\'a aucun cas, et deux runs s\'y sont arrêtés');
   assert.match(para, /action: "list"/,
@@ -6035,7 +6048,9 @@ test('le SKILL donne le GESTE des doubles, et la boucle est dite là où on les 
   const bloc = skill.slice(Math.max(0, i - 45), i + 20).join(' ').replace(/\s+/g, ' ');
 
   for (const [quoi, rx] of [
-    ['le double d\'un bloc', /MockBloc<|MockCubit</],
+    // ⚠️ `extends` : sans lui, le motif matche la MENTION de MockCubit dans le
+    // commentaire voisin, et le garde survit au retrait du code lui-même.
+    ['le double d\'un bloc', /extends MockBloc<|extends MockCubit</],
     ['le stub de son état', /whenListen\(/],
     ['le double d\'un repository', /extends Mock implements/],
   ]) {
