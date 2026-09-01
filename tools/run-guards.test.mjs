@@ -741,10 +741,27 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
   assert.ok(comptages.length >= 2,
     `${comptages.length} commande(s) de comptage sur harness.dart dans le SKILL — si le bloc a été `
     + 'réécrit, mets ce motif à jour ; sinon ce garde ne garde plus rien');
-  const sansFiltre = comptages.filter((l) => !l.includes('grep -v'));
+  // ⚠️ UNE CONTRE-ÉPREUVE EST UN COMPTAGE SANS FILTRE, ET C'EST SON OBJET. Le
+  // §2b prescrit désormais de vérifier l'instrument avant de lire son zéro : le
+  // même motif SANS `grep -v` doit rendre > 0. Ce garde refusait donc la sonde
+  // qu'il aurait dû exiger.
+  //
+  // La distinction est STRUCTURELLE, pas nominale : une ligne sans filtre est
+  // légitime quand une ligne voisine porte le MÊME motif AVEC le filtre — c'est
+  // exactement la forme d'une contre-épreuve, et rien d'autre ne l'a.
+  const motifDe = (/** @type {string} */ l) => (/grep -c '([^']+)'/.exec(l) ?? [])[1] ?? '';
+  const filtres = new Set(comptages.filter((l) => l.includes('grep -v')).map(motifDe));
+  const sansFiltre = comptages.filter((l) => !l.includes('grep -v') && !filtres.has(motifDe(l)));
   assert.deepEqual(sansFiltre, [],
-    'ces comptages liront le dartdoc d\'exemple et rendront des ancres qui n\'existent pas : '
-    + JSON.stringify(sansFiltre));
+    'ces comptages liront le dartdoc d\'exemple et rendront des ancres qui n\'existent pas, '
+    + 'et aucun comptage filtré du même motif ne les accompagne (donc ce ne sont pas des '
+    + `contre-épreuves) : ${JSON.stringify(sansFiltre)}`);
+
+  // ⚠️ ET LA CONTRE-ÉPREUVE DOIT EXISTER : sans elle, « ces compteurs rendent 0 »
+  // ne distingue pas un filtre qui marche d'un instrument mort.
+  assert.ok(comptages.some((l) => !l.includes('grep -v')),
+    'le §2b ne prescrit plus aucune contre-épreuve : son « doit rendre 0 » redevient '
+    + 'indistinguable d\'un grep cassé, d\'un chemin faux ou d\'un filtre trop large');
 });
 
 // ── Le compteur voit-il les FAMILLES, ou seulement les littéraux ? ──────────
@@ -6722,6 +6739,96 @@ test('le repli sans interlocuteur NOMME l\'exception qu\'il doit tolérer (302)'
     'l\'exception doit donner son CRITÈRE, sinon elle s\'étend à tout renommage');
   assert.match(bloc, /reste interdit|Tout autre renommage/i,
     'et redire ce qui demeure interdit — sinon lever une contradiction ouvre une porte');
+});
+
+test('REGRESS a son contrôle d\'après-instrumentation, et il s\'éprouve (306)', () => {
+  // 🚨 EN REGRESS IL N'Y A AUCUN PATCH INVERSE. Le §4 prouve le retrait par un
+  // `git status` vide — mais en REGRESS l'instrumentation RESTE, donc rien ne
+  // prouve rien. Un run y a perdu trois lignes de code applicatif avec son
+  // propre script (index glissés de neuf positions), et rien ne l'a signalé :
+  // ni le diff (1 577 insertions pour 361 neuves, noyé par la réindentation),
+  // ni l'analyse, qui compilait encore.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('AUCUN PATCH INVERSE');
+  assert.notEqual(i, -1,
+    'le SKILL ne dit pas qu\'en REGRESS rien ne prouve le retrait : le seul contrôle offert '
+    + 'reste un git diff que la réindentation rend illisible');
+  const bloc = skill.slice(i, i + 2200);
+
+  assert.match(bloc, /comm -23/,
+    'le contrôle de jetons n\'est pas donné : c\'est le seul geste qui voie une ligne perdue '
+    + 'dans un diff noyé');
+  // ⚠️ Et il doit exiger sa PROPRE épreuve — un comm qui rend toujours vide ne
+  // dit pas que rien n'est perdu, il dit qu'il ne mesure pas.
+  assert.match(bloc.replace(/\s+/g, ' '), /retire un jeton à la main|prouve l'instrument/i,
+    'le contrôle est donné sans sa contre-épreuve : un « vide » non prouvé est indistinguable '
+    + 'd\'un instrument mort, ce que ce skill refuse partout ailleurs');
+
+  // ⚠️ ET LE GESTE DOIT MARCHER. On l'exécute sur le cas exact du run : un
+  // fichier enveloppé correctement, et le même dont une ligne a sauté. Le diff
+  // de LIGNES ne les distingue pas ; celui des jetons doit les distinguer.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-306-'));
+  try {
+    const avant = 'Widget build() {\n  return Column(children: [\n    Text(titre),\n'
+      + '    Bouton(message: state.message),\n  ]);\n}\n';
+    const bon = 'Widget build() {\n  return Semantics(\n    identifier: "r",\n    child: Column(\n'
+      + '      children: [\n        Text(titre),\n        Bouton(message: state.message),\n'
+      + '      ],\n    ),\n  );\n}\n';
+    const perdu = bon.replace('Bouton(message: state.message)', 'Bouton()');
+    const jetons = (/** @type {string} */ s) =>
+      s.split(/[^A-Za-z0-9_]+/).filter(Boolean).sort();
+    const manquants = (/** @type {string} */ a, /** @type {string} */ b) => {
+      const reste = jetons(b);
+      return jetons(a).filter((t) => {
+        const k = reste.indexOf(t);
+        if (k < 0) return true;
+        reste.splice(k, 1);
+        return false;
+      });
+    };
+    assert.deepEqual(manquants(avant, bon), [],
+      'un enveloppement correct ne doit perdre AUCUN jeton — sinon le contrôle crie au loup '
+      + 'sur chaque instrumentation et on apprend à l\'ignorer');
+    const perdus = manquants(avant, perdu);
+    assert.ok(perdus.includes('message') && perdus.includes('state'),
+      `le contrôle ne voit pas la ligne perdue (${JSON.stringify(perdus)}) : il ne mesure rien`);
+    writeFileSync(join(dir, 'x'), '', 'utf8');   // le dossier sert de témoin de nettoyage
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('les consignes que deux runs ont payées sont écrites (305, 307, 309-315)', () => {
+  // Un garde groupé pour un lot de consignes manquantes, chacune mesurée sur le
+  // terrain. Il ne cite pas de formulation : il vérifie que le SUJET est traité
+  // là où le run l'a cherché.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').replace(/\s+/g, ' ');
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+  const attendus = [
+    ['305', skill, /pas reproductible sur une machine partagée/i,
+      '`firstLaunchMs` varie d\'un facteur 3 selon la charge : un seuil qui en dérive est aussi instable'],
+    ['307', skill, /l'`anchor:` d'un `ArgusScreen` est unique/i,
+      'l\'unicité de l\'anchor n\'était énoncée nulle part, seulement montrée'],
+    ['309', skill, /ne chaîne pas ces quatre lignes/i,
+      '`grep -c` sort en 1 sur zéro : la chaîne se tronque en silence'],
+    ['310', skill, /0` ne prouve rien tout seul|contre-épreuve/i,
+      'la vérification prescrite ne distingue pas un filtre qui marche d\'un instrument mort'],
+    ['312', skill, /le point dépend de l'écran/i,
+      'un `point:` en dur se lit comme une recette et tombe sur une commande'],
+    ['313', skill, /vaut pour toute commande du runner/i,
+      '`--no-install` n\'était documenté que pour `--tags`'],
+    ['314', skill, /n'infère pas `S`|type le double explicitement/i,
+      'le helper générique de doubles n\'infère pas son état'],
+    ['315', skill, /coquille à onglets donne trois réponses/i,
+      'où poser la racine quand un écran n\'est pas un Scaffold'],
+    ['311', yaml, /chaînes QUOTÉES repliées/i,
+      'la forme refusée manquait à la liste, rencontrée sur evidenceAcknowledged'],
+  ];
+  for (const [num, texte, rx, pourquoi] of attendus) {
+    assert.match(texte, rx, `${num} — ${pourquoi} : la consigne n'est pas écrite`);
+  }
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

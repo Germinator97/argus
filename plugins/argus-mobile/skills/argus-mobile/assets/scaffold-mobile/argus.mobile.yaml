@@ -23,6 +23,10 @@
 # NON accepté, et signalé par une erreur explicite plutôt que mal interprété :
 #   ancres/alias (&, *) · blocs multi-lignes (|, >) · maps en flow ({a: 1})
 #   `yes`/`no`/`on`/`off` nus (ambigus en YAML 1.1 — écris true/false)
+#   chaînes QUOTÉES repliées sur plusieurs lignes — cette forme-ci manquait à la
+#   liste, et un run l'a rencontrée sur `evidenceAcknowledged`, dont le
+#   commentaire invite à écrire une phrase. Une valeur tient sur UNE ligne ;
+#   si elle est longue, raccourcis-la, elle est faite pour être relue.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # ── Le cadrage de ce run ───────────────────────────────────────────────────

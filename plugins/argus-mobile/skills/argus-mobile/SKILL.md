@@ -214,6 +214,29 @@ grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
 ```
 
+⚠️ **NE CHAÎNE PAS CES QUATRE LIGNES PAR `&&`.** `grep -c` **sort en 1 quand il
+compte 0** : la chaîne s'arrête alors au premier compteur nul, **sans erreur**,
+et tu lis deux compteurs sur quatre en croyant la commande complète. Vécu — un
+run l'a fait, c'est le geste naturel quand on veut un seul bloc de sortie.
+Lance-les séparément, ou termine chacune par `|| true`.
+
+⚠️ **ET `0` NE PROUVE RIEN TOUT SEUL — il faut une contre-épreuve.** La
+vérification prescrite ci-dessus (« sur le `harness.dart` livré, ces deux
+compteurs doivent rendre `0` ») a un défaut que le skill dénonce partout
+ailleurs : **`0` est aussi ce que rend un instrument mort** — grep tronqué par
+un `&&`, chemin faux, filtre trop large. Un run l'a vu et a ajouté la sonde
+lui-même. Fais-la : le **même motif SANS le filtre `///`** doit rendre `> 0`.
+
+```bash
+grep -c 'ArgusScreen(' test/argus/harness.dart          # doit être > 0 : l'exemple existe
+grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('   # doit être 0
+```
+
+Un `0` d'un côté et un `0` de l'autre ne disent pas « le filtre marche », ils
+disent « je ne mesure rien ». C'est la règle des sondes que ce skill applique au
+marqueur dans le kernel et au chemin inexistant — elle manquait précisément là
+où il demande de vérifier son propre instrument.
+
 ⚠️ **LE COMPTE DE `lib/` EST UN PLANCHER, pas le chiffre du rapport.** Une ancre
 écrite `identifier: 'nav_${spec.id}'` est **un** site et **N** ancres — une par
 onglet, par preset, par ligne de liste. Mesuré sur un projet réel : 31 sites
@@ -347,7 +370,14 @@ build: () {
 ```
 
 `whenListen` stubbe `state` **et** `stream` d'un coup : sans lui, le premier
-`BlocBuilder` lève sur un `stream` nul. `initialState` est ce que l'écran
+`BlocBuilder` lève sur un `stream` nul.
+
+⚠️ **Type le double EXPLICITEMENT si tu l'écris générique.** Un helper de la
+forme `figer<B extends BlocBase<S>, S>(bloc, etat)` **n'infère pas `S`** en Dart
+3.8 depuis une sous-classe d'état concrète (`HomeChargee` pour un `HomeState`) :
+le compilateur remonte à la classe donnée, pas à celle du bloc. Un run y a passé
+neuf sites. Écris `figer<HomeBloc, HomeState>(…)`, ou n'écris pas de helper
+générique — deux lignes par écran coûtent moins qu'une inférence à expliquer. `initialState` est ce que l'écran
 affichera — choisis l'état **peuplé**, pas l'état de chargement, sinon tu
 éprouves un indicateur de progression.
 
@@ -876,6 +906,22 @@ sens :
 | État atteignable seulement après un parcours | oui | oui, monté avec ses doubles |
 | État **non atteignable de façon déterministe** (voir ci-dessous) | **non** | **oui**, monté seul |
 
+⚠️ **L'`anchor:` D'UN `ArgusScreen` EST UNIQUE — et ce n'était écrit nulle
+part.** Le gabarit montre `home-empty` / `home-filled` avec deux ancres
+distinctes sans jamais énoncer la règle, si bien qu'un lecteur qui a une racine
+d'ÉCRAN *et* des racines d'ÉTAT (le cas dominant : un `Scaffold` unique, quatre
+branches de liste) choisit naturellement la racine d'écran pour ses quatre
+entrées. Le garde le refuse — à raison — mais dix minutes plus tard :
+
+```
+Expected: empty   Actual: ['home_root', 'orders_root']
+Deux écrans partagent la même ancre de racine
+```
+
+**Quand plusieurs états partagent une racine d'écran, c'est l'ancre d'ÉTAT qui
+sert d'`anchor:`, et la racine commune passe en `displays:`.** Elle reste ainsi
+vérifiée, sans prétendre distinguer ce qu'elle ne distingue pas.
+
 ⚠️ **La coquille qui EST l'écran de départ est le cas que la table refusait.**
 « Une coquille n'est pas un écran, donc pas d'ancre » est vrai d'une barre
 d'onglets, et faux du conteneur qui **rend l'accueil** : c'est lui que tout flow
@@ -924,6 +970,15 @@ mesure là, en disant lequel n'a pas pu se poser. Ne les écarte pas du harnais 
 ce sont souvent les écrans les plus travaillés, donc ceux qui ont le plus à
 cacher. Retiens en revanche que `waitForAnimationToEnd` expirera sur eux à
 l'étage 2 — mesuré ~7,3 s, au-delà de son propre timeout de 5 s.
+
+⚠️ **UNE COQUILLE À ONGLETS DONNE TROIS RÉPONSES À « OÙ METTRE LA RACINE ».**
+La consigne « la racine va DANS le `SafeArea` quand elle sert de `visualCropOn` »
+suppose *un écran = un `Scaffold`*. Avec une coquille qui porte la barre du haut
+et celle des onglets, on peut la poser dehors, dans le `SafeArea` de la coquille,
+ou dans celui de la page. **Prends celui de la coquille** : le cadrage exclut
+alors la barre d'état, la barre du haut et la barre d'onglets — donc l'horloge
+système, qui est ce que la consigne sert à écarter. Vérifie-le sur la capture,
+c'est une seconde et ça tranche.
 
 ⚠️ **JUSQU'OÙ VA LE PÉRIMÈTRE ? La règle d'arrêt ne porte pas sur les écrans,
 elle porte sur l'ÉTAGE.** Elle manquait, et un run a retenu 8 écrans sur ~13
@@ -1337,6 +1392,19 @@ imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
    touche pas à `coldStartMs` : la lenteur doit rester un finding, pas
    disparaître dans un seuil.
 
+   🚨 **ET `firstLaunchMs` N'EST PAS REPRODUCTIBLE SUR UNE MACHINE PARTAGÉE.**
+   Deux runs l'ont mesuré : **7100 ms puis 2281 ms** sur l'un, un facteur 2 sur
+   l'autre — même binaire, même appareil, même commande, seule la charge de
+   l'hôte change. Un seuil dérivé d'une mesure instable est **aussi instable
+   qu'elle** : un run a dérivé 45 s d'un relevé pris sous deux émulateurs et un
+   build Gradle concurrents.
+
+   Prends donc `firstLaunchMs` **hôte au repos** (rien d'autre qui construise ou
+   pilote), ou dérive du **pire cas que tu as observé** plutôt que du dernier —
+   c'est ce qu'un run a fait, et son seuil a tenu. Et écris d'où vient le
+   chiffre à côté de la clé : sans ça, le suivant le croira mesuré dans les
+   mêmes conditions que lui.
+
    🔴 **SUR iOS, `firstLaunchMs` N'EXISTE PAS** — `argus-perf` n'y mesure aucun
    démarrage (pas d'équivalent local de `am start -W` ; `perf.json` porte un
    `skipReason` qui le dit). Ce conseil a été écrit sans ce cas, et un run iOS
@@ -1502,10 +1570,20 @@ Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleur
 ⚠️ **ET IL FAUT BIEN REFERMER CE CLAVIER.** Le proscrire sans remplaçant laisse
 le problème entier : un clavier ouvert recouvre le bouton de validation, et
 `tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
-sur un run : **taper dans une zone vide de l'écran** — `tapOn: point: 50%,25%`,
-au-dessus des champs et hors de toute commande. Vérifie sur ta capture que ce
-point ne tombe sur rien de tapable ; si l'écran n'a aucune zone morte, remonte
-le bouton plutôt que de masquer le clavier.
+sur un run : **taper dans une zone vide de l'écran**, au-dessus des champs et
+hors de toute commande.
+
+🚨 **LE POINT DÉPEND DE L'ÉCRAN — il n'y a pas de valeur par défaut, et en
+donner une est dangereux.** Ce paragraphe prescrivait `tapOn: point: 50%,25%`.
+Sur un formulaire réel, 25 % de la hauteur tombait **sur une rangée de
+préréglages** : le tap aurait sélectionné un préréglage et changé les valeurs du
+formulaire, **en silence**, sous une assertion qui serait restée verte. Le run
+l'a vu en regardant sa capture — mais un chiffre écrit ici se lit comme une
+recette, et c'est la partie qu'on retient.
+
+Relève donc TON point sur TA capture, et vérifie qu'il ne tombe sur rien de
+tapable. Si l'écran n'a aucune zone morte, remonte le bouton plutôt que de
+masquer le clavier.
 
 ⚠️ **CE QUI SUIT EST ANDROID — et le dépannage iOS n'existait pas du tout.**
 Trois écrans de diagnostic (`INSTALL_FAILED_INSUFFICIENT_STORAGE`, ciblage
@@ -1583,7 +1661,14 @@ node scripts/argus/run.mjs --tags=journey --no-install   # le flow seul, app dé
 ```
 
 `--tags` / `--include-tags` / `--exclude-tags` filtrent, `--no-install` saute la
-pose du binaire quand il n'a pas changé. ⚠️ **Le rapport d'un run filtré porte
+pose du binaire quand il n'a pas changé.
+
+⚠️ **`--no-install` vaut pour TOUTE commande du runner, pas seulement avec
+`--tags`** — `argus-baselines` compris, où il économise le plus (2 min 28 au
+lieu de 6 sur un terrain mesuré). Un run l'y a transposé sans garantie et a dû
+vérifier lui-même que le rapport restait `scope: complet`. Il l'est : sauter la
+pose d'un binaire inchangé ne filtre aucun flow, donc ne réduit aucun
+périmètre. ⚠️ **Le rapport d'un run filtré porte
 son périmètre et un bandeau « partiel »** : c'est voulu, et ça veut dire que le
 DERNIER run avant `argus-report` doit être complet.
 
@@ -1768,6 +1853,33 @@ git diff lib/ > argus-mobile-report/instrumentation.patch
 git apply --reverse argus-mobile-report/instrumentation.patch
 git status --porcelain lib/   # vide à nouveau : le retrait est PROUVÉ, pas supposé
 ```
+
+🚨 **EN REGRESS, IL N'Y A AUCUN PATCH INVERSE — ET C'EST LÀ QU'UNE LIGNE SE
+PERD.** Tout ce qui précède vaut en EXPLORE/DEMO, où l'on retire ce qu'on a
+posé et où `git status` vide **prouve** le retrait. En REGRESS l'instrumentation
+**reste**, donc rien ne prouve rien : le seul contrôle disponible est un `git
+diff`, et la réindentation le rend illisible — **1 577 insertions pour 361
+lignes réellement neuves** sur un terrain mesuré.
+
+Un run y a perdu **trois lignes de code applicatif** (dont un
+`message: state.message,`) avec son propre script d'édition, index de lignes
+glissés de neuf positions. Rien ne l'a signalé : ni le diff, noyé, ni l'analyse,
+qui compilait encore. Le geste qui l'a vu — et qu'il a inventé faute de l'avoir
+lu ici — est un **diff au niveau des JETONS** :
+
+```bash
+# Pour chaque fichier touché : les jetons d'AVANT doivent tous être dans l'APRÈS.
+# Commentaires et blancs retirés — c'est eux que l'enveloppe déplace.
+git show HEAD:lib/x.dart | tr -cs '[:alnum:]_' '\n' | sort > /tmp/avant.txt
+tr -cs '[:alnum:]_' '\n' < lib/x.dart | sort > /tmp/apres.txt
+comm -23 /tmp/avant.txt /tmp/apres.txt      # DOIT être vide
+```
+
+⚠️ **Et prouve l'instrument avant de lire son verdict** : retire un jeton à la
+main dans la copie « après » et vérifie que `comm` le rapporte. Un contrôle qui
+rend toujours vide ne dit pas que rien n'est perdu, il dit qu'il ne mesure pas.
+Le run l'a fait, et son relevé — **0 jeton d'origine perdu sur 17 fichiers** —
+vaut quelque chose pour cette raison seule.
 
 ⚠️ **Ce patch est bien plus gros que ce qu'il fait, et il faut le dire.**
 Envelopper réindente tout le sous-arbre : après formatage, le diff peut tripler.
