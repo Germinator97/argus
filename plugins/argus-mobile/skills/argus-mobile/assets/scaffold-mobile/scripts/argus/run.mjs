@@ -1584,6 +1584,25 @@ export function startupMargin(samples, plafondMs) {
 export function startupMarginWarning(samples, plafondMs, platform = '') {
   const marge = startupMargin(samples, plafondMs);
   if (!marge?.serre) return [];
+  // 🚨 ET IL SE TAIT QUAND L'APP NE DÉMARRE PAS. Le runner imprime d'abord, à
+  // raison, « (1) L'app ne démarre PAS : aucun plafond n'y changera rien » —
+  // puis ce bloc-ci, six lignes plus bas, pressait de relever le plafond de 20 à
+  // 31 s. Vécu : les 20 392 ms relevés étaient le plafond CONSOMMÉ À VIDE, pas
+  // une lenteur, et suivre la fin de la sortie aurait doublé la durée de six
+  // flows condamnés. *Le second bloc ne connaissait pas le diagnostic du
+  // premier.*
+  //
+  // Le critère est net : si AUCUN échantillon n'a atteint l'écran de départ, il
+  // n'y a pas de marge à mesurer — il y a une app qui ne démarre pas.
+  const atteints = (samples ?? []).filter((s) => String(s?.status ?? '').toUpperCase() !== 'FAILED');
+  if (atteints.length === 0) {
+    return [
+      `les ${samples.length} flow(s) ont ÉPUISÉ le plafond (${plafondMs} ms) sans jamais atteindre`,
+      "l'écran de départ. Ce n'est pas une marge trop mince : c'est la cause (1) ci-dessus.",
+      'Regarde la capture avant de toucher au moindre seuil — relever le plafond ne ferait',
+      'que rallonger des flows condamnés.',
+    ];
+  }
   // Sur iOS on ne renvoie pas vers une mesure qui n'existe pas : on dérive du
   // relevé qu'on tient déjà, majoré de moitié pour absorber un hoquet.
   const derivation = String(platform) === 'ios'
@@ -1697,9 +1716,19 @@ async function main() {
   // ⚠️ APRÈS la résolution, pas avant : l'avertissement ne vaut que si la locale
   // du device diffère de celle demandée, et il faut un device pour la lire.
   {
-    const lue = platform === 'android' && resolved.udid && !opts.dryRun
-      ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
-      : '';
+    // ⚠️ ELLE SE LIT SUR iOS AUSSI, et l'avertissement affirmait le contraire.
+    // « la locale de l'appareil n'a pas pu être lue » sortait à CHAQUE passage
+    // device d'un run iOS — cinq fois — alors qu'une seule commande la rend :
+    // `xcrun simctl spawn <udid> defaults read -g AppleLocale` → « fr_CI ».
+    // Un avertissement qu'on ne peut pas faire taire en corrigeant finit ignoré,
+    // et il emmène les autres avec lui : c'est la leçon du 291, ici appliquée à
+    // un message qui accusait l'appareil d'être muet quand c'est nous qui ne
+    // l'interrogions pas.
+    const lue = !resolved.udid || opts.dryRun ? '' : (
+      platform === 'android'
+        ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
+        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()
+    );
     for (const ligne of localeWarnings(
       String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null, platform,
     )) warn(ligne);

@@ -843,6 +843,10 @@ export function posedAnchors(root, config = undefined) {
   // DIT, plutôt que de les compter zéro en silence.
   /** @type {Set<string>} */
   const opaques = new Set();
+  // Les GABARITS : `identifier: 'x_${e.name}'`, que le §2c prescrit pour un
+  // ensemble fini. Une famille, pas une ancre — développée dans `harness.dart`.
+  /** @type {Set<string>} */
+  const familles = new Set();
   (function marcher(/** @type {string} */ dir) {
     let entrees;
     try { entrees = readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -862,7 +866,19 @@ export function posedAnchors(root, config = undefined) {
           .filter((v) => v !== '' && !v.includes('${'));
         if (litteraux.length === 0) {
           const nu = arg.trim();
-          if (nu) opaques.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
+          // ⚠️ UN GABARIT INTERPOLÉ N'EST PAS UNE ANCRE OPAQUE : c'est une
+          // FAMILLE, et le §2c la PRESCRIT pour un ensemble fini d'enum. Le
+          // croisement rendait un ⚠️ permanent et proposait `allowUndeclared`,
+          // qui veut dire « hors périmètre » — alors que les ancres d'un gabarit
+          // sont bel et bien vérifiées, développées dans `harness.dart`. Un run
+          // a préféré garder l'avertissement plutôt que de mentir dans le YAML :
+          // il avait raison, il n'y avait pas de bonne case.
+          //
+          // On les range donc à part. Elles ne sont ni « posées » (on ne peut
+          // pas les confronter) ni « inconnues » (on sait ce qu'elles sont).
+          const gabarit = /'[^']*\$\{[^']*'/.test(nu);
+          if (nu && gabarit) familles.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
+          else if (nu) opaques.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
           continue;
         }
         for (const v of litteraux) poses.add(v);
@@ -873,6 +889,7 @@ export function posedAnchors(root, config = undefined) {
   // Les opaques voyagent à côté, jamais dans la liste : ce ne sont pas des
   // ancres, ce sont des endroits où l'on ne sait pas s'il y en a.
   Object.defineProperty(liste, 'opaques', { value: [...opaques].sort(), enumerable: false });
+  Object.defineProperty(liste, 'familles', { value: [...familles].sort(), enumerable: false });
   return liste;
 }
 
@@ -1820,6 +1837,13 @@ function main() {
       if ((vues.opaques ?? []).length) {
         warn('  Une ancre calculée à l\'exécution ne peut pas être confrontée à une déclaration.');
         warn('  Rends-la littérale, ou inscris-la dans anchors.allowUndeclared avec sa raison.');
+      }
+      // ⚠️ LES GABARITS SE DISENT, MAIS SANS ALARME : ce sont des familles que
+      // le §2c prescrit, développées dans `harness.dart`. Les ranger avec les
+      // opaques poussait à les inscrire en `allowUndeclared`, c'est-à-dire à
+      // écrire « hors périmètre » sur des ancres bel et bien vérifiées.
+      for (const f of vues.familles ?? []) {
+        log(`  famille d'ancres (développée dans harness.dart) : ${f}`);
       }
       return;
     }

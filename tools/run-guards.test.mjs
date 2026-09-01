@@ -6589,12 +6589,18 @@ test('le croisement voit les ancres CONDITIONNELLES, et dit ce qu\'il ne lit pas
     // Ce qu'on ne sait PAS lire doit être DIT. Une clé sans littéral analysable
     // n'est pas une absence d'ancre, c'est une absence de mesure — et la taire
     // déplace simplement le trou.
+    // ⚠️ LE GABARIT A CHANGÉ DE CATÉGORIE AU 329, il n'a pas disparu : c'est une
+    // FAMILLE que le §2c prescrit, pas une ancre illisible. Le phénomène a
+    // bougé, la mesure bouge avec lui — sans quoi on croirait le garde vacant.
     const opaques = vues.opaques ?? [];
-    assert.equal(opaques.length, 2,
-      `2 arguments non lisibles attendus, ${opaques.length} rapporté(s) : ${JSON.stringify(opaques)}`);
+    const familles = vues.familles ?? [];
+    assert.equal(opaques.length, 1,
+      `1 argument vraiment illisible attendu, ${opaques.length} : ${JSON.stringify(opaques)}`);
     assert.ok(opaques.some((o) => o.includes('widget.anchorId')), 'une ancre calculée doit être signalée');
-    assert.ok(opaques.some((o) => o.includes('liste_')), 'un gabarit interpolé aussi');
-    for (const o of opaques) {
+    assert.equal(familles.length, 1,
+      `le gabarit doit être rangé en famille, pas perdu : ${JSON.stringify(familles)}`);
+    assert.ok(familles.some((f) => f.includes('liste_')), 'et nommé');
+    for (const o of [...opaques, ...familles]) {
       assert.match(o, /x\.dart/, 'et chaque signalement doit porter son FICHIER, sinon il est inactionnable');
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -6887,6 +6893,108 @@ test('la cible qui agrège les dettes lit le format que le harnais ÉMET (316)',
   // un code ANSI collé au début de ligne casse l'ancrage `^ +`.
   assert.match(cible, /\\x1b\\\[\[0-9;\]\*m|sed -e 's\/.x1b/,
     'la cible ne retire pas les codes ANSI : une ligne colorée ne commence plus par des espaces');
+});
+
+test('le conseil de plafond se TAIT quand l\'app ne démarre pas (327)', () => {
+  // 🔴 LE RUNNER SE CONTREDISAIT À SIX LIGNES D'INTERVALLE. Il imprime d'abord,
+  // correctement, « (1) L'app ne démarre PAS : aucun plafond n'y changera
+  // rien » — puis ce bloc pressait de relever `startTimeoutMs` de 20 à 31 s.
+  // Vécu : les 20 392 ms relevés étaient le plafond CONSOMMÉ À VIDE, et suivre
+  // la fin de la sortie aurait doublé la durée de six flows condamnés. Le
+  // second bloc ne connaissait pas le diagnostic du premier.
+  const morts = [{ ms: 20392, status: 'FAILED' }, { ms: 20388, status: 'FAILED' }];
+  const sortie = startupMarginWarning(morts, 20000, 'ios').join(' ');
+  assert.ok(sortie, 'le cas doit produire un message — se taire tout à fait perdrait le signal');
+  assert.ok(!/Relève `thresholds.startTimeoutMs`/.test(sortie),
+    'le runner presse encore de relever le plafond alors qu\'aucun flow n\'a atteint l\'écran : '
+    + 'ce n\'est pas une marge trop mince, c\'est une app qui ne démarre pas');
+  assert.match(sortie, /cause \(1\)|capture/i,
+    'et il doit renvoyer au diagnostic n° 1, celui qu\'il vient lui-même d\'imprimer');
+
+  // ⚠️ L'AUTRE MOITIÉ, et sans elle le correctif rendrait le conseil muet pour
+  // de bon : une app LENTE mais qui démarre doit toujours recevoir son conseil.
+  const lents = [{ ms: 19777, status: 'COMPLETED' }, { ms: 8011, status: 'COMPLETED' }];
+  assert.match(startupMarginWarning(lents, 20000, 'ios').join(' '), /Relève `thresholds.startTimeoutMs`/,
+    'une app lente qui DÉMARRE doit encore se voir conseiller de relever le plafond');
+
+  // Et un cas mixte reste un cas de marge : au moins un flow y est arrivé.
+  const mixte = [{ ms: 20392, status: 'FAILED' }, { ms: 19000, status: 'COMPLETED' }];
+  assert.match(startupMarginWarning(mixte, 20000, 'ios').join(' '), /Relève `thresholds.startTimeoutMs`/,
+    'si un seul flow atteint l\'écran, la marge se mesure et le conseil vaut');
+});
+
+test('la locale du simulateur iOS se LIT, elle n\'est pas déclarée illisible (319)', () => {
+  // 🔴 UN AVERTISSEMENT INACQUITTABLE, IMPRIMÉ CINQ FOIS. « la locale de
+  // l'appareil n'a pas pu être lue » sortait à chaque passage device d'un run
+  // iOS — alors qu'une seule commande la rend :
+  //   xcrun simctl spawn <udid> defaults read -g AppleLocale  →  fr_CI
+  // La lecture était gardée par `platform === 'android'` : on n'interrogeait
+  // pas, et le message accusait l'appareil d'être muet.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+
+  // ⚠️ LE CÂBLAGE : sans lui, `localeWarnings` reste juste et reçoit toujours
+  // `null` — la fonction ne peut pas savoir qu'on ne lui a rien donné.
+  assert.match(run, /simctl', 'spawn'[^)]*'AppleLocale'/,
+    'la locale iOS n\'est plus lue : l\'avertissement redeviendra « n\'a pas pu être lue » à '
+    + 'chaque passage device, sans moyen de le faire taire');
+  const bloc = run.slice(run.indexOf('const lue ='), run.indexOf('const lue =') + 700);
+  assert.ok(!/platform === 'android' \?\s*\n?\s*adbShell[^]*?: '';/.test(bloc),
+    'la lecture retombe sur une chaîne vide hors Android — c\'est exactement le défaut');
+
+  // Et le message doit alors NOMMER ce qu'il a lu, pour être actionnable.
+  const divergent = localeWarnings('fr_FR', false, 'fr_CI', 'ios').join(' ');
+  assert.match(divergent, /fr_CI/,
+    'quand les locales diffèrent, le message doit dire CELLE DE L\'APPAREIL : sans elle on ne '
+    + 'sait pas quoi corriger');
+
+  // ⚠️ L'AUTRE MOITIÉ : il se tait quand l'intention est satisfaite. Un
+  // avertissement qu'on ne peut pas faire taire en corrigeant finit ignoré.
+  assert.deepEqual(localeWarnings('fr_CI', false, 'fr_CI', 'ios'), [],
+    'locales identiques : l\'intention est satisfaite, quel qu\'en soit le moyen');
+  assert.deepEqual(localeWarnings('fr_FR', true, null, 'ios'), [],
+    'et avec autoStart le runner règle la locale lui-même : rien à dire');
+});
+
+test('un GABARIT d\'ancre n\'est ni une ancre opaque ni du hors-périmètre (329)', () => {
+  // 🔴 LE 299 SUR SON AUTRE MOITIÉ. J'ai fait voir les ternaires au croisement,
+  // pas les gabarits — que le code écartait explicitement. Or
+  // `identifier: 'orders_filter_${e.name}'` est EXACTEMENT ce que le §2c
+  // prescrit pour un ensemble fini d'enum. Le contrôle rendait un ⚠️ permanent
+  // et ne proposait que `allowUndeclared`, qui veut dire « hors périmètre » —
+  // alors que les ancres du gabarit sont vérifiées, développées dans
+  // `harness.dart`. Un run a préféré garder l'avertissement plutôt que de
+  // mentir dans le YAML : il avait raison, il n'y avait pas de bonne case.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-329-'));
+  try {
+    mkdirSync(join(dir, 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'lib/x.dart'), [
+      "Semantics(identifier: 'home_root', child: A());",
+      "Semantics(identifier: 'orders_filter_\\${f?.name ?? \"all\"}', child: B());",
+      'Semantics(identifier: widget.anchorId, child: C());',
+    ].join('\n'), 'utf8');
+
+    const vues = posedAnchors(dir);
+    assert.deepEqual(vues, ['home_root'], 'seule l\'ancre littérale est confrontable');
+    assert.equal((vues.familles ?? []).length, 1,
+      `le gabarit doit être rangé comme FAMILLE (${JSON.stringify(vues.familles)})`);
+    assert.ok((vues.familles ?? [])[0].includes('orders_filter'), 'et nommé');
+
+    // ⚠️ LA DISTINCTION EST TOUT L'ENJEU : un gabarit n'est pas une ancre
+    // calculée. Les confondre pousse à écrire « hors périmètre » sur du
+    // vérifié — ce que le run a refusé de faire, à raison.
+    assert.equal((vues.opaques ?? []).length, 1,
+      `seule l'ancre calculée est opaque (${JSON.stringify(vues.opaques)})`);
+    assert.ok((vues.opaques ?? [])[0].includes('anchorId'));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // Et le verdict doit les dire SANS alarme — c'est ce qui les sépare.
+  const conf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  const bloc = conf.slice(conf.indexOf('for (const f of vues.familles'), conf.indexOf('for (const f of vues.familles') + 200);
+  assert.match(bloc, /log\(/,
+    'les familles doivent sortir en log, pas en warn : les alarmer poussait à les inscrire en '
+    + 'allowUndeclared, donc à déclarer hors périmètre des ancres vérifiées');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
