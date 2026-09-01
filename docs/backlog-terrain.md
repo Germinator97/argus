@@ -4477,10 +4477,79 @@ avec témoin. Sans les trois premiers gestes, le contrôle relit les copies que
 `filter-branch` laisse exprès et rend le même compte qu'avant — on croit la
 purge ratée alors qu'elle a réussi.
 
+### 256-274. ✅ Corrigés le 01/09/2026 — la vague Android : DEUX runs, DEUX terrains, LES MÊMES défauts
+
+**Test de non-régression demandé par Germinator** : deux runs Android en
+parallèle, un sur chaque terrain, agents vierges, sans se connaître. Le résultat
+qui compte tient en une ligne : **ils ont buté au même endroit, deux fois**.
+
+| | ce que les DEUX ont trouvé |
+|---|---|
+| **256** | le SKILL documentait `url: { ios: …, android: … }` — une map en **flow** — que son propre parseur refuse depuis toujours, et que son en-tête exclut explicitement. **Exit 2 : plus aucun script ne lit la config.** C'est la régression du **245**, écrite la veille au soir. **Trois** endroits la montraient, pas les deux que les runs ont vus : le troisième est le dartdoc de la fonction, qu'un lecteur prend pour une prescription |
+| **257** | la séquence lançait sept commandes pour **cinq** dimensions, dont `argus-run` n'en alimente qu'une. `argus-sec`, `argus-sca` et le a11y device : **zéro occurrence** dans tout le SKILL. Les deux runs ont publié un rapport à moitié muet en le suivant à la lettre — et le rapport écrit honnêtement « 1/5 dimensions », ce qui se lit comme une information, jamais comme une alarme |
+
+⚠️ **LE GARDE DU 245 NE POUVAIT PAS VOIR LE 256** : il appelle `artifactFor()`
+avec un **objet JavaScript**, donc il n'emprunte jamais le chemin YAML → config.
+Le troisième barreau, encore — sur le point même où on croyait l'avoir posé le
+matin.
+
+Les autres, par ordre de coût :
+
+| | |
+|---|---|
+| **258** | **le bon diagnostic n'atteignait que le rapport.** Trois flows morts sur « id: <ancre> is visible » ; la console ne donnait qu'un conseil — relève le plafond — et un run l'a relevé à 20, 45 puis 90 s, la pire attente venant se coller au plafond **à 80 ms près** à chaque fois. L'app affichait « Service indisponible ». **Trois passes device.** Le bon texte existait, exact et hiérarchisé, dans le champ `actual` d'un finding |
+| **259** | deux bases de dérivation **contradictoires** pour le même seuil : « le maximum observé » (90 053 ms) contre `firstLaunchMs` (9 126). Facteur dix. Aucun test ne pouvait le voir — un écart entre deux textes n'a aucun comportement à casser |
+| **260** | le tell de la boucle de micro-tâches était **inversé** : « quelques pour cent de CPU » annoncés, **120,6 %** mesurés. Une boucle serrée ne dort pas. Le critère donné aurait fait écarter le bon diagnostic |
+| **261** | `goto.yaml` pousse à écrire une récursion et ne dit rien là où on l'écrit ; l'avertissement vit dans le linter, qui parle **après** |
+| **262** | le format du rapport avait **une** case là où le §2c prescrit **deux** noms de paramètre. Un format qui prescrit sans donner de case fait inventer |
+| **263** | le coût de `argus-baselines` annoncé à trois passes, **mesuré à 5 min 50** — facteur trois. Il a fait sur-budgéter au point d'envisager de couper la contre-épreuve visuelle |
+| **264** | le raccourci qui divise le troisième temps par trois vit cent lignes plus bas |
+| **265** | **les références visuelles d'écrans authentifiés contiennent les données servies, et elles se commitent** : 320 Ko de noms de clients mesurés. Sur un projet sous contrat, ce n'est pas une décision de QA — et le skill ne posait jamais la question, surtout pas là où elle se décide |
+| **266** | « laisser `argusScreens` vide » n'est pas l'option neutre annoncée : le croisement POSÉ → DÉCLARÉ rougit dès qu'une ancre existe dans `lib/` |
+| **267** | rien n'interdisait de construire pendant que `lib/` bouge — un run a payé deux flows rouges sur un **binaire périmé**, qu'aucun symptôme ne distingue d'un défaut d'instrumentation |
+| **268** | les cinq clés `auth.anchors` décrivent un **formulaire**, et la consigne « renseigne les trois premières avec les ancres du PREMIER écran » est **impossible** dès qu'un écran n'a qu'un champ — le cas même qu'elle prétend traiter |
+| **269** | `hideKeyboard` proscrit **sans remplaçant**, alors qu'un clavier ouvert recouvre le bouton de validation |
+| **271** | le coût d'une suite authentifiée face à un endpoint borné vivait dans un commentaire d'`argus.mobile.yaml` — un fichier qui **n'existe pas encore** quand on planifie |
+| **273** | un `TODO(argus)` sans objet ne pouvait jamais se fermer : le seul inventaire que la personne suivante lira affichait du travail inachevé qui était achevé |
+| **274** | cinquième écart légitime : l'état est atteignable mais il **COÛTE**. Les quatre écarts documentés parlent de nature, aucun de prix — et la décision prise seule déplaçait cinq écrans sur onze |
+
+### 270 et 272. ✅ DÉMENTIS à la reproduction — 01/09/2026
+
+Deux sur dix-neuf, le taux habituel. Ils restent ici : ce qui vaut n'est pas le
+correctif, c'est la raison pour laquelle on cherchait au mauvais endroit.
+
+- **272** — « la mesure des 216 px vit dans la méthodologie, je l'ai lue après
+  avoir posé mes racines ». **Faux** : elle est au **§2**, exactement là où l'on
+  pose les racines, avec le chiffre, l'horloge système et un renvoi pour le
+  détail. Le run l'a manquée ; elle n'est pas mal placée.
+- **270** — « l'installeur annonce *1 conservé* sans dire lequel, et `--check`
+  n'imprime aucune liste ». **Faux des deux côtés** : la ligne qui nomme le
+  fichier est **directement au-dessus** de l'incrément du compteur, et `--check`
+  lancé sur un terrain en retard imprime bien ses fichiers, nommément — mesuré.
+  Sur un terrain à jour il n'a rien à dire, ce qui est correct.
+
+📌 **Ce que l'écriture des gardes a trouvé en plus des runs** : le garde du 256 a
+débusqué **deux occurrences que ni les runs ni aucun `grep` n'avaient vues** — et
+**deux FAUSSES**, le gabarit de cadrage en prose de la méthodologie
+(`APP : { pubspec: … }`), qu'il ne fallait surtout pas « corriger ». Le motif est
+ancré sur la forme d'une clé YAML.
+
+⚠️ **Et un garde EXISTANT est tombé sur un correctif juste, troisième fois de la
+journée** : il exigeait le backtick collé à « Relève », or la reformulation dit
+« Relève alors ». Le phénomène n'avait pas bougé, seul son ancrage était trop
+serré.
+
+⚠️ **Le piège de zsh, payé sur ma propre procédure.** Les archives des deux runs
+étaient **vides de leurs racines** : `tar czf … $racines` non quoté ne fait pas
+de word-splitting sous zsh, l'outil reçoit un seul nom de fichier. C'est le
+contrôle de couverture qui l'a vu — 38 et 36 fichiers manquants — pas moi, et
+`check-etalons.sh` rendait « 0 manquant » puisqu'il vérifie la présence des
+fichiers, jamais leur contenu.
+
 ## Ce qui reste
 
-Les points **251 à 255** sont fermés le 01/09/2026 — backlog vide pour la
-**trente-cinquième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
+Les points **251 à 274** sont fermés le 01/09/2026 — backlog vide pour la
+**trente-sixième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
 s'était noté, et les deux autres sont nés en le fermant — le 252 d'une remarque
 de Germinator sur la page qu'il venait d'ouvrir, le 253 d'un `grep` fait pour
 autre chose. **Quatrième fois que la publication trouve ce que l'exécution ne
