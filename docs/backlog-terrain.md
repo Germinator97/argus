@@ -4404,9 +4404,41 @@ laissée sur une valeur de test allait **renommer la page** à la republication.
 SKILL le dit, et c'est en le lisant qu'on s'arrête — ce point-là se paie une fois
 par personne.
 
+### 254. ✅ Corrigé le 01/09/2026 — le titre disait l'identifiant, et les onglets le répétaient
+
+Signalé par Germinator en regardant la page publiée du 252, **deux heures après**
+l'avoir demandée. Le correctif de la veille était juste et incomplet : il nommait
+le projet par son `appId`, et laissait la plateforme se répéter sur chaque
+onglet.
+
+- **Le NOM, pas l'identifiant.** `app.name` existait déjà dans le yaml, et son
+  propre commentaire annonçait qu'il « sert d'étiquette dans les rapports » —
+  **rien ne s'en servait**. Un titre se lit : « monapp — ios — rapport QA » se
+  reconnaît dans une galerie, « com.exemple.app — ios — rapport QA » se
+  déchiffre. Repli sur l'identifiant, qui ne manque jamais.
+- **La plateforme ne se répète plus.** Une page décrit UNE plateforme depuis le
+  245, et le titre la porte : la réécrire sur chaque onglet donnait la même
+  information trois fois de suite. ⚠️ Mais la retirer **sans condition**
+  supprimerait le seul signal qu'une page a **mélangé** deux plateformes — ce
+  que le 245 rend possible sans l'interdire. Elle ne s'affiche donc que
+  lorsqu'elle **diffère** du run courant, et c'est alors une anomalie.
+
+⚠️ **UNE DES QUATRE MUTATIONS NE COUPE PAS LA FONCTION MAIS SON CÂBLAGE** :
+`report.json` ne porte pas le nom du projet — il décrit un run, pas un dépôt —,
+donc `main()` le prend dans la config. Ce chaînon casse **en silence** : le titre
+retombe sur l'identifiant. Aucun test unitaire ne peut le voir, puisque la
+fonction du titre reçoit déjà le nom qu'on lui donne. C'est le garde qui **lance
+report.mjs** qui l'attrape — la leçon du 253, appliquée le jour même à la passe
+qui l'a produite.
+
+📌 **Le garde du 223 est retombé, une seconde fois en deux heures**, et c'est
+exactement son rôle depuis qu'il **construit** son gabarit avec la fonction : le
+format a changé, donc la doc doit suivre. Un garde qui aurait cité la chaîne
+aurait accusé un correctif juste, pour la deuxième fois.
+
 ## Ce qui reste
 
-Les points **251 à 253** sont fermés le 01/09/2026 — backlog vide pour la
+Les points **251 à 254** sont fermés le 01/09/2026 — backlog vide pour la
 **trente-cinquième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
 s'était noté, et les deux autres sont nés en le fermant — le 252 d'une remarque
 de Germinator sur la page qu'il venait d'ouvrir, le 253 d'un `grep` fait pour
