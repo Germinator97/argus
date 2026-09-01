@@ -362,7 +362,7 @@ const DEFAULTS = {
   budget: { maxMinutes: 25, maxFlows: 40 },
   gate: { failOn: ['blocker', 'critical', 'major'], failOnVisualDiff: true, failOnEmptyRun: true },
   artifacts: { dir: 'argus-mobile-report', baselines: '.maestro/_baselines' },
-  artifact: { enabled: false, url: '', title: '', icon: '', evidence: 'all', maxMb: 12 },
+  artifact: { enabled: false, url: '', title: '', icon: '', evidence: 'all', evidenceAcknowledged: '', maxMb: 12 },
 };
 
 /** @param {any} v @returns {boolean} */
@@ -458,11 +458,23 @@ export function validateConfig(config) {
   // Publier envoie le rapport — captures comprises — à un service tiers. Le
   // rappeler ici plutôt que dans la doc seule : c'est au moment de lire sa
   // config qu'on vérifie ce qu'on a activé, pas en relisant un README.
-  if (config.artifact?.enabled && ['all', 'major'].includes(evidence)) {
+  //
+  // ⚠️ ET IL DOIT POUVOIR SE FERMER. Cet avertissement sortait à CHAQUE
+  // exécution — une dizaine de fois par run — sans qu'aucune clé n'enregistre
+  // qu'on avait vérifié. Un avertissement qu'on ne peut pas acquitter finit
+  // ignoré, et il emmène les autres avec lui : c'est exactement ce que le skill
+  // reproche aux TODO sans objet, appliqué à sa propre sortie.
+  //
+  // `evidenceAcknowledged:` porte la RAISON, pas un booléen nu : « app interne,
+  // pas de donnée client » se relit dans six mois, `true` ne se relit pas.
+  const acquitte = String(config.artifact?.evidenceAcknowledged ?? '').trim();
+  if (config.artifact?.enabled && ['all', 'major'].includes(evidence) && !acquitte) {
     problems.push({
       level: 'warn',
       message: 'artifact.enabled et artifact.evidence=' + evidence + ' : les captures d\'écran de l\'app '
-        + 'partiront avec le rapport publié. Sur une app sous contrat, vérifie que c\'est permis.',
+        + 'partiront avec le rapport publié. Sur une app sous contrat, vérifie que c\'est permis — '
+        + 'puis inscris la raison dans artifact.evidenceAcknowledged pour fermer cet avertissement '
+        + '(artifact.evidence: none si les captures ne doivent pas partir).',
     });
   }
 

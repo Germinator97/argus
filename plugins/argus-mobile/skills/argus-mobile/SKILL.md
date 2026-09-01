@@ -1313,6 +1313,24 @@ contre-épreuve visuelle**, c'est-à-dire la seule chose qui prouve que la
 comparaison mesure. Un chiffre pris sur un autre terrain fait renoncer à la
 vérification qu'il devait aider à prévoir : c'est pourquoi il n'y en a plus ici.
 
+⚠️ **ET SI UN FLOW CONNU-ROUGE REND LA GÉNÉRATION INFAISABLE ?** Le cas n'avait
+pas de geste. `argus-baselines` rejoue la suite fonctionnelle avant de produire
+les captures : un flow qui **gèle** — 6 min 20 par passage sur un terrain réel,
+sur un défaut de l'app déjà identifié — multiplie ce coût par le nombre de
+passes, et la contre-épreuve visuelle devient la première chose qu'on sacrifie.
+Le §3g l'autorisait « en esprit » sans jamais donner la commande :
+
+```bash
+node scripts/argus/run.mjs --tags=visual --exclude-tags=functional,lifecycle
+```
+
+⚠️ **Deux conditions, et elles ne sont pas facultatives** : le flow exclu doit
+être **déjà inscrit dans `known_issues.dart`** — sinon tu ne l'exclus pas, tu le
+caches —, et le **dernier run avant `argus-report` doit rester complet**, sinon
+le rapport publie un périmètre amputé sous un bandeau que personne ne lit. Écris
+l'exclusion et sa raison dans le rapport : « références générées hors
+`functional`, flow X rouge sur <défaut>, inscrit en dette ».
+
 ⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
 puis **remplacer une référence par un aplat AUX DIMENSIONS EXACTES de celle
 qu'il remplace** et vérifier que celle-là seule rougit. Sans le troisième temps,

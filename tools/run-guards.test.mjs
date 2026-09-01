@@ -6153,6 +6153,70 @@ test('le périmètre a une règle d\'arrêt, et l\'écran à horloge un critère
     'le runner ne filtre plus sur `visual` : le SKILL prescrirait une clé que plus rien ne lit');
 });
 
+test('générer les références reste faisable quand un flow gèle (289)', () => {
+  // ⚠️ LE CAS N'AVAIT PAS DE GESTE. `argus-baselines` rejoue la suite
+  // fonctionnelle avant de produire les captures ; un flow qui GÈLE — 6 min 20
+  // par passage sur un terrain réel, sur un défaut de l'app déjà identifié —
+  // multiplie ce coût, et la contre-épreuve visuelle devient la première chose
+  // qu'on sacrifie. Le §3g l'autorisait « en esprit » sans donner la commande,
+  // et un run a dû la trouver seul.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('UN FLOW CONNU-ROUGE');
+  assert.notEqual(i, -1,
+    'le SKILL ne dit toujours pas quoi faire quand un flow gelé rend la génération infaisable');
+  const bloc = skill.slice(i, i + 1400).replace(/\s+/g, ' ');
+
+  assert.match(bloc, /--exclude-tags=/,
+    'le geste doit être ÉCRIT, pas suggéré : c\'est ce qui manquait');
+  // ⚠️ Les deux conditions, sans lesquelles le raccourci devient une échappatoire.
+  assert.match(bloc, /known_issues\.dart/,
+    'sans l\'inscription en dette, on n\'exclut pas le flow : on le CACHE');
+  assert.match(bloc, /dernier run avant `argus-report` doit rester complet/,
+    'et le rapport publierait un périmètre amputé sous un bandeau que personne ne lit');
+
+  // ⚠️ Et le drapeau prescrit doit EXISTER dans le runner.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(run, /'--exclude-tags'/,
+    'le runner ne connaît plus --exclude-tags : le SKILL prescrirait un drapeau mort');
+});
+
+test('l\'avertissement sur les captures peut se FERMER (291)', () => {
+  // ⚠️ IL SORTAIT À CHAQUE EXÉCUTION — une dizaine de fois par run — sans
+  // qu'aucune clé n'enregistre qu'on avait vérifié. Un avertissement qu'on ne
+  // peut pas acquitter finit ignoré, et il emmène les autres avec lui : c'est
+  // ce que le skill reproche aux TODO sans objet, appliqué à sa propre sortie.
+  const base = {
+    app: { id: 'com.exemple' }, thresholds: { visualMatchPercentage: 95 }, screens: [],
+    artifact: { enabled: true, evidence: 'all' },
+  };
+  const avertissements = (/** @type {any} */ patch) => (validateConfig({
+    ...base, artifact: { ...base.artifact, ...patch },
+  }) ?? []).filter((/** @type {any} */ p) => /captures d/.test(p.message));
+
+  assert.equal(avertissements({}).length, 1,
+    'sans acquittement, l\'avertissement doit sortir — sinon ce garde ne mesure rien');
+  assert.equal(avertissements({ evidenceAcknowledged: 'app interne, aucune donnée client' }).length, 0,
+    'une raison inscrite doit le fermer : c\'est tout l\'objet du correctif');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui empêche l'échappatoire : un
+  // acquittement VIDE ne ferme rien. Sinon la clé devient un interrupteur qu'on
+  // pose sans réfléchir, ce que « écris la raison » servait à empêcher.
+  assert.equal(avertissements({ evidenceAcknowledged: '   ' }).length, 1,
+    'un acquittement blanc ne doit rien fermer : la valeur est la RAISON, pas un booléen');
+
+  // Et le vrai remède quand les captures ne doivent pas partir reste offert.
+  assert.equal(avertissements({ evidence: 'none' }).length, 0,
+    'evidence: none n\'envoie aucune capture, donc n\'a rien à faire acquitter');
+
+  // Le message doit dire les DEUX issues, sinon on acquitte ce qu'il fallait couper.
+  const msg = avertissements({})[0].message;
+  assert.match(msg, /evidenceAcknowledged/, 'le message doit nommer la clé qui le ferme');
+  assert.match(msg, /evidence: none/,
+    'et rappeler que si les captures ne doivent PAS partir, l\'acquittement est la mauvaise porte');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run

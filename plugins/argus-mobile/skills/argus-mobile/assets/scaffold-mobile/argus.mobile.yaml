@@ -614,6 +614,15 @@ artifact:
   # « none » laisse les chemins, comme dans le rapport local : rien de l'app ne
   # part, mais la page ne se suffit plus à elle-même.
   evidence: all
+  # ⚠️ CE QUI FERME L'AVERTISSEMENT SUR LES CAPTURES. Tant qu'elle est vide,
+  # `config.mjs` rappelle à CHAQUE exécution que les captures d'écran partiront
+  # avec le rapport publié — une dizaine de fois par run. C'est voulu tant que
+  # personne n'a tranché, et insupportable une fois que si : un avertissement
+  # qu'on ne peut pas acquitter finit ignoré, et il emmène les autres avec lui.
+  # Écris la RAISON, pas un booléen — « app interne, aucune donnée client » se
+  # relit dans six mois, `true` ne se relit pas. Et si les captures ne doivent
+  # PAS partir, c'est `evidence: none` qu'il faut, pas un acquittement.
+  evidenceAcknowledged: ''
   # Plafond de la page. Ce qui ne rentre pas est ANNONCÉ dans le rapport, jamais
   # retiré en silence — une preuve absente sans un mot se lit « pas de preuve ».
   maxMb: 12
