@@ -1070,7 +1070,23 @@ l'écran est simplement absent du rapport, et `coverage.notConfigured` le liste 
 que personne ne sache que la ligne devait y être.
 
 **d. Vérifier avant de lancer** : `node scripts/argus/config.mjs` (config
-résolue + outillage) puis `make argus-lint` (syntaxe des flows, sans device).
+résolue + outillage + **fichiers de config non embarqués**) puis `make argus-lint`
+(syntaxe des flows, sans device).
+
+🚨 **« PRÉSENT » NE VEUT PAS DIRE « EMBARQUÉ », et c'est le défaut le plus cher
+du parcours.** Un fichier de configuration posé dans les sources que **rien ne
+câble** n'arrive jamais dans le binaire : l'app lève au lancement, affiche son
+écran d'erreur, et **tous** les flows rougissent en accusant l'instrumentation.
+Vécu : un `GoogleService-Info.plist` référencé nulle part dans le projet Xcode —
+six flows rouges, ~36 min d'appareil, pour quelque chose que `config.mjs` dit
+désormais en quelques millisecondes et **sans device**. Le rapport le porte aussi
+(dimension `configuration`), mais il arrive après.
+
+⚠️ **Trois familles sont contrôlées d'office** — Firebase iOS, Firebase Android,
+polices — **et ce n'est pas une liste, c'est un mécanisme.** Tout fichier
+présent dont le nom n'apparaît pas dans la déclaration qui l'embarque est
+signalé ; déclare les tiens dans `argus.mobile.yaml → configFiles:`. Énumérer
+les cas connus rendrait « 0 » sur le prochain fichier que personne n'a imaginé.
 ⚠️ Passe par la cible, pas par l'outil : `maestro check-syntax` n'accepte
 **qu'un fichier à la fois** et rend `Unmatched argument at index 2` sur le
 second — `argus-lint` boucle pour toi.

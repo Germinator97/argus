@@ -921,6 +921,126 @@ export function undeclaredAnchors(root, config) {
 }
 
 /**
+ * Les familles de fichiers dont la PRÉSENCE ne prouve pas l'EMBARQUEMENT.
+ *
+ * ⚠️ CE N'EST PAS UNE LISTE DE FICHIERS FIREBASE, ET C'EST VOULU. Le cas vécu
+ * était un `GoogleService-Info.plist` posé dans les sources et référencé nulle
+ * part dans le projet Xcode : jamais copié dans le bundle, l'init lève au
+ * lancement, l'app affiche son écran de service indisponible, et les six flows
+ * rougissent en accusant l'instrumentation. Six flows, ~36 min d'appareil.
+ *
+ * Mais coder « si Firebase » reproduirait le défaut que ce dépôt reproche
+ * ailleurs : énumérer les défauts CONNUS au lieu de mesurer le PHÉNOMÈNE. Le
+ * phénomène est le même pour tous — un fichier posé dans les sources que rien
+ * ne câble, donc jamais embarqué, et dont l'absence ne se voit qu'à l'exécution.
+ * Seule change la déclaration qui fait l'embarquement.
+ *
+ * Chaque règle dit donc trois choses, et rien de plus : QUOI chercher sur le
+ * disque, QUELLE déclaration le câble, ce qui CASSE sinon. Un projet ajoute les
+ * siennes dans `argus.mobile.yaml → configFiles:` — c'est la réponse à « il y a
+ * d'autres fichiers de config », qui est vraie et le restera.
+ *
+ * ⚠️ Ce qui n'est PAS ici est aussi une décision : les assets Flutter
+ * ordinaires en sont absents. Un asset manquant lève **bruyamment** au premier
+ * usage, donc il se diagnostique tout seul ; l'inclure noierait les trois cas
+ * silencieux sous des lignes sans valeur. On ne contrôle que ce qui échoue SANS
+ * le dire.
+ */
+export const CONFIG_FILES = [
+  {
+    id: 'firebase-ios',
+    quoi: 'ios/Runner/GoogleService-Info.plist',
+    cable: 'ios/Runner.xcodeproj/project.pbxproj',
+    casse: "l'initialisation Firebase lève au lancement : l'app affiche son écran d'erreur "
+      + 'et TOUS les flows rougissent en accusant l\'instrumentation',
+  },
+  {
+    id: 'firebase-android',
+    quoi: 'android/app/google-services.json',
+    cable: ['android/app/build.gradle', 'android/app/build.gradle.kts'],
+    motif: 'google-services',
+    casse: "le plugin Gradle qui LIT ce fichier n'est pas appliqué : Firebase ne s'initialise pas",
+  },
+  {
+    id: 'polices',
+    quoi: { sous: 'assets', extensions: ['.ttf', '.otf'] },
+    cable: 'pubspec.yaml',
+    casse: 'la police retombe en SILENCE sur celle du système — aucune exception, aucun log, '
+      + 'et le texte change de fonte au milieu d\'un mot',
+  },
+];
+
+/**
+ * Les fichiers de configuration présents dans les sources que RIEN ne câble.
+ *
+ * Le mécanisme est unique et la table est de la donnée : pour chaque règle, le
+ * fichier doit exister (sinon il n'y a rien à dire — un projet sans Firebase
+ * n'est pas en défaut) ET son nom doit apparaître dans la déclaration qui
+ * l'embarque. C'est la présence du fichier qui déclenche, jamais une supposition
+ * sur ce que le projet utilise : quelqu'un l'a posé là exprès.
+ *
+ * @param {string} root @param {any} config @returns {{id:string, fichier:string, cable:string, casse:string}[]}
+ */
+export function configNonEmbarquee(root, config) {
+  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])];
+  /** @type {{id:string, fichier:string, cable:string, casse:string}[]} */
+  const orphelins = [];
+
+  for (const regle of regles) {
+    // Où chercher : un chemin exact, ou une famille d'extensions sous un dossier.
+    /** @type {string[]} */
+    let trouves = [];
+    if (typeof regle.quoi === 'string') {
+      if (existsSync(join(root, regle.quoi))) trouves = [regle.quoi];
+    } else if (regle.quoi && typeof regle.quoi === 'object') {
+      trouves = fichiersSous(join(root, regle.quoi.sous), regle.quoi.extensions ?? [])
+        .map((f) => f.slice(root.length + 1));
+    }
+    if (trouves.length === 0) continue;
+
+    // Où le câblage se déclare : le premier fichier de la liste qui existe.
+    const candidats = Array.isArray(regle.cable) ? regle.cable : [regle.cable];
+    const declaration = candidats.find((c) => existsSync(join(root, c)));
+    if (!declaration) {
+      // ⚠️ Pas de déclaration DU TOUT : on le dit, plutôt que de conclure au
+      // câblage. Un projet sans `build.gradle` n'est pas un projet conforme.
+      for (const f of trouves) {
+        orphelins.push({ id: regle.id, fichier: f, cable: candidats.join(' ou '), casse: regle.casse });
+      }
+      continue;
+    }
+    const texte = lireOuVide(join(root, declaration));
+    for (const f of trouves) {
+      // Le motif est fixe quand la règle en donne un, sinon c'est le NOM du
+      // fichier trouvé — c'est ce que porte une déclaration d'asset ou de police.
+      const motif = regle.motif ?? f.split('/').pop();
+      if (motif && !texte.includes(motif)) {
+        orphelins.push({ id: regle.id, fichier: f, cable: declaration, casse: regle.casse });
+      }
+    }
+  }
+  return orphelins;
+}
+
+/** Les fichiers d'une extension donnée sous un dossier, récursivement. Vide s'il n'existe pas. */
+function fichiersSous(dir, extensions) {
+  if (!existsSync(dir)) return [];
+  /** @type {string[]} */
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const chemin = join(dir, e.name);
+    if (e.isDirectory()) out.push(...fichiersSous(chemin, extensions));
+    else if (extensions.some((x) => e.name.toLowerCase().endsWith(x))) out.push(chemin);
+  }
+  return out;
+}
+
+/** Le contenu d'un fichier, ou une chaîne vide s'il est illisible — jamais une exception. */
+function lireOuVide(chemin) {
+  try { return readFileSync(chemin, 'utf8'); } catch { return ''; }
+}
+
+/**
  * Le rapport d'une ancre orpheline — et la distinction que « RIEN » écrasait.
  *
  * ⚠️ « QUE RIEN NE DÉCLARE » ÉTAIT FAUX POUR LA MOITIÉ DES CAS. Le croisement
@@ -1589,6 +1709,21 @@ function main() {
 
   const problems = validateConfig(config);
   for (const p of problems) (p.level === 'error' ? err : warn)(p.message);
+
+  // ⚠️ ICI, PAS SEULEMENT DANS LE RAPPORT. Un fichier de configuration non
+  // embarqué fait échouer TOUS les flows au lancement ; le dire au §3d — la
+  // commande de vérification préalable — coûte quelques millisecondes et
+  // épargne une passe device entière. Le rapport le porte aussi (dimension
+  // `configuration` de sec.json), mais il arrive après.
+  const orphelins = configNonEmbarquee(dirname(config.__file), config);
+  if (orphelins.length) {
+    console.log('\nConfiguration présente mais NON EMBARQUÉE :');
+    for (const o of orphelins) {
+      console.log(`  ✖ ${o.fichier}`);
+      console.log(`      son nom n'apparaît pas dans ${o.cable} — il ne sera pas embarqué.`);
+      console.log(`      Sinon : ${o.casse}.`);
+    }
+  }
 
   console.log('\nOutillage :');
   const tools = detectTools();

@@ -34,7 +34,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, platformFor, projectBuildCmd,
-  releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
+  configNonEmbarquee, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -74,6 +74,38 @@ const finding = (id, title, severity, expected, actual, fix, where = '') => ({
   id, title, dimension: 'security', severity, expected, actual,
   suggestedFix: fix, evidence: where ? [where] : [], status: 'open',
 });
+
+/**
+ * Les fichiers de configuration posés dans les sources que RIEN ne câble.
+ *
+ * ⚠️ CE CONTRÔLE EXISTE PARCE QUE LE HARNAIS SAVAIT DÉJÀ QUE ÇA ARRIVE SANS
+ * SAVOIR LE DIRE. `startupHint` orientait vers la capture — « si elle montre une
+ * erreur de l'app, aucun plafond n'y changera rien » — et son commentaire citait
+ * le cas exact : « Service indisponible faute d'un fichier de configuration
+ * absent du bundle ». Il évitait donc la fausse piste, mais ne nommait jamais la
+ * cause : c'était à l'humain de lire la capture. Un run l'a payé six flows
+ * rouges et ~36 min d'appareil, pour un défaut détectable en millisecondes et
+ * SANS device.
+ *
+ * Il vit ici, dans la dimension statique, plutôt que dans le runner : le seul
+ * intérêt d'un tel contrôle est de parler AVANT qu'on paie une passe device.
+ * @param {string} root @param {any} config @returns {any[]}
+ */
+function auditConfigFiles(root, config) {
+  return configNonEmbarquee(root, config).map((o) => finding(
+    `QAM-CFG-${o.id.toUpperCase()}`,
+    `Configuration présente mais non embarquée : ${o.fichier}`,
+    // `major` et non `blocker` : le fichier peut n'être requis que par une
+    // fonctionnalité secondaire. Ce qu'on sait à coup sûr, c'est qu'il ne sera
+    // pas là — pas ce que l'app en fait.
+    'major',
+    `${o.fichier} référencé par ${o.cable}`,
+    `${o.fichier} existe dans les sources mais son nom n'apparaît pas dans ${o.cable} : `
+      + 'il ne sera pas embarqué',
+    `Ajoute-le à ${o.cable}. Sinon ${o.casse}.`,
+    o.fichier,
+  )).map((f) => ({ ...f, dimension: 'configuration' }));
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // A. Sources — manifeste Android
@@ -676,7 +708,7 @@ function main() {
   const plateformes = (config.platforms ?? ['android']).map(String);
   /** @type {string[]} */
   const nonJuges = [];
-  const sourceFindings = [...auditSecrets(root, config)];
+  const sourceFindings = [...auditSecrets(root, config), ...auditConfigFiles(root, config)];
   if (plateformes.includes('android')) sourceFindings.push(...auditAndroidManifest(root, config));
   else nonJuges.push('le manifeste Android (android n\'est pas dans platforms)');
   if (plateformes.includes('ios')) sourceFindings.push(...auditIosPlist(root));

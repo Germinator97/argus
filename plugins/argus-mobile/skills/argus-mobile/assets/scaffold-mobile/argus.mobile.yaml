@@ -580,6 +580,27 @@ artifacts:
 # machine » : le contenu est bien hébergé ailleurs, et une page privée se
 # partage d'un clic. Sur une application sous contrat, vérifie que c'est permis
 # AVANT d'activer — d'où le défaut ci-dessous.
+# ── Fichiers de configuration : présents ≠ EMBARQUÉS ────────────────────────
+# Un fichier posé dans les sources que RIEN ne câble n'arrive jamais dans le
+# binaire — et ça ne se voit qu'au lancement, quand l'app affiche son écran
+# d'erreur et que TOUS les flows rougissent en accusant l'instrumentation.
+# Vécu : un `GoogleService-Info.plist` absent du projet Xcode, six flows rouges,
+# ~36 min d'appareil pour un défaut détectable en millisecondes et sans device.
+#
+# Trois familles sont contrôlées d'office (Firebase iOS, Firebase Android,
+# polices). Déclare ICI celles qui sont propres à ton projet — le mécanisme est
+# le même, seule change la déclaration qui fait l'embarquement :
+#
+#   configFiles:
+#     - id: mon-service
+#       quoi: config/service.json           # chemin, ou { sous: assets, extensions: ['.json'] }
+#       cable: pubspec.yaml                 # le fichier qui doit le NOMMER
+#       casse: le service ne démarre pas    # ce qui arrive si personne ne le câble
+#
+# ⚠️ C'est la PRÉSENCE du fichier qui déclenche, jamais une supposition sur ce
+# que le projet utilise : s'il est là, quelqu'un l'a mis là exprès.
+configFiles: []
+
 artifact:
   enabled: false
   # Renseignée à la première publication, puis réutilisée : sans elle, chaque

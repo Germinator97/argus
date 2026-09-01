@@ -28,6 +28,7 @@ import {
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -6290,6 +6291,107 @@ test('trois choses écrites là où elles servent (293, 294, 295)', () => {
   assert.ok(remede - clavier > 0 && remede - clavier < 12,
     `le remède est à ${remede - clavier} lignes de l'interdiction : les deux se lisent ensemble `
     + 'ou pas du tout');
+});
+
+test('un fichier de config posé mais non CÂBLÉ est détecté sans device (297)', () => {
+  // ⚠️ LE HARNAIS SAVAIT QUE ÇA ARRIVE SANS SAVOIR LE DIRE. `startupHint`
+  // orientait vers la capture — « si elle montre une erreur de l'app, aucun
+  // plafond n'y changera rien » — et son commentaire citait le cas exact :
+  // « Service indisponible faute d'un fichier de configuration absent du
+  // bundle ». Il évitait la fausse piste sans jamais nommer la cause. Un run l'a
+  // payé six flows rouges et ~36 min d'appareil, pour un défaut détectable en
+  // millisecondes et SANS device.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-297-'));
+  const ecrire = (rel, contenu) => {
+    mkdirSync(join(dir, rel.split('/').slice(0, -1).join('/')), { recursive: true });
+    writeFileSync(join(dir, rel), contenu, 'utf8');
+  };
+  try {
+    // Le défaut du run 38, reconstitué : le plist est là, le projet Xcode l'ignore.
+    ecrire('ios/Runner/GoogleService-Info.plist', '<plist/>\n');
+    ecrire('ios/Runner.xcodeproj/project.pbxproj', '/* objects */ Runner.app; Info.plist;\n');
+    const casse = configNonEmbarquee(dir, {});
+    assert.equal(casse.length, 1, `un seul finding attendu, reçu ${JSON.stringify(casse)}`);
+    assert.match(casse[0].fichier, /GoogleService-Info\.plist/);
+    assert.match(casse[0].cable, /project\.pbxproj/,
+      'le finding doit nommer la DÉCLARATION qui manque, pas seulement le fichier — sinon le '
+      + 'remède reste à deviner');
+
+    // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui décide de la valeur du contrôle : une
+    // fois câblé, il se TAIT. Un contrôle qui alarme toujours est du bruit, et
+    // le bruit finit ignoré — il emmène les autres avec lui (cf. 291).
+    ecrire('ios/Runner.xcodeproj/project.pbxproj', '/* objects */ GoogleService-Info.plist;\n');
+    assert.deepEqual(configNonEmbarquee(dir, {}), [],
+      'un fichier correctement câblé ne doit RIEN produire');
+
+    // Et un projet qui n'a pas le fichier du tout n'est pas en défaut : c'est la
+    // PRÉSENCE qui déclenche, jamais une supposition sur ce que le projet utilise.
+    const vide = mkdtempSync(join(tmpdir(), 'argus-297-vide-'));
+    try {
+      assert.deepEqual(configNonEmbarquee(vide, {}), [],
+        'un projet sans aucun de ces fichiers ne doit rien produire');
+    } finally { rmSync(vide, { recursive: true, force: true }); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('le contrôle de config est un MÉCANISME, pas une liste Firebase (297)', () => {
+  // ⚠️ C'EST LA MOITIÉ QUI COMPTE, et elle vient d'une objection de Germinator :
+  // « on spécifie seulement firebase, mais il pourrait y avoir d'autres fichiers
+  // de config ». Coder `si Firebase` reproduirait le défaut que ce dépôt
+  // reproche ailleurs — énumérer les défauts CONNUS au lieu de mesurer le
+  // PHÉNOMÈNE — et rendrait « 0 » sur le quatrième fichier que personne n'avait
+  // imaginé. Le garde vérifie donc que la table est de la DONNÉE et qu'un projet
+  // peut la compléter.
+  assert.ok(CONFIG_FILES.length >= 2,
+    'la table livrée est vide ou dégénérée — ce garde ne mesurerait rien');
+  for (const r of CONFIG_FILES) {
+    assert.ok(r.id && r.quoi && r.cable && r.casse,
+      `règle incomplète (${r.id}) : il faut QUOI chercher, QUELLE déclaration câble, et ce qui CASSE`);
+  }
+  // La table ne parle pas que de Firebase : le mécanisme doit déjà servir à
+  // autre chose, sinon rien ne prouve qu'il est générique.
+  assert.ok(CONFIG_FILES.some((r) => !/firebase/i.test(r.id)),
+    'toutes les règles livrées sont Firebase : le mécanisme n\'est alors qu\'un `if` déguisé, '
+    + 'et il rendra « 0 » sur le prochain fichier de config d\'une autre nature');
+
+  // ⚠️ ET UN PROJET DOIT POUVOIR AJOUTER LA SIENNE — c'est la vraie réponse à
+  // « il y a d'autres fichiers », qui est vraie et le restera.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-297-ext-'));
+  try {
+    mkdirSync(join(dir, 'config'), { recursive: true });
+    writeFileSync(join(dir, 'config/maison.json'), '{}', 'utf8');
+    writeFileSync(join(dir, 'pubspec.yaml'), 'name: x\n', 'utf8');
+    const regleProjet = {
+      id: 'maison',
+      quoi: 'config/maison.json',
+      cable: 'pubspec.yaml',
+      casse: 'le service maison ne démarre pas',
+    };
+    const vus = configNonEmbarquee(dir, { configFiles: [regleProjet] });
+    assert.equal(vus.length, 1,
+      'une règle déclarée par le projet doit être appliquée : sans ça, la table livrée est un '
+      + 'plafond et non un point de départ');
+    assert.equal(vus[0].id, 'maison');
+
+    // Et elle se tait aussi quand c'est câblé — même exigence que pour les nôtres.
+    writeFileSync(join(dir, 'pubspec.yaml'), 'name: x\nassets:\n  - config/maison.json\n', 'utf8');
+    assert.deepEqual(configNonEmbarquee(dir, { configFiles: [regleProjet] }), []);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+
+  // ⚠️ LE CÂBLAGE, aux DEUX sites : le rapport (sec.mjs, sans device) et le
+  // signal précoce (config.mjs au §3d). Le second est celui qui épargne la passe
+  // device, donc celui dont l'absence coûte le plus — et aucun test unitaire ne
+  // le verrait, la fonction restant juste.
+  const sec = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs'), 'utf8');
+  assert.match(sec, /auditConfigFiles\(root, config\)\]/,
+    'sec.mjs n\'ajoute plus ces findings au rapport : le contrôle peut rester juste pendant que '
+    + 'le rapport n\'en dit rien');
+  const conf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  assert.match(conf, /const orphelins = configNonEmbarquee\(/,
+    'config.mjs ne signale plus rien au §3d : le défaut ne se verrait qu\'APRÈS une passe device, '
+    + 'ce qui est exactement le coût qu\'on voulait supprimer');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
