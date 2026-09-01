@@ -279,7 +279,33 @@ export function titreDuRapport(run) {
   return [run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');
 }
 
-const TITLE = 'Argus Mobile — rapport QA';
+/**
+ * Le titre de la PAGE PUBLIÉE — celui du `<title>`, et celui que le journal
+ * annonce. Les deux, par la même fonction.
+ *
+ * ⚠️ CE QUI EST ANNONCÉ DOIT ÊTRE CE QUI EST PUBLIÉ. Trois expressions
+ * calculaient ce titre séparément, et deux divergeaient — mesuré le
+ * 01/09/2026 :
+ *   · sur un titre PAR PLATEFORME (la forme du 245), le journal lisait
+ *     `config.artifact.title` sans passer par `artifactFor` : il annonçait
+ *     « [object Object] » pendant que « T iOS » était publié. Le 245 avait
+ *     ajouté la forme sans mettre le journal d'accord ;
+ *   · sur un titre VIDE, le journal annonçait « Rapport Argus Mobile » et la
+ *     page publiait « Argus Mobile — rapport QA ».
+ * Rien ne levait : les deux valeurs sont des chaînes plausibles, et le seul
+ * lecteur du journal est celui qui va justement republier — donc celui que
+ * l'écart trompe. C'est le motif du 250, sur une autre paire.
+ *
+ * Le repli nomme le projet et la plateforme, comme le h1 : un défaut générique
+ * rendrait toutes les cartes de galerie identiques, c'est-à-dire exactement le
+ * défaut que le 252 vient de fermer un cran plus bas.
+ * @param {any} config @param {any} run @returns {string}
+ */
+export function titrePublie(config, run) {
+  const ident = artifactFor(config ?? {}, String(run?.platform ?? ''));
+  return ident.title || titreDuRapport(run);
+}
+
 
 /** Le style, partagé par les deux rendus. */
 // Exporté pour que les gardes LISENT le style rendu au lieu d'un motif de source.
@@ -398,7 +424,7 @@ ${shots.size ? LIGHTBOX : ''}`;
  * @param {any} context @returns {string} */
 function render(context) {
   // Le même titre que le h1 : un rapport local ouvert dans un onglet doit dire
-  // de quel projet il parle. `TITLE` ne reste que le repli d'un run sans faits.
+  // de quel projet il parle.
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(titreDuRapport(context.run))}</title>
@@ -582,7 +608,7 @@ export function renderArtifact(context) {
   montre(0);
 }());
 </scr` + `ipt>` : '';
-  return `<title>${context.title || TITLE}</title>\n${STYLE}\n${STYLE_ONGLETS}\n`
+  return `<title>${context.title || titreDuRapport(context.run)}</title>\n${STYLE}\n${STYLE_ONGLETS}\n`
     + `<div class="wrap">${onglets}</div>\n`
     + `<section id="passe-0" role="tabpanel">${renderBody(context)}${coupe}</section>\n`
     + `${archives}\n${script}\n${embarqueHistorique(tous)}\n`;
@@ -719,9 +745,10 @@ function main() {
     const perte = pertePossible(prevPath, ident.url);
     if (perte) warn(perte);
 
+    const titre = titrePublie(config, context.run);
     writeFileSync(artifactPath, renderArtifact({
       ...context, shots: shot.shots, evidenceNote,
-      title: ident.title || config.artifact.title,
+      title: titre,
       record: runRecord(context), historique,
     }), 'utf8');
     log(`page publiable : ${artifactPath}`);
@@ -737,7 +764,7 @@ function main() {
     // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
     // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
     // republie en choisit d'autres et la page se lit comme une seconde page.
-    log(`  titre « ${config.artifact.title || 'Rapport Argus Mobile'} » · icône ${config.artifact.icon || '👁'}`
+    log(`  titre « ${titre} » · icône ${config.artifact.icon || '👁'}`
       + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');
   }
 

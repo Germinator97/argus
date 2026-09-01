@@ -1255,17 +1255,19 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
    fichier, pas le script : il t'appartient, il porte des commentaires, et un
    script qui réécrit du YAML les perd.
 5. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
-   ou « Rapport Argus Mobile » s'il est vide. C'est ainsi qu'on retrouve la
-   page ; la renommer à chaque run donne l'impression d'une page différente.
+   ou, s'il est vide, `<appId> — <plateforme> — rapport QA`. C'est ainsi qu'on
+   retrouve la page ; la renommer à chaque run donne l'impression d'une page
+   différente. **Le journal te dit le titre qu'il va publier** : c'est la même
+   valeur, pas une seconde estimation — vérifie-la là.
 
    ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le
-   défaut « Rapport Argus Mobile » est juste pour une PREMIÈRE publication et
-   faux pour une republication : si la page s'appelle autre chose et que
-   `artifact.title` est vide, suivre cette consigne la **renomme en croyant la
-   stabiliser** — vécu, une page « Argus Mobile — <projet> » redevenue
-   « Rapport Argus Mobile » en silence. Republier sur `artifact.url` te fait de
-   toute façon lire la page : relève le titre à ce moment-là et **reporte-le
-   dans `artifact.title`** avant de publier.
+   défaut est juste pour une PREMIÈRE publication et faux pour une
+   republication : si la page s'appelle autre chose et que `artifact.title` est
+   vide, suivre cette consigne la **renomme en croyant la stabiliser** — vécu,
+   une page « Argus Mobile — <projet> » redevenue générique en silence.
+   Republier sur `artifact.url` te fait de toute façon lire la page : relève le
+   titre à ce moment-là et **reporte-le dans `artifact.title`** avant de
+   publier.
 
 ⚠️ **En CI, personne ne publie** : le job n'a pas d'agent. Il produit le
 fichier et s'arrête là. Ne promets pas une URL dans un contexte automatisé.

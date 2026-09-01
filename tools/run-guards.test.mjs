@@ -34,7 +34,7 @@ import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { titreDuRapport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -3346,8 +3346,19 @@ test('le titre se LIT avant la première republication, il ne se suppose pas (22
     'rien ne dit plus de lire le titre existant : le défaut RENOMME la page en croyant la stabiliser');
   // ⚠️ L'AUTRE MOITIÉ : la consigne d'origine reste vraie pour une PREMIÈRE
   // publication. Un correctif qui la supprimerait laisserait le titre au hasard.
-  assert.match(debut, /Rapport Argus Mobile/,
-    'le défaut n\'est plus nommé — il reste juste pour une première publication');
+  //
+  // ⚠️ ET LE DÉFAUT SE DÉRIVE, IL NE SE CITE PAS. Ce garde exigeait la chaîne
+  // « Rapport Argus Mobile » ; le 253 a changé ce défaut, et le garde est tombé
+  // en accusant un correctif juste — la pente aurait été de le supprimer, ce
+  // qui aurait vidé la moitié qu'il protège. On lui fait donc construire le
+  // gabarit avec la FONCTION qui le produit : si le format change encore, ce
+  // n'est plus le garde qui se périme, c'est le SKILL qui doit suivre.
+  const gabarit = titreDuRapport({ appId: '<appId>', platform: '<plateforme>' });
+  assert.ok(gabarit.includes('<appId>') && gabarit.includes('<plateforme>'),
+    'le gabarit doit porter ses deux variables — sinon ce garde ne mesure rien');
+  assert.ok(debut.includes(gabarit),
+    `le défaut n'est plus nommé sous la forme que le code produit (${gabarit})`
+    + ' — il reste juste pour une première publication');
 });
 
 // ── Ce que le SKILL prescrit pour itérer doit EXISTER dans le runner ────────
@@ -5176,6 +5187,51 @@ test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
   const sub = (pageDe({ plateforme: 'ios' }).match(/<div class="sub">([\s\S]*?)<\/div>/) ?? [])[1] ?? '';
   assert.ok(sub.includes('gate:'), 'la sous-ligne doit exister — sinon ce garde ne mesure rien');
   assert.ok(!sub.includes('com.exemple'), 'la sous-ligne ne doit plus répéter le projet du titre');
+});
+
+test('le titre ANNONCÉ est le titre PUBLIÉ, dans les trois formes (253)', () => {
+  // ⚠️ Trois expressions calculaient ce titre séparément, et deux divergeaient.
+  // Mesuré le 01/09/2026 :
+  //   · titre PAR PLATEFORME — le journal lisait `config.artifact.title` sans
+  //     passer par `artifactFor` : il annonçait « [object Object] » pendant que
+  //     « T iOS » était publié. Le 245 avait ajouté la forme sans mettre le
+  //     journal d'accord ;
+  //   · titre VIDE — le journal annonçait « Rapport Argus Mobile », la page
+  //     publiait « Argus Mobile — rapport QA ».
+  // Rien ne levait : les deux valeurs sont des chaînes plausibles, et le seul
+  // lecteur du journal est celui qui va republier — donc celui que l'écart
+  // trompe. C'est le motif du 250, sur une autre paire.
+  const run = { platform: 'ios', appId: 'com.exemple' };
+
+  const parPlateforme = { artifact: { title: { ios: 'T iOS', android: 'T Android' } } };
+  assert.equal(titrePublie(parPlateforme, run), 'T iOS',
+    'la forme par plateforme doit passer par artifactFor, pas être lue à plat');
+  assert.equal(titrePublie(parPlateforme, { platform: 'android', appId: 'com.exemple' }), 'T Android',
+    'et suivre la plateforme — sinon les deux pages reprennent le même titre');
+
+  assert.equal(titrePublie({ artifact: { title: 'T unique' } }, run), 'T unique',
+    'la forme mono continue de marcher');
+
+  // Le repli nomme le projet ET la plateforme, comme le h1 : un défaut
+  // générique rendrait toutes les cartes de galerie identiques, c'est-à-dire le
+  // défaut que le 252 ferme un cran plus bas.
+  assert.equal(titrePublie({ artifact: {} }, run), titreDuRapport(run),
+    'sans titre configuré, le repli est celui du h1');
+  assert.equal(titrePublie(undefined, run), titreDuRapport(run), 'et une config absente ne lève pas');
+
+  // ⚠️ ET LE RENDU DOIT RENDRE CETTE VALEUR-LÀ. Sans ce maillon, la fonction
+  // pourrait être juste pendant que la page publie autre chose : c'est
+  // exactement l'écart qu'on vient de fermer.
+  const titre = titrePublie(parPlateforme, run);
+  const page = renderArtifact({ ...ctxRun({ plateforme: 'ios' }), title: titre, historique: [] });
+  assert.equal((page.match(/<title>(.*?)<\/title>/) ?? [])[1], titre,
+    'le <title> publié doit être la valeur que titrePublie() rend');
+
+  // ⚠️ L'AUTRE MOITIÉ : sans titre, le rendu retombe sur le titre du run, pas
+  // sur une constante — sinon deux projets publieraient la même carte.
+  const sansTitre = renderArtifact({ ...ctxRun({ plateforme: 'ios' }), title: '', historique: [] });
+  assert.equal((sansTitre.match(/<title>(.*?)<\/title>/) ?? [])[1], titreDuRapport(ctxRun({ plateforme: 'ios' }).run),
+    'et le repli du rendu est le même que celui de titrePublie');
 });
 
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {
