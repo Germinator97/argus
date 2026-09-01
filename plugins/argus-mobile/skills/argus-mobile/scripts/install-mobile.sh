@@ -288,7 +288,18 @@ inventaire_owned() {
     # traiter » pour eux — indéfiniment, sans moyen d'écrire que c'est traité. Le
     # seul inventaire que la personne suivante lira affichait donc du travail
     # inachevé qui était achevé. `TODO(argus): SANS OBJET — <raison>` le ferme.
-    restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET' || true)"
+    # ⚠️ TROIS FAÇONS DE FERMER, PAS UNE — et le manque a été trouvé par les DEUX
+  # runs iOS, chacun par un bout différent. `SANS OBJET` couvre « rien à faire
+  # ici » ; il ne couvre PAS « c'est fait, et le commentaire vaut d'être gardé »,
+  # qui est le cas le plus fréquent quand on remplit un scaffold.
+  # Un run a écrit `TODO(argus): TRAITÉ — …`, l'inventaire a continué d'imprimer
+  # « 1 à traiter », et il a dû SUPPRIMER le marqueur — c'est-à-dire faire
+  # exactement ce que la règle interdit pour l'autre cas. L'autre run a rempli
+  # `artifact.title` en gardant sa doc d'origine, et s'est vu compter « 2 à
+  # traiter » pour du travail achevé.
+  # Le seul inventaire que la personne suivante lira affichait donc faux, dans
+  # les deux sens.
+  restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep 'TODO(argus):' | grep -cvE 'TODO\(argus\): *(SANS OBJET|FAIT|TRAITÉ)' || true)"
     restant="${restant:-0}"
     if [ "$restant" -gt 0 ]; then
       echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"

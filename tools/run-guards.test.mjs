@@ -6917,12 +6917,31 @@ test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () =>
       'un TODO déclaré SANS OBJET doit se fermer, sinon il reste au relevé pour toujours');
     assert.equal(compte('# TODO(argus): remplir\n# TODO(argus): SANS OBJET — rien\n'), 1,
       'les deux doivent coexister : fermer l\'un ne ferme pas l\'autre');
+
+    // ⚠️ TROIS FAÇONS DE FERMER, ET `SANS OBJET` NE COUVRAIT QUE LA PLUS RARE.
+    // Les deux runs iOS l'ont trouvé, chacun par un bout : l'un a écrit
+    // `TRAITÉ`, l'inventaire a continué de compter, et il a dû SUPPRIMER le
+    // marqueur — exactement ce que la règle interdit pour l'autre cas ; l'autre
+    // a rempli une clé en gardant sa doc et s'est vu compter du travail achevé.
+    assert.equal(compte('# TODO(argus): FAIT — la valeur est posée, la doc reste utile\n'), 0,
+      'un TODO rempli dont on garde la doc doit se fermer : sinon on est forcé de retirer le '
+      + 'commentaire, donc de perdre l\'explication qu\'il portait');
+    assert.equal(compte('# TODO(argus): TRAITÉ — assertion écrite dans le flow\n'), 0,
+      'un TODO dont le travail a été fait ailleurs doit se fermer');
+    // Et rien d'autre ne ferme : un mot-clé inventé laisse le TODO ouvert.
+    assert.equal(compte('# TODO(argus): PLUS TARD — on verra\n'), 1,
+      'seuls SANS OBJET, FAIT et TRAITÉ ferment — sinon la convention devient un mot magique '
+      + 'que chacun réinvente, et le relevé ne veut plus rien dire');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 
   // La convention ne sert à rien si personne ne sait qu'elle existe.
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
-  assert.match(skill, /SANS OBJET/,
-    'le SKILL ne dit pas comment fermer un TODO sans objet : la convention existe et reste introuvable');
+  // Les TROIS formes doivent être documentées, pas seulement celle d'origine.
+  for (const forme of ['SANS OBJET', 'FAIT', 'TRAITÉ']) {
+    assert.ok(skill.includes(`TODO(argus): ${forme}`),
+      `le SKILL ne documente pas « TODO(argus): ${forme} » : la convention existe dans le code `
+      + 'et reste introuvable pour qui remplit le scaffold');
+  }
 });
 
 test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {

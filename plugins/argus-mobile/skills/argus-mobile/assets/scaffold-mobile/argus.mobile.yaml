@@ -12,6 +12,9 @@
 #   test/argus/known_issues.dart  la dette que les gardes révèlent
 #   .maestro/*.yaml marqués OWNED les parcours métier
 # `install-mobile.sh` te les liste en sortant, avec les `TODO(argus)` restants.
+# ⚠️ Un TODO se FERME, il ne se supprime pas — trois façons, toutes exclues du
+# compteur : `SANS OBJET — …` (rien à faire ici), `FAIT — …` (rempli, et la doc
+# au-dessus vaut d'être gardée), `TRAITÉ — …` (écrit ailleurs).
 #
 # Les valeurs sensibles n'ont RIEN à faire dans ce fichier. Les identifiants de
 # test viennent de l'environnement (voir `auth.secretsFromEnv`) et sont injectés

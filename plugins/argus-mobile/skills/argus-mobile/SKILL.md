@@ -1111,13 +1111,23 @@ prétendre le contraire fait chercher ailleurs ce qu'on ne trouve pas. Ils porte
 tous le marqueur `ARGUS:OWNED` et **l'installeur te les liste en sortant**, avec
 le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
 
-⚠️ **UN TODO SANS OBJET SE FERME, il ne se supprime pas.** Certains flows livrés
-n'ont rien à recevoir sur un projet donné — pas d'authentification, rien qui
-flotte au-dessus des écrans. L'inventaire de l'installeur les comptait
-indéfiniment comme « à traiter », si bien que le seul relevé que la personne
-suivante lira affichait du travail inachevé qui était achevé. Écris
-`TODO(argus): SANS OBJET — <la raison>` : le compteur l'exclut, et la raison
-reste lisible.
+⚠️ **UN TODO SE FERME, il ne se supprime pas — et il y a TROIS façons.** Un
+TODO qu'on retire ne laisse aucune trace de la décision ; un TODO qu'on laisse
+ouvert alors qu'il est réglé fausse le seul inventaire que la personne suivante
+lira. Les trois formes que le compteur exclut :
+
+| écris | quand |
+|---|---|
+| `TODO(argus): SANS OBJET — <raison>` | il n'y a **rien à faire ici** : pas d'authentification, rien qui flotte au-dessus des écrans |
+| `TODO(argus): FAIT — <ce qui a été posé>` | c'est **rempli**, et le commentaire d'origine vaut d'être gardé (une clé de config et sa doc) |
+| `TODO(argus): TRAITÉ — <ce qui a été écrit>` | le travail demandé a été **écrit ailleurs** (une assertion, un flow) |
+
+⚠️ **`SANS OBJET` NE COUVRAIT QUE LE PREMIER CAS, et c'est le plus rare.** Les
+deux runs iOS l'ont trouvé, chacun par un bout : l'un a écrit `TRAITÉ` et
+l'inventaire a continué d'imprimer « 1 à traiter », si bien qu'il a dû
+**supprimer le marqueur** — exactement ce que la première phrase interdit ;
+l'autre a rempli une clé en gardant sa doc et s'est vu compter « 2 à traiter »
+pour du travail achevé. Le compteur affichait faux dans les deux sens.
 
 | | Fichier | Ce qu'on y met |
 |---|---|---|
