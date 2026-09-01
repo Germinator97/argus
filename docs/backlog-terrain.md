@@ -4687,7 +4687,85 @@ la voyait pas. C'est le piège écrit une heure plus tôt dans cette même passe
 seul un balayage **total et négatif** l'a trouvé — pas la substitution qui venait
 d'annoncer son succès.
 
+### 299-316. ✅ Corrigés le 01/09/2026 — la seconde vague Android : un garde qui rendait VERT par accident
+
+**Runs 39 et 40**, Android, en parallèle, agents vierges, sur les deux terrains
+remis à neuf. Comptes rendus archivés (`run39-constats.md`, `run40-constats.md`)
+— **le huitième fichier mord sur ses premiers runs réels.**
+
+🎯 **LE RÉSULTAT QUI COMPTE : LES DEUX ONT BUTÉ AU MÊME ENDROIT.** Troisième
+couple de runs qui converge, et c'est toujours le signal le plus fort.
+
+| | ce que les DEUX ont trouvé |
+|---|---|
+| **303** | **le build de RELEASE n'est nulle part dans la séquence**, alors que deux dimensions en dépendent. Suivie à la lettre, elle fait juger le debug : 62,2 Mo au lieu de 27,1 sur un terrain, 126 au lieu de 79,1 sur l'autre — un `major` **faux** d'un côté, et MASVS qui ne conclut pas du tout. Les deux runs l'ont construite hors séquence parce qu'ils n'avaient pas le choix |
+| **305** | **`firstLaunchMs` n'est pas reproductible sur machine partagée** : 7100 → 2281 ms sur un terrain, facteur 2 sur l'autre, même binaire, même appareil. Le §3g prescrivait d'en dériver `startTimeoutMs` sans dire que le seuil serait aussi instable que la mesure |
+
+**Les trois plus graves :**
+
+| | |
+|---|---|
+| **299** | 🔴 **UN GARDE QUI RENDAIT VERT PAR ACCIDENT, sur la forme que le skill PRESCRIT.** Le croisement POSÉE → DÉCLARÉE n'acceptait qu'un littéral collé à la clé : `identifier: cond ? 'a' : 'b'` lui était invisible — c'est-à-dire ce que le §2c-bis recommande. **59 posées, 54 vues, verdict vert**, avec un « 54 littérales » honnête qui taisait les cinq manquantes. Il lit désormais l'argument entier, **borné à sa virgule** (lire jusqu'à la clé suivante compterait le `label:` voisin : un faux positif à la place d'un faux négatif, et le pire des deux). Et ce qu'il ne sait pas lire, il le **dit** |
+| **301** | 🔴 **35 MINUTES PERDUES sur un message qui jetait sa cause.** On gardait les trois dernières lignes d'`adb` — la queue d'une stack Java — pendant que `Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]` était ailleurs. ⚠️ **Et la conséquence était pire** : `installHint` cherche le code DANS ce détail, donc **l'indice du §3g n'a jamais été affiché**. Le skill avait la réponse, le chemin pour y aller était coupé — mesuré dans les deux sens |
+| **300** | 🔴 **UN GARDE NON HERMÉTIQUE, découvert par accident.** `--print-build-cmd` interroge `adb devices` : la commande sort nue sans émulateur, ciblée avec. Le garde avait donc passé des mois **sans jamais exercer le ciblage d'ABI**, et il est tombé le jour où deux runs ont laissé leurs émulateurs allumés — en accusant un correctif sans rapport. Il fixe désormais son environnement et asserte **les deux** états |
+
+**Et ma contradiction, rouverte par mon propre correctif :**
+
+**302** — le repli « sans interlocuteur » du **283**, écrit le matin même, disait
+« rien d'autre… **pas de renommage** » ; deux paragraphes plus haut le skill
+recommande comme **première** option de rendre public un widget privé, ce qui
+EST un renommage. Un run a tranché restrictif, à raison, et deux états sont
+restés hors de l'étage 1. *Borner « ce qu'on s'autorise » sans relire ce que le
+skill recommande ailleurs rouvre exactement la contradiction qu'on fermait.*
+L'exception est nommée, avec son critère — **est-ce que ça change ce que le
+programme FAIT** — et ce qui demeure interdit.
+
+**Le reste (304, 306-316)** : l'arête manquante vers `argus-perf` quand le
+plafond est frôlé · le **diff de JETONS** comme contrôle d'après-instrumentation
+en REGRESS, **inventé par un agent** qui y avait perdu trois lignes de code dans
+un diff que la réindentation noie (1 577 insertions pour 361 neuves) ·
+l'unicité de l'`anchor:`, montrée et jamais énoncée · le bloc de compteurs qui
+**se tronque en silence sous `&&`** (`grep -c` sort en 1 sur zéro) · sa
+contre-épreuve manquante (`0` est aussi ce que rend un instrument mort) · la
+chaîne YAML quotée multi-lignes · le `tapOn: point: 50%,25%` **écrit comme une
+recette**, qui serait tombé sur une rangée de préréglages et aurait changé un
+formulaire en silence · `--no-install` au-delà de `--tags` · le double générique
+qui n'infère pas · la racine d'une coquille à onglets · et `make argus-debts`,
+qui agrège les dettes que quatre lancements recopiaient à la main.
+
+### 2.7 du run 40. ✅ DÉMENTI à l'exécution — 01/09/2026
+
+« L'installeur compte sa propre documentation comme un TODO ouvert ». **Faux** :
+l'installeur rend 11, `grep -c 'TODO(argus):'` rend 11 — la ligne de doc ne
+porte **pas** le deux-points, et c'est précisément le mécanisme du **273** qui la
+protège. Le run a raisonné sur le motif sans le lancer ; dix secondes
+d'exécution le disaient.
+
+📌 **CE QUE LE JOUR A VALIDÉ, sans que personne le cherche** : le **297**, écrit
+le matin, a **attrapé un vrai défaut sans device** — un `GoogleService-Info.plist`
+absent du projet Xcode, sur un run **Android** qui ne l'aurait jamais rencontré à
+l'exécution. Le **278** a été vérifié par les deux runs plutôt que supposé, le
+**276** tient (baselines à 6 min 08), et les deux ont appliqué le contrôle
+avant/après publication du **275**.
+
+⚠️ **TROIS FOIS DANS CETTE PASSE, un garde neuf a matché le TEXTE QUI INTERDIT
+ce qu'il traque** — `argus-perf` dans le commentaire « lance `argus-perf` ici »,
+`make argus-build` dans la mise en garde contre lui. Ancrer sur le début de
+ligne à chaque fois. Et **deux de mes instruments** ont dû être corrigés avant
+que la passe de mutation soit propre : une mutation qui visait un titre au lieu
+d'une valeur, et un garde qui excusait trop large.
+
 ## Ce qui reste
+
+Les points **299 à 316** sont fermés le 01/09/2026 — backlog vide pour la
+**quarantième** fois. Dix-huit points, un démenti, et **deux runs qui ont buté au
+même endroit** pour la troisième fois du chantier. Le plus grave — un garde qui
+rendait vert par accident sur la forme que le skill prescrit — n'aurait été vu
+par aucune relecture : il fallait un terrain qui écrive vraiment cette forme-là.
+
+📌 **Cinq points sur dix-huit visaient du code écrit le jour même**, dont ma
+propre contradiction du 283. Le délai entre l'écriture et la mise à l'épreuve
+s'est encore raccourci : quelques heures.
 
 Les points **297 et 298** sont fermés le 01/09/2026 — backlog vide pour la
 **trente-neuvième** fois. **Aucun des deux ne vient d'un run** : le premier d'une
