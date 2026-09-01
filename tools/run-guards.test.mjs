@@ -749,9 +749,14 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
   // La distinction est STRUCTURELLE, pas nominale : une ligne sans filtre est
   // légitime quand une ligne voisine porte le MÊME motif AVEC le filtre — c'est
   // exactement la forme d'une contre-épreuve, et rien d'autre ne l'a.
-  const motifDe = (/** @type {string} */ l) => (/grep -c '([^']+)'/.exec(l) ?? [])[1] ?? '';
-  const filtres = new Set(comptages.filter((l) => l.includes('grep -v')).map(motifDe));
-  const sansFiltre = comptages.filter((l) => !l.includes('grep -v') && !filtres.has(motifDe(l)));
+  // ⚠️ ET LE CRITÈRE EST « DÉCLARE SON ATTENDU », pas « un jumeau filtré existe
+  // quelque part ». La première version excusait tout comptage non filtré dès
+  // qu'un filtré traînait ailleurs dans la page — donc elle excusait aussi le
+  // comptage PRESCRIT auquel on aurait retiré son filtre. La mutation l'a dit
+  // en rendant VACANT. Une contre-épreuve annonce ce qu'elle attend (`# doit
+  // être > 0`) ; un comptage prescrit ne l'annonce pas, il mesure.
+  const declareSonAttendu = (/** @type {string} */ l) => /#\s*doit être/.test(l);
+  const sansFiltre = comptages.filter((l) => !l.includes('grep -v') && !declareSonAttendu(l));
   assert.deepEqual(sansFiltre, [],
     'ces comptages liront le dartdoc d\'exemple et rendront des ancres qui n\'existent pas, '
     + 'et aucun comptage filtré du même motif ne les accompagne (donc ce ne sont pas des '
@@ -759,7 +764,7 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
 
   // ⚠️ ET LA CONTRE-ÉPREUVE DOIT EXISTER : sans elle, « ces compteurs rendent 0 »
   // ne distingue pas un filtre qui marche d'un instrument mort.
-  assert.ok(comptages.some((l) => !l.includes('grep -v')),
+  assert.ok(comptages.some((l) => !l.includes('grep -v') && declareSonAttendu(l)),
     'le §2b ne prescrit plus aucune contre-épreuve : son « doit rendre 0 » redevient '
     + 'indistinguable d\'un grep cassé, d\'un chemin faux ou d\'un filtre trop large');
 });

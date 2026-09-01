@@ -268,8 +268,14 @@ MUTATIONS = [
     ("harness", "la locale declaree redevient inapplicable",
      "      supportedLocales: <Locale>[argusLocale],\n",
      ""),
+    # ⚠️ Motif désambiguïsé le 01/09 : le §2b porte désormais DEUX comptages sur
+    # `ArgusScreen(` — le prescrit (filtré) et sa contre-épreuve (non filtrée,
+    # cf. 310). Le harnais a rendu « motif trouvé 2× », pas « VACANT » : c'est
+    # cette distinction qui évite d'aller chercher un garde qui existe.
     ("skill", "la commande de comptage reperd son filtre de commentaires",
+     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\n"
      "grep -v '^\\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('",
+     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\n"
      "grep -c 'ArgusScreen(' test/argus/harness.dart"),
     # ── Vingt-deuxième run ──────────────────────────────────────────────────
     # Le plafond d'attente. Deux mutations sur la MÊME ligne, parce que deux
@@ -869,6 +875,44 @@ MUTATIONS = [
     ("yamlconf", "le gabarit represcrit le nom du paquet Dart",
      "  # Le nom que l'application AFFICHE — pas celui du paquet Dart.",
      "  # Nom du paquet Dart (pubspec.yaml → name)."),
+    # ── La vague Android n° 2 (299-316) ──────────────────────────────────
+    ("config", "le croisement d'ancres redevient aveugle au ternaire",
+     "        const litteraux = [...arg.matchAll(/'([^']*)'/g)].map((x) => x[1])",
+     "        const litteraux = [...arg.slice(0, 1).matchAll(/'([^']*)'/g)].map((x) => x[1])"),
+    ("config", "le verdict vert retait les ancres non lisibles",
+     "      for (const o of vues.opaques ?? []) {",
+     "      for (const o of []) {"),
+    ("run", "l'échec d'installation reperd sa cause dans la stack",
+     "  for (const rx of NOMMANTS) {",
+     "  for (const rx of []) {"),
+    ("run", "le detail d'installation ne lit plus qu'un flux",
+     "    const detail = causeInstall(`${res.stderr ?? ''}\\n${res.stdout ?? ''}\\n${res.error ?? ''}`);",
+     "    const detail = causeInstall(res.stderr ?? '');"),
+    ("skill", "la release sort de la séquence",
+     "<la commande de RELEASE de ton projet>   # 🚨 PAS `make argus-build`, qui bâtit le debug\n",
+     ""),
+    ("skill", "la séquence reperd l'arête vers argus-perf",
+     "                       # ⚠️ s'il avertit sur le PLAFOND D'ATTENTE : `make argus-perf` ICI,\n"
+     "                       #    puis relève startTimeoutMs AVANT les références (voir plus bas)\n",
+     ""),
+    ("skill", "le repli reperd l'exception du widget privé",
+     "⚠️ **UNE EXCEPTION, ET ELLE EST NOMMÉE : rendre PUBLIC un widget privé.**",
+     "⚠️ **Aucune exception.**"),
+    # ⚠️ Elle vise la VALEUR (la commande de contre-épreuve), pas le titre qui
+    # l'annonce : retirer le titre laissait le bloc bash en place, donc le §2b
+    # prescrivait toujours la sonde et le garde restait vert — à raison.
+    ("skill", "le §2b reperd sa contre-épreuve de compteur",
+     "grep -c 'ArgusScreen(' test/argus/harness.dart          # doit être > 0 : l'exemple existe\n",
+     ""),
+    ("skill", "le point de tap redevient une recette",
+     "🚨 **LE POINT DÉPEND DE L'ÉCRAN — il n'y a pas de valeur par défaut, et en",
+     "⚠️ **Prends `tapOn: point: 50%,25%`. Accessoirement, en"),
+    ("skill", "REGRESS reperd son contrôle de jetons",
+     "🚨 **EN REGRESS, IL N'Y A AUCUN PATCH INVERSE — ET C'EST LÀ QU'UNE LIGNE SE",
+     "⚠️ **En REGRESS l'instrumentation reste, et le git diff suffit — UNE LIGNE SE"),
+    ("makefile", "la cible qui agrège les dettes disparaît",
+     "argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'étage 1",
+     "argus-debts-desactive: ## (retiré)"),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
