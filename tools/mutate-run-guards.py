@@ -654,6 +654,47 @@ MUTATIONS = [
     ("makefile", "argus-report cesse de transmettre ARGS",
      "\t@node scripts/argus/report.mjs $(ARGS)",
      "\t@node scripts/argus/report.mjs"),
+
+    # ── 251-253 · le troisième barreau, et deux titres qui mentaient ──────────
+    # Le 251 fige ce qu'une EXÉCUTION a établi : la page revenue d'un `read`
+    # porte un préambule `frame-runtime` de ~13 Ko, et la lecture doit y
+    # survivre. La mutation est le défaut réaliste — chercher la fermeture
+    # depuis le début du document plutôt que depuis la marque, ce que ce
+    # préambule ferait justement échouer.
+    ("report", "la lecture de l'historique cherche la fermeture trop tôt",
+     "const j = html.indexOf('</scr' + 'ipt>', i);",
+     "const j = html.indexOf('</scr' + 'ipt>');"),
+
+    # ⚠️ CELLE-CI EST LA PLUS IMPORTANTE DES TROIS DU 252 : elle rebranche le h1
+    # sur un littéral qui contient EXACTEMENT les bons mots. Un garde qui
+    # chercherait « ios » dans le titre resterait vert ; seul un garde qui
+    # APPELLE la fonction et compare le rendu à ce qu'elle rend la voit.
+    ("report", "le titre du rapport est rebranché sur un littéral",
+     "<h1>${esc(titreDuRapport(run))}</h1>",
+     "<h1>com.exemple — ios — rapport QA</h1>"),
+    ("report", "le titre cesse de porter la plateforme",
+     "return [run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');",
+     "return [run?.appId, 'rapport QA'].filter(Boolean).join(' — ');"),
+    ("report", "la sous-ligne répète de nouveau le titre",
+     '  <div class="sub">\n    ${devices',
+     '  <div class="sub">\n    ${esc(run?.appId ?? \'\')} ·\n    ${devices'),
+
+    # ⚠️ ET CELLE-CI EST LE DÉFAUT DU 253, MOT POUR MOT. Elle a d'abord laissé la
+    # suite ENTIÈRE verte : `titrePublie()` restait juste, et c'est son câblage
+    # au journal que plus rien ne tenait. Seul le garde qui LANCE report.mjs la
+    # voit — garde qui lit du texte < garde qui appelle < exécution.
+    ("report", "le journal reprend son propre calcul du titre",
+     "log(`  titre « ${titre} »",
+     "log(`  titre « ${config.artifact.title || 'Rapport Argus Mobile'} »"),
+    ("report", "le titre publié ignore la forme par plateforme",
+     "  const ident = artifactFor(config ?? {}, String(run?.platform ?? ''));\n  return ident.title ||",
+     "  return config?.artifact?.title ||"),
+    ("report", "le repli du titre redevient une constante générique",
+     "return ident.title || titreDuRapport(run);",
+     "return ident.title || 'Rapport Argus Mobile';"),
+    ("skill", "le SKILL cesse de décrire le titre par défaut que le code produit",
+     "ou, s'il est vide, `<appId> — <plateforme> — rapport QA`",
+     "ou un titre par défaut"),
 ]
 
 
