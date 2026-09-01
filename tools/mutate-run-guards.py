@@ -717,6 +717,31 @@ MUTATIONS = [
     ("report", "l'onglet cesse de signaler une plateforme qui détonne",
      "+ (detonne ? `<span class=\"muted\"> · ${esc(plate || '?')}</span>` : '') + '</button>';",
      "+ '</button>';"),
+
+    # ── 256-273 · la vague Android : deux runs, deux terrains, mêmes défauts ──
+    ("skill", "le SKILL remontre la forme YAML que le parseur refuse",
+     "   url:                                          # les deux plateformes\n     ios: 'https://…'\n     android: 'https://…'",
+     "   url: { ios: 'https://…', android: 'https://…' }   # les deux"),
+    ("yamlconf", "le gabarit remontre la forme flow",
+     "  #     url:\n  #       ios: 'https://…'\n  #       android: 'https://…'",
+     "  #     url: { ios: 'https://…', android: 'https://…' }"),
+    ("skill", "une dimension sort de la séquence",
+     "make argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes\n",
+     ""),
+    # ⚠️ Celle-ci coupe le CÂBLAGE du diagnostic vers la console, pas la fonction
+    # qui le construit : c'est exactement le défaut que le 258 ferme.
+    ("run", "le diagnostic de démarrage ne sort plus en console",
+     "        warn(`échec sur l'écran de départ${indice}`);",
+     "        void indice;"),
+    ("skill", "le SKILL reprend une base de dérivation concurrente",
+     "⚠️ **Dérive-le de `firstLaunchMs`**",
+     "Dérive-le du maximum que tu as observé"),
+    ("skill", "le SKILL réaffirme un diagnostic unique",
+     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a\nTROIS causes",
+     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, ce\nn'est pas l'instrumentation, c'est le plafond d'attente. Il y a TROIS causes"),
+    ("installeur", "le compteur de TODO recompte ceux qui sont SANS OBJET",
+     "grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET'",
+     "grep -c 'TODO(argus):'"),
 ]
 
 
