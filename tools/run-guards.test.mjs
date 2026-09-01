@@ -27,6 +27,7 @@ import {
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -5831,6 +5832,91 @@ test('le TODO du retour à l\'accueil DIT qu\'il ne couvre pas les écrans nomm�
   assert.match(voisinage, /écran NOMMÉ|écrans nommés/,
     'le TODO ne dit pas qu\'il ne couvre PAS les écrans nommés : celui qui le remplit croira '
     + 'traiter le cas général, et son flow échouera trois étapes plus loin sur une ancre saine');
+});
+
+test('une ancre connue de screens[] mais pas du harness est DISTINGUÉE (281)', () => {
+  // ⚠️ « QUE RIEN NE DÉCLARE » ÉTAIT FAUX POUR LA MOITIÉ DES CAS. Le croisement
+  // ne lit que harness.dart — à raison : « déclaré » veut dire « monté par
+  // l'étage 1 », et une ancre que seul `screens[]` connaît sert au device.
+  // Mais le message rendait ce vrai signal indéchiffrable : un run a lu
+  // « RIEN », a trouvé ses deux ancres écrites noir sur blanc dans `screens[]`,
+  // et a conclu que l'outil se trompait.
+  const config = { screens: [{ id: 'profile', anchor: 'profile_root' }, { id: 'home', anchor: 'home_root' }] };
+
+  const melange = ancresOrphelinesReport(['profile_root', 'jamais_vue'], config).join('\n');
+  assert.match(melange, /screens\[\]/,
+    'le message doit nommer screens[] quand l\'ancre y est : sans ça, « rien ne la déclare » '
+    + 'contredit ce que le lecteur a sous les yeux');
+  assert.ok(!/que RIEN ne déclare/.test(melange),
+    'le message ne peut plus affirmer que RIEN ne la déclare — c\'est faux dès qu\'elle est en config');
+  assert.match(melange, /harness\.dart/,
+    'et il doit dire OÙ la déclaration manque, sinon le remède reste à deviner');
+
+  // ⚠️ L'AUTRE MOITIÉ, sinon un correctif qui explique tout à tout le monde
+  // passerait : une ancre que PERSONNE ne connaît ne doit pas recevoir
+  // l'explication sur screens[], qui l'enverrait chercher une ligne inexistante.
+  const inconnues = ancresOrphelinesReport(['jamais_vue'], config).join('\n');
+  assert.ok(!/screens\[\]/.test(inconnues),
+    'une ancre absente de screens[] ne doit pas recevoir l\'explication sur screens[] : '
+    + 'elle irait chercher une déclaration qui n\'existe nulle part');
+  assert.match(inconnues, /allowUndeclared/, 'les deux issues restent offertes dans tous les cas');
+
+  // Le compte reste juste quelle que soit la répartition.
+  for (const [quoi, msg] of [['mélange', melange], ['inconnues', inconnues]]) {
+    const n = Number((/^(\d+) ancre\(s\)/.exec(msg) ?? [])[1]);
+    assert.ok(Number.isFinite(n), `${quoi} : le message ne porte plus le compte`);
+  }
+  assert.match(melange, /^2 ancre\(s\)/, 'deux orphelines doivent se compter deux');
+
+  // ⚠️ ET LE CÂBLAGE : le site d'appel doit INTERROGER la fonction, pas
+  // recopier son texte — sinon les deux divergent et le garde tient la copie
+  // morte pour la vraie.
+  const conf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  assert.match(conf, /ancresOrphelinesReport\(orphelines, config\)/,
+    '--check-anchors n\'appelle plus ancresOrphelinesReport : la fonction peut rester juste '
+    + 'pendant que la commande imprime autre chose');
+});
+
+test('le nombre de flows annoncé par le SKILL est celui du scaffold (282)', () => {
+  // ⚠️ UN COMPTEUR ÉCRIT À LA MAIN QUE LA SOURCE PEUT FOURNIR. Le §3c annonçait
+  // « sept fichiers » ; il y en a huit. Un compteur faux s'affiche exactement
+  // comme un compteur juste : rien ne lève, aucun test ne rougit, et le lecteur
+  // qui compte ses fichiers conclut qu'il en a un de trop.
+  //
+  // Le garde ne fige pas « huit » : il DÉRIVE le compte du scaffold et le
+  // compare à ce que la phrase annonce. Figer la valeur le rendrait faux au
+  // prochain flow ajouté — c'est-à-dire exactement le défaut qu'il ferme.
+  const flowsDir = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  const fichiers = [];
+  const parcourir = (d) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      const chemin = join(d, e.name);
+      if (e.isDirectory()) parcourir(chemin);
+      else if (e.name.endsWith('.yaml')) fichiers.push(chemin);
+    }
+  };
+  parcourir(flowsDir);
+  assert.ok(fichiers.length > 0, 'aucun flow trouvé : le montage est cassé, pas le SKILL');
+  const owned = fichiers.filter((f) => readFileSync(f, 'utf8').split('\n').slice(0, 20)
+    .some((l) => l.includes('ARGUS:OWNED')));
+  assert.ok(owned.length > 0, 'aucun flow ARGUS:OWNED : le marqueur a changé, mets ce garde à jour');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const ligne = skill.split('\n').find((l) => l.includes('les flows `ARGUS:OWNED`'));
+  assert.ok(ligne, 'la ligne du tableau qui annonce les flows a été reformulée — mets ce garde à jour');
+
+  const MOTS = { un: 1, deux: 2, trois: 3, quatre: 4, cinq: 5, six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12 };
+  const m = /\b([a-zéêè]+)\s+fichiers\b/.exec(ligne);
+  assert.ok(m, `la ligne n'annonce plus un nombre de fichiers : « ${ligne} »`);
+  const annonce = MOTS[m[1]] ?? Number(m[1]);
+  assert.ok(Number.isFinite(annonce), `« ${m[1]} » n'est pas un nombre connu de ce garde`);
+
+  assert.equal(annonce, owned.length,
+    `le SKILL annonce ${annonce} flows ARGUS:OWNED, le scaffold en porte ${owned.length} `
+    + `(${owned.map((f) => basename(f)).sort().join(', ')}). Un compteur périmé s'affiche `
+    + 'exactement comme un compteur juste.');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

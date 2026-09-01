@@ -909,6 +909,49 @@ export function undeclaredAnchors(root, config) {
 }
 
 /**
+ * Le rapport d'une ancre orpheline — et la distinction que « RIEN » écrasait.
+ *
+ * ⚠️ « QUE RIEN NE DÉCLARE » ÉTAIT FAUX POUR LA MOITIÉ DES CAS. Le croisement
+ * ne lit que `harness.dart`, parce que « déclaré » veut dire ici « monté par
+ * l'étage 1 » — une ancre que seul `screens[]` connaît sert au DEVICE et n'est
+ * jamais montée sans device. C'est un vrai signal, mais le message le rendait
+ * indéchiffrable : un run a lu « RIEN » au pied de la lettre, est allé vérifier
+ * `screens[]` où ses deux ancres étaient bel et bien écrites, et a conclu que
+ * l'outil se trompait.
+ *
+ * ⚠️ Et le remède qui vient à l'esprit — faire lire `screens[]` au croisement —
+ * est le mauvais : l'ancre passerait le contrôle sans que l'étage 1 la monte
+ * jamais, c'est-à-dire en perdant exactement ce que ce contrôle mesure.
+ *
+ * Extrait pour qu'un garde APPELLE et lise ce qui revient, plutôt que de
+ * chercher un texte dans la source.
+ * @param {string[]} orphelines @param {any} config @returns {string[]}
+ */
+export function ancresOrphelinesReport(orphelines, config) {
+  const enConfig = new Set((config?.screens ?? [])
+    .filter((/** @type {any} */ s) => s && typeof s.anchor === 'string' && s.anchor.trim() !== '')
+    .map((/** @type {any} */ s) => String(s.anchor).trim()));
+  const connuesDuDevice = orphelines.filter((a) => enConfig.has(a));
+  const inconnues = orphelines.filter((a) => !enConfig.has(a));
+
+  const lignes = [`${orphelines.length} ancre(s) posée(s) dans lib/ que test/argus/harness.dart ne déclare pas :`];
+  for (const a of inconnues) lignes.push(`    ${a}`);
+  for (const a of connuesDuDevice) lignes.push(`    ${a}   ← déclarée dans screens[], mais PAS dans harness.dart`);
+  if (connuesDuDevice.length) {
+    lignes.push('  ⚠️ `screens[]` ne compte pas comme déclaration ICI : il sert aux flows sur');
+    lignes.push('     device, alors que ce contrôle vérifie ce que l\'étage 1 MONTE, sans device.');
+    lignes.push('     Les deux listes sont distinctes et doivent l\'être ; une ancre utile aux');
+    lignes.push('     deux s\'écrit aux deux endroits.');
+  }
+  lignes.push('  Une ancre non déclarée n\'est pas en échec — elle est ABSENTE de tout relevé,');
+  lignes.push('  donc aucun garde ne dit qu\'elle n\'est pas couverte. Deux issues :');
+  lignes.push('    · la déclarer sur son ArgusScreen (commands: / displays: / anchor:) ;');
+  lignes.push('    · si elle est hors périmètre exprès, l\'inscrire dans');
+  lignes.push('      argus.mobile.yaml → anchors.allowUndeclared, avec la raison à côté.');
+  return lignes;
+}
+
+/**
  * La plateforme sur laquelle une commande porte quand personne ne l'a dite.
  *
  * ⚠️ LE DÉFAUT ÉTAIT `'android'` EN DUR, aux deux sites qui servent le Makefile
@@ -1505,13 +1548,7 @@ function main() {
       log(`✔ toute ancre posée dans lib/ est déclarée (${posedAnchors(process.cwd(), config).length} littérales)`);
       return;
     }
-    err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);
-    for (const a of orphelines) err(`    ${a}`);
-    err('  Une ancre non déclarée n\'est pas en échec — elle est ABSENTE de tout relevé,');
-    err('  donc aucun garde ne dit qu\'elle n\'est pas couverte. Deux issues :');
-    err('    · la déclarer sur son ArgusScreen (commands: / displays: / anchor:) ;');
-    err('    · si elle est hors périmètre exprès, l\'inscrire dans');
-    err('      argus.mobile.yaml → anchors.allowUndeclared, avec la raison à côté.');
+    for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);
     process.exit(1);
   }
 
