@@ -282,7 +282,29 @@ export function titreDuRapport(run) {
   // qu'un titre amputé de ce qui le distingue.
   // Les morceaux vides tombent : sans eux, un run sans plateforme rendrait
   // « monapp —  — rapport QA ». Le séparateur orphelin ne lève rien.
-  return [run?.name || run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');
+  return [run?.name || run?.appId, plateformeLisible(run?.platform), 'rapport QA'].filter(Boolean).join(' — ');
+}
+
+/**
+ * La plateforme telle qu'on l'ÉCRIT, pas telle qu'on la stocke.
+ *
+ * ⚠️ DEUX TITRES POUR UNE PAGE. Le `<title>` disait « … — iOS — rapport QA » et
+ * le H1 rendu « … — ios — rapport QA », parce que l'un venait d'`artifact.title`
+ * écrit à la main et l'autre de `run.platform`, qui est une clé de
+ * configuration en minuscules. Sans conséquence fonctionnelle, mais le skill
+ * insiste précisément sur le fait que ce titre est « la seule chose qui
+ * distingue ton rapport des autres » : deux orthographes pour la même page
+ * défont ce qu'il sert à faire.
+ *
+ * Toute autre valeur passe telle quelle — inventer une casse pour une
+ * plateforme qu'on ne connaît pas serait pire que la laisser.
+ * @param {unknown} p @returns {string}
+ */
+export function plateformeLisible(p) {
+  const v = String(p ?? '').trim();
+  if (v.toLowerCase() === 'ios') return 'iOS';
+  if (v.toLowerCase() === 'android') return 'Android';
+  return v;
 }
 
 /**

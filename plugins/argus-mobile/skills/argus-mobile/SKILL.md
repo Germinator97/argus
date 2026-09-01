@@ -214,11 +214,16 @@ grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
 ```
 
-⚠️ **NE CHAÎNE PAS CES QUATRE LIGNES PAR `&&`.** `grep -c` **sort en 1 quand il
+⚠️ **NE CHAÎNE JAMAIS DES `grep -c` PAR `&&` — ici NI AILLEURS.** `grep -c` **sort en 1 quand il
 compte 0** : la chaîne s'arrête alors au premier compteur nul, **sans erreur**,
 et tu lis deux compteurs sur quatre en croyant la commande complète. Vécu — un
 run l'a fait, c'est le geste naturel quand on veut un seul bloc de sortie.
 Lance-les séparément, ou termine chacune par `|| true`.
+
+⚠️ **Cet encadré disait d'abord « ces quatre lignes », et un run l'a lu comme
+LOCAL** : il a enchaîné son propre `grep -c … && …` ailleurs dans le parcours, et
+la chaîne s'est tronquée de la même façon. **Le piège n'appartient pas à ce
+bloc — il appartient à `grep -c`.**
 
 ⚠️ **ET `0` NE PROUVE RIEN TOUT SEUL — il faut une contre-épreuve.** La
 vérification prescrite ci-dessus (« sur le `harness.dart` livré, ces deux
@@ -226,6 +231,10 @@ compteurs doivent rendre `0` ») a un défaut que le skill dénonce partout
 ailleurs : **`0` est aussi ce que rend un instrument mort** — grep tronqué par
 un `&&`, chemin faux, filtre trop large. Un run l'a vu et a ajouté la sonde
 lui-même. Fais-la : le **même motif SANS le filtre `///`** doit rendre `> 0`.
+
+⚠️ **Cette contre-épreuve exige `harness.dart`, que l'installeur pose au §3b.**
+Si tu es encore au §2, tu ne l'as pas : garde-la pour après l'installation. L'état
+TROUVÉ, lui, se compte depuis `lib/` — forcément, puisque rien d'autre n'existe.
 
 ```bash
 grep -c 'ArgusScreen(' test/argus/harness.dart          # doit être > 0 : l'exemple existe
@@ -391,6 +400,20 @@ sans sortie ni timeout. Fais rendre à ce service un `Completer<T>().future`
 (jamais complété), ce que fait le vrai service tant qu'il attend. Le §3g décrit
 le symptôme et le défaut de production que ce double révèle.
 
+⚠️ **ET LA FORME QU'ON ÉCRIT VRAIMENT NE RESSEMBLE PAS À CELLE QU'ON NOMME.** Un
+run avait lu ce paragraphe et est tombé dedans quand même — trente minutes :
+
+```dart
+when(() => service.prochainCode())
+  .thenAnswer((_) async => null);                    // ← LE DÉFAUT, sous sa vraie forme
+when(() => service.prochainCode())
+  .thenAnswer((_) => Completer<String?>().future);   // ← le remède
+```
+
+`thenAnswer((_) async => null)` **est** un futur déjà complété : le `async` en
+fabrique un. Écrit ainsi il ne rappelle en rien `Future.value(null)`, et c'est
+pourtant la seule forme qu'on produise avec `mocktail`.
+
 ⚠️ **Où poser les doubles de test dont tes écrans ont besoin.** `harness.dart`
 déclare ; il n'a pas à héberger quatre blocs falsifiés et un service d'injection.
 Mets-les dans un fichier voisin — `test/argus/argus_fakes.dart` est le nom que le
@@ -446,7 +469,19 @@ visibilité. Elle se relit en diff et se retire en une commande, comme le reste.
 Tout autre renommage (une méthode, un champ, une classe métier) reste interdit.
 
 Et **écris en tête du rapport ce que tu as touché** : les fichiers, le nombre de
-lignes, et la phrase qui dit que ça n'a pas été validé. Un run qui instrumente
+lignes, et la phrase qui dit que ça n'a pas été validé.
+
+⚠️ **ET SI UN TEST DU PROJET ROUGIT À CAUSE DE TON INSTRUMENTATION ?** Ça arrive,
+et aucune règle ne le couvrait. Vécu : un garde du projet mesurait une **distance
+en caractères** (`[\s\S]{0,120}`) entre deux motifs d'un fichier ; l'enveloppe
+`Semantics` l'a portée à 210. Le test avait raison hier, il a raison aujourd'hui,
+et c'est sa **borne** qui est devenue fausse.
+
+Trois issues, dans cet ordre : **desserrer la borne** en gardant intacte ce que
+le test affirme, et écrire pourquoi et quand, dans le fichier ; **déplacer ton
+enveloppe** si elle peut vivre ailleurs sans perdre l'ancre ; **ne jamais
+supprimer le test ni le laisser rouge**. Un test du projet rendu rouge par la
+pose d'une garde est le plus sûr moyen de faire retirer la garde. Un run qui instrumente
 sans le dire laisse quelqu'un découvrir le diff sans savoir d'où il vient.
 
 ⚠️ **L'absorption avale le texte, pas les commandes** — et c'est ce qui la rend
@@ -922,6 +957,15 @@ Deux écrans partagent la même ancre de racine
 sert d'`anchor:`, et la racine commune passe en `displays:`.** Elle reste ainsi
 vérifiée, sans prétendre distinguer ce qu'elle ne distingue pas.
 
+⚠️ **UNE ANCRE COMPOSÉE AU CALL-SITE N'EST PAS PORTÉE PAR SON ÉCRAN.** Quand
+l'ancre enveloppe un composant **à l'endroit où on l'appelle** — typiquement dans
+`main.dart`, autour d'un écran du socle —, monter cet écran seul à l'étage 1 ne
+la porte pas, et le garde rend « aucun nœud ne porte cet identifiant ». C'est un
+cinquième écart légitime : l'écran reste dans `screens[]` (le device, lui, voit
+bien l'ancre), et l'étage 1 monte **le call-site**, pas le composant — ou
+l'inscrit avec sa raison. Un run a mis dix minutes à le rapprocher du deuxième
+cas, faute de ligne qui le nomme.
+
 ⚠️ **La coquille qui EST l'écran de départ est le cas que la table refusait.**
 « Une coquille n'est pas un écran, donc pas d'ancre » est vrai d'une barre
 d'onglets, et faux du conteneur qui **rend l'accueil** : c'est lui que tout flow
@@ -1272,6 +1316,12 @@ décrit **ton outillage** et pas ton app.
 --split-debug-info`, un `--dart-define-from-file`, un flavor…) : le harnais ne
 l'invente pas, il la lit dans `build.androidScan` / `build.iosScan`. Deux
 minutes de build changent deux verdicts.
+
+⚠️ **SUR iOS, le `.app` de simulateur SURVIT au build de release** : les deux
+cohabitent sous `build/ios/`, l'un sous `Debug-*-iphonesimulator`, l'autre sous
+`iphoneos`. Rien à réinstaller après — vérifié par empreinte
+(`--measure-binary` identique avant et après). Et sans identité de signature,
+`--no-codesign` suffit : on pèse et on scanne, on ne distribue pas.
 
 ⚠️ **SI `argus-run` ÉCHOUE SUR L'ANCRE DE DÉPART, NE DEVINE PAS : LE RUNNER TE
 DONNE L'ORDRE.** Il imprime les trois causes possibles, de la plus probable à la

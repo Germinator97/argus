@@ -91,9 +91,17 @@ appId: ${APP_ID}
             # étapes plus loin en accusant une ancre présente. Coût : un flow
             # rouge et ~160 s de device.
             #
+            # ⚠️ `back` EST ANDROID ET WEB UNIQUEMENT. Ce TODO conseillait
+            # « un `back` répété ailleurs » pendant que la méthodologie du même
+            # scaffold écrit « un flow de retour non gardé passe au vert sur iOS
+            # SANS RIEN TESTER ». Deux fichiers livrés ensemble qui se
+            # contredisent, et c'est celui qu'on ÉDITE qui avait tort. Sur iOS,
+            # reviens par les commandes de l'app (un bouton de retour ancré),
+            # ou garde le `back` derrière `when: platform: Android`.
+            #
             # TODO(argus): le retour à l'écran de départ, depuis n'importe quel
             # écran — l'onglet d'accueil chez la plupart
-            # (`- tapOn: { id: nav_home }`), un `back` répété ailleurs. Mets-le
+            # (`- tapOn: { id: nav_home }`). Mets-le
             # AVANT l'assertion ci-dessous, qui n'est là que pour faire échouer
             # ICI plutôt que trois étapes plus loin, sur une ancre qui n'a rien
             # fait de mal.

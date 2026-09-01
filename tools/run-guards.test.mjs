@@ -37,7 +37,7 @@ import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -5282,12 +5282,23 @@ test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
   // rapports » — rien ne s'en servait. Un titre se lit : un nom se reconnaît
   // dans une galerie, « com.exemple.app » se déchiffre.
   assert.equal(titreDuRapport({ name: 'monapp', appId: 'com.x.monapp', platform: 'ios' }),
-    'monapp — ios — rapport QA', 'le nom l\'emporte sur l\'identifiant');
+    'monapp — iOS — rapport QA', 'le nom l\'emporte sur l\'identifiant');
   // ⚠️ L'AUTRE MOITIÉ : le nom peut manquer (un projet qui ne l'a pas configuré),
   // l'identifiant jamais. Mieux vaut un titre technique qu'un titre amputé de ce
   // qui le distingue.
   assert.equal(titreDuRapport({ appId: 'com.x.monapp', platform: 'ios' }),
-    'com.x.monapp — ios — rapport QA', 'sans nom, le repli est l\'identifiant');
+    'com.x.monapp — iOS — rapport QA', 'sans nom, le repli est l\'identifiant');
+
+  // ⚠️ UNE SEULE ORTHOGRAPHE PAR PAGE (323). Le `<title>` disait « iOS » et le
+  // H1 « ios », parce que l'un venait d'un titre écrit à la main et l'autre de
+  // `run.platform`, une clé de config en minuscules. Sans conséquence
+  // fonctionnelle — mais ce titre est « la seule chose qui distingue ton rapport
+  // des autres », et deux orthographes défont ce qu'il sert à faire.
+  assert.equal(plateformeLisible('ios'), 'iOS');
+  assert.equal(plateformeLisible('android'), 'Android');
+  // Et une plateforme inconnue passe telle quelle : inventer une casse serait pire.
+  assert.equal(plateformeLisible('harmonyos'), 'harmonyos');
+  assert.equal(plateformeLisible(undefined), '');
 
   // ⚠️ ON APPELLE LA FONCTION, ET ON VÉRIFIE QUE LE SITE D'APPEL LA REND. Un
   // garde qui se contenterait de chercher « ios » dans le h1 resterait vert le
@@ -5296,7 +5307,9 @@ test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
   assert.equal(ios, titreDuRapport({ appId: 'com.exemple', platform: 'ios' }),
     'le h1 doit RENDRE ce que titreDuRapport() rend, pas quelque chose qui y ressemble');
   assert.match(ios, /com\.exemple/, 'le titre doit nommer le projet');
-  assert.match(ios, /\bios\b/, 'et la plateforme');
+  // ⚠️ DÉRIVÉ, pas cité : la plateforme s'écrit avec sa casse d'affichage (323),
+  // et figer « ios » ici referait le garde faux au prochain changement de forme.
+  assert.match(ios, new RegExp(`\\b${plateformeLisible('ios')}\\b`), 'et la plateforme');
   assert.notEqual(ios, dro,
     'deux plateformes du même projet doivent porter des titres DIFFÉRENTS — toute la raison du 245');
 
@@ -5909,7 +5922,9 @@ test('le TODO du retour à l\'accueil DIT qu\'il ne couvre pas les écrans nomm�
   const lignes = goto.split('\n');
   const iTodo = lignes.findIndex((l) => l.includes("TODO(argus): le retour à l'écran de départ"));
   assert.notEqual(iTodo, -1, 'le TODO du retour à l\'accueil a été reformulé — mets ce garde à jour');
-  const voisinage = lignes.slice(Math.max(0, iTodo - 14), iTodo).join('\n');
+  // 20 lignes : le TODO a gagné l'avertissement sur `back` (318), qui vit entre
+  // la mention du périmètre et lui. Mesuré (écart 16), pas élargi au hasard.
+  const voisinage = lignes.slice(Math.max(0, iTodo - 20), iTodo).join('\n');
   assert.match(voisinage, /écran NOMMÉ|écrans nommés/,
     'le TODO ne dit pas qu\'il ne couvre PAS les écrans nommés : celui qui le remplit croira '
     + 'traiter le cas général, et son flow échouera trois étapes plus loin sur une ancre saine');
@@ -6120,7 +6135,11 @@ test('le SKILL donne le GESTE des doubles, et la boucle est dite là où on les 
 
   // Le geste est écrit AVANT ou AUTOUR de « où les poser » : on prend large et
   // on borne au paragraphe suivant plutôt que de deviner un ordre.
-  const bloc = skill.slice(Math.max(0, i - 45), i + 20).join(' ').replace(/\s+/g, ' ');
+  // 60 lignes en amont : le paragraphe a gagné la forme mocktail du défaut
+  // (328), qui s'intercale entre le geste et l'ancre. Mesuré (écart max 49),
+  // pas élargi au hasard — une fenêtre devinée redeviendrait fausse au prochain
+  // ajout, et c'est ainsi qu'un garde meurt sans qu'on l'ait voulu.
+  const bloc = skill.slice(Math.max(0, i - 60), i + 20).join(' ').replace(/\s+/g, ' ');
 
   for (const [quoi, rx] of [
     // ⚠️ `extends` : sans lui, le motif matche la MENTION de MockCubit dans le
@@ -6822,8 +6841,14 @@ test('les consignes que deux runs ont payées sont écrites (305, 307, 309-315)'
       '`firstLaunchMs` varie d\'un facteur 3 selon la charge : un seuil qui en dérive est aussi instable'],
     ['307', skill, /l'`anchor:` d'un `ArgusScreen` est unique/i,
       'l\'unicité de l\'anchor n\'était énoncée nulle part, seulement montrée'],
-    ['309', skill, /ne chaîne pas ces quatre lignes/i,
+    // ⚠️ Ancré sur le SUJET, pas sur la phrase : le 330 a reformulé « ces quatre
+    // lignes » en « ici ni ailleurs » — le phénomène est le même, mieux dit, et
+    // un motif qui citait la formulation d'origine serait devenu faux pour un
+    // correctif JUSTE.
+    ['309', skill, /ne chaîne (pas|jamais)[^.]*`?grep -c`?|`grep -c`[^.]*par `&&`/i,
       '`grep -c` sort en 1 sur zéro : la chaîne se tronque en silence'],
+    ['330', skill, /ici ni ailleurs|n'appartient pas à ce bloc/i,
+      'le piège de `grep -c` appartient à la commande, pas au bloc où il est décrit'],
     ['310', skill, /0` ne prouve rien tout seul|contre-épreuve/i,
       'la vérification prescrite ne distingue pas un filtre qui marche d\'un instrument mort'],
     ['312', skill, /le point dépend de l'écran/i,
@@ -6995,6 +7020,42 @@ test('un GABARIT d\'ancre n\'est ni une ancre opaque ni du hors-périmètre (329
   assert.match(bloc, /log\(/,
     'les familles doivent sortir en log, pas en warn : les alarmer poussait à les inscrire en '
     + 'allowUndeclared, donc à déclarer hors périmètre des ancres vérifiées');
+});
+
+test('les consignes que la vague iOS a payées sont écrites (318, 321, 325, 328, 331, 332)', () => {
+  // Un garde groupé pour les consignes manquantes de la vague iOS, chacune
+  // mesurée sur le terrain. Il vérifie que le SUJET est traité là où le run l'a
+  // cherché, sans citer de formulation.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').replace(/\s+/g, ' ');
+  const goto = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+
+  const attendus = [
+    ['318', goto, /back` EST ANDROID ET WEB|back.{0,40}Android et Web/i,
+      'le TODO conseillait un `back` que la méthodologie du même scaffold déclare inopérant sur iOS'],
+    ['321', skill, /exige `harness\.dart`, que l'installeur pose/i,
+      'la contre-épreuve du §2b réclame un fichier que le §3 pose — l\'ordre affiché n\'est pas suivable'],
+    ['325', skill, /\.app` de simulateur SURVIT/i,
+      'rien ne disait si le build de release iOS écrase le binaire de simulateur'],
+    ['328', skill, /thenAnswer\(\(_\) async => null\)/,
+      'la forme mocktail du défaut ne ressemble pas à celle que le skill nomme — 30 min payées'],
+    ['331', skill, /ancre composée au call-site|COMPOSÉE AU CALL-SITE/i,
+      'une ancre posée à l\'endroit de l\'appel n\'est pas portée par l\'écran monté seul'],
+    ['332', skill, /distance en caractères|rougit à cause de ton instrumentation/i,
+      'aucune règle ne disait quoi faire d\'un test du projet cassé par une instrumentation légitime'],
+  ];
+  for (const [num, texte, rx, pourquoi] of attendus) {
+    assert.match(texte, rx, `${num} — ${pourquoi} : la consigne n'est pas écrite`);
+  }
+
+  // ⚠️ Le 318 doit AUSSI rester cohérent avec la méthodologie : c'est leur écart
+  // qui était le défaut, pas l'une des deux phrases.
+  const metho = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md'), 'utf8');
+  assert.match(metho, /`back`[^.]*Android/i,
+    'la méthodologie ne dit plus que `back` est Android : ce garde compare deux textes, et '
+    + 'l\'un vient de disparaître');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
