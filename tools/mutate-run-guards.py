@@ -779,6 +779,14 @@ MUTATIONS = [
     ("installeur", "--check reperd la liste des fichiers OWNED",
      "    inventaire_owned\n    if [ \"$outdated\" -gt 0 ]; then",
      "    if [ \"$outdated\" -gt 0 ]; then"),
+    # ⚠️ Les deux sens de l'angle mort iOS : le conseil redevient unique, puis le
+    # câblage se coupe — le second est celui qu'aucun test unitaire ne voit.
+    ("run", "le conseil de plafond redevient le même pour les deux plateformes",
+     "  const derivation = String(platform) === 'ios'",
+     "  const derivation = false"),
+    ("run", "la plateforme n'atteint plus le conseil de plafond",
+     "startupMarginWarning(startup, report.startup.timeoutMs, report.run?.platform)",
+     "startupMarginWarning(startup, report.startup.timeoutMs)"),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
