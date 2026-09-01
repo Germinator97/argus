@@ -618,8 +618,11 @@ MUTATIONS = [
     ("skill", "le titre cesse de se lire avant une republication",
      "   ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le",
      "   ⚠️ **Note sans objet.** Le"),
+    # ⚠️ Motif réécrit par le 262, qui a mis la case au PLURIEL : le §2c prescrit
+    # deux noms de paramètre distincts, et la case n'en tenait qu'un. Le harnais
+    # l'a dit lui-même — « motif trouvé 0× », verdict HARNAIS et non VACANT.
     ("skill", "le gabarit reperd la case du nom de paramètre",
-     "    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre `<NOM>`",
+     "    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre(s) `<NOMS>`",
      "    dont partagées   : <C> composant(s) couvrant <S> call-sites"),
     # ── Le défaut que la passe précédente avait CRÉÉ ────────────────────────
     ("makefile", "la recette cesse de lire le code de sortie du build",
