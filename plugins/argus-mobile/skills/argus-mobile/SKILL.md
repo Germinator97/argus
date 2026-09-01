@@ -1072,14 +1072,22 @@ publiée décrit un run sans performance, sans accessibilité device, sans MASVS
 sans CVE. Deux runs indépendants ont suivi cette séquence à la lettre et publié
 ce rapport-là ; elles coûtent **moins d'une minute** à elles quatre.
 
-⚠️ **Et si `make argus-guards` ne rend JAMAIS la main, ne cherche pas un test
-lent : cherche une boucle de micro-tâches.** Le symptôme est net —
-`flutter_tester` **sature un cœur** — 120,6 % mesurés sur un projet réel —
-aucune sortie, aucun timeout. Relevé ailleurs : dix minutes avant qu'on
-l'interrompe. ⚠️ Ce tell a longtemps été écrit « quelques pour cent de CPU »,
-et c'était faux : une boucle de micro-tâches est une boucle SERRÉE, elle ne
-dort pas. Un run a reconnu le symptôme par les autres signes et a noté que le
-critère donné l'aurait fait écarter le bon diagnostic.
+⚠️ **Et si une commande de l'étage 1 ne rend JAMAIS la main — `argus-guards`,
+`argus-anchors`, n'importe laquelle —, ne cherche pas un test lent : cherche une
+boucle de micro-tâches.** Le tell est une **absence**, et c'est elle qui décide :
+**aucune sortie, aucun timeout, la main jamais rendue.** Un test lent finit ;
+celui-ci n'arrive jamais au bout. Relevé ailleurs : dix minutes avant qu'on
+l'interrompe.
+
+⚠️ **NE JUGE PAS AU POURCENTAGE DE CPU** — c'est le critère qui a échoué deux
+fois de suite, dans les deux sens. Il a d'abord été écrit « quelques pour cent »,
+ce qui était faux : une boucle de micro-tâches est **serrée**, elle ne dort pas.
+Il a ensuite été réécrit « sature un cœur, 120,6 % mesurés » — un chiffre exact,
+pris sur un hôte au repos, et qu'un run sur machine partagée n'a pas retrouvé :
+il a mesuré **42,9 %** pour le **même** défaut, et a failli écarter le bon
+diagnostic à cause du chiffre qu'on lui avait donné. `flutter_tester` tourne,
+voilà tout ce que le CPU dit ; sa valeur suit la charge de l'hôte, pas la
+gravité. Le chiffre confirme après coup, il ne reconnaît jamais.
 
 La cause est un widget qui interroge un service en boucle, et dont le service
 rend un `Future` **déjà complété** sur la plateforme hôte — typiquement un
@@ -1175,28 +1183,35 @@ la dizaine de secondes — le même script, deux ordres de grandeur.
 Chronomètre-le une fois sur ton projet plutôt que de te fier à un chiffre écrit
 ailleurs : c'est la seule façon de savoir ce qu'il coûte *chez toi*.
 
-⚠️ **Chiffre le coût avant de le subir : c'est TROIS passes device pleines.**
-⚠️ **Et chronomètre-le sur TON projet plutôt que de croire ce chiffre.** Un run
-a mesuré `argus-baselines` à **5 min 50**, soit la durée d'un run normal et non
-le triple : le chiffre ci-dessous vient d'un autre terrain, et il l'a fait
-sur-budgéter au point d'envisager de couper la contre-épreuve visuelle — c'est-
-à-dire la seule chose qui prouve que la comparaison mesure.
-`argus-baselines` n'est pas l'étape courte du milieu — elle rejoue toute la suite
-fonctionnelle avant de produire les captures (12 flows là où 6 en produisent).
-Sur un émulateur, la séquence complète approche les vingt minutes. Ça se prévoit,
-et ça ne se refait qu'une fois : les passages suivants sont un seul `argus-run`.
+⚠️ **`argus-baselines` n'est pas l'étape courte du milieu** — elle rejoue toute
+la suite fonctionnelle avant de produire les captures (12 flows là où 6 en
+produisent). C'est le seul fait stable de ce paragraphe ; **le reste se
+chronomètre chez toi.** Deux terrains l'ont mesurée à **5 min 50** et
+**4 min 22** — l'ordre de grandeur d'un run normal, pas le triple qu'un décompte
+de passes device laisse craindre. Et ça ne se refait qu'une fois : les passages
+suivants sont un seul `argus-run`.
+
+⚠️ **NE BUDGÈTE PAS CETTE ÉTAPE SUR UN CHIFFRE ÉCRIT ICI.** Ce paragraphe a
+annoncé successivement « trois passes device pleines », puis « vingt minutes » —
+les deux ajoutés pour corriger le précédent, aucun retiré. Deux runs ont lu le
+chiffre le plus visible, se sont sur-budgétés, et ont envisagé de **couper la
+contre-épreuve visuelle**, c'est-à-dire la seule chose qui prouve que la
+comparaison mesure. Un chiffre pris sur un autre terrain fait renoncer à la
+vérification qu'il devait aider à prévoir : c'est pourquoi il n'y en a plus ici.
 
 ⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
 puis **remplacer une référence par un aplat AUX DIMENSIONS EXACTES de celle
 qu'il remplace** et vérifier que celle-là seule rougit. Sans le troisième temps,
 le vert du deuxième ne dit pas si la comparaison mesure ou si elle dort.
 
-⚠️ **Le troisième temps se rejoue en `node scripts/argus/run.mjs --tags=visual
---no-install`** — 2 min 17 au lieu de six sur un terrain mesuré. Le raccourci
-est décrit plus bas, dans le paragraphe sur la mise au point d'un flow isolé, à
-une centaine de lignes d'ici : c'est pourtant ICI qu'il change quelque chose. Un
-run a failli sacrifier la contre-épreuve pour tenir son budget, c'est-à-dire
-sacrifier la seule chose qui prouve que la comparaison mesure.
+Le troisième temps ne demande pas une passe complète, et le geste est **ici**
+parce que c'est ici qu'il change quelque chose — un run l'a cherché à une
+centaine de lignes de là, l'autre a failli sacrifier la contre-épreuve faute de
+l'avoir trouvé :
+
+```bash
+node scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six
+```
 
 ⚠️ **Les dimensions ne sont pas un détail : elles décident de ce que tu prouves.**
 Un aplat de taille quelconque fait échouer Maestro sur

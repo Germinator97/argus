@@ -5634,6 +5634,74 @@ test('le SKILL et le runner prescrivent la MÊME base de dérivation (259)', () 
     'le SKILL ne présente plus les trois causes dans l\'ordre du runner');
 });
 
+test('un repère chiffré du SKILL ne vient jamais SEUL (276)', () => {
+  // ⚠️ LE MÊME DÉFAUT, DEUX FOIS, ET C'EST MOI QUI L'AI ÉCRIT LES DEUX FOIS.
+  // Un chiffre mesuré sur un seul terrain, donné comme critère de
+  // reconnaissance ou comme budget, fait écarter le bon diagnostic dès que la
+  // machine suivante ne le retrouve pas :
+  //   · « sature un cœur, 120,6 % » → un run sur hôte partagé mesure 42,9 %
+  //     pour le MÊME défaut, et manque de conclure que ce n'en est pas un ;
+  //   · « vingt minutes » pour argus-baselines → deux runs se sur-budgètent et
+  //     envisagent de couper la contre-épreuve visuelle, seule chose qui prouve
+  //     que la comparaison mesure.
+  // Corriger le premier chiffre par un second, plus juste, ne suffit pas : la
+  // leçon n'est pas la valeur, c'est qu'UNE valeur ne reconnaît rien. Le garde
+  // exige donc DEUX mesures distinctes partout où le skill en donne une.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+  const blocApres = (ancre, n) => {
+    const i = skill.findIndex((l) => l.includes(ancre));
+    // ⚠️ Sans cette assertion, une reformulation rend le garde VACANT : la
+    // recherche échoue, le bloc est vide, et « aucun chiffre » passe pour sain.
+    assert.notEqual(i, -1, `ancre introuvable dans le SKILL : « ${ancre} » — reformulée ? mets ce garde à jour`);
+    return skill.slice(i, i + n).join('\n');
+  };
+
+  const cas = [
+    { quoi: 'le tell de la boucle de micro-tâches',
+      ancre: 'boucle de micro-tâches', lignes: 14, rx: /\d+[,.]\d+\s*%/g,
+      note: "le CPU suit la charge de l'hôte, pas la gravité" },
+    { quoi: "le coût d'argus-baselines",
+      ancre: "n'est pas l'étape courte du milieu", lignes: 14, rx: /\d+\s*min\s*\d+/g,
+      note: 'une durée prise ailleurs fait renoncer à la contre-épreuve' },
+  ];
+
+  for (const { quoi, ancre, lignes, rx, note } of cas) {
+    const bloc = blocApres(ancre, lignes);
+    const mesures = [...new Set(bloc.match(rx) ?? [])];
+    assert.ok(mesures.length >= 2,
+      `${quoi} : ${mesures.length} mesure(s) citée(s) (${mesures.join(', ') || 'aucune'}). `
+      + `Un chiffre seul se lit comme un critère — ${note}. Donne-en deux, pris sur deux terrains, `
+      + "ou n'en donne aucun.");
+  }
+});
+
+test('le geste du troisième temps est ÉCRIT là où il sert (277)', () => {
+  // ⚠️ ANNOTER UN ÉLOIGNEMENT N'EST PAS LE CORRIGER. Le skill disait « le
+  // raccourci est décrit plus bas, à une centaine de lignes d'ici : c'est
+  // pourtant ICI qu'il change quelque chose » — et le run suivant a fait
+  // l'aller-retour quand même, puis a écrit mot pour mot que le remède aurait
+  // été de DÉPLACER le geste, pas de commenter sa distance.
+  //
+  // Le garde mesure donc la distance, seule chose qu'une annotation ne change pas.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+  const enonce = skill.findIndex((l) => l.includes('prouve-la en trois temps'));
+  assert.notEqual(enonce, -1, "l'énoncé du troisième temps a été reformulé — mets ce garde à jour");
+
+  const geste = skill.findIndex((l, i) => i > enonce
+    && l.trim().startsWith('node ') && l.includes('--tags=visual') && l.includes('--no-install'));
+  assert.notEqual(geste, -1,
+    'le geste du troisième temps (`--tags=visual --no-install`) n\'est plus écrit APRÈS son énoncé : '
+    + 'celui qui contre-éprouve doit le chercher ailleurs, et deux runs ont failli sacrifier la '
+    + 'contre-épreuve pour ne pas l\'avoir trouvé');
+
+  const distance = geste - enonce;
+  assert.ok(distance <= 25,
+    `le geste est à ${distance} lignes de son énoncé — il était à une centaine, et l'annoter n'y `
+    + 'avait rien changé. Déplace-le, ne le commente pas.');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run
