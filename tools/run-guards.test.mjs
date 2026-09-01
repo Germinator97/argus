@@ -5956,7 +5956,7 @@ test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () =
   // Ce qui compte comme repli : dire ce qu'on fait quand la réponse ne vient pas.
   const REPLI = /sans interlocuteur|non interactif|en attendant|Personne ne répond/i;
   for (const i of sites) {
-    const paragraphe = skill.slice(i, i + 30).join('\n');
+    const paragraphe = skill.slice(i, i + 30).join(' ').replace(/\s+/g, ' ');
     assert.match(paragraphe, REPLI,
       `« ${skill[i].trim().slice(0, 70)}… » (ligne ${i + 1}) demande sans dire quoi faire si personne `
       + 'ne répond. Le §1 prescrit de trancher ; une consigne qui l\'ignore fait décider chaque '
@@ -5968,7 +5968,7 @@ test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () =
   // devient un permis de refactorer.
   const iCode = skill.findIndex((l) => /\*\*Demande confirmation avant d'éditer du code applicatif\*\*/.test(l));
   assert.notEqual(iCode, -1, 'la consigne sur le code applicatif a été reformulée — garde à mettre à jour');
-  const bloc = skill.slice(iCode, iCode + 30).join('\n');
+  const bloc = skill.slice(iCode, iCode + 30).join(' ').replace(/\s+/g, ' ');
   assert.match(bloc, /Semantics/,
     'le repli doit dire CE QU\'ON S\'AUTORISE : sans borne, « tranche seul » autorise tout');
   assert.match(bloc, /rapport/,
@@ -5992,7 +5992,7 @@ test('le §3g-bis connaît la page MORTE, et lit avant de renommer (284, 292)', 
   assert.notEqual(i, -1, 'le §3g-bis a été renommé — mets ce garde à jour');
   const j = skill.indexOf('**h. Récapitule', i);
   assert.ok(j > i, 'la fin du §3g-bis est introuvable : ce garde mesurerait tout le fichier');
-  const para = skill.slice(i, j);
+  const para = skill.slice(i, j).replace(/\s+/g, ' ');
 
   // Le troisième cas existe, et il dit les trois gestes qui le composent.
   assert.match(para, /n'existe plus|url morte|URL EST DÉCLARÉE ET LA PAGE N'EXISTE PLUS/i,
@@ -6009,7 +6009,7 @@ test('le §3g-bis connaît la page MORTE, et lit avant de renommer (284, 292)', 
   // inventer un titre pour une page qui n'existe pas.
   const iTitre = para.indexOf('LIS SON TITRE ACTUEL');
   assert.notEqual(iTitre, -1, 'la consigne de titre a été reformulée — garde à mettre à jour');
-  const bloc = para.slice(iTitre, iTitre + 1200);
+  const bloc = para.slice(iTitre, iTitre + 1400);
   assert.match(bloc, /le `read` D'ABORD|si le `read` échoue|Si le `read` échoue/,
     'le point 5 ne dit pas qu\'il vient APRÈS le read : suivi dans l\'autre sens, il fait '
     + 'renseigner artifact.title d\'un titre inventé pour une page morte');
@@ -6032,7 +6032,7 @@ test('le SKILL donne le GESTE des doubles, et la boucle est dite là où on les 
 
   // Le geste est écrit AVANT ou AUTOUR de « où les poser » : on prend large et
   // on borne au paragraphe suivant plutôt que de deviner un ordre.
-  const bloc = skill.slice(Math.max(0, i - 45), i + 20).join('\n');
+  const bloc = skill.slice(Math.max(0, i - 45), i + 20).join(' ').replace(/\s+/g, ' ');
 
   for (const [quoi, rx] of [
     ['le double d\'un bloc', /MockBloc<|MockCubit</],
@@ -6088,6 +6088,69 @@ test('le dépannage de build a son pendant iOS, pas seulement Android (286)', ()
     + 'le geste qu\'on essaie en dernier');
   assert.match(skill, /flutter clean && flutter pub get/,
     'et son remède doit être écrit à côté, sinon le diagnostic ne sert à rien');
+});
+
+test('la coquille qui EST l\'écran de départ a sa case dans la table (287)', () => {
+  // ⚠️ « Une coquille n'est pas un écran, donc pas d'ancre » est vrai d'une
+  // barre d'onglets et FAUX du conteneur qui rend l'accueil : c'est lui que
+  // tout flow atteint au lancement, donc il lui faut une ancre — sans quoi
+  // `launch-clean.yaml` n'a rien à attendre et chaque flow tape pendant le sas
+  // de démarrage. Un run a buté dessus faute de case où se ranger.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+  const lignes = skill.filter((l) => /^\| Coquille/.test(l));
+  assert.equal(lignes.length, 2,
+    `${lignes.length} ligne(s) « Coquille » dans la table des écarts légitimes. Il en faut deux : `
+    + 'ce qu\'une coquille EST (une barre : pas un écran) et ce qu\'elle FAIT (rendre l\'accueil : '
+    + 'alors c\'est aussi un écran).');
+
+  const [barre, depart] = lignes;
+  // La barre reste hors de screens[] ; la coquille de départ y entre AVEC ancre.
+  assert.match(barre, /non/, 'la coquille ordinaire doit rester hors de screens[]');
+  assert.match(depart, /écran de départ/i, 'la seconde ligne doit être celle de la coquille de départ');
+  assert.match(depart, /\*\*oui\*\*, avec `anchor:`/,
+    'la coquille qui rend l\'accueil doit entrer dans screens[] AVEC une ancre : c\'est elle '
+    + 'que launch-clean.yaml attend');
+});
+
+test('le périmètre a une règle d\'arrêt, et l\'écran à horloge un critère (288)', () => {
+  // ⚠️ AUCUNE RÈGLE D'ARRÊT CÔTÉ ÉCRANS. Un run en a retenu 8 sur ~13 sans
+  // pouvoir dire pourquoi ceux-là, et en a passé 6 en `visual: false` — à
+  // raison — sans que le skill lui donne le critère.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const i = skill.indexOf('La règle d\'arrêt ne porte pas sur les écrans');
+  assert.notEqual(i, -1,
+    'le SKILL ne dit toujours pas jusqu\'où va le périmètre : chaque run choisit alors le sien '
+    + 'et personne ne peut le reconstituer après coup');
+  // ⚠️ APLATIR LES BLANCS. Le markdown est enveloppé à ~78 colonnes : « deux
+  // fois de suite » y vit sur deux lignes, et un motif multi-mots ne le trouve
+  // pas. Un garde de prose qui ne normalise pas rougit sur un simple
+  // re-formatage — ou reste vert sur autre chose que ce qu'il croit lire.
+  const bloc = skill.slice(i, i + 2600).replace(/\s+/g, ' ');
+
+  // La distinction qui EST la règle : l'étage 1 ne coûte pas de device.
+  assert.match(bloc, /Étage 1 : pas de règle d'arrêt/,
+    'la règle doit dire que l\'étage 1 prend tout : un écran laissé dehors n\'est pas économisé, '
+    + 'il est non mesuré');
+  assert.match(bloc, /deux fois de suite/,
+    'et l\'étage 2 doit reprendre le critère du quatrième cas — un flow qui n\'y arrive pas deux '
+    + 'fois de suite produit une suite intermittente');
+
+  // Le critère de l'écran à horloge, et la nuance qui évite de tout jeter.
+  assert.match(bloc, /visual: false/,
+    'le critère de l\'écran dont le contenu suit l\'horloge n\'est pas donné : sa référence '
+    + 'rougirait le lendemain sans qu\'une ligne ait changé');
+  assert.match(bloc, /mask-dynamic/,
+    'et il faut dire que masquer la zone mouvante vaut mieux que renoncer à l\'écran entier');
+
+  // ⚠️ La clé prescrite doit EXISTER : une consigne qui nomme une clé morte est
+  // pire que pas de consigne. Le runner filtre bien sur `visual !== false`.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(run, /s\.visual !== false/,
+    'le runner ne filtre plus sur `visual` : le SKILL prescrirait une clé que plus rien ne lit');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

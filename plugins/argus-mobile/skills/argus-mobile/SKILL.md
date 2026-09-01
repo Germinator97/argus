@@ -847,9 +847,19 @@ sens :
 | Cas | `screens[]` (étage 2) | `argusScreens` (étage 1) |
 |---|---|---|
 | Coquille : barre, onglets, conteneur de navigation | non — ce n'est pas un écran | **oui**, sans `anchor:` |
+| Coquille **qui EST l'écran de départ** (elle rend l'accueil) | **oui**, avec `anchor:` | **oui**, sans `anchor:` |
 | État qui ne se monte pas seul (voir ci-dessous) | oui | non, et on dit pourquoi |
 | État atteignable seulement après un parcours | oui | oui, monté avec ses doubles |
 | État **non atteignable de façon déterministe** (voir ci-dessous) | **non** | **oui**, monté seul |
+
+⚠️ **La coquille qui EST l'écran de départ est le cas que la table refusait.**
+« Une coquille n'est pas un écran, donc pas d'ancre » est vrai d'une barre
+d'onglets, et faux du conteneur qui **rend l'accueil** : c'est lui que tout flow
+atteint au lancement, donc il lui faut une ancre — sans quoi
+`launch-clean.yaml` n'a rien à attendre et chaque flow tape pendant le sas de
+démarrage. Un run a buté dessus faute de case où se ranger. Les deux lignes ne
+se contredisent pas : la première parle de ce qu'une coquille EST, la seconde de
+ce qu'elle FAIT. Si elle affiche l'écran de départ, elle est aussi un écran.
 
 ⚠️ **Le quatrième est le symétrique du deuxième, et il manquait.** Un écran peut
 se monter parfaitement à l'étage 1 tout en étant **impossible à atteindre à
@@ -890,6 +900,36 @@ mesure là, en disant lequel n'a pas pu se poser. Ne les écarte pas du harnais 
 ce sont souvent les écrans les plus travaillés, donc ceux qui ont le plus à
 cacher. Retiens en revanche que `waitForAnimationToEnd` expirera sur eux à
 l'étage 2 — mesuré ~7,3 s, au-delà de son propre timeout de 5 s.
+
+⚠️ **JUSQU'OÙ VA LE PÉRIMÈTRE ? La règle d'arrêt ne porte pas sur les écrans,
+elle porte sur l'ÉTAGE.** Elle manquait, et un run a retenu 8 écrans sur ~13
+sans pouvoir dire pourquoi ceux-là.
+
+- **Étage 1 : pas de règle d'arrêt.** Il ne coûte pas de device, quelques
+  secondes par écran, et il mesure ce qu'aucune capture ne montre. **Tout ce qui
+  se monte y va** — y compris ce que tu as sorti de `screens[]` au titre des
+  deuxième et quatrième cas ci-dessus. Un écran laissé dehors n'est pas
+  « économisé », il est simplement non mesuré.
+- **Étage 2 : c'est là que la règle mord**, parce qu'un flow coûte des minutes
+  de device à chaque run. Un écran mérite son flow s'il est sur un parcours que
+  **l'utilisateur emprunte vraiment** et si l'on peut y arriver **deux fois de
+  suite** (le critère du quatrième cas). Le reste est déjà couvert par l'étage 1.
+
+Écris le compte et la raison dans le rapport — « 8 écrans sur 13 à l'étage 2,
+les 5 autres montés à l'étage 1 seulement, parce que … ». C'est ce qui distingue
+un périmètre choisi d'un périmètre oublié, et personne ne peut le reconstituer
+après coup.
+
+⚠️ **ET L'ÉCRAN DONT LE CONTENU SUIT L'HORLOGE** — un tableau de bord daté, un
+« il y a 3 minutes », un solde, une liste triée par récence — **se déclare
+`visual: false`.** Sa référence rougirait le lendemain sans qu'une seule ligne
+ait changé, et une suite qui rougit tous les jours finit ignorée : c'est la
+dette la plus chère du harnais. Un run en a passé six dans ce cas, à raison,
+sans que le skill lui donne le critère. Celui-ci : **le rendu dépend-il de
+quelque chose que le run ne contrôle pas** (horloge, données réelles, aléa,
+réseau) ? Alors `visual: false`. Quand seule une PARTIE de l'écran bouge,
+`mask-dynamic.yaml` masque cette zone et garde le reste comparé — c'est
+préférable, parce que ça conserve la mesure là où elle vaut.
 
 **c-bis. Rends la table des ancres — c'est elle qui passe à §3.** Les ancres que
 tu viens de poser sont exactement ce qui doit remplir `screens[]` à l'étape
