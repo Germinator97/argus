@@ -1061,12 +1061,25 @@ arriver — et une baseline fausse est pire qu'une baseline absente : elle rend
 vert pour toujours ce qu'elle a photographié de travers.
 
 ⚠️ **Un cas que ça ne couvre pas : le flow rouge parce que l'app est LENTE.**
-Si l'échec est un `Assertion is false: id: <ancre de départ> is visible`, ce
-n'est pas l'instrumentation, c'est le plafond d'attente — et il concerne alors
-tous les flows, y compris ceux qui produisent les captures. Relève
-`startTimeoutMs` **avant** de générer, dérivé du maximum que tu as observé, et ne
-touche pas à `coldStartMs` : la lenteur doit rester un finding, pas disparaître
-dans un seuil. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
+⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a
+TROIS causes, et la plus chère n'est pas celle qu'on cherche.** Le runner les
+imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
+
+1. **L'app ne démarre PAS.** Regarde d'abord la capture que Maestro vient de
+   prendre, dans `argus-mobile-report/maestro/<horodatage>/<flow>/screenshots/`.
+   Si elle montre une erreur de l'application, **aucun plafond n'y changera
+   rien**. Vécu : un run a relevé le plafond à 20, 45 puis 90 s, et la pire
+   attente est venue se coller au plafond **à 80 ms près** à chaque fois —
+   l'écran affichait « Service indisponible ». Trois passes device perdues. Ce
+   motif-là ne décrit pas une lenteur, il décrit un écran qui n'arrive jamais.
+2. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de
+   générer les références — il concerne tous les flows, y compris ceux qui
+   produisent les captures. ⚠️ **Dérive-le de `firstLaunchMs`**, que
+   `argus-perf` mesure : chaque flow fait `clearState`, donc chacun paie un
+   PREMIER lancement, jamais le régime stabilisé dont `coldStartMs` parle. Et ne
+   touche pas à `coldStartMs` : la lenteur doit rester un finding, pas
+   disparaître dans un seuil.
+3. **L'ancre est fausse.** `make argus-anchors` le dit sans device. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
 écran, sans mécanisme identifié — c'est exactement le cas où l'on relève le
 plafond sans rien conclure.
 

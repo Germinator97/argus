@@ -5519,6 +5519,38 @@ test('le diagnostic de démarrage sort en CONSOLE, pas seulement dans le rapport
     'plus de garde-fou contre la répétition : l\'indice sortirait à chaque flow');
 });
 
+test('le SKILL et le runner prescrivent la MÊME base de dérivation (259)', () => {
+  // ⚠️ Deux textes, deux formules, facteur 10 entre elles. Le SKILL disait
+  // « dérivé du maximum que tu as observé » (90 053 ms chez un run), le runner
+  // « dérive-le de firstLaunchMs » (9 126 ms chez le même). Ni l'un ni l'autre
+  // n'était faux séparément : c'est l'écart qui l'était, et aucun test ne
+  // pouvait le voir — un écart entre deux textes n'a aucun comportement à
+  // casser. Le run a tranché en croisant deux calculs qui tombaient au même
+  // endroit ; il n'aurait pas dû avoir à le faire.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+
+  // ⚠️ La grandeur est DÉRIVÉE du runner, jamais citée ici : si elle change, le
+  // garde suit et c'est la doc qui doit rattraper.
+  const m = /dérive-le de `(\w+)`/.exec(run);
+  assert.ok(m, 'le runner ne prescrit plus de base de dérivation — ce garde est vacant');
+  const grandeur = m[1];
+
+  assert.ok(skill.includes(grandeur),
+    `le SKILL ne cite pas « ${grandeur} », la grandeur que le runner prescrit : `
+    + 'deux formules concurrentes, et celui qui lit doit arbitrer seul');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui a coûté trois passes device : le SKILL
+  // affirmait « ce n'est pas l'instrumentation, c'est le plafond d'attente » —
+  // un diagnostic unique là où le runner en imprime trois.
+  assert.ok(!/n'est pas l'instrumentation, c'est le plafond/.test(skill),
+    'le SKILL réaffirme un diagnostic UNIQUE là où il y a trois causes, et la plus '
+    + 'chère — l\'app qui ne démarre pas — n\'est pas celle-là');
+  assert.match(skill, /TROIS causes/,
+    'le SKILL ne présente plus les trois causes dans l\'ordre du runner');
+});
+
 test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {
   // Le premier utilisateur du parseur, c'est le fichier que l'installeur pose.
   // S'il ne parse pas, TOUS les scripts sortent en 2 et plus rien ne lit la
