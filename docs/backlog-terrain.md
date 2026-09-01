@@ -4564,8 +4564,8 @@ une contrainte de conception, pas un détail d'installation.
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
 **Il n'y aura pas de troisième terrain : les deux couvrent la totalité.** Le plan
-du 19/08 en prévoyait trois ; `le-terrain-local` (local, puis iOS) et `un-projet-avec-api` (avec
-API) ont exercé entre eux tout ce que le skill sait faire — les deux étages, les
+du 19/08 en prévoyait trois ; le terrain **local** (puis iOS) et celui **avec
+API** ont exercé entre eux tout ce que le skill sait faire — les deux étages, les
 cinq dimensions, les deux plateformes, la publication de la page, et le seul
 volet qui n'avait jamais tourné (le backend).
 

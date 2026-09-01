@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -5164,7 +5164,7 @@ test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
 
   // ⚠️ LE NOM DU PROJET, PAS SON IDENTIFIANT. `app.name` existait déjà, et son
   // propre commentaire dans le yaml annonçait qu'il « sert d'étiquette dans les
-  // rapports » — rien ne s'en servait. Un titre se lit : « un nom » se reconnaît
+  // rapports » — rien ne s'en servait. Un titre se lit : un nom se reconnaît
   // dans une galerie, « com.exemple.app » se déchiffre.
   assert.equal(titreDuRapport({ name: 'monapp', appId: 'com.x.monapp', platform: 'ios' }),
     'monapp — ios — rapport QA', 'le nom l\'emporte sur l\'identifiant');
@@ -5322,6 +5322,102 @@ test('un onglet ne répète la plateforme que si elle DÉTONNE (254)', () => {
   assert.ok(mel.some((e) => e.includes('android')),
     'un run d\'une AUTRE plateforme doit se voir — c\'est une anomalie, pas du décor');
   assert.ok(!mel[0].includes('ios'), 'mais le run courant ne se signale pas lui-même');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ce dépôt est PUBLIC : aucun nom, aucun identifiant de projet réel (255)
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('aucun identifiant d\'application réel dans le dépôt (255)', () => {
+  // ⚠️ Ce dépôt est public, et les projets sur lesquels le skill est exercé ne
+  // le sont pas — l'un d'eux est sous contrat. La règle est absolue : ni leur
+  // nom, ni leur identifiant, ni leurs ancres, ni leurs libellés. Les constats
+  // s'écrivent en termes génériques.
+  //
+  // ⚠️ CE GARDE NE NOMME PAS CE QU'IL INTERDIT — il ne connaît que ce qui est
+  // AUTORISÉ. Citer les coupables réintroduirait dans le dépôt public ce qu'on
+  // vient d'en retirer, et la liste se périmerait au projet suivant.
+  //
+  // ⚠️ ET IL COMPARE PAR ÉGALITÉ, jamais par inclusion : un relevé figé par
+  // inclusion survit à ce qu'il décrit et devient une permission permanente.
+  const AUTORISES = new Set([
+    // Exemples de la documentation et des fixtures — aucun projet ne les porte.
+    'com.exemple.a', 'com.exemple.app', 'com.exemple.monapp', 'com.x.monapp',
+    // Tiers légitime : c'est Flutter qui le déclare, pas nous.
+    'io.flutter.splash',
+  ]);
+  const MOTIF = /\b(?:com|io|org|net|app|fr|dev|me|eu|uk)\.[a-z0-9_]+(?:\.[a-z0-9_]+)+/g;
+
+  const fichiers = execFileSync('git', ['ls-files', '-z'], { cwd: RACINE, encoding: 'utf8' })
+    .split('\0').filter(Boolean);
+  assert.ok(fichiers.length > 20, 'aucun fichier listé — le montage est cassé, pas le dépôt');
+
+  const vus = new Map();
+  for (const f of fichiers) {
+    let texte;
+    try { texte = readFileSync(join(RACINE, f), 'utf8'); } catch { continue; }
+    for (const m of texte.matchAll(MOTIF)) {
+      if (!vus.has(m[0])) vus.set(m[0], f);
+    }
+  }
+  // ⚠️ Le motif doit avoir trouvé QUELQUE CHOSE : un motif qui ne matche plus
+  // rend un ensemble vide, donc une égalité vraie, donc un garde vert qui ne
+  // mesure plus rien.
+  assert.ok(vus.size > 0, 'le motif d\'identifiant ne matche plus rien — ce garde est devenu vacant');
+
+  const intrus = [...vus.keys()].filter((x) => !AUTORISES.has(x));
+  assert.deepEqual(intrus, [],
+    'identifiant(s) de projet réel dans un dépôt PUBLIC — récris le constat en termes '
+    + `génériques. Trouvé(s) dans : ${intrus.map((x) => vus.get(x)).join(', ')}`);
+
+  // ⚠️ L'AUTRE MOITIÉ : la liste d'autorisés ne doit pas non plus VIEILLIR. Un
+  // exemple retiré du dépôt doit sortir de la liste, sinon elle enregistre des
+  // permissions pour des valeurs qui n'existent plus.
+  const orphelins = [...AUTORISES].filter((x) => !vus.has(x));
+  assert.deepEqual(orphelins, [],
+    'valeur(s) autorisée(s) qui n\'apparaissent plus nulle part : retire-les de la liste');
+});
+
+test('aucun nom de projet réel — liste tenue HORS du dépôt (255)', () => {
+  // ⚠️ Un NOM de projet n'a aucune forme reconnaissable : ce sont des mots
+  // ordinaires, et certains sont même du vocabulaire technique courant. Aucun motif ne peut donc les distinguer, et la
+  // liste des vrais noms ne peut pas vivre ici — l'écrire publierait exactement
+  // ce qu'elle sert à cacher.
+  //
+  // Elle vit donc hors dépôt. Le garde est alors CONDITIONNEL, et c'est le
+  // danger : sans la liste, il rendrait un vert silencieux qui ressemble à une
+  // preuve. Il se met en échec explicite si elle manque, sauf en CI où elle ne
+  // peut pas exister — et il le DIT.
+  const liste = join(homedir(), '.argus-etalon', 'noms-interdits.txt');
+  if (!existsSync(liste)) {
+    assert.ok(process.env.CI,
+      `liste absente (${liste}) : ce garde ne peut RIEN prouver. Crée-la (un terme par `
+      + 'ligne, les lignes vides et # ignorés) ou lance avec CI=1 pour l\'accepter.');
+    return;
+  }
+  const termes = readFileSync(liste, 'utf8').split('\n')
+    .map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  assert.ok(termes.length > 0, 'la liste existe mais est vide — elle ne prouve rien');
+
+  const fichiers = execFileSync('git', ['ls-files', '-z'], { cwd: RACINE, encoding: 'utf8' })
+    .split('\0').filter(Boolean);
+  const messages = execFileSync('git', ['log', '--all', '--format=%H%n%s%n%b'],
+    { cwd: RACINE, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+
+  // ⚠️ LE MESSAGE D'ÉCHEC NE CITE PAS LE TERME. Il finirait dans un journal de
+  // CI, c'est-à-dire à l'endroit même qu'on protège. On donne son RANG.
+  const fautes = [];
+  termes.forEach((t, i) => {
+    const re = new RegExp(t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    for (const f of fichiers) {
+      let texte;
+      try { texte = readFileSync(join(RACINE, f), 'utf8'); } catch { continue; }
+      if (re.test(texte)) { fautes.push(`terme n°${i + 1} → ${f}`); break; }
+    }
+    if (re.test(messages)) fautes.push(`terme n°${i + 1} → un message de commit`);
+  });
+  assert.deepEqual(fautes, [],
+    `nom(s) de projet réel dans un dépôt PUBLIC (rangs dans ${liste}) : ${fautes.join(' · ')}`);
 });
 
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {
