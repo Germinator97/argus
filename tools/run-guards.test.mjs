@@ -7038,8 +7038,14 @@ test('les consignes que la vague iOS a payées sont écrites (318, 321, 325, 328
       'la contre-épreuve du §2b réclame un fichier que le §3 pose — l\'ordre affiché n\'est pas suivable'],
     ['325', skill, /\.app` de simulateur SURVIT/i,
       'rien ne disait si le build de release iOS écrase le binaire de simulateur'],
-    ['328', skill, /thenAnswer\(\(_\) async => null\)/,
+    // ⚠️ Le motif nu matchait la PHRASE qui explique la forme, pas le bloc de
+    // code qui la montre : la mutation retirait l'exemple et le garde restait
+    // vert. On exige les deux formes CÔTE À CÔTE, ce que seule la démonstration
+    // porte — c'est elle qui a manqué au run, pas l'explication.
+    ['328', skill, /thenAnswer\(\(_\) async => null\);[^]{0,120}LE DÉFAUT/,
       'la forme mocktail du défaut ne ressemble pas à celle que le skill nomme — 30 min payées'],
+    ['328b', skill, /thenAnswer\(\(_\) => Completer</,
+      'et le remède doit être montré sous la même forme, sinon on ne sait pas quoi écrire'],
     ['331', skill, /ancre composée au call-site|COMPOSÉE AU CALL-SITE/i,
       'une ancre posée à l\'endroit de l\'appel n\'est pas portée par l\'écran monté seul'],
     ['332', skill, /distance en caractères|rougit à cause de ton instrumentation/i,

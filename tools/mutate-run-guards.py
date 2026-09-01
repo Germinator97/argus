@@ -687,7 +687,7 @@ MUTATIONS = [
     # HARNAIS et non VACANT : c'est cette distinction qui évite d'aller chercher
     # un garde manquant qui existe.
     ("report", "le titre cesse de porter la plateforme",
-     "return [run?.name || run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');",
+     "return [run?.name || run?.appId, plateformeLisible(run?.platform), 'rapport QA'].filter(Boolean).join(' — ');",
      "return [run?.name || run?.appId, 'rapport QA'].filter(Boolean).join(' — ');"),
     ("report", "la sous-ligne répète de nouveau le titre",
      '  <div class="sub">\n    ${devices',
@@ -712,8 +712,8 @@ MUTATIONS = [
 
     # ── 254 · le nom du projet, et la plateforme qui ne se répète plus ────────
     ("report", "le titre reperd le nom du projet au profit de l'identifiant",
-     "return [run?.name || run?.appId, run?.platform, 'rapport QA']",
-     "return [run?.appId, run?.platform, 'rapport QA']"),
+     "return [run?.name || run?.appId, plateformeLisible(run?.platform), 'rapport QA']",
+     "return [run?.appId, plateformeLisible(run?.platform), 'rapport QA']"),
     # ⚠️ Le CÂBLAGE, pas la fonction : celle-ci reste juste, elle ne reçoit
     # simplement plus le nom. Seul le garde qui LANCE report.mjs le voit.
     ("report", "le nom de la config n'atteint plus le run",
@@ -753,7 +753,7 @@ MUTATIONS = [
      "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a\nTROIS causes",
      "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, ce\nn'est pas l'instrumentation, c'est le plafond d'attente. Il y a TROIS causes"),
     ("installeur", "le compteur de TODO recompte ceux qui sont SANS OBJET",
-     "grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET'",
+     "grep 'TODO(argus):' | grep -cvE 'TODO\\(argus\\): *(SANS OBJET|FAIT|TRAITÉ)'",
      "grep -c 'TODO(argus):'"),
     # ⚠️ Celle-ci rend au fichier le nom que les deux plateformes partageaient —
     # le défaut du 275 dans sa forme exacte. Elle vise le CÂBLAGE (le chemin
@@ -913,6 +913,34 @@ MUTATIONS = [
     ("makefile", "la cible qui agrège les dettes disparaît",
      "argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'étage 1",
      "argus-debts-desactive: ## (retiré)"),
+    # ── La vague iOS n° 2 (317-332) ──────────────────────────────────────
+    ("installeur", "un TODO FAIT ne se ferme plus",
+     "grep -cvE 'TODO\\(argus\\): *(SANS OBJET|FAIT|TRAITÉ)'",
+     "grep -cv 'TODO(argus): *SANS OBJET'"),
+    ("run", "le conseil de plafond reparle quand l'app ne démarre pas",
+     "  if (atteints.length === 0) {",
+     "  if (false) {"),
+    ("run", "la locale iOS redevient illisible",
+     "        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()",
+     "        : ''"),
+    ("config", "les gabarits d'ancres retombent dans les opaques",
+     "          const gabarit = /'[^']*\\$\\{[^']*'/.test(nu);",
+     "          const gabarit = false;"),
+    ("report", "la plateforme du titre reperd sa casse",
+     "  if (v.toLowerCase() === 'ios') return 'iOS';",
+     "  if (v.toLowerCase() === 'ios') return 'ios';"),
+    ("run", "l'empreinte iOS redevient « déclarée »",
+     "  if (platform !== 'android' && resolu?.measured && resolu.model) {",
+     "  if (false) {"),
+    ("config", "un device hors plateforme repasse en silence",
+     "    if (pf && plateformes.size && !plateformes.has(pf)) {",
+     "    if (false) {"),
+    ("skill", "la forme mocktail du défaut disparaît",
+     "  .thenAnswer((_) async => null);                    // ← LE DÉFAUT, sous sa vraie forme\n",
+     ""),
+    ("goto", "le TODO reconseille un `back` sur iOS",
+     "            # ⚠️ `back` EST ANDROID ET WEB UNIQUEMENT.",
+     "            # ⚠️ Un `back` répété marche partout."),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
