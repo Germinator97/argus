@@ -51,6 +51,7 @@ import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argu
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 
@@ -6581,6 +6582,66 @@ test('le croisement voit les ancres CONDITIONNELLES, et dit ce qu\'il ne lit pas
   assert.match(conf, /for \(const o of vues\.opaques \?\? \[\]\)/,
     'le verdict vert n\'énumère plus les ancres non lisibles : il redevient un « ✔ » qui tait '
     + 'ce qu\'il n\'a pas pu mesurer');
+});
+
+test('l\'échec d\'installation NOMME sa cause, et l\'indice arrive (301)', () => {
+  // 🔴 35 MINUTES PERDUES, la plus chère d'un run. Le message prenait les TROIS
+  // DERNIÈRES lignes de la sortie d'`adb` — c'est-à-dire la fin d'une stack
+  // Java — pendant que `Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]` était
+  // ailleurs et jetée. L'agent a dû rejouer l'installation à la main pour lire
+  // ce que l'outil avait déjà sous les yeux.
+  //
+  // ⚠️ ET LA CONSÉQUENCE ÉTAIT PIRE QUE LE MESSAGE : `installHint` cherche le
+  // code d'échec DANS ce détail. Une stack Java n'en contient aucun, donc
+  // l'indice du §3g — qui décrit ce cas exactement et donne ses deux gestes —
+  // n'a jamais été affiché. Le skill avait la réponse, le chemin pour y aller
+  // était coupé.
+  const SORTIE_REELLE = [
+    'Performing Streamed Install',
+    'adb: failed to install app.apk: Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]',
+    'java.lang.SecurityException: ...',
+    '\tat android.os.ShellCommand.exec(ShellCommand.java:38)',
+    '\tat android.server.pm.PackageManagerShellCommand.onCommand(x.java:12)',
+  ].join('\n');
+
+  assert.equal(causeInstall(SORTIE_REELLE), 'Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]',
+    'la ligne qui NOMME la cause doit gagner sur la queue de sortie');
+
+  // ⚠️ CE QUI COMPTE VRAIMENT : le détail doit porter le code, sinon l'indice
+  // du §3g ne se déclenche pas. C'est le maillon qui manquait.
+  assert.match(causeInstall(SORTIE_REELLE), /INSTALL_FAILED_INSUFFICIENT_STORAGE/,
+    'sans le code dans le détail, installHint ne matche pas et le §3g reste introuvable — '
+    + 'c\'est ce qui a coûté les 35 minutes');
+
+  // L'ancienne façon de faire, gardée ici pour que l'écart reste mesurable.
+  const ancien = SORTIE_REELLE.trim().split('\n').slice(-3).join(' ');
+  assert.ok(!/INSTALL_FAILED/.test(ancien),
+    'le montage est cassé : la sortie de référence doit être de celles où la queue NE porte PAS '
+    + 'le code, sinon ce garde ne mesure pas le défaut');
+
+  // Les autres formes que le terrain rend.
+  assert.match(causeInstall('adb: failed to install x.apk: some other reason'), /adb: failed to install/,
+    'le refus explicite d\'adb est nommant, même sans code entre crochets');
+  assert.equal(causeInstall(''), 'sortie vide');
+  assert.equal(causeInstall('\tat a.b.C(x.java:1)\n\tat d.e.F(y.java:2)'), 'sortie vide',
+    'une stack SEULE ne nomme rien : la rendre telle quelle serait revenir au défaut');
+
+  // ⚠️ ET QUAND RIEN NE NOMME, ON LE DIT. Rendre la queue en silence la ferait
+  // passer pour un diagnostic — c'est exactement ce qui trompait.
+  const flou = causeInstall('quelque chose d\'inattendu\nsur deux lignes');
+  assert.match(flou, /aucune ligne ne nomme la cause/,
+    'un pis-aller doit s\'annoncer comme tel, sinon il se lit comme la cause');
+
+  // Le câblage : les DEUX flux, pas l'un OU l'autre — adb écrit son Failure sur
+  // stdout tout en remplissant stderr d'une stack.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(run, /const detail = causeInstall\(/,
+    'installAndroid n\'appelle plus causeInstall : le message peut redevenir une stack Java');
+  const appel = /const detail = causeInstall\(([^;]*)\);/.exec(run);
+  assert.ok(appel && /stderr/.test(appel[1]) && /stdout/.test(appel[1]),
+    'les deux flux doivent être passés : adb met son « Failure » sur stdout et sa stack sur stderr, '
+    + `et un « || » n'en garderait qu'un (${appel?.[1] ?? '—'})`);
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

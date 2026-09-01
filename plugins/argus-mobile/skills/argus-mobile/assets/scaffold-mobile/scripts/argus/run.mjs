@@ -438,11 +438,51 @@ export function installHint(sortie, packageName) {
  * @param {string} udid @param {string} apk @param {string} packageName
  * @returns {{ok:boolean, proof:string}}
  */
+/**
+ * La ligne qui NOMME la cause d'un échec d'installation, dans un fouillis.
+ *
+ * ⚠️ LE DÉFAUT COÛTAIT 35 MINUTES, la perte la plus chère d'un run. On prenait
+ * les TROIS DERNIÈRES lignes de la sortie — c'est-à-dire la fin d'une stack
+ * Java (`at android.os.ShellCommand.exec(ShellCommand.java:38) at
+ * …PackageManagerShellCommand…`) — pendant que la ligne utile,
+ * `Failure [INSTALL_FAILED_INSUFFICIENT_STORAGE]`, était ailleurs et jetée. Le
+ * §3g décrit précisément ce cas et ses deux gestes ; encore faut-il que le
+ * message y envoie, et une stack Java n'y envoie pas. L'agent a dû rejouer
+ * l'installation à la main pour lire ce que l'outil avait déjà lu.
+ *
+ * On cherche donc d'abord ce qui NOMME, et on ne retombe sur la queue de sortie
+ * qu'à défaut — en le disant, pour qu'un silence ne passe pas pour un
+ * diagnostic.
+ * @param {string} sortie @returns {string}
+ */
+export function causeInstall(sortie) {
+  const lignes = String(sortie ?? '').split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lignes.length === 0) return 'sortie vide';
+  // Par ordre de précision : le code d'échec d'adb, puis son refus explicite,
+  // puis une erreur nommée. Une stack Java ne nomme jamais rien d'actionnable.
+  const NOMMANTS = [
+    /Failure \[[^\]]+\]/,
+    /adb: failed to [^\n]+/i,
+    /INSTALL_[A-Z_]+/,
+    /^Error:[^\n]*/i,
+  ];
+  for (const rx of NOMMANTS) {
+    const trouve = lignes.map((l) => rx.exec(l)).find(Boolean);
+    if (trouve) return trouve[0];
+  }
+  // Rien de nommant : on rend la queue, mais on DIT que c'est un pis-aller.
+  const queue = lignes.filter((l) => !/^at [\w.$]+\(/.test(l)).slice(-3).join(' ');
+  return queue ? `${queue} (aucune ligne ne nomme la cause)` : 'sortie vide';
+}
+
 function installAndroid(udid, apk, packageName) {
   const res = sh('adb', ['-s', udid, 'install', '-r', apk]);
   const said = /Success/i.test(`${res.stdout}${res.stderr}`);
   if (!res.ok || !said) {
-    const detail = (res.stderr || res.stdout || res.error || '').trim().split('\n').slice(-3).join(' ');
+    // ⚠️ LES DEUX FLUX, pas l'un OU l'autre : `adb` écrit son `Failure [...]` sur
+    // stdout tout en remplissant stderr d'une stack. Le `||` d'avant prenait
+    // stderr et jetait la seule ligne utile.
+    const detail = causeInstall(`${res.stderr ?? ''}\n${res.stdout ?? ''}\n${res.error ?? ''}`);
     return { ok: false, proof: `adb install n'a pas dit « Success » : ${detail || 'sortie vide'}${installHint(detail, packageName)}` };
   }
   const listed = sh('adb', ['-s', udid, 'shell', 'pm', 'list', 'packages', packageName]);
