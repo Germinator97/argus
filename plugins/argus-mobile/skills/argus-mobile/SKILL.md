@@ -1222,7 +1222,9 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
 
    ```yaml
    url: 'https://…'                              # projet mono-plateforme
-   url: { ios: 'https://…', android: 'https://…' }   # les deux
+   url:                                          # les deux plateformes
+     ios: 'https://…'
+     android: 'https://…'
    ```
 
    ⚠️ **Un rapport décrit UN run, donc UNE plateforme.** Republier un run iOS

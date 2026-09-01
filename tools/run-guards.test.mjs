@@ -35,7 +35,7 @@ import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { artifactFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditApk, auditObfuscation, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -5418,6 +5418,78 @@ test('aucun nom de projet réel — liste tenue HORS du dépôt (255)', () => {
   });
   assert.deepEqual(fautes, [],
     `nom(s) de projet réel dans un dépôt PUBLIC (rangs dans ${liste}) : ${fautes.join(' · ')}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ce que le skill MONTRE doit être ce que son parseur ACCEPTE (256)
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {
+  // Le premier utilisateur du parseur, c'est le fichier que l'installeur pose.
+  // S'il ne parse pas, TOUS les scripts sortent en 2 et plus rien ne lit la
+  // config — la panne la plus large que ce harnais puisse produire.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-yaml-'));
+  try {
+    cpSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'),
+      join(dir, 'argus.mobile.yaml'));
+    const avant = process.cwd();
+    process.chdir(dir);
+    try {
+      const config = loadConfig();
+      assert.ok(Object.keys(config).length > 5,
+        'le gabarit parse mais ne rend presque rien — le montage est cassé, pas le fichier');
+    } finally { process.chdir(avant); }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('aucun exemple de config ne montre une construction que le parseur REFUSE (256)', () => {
+  // ⚠️ CE GARDE EXISTE PARCE QUE DEUX RUNS INDÉPENDANTS ONT BUTÉ AU MÊME
+  // ENDROIT, sur deux terrains sans rapport. Le 245 avait documenté
+  // `url: { ios: …, android: … }` — une map en FLOW — que le sous-ensemble YAML
+  // du skill refuse depuis toujours, et que son propre en-tête exclut. Trois
+  // endroits la montraient : le SKILL, le gabarit, et le dartdoc de la fonction.
+  //
+  // Le garde du 245 ne pouvait pas le voir : il appelle `artifactFor()` avec un
+  // OBJET JavaScript, donc il n'emprunte jamais le chemin YAML → config. Encore
+  // le troisième barreau, sur le point même où on croyait l'avoir posé.
+  //
+  // ⚠️ La liste des constructions refusées est DÉRIVÉE du parseur, jamais
+  // recopiée : si le sous-ensemble s'élargit un jour, ce garde suit.
+  const parseur = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  assert.match(parseur, /map en flow/,
+    'le parseur ne refuse plus les maps en flow — ce garde est devenu vacant, relis-le');
+
+  // Les fichiers qu'on LIT comme du YAML : la doc, le gabarit, et les
+  // commentaires des scripts — un dartdoc qui montre une config est lu comme
+  // une prescription, pas comme du JavaScript.
+  const fichiers = execFileSync('git', ['ls-files', 'plugins/argus-mobile'],
+    { cwd: RACINE, encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.ok(fichiers.length > 10, 'aucun fichier listé — le montage est cassé');
+
+  const fautes = [];
+  for (const f of fichiers) {
+    let texte;
+    try { texte = readFileSync(join(RACINE, f), 'utf8'); } catch { continue; }
+    const doc = f.endsWith('.md') || f.endsWith('.yaml') || f.endsWith('.yml');
+    texte.split('\n').forEach((ligne, i) => {
+      // Dans un script, seules les lignes de COMMENTAIRE sont lues comme de la
+      // config ; le code, lui, écrit légitimement des objets JavaScript.
+      const commentaire = /^\s*(\/\/|\*|#)/.test(ligne);
+      if (!doc && !commentaire) return;
+      // Une clé de config suivie d'une accolade ouvrante : la map en flow.
+      // ⚠️ ANCRÉ SUR LA FORME D'UNE CLÉ YAML — minuscule initiale, et le
+      // deux-points COLLÉ. Sans cet ancrage, le motif attrape le gabarit de
+      // cadrage en prose de la méthodologie (`APP          : { pubspec: … }`),
+      // qui n'est pas de la configuration et qu'il ne faut surtout pas
+      // « corriger » : un motif trop large ne fait pas que mesurer faux, il
+      // fait AGIR à tort. Trouvé en écrivant ce garde, deux occurrences.
+      if (/^\s*[#*/\s]*[a-z][a-zA-Z0-9_]*:\s*\{/.test(ligne)) fautes.push(`${f}:${i + 1}`);
+    });
+  }
+  assert.deepEqual(fautes, [],
+    'exemple(s) de configuration en map de flow — le parseur du skill les REFUSE '
+    + '(exit 2, plus aucun script ne lit la config). Écris-les en map imbriquée.');
 });
 
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {

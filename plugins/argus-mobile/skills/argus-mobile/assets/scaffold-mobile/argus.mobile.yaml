@@ -581,7 +581,9 @@ artifact:
   # REMPLACE l'un par l'autre — et le premier n'existe plus nulle part. Vécu.
   # Deux formes se lisent, l'ancienne continue de marcher :
   #     url: 'https://…'                                  ← mono-plateforme
-  #     url: { ios: 'https://…', android: 'https://…' }
+  #     url:
+  #       ios: 'https://…'
+  #       android: 'https://…'
   # `title:` accepte les deux formes de la même façon.
   url: ''
   # La page garde ses runs passés en onglets — jusqu'à 30, mesures seulement,

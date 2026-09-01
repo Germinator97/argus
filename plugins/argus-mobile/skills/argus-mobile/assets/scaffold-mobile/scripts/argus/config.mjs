@@ -174,7 +174,7 @@ function parseScalar(text, ctx) {
   if (t === '|' || t === '>' || /^[|>][-+\d]*$/.test(t)) {
     throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'bloc multi-lignes (| ou >) non supporté');
   }
-  if (t[0] === '{') throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'map en flow ({…}) non supportée');
+  if (t[0] === '{') throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'map en flow ({…}) non supportée — écris-la en map imbriquée, une clé par ligne');
   if (t[0] === '[') {
     if (t[t.length - 1] !== ']') throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'liste en flow non fermée');
     const inner = t.slice(1, -1).trim();
@@ -990,9 +990,14 @@ export function measureBinary(chemin) {
  * du relevé périmé que ce harnais traque ailleurs. Une page par plateforme est
  * honnête par construction : elle décrit un run, un seul.
  *
- * Les deux formes se lisent, et l'ancienne continue de marcher :
- *   artifact: { url: 'https://…' }                      ← mono-plateforme
- *   artifact: { url: { ios: 'https://…', android: '…' } }
+ * Les deux formes se lisent, et l'ancienne continue de marcher. En YAML — la
+ * seule forme que le sous-ensemble accepte, les maps en flow étant refusées :
+ *   artifact:
+ *     url: 'https://…'          ← mono-plateforme
+ *   artifact:
+ *     url:
+ *       ios: 'https://…'
+ *       android: '…'
  * @param {any} config @param {string} platform @returns {{url:string, title:string}}
  */
 export function artifactFor(config, platform) {
