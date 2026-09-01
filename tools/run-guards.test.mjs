@@ -6015,6 +6015,44 @@ test('le §3g-bis connaît la page MORTE, et lit avant de renommer (284, 292)', 
     + 'renseigner artifact.title d\'un titre inventé pour une page morte');
 });
 
+test('le SKILL donne le GESTE des doubles, et la boucle est dite là où on les écrit (285)', () => {
+  // ⚠️ LE SEUL « DÉBROUILLE-TOI » DU PARCOURS. Le §2c disait OÙ poser les
+  // doubles et jamais COMMENT les écrire — or c'est ce que la plupart des
+  // projets Flutter/BLoC devront produire, et un run y a passé une dizaine de
+  // minutes à deviner.
+  //
+  // ⚠️ Et c'est ICI que se décide la boucle de micro-tâches — `Future.value(null)`
+  // contre `Completer()` — pas au §3g, où elle n'est décrite que comme symptôme :
+  // un run l'a heurtée au PREMIER `argus-anchors`, cinq minutes après avoir
+  // écrit son premier double.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8').split('\n');
+  const i = skill.findIndex((l) => l.includes('Où poser les doubles de test'));
+  assert.notEqual(i, -1, 'le paragraphe des doubles a été reformulé — mets ce garde à jour');
+
+  // Le geste est écrit AVANT ou AUTOUR de « où les poser » : on prend large et
+  // on borne au paragraphe suivant plutôt que de deviner un ordre.
+  const bloc = skill.slice(Math.max(0, i - 45), i + 20).join('\n');
+
+  for (const [quoi, rx] of [
+    ['le double d\'un bloc', /MockBloc<|MockCubit</],
+    ['le stub de son état', /whenListen\(/],
+    ['le double d\'un repository', /extends Mock implements/],
+  ]) {
+    assert.match(bloc, rx,
+      `${quoi} n'est pas montré : le §2c dit où poser les doubles sans dire comment les écrire, `
+      + 'et c\'est le seul endroit du parcours où le skill laisse deviner');
+  }
+
+  // ⚠️ LE CHOIX QUI DÉCIDE, au même endroit que l'écriture du double.
+  assert.match(bloc, /Completer/,
+    'le choix `Future.value(null)` contre `Completer()` n\'est pas dit là où l\'on écrit le '
+    + 'double : c\'est pourtant là qu\'il se prend, et un run a payé une commande qui ne rend '
+    + 'jamais la main cinq minutes après avoir écrit le sien');
+  assert.match(bloc, /micro-tâches/i,
+    'et il faut nommer le phénomène, sinon celui qui le rencontrera ne fera pas le lien');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run

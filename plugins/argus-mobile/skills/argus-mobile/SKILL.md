@@ -317,6 +317,41 @@ exposées** à la couche d'accessibilité. Un flow qui cible une Key échoue,
 toujours. C'est `Semantics(identifier:)` qu'il faut, et c'est la voie recommandée
 parce qu'elle survit à un changement de langue et de wording.
 
+⚠️ **COMMENT les écrire — c'est le seul endroit où ce skill disait
+« débrouille-toi »,** et c'est ce que la plupart des projets Flutter/BLoC
+devront produire. Un run l'a signalé après y avoir passé une dizaine de minutes
+à deviner. Avec `mocktail` + `bloc_test` (les paquets que le harnais suppose) :
+
+```dart
+// Un bloc : MockBloc<Event, State> — MockCubit<State> pour un cubit.
+class FakeHomeBloc extends MockBloc<HomeEvent, HomeState> implements HomeBloc {}
+
+// Un repository, un service : mocktail suffit.
+class FakeHomeRepository extends Mock implements HomeRepository {}
+
+// Puis, dans le `build:` de l'ArgusScreen — l'état qu'on veut ÉPROUVER :
+build: () {
+  final bloc = FakeHomeBloc();
+  whenListen(bloc, const Stream<HomeState>.empty(), initialState: HomeState.chargee(…));
+  return BlocProvider<HomeBloc>.value(value: bloc, child: const HomeScreen());
+},
+```
+
+`whenListen` stubbe `state` **et** `stream` d'un coup : sans lui, le premier
+`BlocBuilder` lève sur un `stream` nul. `initialState` est ce que l'écran
+affichera — choisis l'état **peuplé**, pas l'état de chargement, sinon tu
+éprouves un indicateur de progression.
+
+🔴 **ET C'EST ICI QUE SE DÉCIDE LA BOUCLE DE MICRO-TÂCHES**, pas au §3g où elle
+est décrite : un run l'a heurtée au **premier `argus-anchors`**, cinq minutes
+après avoir écrit son premier double. Quand un écran interroge un service **en
+boucle**, un double qui rend `Future.value(null)` — donc un futur **déjà
+complété** — réempile une micro-tâche sans jamais attendre, ce qui affame la
+boucle d'événements en temps simulé : la commande ne rend **jamais** la main,
+sans sortie ni timeout. Fais rendre à ce service un `Completer<T>().future`
+(jamais complété), ce que fait le vrai service tant qu'il attend. Le §3g décrit
+le symptôme et le défaut de production que ce double révèle.
+
 ⚠️ **Où poser les doubles de test dont tes écrans ont besoin.** `harness.dart`
 déclare ; il n'a pas à héberger quatre blocs falsifiés et un service d'injection.
 Mets-les dans un fichier voisin — `test/argus/argus_fakes.dart` est le nom que le
