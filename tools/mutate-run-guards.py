@@ -745,6 +745,25 @@ MUTATIONS = [
     ("installeur", "le compteur de TODO recompte ceux qui sont SANS OBJET",
      "grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET'",
      "grep -c 'TODO(argus):'"),
+    # ⚠️ Celle-ci rend au fichier le nom que les deux plateformes partageaient —
+    # le défaut du 275 dans sa forme exacte. Elle vise le CÂBLAGE (le chemin
+    # construit dans `main()`), pas une fonction : c'est là qu'il vivait.
+    ("report", "les deux plateformes réécrivent le même fichier",
+     "join(dir, `report.artifact.${plateforme}.html`)",
+     "join(dir, 'report.artifact.html')"),
+    # Et celle-ci redonne au journal le message rassurant, mot pour mot.
+    ("report", "publier sans url redevient un simple doublon",
+     """      `à REPUBLIER sur ${url} — passe cette URL à la publication`,
+      'sans elle, la publication ne crée pas forcément une page neuve : elle peut'
+      + " atterrir sur celle d'un run précédent et la REMPLACER",""",
+     "      `à REPUBLIER sur ${url} — publier sans cette URL crée un doublon`,"),
+    # L'autre moitié : une PREMIÈRE publication n'est pas garantie neuve non
+    # plus, et c'est la seule branche que le run 37 empruntait.
+    ("report", "une première publication cesse d'être vérifiée",
+     """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
+    + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
+    + ' sans URL est rapprochée par CHEMIN DE FICHIER, pas par intention',""",
+     "    'publie, puis reporte l\\'URL',"),
 ]
 
 
