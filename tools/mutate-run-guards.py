@@ -838,6 +838,24 @@ MUTATIONS = [
     ("skill", "la séquence reperd le renvoi vers le diagnostic du runner",
      "⚠️ **SI `argus-run` ÉCHOUE SUR L'ANCRE DE DÉPART, NE DEVINE PAS : LE RUNNER TE",
      "⚠️ **Si `argus-run` échoue, cherche pourquoi. LE RUNNER TE"),
+    # ── 297 : le contrôle de configuration non embarquée ─────────────────
+    # Celle-ci le vide de sa substance sans toucher au motif que le garde lit.
+    ("config", "le contrôle de config ne regarde plus la déclaration",
+     "      if (motif && !texte.includes(motif)) {",
+     "      if (false && motif && !texte.includes(motif)) {"),
+    # Et celle-ci coupe l'extensibilité — la moitié qui répond à « et les autres
+    # fichiers de config ? ».
+    ("config", "un projet ne peut plus déclarer ses propres fichiers",
+     "  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])];",
+     "  const regles = [...CONFIG_FILES];"),
+    # Le câblage vers le rapport.
+    ("sec", "les findings de configuration n'atteignent plus le rapport",
+     "...auditSecrets(root, config), ...auditConfigFiles(root, config)]",
+     "...auditSecrets(root, config)]"),
+    # Et le signal précoce, celui qui épargne la passe device.
+    ("config", "le signal précoce de configuration disparaît",
+     "  const orphelins = configNonEmbarquee(dirname(config.__file), config);",
+     "  const orphelins = [];"),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"

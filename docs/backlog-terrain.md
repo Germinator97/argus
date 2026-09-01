@@ -4607,7 +4607,58 @@ multi-mots ne le trouve pas. Les gardes de prose écrits ce jour-là aplatissent
 désormais les blancs — ils avaient tous la même fragilité, ils ne l'avaient
 simplement pas encore montrée.
 
+### 297. ✅ Corrigé le 01/09/2026 — « présent » ne veut pas dire « embarqué »
+
+**Vient d'une question de Germinator** : *« est-ce que le rapport mentionne les
+points de configuration manquants, fichiers Firebase ou autres ? »* Mesuré :
+**non**. La seule occurrence de `google-services.json` dans tout le harnais était
+une **liste blanche de secrets** — pour ne PAS l'alarmer, jamais pour détecter
+son absence.
+
+📌 **Le harnais SAVAIT que ça arrive sans savoir le dire.** `startupHint`
+orientait déjà vers la capture (« si elle montre une erreur de l'app, aucun
+plafond n'y changera rien ») et son commentaire citait le cas exact — « Service
+indisponible faute d'un fichier de configuration absent du bundle ». Il évitait
+donc la fausse piste, mais laissait l'humain nommer la cause : **six flows
+rouges et ~36 min d'appareil** au run 38, pour un défaut détectable en
+millisecondes et **sans device**.
+
+🎯 **ET LA CONCEPTION A CHANGÉ EN COURS DE ROUTE, sur une objection de
+Germinator** : *« là on spécifie seulement firebase, mais il pourrait y avoir
+d'autres fichiers de config non ? »* — posée avant que la première ligne soit
+écrite. Elle était juste : coder `si Firebase` aurait reproduit le défaut que ce
+dépôt reproche ailleurs — **énumérer les défauts CONNUS au lieu de mesurer le
+PHÉNOMÈNE** — et rendu « 0 » sur le quatrième fichier que personne n'a imaginé.
+
+Le phénomène est unique : *un fichier posé dans les sources que rien ne câble,
+donc jamais embarqué, et dont l'absence ne se voit qu'à l'exécution*. Seule
+change la déclaration qui fait l'embarquement. Chaque règle dit donc trois
+choses — **QUOI** chercher, **QUELLE** déclaration câble, ce qui **CASSE** — et
+un projet ajoute les siennes dans `argus.mobile.yaml → configFiles:`.
+
+⚠️ **Ce qui n'y est PAS est aussi une décision** : les assets Flutter ordinaires
+en sont exclus. Un asset manquant lève **bruyamment** au premier usage, donc il
+se diagnostique seul ; l'inclure noierait les trois cas silencieux sous des
+lignes sans valeur. *On ne contrôle que ce qui échoue SANS le dire.*
+
+📌 **Éprouvé sur un projet RÉEL avant d'être écrit** — sans Firebase, trois
+familles de polices déclarées **par dossier** (`assets/fonts/geist/`) : **zéro
+finding**. C'est cette mesure qui a corrigé la détection des polices, qu'une
+lecture rapide aurait faite fichier par fichier.
+
+📌 **Câblé aux DEUX bouts**, et le second est celui qui épargne la passe device :
+`sec.json` le porte en dimension `configuration`, et `config.mjs` l'imprime au
+**§3d**, avant qu'on lance quoi que ce soit. Les deux mutations de câblage
+tombent.
+
 ## Ce qui reste
+
+Le point **297** est fermé le 01/09/2026 — backlog vide pour la **trente-huitième**
+fois. Il ne vient pas d'un run mais d'une **question** de Germinator sur ce que
+le rapport dit, et sa conception a été corrigée par une **seconde** question
+avant la première ligne de code. C'est la cinquième fois que la lecture d'un
+livrable trouve ce que l'exécution ne voit pas — et la première fois qu'une
+objection arrive assez tôt pour changer le remède plutôt que le corriger après.
 
 Les points **275 à 295** sont fermés le 01/09/2026 — backlog vide pour la
 **trente-septième** fois. Tous viennent des deux runs iOS, et **cinq d'entre eux
