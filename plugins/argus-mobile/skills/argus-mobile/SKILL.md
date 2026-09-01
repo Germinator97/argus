@@ -1330,7 +1330,8 @@ DERNIER run avant `argus-report` doit être complet.
 **g bis. Publier le rapport, si le projet le demande.** `artifact.enabled` de
 `argus.mobile.yaml` vaut `false` par défaut : dans ce cas, ne publie rien et
 n'en parle pas à chaque run. Quand il vaut `true`, `make argus-report` écrit en
-plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
+plus `argus-mobile-report/report.artifact.<plateforme>.html`, prête à publier
+telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
 
 1. **Avant la toute première publication, demande.** Publier envoie le rapport
    — captures d'écran comprises — à un service tiers. La page est privée par
@@ -1389,6 +1390,32 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
    Republier sur `artifact.url` te fait de toute façon lire la page : relève le
    titre à ce moment-là et **reporte-le dans `artifact.title`** avant de
    publier.
+
+6. 🚨 **UNE PUBLICATION SANS `url` N'EST PAS UNE PAGE NEUVE.** C'est le
+   geste le plus destructeur du parcours, et il ressemble au plus anodin.
+   L'outil de publication rapproche par **CHEMIN DE FICHIER** : deux runs qui
+   écrivent le même fichier publient sur la **même page**, quelle que soit
+   l'intention. Vécu le 01/09 — un run iOS a publié sans `url` et a **remplacé
+   la page Android de son propre terrain**, le titre passant de « — Android »
+   à « — iOS ». Rien ne le signale : l'URL rendue a l'air neuve, la page est
+   valide, et la perte ne se voit qu'en cherchant l'autre.
+
+   Depuis, le fichier porte la plateforme (`report.artifact.<plateforme>.html`),
+   ce qui sépare les deux runs d'un même terrain. **Ça ne suffit pas** :
+
+   - **Tu as une URL** → passe-la (`url:` de l'outil). Ne compte pas sur le
+     chemin pour retrouver la bonne page.
+   - **Tu n'en as pas** → publie, puis **vérifie ce que tu viens de faire** :
+     relis le titre de l'URL rendue, ou compare la liste des artefacts prise
+     avant et après. Une page dont le titre n'est pas le tien est une page que
+     tu viens d'écraser — elle est récupérable par son sélecteur de versions,
+     et le dire tout de suite coûte infiniment moins que de le découvrir plus
+     tard.
+
+   ⚠️ Le skill protégeait contre l'écrasement **délibéré** (republier iOS sur
+   l'URL d'Android, point 2) et pas du tout contre l'écrasement **par défaut**.
+   Ce sont deux gestes différents ; celui-ci n'a besoin d'aucune erreur de
+   saisie pour se produire.
 
 ⚠️ **En CI, personne ne publie** : le job n'a pas d'agent. Il produit le
 fichier et s'arrête là. Ne promets pas une URL dans un contexte automatisé.

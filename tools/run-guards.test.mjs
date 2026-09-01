@@ -33,7 +33,7 @@ import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -5281,7 +5281,7 @@ test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisiè
     const annonce = (sortie.match(/titre « (.*?) »/) ?? [])[1];
     assert.ok(annonce, `le journal ne dit plus quel titre il publie — ou le programme n'a pas tourné.\n${sortie}`);
 
-    const page = readFileSync(join(dir, 'argus-mobile-report', 'report.artifact.html'), 'utf8');
+    const page = readFileSync(join(dir, 'argus-mobile-report', 'report.artifact.android.html'), 'utf8');
     const publie = (page.match(/<title>(.*?)<\/title>/) ?? [])[1];
     assert.ok(publie, 'la page publiable ne porte pas de <title> — le montage est cassé, pas le code');
 
@@ -5297,6 +5297,85 @@ test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisiè
       `le nom de app.name n'atteint plus le titre — il retombe sur l'identifiant sans le dire (${publie})`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('la consigne de publication annonce le RISQUE, pas un doublon (275)', () => {
+  // ⚠️ CE MESSAGE DISAIT L'INVERSE DU DANGER. Il annonçait qu'une publication
+  // sans URL « crée un doublon » — au pire deux pages, rien de perdu. La mesure
+  // du 01/09 dit le contraire : l'outil de publication rapproche par CHEMIN DE
+  // FICHIER, un run iOS a donc atterri sur la page Android de son propre
+  // terrain et l'a remplacée. Le message rassurait sur le seul geste qui
+  // détruit.
+  //
+  // Le garde APPELLE la fonction et lit ce qui revient : chercher son texte
+  // dans la source resterait vert sur une valeur neutralisée.
+  const republie = consignePublication('https://exemple/abc', 'ios');
+  const premiere = consignePublication('', 'ios');
+
+  // Les deux branches portent leur consigne ET son avertissement — c'est la
+  // seconde ligne qui est le correctif, et elle doit exister des deux côtés :
+  // une PREMIÈRE publication n'est pas garantie neuve non plus.
+  assert.equal(republie.length, 2, 'une republication doit dire où publier ET ce qu\'une publication nue risque');
+  assert.equal(premiere.length, 2, 'une première publication doit dire où reporter l\'URL ET quoi vérifier après');
+  for (const [quoi, lignes] of [['republication', republie], ['première', premiere]]) {
+    assert.ok(lignes.every((l) => l.trim().length > 30),
+      `${quoi} : une consigne vide ou lapidaire ne prévient de rien (${JSON.stringify(lignes)})`);
+    assert.notEqual(lignes[0], lignes[1], `${quoi} : l'avertissement ne doit pas répéter la consigne`);
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ : la branche qui connaît l'URL doit la DIRE. Sans elle,
+  // celui qui lit ne sait pas quoi passer, et repart précisément sur la
+  // publication nue que l'avertissement décrit.
+  assert.ok(republie.some((l) => l.includes('https://exemple/abc')),
+    'la consigne de republication doit porter l\'URL à passer');
+  assert.ok(premiere.some((l) => l.includes('artifact.url.ios')),
+    'la première publication doit dire SOUS QUELLE CLÉ reporter l\'URL obtenue');
+
+  // Et les deux consignes diffèrent : un message unique pour les deux cas
+  // redonnerait le conseil de republication à qui n'a pas encore de page.
+  assert.notDeepEqual(republie, premiere,
+    'republier et publier pour la première fois ne demandent pas le même geste');
+});
+
+test('deux plateformes du MÊME terrain écrivent deux fichiers DIFFÉRENTS (275, troisième barreau)', () => {
+  // ⚠️ C'EST CE GARDE QUI FERME LE DÉFAUT, et il ne peut pas être unitaire : le
+  // nom du fichier se décide dans `main()`, à partir de la plateforme du run.
+  // Tant que les deux runs d'un terrain écrivaient `report.artifact.html`,
+  // l'outil de publication — qui rapproche par CHEMIN — remplaçait la page du
+  // premier par celle du second. Mesuré : les runs 35 (Android) et 37 (iOS)
+  // partagent leur commit de base, donc leur chemin absolu.
+  //
+  // Le garde ne lit aucun motif de source : il LANCE report.mjs deux fois, une
+  // par plateforme, et compare les chemins produits.
+  const script = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs');
+  const produits = {};
+  for (const plateforme of ['ios', 'android']) {
+    const dir = mkdtempSync(join(tmpdir(), `argus-275-${plateforme}-`));
+    try {
+      writeFileSync(join(dir, 'argus.mobile.yaml'),
+        `app:\n  name: sonde\n  id: com.exemple\nplatforms: [${plateforme}]\nartifact:\n  enabled: true\n`, 'utf8');
+      execFileSync(process.execPath, [script], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      const pages = readdirSync(join(dir, 'argus-mobile-report')).filter((f) => f.startsWith('report.artifact'));
+      assert.equal(pages.length, 1, `${plateforme} : une page publiable et une seule (${pages.join(', ')})`);
+      produits[plateforme] = pages[0];
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  // Le cœur du 275, et il est dérivé : deux plateformes, deux noms. Peu importe
+  // lesquels — c'est leur DIFFÉRENCE qui empêche l'écrasement.
+  assert.notEqual(produits.ios, produits.android,
+    `les deux plateformes écrivent le même fichier (${produits.ios}) : publier la seconde sans URL `
+    + 'atterrit sur la page de la première et la REMPLACE — le défaut du 01/09, rouvert');
+
+  // Et chaque nom doit porter SA plateforme, sinon on ne sait pas laquelle on
+  // publie — le 252 sur une autre paire.
+  for (const [plateforme, fichier] of Object.entries(produits)) {
+    assert.ok(fichier.includes(plateforme),
+      `le fichier de ${plateforme} ne le dit pas (${fichier}) : celui qui publie ne sait pas ce qu'il envoie`);
   }
 });
 

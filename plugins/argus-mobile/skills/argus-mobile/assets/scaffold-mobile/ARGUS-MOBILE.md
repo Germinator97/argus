@@ -155,7 +155,7 @@ directement : FVM n'y est pas nécessaire.
 
 Les fichiers du dossier de rapport restent sur la machine qui a lancé le run.
 Pour donner un lien à quelqu'un, `argus.mobile.yaml` → `artifact.enabled: true` :
-`make argus-report` écrit alors, en plus, `report.artifact.html` — le même
+`make argus-report` écrit alors, en plus, `report.artifact.<plateforme>.html` — le même
 rapport, débarrassé de l'enveloppe `<html>` que le format de page fournit
 lui-même. C'est **l'agent** qui la publie ; les scripts n'en ont pas le moyen.
 

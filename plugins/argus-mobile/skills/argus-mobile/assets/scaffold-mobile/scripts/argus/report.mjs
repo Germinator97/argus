@@ -480,6 +480,45 @@ export function pertePossible(prevPath, url) {
     + ' puis relance report.mjs avec --previous=<fichier>';
 }
 
+/**
+ * Ce que le journal doit dire AVANT de publier — et le danger que « doublon » cachait.
+ *
+ * ⚠️ CE MESSAGE ANNONÇAIT L'INVERSE DU RISQUE. Il disait qu'une publication
+ * sans `url` « crée un doublon » : au pire deux pages, rien de perdu. La mesure
+ * dit le contraire — l'outil de publication rapproche par CHEMIN DE FICHIER, et
+ * tous les runs d'un même terrain écrivaient le même `report.artifact.html`.
+ * Une publication sans `url` atterrit donc sur la page du run précédent et la
+ * REMPLACE. Vécu le 01/09 : un run iOS a écrasé la page Android de SON PROPRE
+ * terrain (commit de base identique, donc même chemin absolu), le titre passant
+ * de « — Android » à « — iOS ». Rien ne le signale : l'URL rendue a l'air neuve,
+ * et les deux runs ne l'ont vu qu'en comparant deux listings d'artefacts.
+ *
+ * Depuis, le nom du fichier porte la plateforme — ce qui sépare les deux runs
+ * d'un même terrain. Ce message porte le reste, qu'aucun nom de fichier ne peut
+ * dire : une première publication n'est pas garantie neuve non plus.
+ *
+ * Extrait de `main()` pour la même raison que `pertePossible` : un garde qui
+ * l'APPELLE lit ce qui revient, là où un garde qui cherche son texte dans la
+ * source reste vert sur une valeur neutralisée.
+ * @param {string} url @param {string} plateforme @returns {string[]}
+ */
+export function consignePublication(url, plateforme) {
+  if (url) {
+    return [
+      `à REPUBLIER sur ${url} — passe cette URL à la publication`,
+      'sans elle, la publication ne crée pas forcément une page neuve : elle peut'
+      + " atterrir sur celle d'un run précédent et la REMPLACER",
+    ];
+  }
+  return [
+    `première publication : reporte l'URL obtenue dans argus.mobile.yaml → `
+    + `artifact.url.${plateforme} — une page PAR PLATEFORME, pas une pour les deux`,
+    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
+    + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
+    + ' sans URL est rapprochée par CHEMIN DE FICHIER, pas par intention',
+  ];
+}
+
 /** L'enregistrement compact d'un run — ce qu'un onglet passé sait montrer. */
 export function runRecord(context) {
   const { run, counts, gate, parts, findings, generatedAt } = context;
@@ -742,7 +781,13 @@ function main() {
     if (shot.tooBig) notes.push(`${shot.tooBig} au-delà du plafond de ${maxMb} Mo, laissée(s) en chemin`);
     if (shot.missing) notes.push(`${shot.missing} introuvable(s) sur le disque`);
     const evidenceNote = notes.length ? `<p class="muted">Preuves : ${esc(notes.join(' · '))}</p>` : '';
-    const artifactPath = join(dir, 'report.artifact.html');
+    // ⚠️ LE NOM PORTE LA PLATEFORME, et ce n'est pas cosmétique. L'outil de
+    // publication rapproche par CHEMIN DE FICHIER : tant que les deux runs d'un
+    // même terrain écrivaient `report.artifact.html`, publier le second sans
+    // passer d'URL atterrissait sur la page du premier et la remplaçait. Mesuré
+    // le 01/09 — un run iOS a effacé la page Android de son propre terrain.
+    const plateforme = String(context.run?.platform ?? 'android');
+    const artifactPath = join(dir, `report.artifact.${plateforme}.html`);
 
     // L'HISTORIQUE vient de la page DÉJÀ PUBLIÉE, que l'agent enregistre avant
     // de republier (`--previous=<fichier>`). Rien d'autre ne survit : le dossier
@@ -775,11 +820,7 @@ function main() {
     // ⚠️ UNE PAGE PAR PLATEFORME. Un rapport décrit un run, donc une plateforme ;
     // republier un run iOS sur l'URL d'un run Android ne les réunit pas, il
     // remplace l'un par l'autre — et le premier n'existe plus nulle part.
-    const plateforme = String(context.run?.platform ?? 'android');
-    log(ident.url
-      ? `  à REPUBLIER sur ${ident.url} — publier sans cette URL crée un doublon`
-      : `  première publication : reporte l'URL dans argus.mobile.yaml → `
-        + `artifact.url.${plateforme} — une page PAR PLATEFORME, pas une pour les deux`);
+    for (const ligne of consignePublication(ident.url, plateforme)) log(`  ${ligne}`);
     // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
     // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
     // republie en choisit d'autres et la page se lit comme une seconde page.
