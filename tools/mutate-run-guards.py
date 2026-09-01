@@ -10,6 +10,7 @@ Et la restauration est prouvée par hash, pas annoncée.
 """
 import hashlib
 import re
+import signal
 import pathlib
 import shutil
 import subprocess
@@ -859,6 +860,28 @@ def restaure(cle, attendu):
         sys.exit(1)
 
 
+def restaure_tout(propres):
+    """Ramène chaque cible à son état propre — le filet des sorties BRUTALES.
+
+    ⚠️ CE FILET MANQUAIT, ET LA PASSE COMPLÈTE NE TIENT PLUS DANS UNE SEULE
+    EXÉCUTION. 190 mutations dépassent la limite de temps d'une commande : le
+    processus est alors TUÉ entre l'écriture d'une mutation et sa restauration,
+    et le fichier reste muté dans l'arbre — sans un mot, exactement comme
+    l'interruption d'un `--help` l'avait fait avant que les arguments soient
+    lus. Vécu le 01/09 : `run.mjs` retrouvé muté après un timeout de dix
+    minutes, et rien dans la sortie ne le disait.
+
+    La boucle restaure déjà après chaque mutation ; ce filet couvre ce qu'elle
+    ne peut pas couvrir — être interrompue au milieu.
+    """
+    for cle in CIBLES:
+        cible = CIBLES[cle]
+        if digest(cible) != propres[cle]:
+            sh(["git", "checkout", "--", str(cible.relative_to(ROOT))])
+            etat = "restauré" if digest(cible) == propres[cle] else "TOUJOURS MUTÉ"
+            print(f"  · {cible.name} : {etat}")
+
+
 def main():
     global NB_TESTS
 
@@ -946,73 +969,100 @@ def main():
         print(f"⚠  PASSE PARTIELLE : {len(jouees)}/{len(MUTATIONS)} mutations"
               f" (--only={','.join(map(str, choisies))}) — ce n'est PAS une passe complète.\n")
 
-    for cle, nom, avant, apres in jouees:
-        cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
-        occurrences = original.count(avant)
-        if occurrences != 1:
-            bilan.append(("HARNAIS", nom, f"motif trouvé {occurrences}× (attendu 1)"))
-            continue
+    # ⚠️ TOUT CE QUI SUIT MUTE DES FICHIERS SUIVIS. Une sortie brutale — signal,
+    # timeout de l'appelant, Ctrl-C — doit laisser l'arbre propre, sinon le
+    # fichier muté survit à la séance et le prochain qui le lit croit au code.
+    interrompu = False
+    # ⚠️ UN `finally` NE SE DÉROULE PAS SUR SIGTERM — et SIGTERM est justement le
+    # signal qu'envoie un appelant qui expire, c'est-à-dire le cas vécu. Sans ce
+    # handler, le filet ci-dessous couvre Ctrl-C et rien d'autre : la seule
+    # sortie brutale qu'on subit vraiment passerait à travers.
+    def _sigterm(_sig, _frm):
+        raise KeyboardInterrupt
+    precedent = signal.signal(signal.SIGTERM, _sigterm)
+    try:
+      for cle, nom, avant, apres in jouees:
+          cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
+          occurrences = original.count(avant)
+          if occurrences != 1:
+              bilan.append(("HARNAIS", nom, f"motif trouvé {occurrences}× (attendu 1)"))
+              continue
 
-        cible.write_text(original.replace(avant, apres, 1), encoding="utf-8")
-        if digest(cible) == propre:
-            restaure(cle, propre)
-            bilan.append(("HARNAIS", nom, "le fichier n'a pas changé"))
-            continue
+          cible.write_text(original.replace(avant, apres, 1), encoding="utf-8")
+          if digest(cible) == propre:
+              restaure(cle, propre)
+              bilan.append(("HARNAIS", nom, "le fichier n'a pas changé"))
+              continue
 
-        # Une mutation qui casse le build fait rougir pour une raison sans
-        # rapport avec le garde, et ce rouge-là se lit comme un succès. Pour un
-        # flow, c'est `maestro check-syntax` qui le dit — aucun parseur d'ici ne
-        # les lit, leur `---` sortant du sous-ensemble YAML du harness. Quand
-        # maestro manque, on ne vérifie pas : on l'ANNONCE (voir main), plutôt
-        # que de laisser croire que ça l'a été.
-        verif = None
-        if cible.suffix == ".mjs":
-            verif = ["node", "--check", str(cible)]
-        elif cible.suffix == ".sh":
-            # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
-            # validateur laisse passer une mutation qui casse la syntaxe, et le
-            # rouge qui suit se lit comme un garde qui tombe.
-            verif = ["bash", "-n", str(cible)]
-        elif cible.name == "argus.mobile.yaml":
-            # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
-            # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
-            # section de flow. La cible existait depuis le run 29 sans qu'aucune
-            # mutation ne l'exerce, donc personne ne pouvait le savoir : une
-            # cible sans mutation est vacante, comme un garde sans épreuve.
-            # C'est le parseur du skill qui fait foi ici.
-            verif = ["node", "-e",
-                     "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
-                     + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
-                     + "')).catch(e => { console.error(e.message); process.exit(1); })"]
-        elif cible.name == "argus-mobile.yml":
-            # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
-            # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
-            # `check-syntax` le rejette toujours et TOUTE mutation rendait
-            # « ne parse pas ». La cible existait sans qu'aucune mutation ne
-            # puisse aboutir. C'est un YAML : on le parse comme tel.
-            verif = ["python3", "-c",
-                     "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
-        elif cible.suffix in (".yaml", ".yml") and MAESTRO:
-            verif = [MAESTRO, "check-syntax", str(cible)]
-        if verif is not None:
-            check = sh(verif)
-            if check.returncode != 0:
-                restaure(cle, propre)
-                bilan.append(("HARNAIS", nom, "la mutation ne parse pas"))
-                continue
+          # Une mutation qui casse le build fait rougir pour une raison sans
+          # rapport avec le garde, et ce rouge-là se lit comme un succès. Pour un
+          # flow, c'est `maestro check-syntax` qui le dit — aucun parseur d'ici ne
+          # les lit, leur `---` sortant du sous-ensemble YAML du harness. Quand
+          # maestro manque, on ne vérifie pas : on l'ANNONCE (voir main), plutôt
+          # que de laisser croire que ça l'a été.
+          verif = None
+          if cible.suffix == ".mjs":
+              verif = ["node", "--check", str(cible)]
+          elif cible.suffix == ".sh":
+              # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
+              # validateur laisse passer une mutation qui casse la syntaxe, et le
+              # rouge qui suit se lit comme un garde qui tombe.
+              verif = ["bash", "-n", str(cible)]
+          elif cible.name == "argus.mobile.yaml":
+              # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
+              # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
+              # section de flow. La cible existait depuis le run 29 sans qu'aucune
+              # mutation ne l'exerce, donc personne ne pouvait le savoir : une
+              # cible sans mutation est vacante, comme un garde sans épreuve.
+              # C'est le parseur du skill qui fait foi ici.
+              verif = ["node", "-e",
+                       "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
+                       + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
+                       + "')).catch(e => { console.error(e.message); process.exit(1); })"]
+          elif cible.name == "argus-mobile.yml":
+              # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
+              # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
+              # `check-syntax` le rejette toujours et TOUTE mutation rendait
+              # « ne parse pas ». La cible existait sans qu'aucune mutation ne
+              # puisse aboutir. C'est un YAML : on le parse comme tel.
+              verif = ["python3", "-c",
+                       "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
+          elif cible.suffix in (".yaml", ".yml") and MAESTRO:
+              verif = [MAESTRO, "check-syntax", str(cible)]
+          if verif is not None:
+              check = sh(verif)
+              if check.returncode != 0:
+                  restaure(cle, propre)
+                  bilan.append(("HARNAIS", nom, "la mutation ne parse pas"))
+                  continue
 
-        res = sh(["node", "--test", str(SUITE)])
-        sortie = res.stdout + res.stderr
-        restaure(cle, propre)
+          res = sh(["node", "--test", str(SUITE)])
+          sortie = res.stdout + res.stderr
+          restaure(cle, propre)
 
-        if f"tests {NB_TESTS}" not in sortie:
-            bilan.append(("HARNAIS", nom, "la suite n'a pas tourné entièrement"))
-        elif res.returncode != 0:
-            echecs = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith("✖ ")
-                      and "subtest" not in l]
-            bilan.append(("TOMBE", nom, echecs[0] if echecs else "un garde a rougi"))
-        else:
-            bilan.append(("VACANT", nom, "aucun garde n'a bougé"))
+          if f"tests {NB_TESTS}" not in sortie:
+              bilan.append(("HARNAIS", nom, "la suite n'a pas tourné entièrement"))
+          elif res.returncode != 0:
+              echecs = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith("✖ ")
+                        and "subtest" not in l]
+              bilan.append(("TOMBE", nom, echecs[0] if echecs else "un garde a rougi"))
+          else:
+              bilan.append(("VACANT", nom, "aucun garde n'a bougé"))
+
+    except KeyboardInterrupt:
+        interrompu = True
+        print("\n⚠  INTERROMPU — restauration des cibles avant de sortir :")
+    finally:
+        # ⚠️ LE FILET. La boucle restaure après chaque mutation ; ceci couvre
+        # ce qu'elle ne peut pas couvrir — être TUÉE au milieu. Sans lui, un
+        # timeout de l'appelant laisse la mutation en cours dans l'arbre, sans
+        # un mot. Vécu : `run.mjs` retrouvé muté après un timeout de dix
+        # minutes, la passe complète ne tenant plus dans une seule exécution.
+        restaure_tout(propres)
+        signal.signal(signal.SIGTERM, precedent)
+    if interrompu:
+        print("  (passe incomplète : aucun verdict n'est rendu)")
+        return 130
 
     print(f"\n{'':2} {'défaut réintroduit':52} verdict")
     print("─" * 96)
