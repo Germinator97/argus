@@ -672,9 +672,13 @@ MUTATIONS = [
     ("report", "le titre du rapport est rebranché sur un littéral",
      "<h1>${esc(titreDuRapport(run))}</h1>",
      "<h1>com.exemple — ios — rapport QA</h1>"),
+    # ⚠️ Motif réécrit par le 254, qui a ajouté le nom du projet devant
+    # l'identifiant. Le harnais l'a dit lui-même — « motif trouvé 0× », verdict
+    # HARNAIS et non VACANT : c'est cette distinction qui évite d'aller chercher
+    # un garde manquant qui existe.
     ("report", "le titre cesse de porter la plateforme",
-     "return [run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');",
-     "return [run?.appId, 'rapport QA'].filter(Boolean).join(' — ');"),
+     "return [run?.name || run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');",
+     "return [run?.name || run?.appId, 'rapport QA'].filter(Boolean).join(' — ');"),
     ("report", "la sous-ligne répète de nouveau le titre",
      '  <div class="sub">\n    ${devices',
      '  <div class="sub">\n    ${esc(run?.appId ?? \'\')} ·\n    ${devices'),
