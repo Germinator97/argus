@@ -5361,8 +5361,16 @@ test('la consigne de publication annonce le RISQUE, pas un doublon (275)', () =>
   // Les deux branches portent leur consigne ET son avertissement — c'est la
   // seconde ligne qui est le correctif, et elle doit exister des deux côtés :
   // une PREMIÈRE publication n'est pas garantie neuve non plus.
-  assert.equal(republie.length, 2, 'une republication doit dire où publier ET ce qu\'une publication nue risque');
+  // Trois lignes en republication depuis le 284 : où publier, ce qu'une
+  // publication nue risque, et ce qu'on fait si l'URL ne résout plus — trois
+  // informations distinctes, pas trois versions de la même (cf. 276).
+  assert.equal(republie.length, 3,
+    'une republication doit dire où publier, ce qu\'une publication nue risque, et quoi faire '
+    + 'si l\'URL est morte');
   assert.equal(premiere.length, 2, 'une première publication doit dire où reporter l\'URL ET quoi vérifier après');
+  assert.ok(republie.some((l) => /ne résout plus/.test(l)),
+    'le cas de l\'URL morte doit être dit LÀ OÙ on lit l\'URL — deux runs l\'ont rencontré '
+    + 'le même jour, et le §3g-bis ne connaissait que « présente » et « absente »');
   for (const [quoi, lignes] of [['republication', republie], ['première', premiere]]) {
     assert.ok(lignes.every((l) => l.trim().length > 30),
       `${quoi} : une consigne vide ou lapidaire ne prévient de rien (${JSON.stringify(lignes)})`);
@@ -5966,6 +5974,45 @@ test('toute consigne de DEMANDER offre son repli sans interlocuteur (283)', () =
   assert.match(bloc, /rapport/,
     'et exiger que ce qui a été touché soit rendu — sinon quelqu\'un découvre le diff sans '
     + 'savoir d\'où il vient');
+});
+
+test('le §3g-bis connaît la page MORTE, et lit avant de renommer (284, 292)', () => {
+  // ⚠️ DEUX RUNS L'ONT RENCONTRÉ LE MÊME JOUR. Le paragraphe de publication ne
+  // connaissait que « une URL » et « pas d'URL » : une URL déclarée dont la
+  // page a été supprimée n'avait aucun cas, et `report.mjs` continuait
+  // d'annoncer « à REPUBLIER sur <url morte> ».
+  //
+  // Et le point 5 se retournait dans ce cas : « lis son titre actuel d'abord »
+  // suppose que la page existe. Un run a renseigné `artifact.title` d'un titre
+  // INVENTÉ avant de découvrir que l'URL était morte — il avait suivi le point 5
+  // avant le point 3.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('**g bis. Publier le rapport');
+  assert.notEqual(i, -1, 'le §3g-bis a été renommé — mets ce garde à jour');
+  const j = skill.indexOf('**h. Récapitule', i);
+  assert.ok(j > i, 'la fin du §3g-bis est introuvable : ce garde mesurerait tout le fichier');
+  const para = skill.slice(i, j);
+
+  // Le troisième cas existe, et il dit les trois gestes qui le composent.
+  assert.match(para, /n'existe plus|url morte|URL EST DÉCLARÉE ET LA PAGE N'EXISTE PLUS/i,
+    'le §3g-bis ne connaît toujours que « présente » et « absente » : une page supprimée '
+    + 'n\'a aucun cas, et deux runs s\'y sont arrêtés');
+  assert.match(para, /action: "list"/,
+    'le troisième cas doit dire comment VÉRIFIER la disparition — un read qui échoue peut '
+    + 'aussi être un droit manquant');
+  assert.match(para, /[Nn]e devine pas/,
+    'et interdire de deviner la page qui la remplace : republier « sur celle qui ressemble » '
+    + 'écrase le travail d\'un autre run');
+
+  // ⚠️ ET L'ORDRE : le read AVANT artifact.title. Sans lui, le point 5 fait
+  // inventer un titre pour une page qui n'existe pas.
+  const iTitre = para.indexOf('LIS SON TITRE ACTUEL');
+  assert.notEqual(iTitre, -1, 'la consigne de titre a été reformulée — garde à mettre à jour');
+  const bloc = para.slice(iTitre, iTitre + 1200);
+  assert.match(bloc, /le `read` D'ABORD|si le `read` échoue|Si le `read` échoue/,
+    'le point 5 ne dit pas qu\'il vient APRÈS le read : suivi dans l\'autre sens, il fait '
+    + 'renseigner artifact.title d\'un titre inventé pour une page morte');
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

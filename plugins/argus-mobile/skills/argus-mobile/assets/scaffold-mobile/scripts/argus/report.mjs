@@ -508,6 +508,8 @@ export function consignePublication(url, plateforme) {
       `à REPUBLIER sur ${url} — passe cette URL à la publication`,
       'sans elle, la publication ne crée pas forcément une page neuve : elle peut'
       + " atterrir sur celle d'un run précédent et la REMPLACER",
+      "et si cette URL ne résout plus (page supprimée), ne devine pas laquelle la"
+      + ' remplace : publie une page neuve et dis-le dans le rapport',
     ];
   }
   return [

@@ -1425,6 +1425,23 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    sous forme de **fichier local**, dont `read` donne le chemin — c'est celui
    qu'attend `--previous`.
 
+   🔴 **TROISIÈME CAS : L'URL EST DÉCLARÉE ET LA PAGE N'EXISTE PLUS.** Ce
+   paragraphe ne connaissait que « une URL » et « pas d'URL » ; il manquait
+   celui-là, et deux runs l'ont rencontré le même jour — `read` rend
+   « artifact not found » sur une page supprimée entre-temps, pendant que
+   `report.mjs` continue d'annoncer « à REPUBLIER sur <cette URL> ». Ce qu'il
+   faut faire :
+
+   - **Vérifie que la page a bien disparu** avant de conclure : `Artifact`
+     `action: "list"` énumère ce qui existe. Un `read` qui échoue peut aussi
+     être un droit manquant.
+   - **Ne devine pas quelle page la remplace.** Republier « sur celle qui
+     ressemble » écrase le travail d'un autre run (voir le point 6).
+   - **Publie une page neuve**, reporte la nouvelle URL dans `artifact.url`, et
+     **écris dans le rapport que l'historique repart de zéro et pourquoi** —
+     sinon la prochaine personne lira une page à un seul onglet et croira à un
+     premier run.
+
 4. **Sinon**, publie, puis **reporte l'URL obtenue dans `argus.mobile.yaml` →
    `artifact.url`**, sous la clé de la plateforme. C'est toi qui édites ce
    fichier, pas le script : il t'appartient, il porte des commentaires, et un
@@ -1444,6 +1461,13 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    Republier sur `artifact.url` te fait de toute façon lire la page : relève le
    titre à ce moment-là et **reporte-le dans `artifact.title`** avant de
    publier.
+
+   ⚠️ **DANS CET ORDRE, ET PAS L'INVERSE : le `read` D'ABORD, `artifact.title`
+   ENSUITE.** « Lis son titre actuel » suppose que la page existe, et cette
+   consigne se retourne quand elle n'existe pas : un run a renseigné
+   `artifact.title` d'un titre **inventé** avant de découvrir que l'URL était
+   morte — il avait suivi le point 5 avant le point 3. Si le `read` échoue, tu
+   es dans le troisième cas ci-dessus et il n'y a aucun titre à reprendre.
 
 6. 🚨 **UNE PUBLICATION SANS `url` N'EST PAS UNE PAGE NEUVE.** C'est le
    geste le plus destructeur du parcours, et il ressemble au plus anodin.
