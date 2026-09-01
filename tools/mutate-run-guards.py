@@ -738,7 +738,10 @@ MUTATIONS = [
      "        warn(`échec sur l'écran de départ${indice}`);",
      "        void indice;"),
     ("skill", "le SKILL reprend une base de dérivation concurrente",
-     "⚠️ **Dérive-le de `firstLaunchMs`**",
+     # ⚠️ Motif rafraîchi le 01/09 : le 279 a réécrit cette phrase (« Sur Android,
+     # dérive-le… ») et le harnais a rendu « motif trouvé 0× », pas « VACANT ».
+     # C'est la distinction qui évite d'aller chercher un garde qui existe.
+     "⚠️ **Sur Android, dérive-le de `firstLaunchMs`**",
      "Dérive-le du maximum que tu as observé"),
     ("skill", "le SKILL réaffirme un diagnostic unique",
      "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a\nTROIS causes",

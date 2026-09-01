@@ -5673,8 +5673,15 @@ test('le SKILL et le runner prescrivent la MÊME base de dérivation (259)', () 
   assert.ok(m, 'le runner ne prescrit plus de base de dérivation — ce garde est vacant');
   const grandeur = m[1];
 
-  assert.ok(skill.includes(grandeur),
-    `le SKILL ne cite pas « ${grandeur} », la grandeur que le runner prescrit : `
+  // ⚠️ IL FAUT LA PRESCRIPTION, PAS LA MENTION — et c'est le 279 qui l'a montré.
+  // Ce garde cherchait le mot `firstLaunchMs` n'importe où ; depuis que le SKILL
+  // porte aussi « sur iOS, … PAS de `firstLaunchMs` », cette phrase-là suffisait
+  // à le satisfaire. Le mot était présent, la prescription supprimée, et le
+  // harnais a rendu VACANT. Un correctif ne supprime pas toujours un mode de
+  // panne : parfois il vide le garde du voisin.
+  const prescrit = new RegExp(`dérive-le de \`${grandeur}\``, 'i');
+  assert.match(skill, prescrit,
+    `le SKILL ne PRESCRIT plus « ${grandeur} », la grandeur que le runner prescrit : `
     + 'deux formules concurrentes, et celui qui lit doit arbitrer seul');
 
   // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui a coûté trois passes device : le SKILL
