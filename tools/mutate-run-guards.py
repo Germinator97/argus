@@ -787,6 +787,22 @@ MUTATIONS = [
     ("run", "la plateforme n'atteint plus le conseil de plafond",
      "startupMarginWarning(startup, report.startup.timeoutMs, report.run?.platform)",
      "startupMarginWarning(startup, report.startup.timeoutMs)"),
+    # ⚠️ Le TODO reperd la mention de son périmètre : il redevient lisible comme
+    # le cas général, ce qu'il n'est pas.
+    ("goto", "le TODO du retour cesse de dire ce qu'il ne couvre pas",
+     "            # Pour un écran NOMMÉ (`goto` vers `profile`), elle est sautée, et\n"
+     "            # c'est la branche du bas — une par écran — qui décide. Remplir\n"
+     "            # celle-ci n'y changera donc rien.\n",
+     ""),
+    ("config", "les deux natures d'ancre orpheline se confondent de nouveau",
+     "  const connuesDuDevice = orphelines.filter((a) => enConfig.has(a));",
+     "  const connuesDuDevice = [];"),
+    ("config", "le rapport d'ancres orphelines n'est plus câblé",
+     "    for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);",
+     "    err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);"),
+    ("skill", "le compteur de flows reperd un fichier",
+     "les parcours métier — huit fichiers",
+     "les parcours métier — sept fichiers"),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"

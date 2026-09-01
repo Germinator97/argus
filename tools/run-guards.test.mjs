@@ -5873,7 +5873,12 @@ test('une ancre connue de screens[] mais pas du harness est DISTINGUÉE (281)', 
   // morte pour la vraie.
   const conf = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
-  assert.match(conf, /ancresOrphelinesReport\(orphelines, config\)/,
+  // ⚠️ ANCRÉ SUR L'USAGE, PAS SUR LE NOM. La première version de ce garde
+  // cherchait `ancresOrphelinesReport(orphelines, config)` — motif que la
+  // DÉCLARATION de la fonction contient mot pour mot. Il restait donc vert avec
+  // le site d'appel supprimé : le harnais l'a rendu VACANT, et c'est ainsi qu'on
+  // l'a su. C'est le piège du nom nu, dans le garde même censé voir le câblage.
+  assert.match(conf, /for \(const ligne of ancresOrphelinesReport\(/,
     '--check-anchors n\'appelle plus ancresOrphelinesReport : la fonction peut rester juste '
     + 'pendant que la commande imprime autre chose');
 });
