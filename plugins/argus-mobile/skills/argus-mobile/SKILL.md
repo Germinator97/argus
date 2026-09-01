@@ -1141,6 +1141,12 @@ make argus-sca         # CVE des dépendances — sans device ; saute si `osv-sc
 make argus-report      # rapport HTML
 ```
 
+⚠️ **SI `argus-run` ÉCHOUE SUR L'ANCRE DE DÉPART, NE DEVINE PAS : LE RUNNER TE
+DONNE L'ORDRE.** Il imprime les trois causes possibles, de la plus probable à la
+plus chère, au moment où l'échec tombe — un run l'a suivi et a économisé deux
+passes device. Le détail de chacune est plus bas dans ce §3g ; **c'est la sortie
+console qui commande**, pas ta lecture de ce document.
+
 ⚠️ **NE CONSTRUIS PAS TANT QUE `lib/` BOUGE.** La séquence place `argus-build`
 au bon endroit, mais rien ne disait de ne pas paralléliser pour gagner du temps.
 Un run l'a fait et a payé deux flows rouges sur un **binaire périmé** — qui ne se
@@ -1417,6 +1423,23 @@ littéral que tu choisis a toutes les chances d'être accentué : mesure dans
 l'encodage **du mode que tu as construit**, et fais toujours porter au relevé une
 contre-épreuve dont l'absence serait impossible.
 
+⚠️ **`hideKeyboard` REFERME UNE FEUILLE MODALE SUR iOS.** Mesuré : sur un
+`showModalBottomSheet`, la commande ne masque pas le clavier — elle ferme la
+feuille, **et valide au passage**. La capture de l'étape suivante montre alors la
+donnée créée et l'ancre de la feuille introuvable, ce qui se lit comme un défaut
+d'instrumentation. Coût relevé : deux flows rouges et une passe device de 220 s.
+Sur Android le même appel est inoffensif — c'est donc un piège qui n'apparaît
+qu'en changeant de plateforme, comme `setAirplaneMode` dans l'autre sens.
+Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleurs.
+
+⚠️ **ET IL FAUT BIEN REFERMER CE CLAVIER.** Le proscrire sans remplaçant laisse
+le problème entier : un clavier ouvert recouvre le bouton de validation, et
+`tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
+sur un run : **taper dans une zone vide de l'écran** — `tapOn: point: 50%,25%`,
+au-dessus des champs et hors de toute commande. Vérifie sur ta capture que ce
+point ne tombe sur rien de tapable ; si l'écran n'a aucune zone morte, remonte
+le bouton plutôt que de masquer le clavier.
+
 ⚠️ **CE QUI SUIT EST ANDROID — et le dépannage iOS n'existait pas du tout.**
 Trois écrans de diagnostic (`INSTALL_FAILED_INSUFFICIENT_STORAGE`, ciblage
 d'ABI, marqueur dans le kernel) et rien pour l'autre plateforme : un run iOS
@@ -1482,23 +1505,6 @@ un changement de flags ⇒ `flutter clean`, puis relance.
 
 Reprends ensuite la séquence à `argus-run` — les étapes d'avant n'ont pas à être
 rejouées.
-
-⚠️ **`hideKeyboard` REFERME UNE FEUILLE MODALE SUR iOS.** Mesuré : sur un
-`showModalBottomSheet`, la commande ne masque pas le clavier — elle ferme la
-feuille, **et valide au passage**. La capture de l'étape suivante montre alors la
-donnée créée et l'ancre de la feuille introuvable, ce qui se lit comme un défaut
-d'instrumentation. Coût relevé : deux flows rouges et une passe device de 220 s.
-Sur Android le même appel est inoffensif — c'est donc un piège qui n'apparaît
-qu'en changeant de plateforme, comme `setAirplaneMode` dans l'autre sens.
-Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleurs.
-
-⚠️ **ET IL FAUT BIEN REFERMER CE CLAVIER.** Le proscrire sans remplaçant laisse
-le problème entier : un clavier ouvert recouvre le bouton de validation, et
-`tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
-sur un run : **taper dans une zone vide de l'écran** — `tapOn: point: 50%,25%`,
-au-dessus des champs et hors de toute commande. Vérifie sur ta capture que ce
-point ne tombe sur rien de tapable ; si l'écran n'a aucune zone morte, remonte
-le bouton plutôt que de masquer le clavier.
 
 ⚠️ **ET SI C'EST UN SEUL FLOW QUE TU METS AU POINT, ne rejoue pas tout.** Un
 `argus-run` complet coûte **310 s** là où le même run filtré en coûte **87** —
@@ -1627,6 +1633,22 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    l'URL d'Android, point 2) et pas du tout contre l'écrasement **par défaut**.
    Ce sont deux gestes différents ; celui-ci n'a besoin d'aucune erreur de
    saisie pour se produire.
+
+7. **LE FICHIER SE PUBLIE TEL QUEL — ne le réécris pas, ne le « redesigne »
+   pas.** L'outil de publication peut réclamer une passe de conception avant
+   d'écrire une page ; elle ne s'applique pas ici, et un run s'est arrêté sur
+   cette contradiction sans savoir laquelle des deux consignes suivre. La raison
+   n'est pas une préférence esthétique :
+
+   - la page **porte son historique** dans un `<script type="application/json">`
+     que `--previous` relit ; la réécrire le détruit, et la perte est silencieuse ;
+   - elle est **produite par `report.mjs`** à partir des relevés du run — la
+     retoucher à la main désaligne ce qui est publié de ce qui a été mesuré,
+     c'est-à-dire l'écart que les 250 et 253 ont fermé.
+
+   Publie le fichier que le harnais vient d'écrire. S'il y a quelque chose à
+   améliorer dans son rendu, c'est `report.mjs` qu'on corrige, et le prochain run
+   en bénéficie.
 
 ⚠️ **En CI, personne ne publie** : le job n'a pas d'agent. Il produit le
 fichier et s'arrête là. Ne promets pas une URL dans un contexte automatisé.

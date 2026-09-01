@@ -6217,6 +6217,59 @@ test('l\'avertissement sur les captures peut se FERMER (291)', () => {
     'et rappeler que si les captures ne doivent PAS partir, l\'acquittement est la mauvaise porte');
 });
 
+test('trois choses écrites là où elles servent (293, 294, 295)', () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const lignes = skill.split('\n');
+  const ligneDe = (rx, quoi) => {
+    const i = lignes.findIndex((l) => rx.test(l));
+    assert.notEqual(i, -1, `${quoi} : introuvable — reformulé ? mets ce garde à jour`);
+    return i;
+  };
+
+  // ── 293 : la page se publie telle quelle ─────────────────────────────────
+  // ⚠️ Un run s'est arrêté entre deux consignes : l'outil de publication
+  // réclamait une passe de conception, le §3g-bis disait de publier tel quel.
+  // Il l'a signalé sans le résoudre, faute d'arbitrage écrit.
+  const i293 = skill.indexOf('SE PUBLIE TEL QUEL');
+  assert.notEqual(i293, -1,
+    'le §3g-bis ne tranche pas la question de réécrire la page : un run s\'y est arrêté');
+  const bloc293 = skill.slice(i293, i293 + 1400).replace(/\s+/g, ' ');
+  assert.match(bloc293, /application\/json/,
+    'la raison doit être dite : la page porte son historique, et le réécrire le détruit '
+    + 'en silence — sans le pourquoi, la consigne se lit comme une préférence');
+
+  // ── 294 : le diagnostic de démarrage, dans la SÉQUENCE ────────────────────
+  // ⚠️ La liste des trois causes est excellente et imprimée par le runner au bon
+  // moment ; dans la DOC elle vivait à des centaines de lignes de la séquence.
+  const sequence = ligneDe(/^make argus-report\s+# rapport HTML/, 'la séquence de commandes');
+  const renvoi = ligneDe(/NE DEVINE PAS : LE RUNNER TE/, 'le renvoi vers le diagnostic du runner');
+  const detail = ligneDe(/TROIS causes, et la plus chère/, 'le détail des trois causes');
+  assert.ok(renvoi - sequence > 0 && renvoi - sequence < 40,
+    `le renvoi vers le diagnostic est à ${renvoi - sequence} lignes de la séquence : c'est là `
+    + 'qu\'on lance argus-run, donc là qu\'il faut savoir que le runner donne l\'ordre');
+  assert.ok(detail > renvoi,
+    'le détail doit rester APRÈS le renvoi — on le lit quand on dépanne, pas quand on lance');
+
+  // ── 295 : le piège du clavier, hors de l'enclave Android ──────────────────
+  // ⚠️ « hideKeyboard referme une feuille modale sur iOS » était logé ENTRE deux
+  // paragraphes sur la taille des APK Android : un piège de flow iOS rangé dans
+  // le dépannage de build d'une autre plateforme.
+  const clavier = ligneDe(/`hideKeyboard` REFERME UNE FEUILLE MODALE/, 'le piège du clavier');
+  const depannageAndroid = ligneDe(/CE QUI SUIT EST ANDROID/, 'le dépannage de build');
+  assert.ok(clavier < depannageAndroid,
+    `le piège du clavier (ligne ${clavier + 1}) est encore dans le dépannage de build Android `
+    + `(ligne ${depannageAndroid + 1}) : c'est un piège de FLOW, et le ranger là le rend `
+    + 'introuvable pour qui écrit ses flows');
+
+  // Et il reste collé à son remplaçant : le proscrire sans remède laisse le
+  // problème entier — un clavier ouvert recouvre le bouton de validation.
+  const remede = ligneDe(/ET IL FAUT BIEN REFERMER CE CLAVIER/, 'le remplaçant de hideKeyboard');
+  assert.ok(remede - clavier > 0 && remede - clavier < 12,
+    `le remède est à ${remede - clavier} lignes de l'interdiction : les deux se lisent ensemble `
+    + 'ou pas du tout');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run
