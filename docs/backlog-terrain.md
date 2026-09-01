@@ -4755,7 +4755,97 @@ ligne à chaque fois. Et **deux de mes instruments** ont dû être corrigés ava
 que la passe de mutation soit propre : une mutation qui visait un titre au lieu
 d'une valeur, et un garde qui excusait trop large.
 
+### 317-332. ✅ Corrigés le 01/09/2026 — la vague iOS : le correctif du matin trouvé en deux minutes
+
+**Runs 41 et 42**, iOS, en parallèle, agents vierges, sur les deux terrains
+remis à neuf. Simulateurs neufs, fenêtre attachée, **charge attendue avant le
+lancement** (pic à 49 au démarrage des deux — lancer là-dessus aurait reproduit
+le 305 le jour de son écriture).
+
+🎯 **LE 297, ÉCRIT LE MATIN, A FAIT EXACTEMENT CE POUR QUOI IL A ÉTÉ ÉCRIT.**
+
+> « Prouvé trois fois : par `config.mjs` en quelques millisecondes **sans
+> device**, par le journal du simulateur, et par la capture Maestro. C'est
+> exactement le scénario que le §3d décrit — **trouvé ici en deux minutes au lieu
+> des ~36 min d'appareil qu'il cite**. » — run 42
+
+Le même défaut Firebase, sur le même terrain, avait coûté **six flows rouges et
+36 minutes** au run 38.
+
+📌 **Le run 41 a rendu `gate: pass`** — 0 finding, 563 tests verts, 80 ancres,
+`allowUndeclared: []`. Le premier run entièrement vert du chantier.
+
+### 🔴 CE QUE LES DEUX RUNS ONT TROUVÉ (quatrième convergence du chantier)
+
+**317** — **le compteur de TODO ne sait fermer qu'un `SANS OBJET`, jamais un
+« FAIT ».** Chacun l'a rencontré par un bout différent : l'un a écrit
+`TODO(argus): TRAITÉ — …`, l'inventaire a continué d'imprimer « 1 à traiter », et
+il a dû **SUPPRIMER le marqueur** — *exactement ce que la règle interdit pour
+l'autre cas* ; l'autre a rempli `artifact.title` en gardant sa doc d'origine et
+s'est vu compter « 2 à traiter » pour du travail achevé. Le seul inventaire que
+la personne suivante lira était faux **dans les deux sens**. Trois formes
+ferment désormais.
+
+### Les plus graves
+
+| | |
+|---|---|
+| **327** | 🔴 **le runner se contredisait à six lignes d'intervalle** : « (1) L'app ne démarre PAS : **aucun plafond n'y changera rien** », puis un bloc pressant de relever `startTimeoutMs` de 20 à 31 s. Les 20 392 ms étaient le plafond **consommé à vide**. *« Suivre la fin de la sortie aurait doublé la durée de six flows condamnés. Le second bloc ne connaît pas le diagnostic du premier. »* |
+| **319** | 🔴 **un avertissement inacquittable, imprimé CINQ fois** : « la locale de l'appareil n'a pas pu être lue » — alors qu'une commande la rend (`fr_CI`). La lecture était gardée par `platform === 'android'` : on n'interrogeait pas, et le message accusait l'appareil d'être muet |
+| **329** | 🔴 **le 299 sur son autre moitié** : j'avais fait voir les ternaires au croisement, pas les **gabarits**, que le code écartait. Or `identifier: 'x_${e.name}'` est **ce que le §2c prescrit**. Le contrôle ne proposait que `allowUndeclared`, qui veut dire « hors périmètre », pour des ancres **vérifiées**. Un run a gardé l'avertissement plutôt que de mentir dans le YAML : il avait raison, il n'y avait pas de bonne case |
+| **328** | **la forme qu'on écrit ne ressemble pas à celle qu'on nomme** — 30 min, sur un paragraphe **lu**. Le skill nomme `Future.value(null)` ; avec mocktail on écrit `thenAnswer((_) async => null)`, qui **est** un futur déjà complété et n'y ressemble en rien |
+| **318** | `goto.yaml` conseillait « un `back` répété » pendant que la méthodologie du **même scaffold** écrit que `back` est Android-seul et qu'un retour non gardé « passe au vert sur iOS sans rien tester ». *Deux fichiers livrés ensemble qui se contredisent, et c'est celui qu'on ÉDITE qui avait tort* |
+
+**Le reste** : `identityMeasured: true` contre `"source": "déclaré"` dans deux
+artefacts du même run (**322**) · un device d'une plateforme non déclarée dont
+les clés **fusionnent** dans l'entrée suivante (**320**) · deux orthographes
+pour un même titre, `iOS` et `ios` (**323**) · la contre-épreuve du §2b qui
+exige un fichier que le §3 pose (**321**, écrit le matin) · l'avertissement
+`grep -c` lu comme **local** alors qu'il est général (**330**, écrit le matin) ·
+le `.app` de simulateur qui survit au build release (**325**) · une ancre
+composée **au call-site** sans case dans la table (**331**) · un test du projet
+rougi par une instrumentation légitime, qui mesurait une **distance en
+caractères** (**332**) · `evidence: all` qui n'embarque rien sur un run vert
+(**324**) · le rappel `Semantics` sans `const` à huit cents lignes (**326**).
+
+### 📌 CE QUE LES RUNS ONT VALIDÉ SANS QU'ON LE DEMANDE
+
+- **297** — deux minutes contre trente-six (ci-dessus).
+- **298** — le titre publié porte le **nom affiché**, plus l'identifiant de paquet.
+- **306** — le **diff de jetons** utilisé par les deux : « 0 jeton perdu » sur un
+  terrain, « 2 perdus = exactement les 2 renommages voulus » sur l'autre — et
+  **l'instrument éprouvé** avant d'être lu, dans les deux cas.
+- **316** — `make argus-debts` : **55 lignes** de dette prêtes à coller, aucune
+  réécrite de mémoire.
+- **302** — l'exception du widget privé a servi : deux widgets rendus publics,
+  « une visibilité ne change ni le rendu, ni le comportement, ni un appelant ».
+- **276** — `flutter_tester` mesuré à **7,0 %** de CPU : l'ancien critère chiffré
+  aurait fait écarter le bon diagnostic. Le run le note lui-même.
+- **290** — le chemin du kernel iOS est faux avec un flavor, **et coût nul** :
+  « le paragraphe suivant dit *ne devine pas, demande-le au disque*, et je l'ai
+  suivi. C'est le bon design : la consigne rattrape son propre exemple. »
+- **275** et **305** — l'un a vérifié la galerie avant/après et laissé
+  `artifact.url.android` vide (« ce n'est pas à ce run de deviner l'URL d'un
+  autre ») ; l'autre a refusé de figer un seuil dérivé d'une mesure prise sous
+  charge.
+
+⚠️ **Et trois fenêtres de gardes ont dû SUIVRE le texte** plutôt qu'être
+élargies au hasard : chaque écart re-mesuré, et le motif du 309 ré-ancré sur son
+**sujet** parce que le 330 l'avait reformulé — un garde qui citait l'ancienne
+phrase serait devenu rouge sur un correctif juste.
+
 ## Ce qui reste
+
+Les points **317 à 332** sont fermés le 01/09/2026 — backlog vide pour la
+**quarante et unième** fois. Seize points, quatre vagues dans la journée, et la
+**quatrième convergence** du chantier (les deux runs iOS sur le compteur de
+TODO).
+
+📌 **Six points visaient du code écrit le matin même**, et deux d'entre eux
+étaient des correctifs *de cette vague-là* (321, 330). Mais le résultat qui
+compte va dans l'autre sens : **le 297 a économisé trente-quatre minutes
+d'appareil le jour de son écriture**, et sept autres correctifs du jour ont été
+exercés et ont tenu.
 
 Les points **299 à 316** sont fermés le 01/09/2026 — backlog vide pour la
 **quarantième** fois. Dix-huit points, un démenti, et **deux runs qui ont buté au
