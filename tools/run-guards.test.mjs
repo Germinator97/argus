@@ -5798,6 +5798,41 @@ test('--check imprime la liste des fichiers À TOI, pas seulement leur compte (2
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('le TODO du retour à l\'accueil DIT qu\'il ne couvre pas les écrans nommés (280)', () => {
+  // ⚠️ UN TODO PLACÉ DANS UNE BRANCHE QUI NE S'EXÉCUTE PAS POUR LE CAS QU'ON
+  // CROIT TRAITER. La branche « ramener l'app à l'accueil » est gardée par
+  // `SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN` : pour un `goto`
+  // vers un écran NOMMÉ elle est sautée, et c'est la branche du bas qui décide.
+  // Un run l'a rempli en croyant traiter le cas général ; son écran n'a pas été
+  // atteint et l'échec est sorti trois étapes plus loin, en accusant une ancre
+  // présente. Coût : un flow rouge et ~160 s de device.
+  const goto = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+
+  // ⚠️ On ÉVALUE la condition du fichier, on ne cite pas son texte : si elle
+  // change, le garde suit. La citer le rendrait vrai par construction.
+  const m = /true: "\$\{(\(typeof SCREEN_ID[^"]*?)\}"/.exec(goto);
+  assert.ok(m, 'la condition de la branche « écran de départ » a changé de forme — ce garde ne mesure plus rien');
+  // eslint-disable-next-line no-new-func
+  const evalue = new Function('SCREEN_ID', 'ARGUS_START_SCREEN', 'ARGUS_ANCHOR_HOME', `return ${m[1]};`);
+
+  assert.equal(evalue('', 'home', 'home_root'), true, 'un SCREEN_ID vide doit entrer dans la branche');
+  assert.equal(evalue('home', 'home', 'home_root'), true, "et l'écran de départ demandé aussi");
+  assert.equal(evalue('profile', 'home', 'home_root'), false,
+    'un écran NOMMÉ ne doit pas entrer dans cette branche — si ce garde tombe ici, le contrat a '
+    + 'changé et le TODO doit être relu, pas ce test');
+
+  // Le TODO vit donc dans une branche partielle : il doit le DIRE, puisque rien
+  // dans son voisinage immédiat ne permet de le deviner.
+  const lignes = goto.split('\n');
+  const iTodo = lignes.findIndex((l) => l.includes("TODO(argus): le retour à l'écran de départ"));
+  assert.notEqual(iTodo, -1, 'le TODO du retour à l\'accueil a été reformulé — mets ce garde à jour');
+  const voisinage = lignes.slice(Math.max(0, iTodo - 14), iTodo).join('\n');
+  assert.match(voisinage, /écran NOMMÉ|écrans nommés/,
+    'le TODO ne dit pas qu\'il ne couvre PAS les écrans nommés : celui qui le remplit croira '
+    + 'traiter le cas général, et son flow échouera trois étapes plus loin sur une ancre saine');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run

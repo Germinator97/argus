@@ -80,11 +80,23 @@ appId: ${APP_ID}
             #    dernier flow lancé, pas le coupable. `make argus-lint` l'attrape avant
             #    le device — mais il parle APRÈS que tu aies écrit le fichier. Inline le
             #    retour dans la branche.
-            # TODO(argus): le retour à l'écran de départ depuis N'IMPORTE OÙ —
-            # l'onglet d'accueil chez la plupart (`- tapOn: { id: nav_home }`),
-            # un `back` répété ailleurs. Mets-le AVANT l'assertion ci-dessous,
-            # qui n'est là que pour faire échouer ICI plutôt que trois étapes
-            # plus loin, sur une ancre qui n'a rien fait de mal.
+            # ⚠️ CE QUE CETTE BRANCHE COUVRE, ET CE QU'ELLE NE COUVRE PAS.
+            # Elle ne s'exécute QUE si l'on demande l'écran de départ — sa
+            # condition est `SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN`.
+            # Pour un écran NOMMÉ (`goto` vers `profile`), elle est sautée, et
+            # c'est la branche du bas — une par écran — qui décide. Remplir
+            # celle-ci n'y changera donc rien.
+            # Vécu : un run a rempli ce TODO en croyant traiter le cas général,
+            # son écran nommé n'a pas été atteint, et l'échec est sorti trois
+            # étapes plus loin en accusant une ancre présente. Coût : un flow
+            # rouge et ~160 s de device.
+            #
+            # TODO(argus): le retour à l'écran de départ, depuis n'importe quel
+            # écran — l'onglet d'accueil chez la plupart
+            # (`- tapOn: { id: nav_home }`), un `back` répété ailleurs. Mets-le
+            # AVANT l'assertion ci-dessous, qui n'est là que pour faire échouer
+            # ICI plutôt que trois étapes plus loin, sur une ancre qui n'a rien
+            # fait de mal.
             - assertVisible:
                 id: ${ARGUS_ANCHOR_HOME}
                 label: Retour à l'écran de départ — aucune branche ne le fait dans goto.yaml
