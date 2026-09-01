@@ -5424,6 +5424,63 @@ test('aucun nom de projet réel — liste tenue HORS du dépôt (255)', () => {
 // Ce que le skill MONTRE doit être ce que son parseur ACCEPTE (256)
 // ═══════════════════════════════════════════════════════════════════════════
 
+test('toute dimension que le rapport JUGE est lancée par la séquence du skill (257)', () => {
+  // ⚠️ DEUX RUNS INDÉPENDANTS ONT PUBLIÉ UN RAPPORT À MOITIÉ MUET, en suivant la
+  // séquence à la lettre. Elle listait sept commandes ; le rapport juge CINQ
+  // dimensions, et `argus-run` n'en alimente qu'une. `argus-sec`, `argus-sca` et
+  // le a11y device n'apparaissaient nulle part dans le SKILL — zéro occurrence —
+  // et `argus-perf` seulement dans un encadré de coût.
+  //
+  // Rien ne le signalait : le rapport écrit honnêtement « 1/5 dimensions
+  // exécutées », ce qui se lit comme une information et non comme une alarme.
+  // Les quatre commandes coûtent moins d'une minute.
+  //
+  // ⚠️ La liste des dimensions est DÉRIVÉE de `report.mjs`, jamais recopiée : une
+  // sixième dimension ajoutée demain hérite du garde sans qu'on y pense.
+  const rapport = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs'), 'utf8');
+  const sources = [...rapport.matchAll(/how:\s*'node scripts\/argus\/(\w+)\.mjs'/g)].map((m) => m[1]);
+  assert.ok(sources.length >= 5,
+    `seulement ${sources.length} source(s) dérivée(s) de report.mjs — le motif ne matche plus, ce garde est vacant`);
+
+  // La cible Makefile qui produit chaque source, dérivée du Makefile lui-même.
+  const makefile = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const absentes = [];
+  for (const script of sources) {
+    // ⚠️ BORNÉ À LA RECETTE. Une fenêtre de N caractères après la cible déborde
+    // sur les suivantes : elle attribuait `perf.json` à la cible `argus-smoke`,
+    // trois recettes plus loin. Une recette Make s'arrête à la première ligne
+    // qui recommence en colonne 0 — c'est ce qui la délimite, pas une distance.
+    const recettes = new Map();
+    let courante = null;
+    for (const ligne of makefile.split('\n')) {
+      const entete = /^(argus-[\w-]+):/.exec(ligne);
+      if (entete) { courante = entete[1]; recettes.set(courante, []); continue; }
+      if (courante && /^[\t ]/.test(ligne)) recettes.get(courante).push(ligne);
+      else if (courante && ligne.trim() !== '') courante = null;
+    }
+    assert.ok(recettes.size > 5, 'aucune recette Make lue — ce garde ne mesure plus rien');
+    const cible = [...recettes.entries()]
+      .find(([, lignes]) => lignes.some((l) => l.includes(`scripts/argus/${script}.mjs`)))?.[0];
+    if (!cible) { absentes.push(`${script}.mjs → aucune cible Makefile`); continue; }
+    // La séquence, c'est LE bloc bash qui va jusqu'au rapport. Il y en a
+    // plusieurs qui commencent par `make argus-…` — prendre le premier venu
+    // faisait tomber ce garde sur un bloc d'une seule ligne, quelques lignes
+    // plus haut. On l'identifie par ce qui le termine, pas par ce qui l'ouvre.
+    const bloc = [...skill.matchAll(/```bash\n([\s\S]*?)```/g)]
+      .map((m) => m[1]).find((b) => b.includes('make argus-report')) ?? '';
+    assert.ok(bloc.includes('make argus-report'),
+      'le bloc de séquence du SKILL est introuvable — ce garde ne mesure plus rien');
+    if (!bloc.includes(`make ${cible}`)) absentes.push(`${cible} (produit ${script}.json)`);
+  }
+  assert.deepEqual(absentes, [],
+    'dimension(s) que le rapport juge et que la séquence ne lance pas : un run qui suit '
+    + 'le skill à la lettre publiera un rapport à moitié muet, sans que rien ne le signale');
+});
+
 test('le gabarit de configuration livré parse avec le parseur du skill (256)', () => {
   // Le premier utilisateur du parseur, c'est le fichier que l'installeur pose.
   // S'il ne parse pas, TOUS les scripts sortent en 2 et plus rien ne lit la

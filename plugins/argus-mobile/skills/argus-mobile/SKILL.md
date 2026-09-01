@@ -988,8 +988,20 @@ make argus-build       # `fvm flutter` si le projet l'épingle — ne l'écris p
 make argus-run         # étage 2, sur émulateur
 make argus-baselines   # références visuelles (1re fois, sur le device de la CI)
 make argus-run         # et RELANCE : c'est ce passage-là qui compare
+make argus-perf        # démarrage, mémoire, taille — sur device, ~30 s
+make argus-a11y        # cibles tactiles et libellés — sur device, ~30 s
+make argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes
+make argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque
 make argus-report      # rapport HTML
 ```
+
+⚠️ **LES QUATRE CIBLES DU MILIEU NE SONT PAS FACULTATIVES, et rien ne te le dira
+si tu les sautes.** Le rapport juge **cinq** dimensions ; `argus-run` n'en
+alimente qu'une. Les sauter produit un rapport parfaitement valide qui annonce
+« 1/5 dimensions exécutées » — honnête, donc pas alarmant — pendant que la page
+publiée décrit un run sans performance, sans accessibilité device, sans MASVS et
+sans CVE. Deux runs indépendants ont suivi cette séquence à la lettre et publié
+ce rapport-là ; elles coûtent **moins d'une minute** à elles quatre.
 
 ⚠️ **Et si `make argus-guards` ne rend JAMAIS la main, ne cherche pas un test
 lent : cherche une boucle de micro-tâches.** Le symptôme est net —
