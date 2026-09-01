@@ -773,6 +773,12 @@ MUTATIONS = [
     ("skill", "le geste du troisième temps repart au loin",
      "```bash\nnode scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six\n```",
      "Le raccourci est décrit plus bas, dans le paragraphe sur la mise au point\nd'un flow isolé."),
+    # ⚠️ Celle-ci remet --check dans l'état où il ne rendait qu'un compte : la
+    # branche sort avant d'appeler l'inventaire. C'est le 270 exact, celui que
+    # j'avais démenti.
+    ("installeur", "--check reperd la liste des fichiers OWNED",
+     "    inventaire_owned\n    if [ \"$outdated\" -gt 0 ]; then",
+     "    if [ \"$outdated\" -gt 0 ]; then"),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
