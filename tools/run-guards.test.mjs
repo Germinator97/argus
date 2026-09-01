@@ -13,7 +13,7 @@
 //
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, join } from 'node:path';
@@ -5700,6 +5700,58 @@ test('le geste du troisième temps est ÉCRIT là où il sert (277)', () => {
   assert.ok(distance <= 25,
     `le geste est à ${distance} lignes de son énoncé — il était à une centaine, et l'annoter n'y `
     + 'avait rien changé. Déplace-le, ne le commente pas.');
+});
+
+test('--check imprime la liste des fichiers À TOI, pas seulement leur compte (278)', () => {
+  // ⚠️ CONSTAT QUE J'AVAIS DÉMENTI À TORT. Le SKILL promet qu'un fichier déclaré
+  // `ARGUS:OWNED` apparaît « dans la liste que l'installeur imprime en sortant,
+  // et dans son --check ». La seconde moitié était fausse : le mode check
+  // sortait (exit 0/1) des dizaines de lignes avant l'inventaire, et ne rendait
+  // qu'un COMPTE agrégé — « 33 fichier(s) conformes ou à toi », où « conforme »
+  // et « à toi » sont justement les deux choses qu'on venait distinguer.
+  //
+  // Mon démenti venait d'une mesure prise sur un terrain EN RETARD, où --check
+  // imprime bien une liste : celle des fichiers en retard. J'ai mesuré autre
+  // chose que ce que le constat visait. Le garde mesure les DEUX états.
+  const installeur = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  const dir = mkdtempSync(join(tmpdir(), 'argus-278-'));
+  const check = () => {
+    // ⚠️ --check sort en 1 sur un terrain en retard : `execFileSync` lèverait.
+    const r = spawnSync('bash', [installeur, dir, '--check'], { encoding: 'utf8' });
+    return `${r.stdout ?? ''}${r.stderr ?? ''}`;
+  };
+  try {
+    execFileSync('bash', [installeur, dir], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+    // Le fichier que le SKILL décrit : créé par l'utilisateur, dans SON projet,
+    // marqueur posé. Il n'existe pas dans le scaffold — c'est tout l'intérêt.
+    writeFileSync(join(dir, 'test/argus/argus_fakes.dart'),
+      '// ARGUS:OWNED — les doubles de mes écrans\nvoid main() {}\n', 'utf8');
+    // Et son jumeau SANS marqueur, qui prouve que la liste discrimine. Sans lui,
+    // un inventaire qui imprimerait tout passerait pour un inventaire juste.
+    writeFileSync(join(dir, 'test/argus/pas_a_moi.dart'), 'void main() {}\n', 'utf8');
+
+    const ajour = check();
+    assert.match(ajour, /qui t'appartiennent/,
+      '--check n\'imprime aucun inventaire des fichiers OWNED : celui qui vient de poser un '
+      + 'marqueur n\'a aucun moyen de vérifier qu\'il a été pris en compte');
+    assert.match(ajour, /argus_fakes\.dart/,
+      'un fichier OWNED créé dans le PROJET doit apparaître dans --check — c\'est la promesse du §2b');
+    assert.ok(!ajour.includes('pas_a_moi.dart'),
+      'un fichier SANS marqueur ne doit pas y apparaître : sinon la liste ne discrimine rien '
+      + 'et son vert ne prouve pas que le marqueur sert à quelque chose');
+
+    // ⚠️ ET SUR UN TERRAIN EN RETARD — l'état où j'avais mesuré, et où une AUTRE
+    // liste (les fichiers en retard) m'avait fait croire que celle-ci existait.
+    writeFileSync(join(dir, 'scripts/argus/run.mjs'),
+      `${readFileSync(join(dir, 'scripts/argus/run.mjs'), 'utf8')}\n// périmé\n`, 'utf8');
+    const enRetard = check();
+    assert.match(enRetard, /en retard sur le plugin/,
+      'le montage est cassé : le terrain devait être en retard');
+    assert.match(enRetard, /argus_fakes\.dart/,
+      'la liste OWNED disparaît dès qu\'un fichier est en retard — c\'est exactement l\'état où '
+      + 'j\'ai mesuré, et où la liste des fichiers EN RETARD se fait passer pour elle');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {

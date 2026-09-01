@@ -210,14 +210,110 @@ if [ "$MODE" != "check" ]; then
 fi
 
 echo
+# ── Ce qui est À TOI, dérivé plutôt qu'annoncé ──────────────────────────────
+# ⚠️ EXTRAIT EN FONCTION POUR QUE `--check` L'IMPRIME LUI AUSSI. Le SKILL promet
+# qu'un fichier marqué apparaît « dans la liste que l'installeur imprime en
+# sortant, et dans son --check » ; la seconde moitié était fausse, parce que le
+# mode check sortait (exit 0/1) plusieurs dizaines de lignes AVANT d'arriver
+# ici. Il ne rendait qu'un COMPTE agrégé — « 33 fichier(s) conformes ou à toi »
+# — où « conforme » et « à toi » sont deux choses différentes, précisément
+# celles que l'on venait vérifier.
+#
+# ⚠️ J'AVAIS DÉMENTI CE CONSTAT, À TORT : je l'avais mesuré sur un terrain EN
+# RETARD, où --check imprime bien une liste — celle des fichiers en retard, pas
+# celle des fichiers OWNED dont le SKILL parle. J'ai mesuré autre chose que ce
+# que le constat visait, et un run l'a re-signalé.
+inventaire_owned() {
+  # « argus.mobile.yaml est le SEUL fichier à éditer » était faux, et le dire deux
+  # lignes avant de nommer harness.dart n'aidait personne. La liste se dérive des
+  # marqueurs, donc elle ne peut pas vieillir.
+  # ⚠️ LE SCAFFOLD **ET** LA CIBLE. Cette liste n'itérait que le scaffold, donc un
+  # fichier que TU crées — des doubles de test, un helper — n'y apparaissait jamais,
+  # quel que soit son marqueur. Le SKILL promettait pourtant l'inverse (« déclare-le
+  # ARGUS:OWNED, sinon il n'apparaît pas dans cette liste ») : une promesse écrite
+  # dans la doc que le code ne tenait pas, et que rien ne mesurait. Vécu sur un
+  # projet réel — `argus_fakes.dart` portait le marqueur et restait invisible.
+  #
+  # La CIBLE est parcourue d'abord : quand les deux portent le même chemin relatif,
+  # c'est la copie posée chez l'hôte qui fait foi, puisque c'est elle qu'on ouvrira.
+  OWNED_LIST="$(mktemp)"
+  trap 'rm -f "$OWNED_LIST"' EXIT
+  for d in "$TARGET/test/argus" "$TARGET/.maestro"; do
+    [ -d "$d" ] || continue
+    find "$d" -type f -print0 | while IFS= read -r -d '' f; do
+      printf '%s\t%s\n' "${f#"$TARGET"/}" "$f"
+    done >> "$OWNED_LIST"
+  done
+  find "$SCAFFOLD_DIR" -type f -print0 | while IFS= read -r -d '' f; do
+    printf '%s\t%s\n' "${f#"$SCAFFOLD_DIR"/}" "$f"
+  done >> "$OWNED_LIST"
+
+  echo "Les fichiers qui t'appartiennent (jamais écrasés, jamais mis à jour) :"
+  while IFS= read -r src; do
+    head -20 "$src" | grep -qF 'ARGUS:OWNED' || continue
+    rel="${src#"$SCAFFOLD_DIR"/}"; rel="${rel#"$TARGET"/}"
+    # ⚠️ Le deux-points est ce qui sépare une DIRECTIVE d'une MENTION. Sans lui,
+    # ce compteur additionnait la ligne de `argus.mobile.yaml` qui EXPLIQUE le
+    # mécanisme : ce fichier rapportait « 1 TODO à traiter » pour l'éternité, même
+    # entièrement rempli. C'est le défaut que l'en-tête de ce script décrit pour
+    # ARGUS:OWNED — un fichier doit pouvoir PARLER d'un marqueur sans être compté
+    # par ce qu'il en dit — et dont la protection n'avait pas été étendue ici.
+    # ⚠️ `grep -c` IMPRIME « 0 » **ET** SORT EN 1 quand il ne compte rien. Le
+    # `|| echo 0` en ajoutait donc un second, `restant` valait « 0\n0 », et le test
+    # numérique de la ligne suivante levait « integer expression expected » — une
+    # fois par fichier OWNED sans TODO, neuf fois sur un projet réel. Le compte
+    # restait juste, seule la sortie devenait illisible, et rien n'échouait : c'est
+    # ce qui lui a permis de traverser six runs en aveugle.
+    #
+    # `|| true` garde ce que grep a imprimé ; le `:-0` couvre le seul cas où il
+    # n'imprime rien (fichier absent, exit 2).
+    # ⚠️ ON NE COMPTE PAS LES LIGNES DE DOCUMENTATION. Un dartdoc `///` qui commence
+    # par le marqueur EXPLIQUE quoi mettre dans le champ d'en dessous : rempli, il
+    # reste — c'est de la doc — et le fichier rapportait « 5 TODO à traiter » pour
+    # l'éternité. Le marqueur appartient à la ligne qu'on ÉDITE, jamais à celle qui
+    # la décrit ; c'est le même principe que pour ARGUS:OWNED, un fichier doit
+    # pouvoir PARLER d'un marqueur sans être compté par ce qu'il en dit.
+    #
+    # Deuxième défaut de ce compteur en deux runs (cf. le `|| echo 0` plus haut) :
+    # il compte quelque chose de simple, et se trompe sur ce que « quelque chose »
+    # veut dire.
+    # ⚠️ On EXCLUT les lignes de dartdoc, pas tous les commentaires : le marqueur
+    # est légitime en fin de ligne de code (`final x = []; // TODO(argus): …`), et
+    # un premier motif `^[^/]*TODO` avait fait tomber le compte à zéro sur un
+    # fichier qui en portait quatre. Deux instruments successifs pour un compteur
+    # de quatre lignes.
+    # ⚠️ UN TODO SANS OBJET DOIT POUVOIR SE FERMER. Deux flows livrés n'ont rien à
+    # recevoir sur certains projets (pas d'authentification, rien qui flotte au-
+    # dessus des écrans), et l'inventaire continuait d'imprimer « 1 TODO(argus) à
+    # traiter » pour eux — indéfiniment, sans moyen d'écrire que c'est traité. Le
+    # seul inventaire que la personne suivante lira affichait donc du travail
+    # inachevé qui était achevé. `TODO(argus): SANS OBJET — <raison>` le ferme.
+    restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET' || true)"
+    restant="${restant:-0}"
+    if [ "$restant" -gt 0 ]; then
+      echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
+    else
+      echo "  ✔  $rel"
+    fi
+  # ⚠️ `-t$'\\t'` et non `-t"\\t"` : le second passe un antislash suivi d'un « t »,
+  # pas une tabulation — la déduplication se faisait alors sur le mauvais champ et
+  # la liste tombait de dix entrées à deux, sans une erreur.
+  done < <(sort -u -t$'\t' -k1,1 "$OWNED_LIST" | sort | cut -f2-)
+  echo
+}
+
 case "$MODE" in
   check)
     [ "$foreign" -gt 0 ] && echo "  ⚠️  pas d'origine Argus, donc laissé(s) intact(s) :$foreign_list" || true
+    # ⚠️ LA LISTE AVANT LE VERDICT. Sans elle, --check ne rendait qu'un compte
+    # agrégé, et celui qui venait de poser un marqueur ARGUS:OWNED n'avait aucun
+    # moyen de vérifier qu'il avait été pris en compte — ce que le SKILL promet.
+    inventaire_owned
     if [ "$outdated" -gt 0 ]; then
       echo "✖ $outdated fichier(s) de cadre en retard ou absent(s). Rejoue avec --update."
       exit 1
     fi
-    echo "✔ tout le cadre est à jour ($skipped fichier(s) conformes ou à toi)."
+    echo "✔ tout le cadre est à jour ($skipped conforme(s) ou à toi — le détail ci-dessus)."
     exit 0 ;;
   update)
     echo "Résumé : $copied copié(s), $updated mis à jour, $skipped conservé(s)."
@@ -250,83 +346,7 @@ if [ "$foreign" -gt 0 ]; then
   echo
 fi
 
-# ── Ce qui est À TOI, dérivé plutôt qu'annoncé ──────────────────────────────
-# « argus.mobile.yaml est le SEUL fichier à éditer » était faux, et le dire deux
-# lignes avant de nommer harness.dart n'aidait personne. La liste se dérive des
-# marqueurs, donc elle ne peut pas vieillir.
-# ⚠️ LE SCAFFOLD **ET** LA CIBLE. Cette liste n'itérait que le scaffold, donc un
-# fichier que TU crées — des doubles de test, un helper — n'y apparaissait jamais,
-# quel que soit son marqueur. Le SKILL promettait pourtant l'inverse (« déclare-le
-# ARGUS:OWNED, sinon il n'apparaît pas dans cette liste ») : une promesse écrite
-# dans la doc que le code ne tenait pas, et que rien ne mesurait. Vécu sur un
-# projet réel — `argus_fakes.dart` portait le marqueur et restait invisible.
-#
-# La CIBLE est parcourue d'abord : quand les deux portent le même chemin relatif,
-# c'est la copie posée chez l'hôte qui fait foi, puisque c'est elle qu'on ouvrira.
-OWNED_LIST="$(mktemp)"
-trap 'rm -f "$OWNED_LIST"' EXIT
-for d in "$TARGET/test/argus" "$TARGET/.maestro"; do
-  [ -d "$d" ] || continue
-  find "$d" -type f -print0 | while IFS= read -r -d '' f; do
-    printf '%s\t%s\n' "${f#"$TARGET"/}" "$f"
-  done >> "$OWNED_LIST"
-done
-find "$SCAFFOLD_DIR" -type f -print0 | while IFS= read -r -d '' f; do
-  printf '%s\t%s\n' "${f#"$SCAFFOLD_DIR"/}" "$f"
-done >> "$OWNED_LIST"
-
-echo "Les fichiers qui t'appartiennent (jamais écrasés, jamais mis à jour) :"
-while IFS= read -r src; do
-  head -20 "$src" | grep -qF 'ARGUS:OWNED' || continue
-  rel="${src#"$SCAFFOLD_DIR"/}"; rel="${rel#"$TARGET"/}"
-  # ⚠️ Le deux-points est ce qui sépare une DIRECTIVE d'une MENTION. Sans lui,
-  # ce compteur additionnait la ligne de `argus.mobile.yaml` qui EXPLIQUE le
-  # mécanisme : ce fichier rapportait « 1 TODO à traiter » pour l'éternité, même
-  # entièrement rempli. C'est le défaut que l'en-tête de ce script décrit pour
-  # ARGUS:OWNED — un fichier doit pouvoir PARLER d'un marqueur sans être compté
-  # par ce qu'il en dit — et dont la protection n'avait pas été étendue ici.
-  # ⚠️ `grep -c` IMPRIME « 0 » **ET** SORT EN 1 quand il ne compte rien. Le
-  # `|| echo 0` en ajoutait donc un second, `restant` valait « 0\n0 », et le test
-  # numérique de la ligne suivante levait « integer expression expected » — une
-  # fois par fichier OWNED sans TODO, neuf fois sur un projet réel. Le compte
-  # restait juste, seule la sortie devenait illisible, et rien n'échouait : c'est
-  # ce qui lui a permis de traverser six runs en aveugle.
-  #
-  # `|| true` garde ce que grep a imprimé ; le `:-0` couvre le seul cas où il
-  # n'imprime rien (fichier absent, exit 2).
-  # ⚠️ ON NE COMPTE PAS LES LIGNES DE DOCUMENTATION. Un dartdoc `///` qui commence
-  # par le marqueur EXPLIQUE quoi mettre dans le champ d'en dessous : rempli, il
-  # reste — c'est de la doc — et le fichier rapportait « 5 TODO à traiter » pour
-  # l'éternité. Le marqueur appartient à la ligne qu'on ÉDITE, jamais à celle qui
-  # la décrit ; c'est le même principe que pour ARGUS:OWNED, un fichier doit
-  # pouvoir PARLER d'un marqueur sans être compté par ce qu'il en dit.
-  #
-  # Deuxième défaut de ce compteur en deux runs (cf. le `|| echo 0` plus haut) :
-  # il compte quelque chose de simple, et se trompe sur ce que « quelque chose »
-  # veut dire.
-  # ⚠️ On EXCLUT les lignes de dartdoc, pas tous les commentaires : le marqueur
-  # est légitime en fin de ligne de code (`final x = []; // TODO(argus): …`), et
-  # un premier motif `^[^/]*TODO` avait fait tomber le compte à zéro sur un
-  # fichier qui en portait quatre. Deux instruments successifs pour un compteur
-  # de quatre lignes.
-  # ⚠️ UN TODO SANS OBJET DOIT POUVOIR SE FERMER. Deux flows livrés n'ont rien à
-  # recevoir sur certains projets (pas d'authentification, rien qui flotte au-
-  # dessus des écrans), et l'inventaire continuait d'imprimer « 1 TODO(argus) à
-  # traiter » pour eux — indéfiniment, sans moyen d'écrire que c'est traité. Le
-  # seul inventaire que la personne suivante lira affichait donc du travail
-  # inachevé qui était achevé. `TODO(argus): SANS OBJET — <raison>` le ferme.
-  restant="$(grep -v '^[[:space:]]*///' "$TARGET/$rel" 2>/dev/null | grep 'TODO(argus):' | grep -cv 'TODO(argus): *SANS OBJET' || true)"
-  restant="${restant:-0}"
-  if [ "$restant" -gt 0 ]; then
-    echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
-  else
-    echo "  ✔  $rel"
-  fi
-# ⚠️ `-t$'\\t'` et non `-t"\\t"` : le second passe un antislash suivi d'un « t »,
-# pas une tabulation — la déduplication se faisait alors sur le mauvais champ et
-# la liste tombait de dix entrées à deux, sans une erreur.
-done < <(sort -u -t$'\t' -k1,1 "$OWNED_LIST" | sort | cut -f2-)
-echo
+inventaire_owned
 
 echo "Prochaines étapes :"
 echo "  1. Édite argus.mobile.yaml (identifiants d'app, devices, écrans, seuils)."

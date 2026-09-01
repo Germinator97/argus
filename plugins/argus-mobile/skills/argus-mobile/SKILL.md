@@ -323,6 +323,13 @@ Mets-les dans un fichier voisin — `test/argus/argus_fakes.dart` est le nom que
 terrain a choisi — et **déclare-le `ARGUS:OWNED` en en-tête** : sans ce marqueur,
 il n'apparaît ni dans la liste que l'installeur imprime en sortant, ni dans son
 `--check`. Il disparaît alors du seul inventaire que la personne suivante lira.
+**Vérifie-le plutôt que de le supposer** — `install-mobile.sh <TARGET> --check`
+imprime cet inventaire, en retard ou non : ton fichier doit s'y voir nommément.
+⚠️ Cette seconde moitié a été fausse pendant plusieurs runs (le mode `--check`
+sortait avant d'y arriver et ne rendait qu'un compte), et le constat qui la
+signalait a été démenti à tort parce qu'il avait été mesuré sur un terrain en
+retard, où une AUTRE liste — celle des fichiers en retard — se fait passer pour
+celle-ci.
 
 **c. Proposer, jamais imposer.** Patch minimal. Sur un widget interactif,
 l'identifiant se pose sur le nœud `Semantics` qui porte DÉJÀ le rôle — pas dans
