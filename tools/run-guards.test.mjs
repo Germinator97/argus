@@ -34,6 +34,7 @@ import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { titreDuRapport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -5136,6 +5137,45 @@ test('l\'historique survit à une republication, et une page étrangère ne le c
   assert.deepEqual(historiqueDe(''), [], 'page vide');
   assert.deepEqual(historiqueDe(`<script type="application/json" id="argus-runs">{oops</scr` + `ipt>`), [],
     'JSON abîmé — on repart de zéro, on ne meurt pas');
+});
+
+test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
+  // ⚠️ Le défaut fermé : « Argus Mobile — rapport QA », le même sur toutes les
+  // pages. Depuis le 245-250 un projet publie UNE page par plateforme — deux
+  // pages du même projet portaient donc un titre identique, et deux onglets de
+  // navigateur côte à côte étaient indiscernables. Rien ne le signalait : la
+  // page était juste, et elle disait « ios » une ligne plus bas.
+  const h1De = (p) => (p.match(/<h1>(.*?)<\/h1>/) ?? [])[1];
+
+  const ios = h1De(pageDe({ plateforme: 'ios' }));
+  const dro = h1De(pageDe({ plateforme: 'android' }));
+  assert.ok(ios, 'le rendu doit porter un h1 — sinon ce garde ne mesure rien');
+
+  // ⚠️ ON APPELLE LA FONCTION, ET ON VÉRIFIE QUE LE SITE D'APPEL LA REND. Un
+  // garde qui se contenterait de chercher « ios » dans le h1 resterait vert le
+  // jour où quelqu'un rebranche le titre sur un littéral qui contient le mot :
+  // c'est l'écart entre les deux qui se mesure, pas la présence d'un motif.
+  assert.equal(ios, titreDuRapport({ appId: 'com.exemple', platform: 'ios' }),
+    'le h1 doit RENDRE ce que titreDuRapport() rend, pas quelque chose qui y ressemble');
+  assert.match(ios, /com\.exemple/, 'le titre doit nommer le projet');
+  assert.match(ios, /\bios\b/, 'et la plateforme');
+  assert.notEqual(ios, dro,
+    'deux plateformes du même projet doivent porter des titres DIFFÉRENTS — toute la raison du 245');
+
+  // ⚠️ L'AUTRE MOITIÉ : les morceaux vides doivent tomber, sinon un run sans
+  // plateforme rend « com.exemple —  — rapport QA ». Le séparateur orphelin est
+  // le défaut par défaut de toute jointure, et il ne lève rien.
+  const nu = renderArtifact({ ...ctxRun(), run: { devices: [], startup: {} }, historique: [] });
+  assert.equal(h1De(nu), 'rapport QA', 'sans appId ni plateforme, aucun séparateur orphelin');
+  assert.equal(titreDuRapport(undefined), 'rapport QA', 'ni sur un run absent');
+
+  // ⚠️ ET LA SOUS-LIGNE NE DOIT PLUS RÉPÉTER LE TITRE. Elle portait l'appId et
+  // la plateforme, qui sont montés dans le h1 : les laisser donnait deux lignes
+  // qui se suivent en disant la même chose. Elle garde ce que le titre ne dit
+  // pas — appareil, horodatage, gate.
+  const sub = (pageDe({ plateforme: 'ios' }).match(/<div class="sub">([\s\S]*?)<\/div>/) ?? [])[1] ?? '';
+  assert.ok(sub.includes('gate:'), 'la sous-ligne doit exister — sinon ce garde ne mesure rien');
+  assert.ok(!sub.includes('com.exemple'), 'la sous-ligne ne doit plus répéter le projet du titre');
 });
 
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {

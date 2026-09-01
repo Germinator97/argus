@@ -254,6 +254,31 @@ export function findingCards(findings, shots = new Map()) {
 // Rendu
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Le titre du rapport — celui du h1 ET du <title> local, dérivé des FAITS du
+ * run.
+ *
+ * ⚠️ « Argus Mobile — rapport QA » était le même sur toutes les pages. Depuis
+ * le 245-250, un projet publie UNE page par plateforme : deux pages du même
+ * projet portaient donc un titre identique et ne se distinguaient qu'en lisant
+ * la ligne d'en dessous. Deux onglets de navigateur côte à côte étaient
+ * indiscernables, et rien ne le signalait — la page était juste.
+ *
+ * ⚠️ Dérivé du run, jamais de `artifact.title` : celui-là n'existe que pour la
+ * page publiée, or `renderBody` sert AUSSI le rapport local, et les deux
+ * décrivent le même run. Les faire diverger serait le défaut d'à côté.
+ *
+ * ⚠️ Et c'est une FONCTION, pas une expression recopiée aux deux sites : un
+ * garde qui l'APPELLE lit ce qu'elle rend, là où un garde qui cherche un motif
+ * resterait vert si on rebranchait l'un des deux sites sur un littéral.
+ * @param {any} run @returns {string}
+ */
+export function titreDuRapport(run) {
+  // Les morceaux vides tombent : sans eux, un run sans plateforme rendrait
+  // « com.exemple —  — rapport QA ». Le séparateur orphelin ne lève rien.
+  return [run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');
+}
+
 const TITLE = 'Argus Mobile — rapport QA';
 
 /** Le style, partagé par les deux rendus. */
@@ -326,11 +351,17 @@ function renderBody(context) {
   // Elle n'était rendue nulle part : le HTML montrait les chiffres sans elle.
   const mesureDemarrage = String(context.run?.startup?.measures ?? run?.startup?.measures ?? '');
 
+  // ⚠️ LE TITRE DOIT NOMMER CE QU'IL COIFFE. « Argus Mobile — rapport QA » était
+  // le même sur toutes les pages : depuis le 245-250, un projet publie UNE page
+  // par plateforme, donc deux pages du même projet portaient un titre identique
+  // et ne se distinguaient qu'en lisant la ligne d'en dessous. Deux onglets de
+  // navigateur côte à côte étaient alors indiscernables.
+  // Dérivé des FAITS du run — jamais du titre configuré, qui n'existe que pour
+  // la page publiée : `renderBody` sert aussi le rapport local, et les deux
+  // doivent dire la même chose du même run.
   return `<div class="wrap">
-  <h1>Argus Mobile — rapport QA</h1>
+  <h1>${esc(titreDuRapport(run))}</h1>
   <div class="sub">
-    ${esc(run?.appId ?? '')} ·
-    ${esc(run?.platform ?? '')} ·
     ${devices ? `${esc(devices)} · ` : ''}
     ${esc(generatedAt)} ·
     <span class="gate ${gate}">gate: ${gate}</span>
@@ -366,9 +397,11 @@ ${shots.size ? LIGHTBOX : ''}`;
 /** Le rapport tel qu'il s'ouvre depuis le disque, enveloppe comprise.
  * @param {any} context @returns {string} */
 function render(context) {
+  // Le même titre que le h1 : un rapport local ouvert dans un onglet doit dire
+  // de quel projet il parle. `TITLE` ne reste que le repli d'un run sans faits.
   return `<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${TITLE}</title>
+<title>${esc(titreDuRapport(context.run))}</title>
 ${STYLE}</head><body>${renderBody(context)}</body></html>`;
 }
 
