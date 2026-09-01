@@ -5258,8 +5258,12 @@ test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisiè
   // que le journal annonce à ce que le fichier porte.
   const dir = mkdtempSync(join(tmpdir(), 'argus-titre-'));
   try {
+    // ⚠️ Un nom DISTINCTIF, pour que sa présence dans le titre prouve le câblage
+    // `app.name` → titre, et non une coïncidence. Ce chaînon vit dans `main()` :
+    // aucun test unitaire ne peut le voir, puisque la fonction du titre reçoit
+    // déjà le nom qu'on lui donne.
     writeFileSync(join(dir, 'argus.mobile.yaml'),
-      'app:\n  id: com.exemple\nartifact:\n  enabled: true\n  title:\n', 'utf8');
+      'app:\n  name: projetsonde\n  id: com.exemple\nartifact:\n  enabled: true\n  title:\n', 'utf8');
     // ⚠️ Chemin ABSOLU et racine figée AVANT le changement de dossier : un
     // chemin relatif ne survit pas au `cwd`, et `realpathSync` des deux côtés
     // décide si le script se reconnaît comme point d'entrée.
@@ -5280,6 +5284,13 @@ test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisiè
     assert.equal(annonce, publie,
       'le titre ANNONCÉ n\'est pas le titre PUBLIÉ : le seul lecteur de cette ligne est '
       + 'celui qui va republier, donc celui que l\'écart trompe');
+
+    // ⚠️ ET LE NOM DE LA CONFIG DOIT ARRIVER JUSQU'AU TITRE. `report.json` ne le
+    // porte pas — il décrit un run, pas un dépôt : c'est `main()` qui le prend
+    // dans la config, et ce chaînon-là ne casse rien s'il disparaît. Le titre
+    // retombe simplement sur l'identifiant, en silence.
+    assert.match(publie, /projetsonde/,
+      `le nom de app.name n'atteint plus le titre — il retombe sur l'identifiant sans le dire (${publie})`);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
