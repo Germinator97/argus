@@ -1255,7 +1255,8 @@ plus `argus-mobile-report/report.artifact.html`, prête à publier telle quelle.
    fichier, pas le script : il t'appartient, il porte des commentaires, et un
    script qui réécrit du YAML les perd.
 5. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
-   ou, s'il est vide, `<appId> — <plateforme> — rapport QA`. C'est ainsi qu'on
+   ou, s'il est vide, `<nom du projet> — <plateforme> — rapport QA`
+   (`app.name`, et son identifiant en repli). C'est ainsi qu'on
    retrouve la page ; la renommer à chaque run donne l'impression d'une page
    différente. **Le journal te dit le titre qu'il va publier** : c'est la même
    valeur, pas une seconde estimation — vérifie-la là.

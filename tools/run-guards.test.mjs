@@ -3353,8 +3353,8 @@ test('le titre se LIT avant la première republication, il ne se suppose pas (22
   // qui aurait vidé la moitié qu'il protège. On lui fait donc construire le
   // gabarit avec la FONCTION qui le produit : si le format change encore, ce
   // n'est plus le garde qui se périme, c'est le SKILL qui doit suivre.
-  const gabarit = titreDuRapport({ appId: '<appId>', platform: '<plateforme>' });
-  assert.ok(gabarit.includes('<appId>') && gabarit.includes('<plateforme>'),
+  const gabarit = titreDuRapport({ name: '<nom du projet>', platform: '<plateforme>' });
+  assert.ok(gabarit.includes('<nom du projet>') && gabarit.includes('<plateforme>'),
     'le gabarit doit porter ses deux variables — sinon ce garde ne mesure rien');
   assert.ok(debut.includes(gabarit),
     `le défaut n'est plus nommé sous la forme que le code produit (${gabarit})`
@@ -5162,6 +5162,18 @@ test('le titre du rapport nomme le projet ET la plateforme (252)', () => {
   const dro = h1De(pageDe({ plateforme: 'android' }));
   assert.ok(ios, 'le rendu doit porter un h1 — sinon ce garde ne mesure rien');
 
+  // ⚠️ LE NOM DU PROJET, PAS SON IDENTIFIANT. `app.name` existait déjà, et son
+  // propre commentaire dans le yaml annonçait qu'il « sert d'étiquette dans les
+  // rapports » — rien ne s'en servait. Un titre se lit : « un nom » se reconnaît
+  // dans une galerie, « com.exemple.app » se déchiffre.
+  assert.equal(titreDuRapport({ name: 'monapp', appId: 'com.x.monapp', platform: 'ios' }),
+    'monapp — ios — rapport QA', 'le nom l\'emporte sur l\'identifiant');
+  // ⚠️ L'AUTRE MOITIÉ : le nom peut manquer (un projet qui ne l'a pas configuré),
+  // l'identifiant jamais. Mieux vaut un titre technique qu'un titre amputé de ce
+  // qui le distingue.
+  assert.equal(titreDuRapport({ appId: 'com.x.monapp', platform: 'ios' }),
+    'com.x.monapp — ios — rapport QA', 'sans nom, le repli est l\'identifiant');
+
   // ⚠️ ON APPELLE LA FONCTION, ET ON VÉRIFIE QUE LE SITE D'APPEL LA REND. Un
   // garde qui se contenterait de chercher « ios » dans le h1 resterait vert le
   // jour où quelqu'un rebranche le titre sur un littéral qui contient le mot :
@@ -5271,6 +5283,34 @@ test('le journal annonce EXACTEMENT le titre que le fichier porte (253, troisiè
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('un onglet ne répète la plateforme que si elle DÉTONNE (254)', () => {
+  // ⚠️ Une page décrit UNE plateforme depuis le 245, et le titre la porte : la
+  // réécrire sur chaque onglet donnait la même information trois fois de suite.
+  const rec = (plateforme, at) => ({ at, platform: plateforme, appId: 'com.x', gate: 'pass',
+    counts: {}, dimensions: [], findings: [] });
+  const base = { ...ctxRun({ plateforme: 'ios' }) };
+  const ongletsDe = (h) => [...h.matchAll(/<button role="tab"[^>]*>(.*?)<\/button>/g)]
+    .map((m) => m[1].replace(/<[^>]+>/g, '').trim());
+
+  const meme = renderArtifact({ ...base, record: rec('ios', '2026-09-01 11:20'),
+    historique: [rec('ios', '2026-08-31 10:00')] });
+  const etiquettes = ongletsDe(meme);
+  assert.equal(etiquettes.length, 2, 'deux runs doivent donner deux onglets — sinon ce garde ne mesure rien');
+  assert.ok(!etiquettes.some((e) => e.includes('ios')),
+    'la plateforme du titre ne doit pas être répétée sur chaque onglet');
+
+  // ⚠️ L'AUTRE MOITIÉ, ET C'EST ELLE QUI COMPTE : la retirer sans condition
+  // supprimerait le seul signal qu'une page a MÉLANGÉ deux plateformes — ce que
+  // le 245 rend possible sans l'interdire. Elle doit reparaître dès qu'elle
+  // diffère de celle du run courant.
+  const melange = renderArtifact({ ...base, record: rec('ios', '2026-09-01 11:20'),
+    historique: [rec('android', '2026-08-31 10:00')] });
+  const mel = ongletsDe(melange);
+  assert.ok(mel.some((e) => e.includes('android')),
+    'un run d\'une AUTRE plateforme doit se voir — c\'est une anomalie, pas du décor');
+  assert.ok(!mel[0].includes('ios'), 'mais le run courant ne se signale pas lui-même');
 });
 
 test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {

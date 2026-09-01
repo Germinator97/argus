@@ -274,9 +274,15 @@ export function findingCards(findings, shots = new Map()) {
  * @param {any} run @returns {string}
  */
 export function titreDuRapport(run) {
+  // ⚠️ LE NOM, PAS L'IDENTIFIANT. `app.name` du yaml existait déjà et son propre
+  // commentaire annonçait qu'il « sert d'étiquette dans les rapports » — rien ne
+  // s'en servait. Un titre se lit : « monapp — ios — rapport QA » se reconnaît
+  // dans une galerie, « com.exemple.app — ios — rapport QA » se déchiffre.
+  // Repli sur l'identifiant, qui ne manque jamais : mieux vaut un titre technique
+  // qu'un titre amputé de ce qui le distingue.
   // Les morceaux vides tombent : sans eux, un run sans plateforme rendrait
-  // « com.exemple —  — rapport QA ». Le séparateur orphelin ne lève rien.
-  return [run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');
+  // « monapp —  — rapport QA ». Le séparateur orphelin ne lève rien.
+  return [run?.name || run?.appId, run?.platform, 'rapport QA'].filter(Boolean).join(' — ');
 }
 
 /**
@@ -579,12 +585,22 @@ export function renderArtifact(context) {
   const record = context.record;
   const passes = (context.historique ?? []).slice(0, HISTORIQUE_MAX - 1);
   const tous = record ? [record, ...passes] : passes;
+  // ⚠️ LA PLATEFORME N'APPARAÎT QUE SI ELLE DÉTONNE. Une page décrit UNE
+  // plateforme depuis le 245, et le titre la porte : la réécrire sur chaque
+  // onglet était la même information trois fois de suite. Mais la retirer sans
+  // condition supprimerait aussi le seul signal qu'une page a mélangé deux
+  // plateformes — ce que le 245 rend possible sans l'interdire. Elle ne
+  // s'affiche donc que lorsqu'elle DIFFÈRE de celle du run courant, et c'est
+  // alors une anomalie qu'on veut voir.
+  const plateformeCourante = String(tous[0]?.platform || '');
   const etiquette = (r, i) => {
     const quand = String(r.at || '').replace('T', ' ').slice(5, 16);
     const nom = i === 0 ? 'Run courant' : quand;
+    const plate = String(r.platform || '');
+    const detonne = plate !== plateformeCourante;
     return `<button role="tab" aria-selected="${i === 0}" aria-controls="passe-${i}" id="ong-${i}">`
       + `<span class="pastille ${esc(String(r.gate || 'pass'))}"></span>${esc(nom)}`
-      + `<span class="muted"> · ${esc(String(r.platform || '?'))}</span></button>`;
+      + (detonne ? `<span class="muted"> · ${esc(plate || '?')}</span>` : '') + '</button>';
   };
   const onglets = tous.length > 1
     ? `<div class="onglets" role="tablist">${tous.map(etiquette).join('')}</div>`
@@ -693,7 +709,10 @@ function main() {
 
   const failOn = new Set(config.gate?.failOn ?? []);
   const gate = SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';
-  const run = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };
+  const brut = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };
+  // `report.json` ne porte pas le nom du projet — il décrit un run, pas un
+  // dépôt. On le prend dans la config, sans écraser celui qui viendrait de là.
+  const run = { ...brut, name: brut.name || config.app?.name || '' };
   const coverage = parts.find((p) => p.file === 'report.json')?.data?.coverage ?? null;
   const perf = parts.find((p) => p.file === 'perf.json')?.data ?? null;
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
