@@ -73,6 +73,13 @@ appId: ${APP_ID}
             # par exemple `when: notVisible: { id: ${ARGUS_ANCHOR_HOME} }` —
             # l'ancre de départ est le témoin de la coquille.
             #
+            # ⚠️ N'APPELLE JAMAIS `goto.yaml` DEPUIS `goto.yaml`. Le geste naturel pour
+            #    « ramener d'abord l'app à l'accueil » est `- runFlow: goto.yaml` — il
+            #    HÉRITE de SCREEN_ID et boucle. Maestro rejette alors le workspace ENTIER
+            #    au démarrage, donc aucune étape n'est fautive et l'échec accuse le
+            #    dernier flow lancé, pas le coupable. `make argus-lint` l'attrape avant
+            #    le device — mais il parle APRÈS que tu aies écrit le fichier. Inline le
+            #    retour dans la branche.
             # TODO(argus): le retour à l'écran de départ depuis N'IMPORTE OÙ —
             # l'onglet d'accueil chez la plupart (`- tapOn: { id: nav_home }`),
             # un `back` répété ailleurs. Mets-le AVANT l'assertion ci-dessous,

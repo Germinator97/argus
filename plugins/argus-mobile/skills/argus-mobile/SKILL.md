@@ -167,7 +167,7 @@ agents en rendent deux, et aucun des deux ne se compare à l'autre :
 Instrumentation Semantics — parcours critiques
   Racines d'état     : <R> posées / <RESTE_R> à poser   ← l'essentiel de la production
   Commandes          : <Y> posées / <RESTE> à poser  (<Y/(Y+RESTE)> %)
-    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre `<NOM>`
+    dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre(s) `<NOMS>`
   Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
@@ -1005,8 +1005,12 @@ ce rapport-là ; elles coûtent **moins d'une minute** à elles quatre.
 
 ⚠️ **Et si `make argus-guards` ne rend JAMAIS la main, ne cherche pas un test
 lent : cherche une boucle de micro-tâches.** Le symptôme est net —
-`flutter_tester` tourne à quelques pour cent de CPU, aucune sortie, aucun
-timeout. Relevé sur un projet réel : dix minutes avant qu'on l'interrompe.
+`flutter_tester` **sature un cœur** — 120,6 % mesurés sur un projet réel —
+aucune sortie, aucun timeout. Relevé ailleurs : dix minutes avant qu'on
+l'interrompe. ⚠️ Ce tell a longtemps été écrit « quelques pour cent de CPU »,
+et c'était faux : une boucle de micro-tâches est une boucle SERRÉE, elle ne
+dort pas. Un run a reconnu le symptôme par les autres signes et a noté que le
+critère donné l'aurait fait écarter le bon diagnostic.
 
 La cause est un widget qui interroge un service en boucle, et dont le service
 rend un `Future` **déjà complété** sur la plateforme hôte — typiquement un
@@ -1103,6 +1107,11 @@ Chronomètre-le une fois sur ton projet plutôt que de te fier à un chiffre éc
 ailleurs : c'est la seule façon de savoir ce qu'il coûte *chez toi*.
 
 ⚠️ **Chiffre le coût avant de le subir : c'est TROIS passes device pleines.**
+⚠️ **Et chronomètre-le sur TON projet plutôt que de croire ce chiffre.** Un run
+a mesuré `argus-baselines` à **5 min 50**, soit la durée d'un run normal et non
+le triple : le chiffre ci-dessous vient d'un autre terrain, et il l'a fait
+sur-budgéter au point d'envisager de couper la contre-épreuve visuelle — c'est-
+à-dire la seule chose qui prouve que la comparaison mesure.
 `argus-baselines` n'est pas l'étape courte du milieu — elle rejoue toute la suite
 fonctionnelle avant de produire les captures (12 flows là où 6 en produisent).
 Sur un émulateur, la séquence complète approche les vingt minutes. Ça se prévoit,
@@ -1112,6 +1121,13 @@ et ça ne se refait qu'une fois : les passages suivants sont un seul `argus-run`
 puis **remplacer une référence par un aplat AUX DIMENSIONS EXACTES de celle
 qu'il remplace** et vérifier que celle-là seule rougit. Sans le troisième temps,
 le vert du deuxième ne dit pas si la comparaison mesure ou si elle dort.
+
+⚠️ **Le troisième temps se rejoue en `node scripts/argus/run.mjs --tags=visual
+--no-install`** — 2 min 17 au lieu de six sur un terrain mesuré. Le raccourci
+est décrit plus bas, dans le paragraphe sur la mise au point d'un flow isolé, à
+une centaine de lignes d'ici : c'est pourtant ICI qu'il change quelque chose. Un
+run a failli sacrifier la contre-épreuve pour tenir son budget, c'est-à-dire
+sacrifier la seule chose qui prouve que la comparaison mesure.
 
 ⚠️ **Les dimensions ne sont pas un détail : elles décident de ce que tu prouves.**
 Un aplat de taille quelconque fait échouer Maestro sur
