@@ -856,6 +856,19 @@ MUTATIONS = [
     ("config", "le signal précoce de configuration disparaît",
      "  const orphelins = configNonEmbarquee(dirname(config.__file), config);",
      "  const orphelins = [];"),
+    # ── 298 : le nom affiché ─────────────────────────────────────────────
+    ("config", "l'indirection @string/ est prise pour un nom affiché",
+     'const label = /android:label="([^"@][^"]*)"/.exec',
+     'const label = /android:label="([^"]*)"/.exec'),
+    ("config", "le signal sur app.name devient inacquittable",
+     "  if (configure !== paquet) return '';",
+     "  if (false) return '';"),
+    ("config", "le signal sur app.name n'est plus câblé",
+     "  const nomTech = nomTechniqueEnTitre(dirname(config.__file), config);\n  if (nomTech) warn(nomTech);",
+     "  const nomTech = '';\n  if (nomTech) warn(nomTech);"),
+    ("yamlconf", "le gabarit represcrit le nom du paquet Dart",
+     "  # Le nom que l'application AFFICHE — pas celui du paquet Dart.",
+     "  # Nom du paquet Dart (pubspec.yaml → name)."),
     ("report", "une première publication cesse d'être vérifiée",
      """    "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"

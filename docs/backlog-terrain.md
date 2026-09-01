@@ -4651,7 +4651,49 @@ lecture rapide aurait faite fichier par fichier.
 **§3d**, avant qu'on lance quoi que ce soit. Les deux mutations de câblage
 tombent.
 
+### 298. ✅ Corrigé le 01/09/2026 — `app.name` était le nom du PAQUET, pas celui de l'app
+
+**Vu par Germinator sur une page publiée** : le titre nommait l'app d'un seul
+mot là où elle en affiche deux. **Sixième fois que la lecture d'un livrable
+trouve ce que l'exécution ne voit pas.**
+
+Le gabarit prescrivait la mauvaise source **en toutes lettres** — « Nom du
+paquet Dart (pubspec.yaml → name) » — et ce nom finit dans le **titre de la page
+publiée**, donc dans la seule chose qui distingue un rapport des autres dans une
+galerie. Un identifiant de paquet est une poignée technique ; l'app affiche un
+nom qu'un humain reconnaît, et il est **déclaré**, dans un fichier que le
+harnais ne lisait nulle part.
+
+`nomAffiche()` le lit dans l'ordre où les sources sont sûres : `CFBundleDisplayName`,
+un `resValue("string", "app_name", …)` de Gradle, un `<string name="app_name">`,
+puis un `android:label` **littéral**. ⚠️ **Jamais une indirection `@string/…`** :
+la suivre naïvement rendrait le nom de la CLÉ, soit un titre pire que celui
+qu'on corrige. Rend `''` quand rien n'existe — inventer serait pire que se taire.
+Éprouvé sur les deux terrains réels, qui exercent à eux deux trois des quatre
+sources.
+
+📌 **Le signal ne parle QUE tant que personne n'a choisi** : il ne sort que si
+`app.name` porte *exactement* le défaut posé par l'installeur. Le nom affiché,
+ou n'importe quel autre nom, le fait taire. C'est la leçon du **291 appliquée le
+jour même à l'avertissement qu'on ajoute** — un avertissement inacquittable finit
+ignoré, et il emmène les autres.
+
+⚠️ **ET LE GARDE 255 M'A ARRÊTÉ EN CHEMIN** : en documentant ce point, j'ai écrit
+des noms de projets réels dans un dépôt **public**. Il a rougi avant le commit,
+en donnant les rangs et jamais les termes — exactement ce pour quoi il existe.
+📌 **Un de mes remplacements avait rendu « fait » à tort** : la phrase était
+**enveloppée sur deux lignes** par le markdown, donc la recherche littérale ne
+la voyait pas. C'est le piège écrit une heure plus tôt dans cette même passe, et
+seul un balayage **total et négatif** l'a trouvé — pas la substitution qui venait
+d'annoncer son succès.
+
 ## Ce qui reste
+
+Les points **297 et 298** sont fermés le 01/09/2026 — backlog vide pour la
+**trente-neuvième** fois. **Aucun des deux ne vient d'un run** : le premier d'une
+question de Germinator sur ce que le rapport dit, le second de sa lecture d'une
+page publiée. Et la conception du 297 a été corrigée par une **seconde** question
+avant la première ligne de code.
 
 Le point **297** est fermé le 01/09/2026 — backlog vide pour la **trente-huitième**
 fois. Il ne vient pas d'un run mais d'une **question** de Germinator sur ce que
