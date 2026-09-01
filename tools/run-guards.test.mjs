@@ -5138,6 +5138,48 @@ test('l\'historique survit à une republication, et une page étrangère ne le c
     'JSON abîmé — on repart de zéro, on ne meurt pas');
 });
 
+test('la page revenue d\'un `read` reste lisible malgré son préambule (251)', () => {
+  // ⚠️ CE GARDE FIGE UNE EXÉCUTION, PAS UNE HYPOTHÈSE. Les gardes voisins
+  // montent la page telle que `renderArtifact` la rend ; personne ne la montait
+  // telle qu'elle REVIENT — c'est-à-dire enveloppée par la plateforme, qui
+  // insère devant elle un préambule `frame-runtime` de ~13 Ko de JavaScript.
+  // C'était le seul point du cycle que rien n'éprouvait, et il était noté comme
+  // « ce qui casse le plus probablement ».
+  //
+  // Mesuré le 01/09/2026 en jouant le cycle entier — publication d'une page,
+  // `Artifact action:"read"`, `make argus-report ARGS="--previous=<fichier>"`,
+  // republication —, la page en ligne portant bien DEUX onglets et deux runs.
+  // Cette chaîne-là n'est pas rejouable en CI (elle publie) : ce test fige sa
+  // conclusion, il ne la remplace pas.
+  //
+  // L'extrait ci-dessous est copié d'un vrai retour de `read`, tronqué : il
+  // porte ce qui compte, c'est-à-dire d'AUTRES balises `<script>` et des
+  // `</scr`+`ipt>` AVANT la nôtre.
+  const PREAMBULE = '<!doctype html><html><head><!-- frame-runtime -->'
+    + '<script>window.__FRAME_PREAMBLE={"v":1,"capabilities":{"artifact":"artifact.js"}}</scr' + 'ipt>'
+    + '<script>(function(){"use strict";var te=["light","dark","system"]})();</scr' + 'ipt>'
+    + '<!-- /frame-runtime --><meta charset=utf8>'
+    + '<style>body{margin:0}</style></head><body>\n';
+  const revenue = PREAMBULE + pageDe({ gate: 'pass', quand: '2026-09-01T11:02:52.000Z' })
+    + '\n</body></html>';
+
+  // Le préambule porte bien ce qui pourrait égarer la lecture — sans quoi ce
+  // garde se contenterait d'un habillage inoffensif et ne mesurerait rien.
+  assert.ok(revenue.includes('</scr' + 'ipt>'), 'le préambule doit fermer des balises AVANT la nôtre');
+  assert.ok(revenue.indexOf('<scr' + 'ipt>') < revenue.indexOf('id="argus-runs"'),
+    'et en ouvrir avant elle, sinon l\'enveloppe ne ressemble à rien');
+
+  const h = historiqueDe(revenue);
+  assert.equal(h.length, 1, 'l\'historique doit survivre à l\'enveloppe de la plateforme');
+  assert.equal(h[0].gate, 'pass', 'et rendre le run, pas un objet vide');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi on ne sait pas si l'instrument sait chercher :
+  // le préambule SEUL ne doit rien rendre. S'il rendait quelque chose, le
+  // succès ci-dessus viendrait de l'enveloppe et non de la page.
+  assert.deepEqual(historiqueDe(PREAMBULE + '<p>rien à nous</p></body></html>'), [],
+    'le préambule seul ne porte aucun run');
+});
+
 test('le run courant est le premier onglet, et le seul à porter ses preuves (247)', () => {
   const p = pageDe({ gate: 'pass' }, historiqueDe(pageDe({ gate: 'fail' })));
   const onglets = [...p.matchAll(/<button role="tab" aria-selected="(true|false)"/g)].map((m) => m[1]);
