@@ -105,6 +105,24 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 	@$(FLUTTER) test test/argus
 
+# ⚠️ QUATRE LANCEMENTS POUR UNE PREMIÈRE INSTALLATION, et deux étaient du
+# recopiage. Un run l'a mesuré : obtenir les échecs, les lister, capturer la
+# sortie, vérifier le vert. Les messages donnent déjà la ligne EXACTE à inscrire
+# — c'est ce qui a permis d'en poser 48 sans en réécrire une seule de mémoire —
+# mais rien ne les agrégeait.
+#
+# Le motif est celui qu'`argus_harness.dart` ÉMET (`      'clé',`), pas une
+# supposition sur le format de `flutter test` : le garde du dépôt croise les
+# deux, pour qu'ils ne puissent pas diverger.
+argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'étage 1
+	@$(FLUTTER) test test/argus 2>&1 \
+	  | sed -e 's/\x1b\[[0-9;]*m//g' \
+	  | grep -oE "^ +'[^']+',$$" \
+	  | sed -e 's/^ *//' \
+	  | sort -u \
+	  | sed -e 's/^/  /' \
+	  || echo "  (aucune dette à inscrire — la suite est verte, ou elle n'a pas tourné)"
+
 argus-run: ## Étage 2 — suite Maestro sur device
 	@node scripts/argus/run.mjs
 

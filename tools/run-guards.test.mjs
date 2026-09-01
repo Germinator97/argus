@@ -6831,6 +6831,59 @@ test('les consignes que deux runs ont payées sont écrites (305, 307, 309-315)'
   }
 });
 
+test('la cible qui agrège les dettes lit le format que le harnais ÉMET (316)', () => {
+  // ⚠️ QUATRE LANCEMENTS DE `argus-guards` POUR UNE PREMIÈRE INSTALLATION, dont
+  // deux de pur recopiage. Les messages donnaient déjà la ligne exacte à
+  // inscrire — c'est ce qui a permis d'en poser 48 sans en réécrire une de
+  // mémoire — mais rien ne les agrégeait.
+  //
+  // Le danger d'une telle cible est de DEVINER le format. Ce garde croise donc
+  // le motif du Makefile avec ce que `argus_harness.dart` émet vraiment : les
+  // deux ne peuvent plus diverger en silence.
+  const makefile = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const harnais = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart'), 'utf8');
+
+  assert.match(makefile, /^argus-debts:/m,
+    'la cible qui agrège les dettes a disparu : on repart à quatre lancements dont deux de recopiage');
+
+  // Le format ÉMIS, lu dans le code — jamais recopié ici.
+  // La ligne émise se termine par un ou plusieurs `\n` selon le message : on
+  // ancre sur ce qui compte — l'indentation et la clé quotée suivie d'une virgule.
+  const emis = /"( +)'\$key',\\n/.exec(harnais);
+  assert.ok(emis, 'le harnais n\'émet plus la ligne prête à coller sous la forme attendue — '
+    + 'si elle a changé, la cible doit suivre, et ce garde est ce qui le dira');
+  const indentation = emis[1].length;
+  assert.ok(indentation > 0,
+    'la ligne émise n\'est plus indentée : le motif du Makefile, ancré sur `^ +`, ne la verra plus');
+
+  // Et le motif du Makefile doit accepter cette forme-là.
+  const cible = makefile.slice(makefile.indexOf('argus-debts:'), makefile.indexOf('argus-debts:') + 600);
+  assert.match(cible, /grep -oE/, 'la cible n\'extrait plus rien');
+  const motif = /grep -oE "([^"]+)"/.exec(cible);
+  assert.ok(motif, 'le motif d\'extraction est illisible — ce garde ne peut plus le croiser');
+  // ⚠️ ON L'EXÉCUTE sur la ligne que le code émet, plutôt que de comparer deux
+  // textes : c'est la seule façon de savoir qu'il matche.
+  const ligneEmise = `${' '.repeat(indentation)}'home:overflow:13px',`;
+  const rx = new RegExp(motif[1].replace(/\$\$/g, '$'));
+  assert.match(ligneEmise, rx,
+    `le motif du Makefile (${motif[1]}) ne matche pas la ligne que le harnais émet `
+    + `(${JSON.stringify(ligneEmise)}) : la cible rendrait vide sur une suite pleine de dettes`);
+
+  // ⚠️ L'AUTRE MOITIÉ : il ne doit pas matcher n'importe quelle ligne de sortie,
+  // sinon le bloc « prêt à coller » se remplit de bruit.
+  for (const bruit of ['All tests passed!', '00:03 +12 -1: layout home', "  final x = 'abc';"]) {
+    assert.ok(!rx.test(bruit),
+      `le motif attrape une ligne qui n'est pas une dette (${JSON.stringify(bruit)})`);
+  }
+
+  // La couleur doit être retirée avant : `flutter test` colore ses échecs, et
+  // un code ANSI collé au début de ligne casse l'ancrage `^ +`.
+  assert.match(cible, /\\x1b\\\[\[0-9;\]\*m|sed -e 's\/.x1b/,
+    'la cible ne retire pas les codes ANSI : une ligne colorée ne commence plus par des espaces');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run
