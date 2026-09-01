@@ -4367,7 +4367,51 @@ honnête par construction — elle décrit un run, un seul. C'est le choix qu'a
 tranché Germinator (« une page par plateforme »), et il est meilleur que celui
 que j'aurais pris.
 
+### 251-253. ✅ Corrigés le 01/09/2026 — le troisième barreau, et deux titres qui mentaient
+
+Aucun ne vient d'un run. Le **251** est un manque connu qu'on s'était noté ; les
+deux autres sont nés en le fermant, dont un **signalé par Germinator en regardant
+la page** — quatrième fois que la publication trouve ce que l'exécution ne voit
+pas.
+
+| | |
+|---|---|
+| **251** | `--previous` n'avait **jamais tourné de bout en bout**. Il était gardé (un garde qui appelle les fonctions) et muté (7/7 tombent) : les barreaux 1 et 2. Le troisième manquait, et le dépôt écrit ailleurs qu'il ne faut pas s'arrêter au deuxième en croyant avoir fini. Joué en entier — page publiée, `read`, `make argus-report ARGS="--previous=…"`, republication : la page en ligne porte **deux onglets**, et un troisième cycle en a repris deux. Le cas redouté — le préambule `frame-runtime` de ~13 Ko que `historiqueDe()` n'avait jamais vu — **ne gêne pas** ; un garde fige cette conclusion, la chaîne n'étant pas rejouable en CI puisqu'elle publie |
+| **252** | le titre du rapport était **le même sur toutes les pages** (« Argus Mobile — rapport QA »). Depuis le 245, un projet publie une page **par plateforme** : deux pages du même projet portaient donc un titre identique, et deux onglets de navigateur côte à côte étaient indiscernables. Dérivé des **faits du run**, jamais de `artifact.title` — celui-là n'existe que du côté publié, or le même corps sert le rapport local |
+| **253** | le titre **annoncé** n'était pas le titre **publié**. Trois expressions le calculaient séparément, deux divergeaient : sur un titre par plateforme le journal annonçait `[object Object]` pendant que « T iOS » était publié (le 245 avait ajouté la forme sans mettre le journal d'accord) ; sur un titre vide, « Rapport Argus Mobile » annoncé contre « Argus Mobile — rapport QA » publié. Le seul lecteur de cette ligne est celui qui va republier — donc celui que l'écart trompe |
+
+⚠️ **Le 253 est le 250 sur une autre paire.** Le geste documenté n'était pas le
+geste outillé ; ici c'est la valeur annoncée qui n'est pas la valeur écrite. Les
+deux se découvrent de la même façon — en vérifiant plutôt qu'en se souvenant —
+et aucune des deux ne lève quoi que ce soit : les valeurs sont plausibles.
+
+⚠️ **ET LE GARDE DU 253 NE SUFFISAIT PAS.** Il appelait `titrePublie()` et lisait
+ce qu'elle rend — barreau 2. La mutation qui redonne au journal son propre calcul
+du titre, c'est-à-dire **le défaut lui-même, mot pour mot**, laissait la suite
+entière VERTE : la fonction restait juste, et c'est son **câblage** que plus rien
+ne tenait. Il a fallu un garde qui **lance le programme** et compare la ligne du
+journal au `<title>` du fichier. Trois barreaux, et seul le troisième voit le
+câblage — la règle était écrite, elle n'a pas empêché de s'arrêter au deuxième.
+
+⚠️ **Le garde du 223 est tombé sur un correctif JUSTE**, parce qu'il **citait**
+la chaîne « Rapport Argus Mobile » qu'il servait à protéger. La pente était de le
+supprimer, ce qui aurait vidé la moitié qu'il tient. Il **construit** désormais
+son gabarit avec la fonction qui le produit : si le format change encore, ce
+n'est plus le garde qui se périme, c'est la doc qui doit suivre.
+
+📌 **Et le piège du 219/e s'est présenté en vrai pendant l'essai** : une config
+laissée sur une valeur de test allait **renommer la page** à la republication. Le
+SKILL le dit, et c'est en le lisant qu'on s'arrête — ce point-là se paie une fois
+par personne.
+
 ## Ce qui reste
+
+Les points **251 à 253** sont fermés le 01/09/2026 — backlog vide pour la
+**trente-cinquième** fois. Aucun ne vient d'un run : le 251 était un manque qu'on
+s'était noté, et les deux autres sont nés en le fermant — le 252 d'une remarque
+de Germinator sur la page qu'il venait d'ouvrir, le 253 d'un `grep` fait pour
+autre chose. **Quatrième fois que la publication trouve ce que l'exécution ne
+voit pas.**
 
 Les points **245 à 250** sont fermés le 31/08/2026 — backlog vide pour la
 **trente-quatrième** fois, **cinquième passe de la journée**. Aucun ne vient d'un
