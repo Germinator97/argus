@@ -1162,11 +1162,22 @@ imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
    motif-là ne décrit pas une lenteur, il décrit un écran qui n'arrive jamais.
 2. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de
    générer les références — il concerne tous les flows, y compris ceux qui
-   produisent les captures. ⚠️ **Dérive-le de `firstLaunchMs`**, que
+   produisent les captures. ⚠️ **Sur Android, dérive-le de `firstLaunchMs`**, que
    `argus-perf` mesure : chaque flow fait `clearState`, donc chacun paie un
    PREMIER lancement, jamais le régime stabilisé dont `coldStartMs` parle. Et ne
    touche pas à `coldStartMs` : la lenteur doit rester un finding, pas
    disparaître dans un seuil.
+
+   🔴 **SUR iOS, `firstLaunchMs` N'EXISTE PAS** — `argus-perf` n'y mesure aucun
+   démarrage (pas d'équivalent local de `am start -W` ; `perf.json` porte un
+   `skipReason` qui le dit). Ce conseil a été écrit sans ce cas, et un run iOS
+   l'a suivi vers une grandeur que sa plateforme ne produit pas : la table du
+   §1 l'annonçait bien — « démarrage ✖ sur iOS » — à neuf cents lignes d'ici,
+   et les deux ne se croisaient jamais. Dérive-le de **la pire attente que le
+   runner vient de relever** : il l'imprime avec la marge (« la pire attente
+   (N ms) a consommé X % du plafond »), et c'est exactement ce que
+   `firstLaunchMs` approche sur Android. Le runner te donne désormais la valeur
+   et un plafond calculé ; chronomètre à la main si tu veux mieux.
 3. **L'ancre est fausse.** `make argus-anchors` le dit sans device. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
 écran, sans mécanisme identifié — c'est exactement le cas où l'on relève le
 plafond sans rien conclure.

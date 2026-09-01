@@ -4497,6 +4497,50 @@ test('le runner AVERTIT sur une marge serrée, en nommant la bonne grandeur', ()
     + 'pendant que personne ne l\'exerce');
 });
 
+test('le conseil de plafond ne renvoie pas iOS vers une mesure qu\'il ne produit PAS (279)', () => {
+  // 🔴 ANGLE MORT CRÉÉ PAR LE CORRECTIF QUI L'A ÉCRIT — le mien, la veille.
+  // « Dérive-le de firstLaunchMs » est juste sur Android et impossible sur iOS :
+  // `perf.mjs` y rend un `skipReason` et ne mesure AUCUN démarrage, faute
+  // d'équivalent local à `am start -W`. Un run iOS a donc reçu un conseil
+  // désignant une grandeur que sa plateforme ne produit pas. La table du §1
+  // l'annonçait — « démarrage ✖ sur iOS » — à neuf cents lignes de là.
+  const echantillons = [{ ms: 20039 }];
+
+  const ios = startupMarginWarning(echantillons, 20000, 'ios').join('\n');
+  assert.ok(ios.length > 0, 'une marge serrée doit avertir sur iOS aussi — sinon ce garde ne mesure rien');
+  assert.ok(!/dérive-le de `firstLaunchMs`/i.test(ios),
+    'iOS est renvoyé vers `firstLaunchMs`, que argus-perf n\'y mesure pas : le conseil désigne '
+    + 'une grandeur qui n\'existe pas sur cette plateforme');
+  // Et il doit donner une grandeur QUI EXISTE : celle qu'on vient de relever.
+  assert.match(ios, /20039 ms/,
+    'le conseil iOS doit dériver de la pire attente relevée — c\'est la seule mesure de '
+    + 'démarrage dont on dispose sur cette plateforme');
+
+  // ⚠️ L'AUTRE MOITIÉ : Android garde son conseil, qui est le bon. Un correctif
+  // qui retire `firstLaunchMs` PARTOUT échangerait un angle mort contre l'autre.
+  const android = startupMarginWarning(echantillons, 20000, 'android').join('\n');
+  assert.match(android, /firstLaunchMs/,
+    'Android doit continuer de dériver de firstLaunchMs : argus-perf le mesure, et c\'est '
+    + 'une grandeur dédiée, pas un relevé de circonstance');
+  assert.notEqual(ios, android, 'les deux plateformes ne peuvent pas recevoir le même conseil');
+
+  // Les deux disent ce qu'il ne faut PAS toucher : la lenteur reste un finding.
+  for (const [quoi, msg] of [['ios', ios], ['android', android]]) {
+    assert.match(msg, /Ne touche PAS `coldStartMs`/, `${quoi} : la clé qui RAPPORTE la lenteur doit rester nommée`);
+  }
+
+  // ⚠️ ET LE CÂBLAGE, sinon la production retombe en silence sur le conseil
+  // Android : le paramètre a une valeur par défaut, ne pas le passer est légal,
+  // et aucun test unitaire ne le verrait puisqu'ils le fournissent eux-mêmes.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const appel = /startupMarginWarning\(startup,[^)]*\)/.exec(run);
+  assert.ok(appel, 'l\'appel de startupMarginWarning dans main() a changé de forme — garde à mettre à jour');
+  assert.match(appel[0], /platform/,
+    'main() ne passe plus la plateforme : un run iOS recevrait le conseil Android sans que '
+    + 'rien ne le signale');
+});
+
 // ── Le graphe d'appels entre flows ──────────────────────────────────────────
 //
 // `maestro check-syntax` valide un fichier à la fois : un sous-flow qui

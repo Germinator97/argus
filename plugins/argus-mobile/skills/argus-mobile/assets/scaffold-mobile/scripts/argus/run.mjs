@@ -1526,17 +1526,43 @@ export function startupMargin(samples, plafondMs) {
  * la source ne voit pas `if (false && …)`. Le harnais de mutation a rendu
  * « VACANT » deux jours de suite sur ce motif. Le message se teste donc en
  * l'appelant, pas en le cherchant dans un fichier.
- * @param {{ms:number}[]} samples @param {number} plafondMs @returns {string[]}
+ *
+ * ⚠️ ET LE CONSEIL DÉPEND DE LA PLATEFORME — angle mort créé par le correctif
+ * qui l'a écrit. « Dérive-le de `firstLaunchMs` » est juste sur Android et
+ * IMPOSSIBLE sur iOS : `perf.mjs` y rend `skipReason` et ne mesure aucun
+ * démarrage (pas d'équivalent local de `am start -W`). Un run iOS a donc reçu
+ * un conseil qui désigne une grandeur que sa plateforme ne produit pas, sans
+ * rien qui le dise — la table du §1 l'annonce, à neuf cents lignes de là.
+ *
+ * La bonne grandeur existe pourtant sur iOS, et elle est ICI : `marge.pireMs`,
+ * la pire attente que le runner vient de relever. C'est exactement ce que
+ * `firstLaunchMs` approche sur Android — chaque flow fait `clearState`, donc
+ * chacun paie un premier lancement.
+ * @param {{ms:number}[]} samples @param {number} plafondMs @param {string} platform
+ * @returns {string[]}
  */
-export function startupMarginWarning(samples, plafondMs) {
+export function startupMarginWarning(samples, plafondMs, platform = '') {
   const marge = startupMargin(samples, plafondMs);
   if (!marge?.serre) return [];
+  // Sur iOS on ne renvoie pas vers une mesure qui n'existe pas : on dérive du
+  // relevé qu'on tient déjà, majoré de moitié pour absorber un hoquet.
+  const derivation = String(platform) === 'ios'
+    ? [
+      'Relève `thresholds.startTimeoutMs` — sur iOS, dérive-le de la pire attente',
+      `ci-dessus (${marge.pireMs} ms), pas de \`firstLaunchMs\` : \`argus-perf\` ne mesure`,
+      'AUCUN démarrage sur cette plateforme (voir `skipReason` dans perf.json), il',
+      `n'y a donc rien à en tirer. Un plafond de ${Math.ceil((marge.pireMs * 1.5) / 1000) * 1000} ms`,
+      'laisserait la moitié de marge en plus ; chronomètre-le si tu veux mieux.',
+    ]
+    : [
+      'Relève `thresholds.startTimeoutMs` — et dérive-le de `firstLaunchMs`, que',
+      '`argus-perf` mesure : chaque flow fait clearState, donc chacun paie un PREMIER',
+      'lancement, jamais le régime stabilisé dont `coldStartMs` parle.',
+    ];
   return [
     `la pire attente (${marge.pireMs} ms) a consommé ${marge.pct} % du plafond `
       + `(${plafondMs} ms) : la suite flakera au prochain hoquet.`,
-    'Relève `thresholds.startTimeoutMs` — et dérive-le de `firstLaunchMs`, que',
-    '`argus-perf` mesure : chaque flow fait clearState, donc chacun paie un PREMIER',
-    'lancement, jamais le régime stabilisé dont `coldStartMs` parle.',
+    ...derivation,
     'Ne touche PAS `coldStartMs` : c\'est lui qui RAPPORTE la lenteur.',
   ];
 }
@@ -1917,7 +1943,9 @@ async function main() {
     // ⚠️ DIRE LA MARGE, PAS SEULEMENT LES DEUX NOMBRES. Un flow qui passe de
     // justesse est vert, et le rapport portait déjà le pire temps et le plafond
     // sans jamais dire ce qui les sépare : personne ne voit venir le flake.
-    for (const ligne of startupMarginWarning(startup, report.startup.timeoutMs)) warn(ligne);
+    // ⚠️ LA PLATEFORME EST L'ARGUMENT QUI COMPTE : sans elle, un run iOS reçoit
+    // le conseil Android, qui désigne une mesure que sa plateforme ne produit pas.
+    for (const ligne of startupMarginWarning(startup, report.startup.timeoutMs, report.run?.platform)) warn(ligne);
   }
 
   if (report.coverage.notConfigured.length) {
