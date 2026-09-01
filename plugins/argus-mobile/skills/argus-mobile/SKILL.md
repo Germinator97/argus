@@ -381,6 +381,13 @@ build: () {
 `whenListen` stubbe `state` **et** `stream` d'un coup : sans lui, le premier
 `BlocBuilder` lève sur un `stream` nul.
 
+⚠️ **`Semantics` N'A PAS DE CONSTRUCTEUR `const`** — le rappel vivait à huit
+cents lignes du point où l'on instrumente. Envelopper un sous-arbre `const`
+casse la compilation (`const_with_non_const`) ; descends le `const` d'un cran,
+sur l'enfant. `flutter analyze` le nomme en deux secondes **à condition de
+l'exécuter après chaque fichier** — c'est ce qui a rendu le coût négligeable
+pour un run, et ce qui l'aurait fait remonter bien plus tard sans ça.
+
 ⚠️ **Type le double EXPLICITEMENT si tu l'écris générique.** Un helper de la
 forme `figer<B extends BlocBase<S>, S>(bloc, etat)` **n'infère pas `S`** en Dart
 3.8 depuis une sous-classe d'état concrète (`HomeChargee` pour un `HomeState`) :

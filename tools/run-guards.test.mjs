@@ -7058,6 +7058,49 @@ test('les consignes que la vague iOS a payées sont écrites (318, 321, 325, 328
     + 'l\'un vient de disparaître');
 });
 
+test('les deux relevés d\'identité du device disent la MÊME chose (320, 322)', () => {
+  // ⚠️ DEUX ARTEFACTS DU MÊME RUN SE CONTREDISAIENT. `report.json` écrivait
+  // `identityMeasured: true` pendant que `.argus-device` écrivait
+  // `"source": "déclaré"`, alors que `report-format-mobile.md` promet que cette
+  // empreinte est « LUE SUR L'APPAREIL, jamais recopiée ». Les deux ne peuvent
+  // pas être vrais ensemble — et c'est l'empreinte qui avait tort : sur iOS,
+  // `simctl list -j devices booted` rend le nom et le runtime, donc lus sur la
+  // machine.
+  const spec = { model: 'iPhone 17', os: 'ios-26' };
+  const resolu = { measured: true, model: 'iPhone 17', os: 'iOS-26-3' };
+
+  const mesure = deviceStamp('ios', 'UDID', spec, null, resolu);
+  assert.equal(mesure.source, 'mesuré',
+    'hors Android, une identité RÉSOLUE sur l\'appareil doit être dite mesurée — sinon le fichier '
+    + 'd\'empreinte contredit le rapport du même run');
+  assert.equal(mesure.os, 'iOS-26-3', 'et porter ce que l\'appareil a rendu, pas la déclaration');
+
+  // ⚠️ L'AUTRE MOITIÉ : une identité NON résolue reste déclarée. Sans elle, le
+  // correctif ferait passer toute déclaration pour une mesure — l'inverse exact
+  // du défaut, et le plus grave des deux.
+  assert.equal(deviceStamp('ios', 'UDID', spec, null, { measured: false }).source, 'déclaré',
+    'un device non résolu ne peut pas rendre une empreinte « mesurée »');
+  assert.equal(deviceStamp('ios', 'UDID', spec, null, null).source, 'déclaré',
+    'et sans résolution du tout non plus');
+
+  // 320 — un device d'une plateforme non déclarée est un RESTE. Le gabarit livre
+  // Android actif et iOS en commentaire : remplacer l'un par l'autre laisse six
+  // clés orphelines qui FUSIONNENT dans l'entrée suivante au lieu de lever.
+  const base = { app: { id: 'com.x' }, thresholds: { visualMatchPercentage: 95 }, screens: [], platforms: ['ios'] };
+  const orphelin = (/** @type {any} */ devices) => (validateConfig({ ...base, devices }) ?? [])
+    .filter((/** @type {any} */ p) => /devices\[\]\.platform/.test(p.message));
+
+  assert.equal(orphelin([{ id: 'ios-sim', platform: 'ios' }, { id: 'emu', platform: 'android' }]).length, 1,
+    'un device Android dans un projet déclaré iOS doit être refusé : sinon config.mjs rend un '
+    + 'simulateur avec le modèle d\'un téléphone Android');
+  assert.equal(orphelin([{ id: 'ios-sim', platform: 'ios' }]).length, 0,
+    'une config cohérente ne doit rien produire');
+  // ⚠️ Et une entrée sans `platform` reste tolérée : les installations
+  // existantes n'ont pas la clé, et casser leur config n'apprendrait rien.
+  assert.equal(orphelin([{ id: 'x' }]).length, 0,
+    'un device sans platform déclarée ne doit pas rougir — les configs d\'avant n\'ont pas la clé');
+});
+
 test('un TODO(argus) SANS OBJET se ferme, et le compteur l\'exclut (273)', () => {
   // ⚠️ Deux flows livrés n'ont rien à recevoir sur certains projets. L'inventaire
   // les comptait « à traiter » indéfiniment — et comptait aussi ceux qu'un run

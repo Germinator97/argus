@@ -1305,8 +1305,22 @@ export function screensWithMovedCrop(graves, ecrans, config) {
  * @param {string} platform @param {string} udid @param {any} spec
  * @returns {{model:string, os:string, source:string}}
  */
-export function deviceStamp(platform, udid, spec, lire = adbShell) {
+export function deviceStamp(platform, udid, spec, lire = adbShell, resolu = null) {
   const declare = { model: String(spec?.model ?? ''), os: String(spec?.os ?? ''), source: 'déclaré' };
+  // ⚠️ HORS ANDROID, L'IDENTITÉ EST DÉJÀ MESURÉE — et ce fichier disait le
+  // contraire. Un run a relevé que `report.json` écrivait
+  // `identityMeasured: true` pendant que `.argus-device` écrivait
+  // `"source": "déclaré"` : les deux ne peuvent pas être vrais ensemble, et
+  // c'est celui-ci qui avait tort. `xcrun simctl list -j devices booted` rend
+  // le nom de l'appareil et son runtime — donc lus SUR la machine, pas
+  // recopiés d'une déclaration.
+  //
+  // On les prend quand la résolution les a mesurés, quelle que soit la
+  // plateforme. `adb` reste la voie Android : il donne le modèle RÉEL
+  // (`sdk_gphone64_arm64`) là où la config porte un alias (`pixel_6`).
+  if (platform !== 'android' && resolu?.measured && resolu.model) {
+    return { model: String(resolu.model), os: String(resolu.os ?? ''), source: 'mesuré' };
+  }
   if (platform !== 'android' || !udid) return declare;
   const model = lire(udid, ['getprop', 'ro.product.model']).stdout.trim();
   const sdk = lire(udid, ['getprop', 'ro.build.version.sdk']).stdout.trim();
@@ -1828,7 +1842,7 @@ async function main() {
     }
 
     const derive = baselineDeviceDrift(baselineDevice(baselineDir),
-      deviceStamp(platform, resolved.udid, spec));
+      deviceStamp(platform, resolved.udid, spec, adbShell, resolved));
     if (derive && derive.localeSeule) {
       warn(`références produites sous la locale système « ${derive.grave.locale} », `
         + `run en cours sous « ${derive.courant.locale} » — même appareil, même OS.`);
@@ -1884,7 +1898,7 @@ async function main() {
     // Et l'appareil : sans lui, des références nées ailleurs échouent en se
     // faisant passer pour une régression.
     writeFileSync(join(baselineDir, DEVICE_STAMP),
-      `${JSON.stringify(deviceStamp(platform, resolved.udid, spec), null, 2)}\n`, 'utf8');
+      `${JSON.stringify(deviceStamp(platform, resolved.udid, spec, adbShell, resolved), null, 2)}\n`, 'utf8');
     log(`${written} référence(s) visuelle(s) écrite(s) dans ${baselineDir}`);
   }
 

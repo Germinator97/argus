@@ -649,6 +649,11 @@ artifact:
   # Captures des findings embarquées dans la page : all | major | none.
   # « none » laisse les chemins, comme dans le rapport local : rien de l'app ne
   # part, mais la page ne se suffit plus à elle-même.
+  # ⚠️ « all » NE VEUT PAS DIRE « toutes les captures du run ». Les preuves sont
+  # celles des FINDINGS : un run sans finding publie donc une page **sans aucune
+  # capture** — 11 Ko mesurés sur un run vert. C'est voulu (une preuve illustre
+  # un défaut), mais le mot induit en erreur, et l'acquittement ci-dessous se
+  # demande alors pour des images qui ne partiront jamais.
   evidence: all
   # ⚠️ CE QUI FERME L'AVERTISSEMENT SUR LES CAPTURES. Tant qu'elle est vide,
   # `config.mjs` rappelle à CHAQUE exécution que les captures d'écran partiront

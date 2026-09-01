@@ -478,6 +478,26 @@ export function validateConfig(config) {
     });
   }
 
+  // ⚠️ UN DEVICE D'UNE PLATEFORME QU'ON NE TESTE PAS EST UN RESTE, PAS UN CHOIX.
+  // Le gabarit livre le bloc Android ACTIF et le bloc iOS en commentaire :
+  // remplacer l'un par l'autre laisse derrière `avd`, `model: pixel_6`,
+  // `os: android-33`… six clés à l'indentation d'un item, qui FUSIONNENT
+  // silencieusement dans l'entrée iOS au lieu de lever. Un run l'a vu en
+  // relisant, pas parce qu'un outil le lui a dit — `config.mjs` aurait rendu un
+  // `ios-sim` avec `model: pixel_6`.
+  const plateformes = new Set((config.platforms ?? []).map(String));
+  for (const d of config.devices ?? []) {
+    const pf = String(d?.platform ?? '');
+    if (pf && plateformes.size && !plateformes.has(pf)) {
+      problems.push({
+        level: 'error',
+        message: `devices[].platform = « ${pf} » (${d?.id ?? 'sans id'}) alors que platforms ne déclare `
+          + `que ${[...plateformes].join(', ')}. Reste d'un bloc d'exemple ? Retire l'entrée entière — `
+          + 'les clés orphelines fusionnent dans la suivante au lieu de lever.',
+      });
+    }
+  }
+
   // ── D'où partent les flows ────────────────────────────────────────────────
   const declares = (config.screens ?? []).filter((/** @type {any} */ s) => s?.start === true);
   if (declares.length > 1) {
