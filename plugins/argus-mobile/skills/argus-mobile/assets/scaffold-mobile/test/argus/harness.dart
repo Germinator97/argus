@@ -121,6 +121,7 @@ const String argusFontFamily = ''; // TODO(argus): la famille par défaut
 /// formatage de dates ou de nombres (`DateFormat(…, 'fr_FR')`, pluriels `intl`),
 /// l'alternative sans dépendance reste `initializeDateFormatting('fr_FR')` dans
 /// un `setUpAll` — mais elle ne fournit pas `MaterialLocalizations`.
+// TODO(argus): les delegates de ton app, ou SANS OBJET si aucun écran n'en a besoin
 const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =
     <LocalizationsDelegate<Object>>[];
 

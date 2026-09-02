@@ -318,7 +318,7 @@ thresholds:
   # verdir : ce serait le contraire d'un garde.
   brandedSplashMs: 0
   warmStartMs: 1000
-  # % de frames au-delà du budget de 16 ms (`dumpsys gfxinfo … framestats`).
+  # Mémoire résidente de l'app, en Mo (`dumpsys meminfo` → TOTAL PSS).
   memoryMb: 250
   binarySizeMb: 60
   # Pas de `crashFreePct` ici : rien dans le harnais ne compte les crashs. Un

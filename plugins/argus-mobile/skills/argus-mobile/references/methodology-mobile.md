@@ -480,7 +480,7 @@ sélecteur de texte que Maestro 2.8 connaît — `accessibilityText:` est refus�
 | a11y (cibles, contrastes, labels) | `flutter_test` `meetsGuideline` | **sans device** |
 | layout à 130 % / 200 % | `flutter_test` | **sans device** |
 | a11y (rendu réel) | `uiautomator dump` + `wm density` | device |
-| performance | `adb` : `am start -W`, `gfxinfo`, `meminfo` | device |
+| performance | `adb` : `am start -W`, `meminfo` | device |
 | security statique | manifeste, `unzip`, `aapt2` | ni l'un ni l'autre |
 | SCA | `osv-scanner`, `pub outdated` | ni l'un ni l'autre |
 | exploration par un agent | **Maestro MCP** | device |

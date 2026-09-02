@@ -82,6 +82,23 @@ Deux conséquences, dont la seconde est la plus coûteuse :
 **mesurée** (`avd`, `model`, `os` lus sur l'appareil) à côté de celle qui était
 `declared` — les comparer est alors une lecture, plus une enquête.
 
+⚠️ **ET CE QUE LA CI EN FAIT, parce que ce nom-là n'existe pas chez elle.** Un
+AVD est local à ta machine : le runner de CI n'a pas le tien, et l'action qui
+provisionne l'émulateur (`reactivecircus/android-emulator-runner`) en CRÉE un
+sous son propre nom. Tant que le workflow ne le lui disait pas, `resolveByAvd`
+cherchait `Medium_Phone_API_36` là où l'action avait posé `test` : la
+configuration prescrite juste au-dessus était donc exactement celle qui faisait
+échouer le job, et rien ne reliait les deux vocabulaires.
+
+Le workflow livré passe désormais `avd-name` à l'action, **dérivé de cette même
+clé** (`config.mjs --print-platforms` et `ciEmulator` sont la seule source) : ce
+que tu déclares ici est le nom que la CI crée. Rien à recopier de part et
+d'autre, et rien à changer entre local et CI.
+
+Si tu écris ton propre workflow, c'est la ligne à ne pas oublier — `model` et
+`os` s'y dérivent naturellement parce qu'ils ont l'air de décrire un appareil,
+`avd` non, et c'est pourtant lui que le runner compare.
+
 ⚠️ **Cela vaut pour TOUS les scripts, et ce n'était pas le cas.** `run.mjs` tenait
 seul cette règle ; `perf.mjs`, `a11y.mjs` et le calcul d'ABI de
 `--print-build-cmd` appelaient une résolution qui prenait le premier émulateur

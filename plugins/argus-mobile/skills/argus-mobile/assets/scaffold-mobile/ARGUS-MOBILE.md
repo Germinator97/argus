@@ -1,3 +1,4 @@
+<!-- ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier. -->
 # Argus Mobile — harness de non-régression QA (Flutter · Maestro)
 
 Harness QA installé par le skill **`/argus-mobile`**. Parcours end-to-end sur le
@@ -131,6 +132,8 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 | `make argus-doctor` | config résolue, outillage détecté, problèmes de configuration |
 | `make argus-lint` | syntaxe des flows Maestro, sans device |
 | `make argus-guards` | étage 1 : a11y + disposition, sans device |
+| `make argus-anchors` | les ancres arrivent-elles dans l'arbre ? sans device |
+| `make argus-debts` | le bloc `known_issues` prêt à coller, dérivé des échecs |
 | `make argus-run` | étage 2 : suite Maestro complète |
 | `make argus-smoke` | smoke seul — le plus rapide |
 | `make argus-visual` | régression visuelle seule |
