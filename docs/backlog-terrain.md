@@ -4998,7 +4998,92 @@ Corrigé des deux côtés — la mutation porte sur la prescription entière, et
 garde asserte la prescription plutôt que le token, puisqu'une mention suffisait à
 le contenter.
 
+### 343-346. ✅ Corrigés le 02/09/2026 — le run de CONFIRMATION, et un binaire qui n'était pas le sien
+
+**Run 45**, terrain n° 2 (API, Android), joué pour **mesurer la sortie plutôt que
+l'estimer**. Résultat : `gate: fail`, 9 findings, **5/5 dimensions**, 6 flows
+sans échec, 35/35 ancres, 358/358 gardes, 598 tests projet. L'authentification à
+trois écrans passe de bout en bout.
+
+⚠️ **Quatre constats, TOUS coûteux, et TOUS des « justes mais mal placés ».**
+Aucun mécanisme cassé : l'information existait à chaque fois **dans le
+document**, au mauvais endroit. Et la reproduction en a **aggravé deux** au lieu
+d'en démentir.
+
+### 343. 🔴 « PAQUET INTACT » : une énumération de causes qui manquait la plus fréquente
+
+**~35 minutes d'appareil perdues sur un binaire qui n'était pas le sien.** Douze
+flows rouges sur `id: identification_root is visible` — pendant que la capture
+montrait l'écran **correctement affiché**. Le kernel portait
+`auth_identification_root`, le nommage d'une **session Argus antérieure**,
+survivant dans le cache Gradle.
+
+`make argus-build` disait « PAQUET INTACT — même empreinte » et proposait
+`flutter clean` **à condition que la commande ait changé** (ABI, flavor, flags).
+La commande n'avait pas changé : c'est `lib/` qui avait changé. Le run a lu la
+condition, vu qu'elle ne s'appliquait pas, et **écarté le remède**.
+
+⚠️ **La reproduction a aggravé le constat.** Le run croyait que le skill décrivait
+ce cas — mesuré : `PAQUET INTACT` **n'apparaît pas** dans le SKILL, et le
+`flutter clean` qu'il y avait lu concerne une **erreur iOS de native assets**,
+sans rapport. *La présence d'un remède pour un autre cas lui a fait croire qu'il
+couvrait celui-ci.*
+
+📌 **La mesure qui tranche existait déjà** — `binaryFreshness` compare la date du
+paquet à la plus récente des sources `lib/**/*.dart` — mais elle ne servait qu'à
+l'audit de sécurité. Elle est désormais interrogeable là où le build se juge, et
+la recette **ÉCHOUE** (exit 1) sur un paquet périmé : un paquet intact *après*
+que `lib/` a changé n'est jamais une information, c'est un défaut.
+
+⚠️ **Deux erreurs à moi en l'écrivant, toutes deux prises par l'EXÉCUTION** : le
+drapeau posé **après** `parseArgs`, qui refuse les options inconnues, donc il ne
+s'exécutait jamais — *le même défaut que le rappel des TODO posé trois lignes
+avant la fonction qui l'arme, deux fois dans la journée* ; et une première
+version lisant `binaryToScan`, qui rend le binaire **scanné** (souvent la
+release) et non celui que la recette vient de produire.
+
+### 344-345. La contre-épreuve à cinq secondes n'était pas dans la liste
+
+Devant l'échec, une commande départage ce que les trois causes ne font que
+resserrer : `maestro hierarchy | grep -c <ancre>` demande à l'appareil ce qu'il
+porte. Elle existait — **430 lignes après** la liste, donc après le moment où
+l'on en a besoin. Le run la disait « listée en cause (3) » ; **elle n'y était pas
+du tout**.
+
+📌 **Et le comptage du marqueur avait manqué le défaut** : le run avait bien
+compté dans le binaire, et obtenu « 2 » — parce que `identification_root` est une
+**sous-chaîne** de `auth_identification_root`. Le skill enseigne d'ancrer les
+motifs ; il ne le redisait pas **là où l'on compte dans un binaire**, c'est-à-dire
+là où un nombre plausible est le plus convaincant.
+
+### 346. Le piège du dartdoc, à neuf cents lignes de l'endroit où il mord
+
+Le §2b prévient que `harness.dart` et `known_issues.dart` portent dans leur
+dartdoc un exemplaire **mot pour mot** de ce qu'on va y chercher. Le §3c, qui
+demande de les remplir, est neuf cents lignes plus loin. Le run l'avait lu, puis
+s'est ancré sur la ligne de déclaration au lieu du marqueur — fichier cassé, non
+suivi par git donc irrécupérable par `checkout`, reconstruit depuis le scaffold.
+
+📌 **Les gardes assertent l'ORDRE, pas la présence** : chacune de ces phrases
+existait déjà quelque part. Un garde satisfait par leur existence serait resté
+vert pendant les trente-cinq minutes qu'elles ont coûtées.
+
+📌 **Deux correctifs du chantier se sont bien comportés** : le rapport interrompu
+(un arrêt a écrasé 14 418 octets par un stub de 334 portant `"incomplete": true`
+et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le remède
+`icon:`, qui a guéri six ancres inertes.
+
 ## Ce qui reste
+
+Les points **343 à 346** sont fermés le 02/09/2026 — backlog vide pour la
+**quarante-quatrième** fois. Le run 45 était un run de **confirmation**, joué
+pour trancher la sortie sur une mesure.
+
+🔴 **LA SORTIE RESTE FERMÉE** : les quatre constats coûtent, dont un à
+**~35 minutes d'appareil**. Mais leur nature s'est resserrée encore — **les
+quatre sont des « justes mais MAL PLACÉS »**. Après quarante-cinq runs, ce qui
+reste n'est plus un mécanisme qui se trompe : c'est un document dont l'ordre ne
+suit pas celui des gestes.
 
 Les points **334 à 342** sont fermés le 02/09/2026 — backlog vide pour la
 **quarante-troisième** fois. Neuf points pour **douze constats**, parce que la
