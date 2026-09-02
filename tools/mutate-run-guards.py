@@ -1019,6 +1019,17 @@ MUTATIONS = [
     ("installeur", "le rappel des TODO n'est jamais arme",
      "      todo_rappel=1",
      "      todo_rappel=0"),
+
+    # ── La passe 343-346 (run 45) ───────────────────────────────────────────
+    ("sec", "un paquet perime est rapporte comme frais",
+     "    process.stdout.write(`${f ? (f.stale ? 'perime' : 'frais') : 'inconnu'}\\n`);",
+     "    process.stdout.write(`${f ? 'frais' : 'inconnu'}\\n`);"),
+    ("skill", "la contre-epreuve a cinq secondes disparait",
+     "maestro hierarchy | grep -c '<ton ancre>'     # 0 \u21d2 elle n'est PAS dans l'arbre",
+     "maestro test .maestro/smoke.yaml              # rejoue le flow pour voir"),
+    ("skill", "le rappel du dartdoc ne nomme plus le marqueur",
+     "un exemplaire MOT POUR MOT de ce que tu vas chercher.** S'ancrer sur la ligne de",
+     "un exemplaire de ce que tu vas chercher.** S'ancrer approximativement sur la ligne de"),
 ]
 
 
