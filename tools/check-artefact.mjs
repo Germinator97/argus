@@ -18,6 +18,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { compteursDeLaPage, compteursDuDepot, ecarts, texteDeLaPage } from './artefact-compteurs.mjs';
+import { fuitesDe } from './artefact-confidentialite.mjs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -91,12 +92,42 @@ for (const { cle, libelle, regime, valeurs } of releve.values()) {
   process.stdout.write(`  ${marque} ${libelle.padEnd(34)} dépôt ${String(attendu).padStart(4)}   page ${vues}${regime === 'journal' ? '  [journal : le max fait foi]' : ''}\n`);
 }
 
-if (trouves.length === 0) {
-  process.stdout.write('\n✔ tous les compteurs de la page correspondent au dépôt.\n');
+// ── Confidentialité, dans le MÊME geste ────────────────────────────────────
+// Deux outils dont l'un s'oublie valent moins qu'un seul qu'on lance. Un nom de
+// client a vécu des semaines en ligne parce que le balayage était un geste
+// séparé, qu'on faisait « quand on y pensait ».
+const { fuites, mortes, instrumentAveugle } = fuitesDe(texte);
+
+if (instrumentAveugle) {
+  process.stderr.write('✖ instrument aveugle : le témoin est introuvable dans la page.\n'
+    + '  Un balayage qui ne peut rien trouver rend « rien d\'interdit », soit le\n'
+    + '  verdict qu\'on espère. Aucun verdict n\'est rendu.\n');
+  process.exit(2);
+}
+
+process.stdout.write(`\n  ${fuites.length === 0 ? '✔' : '✖'} confidentialité                     `
+  + `${fuites.length === 0 ? 'aucun nom ni identifiant de projet' : `${fuites.length} à retirer`}\n`);
+
+for (const { quoi, valeur } of fuites) {
+  process.stdout.write(`      · ${valeur}  (${quoi})\n`);
+}
+for (const { valeur, pourquoi } of mortes) {
+  process.stdout.write(`      · exception morte : « ${valeur} » n'est plus dans la page — ${pourquoi}\n`);
+}
+
+if (trouves.length === 0 && fuites.length === 0 && mortes.length === 0) {
+  process.stdout.write('\n✔ compteurs à jour, et rien à anonymiser : la page peut être republiée.\n');
   process.exit(0);
 }
 
-process.stdout.write(`\n✖ ${trouves.length} écart(s) — la page ne doit pas être republiée en l'état :\n\n`);
+if (fuites.length > 0 || mortes.length > 0) {
+  process.stdout.write(`\n✖ ${fuites.length} fuite(s) et ${mortes.length} exception(s) morte(s).\n`
+    + '  Une exception qui ne sert plus est une permission permanente : la retirer.\n');
+}
+
+if (trouves.length > 0) {
+  process.stdout.write(`\n✖ ${trouves.length} écart(s) de compteur — la page ne doit pas être republiée en l'état :\n\n`);
+}
 for (const { libelle, genre, message } of trouves) {
   process.stdout.write(`  · ${libelle} [${genre}]\n    ${message}\n`);
 }

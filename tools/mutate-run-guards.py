@@ -29,6 +29,7 @@ CIBLES = {
     # vit hors dépôt, donc rien d'autre ne peut dire si l'instrument qui la
     # mesure garde encore — c'est le seul endroit d'où on le sait.
     "artefact": ROOT / "tools/artefact-compteurs.mjs",
+    "confid": ROOT / "tools/artefact-confidentialite.mjs",
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
@@ -979,6 +980,19 @@ MUTATIONS = [
     ("artefact", "un compteur ancre n'est plus compare",
      "        if (valeur !== attendu) {",
      "        if (valeur !== attendu && false) {"),
+
+    ("confid", "le detecteur d'AVD ne matche plus rien",
+     "    motif: /\\b[A-Za-z]\\w*_API\\d+\\b/g,",
+     "    motif: /\\bjamais_un_avd_\\d+\\b/g,"),
+    ("confid", "le temoin est toujours vrai, donc ne prouve rien",
+     "export const TEMOIN = /argus/i;",
+     "export const TEMOIN = /(?:)/;"),
+    ("confid", "une exception morte n'est plus signalee",
+     "    mortes: EXCEPTIONS.filter((e) => !servies.has(e.valeur.toLowerCase())),",
+     "    mortes: [],"),
+    ("confid", "le motif d'identifiant capte les cles de config du skill",
+     "    motif: /\\b(?:com|io|net|org|fr|dev|app|me|co|eu|be|ch|ca)\\.[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+/gi,",
+     "    motif: /\\b[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){2,}/gi,"),
 ]
 
 

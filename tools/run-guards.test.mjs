@@ -55,6 +55,7 @@ import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
+import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -5559,6 +5560,7 @@ test('aucun identifiant d\'application réel dans le dépôt (255)', () => {
   const AUTORISES = new Set([
     // Exemples de la documentation et des fixtures — aucun projet ne les porte.
     'com.exemple.a', 'com.exemple.app', 'com.exemple.monapp', 'com.x.monapp',
+    'com.exemple.autreapp',
     // Tiers légitime : c'est Flutter qui le déclare, pas nous.
     'io.flutter.splash',
   ]);
@@ -7488,4 +7490,48 @@ test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent
   assert.ok(vrai.mutations > 150, 'et les mutations du harnais aussi');
   assert.equal(vrai.plugins, 3, 'trois plugins : argus, argus-mobile, argus-web');
   assert.ok(vrai.runs >= 42, `le dernier run cité par le backlog, reçu ${vrai.runs}`);
+});
+
+test('la confidentialité mesure le PHÉNOMÈNE, pas une liste de noms (333)', () => {
+  // ⚠️ Le défaut d'origine : le contrôle était une liste de noms interdits, et
+  // une liste ne connaît que ce qu'on y a mis. Elle laisse passer le nom
+  // suivant — celui auquel personne n'a encore pensé. Ces quatre-là n'ont
+  // jamais été inscrits nulle part et doivent pourtant tomber.
+  const { fuites } = fuitesDe(texteDeLaPage(`<p>argus a tourné sur com.exemple.autreapp,
+    AVD Exemple_API34, depuis /Users/quelquun/dev, contre 192.168.1.42:5555.</p>`));
+  const valeurs = fuites.map((f) => f.valeur);
+  assert.ok(valeurs.includes('com.exemple.autreapp'), 'un bundle id doit tomber');
+  assert.ok(valeurs.includes('Exemple_API34'), "un nom d'AVD aussi");
+  assert.ok(valeurs.includes('/Users/quelquun'), 'un chemin de machine porte un nom de compte');
+  assert.ok(valeurs.includes('192.168.1.42:5555'), "l'adresse d'une machine aussi");
+});
+
+test('la confidentialité ne rougit pas sur les clés de config du skill (333)', () => {
+  // La moitié qu'on oublie, et celle qui décide si l'outil sera utilisé : un
+  // motif à trois segments quelconques capterait les clés du skill, donc
+  // crierait au loup à chaque page. C'est la borne en TLD inversé qui l'évite.
+  const propre = texteDeLaPage(`<p>argus lit auth.anchors.success, config.build.android,
+    ro.build.version.sdk, argus.mobile.yaml et report.artifact.html.</p>`);
+  assert.deepEqual(fuitesDe(propre).fuites, [], 'aucune de ces clés n\'est un identifiant de projet');
+});
+
+test('une exception explicite passe, et meurt quand elle ne sert plus (333)', () => {
+  const avec = fuitesDe(texteDeLaPage('<p>argus : com.exemple.app sur AutreProjet_API30</p>'));
+  assert.deepEqual(avec.fuites, [], 'le générique déclaré doit passer');
+  assert.deepEqual(avec.mortes, [], 'et les deux exceptions sont servies');
+
+  // ⚠️ Une exception qui survit à ce qu'elle décrivait devient une permission
+  // permanente — le défaut que ce projet traque partout ailleurs.
+  const sans = fuitesDe(texteDeLaPage('<p>argus n\'y cite plus aucun exemple.</p>'));
+  assert.equal(sans.mortes.length, EXCEPTIONS.length, 'une exception inutilisée doit être signalée');
+  assert.ok(sans.mortes.every((m) => m.pourquoi.length > 0), 'et porter la raison de son existence');
+});
+
+test('le balayage prouve qu\'il VOIT avant de dire qu\'il n\'a rien vu (333)', () => {
+  // Sans témoin, une page vide ou lue de travers rend « rien d'interdit »,
+  // c'est-à-dire précisément le verdict qu'on espère.
+  assert.equal(fuitesDe('du texte sans rapport').instrumentAveugle, true,
+    'une page où le témoin manque ne permet aucun verdict');
+  assert.equal(fuitesDe('une page du chantier argus').instrumentAveugle, false,
+    'et une vraie page doit pouvoir être jugée');
 });
