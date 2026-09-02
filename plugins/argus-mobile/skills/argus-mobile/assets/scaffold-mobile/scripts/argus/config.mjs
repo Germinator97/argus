@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — socle partagé (lecture de config, outillage, utilitaires)
@@ -21,7 +22,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -641,9 +642,17 @@ export function ciEmulator(config, defauts = { apiLevel: '33', profile: 'pixel_6
   }
   const os = String(device.os ?? '').trim();
   const model = String(device.model ?? '').trim();
+  // ⚠️ L'AVD VOYAGE AVEC SES DEUX VOISINS, et son absence coûtait le job entier.
+  // `model` et `os` étaient dérivés jusqu'à la CI ; `avd` — la SEULE identité
+  // que le runner compare (`resolveByAvd`) — ne l'était pas. Le scaffold exige
+  // pourtant de le renseigner : la configuration prescrite était donc exactement
+  // celle qui faisait échouer le job, l'action provisionnant un AVD sous son
+  // propre nom. Vide quand rien n'est déclaré : l'appelant retombe alors sur le
+  // défaut de l'action, ce qui est le comportement d'avant.
+  const avdName = String(device.avd ?? '').trim();
   if (!os && !model) {
     return {
-      ok: true, ...defauts, source: 'défaut du workflow',
+      ok: true, ...defauts, avdName, source: 'défaut du workflow',
       why: `devices[].os et model sont vides (normal avec un avd nommé) — l'émulateur de CI reste `
         + `api-level ${defauts.apiLevel} / ${defauts.profile}. Renseigne-les pour que la CI démarre `
         + `l'appareil de tes références visuelles : ils ne gênent plus, l'empreinte des baselines est MESURÉE.`,
@@ -654,7 +663,7 @@ export function ciEmulator(config, defauts = { apiLevel: '33', profile: 'pixel_6
   }
   return {
     ok: true, apiLevel: os.slice('android-'.length), profile: model || defauts.profile,
-    source: 'argus.mobile.yaml', why: '',
+    avdName, source: 'argus.mobile.yaml', why: '',
   };
 }
 
@@ -830,7 +839,6 @@ export function dartSansCommentaires(src) {
   return out;
 }
 
-/** Les `identifier:` posés dans lib/, littéraux seuls. @param {string} root @param {any} [config] @returns {string[]} */
 /**
  * Les littéraux de chaîne d'un argument Dart, interpolations comprises.
  *
@@ -888,6 +896,16 @@ export function litterauxDart(source) {
   return trouves;
 }
 
+/**
+ * Les `identifier:` posés dans lib/, littéraux seuls.
+ *
+ * La liste porte trois relevés attachés, hors énumération : `opaques` (la clé
+ * est là, aucun littéral lisible), `familles` (un gabarit interpolé) et
+ * `fichiers` (combien de `.dart` ont été LUS — le dénominateur sans lequel une
+ * liste vide ne veut rien dire).
+ * @param {string} root @param {any} [config]
+ * @returns {string[] & {opaques:string[], familles:string[], fichiers:number}}
+ */
 export function posedAnchors(root, config = undefined) {
   // ⚠️ `[a-zA-Z]*[Ii]dentifier:` ET NON `identifier:`. Le motif minuscule ne
   // voyait que `Semantics(identifier: …)` et ratait `semanticIdentifier: '…'`,
@@ -915,6 +933,9 @@ export function posedAnchors(root, config = undefined) {
   const cle = new RegExp(`(?:${['[a-zA-Z]*[Ii]dentifier', ...sur].join('|')}):`, 'g');
   /** @type {Set<string>} */
   const poses = new Set();
+  // Le dénominateur de tout ce qui suit : une liste vide ne veut rien dire tant
+  // qu'on ne sait pas si elle vient d'un corpus vide.
+  let fichiers = 0;
   // Les arguments où la clé est présente mais dont AUCUN littéral ne se laisse
   // lire (`identifier: widget.anchorId`). On ne peut rien en dire — alors on le
   // DIT, plutôt que de les compter zéro en silence.
@@ -931,6 +952,7 @@ export function posedAnchors(root, config = undefined) {
       const abs = join(dir, e.name);
       if (e.isDirectory()) { marcher(abs); continue; }
       if (!e.name.endsWith('.dart')) continue;
+      fichiers += 1;
       // Le dartdoc d'exemple porte de VRAIES ancres — deux compteurs du chantier
       // s'y sont fait prendre à seize runs d'écart. Le balayage les ôte, ainsi
       // que les commentaires de fin de ligne, que le filtre `///` laissait passer.
@@ -967,7 +989,14 @@ export function posedAnchors(root, config = undefined) {
   // ancres, ce sont des endroits où l'on ne sait pas s'il y en a.
   Object.defineProperty(liste, 'opaques', { value: [...opaques].sort(), enumerable: false });
   Object.defineProperty(liste, 'familles', { value: [...familles].sort(), enumerable: false });
-  return liste;
+  // ⚠️ COMBIEN DE FICHIERS ONT ÉTÉ LUS, et c'est ce qui manquait pour distinguer
+  // « aucune ancre orpheline » de « rien n'a été mesuré ». Sans `lib/` — un
+  // monorepo, ou simplement le mauvais répertoire courant — la liste est vide et
+  // le contrôle concluait au vert.
+  Object.defineProperty(liste, 'fichiers', { value: fichiers, enumerable: false });
+  // `defineProperty` est invisible au typage : le cast dit ce que la fonction
+  // rend vraiment, et c'est la seule façon de le déclarer sans mentir.
+  return /** @type {string[] & {opaques:string[], familles:string[], fichiers:number}} */ (liste);
 }
 
 /**
@@ -1218,8 +1247,14 @@ export function configNonEmbarquee(root, config) {
     if (typeof regle.quoi === 'string') {
       if (existsSync(join(root, regle.quoi))) trouves = [regle.quoi];
     } else if (regle.quoi && typeof regle.quoi === 'object') {
+      // ⚠️ `relative()`, jamais une découpe par LONGUEUR. Avec `root` valant
+      // « . » — ce que rend `dirname('argus.mobile.yaml')`, donc le cas par
+      // défaut — `join('.', 'assets')` se normalise en « assets » sans le
+      // « ./ », et `slice(root.length + 1)` retirait deux vrais caractères :
+      // le rapport annonçait « sets/fonts/X.ttf ». Le verdict restait juste (le
+      // motif dérive du basename), seul le chemin qu'on va chercher était faux.
       trouves = fichiersSous(join(root, regle.quoi.sous), regle.quoi.extensions ?? [])
-        .map((f) => f.slice(root.length + 1));
+        .map((f) => relative(root, f));
     }
     if (trouves.length === 0) continue;
 
@@ -1572,6 +1607,19 @@ export function detectTools(names = Object.keys(TOOLS)) {
       : sh(toolPath(name), spec.probe);
     // `apkanalyzer -h` sort en code non nul tout en prouvant sa présence :
     // l'absence se reconnaît à l'erreur de spawn (ENOENT), pas au status.
+    //
+    // ⚠️ LIMITE CONNUE, SOUS WINDOWS SEULEMENT. `sh()` y passe par le shell
+    // (`shell: IS_WINDOWS`, nécessaire pour `aapt2.exe` et `apkanalyzer.bat`),
+    // et un shell ne rend pas d'ENOENT sur une commande inconnue : il rend un
+    // statut non nul. Ce critère déclare donc TOUT présent sur Windows, et la
+    // suite échouera plus loin, sur un message moins clair.
+    //
+    // Ce n'est pas corrigé ici à dessein : le remède (interroger `where`) n'est
+    // pas éprouvable depuis ce dépôt, et poser du code non mesuré dans la
+    // fonction qui décide de ce qui sera scanné serait pire que la limite. Le
+    // reste du fichier prend Windows au sérieux (chemins du SDK, `.exe`,
+    // `LOCALAPPDATA`) : si la plateforme entre au périmètre, c'est ici qu'il
+    // faut commencer, avec une machine pour le vérifier.
     const present = res.error === null;
     out[name] = { present, version: present ? firstLine(res.stdout || res.stderr) : null };
   }
@@ -1802,6 +1850,43 @@ export function flowCycles(flows) {
   return cycles;
 }
 
+/**
+ * Les `runFlow:` qui désignent un fichier absent du workspace.
+ *
+ * Rend des couples `[flow appelant, cible manquante]`. Séparé de [flowCycles]
+ * parce que ce sont deux défauts distincts : l'un rejette le workspace entier au
+ * démarrage, l'autre échoue à l'étape, sur device, après avoir payé le run.
+ * @param {Record<string,string>} flows @returns {Array<[string,string]>}
+ */
+export function flowsIntrouvables(flows) {
+  const noms = new Set(Object.keys(flows ?? {}));
+  const dirOf = (/** @type {string} */ f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
+  const norm = (/** @type {string} */ base, /** @type {string} */ cible) => {
+    /** @type {string[]} */
+    const out = [];
+    for (const seg of (base ? `${base}/${cible}` : cible).split('/')) {
+      if (seg === '.' || seg === '') continue;
+      if (seg === '..') out.pop();
+      else out.push(seg);
+    }
+    return out.join('/');
+  };
+  /** @type {Array<[string,string]>} */
+  const manquants = [];
+  for (const [nom, texte] of Object.entries(flows ?? {})) {
+    // Les commentaires d'abord : le gabarit livré porte des exemples commentés.
+    const utile = String(texte ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    const cibles = [
+      ...[...utile.matchAll(/runFlow:\s*([^\s#{][^\s#]*\.ya?ml)/g)].map((m) => m[1]),
+      ...[...utile.matchAll(/runFlow:[\s\S]{0,120}?file:\s*([^\s#]+\.ya?ml)/g)].map((m) => m[1]),
+    ];
+    for (const cible of new Set(cibles)) {
+      if (!noms.has(norm(dirOf(nom), cible))) manquants.push([nom, cible]);
+    }
+  }
+  return manquants;
+}
+
 function main() {
   // ⚠️ AVANT `loadConfig()`, à dessein : le graphe d'appels ne dépend d'aucune
   // config, et l'y coupler faisait échouer le contrôle sur « argus.mobile.yaml
@@ -1826,6 +1911,19 @@ function main() {
     if (n === 0) {
       err('aucun flow lu sous .maestro/ — le contrôle du graphe n\'a rien mesuré.');
       process.exit(2);
+    }
+    // ⚠️ UN `runFlow:` VERS UN FICHIER ABSENT ne se signalait nulle part :
+    // `check-syntax` valide un fichier à la fois et ne résout pas le graphe,
+    // et ce contrôle-ci traitait la cible manquante comme un nœud sans arête
+    // (`graphe[n] ?? []`). L'échec n'arrivait donc que sur device.
+    const manquants = flowsIntrouvables(flows);
+    for (const [depuis, cible] of manquants) {
+      err(`${depuis} appelle « ${cible} », qui n'existe pas sous .maestro/`);
+    }
+    if (manquants.length) {
+      err('  Maestro ne le dira qu\'au lancement, sur device. Corrige le chemin — il est');
+      err('  relatif au dossier du flow appelant, pas à la racine du workspace.');
+      process.exit(1);
     }
     const cycles = flowCycles(flows);
     for (const c of cycles) err(`cycle d'appels entre flows : ${c.join(' → ')}`);
@@ -1900,6 +1998,20 @@ function main() {
   // déclaré → présent (point 219). Sort en 1 pour que la cible échoue : une
   // ancre non déclarée est une absence, donc rien d'autre ne la signale.
   if (process.argv.slice(2).includes('--check-anchors')) {
+    // ⚠️ RIEN LU, RIEN À CONCLURE — et ce garde manquait ici alors que son
+    // voisin `--check-flows` le porte depuis toujours, quatre-vingts lignes plus
+    // haut. Sans `lib/` (monorepo, mauvais répertoire courant), la liste des
+    // ancres posées est vide, aucune orpheline n'apparaît, et le contrôle
+    // rendait `✔ toute ancre posée est déclarée (0 lue)` avec un exit 0. Le
+    // compte était honnête ; c'est la pastille verte devant qui se lit.
+    const lues = posedAnchors(process.cwd(), config);
+    if ((lues.fichiers ?? 0) === 0) {
+      err('aucun fichier .dart lu sous lib/ — le contrôle des ancres n\'a rien mesuré.');
+      err(`  Cherché dans : ${join(process.cwd(), 'lib')}`);
+      err('  Lance-le à la racine du projet Flutter. Sur un monorepo, c\'est le dossier');
+      err('  qui porte pubspec.yaml et lib/, pas celui qui les contient.');
+      process.exit(2);
+    }
     const orphelines = undeclaredAnchors(process.cwd(), config);
     if (orphelines.length === 0) {
       // ⚠️ LE COMPTE SEUL A DÉJÀ MENTI. « 54 littérales » était exact et taisait
