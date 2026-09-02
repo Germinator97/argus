@@ -993,6 +993,29 @@ MUTATIONS = [
     ("confid", "le motif d'identifiant capte les cles de config du skill",
      "    motif: /\\b(?:com|io|net|org|fr|dev|app|me|co|eu|be|ch|ca)\\.[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*)+/gi,",
      "    motif: /\\b[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){2,}/gi,"),
+
+    # ── La passe 334-342 ────────────────────────────────────────────────────
+    ("config", "l'automate ne saute plus les chaines internes a une interpolation",
+     "            const interne = d;",
+     "            const interne = String.fromCharCode(0);"),
+    ("config", "le releve d'ancres revient au motif naif",
+     "        const litteraux = litterauxDart(arg)",
+     "        const litteraux = [...arg.matchAll(/'([^']*)'/g)].map((x) => x[1])"),
+    ("run", "le masquage redevient aveugle a la valeur vide",
+     "    return trouve[2] === '' ? `${trouve[1]}=<VIDE>` : `${trouve[1]}=***`;",
+     "    return `${trouve[1]}=***`;"),
+    ("run", "aucun secret n'est jamais rapporte comme vide",
+     "    .filter(([cle, valeur]) => /^QA_[A-Z0-9_]+$/.test(cle) && String(valeur ?? '') === '')",
+     "    .filter(() => false)"),
+    ("skill", "le geste du clavier disparait, le diagnostic reste",
+     "- **sur un écran à élément flottant, ouvre le clavier en DERNIER** — touche",
+     "- sur un écran à élément flottant, la disposition change — touche"),
+    ("skill", "la bonne grandeur du plafond n'est plus nommee",
+     "   Le tell est gratuit : si `startup.samples` vaut plusieurs fois `firstLaunchMs`,",
+     "   Le tell est gratuit : si la pire attente vaut plusieurs fois `firstLaunchMs`,"),
+    ("installeur", "le rappel des TODO n'est jamais arme",
+     "      todo_rappel=1",
+     "      todo_rappel=0"),
 ]
 
 
