@@ -1,3 +1,4 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 appId: ${APP_ID}
 name: Argus — régression visuelle
 tags:
@@ -41,7 +42,7 @@ tags:
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_SCREEN_ANCHOR}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Écran cible affiché avant capture
 
       - runFlow: _subflows/mask-dynamic.yaml

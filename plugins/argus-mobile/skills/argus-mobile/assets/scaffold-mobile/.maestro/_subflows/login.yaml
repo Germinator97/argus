@@ -53,7 +53,16 @@ appId: ${APP_ID}
       - tapOn:
           id: ${ARGUS_AUTH_USER}
           label: Champ identifiant
-      - inputText: ${QA_USER}
+      # ⚠️ LA FORME LONGUE, POUR LE `label:`. Écrite en forme courte, la valeur
+      # saisie apparaît EN CLAIR en console et dans les rapports — pendant que le
+      # mot de passe, deux lignes plus bas, était bien masqué. L'intention était
+      # juste partout ailleurs : l'en-tête de ce fichier explique le mécanisme, et
+      # le runner masque les deux dans la ligne de commande qu'il imprime. Un
+      # identifiant de test est couramment un e-mail ou un numéro, et il part
+      # dans le rapport publié.
+      - inputText:
+          text: ${QA_USER}
+          label: Saisie de l'identifiant du compte de test
 
       - tapOn:
           id: ${ARGUS_AUTH_PASS}
@@ -71,7 +80,7 @@ appId: ${APP_ID}
       - extendedWaitUntil:
           visible:
             id: ${ARGUS_AUTH_SUCCESS}
-          timeout: 20000
+          timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Session ouverte (ancre post-connexion visible)
 
 - runFlow:
