@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — MASVS statique (détection, jamais exploitation)
@@ -115,13 +116,66 @@ function auditConfigFiles(root, config) {
  * Contrôle du manifeste Android du dépôt.
  * @param {string} root @param {any} config @returns {any[]}
  */
-function auditAndroidManifest(root, config) {
-  const path = join(root, 'android/app/src/main/AndroidManifest.xml');
-  if (!existsSync(path)) return [];
-  const xml = readFileSync(path, 'utf8');
-  const rel = relative(root, path);
-  const findings = [];
+export function auditAndroidManifest(root, config) {
+  // ⚠️ TOUTES LES VARIANTES, PAS SEULEMENT `main/`. Un `usesCleartextTraffic` ou
+  // un `allowBackup` posé dans `src/release/` — le manifeste qui compte — n'était
+  // vu NI ici (mauvais fichier) NI au niveau B : `aapt2 dump badging` ne rapporte
+  // pas ces attributs, il ne rattrape que `debuggable`. La doctrine du manifeste
+  // FUSIONNÉ, que ce fichier applique aux permissions et que `argus.mobile.yaml`
+  // répète sur trois paragraphes, s'arrêtait aux permissions.
+  //
+  // Gradle fusionne `main` avec la variante construite : on lit donc l'union, et
+  // chaque finding porte le fichier où l'attribut a été trouvé.
+  const variantes = variantesDuManifeste(root);
+  if (variantes.length === 0) return [];
   const sec = config.security ?? {};
+
+  // Les DRAPEAUX se lisent par variante : c'est leur emplacement qui décide de
+  // ce qui est publié, et le finding doit nommer le fichier fautif.
+  const findings = variantes.flatMap(([path, xml]) => drapeauxFindings(xml, relative(root, path), sec));
+
+  // ⚠️ LES PERMISSIONS, ELLES, SE LISENT SUR L'UNION — une seule fois. Gradle
+  // les FUSIONNE, donc les compter par variante produirait deux findings de
+  // même id pour un seul défaut : le premier correctif de ce point l'a fait, et
+  // aucun garde ne l'a vu parce que le cas de test ne portait pas de permission.
+  const relPrincipal = relative(root, variantes[0][0]);
+  const union = variantes.map(([, xml]) => xml).join('\n');
+  findings.push(...auditPermissions(union, relPrincipal, sec));
+  findings.push(...auditExportedComponents(union, relPrincipal));
+
+  // Un composant déclaré dans deux manifestes ne vaut qu'un finding.
+  const vus = new Set();
+  return findings.filter((f) => !vus.has(f.id) && vus.add(f.id));
+}
+
+/**
+ * Les manifestes Android du dépôt : `main` et chaque variante (`release`,
+ * `debug`, les flavors). Rend des couples `[chemin, contenu]`.
+ * @param {string} root @returns {Array<[string,string]>}
+ */
+function variantesDuManifeste(root) {
+  const base = join(root, 'android/app/src');
+  /** @type {Array<[string,string]>} */
+  const out = [];
+  let dossiers = [];
+  try { dossiers = readdirSync(base, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name); }
+  catch { return out; }
+  // `main` d'abord : c'est celui que le lecteur ouvrira en premier.
+  for (const nom of ['main', ...dossiers.filter((d) => d !== 'main').sort()]) {
+    const p = join(base, nom, 'AndroidManifest.xml');
+    if (existsSync(p)) out.push([p, readFileSync(p, 'utf8')]);
+  }
+  return out;
+}
+
+/**
+ * Les trois DRAPEAUX d'un manifeste donné. Séparé pour que le balayage des
+ * variantes ne duplique pas la règle — et parce que les permissions, elles, se
+ * lisent sur l'union et non par fichier.
+ * @param {string} xml @param {string} rel @param {any} sec @returns {any[]}
+ */
+function drapeauxFindings(xml, rel, sec) {
+  const findings = [];
 
   if (sec.requireDebuggableOff && /android:debuggable\s*=\s*"true"/.test(xml)) {
     findings.push(finding('QAM-SEC-DEBUG', 'Application débogable', 'blocker',
@@ -141,8 +195,6 @@ function auditAndroidManifest(root, config) {
       'android:allowBackup="true"',
       'adb backup extrait alors les données de l\'app, jetons de session compris, sans root.', rel));
   }
-  findings.push(...auditPermissions(xml, rel, sec));
-  findings.push(...auditExportedComponents(xml, rel));
   return findings;
 }
 
@@ -457,15 +509,19 @@ export function buildHintFor(binary, root, config, pinned = usesFvm(), platform 
  * est de rendre le CÂBLAGE lisible en valeur plutôt qu'en texte.
  * @param {string} platform @param {string} binary @param {string} root
  * @param {any} config @param {boolean} unzipPresent
- * @returns {{scan:boolean, why:string}}
+ * @returns {{scan:boolean, nature:'ok'|'environnement'|'sans-objet', why:string}}
  */
 export function binaryScanPlan(platform, binary, root, config, unzipPresent) {
-  if (platform !== 'android') return { scan: false, why: iosBinarySkipReason(binary, root) };
-  if (!existsSync(binary)) {
-    return { scan: false, why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config, undefined, platform)}` };
+  if (platform !== 'android') {
+    return { scan: false, nature: 'sans-objet', why: iosBinarySkipReason(binary, root) };
   }
-  if (!unzipPresent) return { scan: false, why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
-  return { scan: true, why: '' };
+  if (!existsSync(binary)) {
+    return { scan: false, nature: 'environnement', why: `binaire absent (${relative(root, binary)}) — construis-le : ${buildHintFor(binary, root, config, undefined, platform)}` };
+  }
+  if (!unzipPresent) {
+    return { scan: false, nature: 'environnement', why: 'unzip absent du PATH : niveau B (binaire livré) non exécuté.' };
+  }
+  return { scan: true, nature: 'ok', why: '' };
 }
 
 /**
@@ -510,7 +566,9 @@ export function auditApk(apk, config, dartPackage = dartPackageName(process.cwd(
   /** @type {any[]} */
   const findings = [];
   const listing = sh('unzip', ['-Z1', apk]);
-  if (!listing.ok) return { findings, facts: { scanned: false, why: 'unzip a échoué sur l\'APK' } };
+  if (!listing.ok) {
+    return { findings, facts: { scanned: false, nature: 'environnement', why: 'unzip a échoué sur l\'APK' } };
+  }
   const entries = listing.stdout.split('\n').map((l) => l.trim()).filter(Boolean);
 
   // Un `kernel_blob.bin` signe un build DEBUG : le Dart y est interprété et
@@ -537,6 +595,9 @@ export function auditApk(apk, config, dartPackage = dartPackageName(process.cwd(
       findings: [],
       facts: {
         scanned: false,
+        // ⚠️ UNE DÉCISION, PAS UNE PANNE — et c'est toute la différence pour
+        // `--require-tools`. Voir [exigenceNonTenue].
+        nature: 'sans-objet',
         isDebugBuild: true,
         why: 'binaire debug (assets/flutter_assets/kernel_blob.bin présent) — un scan '
           + 'de sécurité n\'y dit rien de la publication. Construis la release, puis relance.',
@@ -552,7 +613,7 @@ export function auditApk(apk, config, dartPackage = dartPackageName(process.cwd(
 
   // aapt2 lit le manifeste COMPILÉ, c'est-à-dire l'état réel après fusion.
   const badging = sh(toolPath('aapt2'), ['dump', 'badging', apk]);
-  const facts = { scanned: true, entries: entries.length, isDebugBuild, hasAot, badging: badging.ok, obfuscation };
+  const facts = { scanned: true, nature: 'ok', entries: entries.length, isDebugBuild, hasAot, badging: badging.ok, obfuscation };
   if (badging.ok) findings.push(...auditBadging(badging.stdout, apk, config));
   else findings.push(finding('QAM-SEC-AAPT2', 'Manifeste compilé non lu', 'info',
     'aapt2 disponible', 'aapt2 absent du PATH (il n\'y est pas par défaut : $ANDROID_HOME/build-tools/<version>/aapt2)',
@@ -642,6 +703,32 @@ export function auditObfuscation(apk, entries, dartPackage) {
 }
 
 /**
+ * Ce que `--require-tools` doit refuser — et ce qu'il doit laisser passer.
+ *
+ * ⚠️ IL CONFONDAIT DEUX CAUSES DE NON-SCAN, et la CI livrée en mourait. Un
+ * défaut d'ENVIRONNEMENT (unzip absent, binaire jamais construit) est réparable
+ * et doit faire échouer : c'est exactement le faux vert que ce drapeau existe
+ * pour empêcher. Une DÉCISION du code — « ce binaire est un debug, un scan de
+ * sécurité n'y dit rien de la publication » — n'est pas réparable en posant un
+ * outil, et la traiter comme une panne fait rougir un projet sain.
+ *
+ * Mesuré sur le workflow livré : il construisait `flutter build apk --debug`
+ * puis lançait `sec.mjs --require-tools`. Les deux moitiés étaient justes
+ * séparément ; leur assemblage rendait `exit 2` au premier run, sur un dépôt
+ * neuf, pour un défaut qui n'existait pas.
+ *
+ * ⚠️ Une forme SANS `nature` échoue, délibérément : un relevé d'une version
+ * antérieure ne doit pas devenir vert en traversant cette fonction.
+ * @param {any} facts le bloc `facts` rendu par [binaryScanPlan] ou [auditApk]
+ * @returns {string|null} le message d'échec, ou `null` s'il n'y a rien à exiger
+ */
+export function exigenceNonTenue(facts) {
+  if (facts?.scanned) return null;
+  if (facts?.nature === 'sans-objet') return null;
+  return `--require-tools : le binaire livré n'a pas été analysé (${facts?.why || 'raison non rapportée'}).`;
+}
+
+/**
  * @param {string} badging @param {string} apk @param {any} config @returns {any[]}
  */
 function auditBadging(badging, apk, config) {
@@ -694,8 +781,12 @@ function main() {
   if (process.argv.slice(2).includes('--print-freshness')) {
     let cfg;
     try { cfg = loadConfig(); } catch { process.stdout.write('inconnu\n'); process.exit(0); }
-    const i = process.argv.indexOf('--platform');
-    const plateforme = (i >= 0 && process.argv[i + 1]) || (cfg.platforms ?? ['android'])[0];
+    // ⚠️ `--platform=<x>`, comme PARTOUT ailleurs dans ce fichier. Cette branche
+    // lisait la forme séparée (`--platform ios`), que `parseArgs` refuse : un
+    // `--print-freshness --platform=ios` retombait donc en silence sur la
+    // première plateforme déclarée et jugeait la fraîcheur du binaire Android.
+    const drapeau = process.argv.slice(2).find((x) => x.startsWith('--platform='));
+    const plateforme = (drapeau ? drapeau.split('=')[1] : '') || (cfg.platforms ?? ['android'])[0];
     // Le paquet que `argus-build` PRODUIT (`build.android`/`build.ios`), jamais
     // celui que l'audit SCANNE (`androidScan`, souvent la release) : les
     // confondre rendrait « frais » sur un paquet que la commande ne touche pas.
@@ -812,9 +903,15 @@ function main() {
     .map((s) => `${findings.filter((f) => f.severity === s).length} ${s}`).join(' · ');
   log(`${findings.length} finding(s) — ${bySeverity}`);
   log(`rapport : ${reportPath}`);
-  if (opts.requireTools && !binaryFacts.scanned) {
-    err(`--require-tools : le binaire livré n'a pas été analysé (${binaryFacts.why}).`);
+  const manque = opts.requireTools ? exigenceNonTenue(binaryFacts) : null;
+  if (manque) {
+    err(manque);
     process.exit(2);
+  }
+  // Un scan SAUTÉ pour une raison légitime reste dit, sans faire échouer : la
+  // dimension apparaît « sautée » dans le rapport, jamais verte.
+  if (opts.requireTools && !binaryFacts.scanned) {
+    warn(`--require-tools : rien à exiger ici — ${binaryFacts.why}`);
   }
   if (opts.requireTools && obfuscation && !obfuscation.scanned) {
     err(`--require-tools : l'obfuscation n'a pas pu être jugée (${obfuscation.why}).`);
