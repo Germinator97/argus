@@ -41,7 +41,7 @@ import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditApk, auditObfuscation, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditAndroidManifest, auditApk, auditObfuscation, exigenceNonTenue, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -52,12 +52,14 @@ import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/ski
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { bandOf, cvssOf, findingsFromOsv } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sca.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -3143,7 +3145,8 @@ test('la décision de sauter le scan est CÂBLÉE, pas seulement juste', () => {
 
   // Android, binaire présent, unzip là : on scanne. Sans ce cas, un plan qui
   // refuserait TOUT passerait — c'est la moitié qu'on oublie.
-  assert.deepEqual(binaryScanPlan('android', apk, dossier, config, true), { scan: true, why: '' });
+  assert.deepEqual(binaryScanPlan('android', apk, dossier, config, true),
+    { scan: true, nature: 'ok', why: '' });
 
   // Les deux refus qui restent, chacun avec sa raison propre.
   const absent = binaryScanPlan('android', join(dossier, 'nulle-part.apk'), dossier, config, true);
@@ -3678,7 +3681,13 @@ test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (23
   assert.ok(debut > 0, 'le workflow n\'a plus de bloc jobs:');
   /** @type {Record<string,string>} */
   const jobs = {};
-  const corps = wf.slice(debut);
+  // ⚠️ LES COMMENTAIRES D'ABORD. Ce garde attribuait au DERNIER job tout ce qui
+  // suit le bloc `jobs:` — y compris les blocs de documentation en pied de
+  // fichier. Un exemple commenté portant `flutter build apk` a suffi à lui faire
+  // accuser `e2e-ios` de construire un APK. C'est le défaut que `flowCycles`
+  // documente déjà pour le graphe des flows : un analyseur qui lit les
+  // commentaires invente ce qu'il mesure.
+  const corps = wf.slice(debut).split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
   const bornes = [...corps.matchAll(/\n {2}([a-z][a-z0-9-]*):\n/g)];
   assert.ok(bornes.length >= 4, `moins de 4 jobs trouvés (${bornes.length}) — si le format a changé, mets ce garde à jour`);
   bornes.forEach((m, i) => {
@@ -3690,7 +3699,12 @@ test('les jobs de la CI livrée SUIVENT platforms:, ils ne le supposent plus (23
   // condition, jamais son nom. Un job renommé garde donc son exigence.
   const androidOnly = Object.entries(jobs).filter(([, t]) =>
     /android-emulator-runner|build apk|--platform=android/.test(t));
-  assert.ok(androidOnly.length >= 2,
+  // ⚠️ `>= 1`, et non un compte figé. Ce garde exigeait DEUX jobs Android, ce
+  // qui décrivait l'état du jour où il a été écrit : `security` construisait
+  // alors un APK debug — précisément le défaut B1, retiré depuis. Un attendu
+  // qui fige un cardinal se périme au premier correctif ; ce qu'on veut savoir
+  // est que le motif trouve encore quelque chose.
+  assert.ok(androidOnly.length >= 1,
     `aucun job Android détecté (${androidOnly.length}) — le motif ne mesure plus rien`);
   for (const [nom, texte] of androidOnly) {
     assert.match(texte, /if:\s*needs\.cadre\.outputs\.android == 'true'/,
@@ -7741,4 +7755,555 @@ test('le piège du dartdoc est rappelé LÀ OÙ l\'on édite ces fichiers (346)'
     'il doit précéder immédiatement la consigne de remplir ces fichiers');
   assert.match(plat.slice(rappel, todo), /ARGUS:DECLARATION/,
     'et nommer le marqueur sur lequel s\'ancrer, sinon il décrit le piège sans le fermer');
+});
+
+
+// ── B2 · la notation d'une CVE, et le repli que le chemin nominal sautait ──
+// Une vulnérabilité OSV porte son score sous forme de VECTEUR (`CVSS:3.1/…`),
+// jamais de nombre : c'est la forme dominante, pas le cas limite. Tant que
+// `cvssOf` sortait sur ce vecteur, le repli `database_specific.severity` écrit
+// deux lignes plus bas n'était JAMAIS atteint — toute CVE, même `low`,
+// ressortait `major` et franchissait n'importe quel `scaFailOn`.
+const VULN_LOW = {
+  id: 'GHSA-xxxx-yyyy-zzzz',
+  summary: 'quelque chose de bénin',
+  severity: [{ type: 'CVSS_V3', score: 'CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:U/C:L/I:N/A:N' }],
+  database_specific: { severity: 'LOW' },
+};
+
+test('une CVE dont le score est un VECTEUR se lit quand même par sa bande nommée', () => {
+  assert.equal(cvssOf(VULN_LOW), 0, 'le repli database_specific doit être atteint');
+  assert.equal(bandOf(cvssOf(VULN_LOW)).band, 'low');
+});
+
+test('un score NUMÉRIQUE l\'emporte toujours sur la bande nommée', () => {
+  // L'ordre compte : un chiffre publié est plus précis qu'une bande.
+  const precis = { severity: [{ score: '9.8' }], database_specific: { severity: 'LOW' } };
+  assert.equal(cvssOf(precis), 9.8);
+  assert.equal(bandOf(9.8).band, 'critical');
+});
+
+test('sans score NI bande nommée, on ne devine pas — `unknown`, donc jugé', () => {
+  // L'autre moitié : ne pas transformer ce correctif en « tout devient low ».
+  assert.equal(cvssOf({ severity: [{ score: 'CVSS:3.1/AV:N' }] }), null);
+  assert.equal(bandOf(null).band, 'unknown');
+  assert.equal(bandOf(null).severity, 'major', 'une CVE non notée reste traitée comme grave');
+});
+
+test('scaFailOn écarte réellement ce qui est sous le seuil (B2)', () => {
+  const resultats = [{
+    source: { path: 'pubspec.lock' },
+    packages: [{ package: { name: 'paquet', version: '1.0.0' }, vulnerabilities: [VULN_LOW] }],
+  }];
+  const sousSeuil = findingsFromOsv(resultats, process.cwd(), 'high');
+  assert.equal(sousSeuil.length, 1, 'la CVE est rapportée…');
+  assert.equal(sousSeuil[0].severity, 'info',
+    '…mais hors du gate : c\'est tout l\'objet de scaFailOn, et il ne filtrait rien');
+
+  // Et l'autre sens, sans quoi « ne plus faire échouer » deviendrait le remède.
+  const auSeuil = findingsFromOsv(resultats, process.cwd(), 'low');
+  assert.equal(auSeuil[0].severity, 'info',
+    'une bande `low` reste `info` même quand le seuil descend à low — c\'est sa sévérité propre');
+
+  const grave = [{
+    source: { path: 'pubspec.lock' },
+    packages: [{
+      package: { name: 'p', version: '1' },
+      vulnerabilities: [{ id: 'X', severity: [{ score: '9.1' }] }],
+    }],
+  }];
+  assert.equal(findingsFromOsv(grave, process.cwd(), 'high')[0].severity, 'critical',
+    'une CVE réellement critique doit continuer de faire échouer');
+});
+
+// ── B1 · « pas pu mesurer » n'est pas « rien à conclure ici » ──────────────
+// `--require-tools` existe pour qu'une dimension non exécutée ne passe pas pour
+// verte. Il confondait deux causes de non-scan : un défaut d'ENVIRONNEMENT
+// (unzip absent, binaire jamais construit — réparable) et une DÉCISION du code
+// (un debug, sur lequel un scan de sécurité ne dit rien de la publication).
+// La CI livrée construisait un debug puis exigeait le scan : le job échouait
+// par construction, sur un projet sain, au premier run.
+
+test('--require-tools n\'échoue PAS sur ce que le code a décidé de ne pas juger (B1)', () => {
+  const debug = auditApk(fauxApk(['assets/flutter_assets/kernel_blob.bin']), {}).facts;
+  assert.equal(debug.scanned, false);
+  assert.equal(debug.nature, 'sans-objet', 'un debug est une décision, pas une panne');
+  assert.equal(exigenceNonTenue(debug), null,
+    'exiger une analyse que le code refuse de rendre fait échouer un projet sain');
+});
+
+test('--require-tools échoue TOUJOURS sur un défaut d\'environnement (B1, l\'autre moitié)', () => {
+  // Sans ce cas, « ne plus échouer sur un debug » deviendrait « ne plus jamais
+  // échouer », c'est-à-dire le faux vert que ce flag existe pour empêcher.
+  for (const facts of [
+    { scanned: false, nature: 'environnement', why: 'unzip absent du PATH' },
+    { scanned: false, nature: 'environnement', why: 'binaire absent (build/…apk)' },
+    { scanned: false, why: 'forme ancienne, sans nature' },
+  ]) {
+    const message = exigenceNonTenue(facts);
+    assert.ok(message, `doit échouer : ${facts.why}`);
+    assert.match(message, /require-tools/);
+    assert.match(message, new RegExp(facts.why.slice(0, 12).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      'et le message doit porter la raison, pas seulement le flag');
+  }
+  assert.equal(exigenceNonTenue({ scanned: true }), null, 'un scan réussi ne déclenche rien');
+});
+
+test('binaryScanPlan dit la NATURE de son refus, pas seulement sa raison (B1)', () => {
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-nature-'));
+  const apk = join(dossier, 'app-release.apk');
+  writeFileSync(apk, 'PK');
+  const config = { platforms: ['android'], build: { androidBuildCmd: 'flutter build apk --debug' } };
+
+  assert.equal(binaryScanPlan('ios', '/p/x.app', '/p', config, true).nature, 'sans-objet',
+    'le harnais ne sait pas lire un bundle iOS : aucun outil posé n\'y changera rien');
+  assert.equal(binaryScanPlan('android', join(dossier, 'absent.apk'), dossier, config, true).nature,
+    'environnement', 'un binaire jamais construit se répare');
+  assert.equal(binaryScanPlan('android', apk, dossier, config, false).nature,
+    'environnement', 'un unzip manquant se répare');
+  assert.equal(binaryScanPlan('android', apk, dossier, config, true).nature, 'ok');
+  rmSync(dossier, { recursive: true, force: true });
+});
+
+test('la CI n\'exige pas un scan binaire du paquet qu\'elle vient de construire en DEBUG (B1)', () => {
+  // Garde de CÂBLAGE, dérivé plutôt que cité : on lit le workflow livré, on
+  // découpe par job, et on refuse qu'un même job construise un debug puis exige
+  // l'analyse binaire. C'est l'assemblage qui était faux, pas chaque moitié.
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+  // Commentaires ôtés : un exemple commenté n'est pas une étape exécutée.
+  const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const jobs = utile.split(/\n  (?=[a-z][a-z0-9-]*:\n)/);
+  assert.ok(jobs.length > 3, 'le découpage par job n\'a rien trouvé — mets ce garde à jour');
+  assert.ok(jobs.some((j) => /sec\.mjs/.test(j)), 'aucun job ne lance sec.mjs — le garde est vacant');
+
+  // ⚠️ LE DÉTECTEUR EST EXTRAIT ET EXERCÉ DANS LES DEUX SENS. Écrit « il doit
+  // exister un job qui passe --require-tools, et il ne doit pas construire de
+  // debug », ce garde serait devenu VACANT le jour même : le correctif consiste
+  // justement à retirer ce drapeau, donc la boucle n'aurait plus eu de sujet et
+  // serait passée au vert sans rien vérifier.
+  const combineLesDeux = (job) =>
+    /sec\.mjs[^\n]*--require-tools/.test(job) && /flutter build apk --debug/.test(job);
+
+  for (const job of jobs) {
+    assert.ok(!combineLesDeux(job),
+      'un job construit un debug ET exige l\'analyse binaire : elle ne peut pas conclure, exit 2 garanti');
+  }
+  // La contre-épreuve : le détecteur sait-il seulement dire oui ?
+  assert.ok(combineLesDeux('  x:\n    steps:\n      - run: flutter build apk --debug\n'
+    + '      - run: node scripts/argus/sec.mjs --require-tools\n'),
+  'le détecteur ne reconnaît plus l\'assemblage qu\'il interdit — il ne garde plus rien');
+});
+
+test('la CVE et le scan de secrets ne se conditionnent à AUCUNE plateforme (B4)', () => {
+  // Le job portait `if: android == true`, ce qui paraît juste — le niveau B lit
+  // un APK — et coupait au passage trois contrôles qui ne dépendent d'aucune
+  // plateforme. Un projet iOS-seul perdait TOUTE la dimension sécurité.
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+  // Commentaires ôtés : un exemple commenté n'est pas une étape exécutée.
+  const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const jobs = utile.split(/\n  (?=[a-z][a-z0-9-]*:\n)/);
+  const porteurs = jobs.filter((j) => /sca\.mjs|sec\.mjs/.test(j) && !/^#/.test(j));
+  assert.ok(porteurs.length > 0, 'aucun job ne lance sca.mjs/sec.mjs — le garde ne mesure plus rien');
+  for (const job of porteurs) {
+    const entete = job.split('steps:')[0];
+    assert.ok(!/^\s+if:.*outputs\.(android|ios)/m.test(entete),
+      'ce job porte la sécurité ET une condition de plateforme : sur l\'autre plateforme, '
+      + 'le scan de secrets et les CVE disparaissent sans que rien ne le dise');
+  }
+});
+
+// ── B3 · l'AVD que la CI doit créer, dérivé comme ses deux voisins ────────
+// Le scaffold exige en majuscules de renseigner `devices[].avd` — la seule
+// identité stable en local — pendant que l'action qui provisionne l'émulateur
+// en CI crée un AVD portant SON nom. `resolveByAvd` ne trouvait donc rien, et
+// le job échouait sur la configuration même que la doc prescrit.
+
+test('ciEmulator rend l\'AVD déclaré, pas seulement api-level et profile (B3)', () => {
+  const avec = ciEmulator({
+    platforms: ['android'],
+    devices: [{ id: 'a', platform: 'android', avd: 'Medium_Phone_API_36', model: 'pixel_6', os: 'android-36' }],
+  });
+  assert.equal(avec.ok, true);
+  assert.equal(avec.apiLevel, '36');
+  assert.equal(avec.profile, 'pixel_6');
+  assert.equal(avec.avdName, 'Medium_Phone_API_36',
+    'sans lui, la CI crée un AVD que le runner ne reconnaîtra pas');
+
+  // ⚠️ LE CAS RECOMMANDÉ EST CELUI-CI : un `avd` nommé, `model`/`os` vides —
+  // c'est ce que le scaffold conseille, donc le plus fréquent. Il passe par
+  // l'autre branche de retour, celle qui retombe sur les défauts du workflow.
+  const nu = ciEmulator({
+    platforms: ['android'],
+    devices: [{ id: 'a', platform: 'android', avd: 'MonAvd' }],
+  });
+  assert.equal(nu.ok, true);
+  assert.equal(nu.avdName, 'MonAvd', 'la branche « défauts du workflow » oubliait l\'AVD');
+
+  // Et sans AVD déclaré : chaîne vide, jamais undefined — l'appelant retombe
+  // alors sur le défaut de l'action, ce qui est le comportement d'avant.
+  assert.equal(ciEmulator({
+    platforms: ['android'], devices: [{ id: 'a', platform: 'android', model: 'pixel_6', os: 'android-33' }],
+  }).avdName, '');
+});
+
+test('le workflow crée l\'émulateur sous le nom que la config déclare (B3)', () => {
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+  const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+  // La source est la MÊME que pour ses deux voisins : c'est ce qui empêche le
+  // geste outillé de diverger du geste configuré.
+  assert.match(utile, /avd-name:/, 'l\'action provisionne un AVD sans que la config le nomme');
+  const etape = utile.slice(utile.indexOf('android-emulator-runner'));
+  const bloc = etape.slice(0, etape.indexOf('script:'));
+  for (const cle of ['api-level:', 'profile:', 'avd-name:']) {
+    assert.ok(bloc.includes(cle), `${cle} manque au bloc qui provisionne l'émulateur`);
+    assert.match(bloc.slice(bloc.indexOf(cle)), /^[^\n]*steps\.appareil\.outputs/,
+      `${cle} n'est pas dérivé de la config — c'est ainsi que l'AVD avait divergé`);
+  }
+});
+
+// ── M1 · un contrôle qui n'a rien lu ne conclut pas ───────────────────────
+// `--check-flows` refuse explicitement de conclure sur zéro flow (« le contrôle
+// n'a rien mesuré », exit 2). Son voisin `--check-anchors`, quatre-vingts lignes
+// plus loin dans le MÊME fichier, rendait `✔ toute ancre est déclarée (0 lue)`
+// et sortait en 0 dès que `lib/` n'existait pas — sur un monorepo, ou lancé du
+// mauvais répertoire. Le remède était pensé local alors que l'erreur était une
+// manière de conclure.
+
+const CONFIG_MINIMALE = [
+  'app:', '  androidPackage: com.exemple.monapp', 'platforms:', '  - android',
+  'devices:', '  - id: a', '    platform: android', '    avd: MonAvd',
+  'screens:', '  - id: home', '    anchor: home_root', '',
+].join('\n');
+
+/** Un projet jetable, avec ou sans `lib/`. Rend son chemin. */
+const projetJetable = ({ avecLib }) => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-anchors-'));
+  writeFileSync(join(dir, 'argus.mobile.yaml'), CONFIG_MINIMALE);
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: mon_app\n');
+  mkdirSync(join(dir, 'scripts/argus'), { recursive: true });
+  const src = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  for (const f of readdirSync(src)) cpSync(join(src, f), join(dir, 'scripts/argus', f));
+  if (avecLib) {
+    mkdirSync(join(dir, 'lib'), { recursive: true });
+    writeFileSync(join(dir, 'lib/main.dart'),
+      "import 'x';\nWidget b() => Semantics(identifier: 'home_root', child: X());\n");
+    // ⚠️ Le croisement lit `harness.dart`, JAMAIS `screens[]` — et c'est voulu :
+    // « déclaré » veut dire ici « monté par l'étage 1 ». La première version de
+    // ce garde déclarait l'ancre dans `screens[]` et s'attendait à un vert :
+    // exactement le contresens que `ancresOrphelinesReport` existe pour lever.
+    mkdirSync(join(dir, 'test/argus'), { recursive: true });
+    writeFileSync(join(dir, 'test/argus/harness.dart'),
+      "final x = <ArgusScreen>[ArgusScreen(id: 'home', anchor: 'home_root')];\n");
+  }
+  return dir;
+};
+
+/** Lance `config.mjs <drapeau>` dans [dir] et rend son code de sortie. */
+const codeDe = (dir, drapeau) => {
+  try {
+    execFileSync(process.execPath, ['scripts/argus/config.mjs', drapeau], { cwd: dir, stdio: 'pipe' });
+    return 0;
+  } catch (e) { return e.status ?? -1; }
+};
+
+test('--check-anchors REFUSE de conclure quand il n\'a lu aucun fichier (M1)', () => {
+  const sansLib = projetJetable({ avecLib: false });
+  assert.notEqual(codeDe(sansLib, '--check-anchors'), 0,
+    'un ✔ vert sur zéro fichier lu est un garde vacant : c\'est la pastille qu\'on lit, pas le « (0 lue) »');
+  rmSync(sansLib, { recursive: true, force: true });
+});
+
+test('--check-anchors conclut normalement dès qu\'il a de quoi mesurer (M1, l\'autre moitié)', () => {
+  // Sans ce cas, « refuser de conclure sur zéro » deviendrait « refuser toujours ».
+  const avecLib = projetJetable({ avecLib: true });
+  assert.equal(codeDe(avecLib, '--check-anchors'), 0,
+    'une ancre posée ET déclarée dans screens[] doit passer');
+  rmSync(avecLib, { recursive: true, force: true });
+});
+
+// ── M2 · reconnaître SA copie sans dépendre d'une phrase de prose ─────────
+// L'installeur reconnaissait sa copie par « la première ligne de la source qui
+// contient argus ». Reformuler un en-tête change donc la signature : chez tous
+// les hôtes DÉJÀ installés, le fichier bascule en « pas d'origine Argus », plus
+// jamais remplacé par --update, jamais compté en retard par --check, CI verte.
+// C'est la seconde moitié de la règle qui tombe, et elle tombe en silence.
+
+const INSTALLEUR = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+const installe = (cible, ...args) =>
+  execFileSync('bash', [INSTALLEUR, cible, ...args], { encoding: 'utf8', stdio: 'pipe' });
+
+test('un fichier de cadre reste MIEN quand la source reformule son en-tête (M2)', () => {
+  const hote = mkdtempSync(join(tmpdir(), 'argus-sig-'));
+  writeFileSync(join(hote, 'pubspec.yaml'), 'name: hote\n');
+  installe(hote);
+
+  const local = join(hote, 'scripts/argus/config.mjs');
+  assert.ok(existsSync(local), 'le scaffold n\'a pas été posé — le montage est cassé');
+
+  // On simule une reformulation d'en-tête CÔTÉ HÔTE : la copie posée vient
+  // d'une version dont la ligne de signature était rédigée autrement.
+  const pose = readFileSync(local, 'utf8').split('\n');
+  // ⚠️ On reformule la PROSE, pas le marqueur : c'est ce qui arrive en vrai, et
+  // la première version de ce garde écrasait `ARGUS:CADRE` lui-même — elle
+  // simulait donc un fichier qu'on aurait délibérément dé-marqué, pas une
+  // reformulation d'en-tête.
+  const iSig = pose.findIndex((l) => /argus/i.test(l) && !l.includes('ARGUS:CADRE'));
+  assert.ok(iSig >= 0, 'la copie ne porte aucune trace d\'Argus — le garde ne mesure plus rien');
+  pose[iSig] = ' * Argus Mobile — socle partagé (formulation d\'une version antérieure)';
+  writeFileSync(local, pose.join('\n'));
+
+  const sortie = installe(hote, '--update');
+  assert.ok(!/pas d'origine Argus[^\n]*config\.mjs/.test(sortie),
+    'une reformulation d\'en-tête a suffi à faire renier la copie : elle ne sera plus jamais mise à jour');
+  assert.equal(readFileSync(local, 'utf8'), readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8'),
+  '--update doit avoir remis la version du plugin');
+  rmSync(hote, { recursive: true, force: true });
+});
+
+test('un homonyme du projet n\'est toujours PAS écrasé (M2, l\'autre moitié)', () => {
+  // Le piège par défaut est de corriger la reconnaissance en la rendant si large
+  // qu'elle absorbe le fichier de l'hôte.
+  const hote = mkdtempSync(join(tmpdir(), 'argus-homo-'));
+  writeFileSync(join(hote, 'pubspec.yaml'), 'name: hote\n');
+  writeFileSync(join(hote, 'Makefile'), 'build:\n\t@echo a-moi\n');
+  installe(hote);
+  installe(hote, '--update');
+  assert.match(readFileSync(join(hote, 'Makefile'), 'utf8'), /a-moi/,
+    'le Makefile du projet a été écrasé');
+  rmSync(hote, { recursive: true, force: true });
+});
+
+test('le chemin rapporté par configNonEmbarquee EXISTE vraiment (M6)', () => {
+  // Il était découpé par longueur (`f.slice(root.length + 1)`), avec `root`
+  // valant « . » : `join('.','assets')` se normalise en « assets », sans le
+  // « ./ », donc la découpe retirait deux vrais caractères. Le rapport disait
+  // « sets/fonts/X.ttf » — un chemin que personne ne trouve sur son disque.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-chemin-'));
+  mkdirSync(join(dir, 'assets/fonts'), { recursive: true });
+  writeFileSync(join(dir, 'assets/fonts/Nunito.ttf'), 'ttf');
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: x\n');
+  const avant = process.cwd();
+  process.chdir(dir);
+  try {
+    for (const racine of ['.', dir]) {
+      const trouves = configNonEmbarquee(racine, {});
+      assert.equal(trouves.length, 1, `une police non câblée attendue (racine ${racine})`);
+      assert.ok(existsSync(join(dir, trouves[0].fichier)),
+        `« ${trouves[0].fichier} » n'existe pas : le rapport envoie chercher un fichier inventé`);
+    }
+  } finally { process.chdir(avant); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('les drapeaux de sécurité sont lus dans TOUTES les variantes du manifeste (M4)', () => {
+  // Ils n'étaient cherchés que dans `src/main/`. Un `usesCleartextTraffic=true`
+  // posé dans `src/release/` — le cas qui compte — n'était vu ni au niveau A
+  // (mauvais fichier) ni au niveau B (`aapt2 dump badging` ne sort pas cet
+  // attribut). Seul `debuggable` était rattrapé sur le binaire.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-manif-'));
+  mkdirSync(join(dir, 'android/app/src/main'), { recursive: true });
+  mkdirSync(join(dir, 'android/app/src/release'), { recursive: true });
+  writeFileSync(join(dir, 'android/app/src/main/AndroidManifest.xml'),
+    '<manifest><application android:label="x"></application></manifest>');
+  writeFileSync(join(dir, 'android/app/src/release/AndroidManifest.xml'),
+    '<manifest><application android:usesCleartextTraffic="true"></application></manifest>');
+
+  const config = { security: { requireCleartextDisabled: true } };
+  const ids = auditAndroidManifest(dir, config).map((f) => f.id);
+  assert.ok(ids.includes('QAM-SEC-CLEAR'),
+    'le trafic en clair déclaré dans la variante release passe entre les deux niveaux');
+
+  // ⚠️ ET PAS DEUX FOIS LE MÊME. Les permissions sont fusionnées par Gradle :
+  // les auditer par variante produirait deux findings de même id pour un seul
+  // défaut. Le premier correctif de ce point l'a fait, et le cas de test d'alors
+  // ne portait aucune permission — il ne pouvait pas le voir.
+  writeFileSync(join(dir, 'android/app/src/main/AndroidManifest.xml'),
+    '<manifest><uses-permission android:name="android.permission.CAMERA"/>'
+    + '<application android:label="x"></application></manifest>');
+  writeFileSync(join(dir, 'android/app/src/release/AndroidManifest.xml'),
+    '<manifest><uses-permission android:name="android.permission.CAMERA"/>'
+    + '<application android:usesCleartextTraffic="true"></application></manifest>');
+  const doubles = auditAndroidManifest(dir, {
+    security: { requireCleartextDisabled: true, expectedPermissions: ['android.permission.INTERNET'] },
+  });
+  assert.equal(new Set(doubles.map((f) => f.id)).size, doubles.length,
+    `un même défaut rapporté deux fois : ${doubles.map((f) => f.id).join(', ')}`);
+  assert.equal(doubles.filter((f) => f.id === 'QAM-SEC-PERM-X').length, 1);
+
+  // L'autre moitié : un projet sain ne doit pas se mettre à rougir.
+  const propre = mkdtempSync(join(tmpdir(), 'argus-manif-ok-'));
+  mkdirSync(join(propre, 'android/app/src/main'), { recursive: true });
+  writeFileSync(join(propre, 'android/app/src/main/AndroidManifest.xml'),
+    '<manifest><application android:label="x"></application></manifest>');
+  assert.deepEqual(auditAndroidManifest(propre, config), []);
+  rmSync(dir, { recursive: true, force: true });
+  rmSync(propre, { recursive: true, force: true });
+});
+
+// ── M3 / M7 · deux règles que les flows livrés doivent tenir ──────────────
+const FLOWS_LIVRES = (() => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  /** @type {Array<[string,string]>} */
+  const out = [];
+  const marcher = (d, p) => {
+    for (const e of readdirSync(d, { withFileTypes: true })) {
+      if (e.isDirectory()) marcher(join(d, e.name), `${p}${e.name}/`);
+      else if (/\.ya?ml$/.test(e.name)) out.push([`${p}${e.name}`, readFileSync(join(d, e.name), 'utf8')]);
+    }
+  };
+  marcher(base, '');
+  return out;
+})();
+
+test('toute attente d\'écran lit le plafond CONFIGURÉ, jamais un nombre figé (M7)', () => {
+  // `startupMarginWarning` conseille « relève thresholds.startTimeoutMs » quand
+  // la marge se resserre. Deux attentes portaient `timeout: 20000` en dur —
+  // la comparaison visuelle et l'attente post-connexion, soit les deux plus
+  // lentes sur une app authentifiée : suivre le conseil ne les touchait pas.
+  let vues = 0;
+  for (const [nom, texte] of FLOWS_LIVRES) {
+    const utile = texte.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    for (const bloc of utile.split('extendedWaitUntil:').slice(1)) {
+      const entete = bloc.slice(0, 400);
+      vues += 1;
+      const m = /timeout:\s*(\S+)/.exec(entete);
+      assert.ok(m, `${nom} : une attente sans timeout`);
+      assert.equal(m[1], '${ARGUS_START_TIMEOUT_MS}',
+        `${nom} : plafond figé à ${m[1]} — relever thresholds.startTimeoutMs ne le touchera pas`);
+    }
+  }
+  assert.ok(vues >= 5, `seulement ${vues} attentes trouvées — le motif ne mesure plus rien`);
+});
+
+test('toute saisie d\'un secret porte son label de masquage (M3)', () => {
+  // `label:` remplace la valeur en console et dans les rapports. La forme courte
+  // (`- inputText: ${QA_USER}`) n'en admet pas : elle laisse la valeur en clair.
+  let vues = 0;
+  for (const [nom, texte] of FLOWS_LIVRES) {
+    const utile = texte.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+    // ⚠️ Le bloc s'arrête au prochain élément de liste. Une capture « toutes les
+    // lignes indentées qui suivent » avale l'étape suivante, donc les DEUX
+    // saisies n'en faisaient qu'une — le garde comptait 1 là où il y en a 2, et
+    // se serait tu sur la seconde.
+    for (const brut of utile.split('- inputText:').slice(1)) {
+      const fin = brut.search(/\n\s*- /);
+      const bloc = fin >= 0 ? brut.slice(0, fin) : brut;
+      if (!/\$\{QA_/.test(bloc)) continue;
+      vues += 1;
+      assert.equal(bloc.split('\n')[0].trim(), '',
+        `${nom} : secret saisi en forme courte — aucun label possible, la valeur part en clair`);
+      assert.match(bloc, /label:/, `${nom} : saisie de secret sans label de masquage`);
+    }
+  }
+  assert.ok(vues >= 2, `seulement ${vues} saisies de secret trouvées — le motif ne mesure plus rien`);
+});
+
+// ── M5 · le repli d'argus-debts, exercé en LANÇANT la recette ────────────
+// Le `|| echo` portait sur le dernier maillon du pipeline (un `sed`, qui rend 0
+// sur une entrée vide) : le message ne sortait jamais. Suite verte et suite non
+// lancée produisaient le même silence — les deux cas qu'il devait distinguer.
+
+/** Un projet jetable avec le Makefile livré et un faux `flutter` scriptable. */
+const terrainMake = (sortieDeFlutter) => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-debts-'));
+  cpSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'),
+    join(dir, 'Makefile'));
+  mkdirSync(join(dir, 'bin'), { recursive: true });
+  const faux = join(dir, 'bin/flutter');
+  writeFileSync(faux, `#!/bin/sh\ncat <<'EOF'\n${sortieDeFlutter}\nEOF\n`);
+  chmodSync(faux, 0o755);
+  return dir;
+};
+const faireDettes = (dir) => execFileSync('make', ['argus-debts'], {
+  cwd: dir, encoding: 'utf8', env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}` },
+});
+
+test('argus-debts DIT qu\'il n\'y a rien à inscrire quand la suite est verte (M5)', () => {
+  const dir = terrainMake('00:01 +12: All tests passed!');
+  assert.match(faireDettes(dir), /aucune dette à inscrire/,
+    'le repli est une branche morte : le silence total ne distingue pas « verte » de « pas tournée »');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('argus-debts rend le bloc prêt à coller quand il y a des dettes (M5, l\'autre moitié)', () => {
+  // Sans ce cas, « toujours afficher le repli » passerait pour un correctif.
+  const dir = terrainMake("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  const sortie = faireDettes(dir);
+  assert.match(sortie, /'home · cibles tactiles/);
+  assert.match(sortie, /'panier · texte/);
+  assert.ok(!/aucune dette/.test(sortie), 'le repli ne doit pas s\'afficher quand il y a des dettes');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('la table des cibles d\'ARGUS-MOBILE.md est DÉRIVÉE du Makefile (m4)', () => {
+  // Elle en listait onze sur treize, et les deux absentes étaient celles que le
+  // SKILL présente comme les plus rentables. Un tableau qui a l'air exhaustif et
+  // ne l'est pas coûte plus qu'une liste partielle assumée. Le critère est une
+  // ÉGALITÉ : une cible ajoutée au Makefile fait rougir ce garde tant qu'elle
+  // n'est pas documentée, et une cible retirée aussi.
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const mk = readFileSync(join(base, 'Makefile'), 'utf8');
+  const doc = readFileSync(join(base, 'ARGUS-MOBILE.md'), 'utf8');
+
+  const cibles = new Set([...mk.matchAll(/^(argus[a-z-]*):.*## /gm)].map((m) => m[1]));
+  assert.ok(cibles.size >= 10, `${cibles.size} cibles lues dans le Makefile — le motif ne mesure plus rien`);
+  const documentees = new Set([...doc.matchAll(/\| `make (argus[a-z0-9-]*)` \|/g)].map((m) => m[1]));
+  assert.ok(documentees.size > 0, 'la table des cibles a changé de forme — mets ce garde à jour');
+
+  // `argus-help` et `argus` (la chaîne complète) ne sont pas des dimensions :
+  // la table décrit ce qu'on lance pour mesurer, et les nommer l'allongerait
+  // sans rien apprendre. C'est une exception ÉCRITE, pas un oubli.
+  const horsTable = new Set(['argus-help', 'argus', 'argus-doctor', 'argus-build']);
+  const attendues = [...cibles].filter((c) => !horsTable.has(c)).sort();
+  const manquantes = attendues.filter((c) => !documentees.has(c));
+  assert.deepEqual(manquantes, [],
+    `cible(s) du Makefile absente(s) de la table que lit l'utilisateur : ${manquantes.join(', ')}`);
+});
+
+test('un runFlow vers un fichier ABSENT est nommé sans device (m13)', () => {
+  // `check-syntax` valide un fichier à la fois ; le contrôle du graphe traitait
+  // la cible manquante comme un nœud sans arête. L'échec n'arrivait donc que sur
+  // device, après avoir payé le run.
+  const manquants = flowsIntrouvables({
+    'smoke.yaml': '- runFlow: _subflows/launch-clean.yaml\n- runFlow: _subflows/typo.yaml\n',
+    '_subflows/launch-clean.yaml': '- launchApp\n',
+  });
+  assert.deepEqual(manquants, [['smoke.yaml', '_subflows/typo.yaml']]);
+
+  // L'autre moitié : un workspace sain reste muet, commentaires compris.
+  assert.deepEqual(flowsIntrouvables({
+    'a.yaml': '# - runFlow: exemple-commente.yaml\n- runFlow: _subflows/b.yaml\n',
+    '_subflows/b.yaml': '- back\n',
+  }), [], 'un exemple commenté n\'est pas un appel');
+});
+
+test('la sentinelle « écran courant » n\'existe qu\'à UN endroit (m6)', () => {
+  // Elle a été extraite en constante EXPORTÉE précisément parce que sa valeur en
+  // dur avait déjà vidé un correctif — c'est écrit dans son dartdoc. Deux
+  // comparaisons la recopiaient pourtant en littéral.
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs'), 'utf8');
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const litteraux = [...code.matchAll(/'écran courant'/g)].length;
+  assert.equal(litteraux, 1,
+    `${litteraux} littéraux « écran courant » dans le code : seule la déclaration de ECRAN_COURANT doit en porter un`);
+  assert.match(code, /requested !== ECRAN_COURANT/, 'les comparaisons doivent passer par la constante');
+});
+
+test('argus-build refuse de conclure quand la mesure du paquet a échoué (m10)', () => {
+  // Deux empreintes VIDES sont égales : la garde annonçait « PAQUET INTACT —
+  // même empreinte » sans avoir rien mesuré. C'est le défaut du point 214,
+  // revenu par le chemin d'erreur.
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const recette = mk.slice(mk.indexOf('argus-build:'), mk.indexOf('argus-lint:'));
+  assert.ok(recette.includes('--measure-binary'), 'la recette ne mesure plus — mets ce garde à jour');
+  const iVide = recette.indexOf('-z "$$AKIND"');
+  const iIntact = recette.indexOf('PAQUET INTACT');
+  assert.ok(iVide > 0, 'rien ne distingue une empreinte vide d\'une empreinte égale');
+  assert.ok(iIntact > iVide, 'le refus doit précéder le verdict, sinon il ne l\'empêche pas');
 });
