@@ -4894,7 +4894,130 @@ défaut de montage.
 **9 mutations, 9 tombées**, chacune faisant rougir exactement le garde qu'elle
 vise. 302/302.
 
+### 334-342. ✅ Corrigés le 02/09/2026 — la campagne 43/44, et trois constats démentis par la reproduction
+
+**Runs 43 et 44**, en parallèle, agents vierges, sur les deux terrains — iOS sans
+API d'un côté, Android avec API de l'autre. Les deux combinaisons étaient **déjà
+exercées** : c'est le critère posé la veille pour mesurer la sortie plutôt que
+l'estimer.
+
+**Le run iOS est le plus propre du chantier** : `gate: pass`, 12 flows, 0 blocker,
+0 critical, 0 major, 0 minor, un seul `info`. Le run Android rend `gate: fail`
+avec 11 findings tous justifiés, et **5/5 dimensions exécutées**.
+
+📌 **LA REPRODUCTION A DÉMENTI TROIS CONSTATS SUR DOUZE**, et c'est le résultat
+qui compte le plus. Deux d'entre eux auraient fait **ajouter ce qui existait
+déjà** :
+
+| démenti | la mesure qui l'établit |
+|---|---|
+| « la clé qui décide du jugement de taille manque au tableau du §1 » | elle y est, ligne 84 — le run avait lu le tableau et pas la ligne au-dessus |
+| « un outil du scaffold consomme plus que sa cible » | cet outil **n'existe pas** dans le skill : l'agent se l'était écrit |
+| « la règle du pli arrive après la table d'ancres » | elle est **avant** — ligne 1090 contre 1205 |
+
+### 334. Le clavier qui DÉPLACE, là où on lit celui qui CACHE
+
+⚠️ **CE CONSTAT A DÛ ÊTRE REFORMULÉ** : le skill disait **déjà** qu'un clavier
+recouvre un contrôle et fait échouer `tapOn`. Ce que le run a rencontré est
+l'inverse, et coûte davantage — un élément **flottant** que le clavier **remonte**
+au-dessus des autres contrôles, si bien que le `tapOn` **réussit sur un autre
+widget** et que rien ne rougit à cet endroit. Cacher est bruyant, déplacer est
+silencieux.
+
+L'échec n'est apparu que trois étapes plus loin, sur une ancre sans rapport, et
+l'agent allait conclure « la puce est sous le pli ». **C'est la capture qui l'a
+démenti**, pas le message d'erreur — lequel désignait le mauvais endroit avec
+aplomb. Le geste général est désormais écrit : *quand un `tapOn` réussit mais que
+l'étape suivante trouve un écran inattendu, regarde la capture avant de
+soupçonner l'ancre.*
+
+### 336. `firstLaunchMs` mesure la PREMIÈRE FRAME, pas l'écran exploitable
+
+**Le plus instructif de la vague.** Le skill expliquait déjà l'instabilité de
+cette grandeur — par la **charge de l'hôte**. C'est vrai, et c'est exactement ce
+qui a fait **cesser de chercher la seconde cause**. `am start -W` s'arrête au
+premier rendu, donc au splash : **8 103 ms mesurés contre 22 à 49 s** d'attente
+réelle sur une app dont l'écran de départ vit derrière un aller-retour réseau. Un
+facteur 3 à 4 qu'un hôte au repos ne corrige pas, parce qu'il ne s'agit pas de
+bruit mais de deux choses différentes.
+
+Un plafond dérivé de `firstLaunchMs` aurait valu ~16 s et **laissé la suite rouge
+en permanence**. C'est l'anti-pattern « isoler une variable et conclure qu'il n'y
+en a pas d'autre », appliqué à un texte que ce chantier avait lui-même écrit.
+
+### 337. Un secret déclaré mais VIDE s'affichait comme un secret plein
+
+`buildEnv` remplit un secret absent par `''` — délibérément, pour que le flow
+décide plutôt que de casser. Mais **rien ne le disait**, et le masquage
+remplaçait tout ce qui suit le `=` sans regarder la valeur : `QA_PHONE=***`
+s'affichait à l'identique dans les deux cas, **précisément à l'endroit où l'on
+regarde pour vérifier**. Coût mesuré : sept minutes de device et un login sauté
+sans un mot, son seul indice enterré dans un artefact.
+
+Les deux moitiés, parce que l'une seule laisse le piège : l'affichage distingue
+désormais `<VIDE>` de `***`, **et** le runner NOMME les secrets vides avant la
+commande — lire `<VIDE>` dans une ligne de trois cents caractères revient à ne
+rien lire.
+
+### 338. Le relevé d'ancres rendait `}` sur du Dart parfaitement légal
+
+`'([^']*)'` ne sait pas qu'une apostrophe **interne à une interpolation** ne ferme
+pas la chaîne : sur `identifier: cond ? null : '${prefix}_${x ?? 'all'}'` elle
+découpe trois fragments et garde le dernier. **Le run a réécrit SON code pour
+contourner NOTRE motif** — le sens inverse de ce qu'un outil de mesure doit
+provoquer. Remplacé par un automate qui suit les interpolations, y compris les
+chaînes qu'elles contiennent.
+
+📌 La moitié qui comptait autant : les **deux formes que le skill prescrit**
+rendent toujours leurs littéraux — le ternaire à deux états du §2c-bis, et le
+gabarit simple qui reste une famille. Un correctif qui les aurait coupées valait
+moins que le défaut.
+
+### 339-342. Quatre « justes mais mal placés »
+
+`ArgusScreen.setUp` est **synchrone** alors que les conteneurs d'injection rendent
+des `Future` : le montage à trois lignes qui marche vit désormais dans son
+dartdoc (**339**). Le levier qui économise le plus de temps device est entré dans
+la séquence numérotée (**335**). Comment trouver **quel** service doubler quand la
+boucle affamante vit dans une **dépendance** et non dans son propre code, avec la
+mesure bornée qui en fait un finding — 1 234 appels contre 1 (**340**). La longue
+note de publication annonce en tête la phrase qui répond à la question qu'on se
+pose en arrivant (**342**).
+
+⚠️ **ET LE 341 S'EST RETOURNÉ CONTRE MOI** : le rappel sur la fermeture d'un TODO
+devait vivre là où l'on lit le compte — je l'ai posé **au mauvais endroit**, dans
+le `case`, trois lignes **avant** que la fonction qui l'arme ne soit appelée. Il
+ne s'affichait donc dans **aucun** des deux cas, et mon contrôle rendait « 0
+occurrence, comme attendu » en ne mesurant rien : le `findsNothing` sans jumeau,
+dans un correctif dont le sujet était précisément le mauvais placement. Son garde
+**exécute** l'installeur et lit sa sortie, dans les deux sens.
+
+📌 **UN VERDICT « VACANT » ÉTAIT LE HARNAIS, PAS LE GARDE** : `startup.samples`
+est nommé **deux fois** dans la même phrase, et la mutation n'en retirait qu'une.
+Corrigé des deux côtés — la mutation porte sur la prescription entière, et le
+garde asserte la prescription plutôt que le token, puisqu'une mention suffisait à
+le contenter.
+
 ## Ce qui reste
+
+Les points **334 à 342** sont fermés le 02/09/2026 — backlog vide pour la
+**quarante-troisième** fois. Neuf points pour **douze constats**, parce que la
+reproduction en a **démenti trois**, dont deux qui auraient fait ajouter ce que
+le skill portait déjà.
+
+⚠️ **LA SORTIE RESTE FERMÉE, mais la décrue est nette** — 19 → 21 → 18 → 16 →
+**9**. Quatre constats coûtaient : un piège non documenté, une grandeur mal
+choisie, un affichage qui ment, un motif trop large. **Aucun n'est un mécanisme
+cassé** : les deux runs ont mené leur mission au bout, l'un entièrement vert,
+l'autre en rendant onze findings tous justifiés.
+
+📌 **Ce que les agents ont bien fait, et qui compte autant que les constats** :
+l'un a **refusé de conclure** sur un flow dont deux mesures se contredisaient
+(« le montage ne mesure rien tout en rendant un verdict ») et l'a laissé rouge
+plutôt que de l'assouplir ; l'autre a **refusé de couvrir un écran en visuel**
+parce que sa référence aurait embarqué des données réelles dans un dépôt. Et l'un
+d'eux a reproduit à l'identique un anti-pattern de ce chantier — une boucle shell
+qui rend « 0 » sans rien parcourir.
 
 Le point **333** est fermé le 02/09/2026 — backlog vide pour la
 **quarante-deuxième** fois. Il ne vient pas d'un run mais d'une **demande** de
