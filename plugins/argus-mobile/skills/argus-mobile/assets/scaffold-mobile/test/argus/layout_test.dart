@@ -1,3 +1,4 @@
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // Argus Mobile — gardes de disposition, sans device.
 //
 // Éprouve chaque écran déclaré sur trois gabarits × trois échelles de texte.

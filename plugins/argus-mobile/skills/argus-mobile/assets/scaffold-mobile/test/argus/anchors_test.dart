@@ -1,3 +1,4 @@
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // Argus Mobile — l'instrumentation, prouvée sans device.
 //
 // POURQUOI CETTE SUITE EXISTE. Poser `Semantics(identifier: 'x')` ne garantit

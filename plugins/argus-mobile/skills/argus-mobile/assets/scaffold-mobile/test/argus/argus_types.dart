@@ -1,3 +1,4 @@
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // ═══════════════════════════════════════════════════════════════════════════
 // Argus Mobile — les TYPES de l'étage 1. Rien à éditer ici.
 //

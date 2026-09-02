@@ -15,8 +15,10 @@
 #                      jamais écrasé, jamais comparé.
 #   « ARGUS:MERGE »  → à FUSIONNER dans un homonyme du projet (.gitignore,
 #                      snippet npm) : jamais écrasé, jamais comparé.
-#   sinon            → du CADRE (scripts, suites de test, CI) : comparable et
+#   « ARGUS:CADRE »  → au PLUGIN (scripts, suites de test, CI) : comparable et
 #                      remplaçable par --update.
+#   sinon            → traité comme du cadre, reconnu par la première ligne qui
+#                      se nomme — le repli des copies posées avant le marqueur.
 # Une liste de noms écrite à la main aurait vieilli au premier fichier ajouté.
 #
 # ⚠️ Les marqueurs sont RÉSERVÉS et bornés à l'en-tête, pour qu'un fichier
@@ -164,8 +166,33 @@ while IFS= read -r src; do
   # La signature est dérivée de la source : sa première ligne qui se nomme. Une
   # source sans signature ne permet pas de trancher — on garde alors l'ancien
   # comportement plutôt que d'inventer un verdict.
+  #
+  # ⚠️ LA SIGNATURE ÉTAIT UNE PHRASE DE PROSE, et c'est un mode de panne muet.
+  # Elle valait « la première ligne de la source qui contient argus » : reformuler
+  # un en-tête la change, si bien que chez tous les hôtes DÉJÀ installés le
+  # fichier basculait en « pas d'origine Argus » — plus jamais remplacé par
+  # --update, jamais compté en retard par --check, CI verte. La seconde moitié de
+  # la règle ci-dessus tombait donc en silence, chez des gens qui ne lancent même
+  # pas l'installeur.
+  #
+  # Le marqueur `ARGUS:CADRE` est RÉSERVÉ et borné à l'en-tête, comme ses deux
+  # voisins : il ne bouge pas quand la prose change. La signature de prose reste
+  # en REPLI, et il le faut : une copie posée AVANT l'introduction du marqueur ne
+  # le porte pas, et la « corriger » en la reniant reproduirait exactement le
+  # défaut qu'on ferme.
+  marque='ARGUS:CADRE'
   signature="$(grep -m1 -i 'argus' "$src" || true)"
-  if [ -n "$signature" ] && ! grep -qF "$signature" "$dest"; then
+  notre_copie=0
+  if head -20 "$src" | grep -qF "$marque"; then
+    if head -20 "$dest" | grep -qF "$marque"; then
+      notre_copie=1                       # posée depuis le marqueur : stable
+    elif [ -n "$signature" ] && grep -qF "$signature" "$dest"; then
+      notre_copie=1                       # posée avant : on la reconnaît encore
+    fi
+  elif [ -z "$signature" ] || grep -qF "$signature" "$dest"; then
+    notre_copie=1                         # source sans marqueur : comportement d'avant
+  fi
+  if [ "$notre_copie" -eq 0 ]; then
     echo "  ⏭️  présent chez toi, pas d'origine Argus : $rel"
     foreign=$((foreign + 1))
     foreign_list="$foreign_list $rel"

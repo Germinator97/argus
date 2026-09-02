@@ -1,3 +1,4 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 appId: ${APP_ID}
 # ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
 # jamais exécuté directement : Maestro valide TOUS les fichiers YAML du

@@ -1,3 +1,4 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 # ═══════════════════════════════════════════════════════════════════════════
 # Découverte des flows et réglages de workspace Maestro.
 # Maestro cherche ce fichier à la racine du dossier visé : `maestro test .maestro`.
