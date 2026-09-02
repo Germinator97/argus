@@ -1291,6 +1291,8 @@ make argus-run         # étage 2, sur émulateur
                        # ⚠️ s'il avertit sur le PLAFOND D'ATTENTE : `make argus-perf` ICI,
                        #    puis relève startTimeoutMs AVANT les références (voir plus bas)
 make argus-baselines   # références visuelles — ⚠️ LIS L'ENCADRÉ CI-DESSOUS D'ABORD
+                       #   ⏱ `--tags=<dimension> --no-install` vaut ici aussi et
+                       #     économise le plus : l'app est déjà posée. Détail plus bas.
 make argus-run         # et RELANCE : c'est ce passage-là qui compare
 <la commande de RELEASE de ton projet>   # 🚨 PAS `make argus-build`, qui bâtit le debug
 make argus-perf        # démarrage, mémoire, taille — sur device, ~30 s
@@ -1389,7 +1391,23 @@ gravité. Le chiffre confirme après coup, il ne reconnaît jamais.
 
 La cause est un widget qui interroge un service en boucle, et dont le service
 rend un `Future` **déjà complété** sur la plateforme hôte — typiquement un
-`Future.value(null)` hors Android. La boucle réempile alors une micro-tâche sans
+`Future.value(null)` hors Android.
+
+⚠️ **ET LA BOUCLE EST SOUVENT DANS UNE DÉPENDANCE, PAS DANS TON CODE.** Le remède
+ci-dessous dit « fais rendre à ce service un `Completer` » — encore faut-il savoir
+LEQUEL, quand la boucle vit chez un paquet tiers et que l'écran n'en parle pas.
+Deux gestes qui trouvent le bon en quelques minutes : le champ qui gèle est un
+champ **spécialisé** (code à usage unique, sélecteur, scanner), donc pars de SON
+paquet et cherche-y la boucle ; puis remonte au service qu'elle appelle, qui est
+presque toujours un **auto-remplissage** conditionné à la plateforme. Le double se
+pose alors dans ce service-là, pas dans le widget.
+
+📌 Et vérifie que c'est bien un défaut de PRODUCTION avant de te contenter du
+double : une boucle qui tourne à vide en test tourne aussi à vide sur l'appareil
+où la condition de plateforme est fausse. Mesure-la bornée (« combien d'appels en
+200 ms ») plutôt que de la laisser courir — un run a relevé **1 234 appels contre
+1**, et c'est ce chiffre qui a fait du gel un finding plutôt qu'une gêne de
+harnais. La boucle réempile alors une micro-tâche sans
 jamais attendre de délai, et en temps simulé cela **affame la boucle
 d'événements** : plus aucun timer ne s'exécute.
 
@@ -1465,6 +1483,21 @@ imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
    l'hôte change. Un seuil dérivé d'une mesure instable est **aussi instable
    qu'elle** : un run a dérivé 45 s d'un relevé pris sous deux émulateurs et un
    build Gradle concurrents.
+
+   🔴 **ET IL MESURE LA PREMIÈRE FRAME, PAS L'ÉCRAN EXPLOITABLE — seconde cause,
+   indépendante de la charge.** L'avertissement ci-dessus explique la DISPERSION ;
+   il ne dit rien de la GRANDEUR, et c'est ce qui a fait cesser de chercher.
+   `am start -W` s'arrête au premier rendu, donc au splash. Quand l'écran de
+   départ vit derrière un aller-retour réseau ou l'init d'un SDK, il arrive bien
+   plus tard : mesuré sur un projet réel, **8 103 ms de `firstLaunchMs` contre 22
+   à 49 s** d'attente réelle — un facteur 3 à 4 qu'un hôte au repos ne corrige
+   pas, parce qu'il ne s'agit pas de bruit mais de deux choses différentes.
+
+   Le tell est gratuit : si `startup.samples` vaut plusieurs fois `firstLaunchMs`,
+   c'est `startup.samples` qui commande, **sur les deux plateformes**. Un plafond
+   dérivé de `firstLaunchMs` aurait ici valu ~16 s et laissé la suite rouge en
+   permanence — un run l'a évité en prenant le pire cas observé, et son seuil a
+   tenu (60 s).
 
    Prends donc `firstLaunchMs` **hôte au repos** (rien d'autre qui construise ou
    pilote), ou dérive du **pire cas que tu as observé** plutôt que du dernier —
@@ -1639,6 +1672,31 @@ le problème entier : un clavier ouvert recouvre le bouton de validation, et
 `tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
 sur un run : **taper dans une zone vide de l'écran**, au-dessus des champs et
 hors de toute commande.
+
+🔴 **ET LE PIRE N'EST PAS QU'IL CACHE — C'EST QU'IL DÉPLACE.** Le paragraphe
+ci-dessus décrit le cas BRUYANT : un contrôle recouvert, un `tapOn` qui échoue.
+Le cas silencieux est l'inverse, et il coûte davantage. Un élément **flottant** —
+CTA en `Positioned`, barre d'action, FAB — est **remonté par le clavier**
+au-dessus des autres contrôles : le `tapOn` réussit alors, **sur un autre
+widget**, et rien ne rougit à cet endroit.
+
+Mesuré sur un run : le tap visait une puce de réglage, il a atterri sur le bouton
+de démarrage, et la session est partie avec les valeurs par défaut. L'échec n'est
+apparu que trois étapes plus loin, sur une ancre sans rapport — et l'agent allait
+conclure « la puce est sous le pli ». C'est la **capture** qui l'a démenti, pas le
+message d'erreur, qui désignait le mauvais endroit avec aplomb.
+
+Deux gestes, et le second vaut pour tout diagnostic :
+- **sur un écran à élément flottant, ouvre le clavier en DERNIER** — touche
+  d'abord tout ce qui ne demande pas de saisie ;
+- quand un `tapOn` **réussit** mais que l'étape suivante trouve un écran
+  inattendu, regarde la capture **avant** de soupçonner l'ancre. Un tap qui
+  atterrit ailleurs ne se distingue d'un tap correct que par ce qu'on voit.
+
+⚠️ Et c'est aussi un défaut de l'app, pas seulement du flow : un utilisateur qui
+touche ce contrôle pendant que le champ a le focus déclenche la même chose. Si tu
+le rencontres, inscris-le comme finding fonctionnel — le contournement côté flow
+ne le fait pas disparaître pour l'utilisateur.
 
 🚨 **LE POINT DÉPEND DE L'ÉCRAN — il n'y a pas de valeur par défaut, et en
 donner une est dangereux.** Ce paragraphe prescrivait `tapOn: point: 50%,25%`.
@@ -1827,7 +1885,9 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    morte — il avait suivi le point 5 avant le point 3. Si le `read` échoue, tu
    es dans le troisième cas ci-dessus et il n'y a aucun titre à reprendre.
 
-6. 🚨 **UNE PUBLICATION SANS `url` N'EST PAS UNE PAGE NEUVE.** C'est le
+6. 🚨 **UNE PUBLICATION SANS `url` N'EST PAS UNE PAGE NEUVE.** *(Long. Si tu
+   viens ici pour savoir quoi publier, le point 7 tranche en une phrase : le
+   fichier part TEL QUEL, on ne le redessine pas.)* C'est le
    geste le plus destructeur du parcours, et il ressemble au plus anodin.
    L'outil de publication rapproche par **CHEMIN DE FICHIER** : deux runs qui
    écrivent le même fichier publient sur la **même page**, quelle que soit

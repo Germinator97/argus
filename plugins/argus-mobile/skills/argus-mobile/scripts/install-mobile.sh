@@ -303,6 +303,10 @@ inventaire_owned() {
     restant="${restant:-0}"
     if [ "$restant" -gt 0 ]; then
       echo "  ✏️  $rel   ($restant TODO(argus) à traiter)"
+      # ⚠️ Le rappel vit ICI parce que c'est ici qu'on lit le compte. La règle est
+      # écrite au §3c du SKILL, à plusieurs centaines de lignes des fichiers
+      # concernés — un run a relu ce paragraphe trois fois en fermant 25 TODO.
+      todo_rappel=1
     else
       echo "  ✔  $rel"
     fi
@@ -310,6 +314,15 @@ inventaire_owned() {
   # pas une tabulation — la déduplication se faisait alors sur le mauvais champ et
   # la liste tombait de dix entrées à deux, sans une erreur.
   done < <(sort -u -t$'\t' -k1,1 "$OWNED_LIST" | sort | cut -f2-)
+  if [ "${todo_rappel:-0}" = "1" ]; then
+    echo
+    echo "  ℹ️  Un TODO(argus) se FERME, il ne se supprime pas — trois façons :"
+    echo "        TODO(argus): FAIT — <ce qui a été posé>       c'est rempli"
+    echo "        TODO(argus): SANS OBJET — <raison>            rien à faire ici"
+    echo "        TODO(argus): TRAITÉ — <décision>              tranché autrement"
+    echo "      Supprimer le marqueur fait perdre la décision, et le compte ci-dessus"
+    echo "      ne redescendra pas tant qu'aucune de ces trois formes n'est écrite."
+  fi
   echo
 }
 

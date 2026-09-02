@@ -54,6 +54,22 @@ class ArgusScreen {
   /// Le harnais ne défait rien après coup : c'est à toi de rendre
   /// l'enregistrement idempotent (`if (sl.isRegistered<T>()) return;`) si le
   /// même double sert plusieurs écrans.
+  /// ⚠️ **CE RAPPEL EST SYNCHRONE, ET LES CONTENEURS D'INJECTION NE LE SONT PAS.**
+  /// `GetIt.reset()` et `unregister()` rendent des `Future` : on ne peut donc PAS
+  /// défaire puis refaire un enregistrement d'un écran à l'autre depuis ici. Un
+  /// run l'a découvert en essayant, et le montage qui marche vaut trois lignes :
+  /// enregistrer **une seule fois**, en `setUpAll`, des fabriques qui lisent une
+  /// variable de module, puis faire varier cette variable dans `setUp` :
+  ///
+  /// ```dart
+  /// late VersionCubit courant;                       // la variable de module
+  /// setUpAll(() => sl.registerFactory<VersionCubit>(() => courant));
+  /// // puis, par écran :
+  /// setUp: () => courant = FakeVersionCubit(),       // synchrone, donc légal
+  /// ```
+  ///
+  /// Les doubles eux-mêmes vivent dans `test/argus/argus_fakes.dart` — c'est ici
+  /// qu'on en a besoin, et non au moment où l'on instrumente.
   final void Function()? setUp;
 
   /// Doit correspondre à `screens[].id` de argus.mobile.yaml, pour que les deux

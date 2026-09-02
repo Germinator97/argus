@@ -7591,3 +7591,65 @@ test('les secrets déclarés mais vides sont NOMMÉS, pas tus (337)', () => {
     'un environnement complet ne doit produire AUCUN avertissement');
   assert.deepEqual(secretsVides(undefined), [], 'et un environnement absent ne doit pas lever');
 });
+
+test('le clavier qui DÉPLACE est nommé là où on lit celui qui CACHE (334)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  // ⚠️ Le critère est STRUCTUREL — la proximité —, pas la présence. Le skill
+  // décrivait déjà le cas bruyant (« un clavier ouvert recouvre le bouton ») ;
+  // ce qui manquait est le cas SILENCIEUX, où le tap RÉUSSIT sur un autre
+  // widget. Écrit ailleurs, il ne serait pas lu au moment où il sert.
+  const cache = plat.indexOf('hideKeyboard');
+  assert.ok(cache > 0, 'le passage hideKeyboard a disparu — mets ce garde à jour');
+  const deplace = plat.indexOf("LE PIRE N'EST PAS QU'IL CACHE");
+  assert.ok(deplace > 0, 'le cas « le clavier DÉPLACE un élément flottant » doit être écrit');
+  assert.ok(deplace - cache > 0 && deplace - cache < 3000,
+    `les deux cas doivent se lire ensemble : ${deplace - cache} caractères les séparent`);
+  // Et il doit porter le GESTE, pas seulement le diagnostic.
+  const bloc = plat.slice(deplace, deplace + 2500);
+  assert.match(bloc, /ouvre le clavier en DERNIER/, 'le remède doit être prescrit, pas déduit');
+  assert.match(bloc, /regarde la capture/, 'et le geste de diagnostic aussi : le message d\'erreur ment');
+});
+
+test('le conseil sur startTimeoutMs dit ce que firstLaunchMs MESURE (336)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  const i = plat.indexOf('MESURE LA PREMIÈRE FRAME');
+  assert.ok(i > 0, 'la seconde cause — la GRANDEUR, pas la dispersion — doit être écrite');
+  const bloc = plat.slice(i, i + 1200);
+  // ⚠️ Ce qui rendait ce garde nécessaire : le skill expliquait déjà l'instabilité
+  // par la charge de l'hôte. L'explication était juste, et c'est elle qui a fait
+  // cesser de chercher — deux causes indépendantes du même symptôme.
+  assert.match(bloc, /startup\.samples/, 'la bonne grandeur doit être NOMMÉE, pas suggérée');
+  assert.match(bloc, /indépendante de la charge/, 'et distinguée de la cause déjà écrite');
+});
+
+test('l\'installeur rappelle comment fermer un TODO, et SEULEMENT s\'il en reste (341)', () => {
+  // ⚠️ Garde d'EXÉCUTION, pas de texte : il lance l'installeur et lit ce qui sort.
+  // Un garde qui aurait cherché la phrase dans le script serait resté vert avec
+  // le bloc posé au mauvais endroit — ce qui est arrivé en l'écrivant : la
+  // variable était testée dans le `case`, trois lignes AVANT que la fonction qui
+  // la renseigne ne soit appelée.
+  const hote = mkdtempSync(join(tmpdir(), 'argus-todo-'));
+  writeFileSync(join(hote, 'pubspec.yaml'), 'name: hote\n');
+  const installeur = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  execFileSync('bash', [installeur, hote], { encoding: 'utf8' });
+
+  const check = () => execFileSync('bash', [installeur, '--check', hote], { encoding: 'utf8' });
+  assert.match(check(), /TODO\(argus\) se FERME/,
+    'des TODO restent ouverts : le rappel doit s\'afficher là où on lit le compte');
+
+  // L'autre moitié, et c'est elle qui prouve que le premier n'est pas un décor :
+  // tous les TODO fermés, le rappel doit se TAIRE.
+  for (const f of readdirSync(hote, { recursive: true, withFileTypes: true })) {
+    if (!f.isFile()) continue;
+    const p = join(f.parentPath ?? f.path, f.name);
+    let t;
+    try { t = readFileSync(p, 'utf8'); } catch { continue; }
+    const ferme = t.replace(/TODO\(argus\): (?!SANS OBJET|FAIT|TRAITÉ)/g, 'TODO(argus): FAIT — ');
+    if (ferme !== t) writeFileSync(p, ferme);
+  }
+  assert.doesNotMatch(check(), /TODO\(argus\) se FERME/,
+    'plus rien à fermer : un rappel qui parle toujours finit ignoré');
+  rmSync(hote, { recursive: true, force: true });
+});
