@@ -678,6 +678,34 @@ function auditBadging(badging, apk, config) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 function main() {
+  // ⚠️ AVANT `parseArgs`, qui refuse toute option inconnue — un drapeau posé
+  // après lui ne s'exécute jamais. (Écrit une première fois APRÈS, et le test
+  // l'a dit : « ✖ option inconnue ». C'est le même défaut que le rappel des
+  // TODO posé trois lignes avant la fonction qui l'arme : un correctif placé
+  // derrière ce qui l'empêche ne corrige rien.)
+  //
+  // Le paquet est-il plus VIEUX que les sources ? Un run a perdu ~35 minutes
+  // d'appareil sur un binaire qui n'était pas le sien : `argus-build` disait
+  // « PAQUET INTACT — même empreinte » et ne proposait `flutter clean` QUE si
+  // la commande avait changé (ABI, flavor, flags). Ici la commande n'avait pas
+  // bougé, c'est `lib/` qui avait changé — la condition énumérait trois causes
+  // et manquait la plus fréquente. La mesure qui tranche existait déjà, elle ne
+  // servait qu'à l'audit de sécurité.
+  if (process.argv.slice(2).includes('--print-freshness')) {
+    let cfg;
+    try { cfg = loadConfig(); } catch { process.stdout.write('inconnu\n'); process.exit(0); }
+    const i = process.argv.indexOf('--platform');
+    const plateforme = (i >= 0 && process.argv[i + 1]) || (cfg.platforms ?? ['android'])[0];
+    // Le paquet que `argus-build` PRODUIT (`build.android`/`build.ios`), jamais
+    // celui que l'audit SCANNE (`androidScan`, souvent la release) : les
+    // confondre rendrait « frais » sur un paquet que la commande ne touche pas.
+    const b = cfg?.build ?? {};
+    const binaire = plateforme === 'ios' ? (b.ios || '') : (b.android || '');
+    const f = binaire ? binaryFreshness(binaire, process.cwd()) : null;
+    process.stdout.write(`${f ? (f.stale ? 'perime' : 'frais') : 'inconnu'}\n`);
+    process.exit(0);
+  }
+
   const opts = parseArgs(process.argv.slice(2));
   let config;
   try {
@@ -688,6 +716,8 @@ function main() {
   }
 
   const root = process.cwd();
+
+
   const platform = opts.platform || (config.platforms ?? ['android'])[0];
   const reportPath = join(artifactsDir(config), 'sec.json');
 

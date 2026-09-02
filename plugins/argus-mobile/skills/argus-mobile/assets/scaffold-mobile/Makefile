@@ -66,9 +66,19 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	if [ "$$BKIND" = absent ]; then \
 	  echo "  ✔ paquet créé — rien à cet emplacement avant le build."; \
 	elif [ "$$BEFOREH" = "$$AFTERH" ]; then \
-	  echo "  ⚠️  PAQUET INTACT — le paquet n'a pas été réécrit (même empreinte)."; \
-	  echo "      Si la commande vient de changer (ciblage d'ABI, flavor, flags), rien"; \
-	  echo "      n'a été re-packagé : \`$(FLUTTER) clean\` puis relance."; \
+	  FRESH="$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)"; \
+	  if [ "$$FRESH" = perime ]; then \
+	    echo "  ✖ PAQUET PÉRIMÉ — même empreinte, alors que lib/ a changé DEPUIS."; \
+	    echo "      Le build n'a rien recompilé : tu piloterais le binaire d'AVANT tes"; \
+	    echo "      ancres, et les flows échoueraient sur des ancres pourtant justes."; \
+	    echo "      ⇒ \`$(FLUTTER) clean\` puis relance. Ce n'est pas optionnel."; \
+	    exit 1; \
+	  else \
+	    echo "  ⚠️  PAQUET INTACT — le paquet n'a pas été réécrit (même empreinte),"; \
+	    echo "      et lib/ n'a pas changé depuis : c'est normal."; \
+	    echo "      Si tu viens de toucher la COMMANDE (ciblage d'ABI, flavor, flags),"; \
+	    echo "      rien n'a été re-packagé non plus : \`$(FLUTTER) clean\` puis relance."; \
+	  fi; \
 	else \
 	  echo "  ✔ paquet réécrit (empreinte différente) — deux tailles égales ne veulent pas"; \
 	  echo "    dire deux paquets identiques, c'est l'empreinte qui tranche."; \

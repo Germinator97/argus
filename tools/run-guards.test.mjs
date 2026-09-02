@@ -7673,3 +7673,42 @@ test('le compteur de runs lit aussi la désignation COLLECTIVE (333)', () => {
   assert.throws(() => dernierRunDu('aucun numéro ici'), /aucun run cité/,
     'un backlog sans run doit lever, pas rendre zéro');
 });
+
+test('un paquet plus VIEUX que lib/ est déclaré périmé, pas « intact » (343)', () => {
+  // ⚠️ Garde d'EXÉCUTION : il lance le script et lit ce qu'il rend. Un garde de
+  // texte serait resté vert avec le drapeau posé APRÈS `parseArgs`, qui refuse
+  // les options inconnues — c'est ce qui est arrivé en l'écrivant, et seul
+  // l'appel réel l'a dit (« ✖ option inconnue »).
+  //
+  // Le défaut fermé : `argus-build` disait « PAQUET INTACT — même empreinte » et
+  // ne proposait `flutter clean` QUE si la commande avait changé (ABI, flavor,
+  // flags). Un run a perdu ~35 min d'appareil sur un binaire qui n'était pas le
+  // sien : la commande n'avait pas bougé, c'est `lib/` qui avait changé.
+  const hote = mkdtempSync(join(tmpdir(), 'argus-fresh-'));
+  writeFileSync(join(hote, 'pubspec.yaml'), 'name: h\n');
+  execFileSync('bash', [join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh'), hote],
+    { encoding: 'utf8' });
+
+  const apk = join(hote, 'build/app/outputs/flutter-apk/app-debug.apk');
+  mkdirSync(join(hote, 'build/app/outputs/flutter-apk'), { recursive: true });
+  mkdirSync(join(hote, 'lib'), { recursive: true });
+  const cfg = join(hote, 'argus.mobile.yaml');
+  writeFileSync(cfg, readFileSync(cfg, 'utf8')
+    .replace(/^(\s*)#?\s*android:\s*build\/.*$/m, '$1android: build/app/outputs/flutter-apk/app-debug.apk'));
+
+  const verdict = () => execFileSync('node', ['scripts/argus/sec.mjs', '--print-freshness'],
+    { cwd: hote, encoding: 'utf8' }).trim();
+
+  writeFileSync(apk, 'x');
+  writeFileSync(join(hote, 'lib', 'main.dart'), 'void main() {}\n');   // source PLUS RÉCENTE
+  assert.equal(verdict(), 'perime', 'lib/ plus récent que le paquet ⇒ périmé — c\'est le cas du run 45');
+
+  writeFileSync(apk, 'y');                                            // paquet reconstruit
+  assert.equal(verdict(), 'frais', 'paquet plus récent ⇒ frais, sinon le garde crierait toujours');
+
+  // La troisième issue compte autant : sans binaire, il se TAIT plutôt que de
+  // trancher — un « frais » inventé vaudrait pire que pas de mesure.
+  rmSync(apk);
+  assert.equal(verdict(), 'inconnu', 'aucun paquet ⇒ inconnu, jamais un verdict');
+  rmSync(hote, { recursive: true, force: true });
+});
