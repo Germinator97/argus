@@ -25,6 +25,10 @@ FLOWS = ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/
 CIBLES = {
     "run": SCAFFOLD / "run.mjs",
     "config": SCAFFOLD / "config.mjs",
+    # Depuis le 02/09 : le contrôle des compteurs de la page publiée. La page
+    # vit hors dépôt, donc rien d'autre ne peut dire si l'instrument qui la
+    # mesure garde encore — c'est le seul endroit d'où on le sait.
+    "artefact": ROOT / "tools/artefact-compteurs.mjs",
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
@@ -946,6 +950,35 @@ MUTATIONS = [
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
     + ' sans URL est rapprochée par CHEMIN DE FICHIER, pas par intention',""",
      "    'publie, puis reporte l\\'URL',"),
+
+    # ── Les compteurs de la page publiée (333) ──────────────────────────────
+    ("artefact", "nombreFr rend zéro au lieu de lever sur un mot inconnu",
+     "    throw new Error(`nombreFr : mot non reconnu \u00ab ${mot} \u00bb dans \u00ab ${texte} \u00bb`);",
+     "    return total;"),
+    ("artefact", "quatre-vingt redevient 4 + 20",
+     "    .replace(/\\bquatre vingts?\\b/g, '\u00a780');",
+     "    .replace(/\\bquatre vingts?\\b/g, 'quatre vingt');"),
+    ("artefact", "le texte de la page n'est plus aplati",
+     "  return lisible.replace(/\\s+/g, ' ').trim();",
+     "  return lisible.trim();"),
+    ("artefact", "le compteur de gardes matche le mot nu",
+     "    motif: /run-guards\\.test\\.mjs\\s*\u2190\\s*(\\d+)\\s+gardes/g,",
+     "    motif: /(\\d+)\\s+gardes/g,"),
+    ("artefact", "un motif introuvable redevient un silence",
+     "    if (valeurs.length === 0) {",
+     "    if (valeurs.length === 0 && false) {"),
+    ("artefact", "le regime journal lit le minimum au lieu du maximum",
+     "    const maximum = Math.max(...valeurs);",
+     "    const maximum = Math.min(...valeurs);"),
+    ("artefact", "la seconde source du numero libre recopie la premiere",
+     "  const parLesCommits = numerosClos.length > 0 ? Math.max(...numerosClos) + 1 : null;",
+     "  const parLesCommits = parLeBacklog;"),
+    ("artefact", "le dernier point du backlog devient le premier",
+     "aucun titre de point trouv\u00e9 dans le backlog');\n  return Math.max(...numeros);",
+     "aucun titre de point trouv\u00e9 dans le backlog');\n  return numeros[0];"),
+    ("artefact", "un compteur ancre n'est plus compare",
+     "        if (valeur !== attendu) {",
+     "        if (valeur !== attendu && false) {"),
 ]
 
 
