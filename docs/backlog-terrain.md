@@ -4834,7 +4834,74 @@ caractères** (**332**) · `evidence: all` qui n'embarque rien sur un run vert
 **sujet** parce que le 330 l'avait reformulé — un garde qui citait l'ancienne
 phrase serait devenu rouge sur un correctif juste.
 
+### 333. ✅ Corrigé le 02/09/2026 — les compteurs de la page publiée, dérivés au lieu d'être tapés
+
+**Demandé par Germinator** après qu'il eut vu la page annoncer « prochain numéro
+libre 255 » et « vidé trente-cinq fois » pour **333** et **quarante et une** :
+six passes et 78 points de retard. Republier une fois de plus n'était pas le
+remède — les chiffres se seraient repérimés à la passe suivante. C'est
+l'anti-pattern *« un nombre qui décrit le contenu sans être dérivé de la
+donnée »*, et il vivait dans le suivi du chantier lui-même.
+
+`tools/check-artefact.mjs` dérive chaque compteur du dépôt et **refuse** une page
+qui ne correspond plus (sortie 1). Sept compteurs : commits, runs, plugins,
+gardes, mutations, prochain numéro libre, fois où le backlog s'est vidé.
+
+📌 **DEUX RÉGIMES, ET C'EST TOUTE LA CONCEPTION.** La page est un **journal
+chronologique** : « le backlog s'est vidé **huit** fois » y est **juste**, sous le
+titre « ce que huit runs ont fini par établir ». Exiger que toutes les mentions
+soient égales aurait fait rougir le garde sur de l'histoire correcte — et un
+garde qui crie au loup apprend à être ignoré. Donc : *ancré* (le bandeau, l'arbre
+de fichiers, la phrase de synthèse) → **chaque** occurrence exacte ; *journal* → le
+**maximum** exact, un bilan passé étant plus petit et jamais plus grand.
+
+⚠️ **J'ALLAIS CORRIGER CE « HUIT FOIS ».** Le relevé le donnait pour un compteur
+périmé de trente-trois passes, et c'était faux : seule la lecture du **contexte**
+l'a dit. C'est la règle connue — *ne pas corriger ce qu'un audit signale sans
+l'avoir reproduit* — et « reproduire » voulait dire ici lire les deux cents
+caractères qui précèdent, pas relancer une mesure.
+
+📌 **AUCUN MOTIF NE CHERCHE LE MOT NU.** « N gardes » apparaît **seize** fois dans
+la page (dont « 401 gardes » qui décrit un terrain) et « N runs » **plus de
+cinquante**. Un marqueur nommé d'après une famille désigne la famille, jamais le
+sous-ensemble visé : l'ancre est le voisinage — le séparateur du bandeau, le nom
+du fichier dans l'arbre.
+
+📌 **LE NUMÉRO LIBRE A DEUX SOURCES INDÉPENDANTES** — les titres `### N-M.` du
+backlog et les sujets `docs: close N-M` — et elles doivent s'accorder **entre
+elles** avant que l'une soit comparée à la page. Un dépôt qui se contredit ne
+peut pas juger un livrable.
+
+⚠️ **DEUX INSTRUMENTS ONT MENTI EN CHEMIN, ET LES DEUX RENDAIENT « 0 ».** Un
+`replace` qui ne remplaçait rien, suivi d'un contrôle dont le motif ne matchait
+pas davantage : « 0 classe fautive » lu comme une correction réussie. Puis un
+motif de mutation absent du HTML **brut** — le texte y est coupé par une balise
+et replié à ~78 colonnes — qui aurait produit une page « mutée » identique à
+l'originale, donc un garde déclaré aveugle à tort. Les deux ont été démasqués par
+la même chose : un **témoin** dont la valeur ne peut pas être zéro.
+
+⚠️ **ET DEUX MONTAGES DE TEST ONT ACCUSÉ LE CODE À TORT** : mon backlog de
+laboratoire ne citait aucun run, donc `dernierRunDu` levait — exactement comme
+conçu ; puis ma page de laboratoire annonçait dix runs contre un dépôt qui en
+disait quarante et un. Aucun n'était un défaut du module, chacun se lisait comme
+tel.
+
+📌 **`fetch-depth: 0` en CI n'est pas du confort** : la dérivation lit
+l'historique. Sous le clone superficiel par défaut, `rev-list --count` rend **1**
+et aucun `docs: close` n'est visible — le garde aurait accusé le code pour un
+défaut de montage.
+
+**9 mutations, 9 tombées**, chacune faisant rougir exactement le garde qu'elle
+vise. 302/302.
+
 ## Ce qui reste
+
+Le point **333** est fermé le 02/09/2026 — backlog vide pour la
+**quarante-deuxième** fois. Il ne vient pas d'un run mais d'une **demande** de
+Germinator, et sa valeur n'est pas l'outil : c'est qu'il a trouvé un faux
+constat avant d'exister. Le relevé donnait « le backlog s'est vidé huit fois »
+pour un compteur périmé ; c'était un bilan à sa date, et le corriger aurait
+abîmé un texte juste.
 
 Les points **317 à 332** sont fermés le 01/09/2026 — backlog vide pour la
 **quarante et unième** fois. Seize points, quatre vagues dans la journée, et la

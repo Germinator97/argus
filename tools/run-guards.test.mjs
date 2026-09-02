@@ -7476,8 +7476,14 @@ test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent
   // AUCUNE valeur figée — un `commits === 367` serait faux au commit suivant.
   const vrai = compteursDuDepot({ racine: RACINE });
   assert.ok(vrai.commits > 300, `le compte de commits doit venir d'un dépôt complet, reçu ${vrai.commits}`);
+  // ⚠️ Ce garde rougit AUSSI pendant la fenêtre normale d'une passe : entre le
+  // moment où l'on inscrit une clôture au backlog et celui où on la commite,
+  // les deux sources divergent d'un point. Ce n'est pas un bug, c'est le rappel
+  // de commiter — et c'est le seul état où le désaccord est légitime.
   assert.equal(vrai.numeroLibre, vrai.numeroLibreSelonLesCommits,
-    'le backlog et les commits de clôture doivent mener au même prochain numéro');
+    `le backlog mène à ${vrai.numeroLibre} et les commits de clôture à ${vrai.numeroLibreSelonLesCommits} : `
+    + 'soit la clôture n\'est pas encore commitée (commite, le garde redevient vert), '
+    + 'soit une passe a fermé des points sans les inscrire');
   assert.ok(vrai.gardes > 250, 'les gardes de cette suite doivent se compter');
   assert.ok(vrai.mutations > 150, 'et les mutations du harnais aussi');
   assert.equal(vrai.plugins, 3, 'trois plugins : argus, argus-mobile, argus-web');
