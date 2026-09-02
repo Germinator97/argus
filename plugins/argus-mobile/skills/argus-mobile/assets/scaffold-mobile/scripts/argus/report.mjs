@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — rapport HTML
@@ -51,7 +52,12 @@ const esc = (value) => String(value ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&a
 /**
  * Rassemble les sources présentes et distingue trois états : exécutée,
  * sautée avec raison, et jamais lancée.
+ *
+ * `stale` est posé par l'appelant, après coup : c'est une propriété du LOT (le
+ * plus récent sert de référence), pas de la part prise isolément.
  * @param {string} dir
+ * @returns {Array<{file:string, label:string, dimensions:string, how:string,
+ *   state:string, reason:string, findings:any[], data:any, at:Date|null, stale?:boolean}>}
  */
 function collect(dir) {
   const parts = [];
@@ -775,7 +781,9 @@ function main() {
   const brut = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };
   // `report.json` ne porte pas le nom du projet — il décrit un run, pas un
   // dépôt. On le prend dans la config, sans écraser celui qui viendrait de là.
-  const run = { ...brut, name: brut.name || config.app?.name || '' };
+  // `report.json` écrit `appName` ; ce fichier lisait `name`, et le repli sur la
+  // config masquait l'écart — les deux clés portaient la même valeur par hasard.
+  const run = { ...brut, name: brut.name || brut.appName || config.app?.name || '' };
   const coverage = parts.find((p) => p.file === 'report.json')?.data?.coverage ?? null;
   const perf = parts.find((p) => p.file === 'perf.json')?.data ?? null;
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);

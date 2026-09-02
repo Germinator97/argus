@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — accessibilité mesurée sur device
@@ -172,7 +173,7 @@ export function relaunchDecision({ foreground, matched, requested }) {
  * le harnais mesure déjà (`startup.samples` du rapport). À défaut de mesure, on
  * n'invente rien : on attend le budget entier — lent, jamais faux — et
  * l'appelant dit quoi faire pour que ça cesse.
- * @param {{matched:boolean, kind:string, immobile:boolean, ecouleMs:number, splashMs:number}} etat
+ * @param {{matched:boolean, kind:string, immobile:boolean, ecouleMs:number, plancherMs:number}} etat
  * @returns {'reconnu'|'renoncer'|'attendre'}
  */
 export function verdictAttente({ matched, kind, immobile, ecouleMs, plancherMs }) {
@@ -222,7 +223,7 @@ export function identifyScreen(nodes, config, requested) {
   const found = declared.filter((/** @type {any} */ s) => haystack.includes(s.anchor));
 
   if (found.length === 0) {
-    const attendu = requested && requested !== 'écran courant' ? ` (attendu : « ${requested} »)` : '';
+    const attendu = requested && requested !== ECRAN_COURANT ? ` (attendu : « ${requested} »)` : '';
     return {
       id: '',
       matched: false,
@@ -232,7 +233,7 @@ export function identifyScreen(nodes, config, requested) {
     };
   }
   const id = found.map((/** @type {any} */ s) => s.id).join('+');
-  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {
+  if (requested && requested !== ECRAN_COURANT && !found.some((/** @type {any} */ s) => s.id === requested)) {
     return { id, matched: false, kind: 'autre', detail: `écran affiché « ${id} », qui n'est pas « ${requested} » — la mesure ne porte pas sur ce que tu as demandé.` };
   }
   return { id, matched: true, kind: 'reconnu', detail: `écran reconnu : « ${id} ».` };

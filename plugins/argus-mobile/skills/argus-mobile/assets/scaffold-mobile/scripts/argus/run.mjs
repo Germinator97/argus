@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — runner de la suite Maestro
@@ -1346,7 +1347,7 @@ export function screensWithMovedCrop(graves, ecrans, config) {
  * empreinte déclarée vaut mieux que pas d'empreinte, à condition de ne pas la
  * faire passer pour une mesure.
  * @param {string} platform @param {string} udid @param {any} spec
- * @returns {{model:string, os:string, source:string}}
+ * @returns {{model:string, os:string, source:string, locale?:string}}
  */
 export function deviceStamp(platform, udid, spec, lire = adbShell, resolu = null) {
   const declare = { model: String(spec?.model ?? ''), os: String(spec?.os ?? ''), source: 'déclaré' };
@@ -1393,7 +1394,8 @@ export function deviceStamp(platform, udid, spec, lire = adbShell, resolu = null
  * Le NOM de l'appareil (AVD, udid) n'entre pas dans la comparaison : il change
  * d'une machine à l'autre pour un modèle identique, et crier là-dessus
  * apprendrait à ignorer l'avertissement.
- * @param {any} grave @param {any} courant @returns {null|{grave:any, courant:any}}
+ * @param {any} grave @param {any} courant
+ * @returns {null|{grave:any, courant:any, localeSeule:boolean}}
  */
 export function baselineDeviceDrift(grave, courant) {
   if (!grave || !grave.model || !grave.os) return null;
@@ -1429,7 +1431,7 @@ export function baselineDevice(baselineDir) {
  * qui en sort se lit comme une régression visuelle de l'app, pas comme un
  * changement de config. Rien d'autre ne peut le voir : les deux images sont
  * valides, elles ne cadrent simplement pas la même chose.
- * @param {string} baselineDir @param {string} crop
+ * @param {string} baselineDir @param {Record<string,string>} crops
  */
 function stampBaselineCrops(baselineDir, crops) {
   mkdirSync(baselineDir, { recursive: true });
@@ -1449,7 +1451,8 @@ function stampBaselineCrops(baselineDir, crops) {
  * « ne fait pas de régression visuelle ». Mesuré : il la faisait, dans les deux
  * exécutions suivantes. Le défaut n'était pas l'absence de boucle mais un run
  * inutile dont la sortie disait le contraire de ce qui se passait juste après.
- * @param {string[]} includeTags @param {string[]} excludeTags @returns {boolean}
+ * @param {string[]} includeTags @param {string[]} excludeTags
+ * @returns {{main:boolean, visual:boolean}}
  */
 function dimensionsToRun(includeTags, excludeTags) {
   const exclus = new Set(excludeTags);
@@ -1605,7 +1608,7 @@ export function buildCoverage(config, avecAncre, visites, visuels, visualMode, h
  *
  * Le seuil de 70 % est un choix, pas une mesure : il dit « la marge n'est plus
  * confortable », assez tôt pour qu'on relève avant de flaker.
- * @param {{ms:number}[]} samples @param {number} plafondMs
+ * @param {{ms:number, status?:string}[]} samples @param {number} plafondMs
  * @returns {{pireMs:number, pct:number, serre:boolean}|null}
  */
 export function startupMargin(samples, plafondMs) {
@@ -1635,7 +1638,7 @@ export function startupMargin(samples, plafondMs) {
  * la pire attente que le runner vient de relever. C'est exactement ce que
  * `firstLaunchMs` approche sur Android — chaque flow fait `clearState`, donc
  * chacun paie un premier lancement.
- * @param {{ms:number}[]} samples @param {number} plafondMs @param {string} platform
+ * @param {{ms:number, status?:string}[]} samples @param {number} plafondMs @param {string} platform
  * @returns {string[]}
  */
 export function startupMarginWarning(samples, plafondMs, platform = '') {

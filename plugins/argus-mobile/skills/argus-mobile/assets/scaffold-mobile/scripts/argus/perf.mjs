@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — performance et stabilité
@@ -34,6 +35,13 @@ import {
 } from './config.mjs';
 
 const MB = 1024 * 1024;
+
+/**
+ * Combien on laisse au processus pour devenir visible de `dumpsys`, avant de
+ * conclure que la mémoire n'est pas mesurable. Un choix, pas une mesure : il dit
+ * seulement « plus qu'un aller-retour adb ».
+ */
+const MEMOIRE_SECONDE_CHANCE_MS = 500;
 
 /** @param {string[]} argv */
 function parseArgs(argv) {
@@ -565,9 +573,13 @@ function main() {
   timedLaunch(udid, component);
   let memoryMb = measureMemory(udid, packageName);
   if (memoryMb === null) {
-    // Une seconde chance après un instant : le processus peut n'être pas encore
-    // visible de `dumpsys`. Si ça échoue encore, on le DIT — un `null` muet est
-    // pire qu'une dimension sautée, parce qu'il ne se voit nulle part.
+    // Une seconde chance APRÈS UN VRAI DÉLAI : le processus peut n'être pas
+    // encore visible de `dumpsys`. Le commentaire promettait « après un
+    // instant » et le code rappelait la sonde dans la foulée — le seul délai
+    // était celui d'un aller-retour adb, ni choisi ni mesuré, donc la seconde
+    // chance n'en était pas une. `Atomics.wait` attend sans boucler à vide,
+    // comme la relance de `a11y.mjs`.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, MEMOIRE_SECONDE_CHANCE_MS);
     memoryMb = measureMemory(udid, packageName);
   }
   if (memoryMb === null) {
