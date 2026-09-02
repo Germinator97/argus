@@ -21,7 +21,7 @@ jobs:
       # Sous le clone superficiel par défaut, `git rev-list --count HEAD` rend 1 et
       # aucun `docs: close` n'est visible — le garde accuserait alors le code pour
       # un défaut de montage. Il crie plutôt que de se taire, et c'est voulu.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -91,6 +91,21 @@ jobs:
             node --input-type=module -e "await import('$GITHUB_WORKSPACE/$f')"
           done
 
+      # ⚠️ `// @ts-check` EN TÊTE DE CHAQUE SCRIPT, ET AUCUN `tsc` POUR LE LIRE.
+      # L'annotation ne mesurait donc rien : au premier passage, 23 déclarations
+      # JSDoc décrivaient autre chose que ce que la fonction rend — un
+      # `@returns {boolean}` sur une fonction qui rend un objet, un `@param`
+      # nommant un paramètre inexistant, un dartdoc orphelin posé deux fonctions
+      # trop haut. Aucune n'était un bug d'exécution ; toutes trompaient le
+      # lecteur, qui est précisément le rôle d'un JSDoc.
+      - name: Les JSDoc décrivent ce que le code rend
+        run: |
+          mkdir -p /tmp/tsc && cd /tmp/tsc && npm init -y >/dev/null
+          npm i -D typescript@5 @types/node@22 >/dev/null
+          ./node_modules/.bin/tsc --noEmit --allowJs --checkJs --target es2022 \
+            --module esnext --moduleResolution bundler --skipLibCheck \
+            "$GITHUB_WORKSPACE"/plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs
+
       # `node --check` prouve qu'un fichier parse, jamais qu'il décide juste.
       # Deux défauts ont vécu sous cette seule étape : un rapport qui recopiait
       # l'identité du device au lieu de la lire, et un échec qui accusait
@@ -119,7 +134,7 @@ jobs:
     name: L'étage 1 analyse et tourne
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: subosito/flutter-action@v2
         with:

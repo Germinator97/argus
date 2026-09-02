@@ -1,3 +1,4 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 # argus-mobile — CI
 #
 # Trois étages, du moins cher au plus cher. Le premier tourne à chaque PR ;
@@ -51,7 +52,7 @@ jobs:
           case " $PLATS " in
             *" android "*) echo "android=true"  >> "$GITHUB_OUTPUT" ;;
             *) echo "android=false" >> "$GITHUB_OUTPUT"
-               echo "::notice::Android non déclaré — MASVS et e2e-android se sautent." ;;
+               echo "::notice::Android non déclaré — e2e-android se saute. La sécurité (secrets, config, CVE, Info.plist) tourne quand même." ;;
           esac
           case " $PLATS " in
             *" ios "*) echo "ios=true" >> "$GITHUB_OUTPUT"
@@ -105,10 +106,26 @@ jobs:
 
   # ── Étage 1 bis : sécurité statique ─────────────────────────────────────
   # Ne demande ni device ni binaire pour le niveau A (sources).
+  #
+  # ⚠️ CE JOB NE SE CONDITIONNE PLUS À UNE PLATEFORME. Il portait
+  # `if: android == 'true'`, ce qui paraissait juste — le niveau B lit un APK —
+  # mais il transporte trois choses qui ne dépendent d'AUCUNE plateforme : le
+  # scan de secrets, le contrôle des fichiers de config non embarqués, et les
+  # CVE des dépendances Dart. Un projet `platforms: [ios]` perdait donc toute
+  # la dimension sécurité, et le `::notice::` n'annonçait que la perte des deux
+  # qu'il nommait. `sec.mjs` sait déjà ne juger que les plateformes déclarées et
+  # DIRE ce qu'il n'a pas jugé : la condition était redondante là où elle avait
+  # raison, et destructrice partout ailleurs.
+  #
+  # ⚠️ ET IL NE CONSTRUIT PLUS D'APK. Il en construisait un en `--debug` pour le
+  # « niveau B », alors que le scan REFUSE de conclure sur un debug (il n'y dit
+  # rien de la publication) : `--require-tools` transformait ce refus légitime en
+  # `exit 2`, si bien que le job échouait par construction, sur un dépôt sain, au
+  # premier run. Le build coûtait plusieurs minutes par PR pour un verdict qui
+  # n'arrivait jamais. Le niveau B se branche sur une RELEASE — voir le bloc en
+  # bas de ce fichier.
   security:
-    name: MASVS et CVE
-    needs: cadre
-    if: needs.cadre.outputs.android == 'true'
+    name: MASVS (sources) et CVE
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -137,18 +154,27 @@ jobs:
         with:
           node-version: '20'
       - run: flutter pub get
+      # ⚠️ `latest` SUIT LES PUBLICATIONS AMONT, et ce job est celui dont le sujet
+      # est la chaîne d'approvisionnement. Deux runs à un jour d'écart n'analysent
+      # donc pas forcément avec le même scanner, et rien dans le rapport ne le
+      # dit. Épingle une version dès que tu veux un résultat reproductible —
+      # pose la variable de dépôt `ARGUS_OSV_VERSION` (ex. `v2.2.3`) — et le
+      # numéro employé est imprimé ci-dessous dans tous les cas.
       - name: Installer osv-scanner
         run: |
-          curl -sSfL -o /usr/local/bin/osv-scanner \
-            https://github.com/google/osv-scanner/releases/latest/download/osv-scanner_linux_amd64
+          V="${{ vars.ARGUS_OSV_VERSION }}"
+          URL="https://github.com/google/osv-scanner/releases/${V:+download/$V}${V:-latest/download}/osv-scanner_linux_amd64"
+          curl -sSfL -o /usr/local/bin/osv-scanner "$URL"
           chmod +x /usr/local/bin/osv-scanner
-      - name: Construire l'APK (niveau B de l'analyse)
-        run: flutter build apk --debug
-      # `--require-tools` fait échouer si le binaire ou le scanner manquent.
-      # Sans ce flag, une CI où l'installation a raté rendrait vert une analyse
-      # de sécurité qui n'a rien analysé.
-      - name: MASVS statique
-        run: node scripts/argus/sec.mjs --require-tools
+          echo "osv-scanner : $(osv-scanner --version | head -1)  (source ${V:-latest})"
+      # Niveau A seulement : manifeste, Info.plist, secrets versionnés, fichiers
+      # de configuration non embarqués. Le niveau B (binaire livré) n'a pas sa
+      # place ici — il exige la release, pas le paquet de test.
+      - name: MASVS statique (sources)
+        run: node scripts/argus/sec.mjs
+      # `--require-tools` reste ICI, et il y garde tout son sens : sans
+      # osv-scanner, la dimension CVE rendrait vert en n'ayant rien scanné —
+      # le faux vert le plus coûteux du lot, puisqu'il porte sur la sécurité.
       - name: CVE des dépendances
         run: node scripts/argus/sca.mjs --require-tools
       - name: Rapport
@@ -212,10 +238,18 @@ jobs:
       - run: flutter pub get
       - run: flutter build apk --debug
 
+      # ⚠️ VERSION NON ÉPINGLÉE, et ce n'est pas anodin ici : le runner LIT les
+      # formats de sortie de Maestro (`commands.json`, `manifest.json`, la place
+      # de `metadata.status`), relevés sur 2.8.0 et cités à sept endroits du
+      # code. Une montée amont qui les change ferait rendre zéro finding sur une
+      # suite rouge — le garde `failedRuns > 0 && findings.length === 0` rattrape
+      # le cas, mais en `exit 2` sans diagnostic. La version installée est donc
+      # IMPRIMÉE : c'est ce qui permet de relire un rapport passé.
       - name: Installer Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
 
       # Contrôle de syntaxe AVANT de démarrer l'émulateur : une erreur de flow
       # se voit en deux secondes plutôt qu'après cinq minutes de boot.
@@ -252,6 +286,7 @@ jobs:
               console.error('[argus-mobile] émulateur : ' + r.source);
               console.log('api-level=' + r.apiLevel);
               console.log('profile=' + r.profile);
+              console.log('avd-name=' + (r.avdName || ''));
             });
           " >> "$GITHUB_OUTPUT"
           cat "$GITHUB_OUTPUT"
@@ -264,6 +299,15 @@ jobs:
         with:
           api-level: ${{ steps.appareil.outputs.api-level }}
           profile: ${{ steps.appareil.outputs.profile }}
+          # ⚠️ L'AVD PORTE LE NOM QUE LA CONFIG DÉCLARE. Sans cette ligne,
+          # l'action créait un AVD sous son propre nom pendant que le runner
+          # cherchait celui de `devices[].avd` — la configuration que le
+          # scaffold exige EN MAJUSCULES était donc celle qui faisait échouer le
+          # job. `model` et `os` étaient dérivés depuis longtemps ; c'est la
+          # troisième clé du même triplet qui manquait, et son absence ne
+          # ressemble pas à un oubli puisque les deux autres sont là.
+          # Le repli est le défaut de l'action, pour qui ne nomme aucun AVD.
+          avd-name: ${{ steps.appareil.outputs.avd-name || 'test' }}
           # `target` et `arch` restent ici : ce sont des choix de RUNNER (image
           # système, architecture de l'hôte), pas des propriétés de l'appareil
           # que le projet déclare. Rien à dériver.
@@ -279,6 +323,15 @@ jobs:
       - name: Mesures de performance
         if: ${{ !cancelled() }}
         run: node scripts/argus/perf.mjs || true
+
+      # ⚠️ APRÈS `perf`, et ce n'est pas indifférent : `argus-perf` laisse l'app
+      # arrêtée, et `a11y.mjs` sait s'en rattraper (il relance et relit). C'est
+      # l'ordre que la chaîne `make argus` emprunte déjà.
+      # Cette dimension était livrée, documentée et testée dans les deux sens —
+      # et lancée par AUCUN job : la seule du lot dans ce cas.
+      - name: Accessibilité sur device
+        if: ${{ !cancelled() }}
+        run: node scripts/argus/a11y.mjs || true
 
       - name: Rapport
         if: ${{ !cancelled() }}
@@ -343,10 +396,18 @@ jobs:
           node-version: '20'
       - run: flutter pub get
       - run: flutter build ios --debug --simulator
+      # ⚠️ VERSION NON ÉPINGLÉE, et ce n'est pas anodin ici : le runner LIT les
+      # formats de sortie de Maestro (`commands.json`, `manifest.json`, la place
+      # de `metadata.status`), relevés sur 2.8.0 et cités à sept endroits du
+      # code. Une montée amont qui les change ferait rendre zéro finding sur une
+      # suite rouge — le garde `failedRuns > 0 && findings.length === 0` rattrape
+      # le cas, mais en `exit 2` sans diagnostic. La version installée est donc
+      # IMPRIMÉE : c'est ce qui permet de relire un rapport passé.
       - name: Installer Maestro
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+          "$HOME/.maestro/bin/maestro" --version
       - name: Démarrer un simulateur
         run: maestro start-device --platform ios --device-locale fr_FR
       - name: Suite Argus Mobile
@@ -387,6 +448,40 @@ jobs:
 # sur un autre. Sans ça, une référence née ailleurs échoue en se faisant passer
 # pour une régression de l'app — les deux images sont valides, elles ne montrent
 # simplement pas le même appareil.
+#
+# ═══════════════════════════════════════════════════════════════════════════
+# NIVEAU B — l'analyse du BINAIRE LIVRÉ, sur une release
+# ═══════════════════════════════════════════════════════════════════════════
+# Le job `security` ci-dessus ne lit que les SOURCES. Le niveau B — manifeste
+# fusionné, permissions héritées des dépendances, obfuscation, drapeau
+# debuggable — ne conclut que sur ce qu'on publie : `sec.mjs` refuse un debug,
+# et il a raison de le faire.
+#
+# Le brancher demande deux choses que ce workflow ne peut pas deviner : la
+# commande de release DE TON PROJET (souvent `--obfuscate --split-debug-info`,
+# un `--dart-define-from-file`, une signature) et le moment où la payer. Sur un
+# tag, typiquement, pas à chaque PR :
+#
+#   niveau-b:
+#     name: MASVS (binaire livré)
+#     if: startsWith(github.ref, 'refs/tags/')
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v7
+#       - uses: subosito/flutter-action@v2
+#         with:
+#           channel: stable
+#       - uses: actions/setup-node@v7
+#         with:
+#           node-version: '20'
+#       - run: flutter pub get
+#       - run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
+#       - run: node scripts/argus/sec.mjs --binary=build/app/outputs/flutter-apk/app-release.apk --require-tools
+#
+# ⚠️ `--require-tools` a ici son sens plein : sur une release, un scan qui ne
+# conclut pas est un défaut d'environnement (unzip ou aapt2 absent), jamais une
+# décision du code. Déclare aussi `build.androidScan` dans argus.mobile.yaml
+# pour que `argus-perf` pèse le bon binaire.
 #
 # ═══════════════════════════════════════════════════════════════════════════
 # OPTION — Maestro Cloud (plan payant, remplace le job e2e-android)
