@@ -7712,3 +7712,33 @@ test('un paquet plus VIEUX que lib/ est déclaré périmé, pas « intact » (34
   assert.equal(verdict(), 'inconnu', 'aucun paquet ⇒ inconnu, jamais un verdict');
   rmSync(hote, { recursive: true, force: true });
 });
+
+test('la contre-épreuve à cinq secondes vient AVANT les trois causes (344, 345)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  // ⚠️ Critère STRUCTUREL : l'ordre, pas la présence. La commande existait déjà
+  // dans le document — 430 lignes après la liste des causes, donc après le
+  // moment où l'on en a besoin. Un run a payé ~35 min pour la retrouver.
+  const contre = plat.indexOf('maestro hierarchy | grep -c');
+  const causes = plat.indexOf('TROIS causes, et la plus chère');
+  assert.ok(contre > 0, 'la contre-épreuve doit être écrite');
+  assert.ok(causes > 0, 'la liste des trois causes a changé de forme — mets ce garde à jour');
+  assert.ok(contre > causes && contre - causes < 1200,
+    `elle doit suivre immédiatement l'annonce des causes, pas vivre ailleurs (écart ${contre - causes})`);
+  // 345 : et elle doit dire d'ANCRER le motif — c'est ce qui manquait.
+  const bloc = plat.slice(causes, causes + 1800);
+  assert.match(bloc, /sous-chaîne/, 'le piège de la sous-chaîne doit être nommé là où l\'on compte');
+  assert.match(bloc, /ancrant le motif|ancrer le motif/, 'et le geste qui l\'évite prescrit');
+});
+
+test('le piège du dartdoc est rappelé LÀ OÙ l\'on édite ces fichiers (346)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  const rappel = plat.indexOf('leur dartdoc porte un exemplaire MOT POUR MOT');
+  const todo = plat.indexOf('UN TODO SE FERME');
+  assert.ok(rappel > 0, 'le rappel doit exister au §3c');
+  assert.ok(todo > 0 && rappel < todo && todo - rappel < 900,
+    'il doit précéder immédiatement la consigne de remplir ces fichiers');
+  assert.match(plat.slice(rappel, todo), /ARGUS:DECLARATION/,
+    'et nommer le marqueur sur lequel s\'ancrer, sinon il décrit le piège sans le fermer');
+});

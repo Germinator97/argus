@@ -1162,6 +1162,14 @@ prétendre le contraire fait chercher ailleurs ce qu'on ne trouve pas. Ils porte
 tous le marqueur `ARGUS:OWNED` et **l'installeur te les liste en sortant**, avec
 le nombre de `TODO(argus)` qui restent dans chacun. Trois familles :
 
+⚠️ **AVANT D'ÉDITER `harness.dart` OU `known_issues.dart` : leur dartdoc porte
+un exemplaire MOT POUR MOT de ce que tu vas chercher.** S'ancrer sur la ligne de
+déclaration au lieu du marqueur `// ARGUS:DECLARATION` frappe donc l'exemple du
+commentaire, pas le vrai site. Le §2b le dit — à neuf cents lignes d'ici, c'est-à-dire
+loin de l'endroit où l'on remplit ces deux fichiers. Un run l'a lu, puis a cassé
+`known_issues.dart` ; il n'est pas suivi par git, donc `checkout` ne le ramène
+pas — il a fallu le reconstruire depuis le scaffold.
+
 ⚠️ **UN TODO SE FERME, il ne se supprime pas — et il y a TROIS façons.** Un
 TODO qu'on retire ne laisse aucune trace de la décision ; un TODO qu'on laisse
 ouvert alors qu'il est réglé fausse le seul inventaire que la personne suivante
@@ -1461,6 +1469,25 @@ vert pour toujours ce qu'elle a photographié de travers.
 ⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a
 TROIS causes, et la plus chère n'est pas celle qu'on cherche.** Le runner les
 imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
+
+🚨 **AVANT les trois, une commande de CINQ SECONDES les départage** — elle
+demande à l'appareil ce qu'il porte vraiment :
+
+```bash
+maestro hierarchy | grep -c '<ton ancre>'     # 0 ⇒ elle n'est PAS dans l'arbre
+```
+
+Si l'ancre est absente alors que la capture montre l'écran **correctement
+affiché**, ce n'est ni la lenteur ni un plafond : c'est que **le binaire piloté
+n'est pas celui de tes sources**. Va lire ce que ton paquet contient
+(`make argus-build` refuse désormais de continuer sur un paquet plus vieux que
+`lib/`), et compte le marqueur dans le binaire — en **ancrant le motif**, sinon
+une ancre plus courte se compte dans une plus longue.
+
+Vécu : douze flows rouges sur deux passes, ~35 minutes d'appareil, sur une ancre
+parfaitement juste. Le kernel portait le nommage d'une session précédente, et le
+comptage l'avait manqué parce que `identification_root` est une **sous-chaîne**
+de `auth_identification_root` — le compteur rendait « 2 » et rassurait.
 
 1. **L'app ne démarre PAS.** Regarde d'abord la capture que Maestro vient de
    prendre, dans `argus-mobile-report/maestro/<horodatage>/<flow>/screenshots/`.
