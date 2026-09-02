@@ -7620,7 +7620,13 @@ test('le conseil sur startTimeoutMs dit ce que firstLaunchMs MESURE (336)', () =
   // ⚠️ Ce qui rendait ce garde nécessaire : le skill expliquait déjà l'instabilité
   // par la charge de l'hôte. L'explication était juste, et c'est elle qui a fait
   // cesser de chercher — deux causes indépendantes du même symptôme.
-  assert.match(bloc, /startup\.samples/, 'la bonne grandeur doit être NOMMÉE, pas suggérée');
+  // ⚠️ Sur la PRESCRIPTION, pas sur le token : `startup.samples` apparaît deux
+  // fois dans la même phrase, si bien qu'une mutation qui n'en retirait qu'une
+  // laissait ce garde vert. C'est le harnais qui l'a dit, pas une relecture.
+  assert.match(bloc, /c'est `startup\.samples` qui commande/,
+    'la bonne grandeur doit être PRESCRITE, pas seulement mentionnée');
+  assert.match(bloc, /sur les deux plateformes/,
+    'et la prescription doit valoir des deux côtés, sans quoi elle rejoue le trou du 279');
   assert.match(bloc, /indépendante de la charge/, 'et distinguée de la cause déjà écrite');
 });
 

@@ -1010,9 +1010,12 @@ MUTATIONS = [
     ("skill", "le geste du clavier disparait, le diagnostic reste",
      "- **sur un écran à élément flottant, ouvre le clavier en DERNIER** — touche",
      "- sur un écran à élément flottant, la disposition change — touche"),
-    ("skill", "la bonne grandeur du plafond n'est plus nommee",
-     "   Le tell est gratuit : si `startup.samples` vaut plusieurs fois `firstLaunchMs`,",
-     "   Le tell est gratuit : si la pire attente vaut plusieurs fois `firstLaunchMs`,"),
+    # ⚠️ La mutation porte sur la PRESCRIPTION entière : `startup.samples` est
+    # nommé deux fois dans la phrase, et n'en muter qu'une laissait le garde vert
+    # — verdict « VACANT » rendu par le harnais alors que le garde était bon.
+    ("skill", "la bonne grandeur du plafond n'est plus prescrite",
+     "c'est `startup.samples` qui commande, **sur les deux plateformes**",
+     "c'est la mesure la plus fiable qui commande"),
     ("installeur", "le rappel des TODO n'est jamais arme",
      "      todo_rappel=1",
      "      todo_rappel=0"),
