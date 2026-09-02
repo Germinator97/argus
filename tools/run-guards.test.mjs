@@ -54,6 +54,7 @@ import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/ass
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { compteursDeLaPage, compteursDuDepot, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -7334,4 +7335,151 @@ test('le geste documenté est le geste outillé : ARGS arrive jusqu\'au rapport 
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
   assert.match(skill, /ARGS="--previous=/, 'et le skill doit prescrire le geste que la recette offre');
   assert.match(skill, /UNE PAGE PAR PLATEFORME/, 'et dire pourquoi une page ne vaut pas pour les deux');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Les compteurs de la page publiée du chantier (333) — cf. tools/artefact-compteurs.mjs
+//
+// ⚠️ Ce que ces gardes protègent n'est PAS la page : c'est l'instrument qui la
+// mesure. La page vit hors dépôt — elle nomme les terrains d'essai — donc la CI
+// ne la lira jamais. Ce qu'elle peut garder, c'est que l'outil sache encore
+// dériver du dépôt, distinguer un bilan d'histoire d'un compteur périmé, et
+// surtout ÉCHOUER quand un motif ne trouve plus rien. Sans ce dernier point,
+// une reformulation de la page rendrait le contrôle vert en ne mesurant plus
+// rien, ce qui est exactement le défaut qu'il existe pour empêcher.
+
+/** Un dépôt de laboratoire : les I/O sont injectées, aucun vrai dépôt n'est lu. */
+const depotFictif = ({
+  backlog = '## Run 10 — x\n### 1-10. x\n', sujets = ['docs: close 1-10'], commits = 12,
+  suite = 'test(\ntest(\n', plugins = ['a', 'b', 'c'], mutations = '  1. m\n  2. m\n',
+} = {}) => compteursDuDepot({
+  racine: '/aucune-racine',
+  lire: (chemin) => (chemin.includes('backlog') ? backlog : suite),
+  lister: () => plugins,
+  execute: (bin, args) => {
+    if (bin === 'git' && args[0] === 'rev-list') return `${commits}\n`;
+    if (bin === 'git') return sujets.join('\n');
+    return mutations;
+  },
+});
+
+/** Une page de laboratoire, avec le bandeau et les tournures que la vraie porte. */
+const pageFictive = ({ commits = 12, runs = 'dix', plugins = 'trois', gardes = 2,
+                       mutations = 2, libre = 11, vidages = ['une'] } = {}) => `
+  <p>argus-cc / branche · ${commits} commits · ${runs} runs · ${plugins} plugins</p>
+  <pre>├── run-guards.test.mjs ← ${gardes} gardes sur les décisions
+├── mutate-run-guards.py ← ${mutations} mutations : les gardes gardent-ils ?</pre>
+  <p><strong>Le prochain numéro libre
+      est ${libre}</strong> : le registre oublie ce qu'il ferme.</p>
+  ${vidages.map((v) => `<p>Le backlog s'est vidé ${v} fois.</p>`).join('\n')}`;
+
+const ecartsDe = (page, depot) => ecarts(compteursDeLaPage(texteDeLaPage(page)), depot);
+
+test('nombreFr lit les lettres, et LÈVE plutôt que de rendre zéro (333)', () => {
+  assert.equal(nombreFr('333'), 333);
+  assert.equal(nombreFr('quarante et une'), 41, 'la page écrit le féminin, le backlog l\'ordinal');
+  assert.equal(nombreFr('quarante-deux'), 42);
+  assert.equal(nombreFr('quarante et unième'), 41, 'et l\'ordinal doit valoir le cardinal');
+  // ⚠️ quatre-vingt-dix ne vaut pas 4 + 20 + 10 : sans le cas spécial il rendrait 34,
+  // c'est-à-dire un nombre plausible — la pire des réponses fausses.
+  assert.equal(nombreFr('quatre-vingt-dix'), 90);
+  // L'autre moitié, et c'est elle qui compte : un mot inconnu doit LEVER. S'il
+  // rendait 0 ou null, une reformulation passerait pour un compteur juste.
+  assert.throws(() => nombreFr('zorglub'), /non reconnu/, 'un mot inconnu doit lever');
+  assert.throws(() => nombreFr(''), /vide/, 'une capture vide aussi');
+});
+
+test('texteDeLaPage retrouve un compteur coupé par une balise et replié (333)', () => {
+  const page = pageFictive({ libre: 333 });
+  // La contre-épreuve d'abord : sur le HTML BRUT, la tournure n'existe pas. Sans
+  // ce constat on croirait le traitement facultatif — il est ce qui fait tout.
+  assert.doesNotMatch(page, /prochain numéro libre est/,
+    'le brut ne porte pas la tournure : elle est coupée par une balise et un repli');
+  assert.match(texteDeLaPage(page), /prochain numéro libre est 333/,
+    'une fois détagué et aplati, le compteur doit se lire');
+});
+
+test('un compteur ancré doit être exact à CHAQUE occurrence (333)', () => {
+  const depot = depotFictif({ commits: 12 });
+  assert.deepEqual(ecartsDe(pageFictive({ commits: 12 }), depot), [], 'une page juste ne signale rien');
+
+  const faux = ecartsDe(pageFictive({ commits: 9 }), depot);
+  assert.equal(faux.length, 1, 'un commit de retard doit être vu');
+  assert.equal(faux[0].cle, 'commits');
+  assert.equal(faux[0].genre, 'périmé');
+  assert.match(faux[0].message, /9.*12|12.*9/, 'le message doit porter les deux chiffres, pas seulement l\'alerte');
+});
+
+test('le régime journal tolère un bilan passé et refuse qu\'il DEVANCE (333)', () => {
+  const depot = depotFictif({ sujets: Array.from({ length: 41 }, (_, i) => `docs: close ${i + 1}`), backlog: '## Run 41 — x\n### 41. x\n' });
+  assert.equal(depot.vidages, 41);
+
+  // ⚠️ Le cas qui a failli faire corriger du texte correct : la vraie page dit
+  // « le backlog s'est vidé huit fois » sous le titre « ce que huit runs ont
+  // établi ». C'est un bilan à sa date, pas un compteur périmé.
+  assert.deepEqual(ecartsDe(pageFictive({ libre: 42, runs: 'quarante et un', vidages: ['huit', 'quarante et une'] }), depot), [],
+    'un bilan d\'histoire plus petit est légitime dans un journal');
+
+  const enRetard = ecartsDe(pageFictive({ libre: 42, runs: 'quarante et un', vidages: ['huit', 'trente-cinq'] }), depot);
+  assert.equal(enRetard.length, 1, 'mais la mention la PLUS RÉCENTE doit être à jour');
+  assert.equal(enRetard[0].genre, 'périmé');
+
+  const devance = ecartsDe(pageFictive({ libre: 42, runs: 'quarante et un', vidages: ['cinquante'] }), depot);
+  assert.equal(devance.length, 1);
+  assert.equal(devance[0].genre, 'impossible', 'un journal ne peut pas raconter plus de passes qu\'il n\'y en a eu');
+});
+
+test('un motif qui ne trouve plus rien ÉCHOUE, il ne se tait pas (333)', () => {
+  const depot = depotFictif();
+  // La page a été reformulée : « prochain numéro libre » n'y est plus.
+  const reformulee = pageFictive().replace('Le prochain numéro libre\n      est', 'Le numéro suivant est');
+  const vus = ecartsDe(reformulee, depot);
+  const vacant = vus.find((e) => e.cle === 'numeroLibre');
+  assert.ok(vacant, 'une tournure disparue doit être signalée, pas ignorée');
+  assert.equal(vacant.genre, 'introuvable');
+  assert.match(vacant.message, /COMPTEURS/, 'et le message doit dire OÙ mettre le motif à jour');
+});
+
+test('les compteurs ancrés ignorent les mentions ORDINAIRES du même mot (333)', () => {
+  // ⚠️ La moitié qu'on oublie. « N gardes » apparaît seize fois dans la vraie
+  // page et « N runs » plus de cinquante — un motif de famille les capterait
+  // toutes et ferait rougir le contrôle sur de la prose correcte, ce qui est la
+  // façon la plus sûre d'apprendre à l'ignorer.
+  const prose = texteDeLaPage(`<p>Les deux runs ont buté au même endroit. Neuf flows sur neuf,
+    401 gardes du projet, et trois gardes écrits ce jour-là sont nés vacants.
+    Vingt-cinq runs plus tard, 26 runs avaient publié leur page.</p>`);
+  const releve = compteursDeLaPage(prose);
+  assert.deepEqual(releve.get('runs').valeurs, [], 'aucune de ces mentions de « runs » n\'est le compteur');
+  assert.deepEqual(releve.get('gardes').valeurs, [], 'ni « 401 gardes », qui décrit un terrain');
+  // Et l'autre sens : sur une page qui porte VRAIMENT le bandeau, il est capté.
+  const vraie = compteursDeLaPage(texteDeLaPage(pageFictive({ gardes: 7 })));
+  assert.deepEqual(vraie.get('gardes').valeurs, [7], 'le compteur ancré, lui, doit être lu');
+});
+
+test('les deux sources du numéro libre doivent s\'accorder AVANT la page (333)', () => {
+  // Le backlog mène à 11, les commits de clôture à 21 : une passe a fermé des
+  // points sans les inscrire. Comparer à la page n'aurait aucun sens tant que
+  // le dépôt ne s'accorde pas avec lui-même.
+  const brouille = depotFictif({ backlog: '## Run 10 — x\n### 1-10. x\n', sujets: ['docs: close 1-10', 'docs: close 11-20'] });
+  const vus = ecarts(compteursDeLaPage(texteDeLaPage(pageFictive({ libre: 11 }))), brouille);
+  const desaccord = vus.find((e) => e.genre === 'sources en désaccord');
+  assert.ok(desaccord, 'un dépôt qui se contredit doit le dire avant de juger la page');
+  assert.match(desaccord.message, /11.*21|21.*11/);
+  // L'autre moitié : quand les deux sources s'accordent, aucun bruit.
+  assert.equal(ecartsDe(pageFictive({ libre: 11 }), depotFictif()).length, 0);
+});
+
+test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent (333)', () => {
+  // ⚠️ Ce garde-ci est le seul à toucher le dépôt réel, et c'est pour cela qu'il
+  // vaut : il attrape le jour où le backlog change de forme de titre, où la
+  // suite renomme ses tests, ou où le harnais perd son `--list`. Il n'assère
+  // AUCUNE valeur figée — un `commits === 367` serait faux au commit suivant.
+  const vrai = compteursDuDepot({ racine: RACINE });
+  assert.ok(vrai.commits > 300, `le compte de commits doit venir d'un dépôt complet, reçu ${vrai.commits}`);
+  assert.equal(vrai.numeroLibre, vrai.numeroLibreSelonLesCommits,
+    'le backlog et les commits de clôture doivent mener au même prochain numéro');
+  assert.ok(vrai.gardes > 250, 'les gardes de cette suite doivent se compter');
+  assert.ok(vrai.mutations > 150, 'et les mutations du harnais aussi');
+  assert.equal(vrai.plugins, 3, 'trois plugins : argus, argus-mobile, argus-web');
+  assert.ok(vrai.runs >= 42, `le dernier run cité par le backlog, reçu ${vrai.runs}`);
 });

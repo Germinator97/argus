@@ -16,7 +16,14 @@ jobs:
     name: Cohérence du scaffold
     runs-on: ubuntu-latest
     steps:
+      # ⚠️ `fetch-depth: 0` n'est pas du confort : le contrôle des compteurs de la
+      # page dérive le nombre de commits et les passes de clôture de l'HISTORIQUE.
+      # Sous le clone superficiel par défaut, `git rev-list --count HEAD` rend 1 et
+      # aucun `docs: close` n'est visible — le garde accuserait alors le code pour
+      # un défaut de montage. Il crie plutôt que de se taire, et c'est voulu.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Classification lue par l'installeur
         run: bash tools/check-scaffold.sh
