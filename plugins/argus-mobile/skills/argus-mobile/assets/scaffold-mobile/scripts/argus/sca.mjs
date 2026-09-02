@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
  * Argus Mobile — SCA (dépendances Dart et natives)
@@ -44,18 +45,31 @@ const CVSS_BANDS = [
 const BAND_ORDER = ['low', 'moderate', 'high', 'critical'];
 
 /**
- * Score CVSS d'une vulnérabilité OSV. Le champ `severity` porte un vecteur
- * (`CVSS_V3`), pas un nombre : on en extrait le score de base.
+ * Score CVSS d'une vulnérabilité OSV, ou `null` quand rien de publié ne le dit.
+ *
+ * Trois sources, dans l'ordre où elles sont sûres : un score NUMÉRIQUE, puis la
+ * BANDE NOMMÉE que la base publie à côté (`database_specific.severity`), puis
+ * rien. Un vecteur CVSS n'est toujours pas un score — sans calcul complet on ne
+ * l'invente pas — mais il ne doit pas non plus INTERROMPRE la recherche.
+ *
+ * ⚠️ C'EST EXACTEMENT CE QU'IL FAISAIT, et le repli d'en dessous n'était donc
+ * jamais atteint. OSV publie `severity[].score` sous forme de vecteur dans le
+ * cas DOMINANT, pas dans un cas limite : `cvssOf` rendait `null` presque
+ * toujours, `bandOf(null)` rendait `unknown`/`major`, et `belowFloor` est faux
+ * par construction sur `unknown`. Résultat : toute vulnérabilité, même `low`,
+ * ressortait `major` et franchissait n'importe quel `security.scaFailOn` — le
+ * seuil ne filtrait plus rien, et personne ne pouvait le voir puisque le repli
+ * existait, lisible, deux lignes plus bas.
+ *
+ * Le tell, pour la prochaine fois : un repli écrit APRÈS la boucle qui rend, et
+ * un cas « dominant » qui sort par le premier `return`. La contre-épreuve est de
+ * donner à la fonction l'entrée la plus COURANTE, pas celle qu'on avait en tête.
  * @param {any} vuln @returns {number|null}
  */
-function cvssOf(vuln) {
+export function cvssOf(vuln) {
   for (const entry of vuln?.severity ?? []) {
     const direct = Number.parseFloat(entry?.score);
     if (Number.isFinite(direct)) return direct;
-    const vector = String(entry?.score ?? '');
-    // Un vecteur CVSS n'est pas un score : sans calcul complet, on ne l'invente
-    // pas. On le signale comme inconnu plutôt que d'en déduire un chiffre faux.
-    if (vector.startsWith('CVSS:')) return null;
   }
   const named = String(vuln?.database_specific?.severity ?? '').toLowerCase();
   const found = CVSS_BANDS.find((b) => b.band === named);
@@ -63,7 +77,7 @@ function cvssOf(vuln) {
 }
 
 /** @param {number|null} score @returns {{band:string, severity:string}} */
-function bandOf(score) {
+export function bandOf(score) {
   if (score === null) return { band: 'unknown', severity: 'major' };
   return CVSS_BANDS.find((b) => score >= b.min) ?? CVSS_BANDS[CVSS_BANDS.length - 1];
 }
@@ -113,7 +127,7 @@ function scanLockfile(lockfile) {
  * Transforme les résultats OSV en findings Argus.
  * @param {any[]} results @param {string} root @param {string} failOn @returns {any[]}
  */
-function findingsFromOsv(results, root, failOn) {
+export function findingsFromOsv(results, root, failOn) {
   const floor = Math.max(0, BAND_ORDER.indexOf(failOn));
   const findings = [];
   for (const result of results) {
