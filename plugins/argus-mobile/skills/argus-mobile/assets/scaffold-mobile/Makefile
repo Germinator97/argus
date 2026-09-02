@@ -1,3 +1,4 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 # Argus Mobile — raccourcis.
 #
 # Un projet Flutter n'a ni package.json ni npm : ce Makefile joue le rôle des
@@ -14,7 +15,7 @@
 # plutôt que de demander à chacun d'éditer ce fichier.
 FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo flutter)
 
-.PHONY: argus-help argus argus-lint argus-guards argus-run argus-smoke argus-visual \
+.PHONY: argus-help argus argus-lint argus-guards argus-debts argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-anchors \
         argus-doctor argus-build
@@ -56,6 +57,13 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	  echo "  ✖ LE BUILD A ÉCHOUÉ (exit $$RC) après $${ELAPSED}s — son erreur est au-dessus."; \
 	  echo "      Rien à corriger dans la config : c'est le build qu'il faut lire."; \
 	  exit $$RC; \
+	fi; \
+	if [ -z "$$AKIND" ] || [ -z "$$BKIND" ]; then \
+	  echo "  ✖ LA MESURE DU PAQUET A ÉCHOUÉ — \`config.mjs --measure-binary\` n'a rien rendu."; \
+	  echo "      Sans elle, la garde de fraîcheur comparerait deux empreintes VIDES et les"; \
+	  echo "      trouverait égales : elle annoncerait « PAQUET INTACT » sans avoir mesuré."; \
+	  echo "      C'est le défaut du point 214, revenu par le chemin d'erreur."; \
+	  exit 1; \
 	fi; \
 	if [ "$$AKIND" = absent ]; then \
 	  echo "  ✖ BUILD RÉUSSI, MAIS AUCUN PAQUET ici après $${ELAPSED}s — il a écrit ailleurs."; \
@@ -125,13 +133,19 @@ argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # supposition sur le format de `flutter test` : le garde du dépôt croise les
 # deux, pour qu'ils ne puissent pas diverger.
 argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'étage 1
-	@$(FLUTTER) test test/argus 2>&1 \
+# ⚠️ LE REPLI ÉTAIT UNE BRANCHE MORTE. Le `|| echo` portait sur le DERNIER
+# élément du pipeline — un `sed`, qui rend 0 même sur une entrée vide — donc le
+# message ne s'affichait jamais. Une suite verte et une suite qui n'a pas tourné
+# rendaient le même silence total, c'est-à-dire exactement les deux cas que cette
+# phrase existe pour séparer. On capture, puis on décide.
+	@dettes="$$($(FLUTTER) test test/argus 2>&1 \
 	  | sed -e 's/\x1b\[[0-9;]*m//g' \
 	  | grep -oE "^ +'[^']+',$$" \
 	  | sed -e 's/^ *//' \
 	  | sort -u \
-	  | sed -e 's/^/  /' \
-	  || echo "  (aucune dette à inscrire — la suite est verte, ou elle n'a pas tourné)"
+	  | sed -e 's/^/  /')"; \
+	if [ -n "$$dettes" ]; then printf '%s\n' "$$dettes"; \
+	else echo "  (aucune dette à inscrire — la suite est verte, ou elle n'a pas tourné)"; fi
 
 argus-run: ## Étage 2 — suite Maestro sur device
 	@node scripts/argus/run.mjs
@@ -145,7 +159,7 @@ argus-visual: ## Étage 2 — régression visuelle seule
 argus-baselines: ## (Re)génère les références visuelles — voir l'avertissement du README
 	@node scripts/argus/run.mjs --update-baselines
 
-argus-perf: ## Démarrage, jank, mémoire, taille du binaire
+argus-perf: ## Démarrage à froid/à chaud, mémoire, taille du binaire
 	@node scripts/argus/perf.mjs
 
 argus-a11y: ## Cibles tactiles et labels, sur l'écran affiché
