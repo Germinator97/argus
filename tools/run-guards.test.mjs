@@ -8065,6 +8065,32 @@ test('un fichier de cadre reste MIEN quand la source reformule son en-tête (M2)
   rmSync(hote, { recursive: true, force: true });
 });
 
+test('le marqueur est la PREMIÈRE ligne qui se nomme, dans chaque fichier de cadre (M2)', () => {
+  // ⚠️ CE GARDE EXISTE PARCE QUE LE HARNAIS DE MUTATION A DIT « VACANT ». Le
+  // garde ci-dessus prouve que la reconnaissance survit à une reformulation —
+  // et il reste vert quand on débranche la lecture du marqueur, parce que le
+  // repli de prose (`grep -m1 -i argus` sur la source) tombe LUI AUSSI sur la
+  // ligne du marqueur : les deux chemins rendent le même verdict, donc aucun
+  // test ne peut les distinguer.
+  //
+  // Ce qui rend la signature stable n'est donc pas la branche, c'est cette
+  // PROPRIÉTÉ : le marqueur arrive avant toute prose qui se nomme. Qu'on
+  // insère un titre « Argus … » au-dessus, et la signature redevient une phrase
+  // qu'on est libre de réécrire — le défaut d'origine, intact. La branche
+  // marqueur est le rempart de ce jour-là ; cette assertion est ce qui dit
+  // qu'on n'y est pas encore.
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const releve = execFileSync('bash', ['-c',
+    `cd "${base}" && grep -rl 'ARGUS:CADRE' . | sort`], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  assert.ok(releve.length >= 15, `${releve.length} fichiers de cadre marqués — le motif ne mesure plus rien`);
+  for (const rel of releve) {
+    const premiere = readFileSync(join(base, rel), 'utf8').split('\n').find((l) => /argus/i.test(l));
+    assert.match(premiere ?? '', /ARGUS:CADRE/,
+      `${rel} : « ${premiere} » se nomme avant le marqueur, donc c'est ELLE qui sert de `
+      + 'signature — et une phrase de prose se réécrit');
+  }
+});
+
 test('un homonyme du projet n\'est toujours PAS écrasé (M2, l\'autre moitié)', () => {
   // Le piège par défaut est de corriger la reconnaissance en la rendant si large
   // qu'elle absorbe le fichier de l'hôte.

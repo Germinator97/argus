@@ -25,6 +25,7 @@ FLOWS = ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/
 CIBLES = {
     "run": SCAFFOLD / "run.mjs",
     "config": SCAFFOLD / "config.mjs",
+    "sca": SCAFFOLD / "sca.mjs",
     # Depuis le 02/09 : le contrôle des compteurs de la page publiée. La page
     # vit hors dépôt, donc rien d'autre ne peut dire si l'instrument qui la
     # mesure garde encore — c'est le seul endroit d'où on le sait.
@@ -1030,6 +1031,37 @@ MUTATIONS = [
     ("skill", "le rappel du dartdoc ne nomme plus le marqueur",
      "un exemplaire MOT POUR MOT de ce que tu vas chercher.** S'ancrer sur la ligne de",
      "un exemplaire de ce que tu vas chercher.** S'ancrer approximativement sur la ligne de"),
+    # ── Les gardes de la revue du 02/09. Une mutation par correctif majeur. ──
+    ("sca", "cvssOf ressort sur le vecteur, sautant le repli d'en dessous",
+     "    if (Number.isFinite(direct)) return direct;\n  }",
+     "    if (Number.isFinite(direct)) return direct;\n"
+     "    if (String(entry?.score ?? '').startsWith('CVSS:')) return null;\n  }"),
+    ("sec", "--require-tools échoue de nouveau sur ce que le code a DÉCIDÉ",
+     "  if (facts?.nature === 'sans-objet') return null;",
+     "  if (facts?.nature === 'jamais-employe') return null;"),
+    ("sec", "les drapeaux redeviennent lus dans src/main seulement",
+     "  const variantes = variantesDuManifeste(root);\n  if (variantes.length === 0) return [];",
+     "  const variantes = variantesDuManifeste(root).slice(0, 1);\n  if (variantes.length === 0) return [];"),
+    ("config", "--check-anchors conclut de nouveau sans rien avoir lu",
+     "    if ((lues.fichiers ?? 0) === 0) {",
+     "    if (lues.length === -1) {"),
+    ("config", "ciEmulator cesse de rendre l'AVD que la config déclare",
+     "  const avdName = String(device.avd ?? '').trim();",
+     "  const avdName = '';"),
+    # ⚠️ LA PREMIÈRE VERSION DE CETTE MUTATION A RENDU « VACANT », et elle avait
+    # raison : débrancher la lecture du marqueur ne change RIEN tant que le repli
+    # de prose tombe lui aussi dessus. Ce qui porte la stabilité est que le
+    # marqueur arrive AVANT toute prose qui se nomme — c'est cela qu'on casse.
+    ("makefile", "une prose qui se nomme repasse devant le marqueur",
+     "# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.\n"
+     "# Argus Mobile — raccourcis.",
+     "# Argus Mobile — raccourcis.\n"
+     "# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier."),
+    ("makefile", "le repli d'argus-debts redevient une branche morte",
+     '\tif [ -n "$$dettes" ]; then printf \'%s\\n\' "$$dettes"; \\\n'
+     '\telse echo "  (aucune dette à inscrire — la suite est verte, ou elle n\'a pas tourné)"; fi',
+     '\tprintf \'%s\\n\' "$$dettes" \\\n'
+     '\t  || echo "  (aucune dette à inscrire — la suite est verte, ou elle n\'a pas tourné)"'),
 ]
 
 
