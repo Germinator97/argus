@@ -191,9 +191,19 @@ export function dernierPointDu(backlog) {
   return Math.max(...numeros);
 }
 
-/** Le plus grand run cité par le backlog — « Run 42 », « le run 41 ». */
+/**
+ * Le plus grand run cité par le backlog — « Run 42 », « le run 41 », « Runs 43 et 44 ».
+ *
+ * ⚠️ Le motif accepte le PLURIEL et l'énumération, et il l'a appris à ses
+ * dépens : `\brun\s+` exige une espace après « run », donc il ratait « Runs 43
+ * et 44 » — la façon dont on nomme une CAMPAGNE plutôt qu'un run. Le compteur
+ * est resté à 42 le jour même où deux runs venaient d'être joués, et c'est
+ * l'outil lui-même qui l'a signalé en rendant un chiffre trop petit. Une
+ * énumération dérivée du réel rate quand même les désignations collectives.
+ */
 export function dernierRunDu(backlog) {
-  const numeros = [...backlog.matchAll(/\brun\s+(\d+)\b/gi)].map((m) => Number(m[1]));
+  const numeros = [...backlog.matchAll(/\bruns?\s+(\d+)(?:\s*(?:et|à|-|,|\/)\s*(\d+))?/gi)]
+    .flatMap((m) => [Number(m[1]), m[2] ? Number(m[2]) : Number(m[1])]);
   if (numeros.length === 0) throw new Error('dernierRunDu : aucun run cité dans le backlog');
   return Math.max(...numeros);
 }

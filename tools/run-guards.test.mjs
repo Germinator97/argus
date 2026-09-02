@@ -54,7 +54,7 @@ import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/ass
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -7658,4 +7658,18 @@ test('l\'installeur rappelle comment fermer un TODO, et SEULEMENT s\'il en reste
   assert.doesNotMatch(check(), /TODO\(argus\) se FERME/,
     'plus rien à fermer : un rappel qui parle toujours finit ignoré');
   rmSync(hote, { recursive: true, force: true });
+});
+
+test('le compteur de runs lit aussi la désignation COLLECTIVE (333)', () => {
+  // ⚠️ Trouvé par l'outil lui-même : `\brun\s+` exige une espace après « run »,
+  // donc il ratait « Runs 43 et 44 » — la façon dont on nomme une CAMPAGNE. Le
+  // compteur est resté à 42 le jour où deux runs venaient d'être joués. Une
+  // énumération dérivée du réel rate quand même les désignations collectives.
+  assert.equal(dernierRunDu('## Run 42 — x'), 42, 'le singulier doit continuer de marcher');
+  assert.equal(dernierRunDu('**Runs 43 et 44**, en parallèle'), 44, 'le pluriel et l\'énumération aussi');
+  assert.equal(dernierRunDu('les runs 39/40 puis le run 41'), 41, 'et la barre oblique');
+  assert.equal(dernierRunDu('Run 7. Puis Runs 43 et 44.'), 44, 'le MAXIMUM, pas le dernier cité');
+  // L'autre moitié : ne pas inventer un run là où il n'y en a pas.
+  assert.throws(() => dernierRunDu('aucun numéro ici'), /aucun run cité/,
+    'un backlog sans run doit lever, pas rendre zéro');
 });
