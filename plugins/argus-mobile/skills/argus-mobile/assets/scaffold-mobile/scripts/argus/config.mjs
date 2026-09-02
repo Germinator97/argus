@@ -831,6 +831,63 @@ export function dartSansCommentaires(src) {
 }
 
 /** Les `identifier:` posés dans lib/, littéraux seuls. @param {string} root @param {any} [config] @returns {string[]} */
+/**
+ * Les littéraux de chaîne d'un argument Dart, interpolations comprises.
+ *
+ * ⚠️ Pourquoi un automate plutôt qu'une expression régulière : `'([^']*)'` ne
+ * sait pas qu'une apostrophe INTERNE À UNE INTERPOLATION ne ferme pas la chaîne.
+ * Sur `identifier: cond ? null : '${prefix}_${x ?? 'all'}'` elle découpe trois
+ * fragments et garde le dernier — si bien que le relevé rendait **`}`** comme
+ * une ancre posée. Un run l'a trouvé sur du Dart parfaitement légal, et a dû
+ * réécrire SON code pour contourner NOTRE motif : c'est le sens inverse de ce
+ * qu'un outil de mesure doit faire.
+ *
+ * Rend les chaînes BRUTES, interpolation comprise : c'est l'appelant qui décide
+ * ensuite si `${` en fait une famille plutôt qu'une ancre.
+ */
+export function litterauxDart(source) {
+  const trouves = [];
+  let i = 0;
+  while (i < source.length) {
+    const q = source[i];
+    if (q !== "'" && q !== '"') { i += 1; continue; }
+    // Une chaîne commence. On la suit jusqu'à SA fermeture, en sautant les
+    // interpolations — qui peuvent elles-mêmes contenir des chaînes.
+    const debut = i + 1;
+    i = debut;
+    let ferme = false;
+    while (i < source.length) {
+      const c = source[i];
+      if (c === '\\') { i += 2; continue; }
+      if (c === q) { ferme = true; break; }
+      if (c === '$' && source[i + 1] === '{') {
+        let profondeur = 1;
+        i += 2;
+        while (i < source.length && profondeur > 0) {
+          const d = source[i];
+          if (d === '\\') { i += 2; continue; }
+          if (d === '{') profondeur += 1;
+          else if (d === '}') profondeur -= 1;
+          else if (d === "'" || d === '"') {
+            // une chaîne DANS l'interpolation : la sauter entièrement, sans quoi
+            // son apostrophe fermante passerait pour celle de la chaîne portante
+            const interne = d;
+            i += 1;
+            while (i < source.length && source[i] !== interne) {
+              i += source[i] === '\\' ? 2 : 1;
+            }
+          }
+          i += 1;
+        }
+        continue;
+      }
+      i += 1;
+    }
+    if (ferme) { trouves.push(source.slice(debut, i)); i += 1; } else break;
+  }
+  return trouves;
+}
+
 export function posedAnchors(root, config = undefined) {
   // ⚠️ `[a-zA-Z]*[Ii]dentifier:` ET NON `identifier:`. Le motif minuscule ne
   // voyait que `Semantics(identifier: …)` et ratait `semanticIdentifier: '…'`,
@@ -880,7 +937,7 @@ export function posedAnchors(root, config = undefined) {
       const texte = dartSansCommentaires(readFileSync(abs, 'utf8'));
       for (const m of texte.matchAll(cle)) {
         const arg = argumentApres(texte, m.index + m[0].length);
-        const litteraux = [...arg.matchAll(/'([^']*)'/g)].map((x) => x[1])
+        const litteraux = litterauxDart(arg)
           // ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : on ne
           // peut pas le confronter à un littéral, donc on ne le compte pas.
           .filter((v) => v !== '' && !v.includes('${'));

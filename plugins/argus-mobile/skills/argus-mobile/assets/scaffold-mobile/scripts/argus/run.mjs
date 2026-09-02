@@ -674,6 +674,39 @@ function buildEnv(config, appId, extra = {}) {
   return env;
 }
 
+/**
+ * Les secrets DÉCLARÉS dont la valeur est vide.
+ *
+ * ⚠️ `buildEnv` remplit un secret absent par `''` — délibérément, pour que le
+ * flow décide plutôt que de casser. Mais rien ne le DISAIT : un run a perdu une
+ * passe device de sept minutes sur un login sauté en silence, parce que chaque
+ * appel shell d'un agent est un processus neuf et que le `source` du fichier de
+ * secrets ne survivait pas d'un appel à l'autre.
+ */
+export function secretsVides(env) {
+  return Object.entries(env ?? {})
+    .filter(([cle, valeur]) => /^QA_[A-Z0-9_]+$/.test(cle) && String(valeur ?? '') === '')
+    .map(([cle]) => cle);
+}
+
+/**
+ * La commande telle qu'on l'imprime : secrets masqués, MAIS un secret vide
+ * affiché comme vide.
+ *
+ * ⚠️ C'est la moitié qui manquait, et c'est elle qui coûtait. L'ancien masquage
+ * remplaçait tout ce qui suit le `=` sans regarder la valeur, si bien qu'un
+ * secret ABSENT s'affichait `QA_PHONE=***`, à l'identique d'un secret présent —
+ * exactement à l'endroit où l'on regarde pour vérifier. Un affichage qui ne sait
+ * pas distinguer les deux cas n'est pas une précaution, c'est un piège.
+ */
+export function masquerSecrets(args) {
+  return (args ?? []).map((a) => {
+    const trouve = /^(QA_[A-Z0-9_]+)=([\s\S]*)$/.exec(String(a));
+    if (!trouve) return a;
+    return trouve[2] === '' ? `${trouve[1]}=<VIDE>` : `${trouve[1]}=***`;
+  });
+}
+
 /** Aplati le contrat en `-e K=V`. */
 /** @param {Record<string,string>} env @returns {string[]} */
 const envArgs = (env) => Object.entries(env).flatMap(([k, v]) => ['-e', `${k}=${String(v).replace(/\n/g, ' ')}`]);
@@ -714,7 +747,17 @@ function runMaestro({ udid, target, junitPath, outputDir, env, includeTags, excl
   if (excludeTags.length) args.push('--exclude-tags', excludeTags.join(','));
   args.push(...envArgs(env), target);
 
-  const shown = `maestro ${args.map((a) => (a.startsWith('QA_') || /^(QA_[A-Z_]+)=/.test(a) ? a.replace(/=.*/, '=***') : a)).join(' ')}`;
+  const shown = `maestro ${masquerSecrets(args).join(' ')}`;
+  // ⚠️ L'avertissement compte autant que l'affichage : sans lui, on lit `<VIDE>`
+  // dans une ligne de commande longue de trois cents caractères, ce qui revient à
+  // ne rien lire du tout.
+  const vides = secretsVides(env);
+  if (vides.length) {
+    console.warn(`⚠️  secret(s) déclaré(s) dans auth.secretsFromEnv mais VIDE(s) : ${vides.join(', ')}`);
+    console.warn('    Le flow qui en dépend sera SAUTÉ, sans autre signe que cette ligne.');
+    console.warn('    Chaque appel shell est un processus neuf : source les secrets et lance');
+    console.warn('    le runner dans la MÊME commande, sinon ils ne survivent pas.');
+  }
   log(shown);
   if (dryRun) return { ok: true, status: 0, command: shown };
   const res = sh('maestro', args, verbose ? { stdio: 'inherit' } : {});

@@ -56,6 +56,8 @@ import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/s
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
+import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -7534,4 +7536,58 @@ test('le balayage prouve qu\'il VOIT avant de dire qu\'il n\'a rien vu (333)', (
     'une page où le témoin manque ne permet aucun verdict');
   assert.equal(fuitesDe('une page du chantier argus').instrumentAveugle, false,
     'et une vraie page doit pouvoir être jugée');
+});
+
+test('un littéral Dart survit à une interpolation qui porte des apostrophes (338)', () => {
+  // ⚠️ Le défaut fermé : `'([^']*)'` ne sait pas qu'une apostrophe INTERNE à une
+  // interpolation ne ferme pas la chaîne. Sur du Dart parfaitement légal, le
+  // relevé rendait « } » comme une ancre posée — et le run a réécrit SON code
+  // pour contourner NOTRE motif, ce qui est le sens inverse de ce qu'un outil
+  // de mesure doit faire.
+  assert.deepEqual(litterauxDart("cond ? null : '${prefix}_${x ?? 'all'}'"),
+    ["${prefix}_${x ?? 'all'}"],
+    'la chaîne doit être lue ENTIÈRE, apostrophes de l\'interpolation comprises');
+  // L'autre moitié, et c'est elle qui dirait qu'on a trop coupé : les deux formes
+  // que le §2c-bis PRESCRIT doivent continuer de rendre leurs littéraux.
+  assert.deepEqual(litterauxDart("vide ? 'home_empty_root' : 'home_filled_root'"),
+    ['home_empty_root', 'home_filled_root'], 'le ternaire à deux états reste lu');
+  assert.deepEqual(litterauxDart("'simple'"), ['simple']);
+  assert.deepEqual(litterauxDart('nothing here'), [], 'un argument sans chaîne ne rend rien');
+});
+
+test('le relevé d\'ancres ne rend plus « } » sur une interpolation (338)', () => {
+  const racine = mkdtempSync(join(tmpdir(), 'argus-ancres-'));
+  mkdirSync(join(racine, 'lib'), { recursive: true });
+  writeFileSync(join(racine, 'lib', 'p.dart'), [
+    "Semantics(identifier: 'ancre_saine', child: X());",
+    "Semantics(identifier: cond ? null : '${prefix}_${x ?? 'all'}', child: X());",
+    "Semantics(identifier: vide ? 'home_empty_root' : 'home_filled_root', child: X());",
+  ].join('\n'));
+  const vus = posedAnchors(racine).sort();
+  // Le garde porte sur la VALEUR rendue, pas sur la présence du motif.
+  assert.deepEqual(vus, ['ancre_saine', 'home_empty_root', 'home_filled_root'],
+    'une interpolation est une famille : elle ne pose ni ancre ni accolade');
+  rmSync(racine, { recursive: true, force: true });
+});
+
+test('un secret VIDE ne s\'affiche pas comme un secret plein (337)', () => {
+  // ⚠️ L'ancien masquage remplaçait tout après le `=` sans regarder la valeur :
+  // un secret ABSENT s'affichait `QA_PHONE=***`, à l'identique d'un secret
+  // présent — exactement à l'endroit où l'on regarde pour vérifier. Coût mesuré
+  // par un run : sept minutes de device et un login sauté sans un mot.
+  const vu = masquerSecrets(['-e', 'QA_PHONE=', '-e', 'QA_PIN=1234', '-e', 'ARGUS_AUTH_READY=1']);
+  assert.ok(vu.includes('QA_PHONE=<VIDE>'), 'un secret vide doit se voir comme vide');
+  assert.ok(vu.includes('QA_PIN=***'), 'et un secret plein rester masqué');
+  // L'autre moitié : le remède ne doit pas faire fuir ce qu'il masquait.
+  assert.doesNotMatch(vu.join(' '), /1234/, 'la valeur d\'un secret plein ne doit jamais s\'imprimer');
+  assert.ok(vu.includes('ARGUS_AUTH_READY=1'), 'et ce qui n\'est pas un secret reste lisible');
+});
+
+test('les secrets déclarés mais vides sont NOMMÉS, pas tus (337)', () => {
+  assert.deepEqual(secretsVides({ QA_PHONE: '', QA_PIN: '1234', ARGUS_X: '' }), ['QA_PHONE'],
+    'seuls les secrets QA_ vides comptent — ARGUS_X vide est une valeur, pas un secret manquant');
+  // L'autre moitié : ne rien dire quand tout est là, sinon l'avertissement s'ignore.
+  assert.deepEqual(secretsVides({ QA_PHONE: '06', QA_PIN: '1234' }), [],
+    'un environnement complet ne doit produire AUCUN avertissement');
+  assert.deepEqual(secretsVides(undefined), [], 'et un environnement absent ne doit pas lever');
 });
