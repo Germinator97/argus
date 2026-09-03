@@ -1591,6 +1591,33 @@ export function toolPath(name) {
 }
 
 /**
+ * Un relevé de sonde prouve-t-il la PRÉSENCE de l'outil ?
+ *
+ * `apkanalyzer -h` sort en code non nul tout en prouvant qu'il est là :
+ * l'absence se reconnaît donc à l'erreur de spawn (ENOENT), pas au status.
+ *
+ * ⚠️ SAUF QUAND UN SHELL S'INTERPOSE, ET IL S'EN INTERPOSE UN. `sh()` passe par
+ * le shell sur Windows — `shell: IS_WINDOWS`, nécessaire pour `aapt2.exe` et
+ * `apkanalyzer.bat` — et un shell n'échoue PAS au spawn sur une commande
+ * inconnue : il démarre, ne trouve rien, et rend 127 (POSIX) ou 9009 (cmd.exe).
+ * `error` reste nul. Le critère déclarait donc TOUS les outils présents, et la
+ * panne arrivait plus loin, sur un message qui ne la nomme pas.
+ *
+ * Le défaut n'appartient pas à Windows, il appartient au shell : il se
+ * reproduit partout en passant `shell: true`, et c'est ce qui permet de le
+ * garder ici plutôt que de le documenter comme une limite.
+ *
+ * Les deux moitiés comptent : un outil ABSENT reste absent derrière un shell,
+ * et un outil PRÉSENT qui sort en code non nul reste présent — exiger
+ * `status === 0` ferait sauter la dimension pour `apkanalyzer`.
+ * @param {{error:string|null, status:number}} res @returns {boolean}
+ */
+export function outilPresent(res) {
+  if (res?.error !== null) return false;
+  return res.status !== 127 && res.status !== 9009;
+}
+
+/**
  * Détecte les outils disponibles.
  * @param {string[]} [names]
  * @returns {Record<string, {present:boolean, version:string|null}>}
@@ -1605,22 +1632,7 @@ export function detectTools(names = Object.keys(TOOLS)) {
     const res = name === 'flutter' && usesFvm()
       ? sh('fvm', ['flutter', ...spec.probe])
       : sh(toolPath(name), spec.probe);
-    // `apkanalyzer -h` sort en code non nul tout en prouvant sa présence :
-    // l'absence se reconnaît à l'erreur de spawn (ENOENT), pas au status.
-    //
-    // ⚠️ LIMITE CONNUE, SOUS WINDOWS SEULEMENT. `sh()` y passe par le shell
-    // (`shell: IS_WINDOWS`, nécessaire pour `aapt2.exe` et `apkanalyzer.bat`),
-    // et un shell ne rend pas d'ENOENT sur une commande inconnue : il rend un
-    // statut non nul. Ce critère déclare donc TOUT présent sur Windows, et la
-    // suite échouera plus loin, sur un message moins clair.
-    //
-    // Ce n'est pas corrigé ici à dessein : le remède (interroger `where`) n'est
-    // pas éprouvable depuis ce dépôt, et poser du code non mesuré dans la
-    // fonction qui décide de ce qui sera scanné serait pire que la limite. Le
-    // reste du fichier prend Windows au sérieux (chemins du SDK, `.exe`,
-    // `LOCALAPPDATA`) : si la plateforme entre au périmètre, c'est ici qu'il
-    // faut commencer, avec une machine pour le vérifier.
-    const present = res.error === null;
+    const present = outilPresent(res);
     out[name] = { present, version: present ? firstLine(res.stdout || res.stderr) : null };
   }
   return out;
