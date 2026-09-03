@@ -1055,9 +1055,25 @@ MUTATIONS = [
     ("config", "outilPresent redevient aveugle au shell qui avale l'ENOENT",
      "  if (res?.error !== null) return false;\n  return res.status !== 127 && res.status !== 9009;",
      "  if (res?.error !== null) return false;\n  return true;"),
+    # ⚠️ Ancrée sur l'étape qui SUIT, propre au job Android : la ligne seule
+    # apparaît dans les deux jobs, et le harnais l'a dit — « motif trouvé 2×
+    # (attendu 1) », donc HARNAIS et non « garde vacant ». Casser UNE des deux
+    # suffit : le garde parcourt chaque étape d'installation.
     ("ci", "plus rien ne permet d'épingler la version de Maestro",
-     "          MAESTRO_VERSION: ${{ vars.ARGUS_MAESTRO_VERSION }}",
-     "          MAESTRO_VERSION: ''"),
+     "          MAESTRO_VERSION: ${{ vars.ARGUS_MAESTRO_VERSION }}\n"
+     "        run: |\n"
+     "          curl -fsSL \"https://get.maestro.mobile.dev\" | bash\n"
+     "          echo \"$HOME/.maestro/bin\" >> \"$GITHUB_PATH\"\n"
+     "          \"$HOME/.maestro/bin/maestro\" --version\n"
+     "\n"
+     "      # Contrôle de syntaxe AVANT de démarrer l'émulateur",
+     "          MAESTRO_VERSION: ''\n"
+     "        run: |\n"
+     "          curl -fsSL \"https://get.maestro.mobile.dev\" | bash\n"
+     "          echo \"$HOME/.maestro/bin\" >> \"$GITHUB_PATH\"\n"
+     "          \"$HOME/.maestro/bin/maestro\" --version\n"
+     "\n"
+     "      # Contrôle de syntaxe AVANT de démarrer l'émulateur"),
     ("makefile", "une prose qui se nomme repasse devant le marqueur",
      "# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.\n"
      "# Argus Mobile — raccourcis.",
