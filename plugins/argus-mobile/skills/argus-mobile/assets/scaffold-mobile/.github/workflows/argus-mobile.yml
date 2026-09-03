@@ -246,6 +246,17 @@ jobs:
       # le cas, mais en `exit 2` sans diagnostic. La version installée est donc
       # IMPRIMÉE : c'est ce qui permet de relire un rapport passé.
       - name: Installer Maestro
+        env:
+          # ⚠️ ÉPINGLABLE, et l'asymétrie avec osv-scanner est VOULUE. Un scanner
+          # de CVE doit rester récent — le figer, c'est figer sa connaissance des
+          # vulnérabilités — tandis que Maestro fournit ici des FORMATS que le
+          # runner lit (`commands.json`, `manifest.json`, la place de
+          # `metadata.status`), relevés sur 2.8.0. Une montée amont qui les
+          # change ferait rendre zéro finding sur une suite rouge.
+          # L'installeur amont honore cette variable : vérifié le 03/09/2026, il
+          # construit `releases/download/cli-$MAESTRO_VERSION/maestro.zip`.
+          # Pose `vars.ARGUS_MAESTRO_VERSION` (ex. `2.8.0`) pour figer.
+          MAESTRO_VERSION: ${{ vars.ARGUS_MAESTRO_VERSION }}
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
@@ -404,6 +415,17 @@ jobs:
       # le cas, mais en `exit 2` sans diagnostic. La version installée est donc
       # IMPRIMÉE : c'est ce qui permet de relire un rapport passé.
       - name: Installer Maestro
+        env:
+          # ⚠️ ÉPINGLABLE, et l'asymétrie avec osv-scanner est VOULUE. Un scanner
+          # de CVE doit rester récent — le figer, c'est figer sa connaissance des
+          # vulnérabilités — tandis que Maestro fournit ici des FORMATS que le
+          # runner lit (`commands.json`, `manifest.json`, la place de
+          # `metadata.status`), relevés sur 2.8.0. Une montée amont qui les
+          # change ferait rendre zéro finding sur une suite rouge.
+          # L'installeur amont honore cette variable : vérifié le 03/09/2026, il
+          # construit `releases/download/cli-$MAESTRO_VERSION/maestro.zip`.
+          # Pose `vars.ARGUS_MAESTRO_VERSION` (ex. `2.8.0`) pour figer.
+          MAESTRO_VERSION: ${{ vars.ARGUS_MAESTRO_VERSION }}
         run: |
           curl -fsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
