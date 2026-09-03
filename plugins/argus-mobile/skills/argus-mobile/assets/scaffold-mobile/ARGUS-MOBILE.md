@@ -133,6 +133,7 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 | `make argus-lint` | syntaxe des flows Maestro, sans device |
 | `make argus-guards` | étage 1 : a11y + disposition, sans device |
 | `make argus-anchors` | les ancres arrivent-elles dans l'arbre ? sans device |
+| `make argus-reach` | quels écrans ancrés aucun `goto` ne dessert ? sans device |
 | `make argus-debts` | le bloc `known_issues` prêt à coller, dérivé des échecs |
 | `make argus-run` | étage 2 : suite Maestro complète |
 | `make argus-smoke` | smoke seul — le plus rapide |

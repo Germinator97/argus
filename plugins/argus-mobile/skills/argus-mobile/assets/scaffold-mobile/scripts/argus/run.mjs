@@ -31,6 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   activeDevices, adbShell, artifactsDir, avdNameFrom, buildCmdForAbi, configuredScreens, detectTools,
+  startScreen,
   deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml, projectBuildCmd,
   sh, validateConfig, warn, writeJson,
 } from './config.mjs';
@@ -576,33 +577,10 @@ function startTimeoutMs(config) {
   return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);
 }
 
-/**
- * Écran d'où partent tous les flows, et par quelle voie il a été choisi.
- *
- * Trois voies, dans cet ordre :
- *   `declared` — un écran porte `start: true`. C'est la seule qui soit un CHOIX ;
- *   `home`     — convention historique sur l'identifiant `home` ;
- *   `first`    — repli sur le premier écran configuré.
- *
- * ⚠️ `first` est un piège, et c'est pour lui que `start:` existe. Un écran a
- * souvent plusieurs ÉTATS (« liste vide », « liste pleine »), chacun déclaré
- * séparément ; si le premier de la liste est l'état plein, son ancre n'existe pas
- * après un `clearState` et TOUS les flows partent de travers — par intermittence,
- * donc en accusant autre chose. Les deux voies de repli restent pour ne casser
- * aucune config existante, mais elles se signalent.
- *
- * Le contrat de retour porte `origin` plutôt qu'un booléen : le rapport doit
- * pouvoir distinguer « on me l'a dit » de « je l'ai deviné et ça tombait bien ».
- * @param {any} config @returns {{screen:any, origin:'declared'|'home'|'first'}}
- */
-function startScreen(config) {
-  const screens = configuredScreens(config);
-  const declares = screens.filter((/** @type {any} */ s) => s.start === true);
-  if (declares.length > 0) return { screen: declares[0], origin: 'declared' };
-  const home = screens.find((/** @type {any} */ s) => s.id === 'home');
-  if (home) return { screen: home, origin: 'home' };
-  return { screen: screens[0], origin: 'first' };
-}
+// `startScreen` vit désormais dans `config.mjs` : `--check-reachability` en a
+// besoin, et config ne peut pas importer run (run importe perf, qui importe
+// config). Extraite, pas recopiée — c'est la seule forme qui ne diverge pas.
+// Réexportée plus bas, pour que rien de ce qui l'importait ne change.
 
 /**
  * Contrat d'injection consommé par les flows (`${…}`). Toutes les clés sont
@@ -2079,6 +2057,17 @@ async function main() {
 
   if (report.coverage.notConfigured.length) {
     warn(`écrans déclarés mais sans ancre, donc non testés : ${report.coverage.notConfigured.join(', ')}`);
+  }
+  // ⚠️ IL N'EXISTAIT QUE DANS LE HTML. `notVisited` est le seul des quatre
+  // comptes qui dise ce qui a été ATTEINT plutôt que ce qui a été écrit dans
+  // `screens[]` — et il ne sortait ni en finding, ni en avertissement, pendant
+  // que son voisin `notConfigured`, moins grave, en avait un. Un relevé qu'on
+  // ne voit qu'en ouvrant une page n'est pas lu.
+  if (report.coverage.notVisited.length) {
+    warn(`écrans déclarés et ancrés qu'AUCUNE étape n'a atteints : ${report.coverage.notVisited.join(', ')}`);
+    warn('  Trois causes, et une seule se mesure sans device : `make argus-reach` dit');
+    warn('  lesquels aucune branche de goto.yaml ne dessert. Les autres sont atteignables');
+    warn('  et non testés, ou atteints par un parcours (screens[].reachedBy).');
   }
 
   const code = exitCodeFor(findings, config.gate);

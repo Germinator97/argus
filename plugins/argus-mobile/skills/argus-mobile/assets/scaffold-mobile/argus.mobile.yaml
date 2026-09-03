@@ -232,6 +232,23 @@ devices:
 # flows partent de travers — par intermittence, donc en accusant autre chose. Le
 # repli reste en place pour ne casser aucune config, mais il s'annonce dans la
 # sortie du runner et dans `startup.origin` du rapport.
+# ⚠️ ATTEIGNABLE N'EST PAS TESTÉ, ET NON ATTEINT N'EST PAS INATTEIGNABLE. Le
+# rapport compte les écrans qu'un run a réellement ATTEINTS (`coverage.visited`),
+# ce qui demande un device et mélange trois causes quand il en manque un. La
+# seule qui se mesure sans device est « aucune branche de goto.yaml ne le
+# dessert » : c'est `make argus-reach`.
+#
+# `reachedBy:` ferme le troisième cas, celui qui n'admet pas de branche. Après
+# `clearState`, un état « liste pleine » est inatteignable par navigation — la
+# donnée n'existe pas encore — et c'est le parcours qui la CRÉE qui l'atteint.
+# Écris par lequel, et l'écran cesse d'être compté comme orphelin :
+#
+#   - id: historique-plein
+#     anchor: history_filled_root
+#     reachedBy: journey-critical   # créé par le parcours, pas atteint par goto
+#
+# Ce n'est pas un interrupteur : c'est la phrase que `goto.yaml` demande déjà
+# d'écrire en prose, mise là où un outil peut la lire.
 screens:
   - id: home
     anchor: ''         # TODO(argus): Semantics(identifier: '…') de l'écran d'accueil

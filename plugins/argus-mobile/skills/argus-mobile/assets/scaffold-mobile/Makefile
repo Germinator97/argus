@@ -17,7 +17,7 @@ FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo fl
 
 .PHONY: argus-help argus argus-lint argus-guards argus-debts argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
-        argus-anchors \
+        argus-anchors argus-reach \
         argus-doctor argus-build
 
 # ⚠️ `make` APLATIT LE CODE DE SORTIE. Le contrat d'Argus distingue 0 (vert),
@@ -120,6 +120,9 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 	$(FLUTTER) test test/argus/anchors_test.dart || rc=$$?; \
 	exit $$rc
 
+argus-reach: ## Quels écrans ancrés aucun `goto` ne dessert ? (sans device)
+	@node scripts/argus/config.mjs --check-reachability
+
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 	@$(FLUTTER) test test/argus
 
@@ -188,7 +191,7 @@ argus-report: ## Agrège tout en rapport HTML (ARGS=--previous=<page publiée>)
 # rapport ne doit pas verdir un run rouge.
 argus: ## Tout, dans l'ordre — le rapport sort même quand une dimension échoue
 	@code=0; \
-	for cible in argus-lint argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca; do \
+	for cible in argus-lint argus-reach argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca; do \
 		$(MAKE) --no-print-directory $$cible || { s=$$?; [ $$s -gt $$code ] && code=$$s; }; \
 	done; \
 	$(MAKE) --no-print-directory argus-report; \

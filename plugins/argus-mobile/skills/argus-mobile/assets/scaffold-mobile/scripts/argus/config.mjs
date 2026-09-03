@@ -1029,6 +1029,91 @@ function argumentApres(src, debut) {
 }
 
 /**
+ * Écran d'où partent tous les flows, et par quelle voie il a été choisi.
+ *
+ * Trois voies, dans cet ordre :
+ *   `declared` — un écran porte `start: true`. C'est la seule qui soit un CHOIX ;
+ *   `home`     — convention historique sur l'identifiant `home` ;
+ *   `first`    — repli sur le premier écran configuré.
+ *
+ * ⚠️ `first` est un piège, et c'est pour lui que `start:` existe. Un écran a
+ * souvent plusieurs ÉTATS (« liste vide », « liste pleine »), chacun déclaré
+ * séparément ; si le premier de la liste est l'état plein, son ancre n'existe pas
+ * après un `clearState` et TOUS les flows partent de travers — par intermittence,
+ * donc en accusant autre chose. Les deux voies de repli restent pour ne casser
+ * aucune config existante, mais elles se signalent.
+ *
+ * Le contrat de retour porte `origin` plutôt qu'un booléen : le rapport doit
+ * pouvoir distinguer « on me l'a dit » de « je l'ai deviné et ça tombait bien ».
+ * @param {any} config @returns {{screen:any, origin:'declared'|'home'|'first'}}
+ */
+export function startScreen(config) {
+  const screens = configuredScreens(config);
+  const declares = screens.filter((/** @type {any} */ s) => s.start === true);
+  if (declares.length > 0) return { screen: declares[0], origin: 'declared' };
+  const home = screens.find((/** @type {any} */ s) => s.id === 'home');
+  if (home) return { screen: home, origin: 'home' };
+  return { screen: screens[0], origin: 'first' };
+}
+
+/**
+ * Les écrans déclarés qu'AUCUNE branche de `goto.yaml` ne sait atteindre.
+ *
+ * ⚠️ `coverage.notVisited` répond à « qu'ai-je atteint ? », jamais à « puis-je
+ * atteindre ? ». Il mélange trois causes que rien ne sépare : aucune branche
+ * n'existe, la branche existe mais aucun flow ne la demande, ou l'écran n'admet
+ * légitimement pas de branche — `goto.yaml` documente ce dernier cas, un état
+ * « plein » étant inatteignable par navigation après `clearState`.
+ *
+ * La PREMIÈRE cause se mesure sans device, en croisant `screens[]` avec les
+ * branches écrites. C'est ce que fait cette fonction, et c'est tout ce qu'elle
+ * fait : elle ne dit pas qu'un écran est mal couvert, elle dit qu'aucun `goto`
+ * ne peut l'atteindre.
+ *
+ * Trois exclusions, chacune pour une raison :
+ *   · sans ancre        déjà rapporté par `coverage.notConfigured` — doubler
+ *                       un signal apprend à ignorer les deux ;
+ *   · `reachedBy:`      la sortie ÉCRITE du troisième cas, celle que
+ *                       `goto.yaml` demande déjà en prose ;
+ *   · l'écran de départ atteint par construction, si la branche de départ est
+ *                       là — c'est `launch-clean.yaml` qui l'amène.
+ *
+ * ⚠️ Les commentaires sont ôtés d'abord : le gabarit livré porte une branche
+ * d'exemple commentée (`SCREEN_ID === 'profile'`), et un analyseur qui la lit
+ * déclare atteignable un écran que rien ne dessert. C'est le défaut que
+ * [flowCycles] documente pour le graphe d'appels, ici sur le même fichier.
+ * @param {any} config @param {string} gotoSource @param {string} [startId]
+ * @returns {string[]}
+ */
+export function ecransSansBranche(config, gotoSource, startId = '') {
+  const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  // ⚠️ `(?<!typeof )`. Sans lui, `typeof SCREEN_ID === 'undefined'` — présent
+  // DEUX fois dans le gabarit livré — passe pour une branche vers un écran
+  // nommé « undefined ». Le motif ne mesurait pas faux au hasard : il comptait
+  // une garde de typage comme un chemin de navigation.
+  const branches = new Set(
+    [...utile.matchAll(/(?<!typeof )SCREEN_ID\s*===\s*'([^']+)'/g)].map((m) => m[1]),
+  );
+  const versDepart = /SCREEN_ID\s*===\s*ARGUS_START_SCREEN/.test(utile);
+  return (config?.screens ?? [])
+    .filter((/** @type {any} */ s) => s && String(s.anchor ?? '').trim() !== '')
+    .filter((/** @type {any} */ s) => !String(s.reachedBy ?? '').trim())
+    .filter((/** @type {any} */ s) => !branches.has(s.id))
+    .filter((/** @type {any} */ s) => !(versDepart && s.id === startId))
+    .map((/** @type {any} */ s) => s.id);
+}
+
+/**
+ * Le nombre de branches que `goto.yaml` déclare — le dénominateur sans lequel
+ * une liste d'orphelins ne veut rien dire.
+ * @param {string} gotoSource @returns {number}
+ */
+export function branchesDeGoto(gotoSource) {
+  const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  return [...utile.matchAll(/(?<!typeof )SCREEN_ID\s*===\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;
+}
+
+/**
  * Les ancres DÉCLARÉES dans harness.dart.
  *
  * ⚠️ LA VERSION D'ORIGINE LISAIT LIGNE À LIGNE, et elle accusait le projet.
@@ -2050,6 +2135,46 @@ function main() {
     }
     for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);
     process.exit(1);
+  }
+
+  // ── `--check-reachability` : les écrans qu'aucun `goto` ne dessert. ──────
+  //
+  // `coverage.notVisited` dit ce qu'un run a ATTEINT ; il faut un device, il ne
+  // sort que dans le rapport, et il mélange « pas de branche » avec « branche
+  // jamais demandée ». Ce contrôle-ci isole la seule cause qui se mesure sans
+  // device — et refuse de conclure quand il n'a lu aucune branche, comme ses
+  // deux voisins.
+  if (process.argv.slice(2).includes('--check-reachability')) {
+    const chemin = resolve(process.cwd(), '.maestro/_subflows/goto.yaml');
+    if (!existsSync(chemin)) {
+      err(`goto.yaml introuvable (${chemin}) — le contrôle d'atteignabilité n'a rien mesuré.`);
+      err('  Lance-le à la racine du projet, après `install-mobile.sh`.');
+      process.exit(2);
+    }
+    const source = readFileSync(chemin, 'utf8');
+    const branches = branchesDeGoto(source);
+    if (branches === 0) {
+      err('aucune branche lue dans .maestro/_subflows/goto.yaml — rien à mesurer.');
+      err('  Le gabarit livré n\'en porte qu\'en commentaire : écris-en une, ou dis');
+      err('  dans screens[] par quel parcours chaque écran est atteint (reachedBy:).');
+      process.exit(2);
+    }
+    const depart = startScreen(config).screen;
+    const orphelins = ecransSansBranche(config, source, depart?.id ?? '');
+    if (orphelins.length === 0) {
+      log(`✔ tout écran ancré est desservi par goto.yaml (${branches} branche(s) lue(s))`);
+      return;
+    }
+    warn(`${orphelins.length} écran(s) ancré(s) qu'aucune branche de goto.yaml ne dessert :`);
+    for (const id of orphelins) warn(`    ${id}`);
+    warn('  Ce n\'est PAS un défaut en soi — c\'est une absence de chemin, et il y a');
+    warn('  trois raisons d\'en manquer une. Deux appellent une branche :');
+    warn('    · l\'écran est atteignable et personne ne l\'a écrit ;');
+    warn('    · la branche existe mais son `SCREEN_ID` ne correspond plus à screens[].');
+    warn('  La troisième non : un état « plein » est inatteignable par navigation après');
+    warn('  clearState, et c\'est le parcours qui CRÉE la donnée qui l\'atteint. Écris-le,');
+    warn('  et le compte redescend :   screens[].reachedBy: journey-critical');
+    return;
   }
 
   // ── `--measure-binary` : ce que pèse le paquet, fichier OU répertoire. ────
