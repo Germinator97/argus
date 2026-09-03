@@ -371,9 +371,20 @@ MUTATIONS = [
     ("config", "le graphe d'appels cesse de voir un cycle",
      "    const i = chemin.indexOf(n);",
      "    const i = -1 * (chemin.length + 1);"),
-    ("config", "les commentaires refabriquent des arêtes dans le graphe",
-     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');",
-     "    const utile = String(texte ?? '');"),
+    # ⚠️ CE MOTIF EST ÉCRIT DEUX FOIS — `flowCycles` et `flowsIntrouvables`
+    # dépiautent les mêmes `runFlow:` et partagent CINQ lignes mot pour mot. Le
+    # harnais a rendu « motif trouvé 2× (attendu 1) », donc HARNAIS et non
+    # « garde vacant ». Le précédent de Maestro (« casser UNE des deux suffit »)
+    # NE VAUT PAS ici : les deux copies vivent dans deux fonctions qui ont
+    # CHACUNE leur garde, donc une seule mutation en laisserait un non prouvé.
+    # D'où deux mutations, ancrées sur la ligne de CODE qui les distingue —
+    # jamais sur le commentaire voisin, qu'une reformulation périmerait.
+    ("config", "les commentaires refabriquent des arêtes dans le graphe (flowCycles)",
+     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];",
+     "    const utile = String(texte ?? '');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];"),
+    ("config", "les commentaires font croire à un flow absent (flowsIntrouvables)",
+     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    for (const cible of new Set(cibles)) {",
+     "    const utile = String(texte ?? '');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    for (const cible of new Set(cibles)) {"),
     ("makefile", "argus-lint cesse de contrôler le graphe d'appels",
      "\t@node scripts/argus/config.mjs --check-flows",
      "\t@true # contrôle du graphe retiré"),
