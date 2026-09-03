@@ -593,9 +593,15 @@ MUTATIONS = [
     ("readme", "229 · la forme inerte redevient la bonne forme",
      "// ⚠️ CIBLABLE, MAIS INERTE",
      "// ✅ la bonne forme"),
+    # ⚠️ Cette mutation visait `security` — le job que le correctif B4 a rendu
+    # AGNOSTIQUE, précisément parce qu'il portait cette condition à tort. Son
+    # motif ne matchait donc plus rien, et le garde 230 n'était plus prouvé. Elle
+    # vise désormais `e2e-android`, qui est Android au sens du garde lui-même
+    # (il démarre un émulateur), donc le seul endroit où retirer la condition
+    # reproduit le défaut qu'il mesure.
     ("ci", "230 · un job Android cesse de suivre la plateforme",
-     "  security:\n    name: MASVS et CVE\n    needs: cadre\n    if: needs.cadre.outputs.android == 'true'\n",
-     "  security:\n    name: MASVS et CVE\n    needs: cadre\n"),
+     "  e2e-android:\n    name: e2e Android (émulateur)\n    needs: cadre\n    if: needs.cadre.outputs.android == 'true'\n",
+     "  e2e-android:\n    name: e2e Android (émulateur)\n    needs: cadre\n"),
     ("ci", "230 bis · le job iOS est de nouveau éteint en dur",
      "    if: needs.cadre.outputs.ios == 'true' && vars.ARGUS_IOS_CI == 'true'",
      "    if: false"),
