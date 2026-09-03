@@ -1057,6 +1057,24 @@ export function startScreen(config) {
 }
 
 /**
+ * La tête d'une branche `goto`, partagée par les deux lectures.
+ *
+ * ⚠️ `(?<!typeof )`, et UNE SEULE SOURCE. Sans le lookbehind,
+ * `typeof SCREEN_ID === 'undefined'` — présent deux fois dans le gabarit livré —
+ * passe pour une branche vers un écran nommé « undefined » : le compteur
+ * rendait « 4 branches lues » sur un scaffold qui n'en déclare aucune, donc le
+ * refus de conclure ne pouvait jamais se déclencher.
+ *
+ * ⚠️ ET LE MOTIF ÉTAIT ÉCRIT DEUX FOIS. Le harnais de mutation l'a dit : casser
+ * la copie d'[ecransSansBranche] rendait « VACANT », parce qu'elle n'y ajoute
+ * qu'une entrée « undefined » que rien n'observe — seul le compteur en souffre.
+ * Deux motifs qui doivent rester identiques et dont un seul est mesurable, c'est
+ * le voisin qui diverge : ils partagent donc leur tête, et la muter casse le
+ * compteur, qui est gardé.
+ */
+const TETE_BRANCHE = String.raw`(?<!typeof )SCREEN_ID\s*===\s*`;
+
+/**
  * Les écrans déclarés qu'AUCUNE branche de `goto.yaml` ne sait atteindre.
  *
  * ⚠️ `coverage.notVisited` répond à « qu'ai-je atteint ? », jamais à « puis-je
@@ -1087,12 +1105,8 @@ export function startScreen(config) {
  */
 export function ecransSansBranche(config, gotoSource, startId = '') {
   const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  // ⚠️ `(?<!typeof )`. Sans lui, `typeof SCREEN_ID === 'undefined'` — présent
-  // DEUX fois dans le gabarit livré — passe pour une branche vers un écran
-  // nommé « undefined ». Le motif ne mesurait pas faux au hasard : il comptait
-  // une garde de typage comme un chemin de navigation.
   const branches = new Set(
-    [...utile.matchAll(/(?<!typeof )SCREEN_ID\s*===\s*'([^']+)'/g)].map((m) => m[1]),
+    [...utile.matchAll(new RegExp(`${TETE_BRANCHE}'([^']+)'`, 'g'))].map((m) => m[1]),
   );
   const versDepart = /SCREEN_ID\s*===\s*ARGUS_START_SCREEN/.test(utile);
   return (config?.screens ?? [])
@@ -1110,7 +1124,7 @@ export function ecransSansBranche(config, gotoSource, startId = '') {
  */
 export function branchesDeGoto(gotoSource) {
   const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  return [...utile.matchAll(/(?<!typeof )SCREEN_ID\s*===\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;
+  return [...utile.matchAll(new RegExp(`${TETE_BRANCHE}(?:'[^']+'|ARGUS_START_SCREEN)`, 'g'))].length;
 }
 
 /**

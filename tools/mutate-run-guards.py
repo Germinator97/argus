@@ -1074,12 +1074,13 @@ MUTATIONS = [
      "          \"$HOME/.maestro/bin/maestro\" --version\n"
      "\n"
      "      # Contrôle de syntaxe AVANT de démarrer l'émulateur"),
-    ("config", "le motif d'atteignabilité reprend les `typeof` pour des branches",
-     "    [...utile.matchAll(/(?<!typeof )SCREEN_ID\\s*===\\s*'([^']+)'/g)].map((m) => m[1]),",
-     "    [...utile.matchAll(/SCREEN_ID\\s*===\\s*'([^']+)'/g)].map((m) => m[1]),"),
-    ("config", "le compteur de branches recompte les gardes de typage",
-     "  return [...utile.matchAll(/(?<!typeof )SCREEN_ID\\s*===\\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;",
-     "  return [...utile.matchAll(/SCREEN_ID\\s*===\\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;"),
+    # ⚠️ UNE SEULE MUTATION, PARCE QU'IL N'Y A PLUS QU'UN MOTIF. La première
+    # version en portait deux : celle qui cassait la copie d'`ecransSansBranche`
+    # rendait « VACANT », cette copie n'ajoutant qu'une entrée « undefined » que
+    # rien n'observe. Le motif est partagé depuis, et le compteur le garde.
+    ("config", "le motif de branche reprend les gardes de typage",
+     "const TETE_BRANCHE = String.raw`(?<!typeof )SCREEN_ID\\s*===\\s*`;",
+     "const TETE_BRANCHE = String.raw`SCREEN_ID\\s*===\\s*`;"),
     ("config", "reachedBy cesse de fermer le cas du parcours qui crée la donnée",
      "    .filter((/** @type {any} */ s) => !String(s.reachedBy ?? '').trim())",
      "    .filter((/** @type {any} */ s) => true)"),
