@@ -53,6 +53,7 @@ import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/ski
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -8385,4 +8386,80 @@ test('chaque outil installé par la CI est épinglable ET imprime sa version (m2
     assert.match(bloc, /--version|version\)/,
       `${nom} : la version employée n'est pas imprimée, donc un rapport passé n'est pas relisible`);
   }
+});
+
+// ── Atteignabilité · « non atteint » n'est pas « inatteignable » ──────────
+// `coverage.notVisited` répond à « qu'ai-je atteint ? », demande un device, et
+// mélange trois causes. Une seule se mesure sans device : aucune branche de
+// goto.yaml ne dessert l'écran.
+
+const GOTO_BRANCHES = (branches) => [
+  '# - runFlow:',
+  "#     when: { true: \"${SCREEN_ID === 'commente'}\" }",   // un exemple COMMENTÉ
+  '- runFlow:',
+  '    when:',
+  '      true: "${SCREEN_ID === ARGUS_START_SCREEN}"',
+  ...branches.map((b) => `      true: "\${SCREEN_ID === '${b}'}"`),
+].join('\n');
+
+test('un écran ancré qu\'aucune branche ne dessert est NOMMÉ (atteignabilité)', () => {
+  const config = { screens: [
+    { id: 'home', anchor: 'home_root' },
+    { id: 'profile', anchor: 'profile_root' },
+    { id: 'panier', anchor: 'panier_root' },
+  ] };
+  assert.deepEqual(ecransSansBranche(config, GOTO_BRANCHES(['profile']), 'home'), ['panier']);
+});
+
+test('les trois sorties légitimes ne comptent pas comme orphelines', () => {
+  const source = GOTO_BRANCHES(['profile']);
+  // 1 · l'écran de départ, amené par launch-clean.yaml
+  assert.deepEqual(ecransSansBranche({ screens: [{ id: 'home', anchor: 'a' }] }, source, 'home'), []);
+  // 2 · un écran sans ancre : déjà dit par coverage.notConfigured
+  assert.deepEqual(ecransSansBranche({ screens: [{ id: 'x', anchor: '' }] }, source, 'home'), []);
+  // 3 · un état que le parcours CRÉE — la sortie écrite du troisième cas
+  assert.deepEqual(ecransSansBranche(
+    { screens: [{ id: 'plein', anchor: 'p', reachedBy: 'journey-critical' }] }, source, 'home'), []);
+});
+
+test('une branche COMMENTÉE ne rend pas un écran atteignable', () => {
+  // Le gabarit livré porte `SCREEN_ID === 'profile'` en commentaire : un
+  // analyseur qui le lit déclare desservi un écran que rien ne dessert.
+  const config = { screens: [{ id: 'commente', anchor: 'c' }] };
+  assert.deepEqual(ecransSansBranche(config, GOTO_BRANCHES([]), 'home'), ['commente'],
+    'l\'exemple commenté du gabarit a été pris pour une branche');
+});
+
+test('le gabarit LIVRÉ ne compte aucune branche (atteignabilité)', () => {
+  // ⚠️ CE GARDE EXISTE PARCE QUE LES AUTRES ÉTAIENT CONSTRUITS SUR UN MONTAGE.
+  // Ils fabriquaient un goto.yaml idéalisé, où `typeof SCREEN_ID === '…'`
+  // n'apparaît pas — alors que le fichier livré en porte deux, et que le motif
+  // les comptait comme des branches vers un écran nommé « undefined ». Résultat
+  // mesuré : « 4 branche(s) lue(s) » sur un scaffold qui n'en déclare aucune,
+  // donc un refus de conclure qui ne se déclenchait jamais.
+  const source = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+  assert.match(source, /typeof SCREEN_ID === 'undefined'/,
+    'le gabarit ne porte plus la garde de typage — ce garde ne mesure plus rien');
+  // Le gabarit porte DEUX branches, et seulement deux : celles de l'écran de
+  // départ, écrites et non commentées. Ses exemples d'écran nommé sont en
+  // commentaire, et ses `typeof` ne sont pas des chemins. Ces deux-là sont le
+  // témoin que le motif lit encore quelque chose : si elles tombent à zéro, le
+  // contrôle refuse de conclure — ce qui est exactement ce qu'on veut d'un
+  // motif cassé ou d'un fichier vidé.
+  assert.equal(branchesDeGoto(source), 2,
+    'ni plus (un `typeof` compté pour un chemin) ni moins (le motif ne lit plus rien)');
+  assert.equal(branchesDeGoto(source.split('\n').map((l) => `# ${l}`).join('\n')), 0,
+    'tout commenter doit rendre zéro — sinon le refus de conclure est inatteignable');
+  assert.deepEqual(
+    ecransSansBranche({ screens: [{ id: 'x', anchor: 'x_root' }] }, source, 'home'), ['x'],
+    'un écran ancré doit ressortir orphelin sur le gabarit livré');
+});
+
+test('le contrôle refuse de conclure sans branche lue (atteignabilité)', () => {
+  // Même règle que ses deux voisins : une liste vide sur un corpus vide n'est
+  // pas un bon résultat, c'est une absence de mesure.
+  assert.equal(branchesDeGoto(''), 0);
+  assert.equal(branchesDeGoto("# true: \"${SCREEN_ID === 'x'}\""), 0, 'les commentaires ne comptent pas');
+  assert.equal(branchesDeGoto(GOTO_BRANCHES(['a', 'b'])), 3, 'deux branches nommées + celle du départ');
 });

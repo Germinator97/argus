@@ -1074,6 +1074,15 @@ MUTATIONS = [
      "          \"$HOME/.maestro/bin/maestro\" --version\n"
      "\n"
      "      # Contrôle de syntaxe AVANT de démarrer l'émulateur"),
+    ("config", "le motif d'atteignabilité reprend les `typeof` pour des branches",
+     "    [...utile.matchAll(/(?<!typeof )SCREEN_ID\\s*===\\s*'([^']+)'/g)].map((m) => m[1]),",
+     "    [...utile.matchAll(/SCREEN_ID\\s*===\\s*'([^']+)'/g)].map((m) => m[1]),"),
+    ("config", "le compteur de branches recompte les gardes de typage",
+     "  return [...utile.matchAll(/(?<!typeof )SCREEN_ID\\s*===\\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;",
+     "  return [...utile.matchAll(/SCREEN_ID\\s*===\\s*(?:'[^']+'|ARGUS_START_SCREEN)/g)].length;"),
+    ("config", "reachedBy cesse de fermer le cas du parcours qui crée la donnée",
+     "    .filter((/** @type {any} */ s) => !String(s.reachedBy ?? '').trim())",
+     "    .filter((/** @type {any} */ s) => true)"),
     ("makefile", "une prose qui se nomme repasse devant le marqueur",
      "# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.\n"
      "# Argus Mobile — raccourcis.",
