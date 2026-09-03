@@ -371,20 +371,23 @@ MUTATIONS = [
     ("config", "le graphe d'appels cesse de voir un cycle",
      "    const i = chemin.indexOf(n);",
      "    const i = -1 * (chemin.length + 1);"),
-    # ⚠️ CE MOTIF EST ÉCRIT DEUX FOIS — `flowCycles` et `flowsIntrouvables`
-    # dépiautent les mêmes `runFlow:` et partagent CINQ lignes mot pour mot. Le
-    # harnais a rendu « motif trouvé 2× (attendu 1) », donc HARNAIS et non
-    # « garde vacant ». Le précédent de Maestro (« casser UNE des deux suffit »)
-    # NE VAUT PAS ici : les deux copies vivent dans deux fonctions qui ont
-    # CHACUNE leur garde, donc une seule mutation en laisserait un non prouvé.
-    # D'où deux mutations, ancrées sur la ligne de CODE qui les distingue —
-    # jamais sur le commentaire voisin, qu'une reformulation périmerait.
-    ("config", "les commentaires refabriquent des arêtes dans le graphe (flowCycles)",
-     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];",
-     "    const utile = String(texte ?? '');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];"),
-    ("config", "les commentaires font croire à un flow absent (flowsIntrouvables)",
-     "    const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    for (const cible of new Set(cibles)) {",
-     "    const utile = String(texte ?? '');\n    const cibles = [\n      ...[...utile.matchAll(/runFlow:\\s*([^\\s#{][^\\s#]*\\.ya?ml)/g)].map((m) => m[1]),\n      ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),\n    ];\n    for (const cible of new Set(cibles)) {"),
+    # ⚠️ TROIS MUTATIONS LÀ OÙ IL Y EN AVAIT DEUX, et c'est le bénéfice de la
+    # source unique : la décision ne s'écrit plus qu'à un endroit, donc une
+    # seule mutation casse TOUS ses lecteurs. Ce qu'il reste à couvrir n'est
+    # plus la répétition mais trois propriétés distinctes — le filtre, le
+    # nombre de copies, et la seconde forme de `runFlow:`.
+    ("config", "sansCommentaires cesse de filtrer, et ses quatre lecteurs mentent",
+     "  return String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');",
+     "  return String(texte ?? '');"),
+    # ⚠️ Celle-ci ne change RIEN au comportement : elle recopie l'idiome à un
+    # second endroit, exactement comme il vivait avant. Aucun garde de valeur ne
+    # peut la voir — seul celui qui compte les copies, qui existe pour ça.
+    ("config", "l'idiome des commentaires est recopié une seconde fois",
+     "  const utile = sansCommentaires(texte);",
+     "  const utile = String(texte ?? '').split('\\n').filter((l) => !/^\\s*#/.test(l)).join('\\n');"),
+    ("config", "la forme `runFlow: file:` cesse d'être lue",
+     "    ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),",
+     "    ...[],"),
     ("makefile", "argus-lint cesse de contrôler le graphe d'appels",
      "\t@node scripts/argus/config.mjs --check-flows",
      "\t@true # contrôle du graphe retiré"),

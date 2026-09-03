@@ -56,6 +56,7 @@ import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
@@ -8462,4 +8463,40 @@ test('le contrôle refuse de conclure sans branche lue (atteignabilité)', () =>
   assert.equal(branchesDeGoto(''), 0);
   assert.equal(branchesDeGoto("# true: \"${SCREEN_ID === 'x'}\""), 0, 'les commentaires ne comptent pas');
   assert.equal(branchesDeGoto(GOTO_BRANCHES(['a', 'b'])), 3, 'deux branches nommées + celle du départ');
+});
+
+test('ciblesRunFlow lit les DEUX formes et ignore les exemples commentés (m76)', () => {
+  // ⚠️ Un garde qui APPELLE, pas qui lit du texte. La décision « un exemple
+  // commenté n'est pas un appel » vivait en trois exemplaires dans config.mjs ;
+  // elle a désormais une source unique, et c'est elle qu'on exerce ici.
+  assert.deepEqual(ciblesRunFlow('- runFlow: _subflows/goto.yaml\n'),
+    ['_subflows/goto.yaml'], 'la forme courte n\'est plus lue');
+  assert.deepEqual(ciblesRunFlow('- runFlow:\n    file: _subflows/login.yaml\n    env:\n      X: 1\n'),
+    ['_subflows/login.yaml'], 'la forme `file:` n\'est plus lue');
+  assert.deepEqual(ciblesRunFlow('# - runFlow: exemple-commente.yaml\n- launchApp\n'),
+    [], 'un exemple commenté est compté comme un appel');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi un filtre trop large passerait pour un
+  // correctif : ce qui n'est PAS commenté doit toujours sortir, y compris à
+  // côté d'un commentaire et suivi d'un commentaire de fin de ligne.
+  assert.deepEqual(ciblesRunFlow('# un exemple\n- runFlow: vrai.yaml\n'),
+    ['vrai.yaml'], 'un appel voisin d\'un commentaire a été avalé');
+});
+
+test('le retrait des commentaires n\'a qu\'UNE source dans config.mjs (m76 bis)', () => {
+  // Cette idiome y vivait en TROIS exemplaires, et le harnais de mutation l'a
+  // dit avant nous : son motif en matchait deux, donc il refusait de conclure
+  // et AUCUNE des deux copies n'était exercée. Ce garde tient le NOMBRE ; le
+  // garde ci-dessus tient la valeur. Même défaut que TETE_BRANCHE, mêmes
+  // fonctions, autre motif — c'est la deuxième fois qu'il faut le fermer.
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  // ⚠️ Les commentaires d'abord : la règle est expliquée juste au-dessus de la
+  // fonction qu'elle garde, donc à portée du motif. Un garde qui compte sa
+  // propre explication est vacant le jour de son écriture.
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  const copies = code.split(String.raw`.filter((l) => !/^\s*#/.test(l))`).length - 1;
+  assert.equal(copies, 1,
+    `le retrait des lignes commentées est écrit ${copies}× dans config.mjs — une seule `
+    + 'source, sinon la copie que rien ne mesure diverge de celle qui est gardée');
 });

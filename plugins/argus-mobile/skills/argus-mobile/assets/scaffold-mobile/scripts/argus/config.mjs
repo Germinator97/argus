@@ -1075,6 +1075,22 @@ export function startScreen(config) {
 const TETE_BRANCHE = String.raw`(?<!typeof )SCREEN_ID\s*===\s*`;
 
 /**
+ * Un texte YAML débarrassé de ses lignes de commentaire.
+ *
+ * ⚠️ SOURCE UNIQUE d'une idiome qui vivait en TROIS exemplaires — deux sur le
+ * `goto.yaml` livré, une sur les flows. Elle tranche chaque fois la même
+ * chose : ce qu'un gabarit MONTRE en exemple ne doit pas se lire comme ce
+ * qu'il FAIT. Trois copies d'une même décision, ce sont deux occasions de ne la
+ * changer qu'à moitié — et [TETE_BRANCHE] documente déjà ce défaut, sur ces
+ * deux fonctions-là, pour un autre motif qu'elles recopiaient aussi.
+ *
+ * @param {string} texte @returns {string} le texte sans ses lignes commentées
+ */
+function sansCommentaires(texte) {
+  return String(texte ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+}
+
+/**
  * Les écrans déclarés qu'AUCUNE branche de `goto.yaml` ne sait atteindre.
  *
  * ⚠️ `coverage.notVisited` répond à « qu'ai-je atteint ? », jamais à « puis-je
@@ -1104,7 +1120,7 @@ const TETE_BRANCHE = String.raw`(?<!typeof )SCREEN_ID\s*===\s*`;
  * @returns {string[]}
  */
 export function ecransSansBranche(config, gotoSource, startId = '') {
-  const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const utile = sansCommentaires(gotoSource);
   const branches = new Set(
     [...utile.matchAll(new RegExp(`${TETE_BRANCHE}'([^']+)'`, 'g'))].map((m) => m[1]),
   );
@@ -1123,7 +1139,7 @@ export function ecransSansBranche(config, gotoSource, startId = '') {
  * @param {string} gotoSource @returns {number}
  */
 export function branchesDeGoto(gotoSource) {
-  const utile = String(gotoSource ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const utile = sansCommentaires(gotoSource);
   return [...utile.matchAll(new RegExp(`${TETE_BRANCHE}(?:'[^']+'|ARGUS_START_SCREEN)`, 'g'))].length;
 }
 
@@ -1900,6 +1916,54 @@ export const err = (msg) => console.error(`[argus-mobile] ✖ ${msg}`);
 // ═══════════════════════════════════════════════════════════════════════════
 
 /**
+ * Le dossier d'un chemin de flow — chaîne vide à la racine du workspace.
+ * @param {string} f @returns {string}
+ */
+function dirOfFlow(f) {
+  return f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '';
+}
+
+/**
+ * Un chemin de sous-flow résolu depuis le dossier de son appelant.
+ * @param {string} base @param {string} cible @returns {string}
+ */
+function normFlow(base, cible) {
+  /** @type {string[]} */
+  const out = [];
+  for (const seg of (base ? `${base}/${cible}` : cible).split('/')) {
+    if (seg === '.' || seg === '') continue;
+    if (seg === '..') out.pop();
+    else out.push(seg);
+  }
+  return out.join('/');
+}
+
+/**
+ * Les `runFlow:` d'un flow, sous leurs DEUX formes, commentaires exclus.
+ *
+ * ⚠️ SOURCE UNIQUE, ET C'EST TOUT LE POINT. Ces lignes vivaient en double dans
+ * [flowCycles] et [flowsIntrouvables] — deux fonctions qui doivent voir
+ * exactement les mêmes appels, sans quoi le graphe des cycles et la liste des
+ * fichiers absents se contredisent. Le harnais de mutation l'a dit avant nous :
+ * son motif y matchait DEUX fois, donc il refusait de conclure, et ni l'une ni
+ * l'autre copie n'était exercée — pas seulement la seconde.
+ *
+ * Les commentaires partent d'abord : le gabarit livré porte des exemples
+ * commentés, et un lecteur qui les prend pour des appels invente des arêtes qui
+ * n'existent pas, puis nomme des fichiers absents qui ne manquent à personne.
+ *
+ * @param {string} texte contenu d'un flow
+ * @returns {string[]} les cibles citées, telles qu'écrites (non résolues)
+ */
+export function ciblesRunFlow(texte) {
+  const utile = sansCommentaires(texte);
+  return [
+    ...[...utile.matchAll(/runFlow:\s*([^\s#{][^\s#]*\.ya?ml)/g)].map((m) => m[1]),
+    ...[...utile.matchAll(/runFlow:[\s\S]{0,120}?file:\s*([^\s#]+\.ya?ml)/g)].map((m) => m[1]),
+  ];
+}
+
+/**
  * Les cycles d'appels entre flows Maestro.
  *
  * ⚠️ POURQUOI CETTE FONCTION EXISTE. `maestro check-syntax` valide un fichier
@@ -1917,29 +1981,10 @@ export const err = (msg) => console.error(`[argus-mobile] ✖ ${msg}`);
  * @returns {string[][]} un tableau par cycle, du premier fichier au retour
  */
 export function flowCycles(flows) {
-  const dirOf = (/** @type {string} */ f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
-  const norm = (/** @type {string} */ base, /** @type {string} */ cible) => {
-    const parts = (base ? `${base}/${cible}` : cible).split('/');
-    /** @type {string[]} */
-    const out = [];
-    for (const seg of parts) {
-      if (seg === '.' || seg === '') continue;
-      if (seg === '..') out.pop();
-      else out.push(seg);
-    }
-    return out.join('/');
-  };
   /** @type {Record<string,string[]>} */
   const graphe = {};
   for (const [nom, texte] of Object.entries(flows ?? {})) {
-    // ⚠️ Les commentaires d'abord : le gabarit livré porte des exemples
-    // commentés, et un graphe qui les lit invente des arêtes qui n'existent pas.
-    const utile = String(texte ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-    const cibles = [
-      ...[...utile.matchAll(/runFlow:\s*([^\s#{][^\s#]*\.ya?ml)/g)].map((m) => m[1]),
-      ...[...utile.matchAll(/runFlow:[\s\S]{0,120}?file:\s*([^\s#]+\.ya?ml)/g)].map((m) => m[1]),
-    ];
-    graphe[nom] = [...new Set(cibles.map((c) => norm(dirOf(nom), c)))];
+    graphe[nom] = [...new Set(ciblesRunFlow(texte).map((c) => normFlow(dirOfFlow(nom), c)))];
   }
   /** @type {string[][]} */
   const cycles = [];
@@ -1971,28 +2016,11 @@ export function flowCycles(flows) {
  */
 export function flowsIntrouvables(flows) {
   const noms = new Set(Object.keys(flows ?? {}));
-  const dirOf = (/** @type {string} */ f) => (f.includes('/') ? f.slice(0, f.lastIndexOf('/')) : '');
-  const norm = (/** @type {string} */ base, /** @type {string} */ cible) => {
-    /** @type {string[]} */
-    const out = [];
-    for (const seg of (base ? `${base}/${cible}` : cible).split('/')) {
-      if (seg === '.' || seg === '') continue;
-      if (seg === '..') out.pop();
-      else out.push(seg);
-    }
-    return out.join('/');
-  };
   /** @type {Array<[string,string]>} */
   const manquants = [];
   for (const [nom, texte] of Object.entries(flows ?? {})) {
-    // Les commentaires d'abord : le gabarit livré porte des exemples commentés.
-    const utile = String(texte ?? '').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-    const cibles = [
-      ...[...utile.matchAll(/runFlow:\s*([^\s#{][^\s#]*\.ya?ml)/g)].map((m) => m[1]),
-      ...[...utile.matchAll(/runFlow:[\s\S]{0,120}?file:\s*([^\s#]+\.ya?ml)/g)].map((m) => m[1]),
-    ];
-    for (const cible of new Set(cibles)) {
-      if (!noms.has(norm(dirOf(nom), cible))) manquants.push([nom, cible]);
+    for (const cible of new Set(ciblesRunFlow(texte))) {
+      if (!noms.has(normFlow(dirOfFlow(nom), cible))) manquants.push([nom, cible]);
     }
   }
   return manquants;
