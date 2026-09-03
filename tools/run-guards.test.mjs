@@ -30,6 +30,7 @@ import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterComma
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -8332,4 +8333,56 @@ test('argus-build refuse de conclure quand la mesure du paquet a échoué (m10)'
   const iIntact = recette.indexOf('PAQUET INTACT');
   assert.ok(iVide > 0, 'rien ne distingue une empreinte vide d\'une empreinte égale');
   assert.ok(iIntact > iVide, 'le refus doit précéder le verdict, sinon il ne l\'empêche pas');
+});
+
+// ── m7 · le shell masque l'absence d'un binaire ───────────────────────────
+// `detectTools` décidait `present = res.error === null`. C'est juste tant qu'on
+// spawne directement : un binaire absent rend ENOENT. Mais `sh()` passe par le
+// shell sur Windows (`shell: IS_WINDOWS`, nécessaire pour `aapt2.exe` et
+// `apkanalyzer.bat`), et un shell ne rend PAS d'ENOENT sur une commande
+// inconnue — il rend le code 127. Tous les outils étaient donc déclarés
+// présents, et la panne arrivait plus loin, sur un message moins clair.
+//
+// Le défaut n'est pas propre à Windows : c'est le shell. Il se reproduit donc
+// ici, ce qui est ce qui permet de le garder.
+
+test('un binaire absent reste ABSENT même quand un shell avale l\'ENOENT (m7)', () => {
+  const direct = sh('binaire-inexistant-xyz', ['--version']);
+  assert.equal(outilPresent(direct), false, 'sans shell, l\'ENOENT suffisait déjà');
+
+  const parShell = sh('binaire-inexistant-xyz', ['--version'], { shell: true });
+  assert.equal(parShell.error, null, 'le shell a bien avalé l\'ENOENT — sinon ce garde ne mesure rien');
+  assert.equal(parShell.status, 127, 'et rend 127, le « command not found » POSIX');
+  assert.equal(outilPresent(parShell), false,
+    'déclaré présent : la moitié de la dimension sécurité se croira outillée');
+});
+
+test('un outil PRÉSENT qui sort en code non nul reste présent (m7, l\'autre moitié)', () => {
+  // `apkanalyzer -h` prouve sa présence en sortant non nul : un correctif qui
+  // exigerait `status === 0` ferait sauter la dimension pour un outil installé.
+  assert.equal(outilPresent({ error: null, status: 1 }), true);
+  assert.equal(outilPresent({ error: null, status: 0 }), true);
+  assert.equal(outilPresent({ error: 'spawn ENOENT', status: -1 }), false);
+});
+
+test('chaque outil installé par la CI est épinglable ET imprime sa version (m2)', () => {
+  // Deux runs à un jour d'écart n'analysaient pas forcément avec le même
+  // scanner, et rien dans le rapport ne le disait. L'épinglage reste un CHOIX
+  // (un scanner de CVE figé fige sa connaissance des vulnérabilités) ; ce qui
+  // ne doit pas l'être, c'est la possibilité de le faire et la trace de ce qui
+  // a servi.
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+  const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+  const etapes = utile.split(/\n      - name: Installer /).slice(1);
+  assert.ok(etapes.length >= 2, `${etapes.length} étape(s) d'installation — le motif ne mesure plus rien`);
+  for (const etape of etapes) {
+    const nom = etape.split('\n')[0].trim();
+    const bloc = etape.split(/\n      - /)[0];
+    assert.match(bloc, /vars\.ARGUS_[A-Z_]+_VERSION/,
+      `${nom} : aucune variable de dépôt ne permet d'épingler sa version`);
+    assert.match(bloc, /--version|version\)/,
+      `${nom} : la version employée n'est pas imprimée, donc un rapport passé n'est pas relisible`);
+  }
 });

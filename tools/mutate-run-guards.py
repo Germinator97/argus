@@ -1052,6 +1052,12 @@ MUTATIONS = [
     # raison : débrancher la lecture du marqueur ne change RIEN tant que le repli
     # de prose tombe lui aussi dessus. Ce qui porte la stabilité est que le
     # marqueur arrive AVANT toute prose qui se nomme — c'est cela qu'on casse.
+    ("config", "outilPresent redevient aveugle au shell qui avale l'ENOENT",
+     "  if (res?.error !== null) return false;\n  return res.status !== 127 && res.status !== 9009;",
+     "  if (res?.error !== null) return false;\n  return true;"),
+    ("ci", "plus rien ne permet d'épingler la version de Maestro",
+     "          MAESTRO_VERSION: ${{ vars.ARGUS_MAESTRO_VERSION }}",
+     "          MAESTRO_VERSION: ''"),
     ("makefile", "une prose qui se nomme repasse devant le marqueur",
      "# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.\n"
      "# Argus Mobile — raccourcis.",
