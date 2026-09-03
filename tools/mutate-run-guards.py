@@ -138,10 +138,13 @@ MUTATIONS = [
     ("config", "un start sans ancre passe en silence",
      "    if (typeof s.anchor !== 'string' || s.anchor.trim() === '') {",
      "    if (typeof s.anchor !== 'string' && false) {"),
-    ("run", "start: true cesse de gagner",
+    # ⚠️ Cibles passées de `run` à `config` le 03/09 : le choix de l'écran de
+    # départ a DÉMÉNAGÉ, comme `avdNameFrom` au run 17. Le harnais l'a dit de
+    # lui-même — « motif trouvé 0× », donc HARNAIS et non « garde vacant ».
+    ("config", "start: true cesse de gagner",
      "  const declares = screens.filter((/** @type {any} */ s) => s.start === true);",
      "  const declares = screens.filter((/** @type {any} */ s) => s.start === undefined && false);"),
-    ("run", "le repli ne se signale plus comme tel",
+    ("config", "le repli ne se signale plus comme tel",
      "  return { screen: screens[0], origin: 'first' };",
      "  return { screen: screens[0], origin: 'home' };"),
     ("run", "un téléphone réel passe sans consentement",
@@ -203,7 +206,7 @@ MUTATIONS = [
      "  if (found.length === 0) {",
      "  if (false) {"),
     ("a11y", "mesurer un autre écran que celui demandé ne se signale plus",
-     "  if (requested && requested !== 'écran courant' && !found.some((/** @type {any} */ s) => s.id === requested)) {",
+     "  if (requested && requested !== ECRAN_COURANT && !found.some((/** @type {any} */ s) => s.id === requested)) {",
      "  if (false) {"),
     ("i18n", "le garde des clés non résolues redevient un motif nu, donc toujours vert",
      "          text: '(?is).*(missing[_ ]translation|\\[\\[.*\\]\\]|__[A-Z_]+__).*'",
@@ -723,8 +726,8 @@ MUTATIONS = [
     # ⚠️ Le CÂBLAGE, pas la fonction : celle-ci reste juste, elle ne reçoit
     # simplement plus le nom. Seul le garde qui LANCE report.mjs le voit.
     ("report", "le nom de la config n'atteint plus le run",
-     "const run = { ...brut, name: brut.name || config.app?.name || '' };",
-     "const run = { ...brut };"),
+     "const run = { ...brut, name: brut.name || brut.appName || config.app?.name || '' };",
+     "const run = { ...brut, name: brut.name || brut.appName || '' };"),
     ("report", "l'onglet réécrit la plateforme que le titre porte déjà",
      "+ (detonne ? `<span class=\"muted\"> · ${esc(plate || '?')}</span>` : '') + '</button>';",
      "+ `<span class=\"muted\"> · ${esc(plate || '?')}</span>` + '</button>';"),
@@ -883,8 +886,8 @@ MUTATIONS = [
      "  # Nom du paquet Dart (pubspec.yaml → name)."),
     # ── La vague Android n° 2 (299-316) ──────────────────────────────────
     ("config", "le croisement d'ancres redevient aveugle au ternaire",
-     "        const litteraux = [...arg.matchAll(/'([^']*)'/g)].map((x) => x[1])",
-     "        const litteraux = [...arg.slice(0, 1).matchAll(/'([^']*)'/g)].map((x) => x[1])"),
+     "        const litteraux = litterauxDart(arg)",
+     "        const litteraux = litterauxDart(arg).slice(0, 1)"),
     ("config", "le verdict vert retait les ancres non lisibles",
      "      for (const o of vues.opaques ?? []) {",
      "      for (const o of []) {"),
