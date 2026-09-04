@@ -15,6 +15,12 @@ par des messages de commit et par la page publiée du chantier ; renuméroter ap
 une clôture ferait pointer ces renvois sur autre chose. Un point qui sort laisse
 son numéro vide.
 
+📌 **Un point qui reste OUVERT l'annonce**, en début de ligne, en gras et daté :
+`**Ouvert le JJ/MM/AAAA…**`. Ce n'est pas décoratif. Le contrôleur des compteurs
+s'en sert pour ne PAS réclamer un commit de clôture qui n'existe pas — il a
+confondu « le numéro est pris » et « le point est clos » pendant quarante-six
+passes, faute d'avoir jamais rencontré l'un sans l'autre.
+
 Formulé sans jamais nommer les projets d'essai : ce dépôt est public.
 
 ## Écrit par un agent qui découvrait le skill — clos
@@ -5109,7 +5115,66 @@ le **scan QR** qu'aucun flow ne peut produire · l'**acquittement** qui manquait
 aux findings de sécurité, avec son expiration · et une **parité** de plateforme
 qu'un contrôle honorait et pas son voisin.
 
-**Prochain numéro libre : 373.**
+### 373. Le skill avertit sur ce qui se RECHARGE, jamais sur ce qui se CONSOMME
+
+**Ouvert le 04/09/2026, sur une question de Germinator.** C'est le dernier des
+deux angles morts structurels — l'authentification multi-écrans a été fermée par
+le 357, celui-ci ne l'est pas.
+
+La §1 porte une alerte en tête, et elle est juste : « une suite de six flows en
+consomme six, et elle se fait couper au milieu » — le **quota** d'envoi d'un code.
+Mais un quota **se recharge** : on attend une minute, la suite repart. Rien, nulle
+part, ne parle d'un état serveur qui **ne revient pas** — un compte qui n'a pas
+encore créé son code secret, un code d'invitation, un stock, une commande qu'on
+ne peut passer qu'une fois. Le premier run est vert, le second rouge, et **rien
+dans le rapport ne distingue ça d'une régression**.
+
+⚠️ **Et le geste qui protège l'isolation est celui qui consomme** : `clearState`
+s'exécute avant chaque flow. Ce qui garantit qu'un flow ne dépend pas du
+précédent est exactement ce qui le fait repayer l'état serveur.
+
+**Ce que le skill web en fait — mesuré, et ce n'est pas une réponse.**
+
+- Son `ENV=staging` autorise les écritures « SI comptes de test dédiés, données
+  préfixées `qa_`, **opérations idempotentes, nettoyage après coup** ». Les deux
+  dernières conditions **manquent au mobile**, dont la matrice §3 ne pose que
+  `données qa_`. L'emprunt est à faire et il est petit.
+- Mais « opérations idempotentes » **exclut** le cas au lieu de le traiter : un
+  parcours de création de code secret n'est pas idempotent par nature, donc la
+  règle reviendrait à dire « ne le teste pas » — ce qui n'est pas une réponse
+  quand c'est précisément le parcours qu'on veut couvrir. Et « nettoyage après
+  coup » suppose de pouvoir **défaire**, donc d'administrer le backend : la
+  limite que les deux plugins s'interdisent explicitement (« tu consommes l'API,
+  tu ne l'administres pas »).
+- 📌 **Le web s'en tire par CONSTRUCTION, pas par sagesse.** Son harnais se
+  connecte **une seule fois** et sérialise le contexte (`storageState`), que tous
+  les projets réutilisent ; le mobile reconnecte à chaque flow. La question se
+  pose donc beaucoup plus fort ici, et c'est pour ça qu'elle n'a pas de réponse
+  ailleurs à copier.
+
+**Le critère existe déjà, appliqué au mauvais objet.** Le skill demande « un flow
+peut-il y arriver **deux fois de suite** ? » — mais pour écarter des ÉCRANS de
+`screens[]`. Appliqué aux FLOWS, c'est le remède ; l'écrire n'est donc pas
+inventer une règle, c'est finir celle qui existe.
+
+**Trois issues, à trancher par l'utilisateur et à ÉCRIRE** — aucune n'est bonne
+dans l'absolu, comme pour le flow derrière la connexion :
+- une commande de remise à zéro que le projet **fournit et assume**, que le
+  runner joue avant le flow — le plugin l'exécute, il ne la devine jamais ;
+- le flow sort de la suite de régression et se lance à la main ;
+- le parcours est joué **une fois en EXPLORE**, et n'entre jamais en REGRESS.
+
+🔴 **NE PAS L'ÉCRIRE AVANT DE L'AVOIR VÉCU.** Six constats du 04/09 ont été
+démentis parce qu'ils décrivaient un mécanisme qu'on n'avait pas exercé. Un
+second compte de test, **neuf**, sera fourni sur le terrain qui consomme une API :
+le prochain run rencontrera le cas pour de vrai, et ce qu'il fera — ou ratera —
+dira quelle case manquait vraiment.
+
+**Ce qui ferme le point** : un run qui a joué le parcours de création **puis l'a
+REJOUÉ**. Le second passage est la mesure ; le premier ne prouve rien — c'est
+exactement l'erreur que le critère « deux fois de suite » nomme.
+
+**Prochain numéro libre : 374.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
