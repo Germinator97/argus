@@ -1156,6 +1156,15 @@ MUTATIONS = [
      "      if (screen.cropRoot && screen.anchor != null) {",
      "      if (false && screen.anchor != null) {"),
     # ── Le dépouillement des runs 47-48 (358-365) ───────────────────────────
+    ("report", "367 · un run interrompu se rend de nouveau en vert",
+     "    } else if (data.incomplete === true || data.run?.status === 'interrompu') {",
+     "    } else if (false) {"),
+    # ⚠️ Le GATE séparément : la dimension peut être marquée INTERROMPUE et le
+    # verdict rester « pass ». Ce sont deux moitiés, et la seconde est celle
+    # qu'on lit en premier.
+    ("report", "367 bis · un run interrompu peut de nouveau rendre gate pass",
+     "  const gate = interrompues.length > 0\n    || SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';",
+     "  const gate = SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';"),
     ("artefact", "366 · le numéro libre redevient aveugle aux points clos sans titre",
      "  const annonces = [...backlog.matchAll(/Prochain numéro libre\\s*:\\s*(\\d+)/g)]\n"
      "    .map((m) => Number(m[1]) - 1);\n"
