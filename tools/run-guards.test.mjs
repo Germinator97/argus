@@ -61,7 +61,7 @@ import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, pointsOuvertsDu, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -7522,8 +7522,9 @@ test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent
   // n'avaient jamais divergé : tout point inscrit était clos dans la foulée. Le
   // premier point laissé ouvert l'a fait réclamer un `docs: close` qui aurait
   // menti — le message envoyait commiter une clôture qui n'existe pas.
-  assert.equal(vrai.numeroLibre - vrai.pointsOuverts, vrai.numeroLibreSelonLesCommits,
-    `le backlog mène à ${vrai.numeroLibre - vrai.pointsOuverts} une fois ses ${vrai.pointsOuverts} `
+  const enAvance = vrai.numerosOuverts.filter((n) => n >= vrai.numeroLibreSelonLesCommits).length;
+  assert.equal(vrai.numeroLibre - enAvance, vrai.numeroLibreSelonLesCommits,
+    `le backlog mène à ${vrai.numeroLibre - enAvance} une fois ses ${enAvance} `
     + `point(s) ouvert(s) retirés, et les commits de clôture à ${vrai.numeroLibreSelonLesCommits} : `
     + 'soit la clôture n\'est pas encore commitée (commite, le garde redevient vert), '
     + 'soit une passe a fermé des points sans les inscrire');
@@ -9535,4 +9536,30 @@ test('le skill ne promet plus que `hideKeyboard` est inoffensif ailleurs (379)',
     'le skill promet à nouveau que hideKeyboard est inoffensif sur Android — mesuré faux');
   assert.match(bloc, /Couldn't hide the keyboard/,
     'la mesure qui remplace la promesse a disparu : sans elle, la phrase se réécrira comme avant');
+});
+
+test('un point ouvert ANTÉRIEUR à la dernière clôture ne décale rien (373)', () => {
+  // ⚠️ LE DÉFAUT DE MON PROPRE GARDE, trouvé par lui-même à la première passe qui
+  // l'a rencontré. Soustraire le NOMBRE de points ouverts suppose qu'ils sont les
+  // DERNIERS. Dès qu'une passe ferme des points APRÈS un point resté ouvert — 373
+  // ouvert, puis 374-379 clos — la soustraction invente un écart d'un et réclame
+  // une clôture déjà commitée. Seuls les ouverts POSTÉRIEURS expliquent un retard.
+  const backlog = '## Run 10 — x\n### 11. le point resté ouvert\n\n'
+    + '**Ouvert le 04/09/2026, sur une question.** rien n\'est clos ici.\n\n'
+    + '### 12-15. fermés depuis\n';
+  assert.deepEqual(numerosOuvertsDu(backlog), [11], 'le numéro du point ouvert n\'est plus lu');
+
+  const depot = depotFictif({ backlog, sujets: ['docs: close 1-10', 'docs: close 12-15'] });
+  assert.deepEqual(ecartsDe(pageFictive({ libre: 16 }), depot).filter((e) => e.cle === 'numeroLibre'), [],
+    'un point ouvert ANTÉRIEUR à la dernière clôture fait encore réclamer un commit : '
+    + 'la soustraction compte des ouverts qui n\'expliquent aucun retard');
+
+  // ⚠️ L'AUTRE MOITIÉ : un ouvert POSTÉRIEUR doit toujours expliquer le retard.
+  const apres = '## Run 10 — x\n### 12-15. fermés\n\n### 16. le point du jour\n\n'
+    + '**Ouvert le 04/09/2026, sur une question.** ouvert.\n';
+  assert.deepEqual(numerosOuvertsDu(apres), [16]);
+  assert.deepEqual(
+    ecartsDe(pageFictive({ libre: 17 }), depotFictif({ backlog: apres, sujets: ['docs: close 12-15'] }))
+      .filter((e) => e.cle === 'numeroLibre'), [],
+    'un point ouvert postérieur n\'explique plus le retard des commits');
 });

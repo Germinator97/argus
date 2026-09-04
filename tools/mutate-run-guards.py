@@ -1269,6 +1269,11 @@ MUTATIONS = [
      "- **Hygiène** : ce qu'un run crée en"),
     # 373 — l'autre sens : la SOURCE devient illisible. Le garde ne doit pas
     # conclure « tout va bien » parce qu'il n'a plus rien à comparer.
+    # 373 quinquies — la soustraction reprend TOUS les ouverts, y compris ceux
+    # qui précèdent la dernière clôture et n'expliquent donc aucun retard.
+    ("artefact", "373 quinquies · tous les ouverts sont soustraits, même les antérieurs",
+     "    .filter((n) => n >= (depot.numeroLibreSelonLesCommits ?? 0)).length;",
+     "    .filter(() => true).length;"),
     # 374 — le verdict des acquittements périmés retourne dans un producteur,
     # qui ne voit que la moitié des findings et accuse donc ceux de son voisin.
     ("report", "374 · les acquittements périmés se jugent sur une MOITIÉ",

@@ -198,7 +198,31 @@ export function compteursDeLaPage(texte) {
  * même précaution que pour les marqueurs de l'installeur.
  */
 export function pointsOuvertsDu(backlog) {
-  return [...backlog.matchAll(/^\*\*Ouvert le \d{2}\/\d{2}\/\d{4}/gm)].length;
+  return numerosOuvertsDu(backlog).length;
+}
+
+/**
+ * Les NUMÉROS des points ouverts, et pas seulement leur compte.
+ *
+ * ⚠️ POURQUOI LE COMPTE NE SUFFIT PAS, appris le jour même. La première version
+ * soustrayait le NOMBRE de points ouverts au prochain numéro libre — ce qui
+ * suppose qu'ils sont les DERNIERS. Dès qu'une passe a fermé des points APRÈS un
+ * point resté ouvert (373 ouvert, puis 374-379 clos), la soustraction invente un
+ * écart d'un et fait réclamer une clôture déjà commitée. Le garde s'est dénoncé
+ * lui-même à la première passe qui l'a rencontré.
+ *
+ * Seuls comptent les ouverts qui viennent APRÈS la dernière clôture : ceux-là
+ * expliquent que les commits soient en retard. Un ouvert antérieur n'explique rien.
+ */
+export function numerosOuvertsDu(backlog) {
+  const titres = [...backlog.matchAll(/^### (\d+)(?:-(\d+))?\.\s/gm)]
+    .map((m) => ({ index: m.index ?? 0, num: Number(m[2] ?? m[1]) }));
+  return [...backlog.matchAll(/^\*\*Ouvert le \d{2}\/\d{2}\/\d{4}/gm)]
+    .map((m) => {
+      const avant = titres.filter((t) => t.index < (m.index ?? 0));
+      return avant.length ? avant[avant.length - 1].num : null;
+    })
+    .filter((n) => n !== null);
 }
 
 /** Le nombre le plus grand écrit dans `### 317-332.` — les titres de points du backlog. */
@@ -274,6 +298,7 @@ export function compteursDuDepot({
     numeroLibreSelonLesCommits: parLesCommits,
     // Ce que le backlog doit aux commits de CLÔTURE : les points ouverts n'en ont pas.
     pointsOuverts: pointsOuvertsDu(backlog),
+    numerosOuverts: numerosOuvertsDu(backlog),
     runs: dernierRunDu(backlog),
     plugins: lister('plugins').length,
     gardes: nombreDeGardes(lire('tools/run-guards.test.mjs')),
@@ -351,7 +376,12 @@ export function ecarts(releve, depot) {
   // avoir de commit de clôture, et les compter ici ferait réclamer un `docs:
   // close` qui mentirait. C'est ce que le 373 a montré, en étant le premier
   // point ouvert que ce contrôle ait jamais vu.
-  const closSelonLeBacklog = depot.numeroLibre - (depot.pointsOuverts ?? 0);
+  // ⚠️ Seuls les points ouverts POSTÉRIEURS à la dernière clôture expliquent que
+  // les commits soient en retard. Soustraire tous les ouverts inventait un écart
+  // dès qu'une passe fermait des points après un point resté ouvert.
+  const enAvance = (depot.numerosOuverts ?? [])
+    .filter((n) => n >= (depot.numeroLibreSelonLesCommits ?? 0)).length;
+  const closSelonLeBacklog = depot.numeroLibre - enAvance;
   if (depot.numeroLibreSelonLesCommits !== null
       && depot.numeroLibreSelonLesCommits !== closSelonLeBacklog) {
     trouves.push({
