@@ -89,7 +89,7 @@ ENV=staging avec données jetables, ou une confirmation explicite.
 |---|---|---|---|
 | Navigation, lecture, captures, mesures | ✅ | ✅ | ✅ |
 | Connexion avec un compte de test | ⚠️ dédié | ✅ | ✅ |
-| Écriture (création, édition) | ❌ | ✅ données `qa_` | ✅ |
+| Écriture (création, édition) | ❌ | ✅ données `qa_`, **à retirer après** | ✅ |
 | Mouvement d'argent | ❌ **JAMAIS** | ❌ **JAMAIS** sans accord écrit | sandbox seulement |
 | Achat in-app | ❌ | sandbox StoreKit / Play Billing | sandbox |
 | SMS / OTP réel vers un tiers | ❌ | ❌ | ❌ |
@@ -108,8 +108,22 @@ ENV=staging avec données jetables, ou une confirmation explicite.
 - **Captures** : une baseline d'un écran authentifié contient des données réelles
   et se retrouve versionnée. Utilise un compte de test aux données inventées.
 
-Ces garde-fous sont les mêmes que côté web, à ceci près que le mobile en
-ajoute trois — appareil réel, secrets passés par `-e`, baselines authentifiées.
+- **Nettoyage** : ce qu'un run crée en `staging`, il le retire — le préfixe `qa_`
+  sert à le retrouver, il ne suffit pas à l'effacer. Une suite qui laisse ses
+  traces derrière elle finit par tester un jeu de données qu'elle a fabriqué,
+  et c'est le genre de dérive qui ne se voit qu'au moment où on ne peut plus
+  distinguer une donnée du produit d'une donnée de test.
+
+Ces garde-fous sont les mêmes que côté web, à **trois ajouts et un écart** près.
+Les ajouts : appareil réel, secrets passés par `-e`, baselines authentifiées.
+
+⚠️ **L'ÉCART EST L'IDEMPOTENCE, et il est délibéré.** Le web pose « opérations
+idempotentes » comme condition d'écriture ; il le peut, parce qu'il teste surtout
+de la navigation, des lectures et des formulaires. Le mobile couvre des parcours
+**transactionnels** — livrer une commande, valider un code, changer un statut —
+dont aucun n'est idempotent par nature : recopier l'exigence interdirait
+exactement ce qu'on vient mesurer. Ce qui la remplace n'est pas rien, et vit au
+cadrage : *ce parcours consomme-t-il quelque chose que le serveur ne rend pas ?*
 
 ═══════════════════════════════════════════════════════════════════════════════
 ## 4. Stratégie de passage à l'échelle

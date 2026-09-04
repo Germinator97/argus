@@ -60,7 +60,7 @@ import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, pointsOuvertsDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -7503,8 +7503,14 @@ test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent
   // moment où l'on inscrit une clôture au backlog et celui où on la commite,
   // les deux sources divergent d'un point. Ce n'est pas un bug, c'est le rappel
   // de commiter — et c'est le seul état où le désaccord est légitime.
-  assert.equal(vrai.numeroLibre, vrai.numeroLibreSelonLesCommits,
-    `le backlog mène à ${vrai.numeroLibre} et les commits de clôture à ${vrai.numeroLibreSelonLesCommits} : `
+  // ⚠️ MOINS LES POINTS OUVERTS. Ce garde a confondu « le numéro est PRIS » et
+  // « le point est CLOS » pendant quarante-six passes, parce que les deux
+  // n'avaient jamais divergé : tout point inscrit était clos dans la foulée. Le
+  // premier point laissé ouvert l'a fait réclamer un `docs: close` qui aurait
+  // menti — le message envoyait commiter une clôture qui n'existe pas.
+  assert.equal(vrai.numeroLibre - vrai.pointsOuverts, vrai.numeroLibreSelonLesCommits,
+    `le backlog mène à ${vrai.numeroLibre - vrai.pointsOuverts} une fois ses ${vrai.pointsOuverts} `
+    + `point(s) ouvert(s) retirés, et les commits de clôture à ${vrai.numeroLibreSelonLesCommits} : `
     + 'soit la clôture n\'est pas encore commitée (commite, le garde redevient vert), '
     + 'soit une passe a fermé des points sans les inscrire');
   assert.ok(vrai.gardes > 250, 'les gardes de cette suite doivent se compter');
@@ -9157,4 +9163,117 @@ test('le contrôle des fichiers de config honore platforms, comme ses voisins (3
     assert.ok(configNonEmbarquee(dir, { platforms: ['android'] }).map((o) => o.id).includes('polices'),
       'une règle sans plateforme a cessé d\'être jugée — le remède a coupé trop large');
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 373 — Les conditions d'ÉCRITURE du web se retrouvent côté mobile, ou l'écart
+// est écrit. Le défaut d'origine n'était pas un oubli mais une PHRASE FAUSSE :
+// la §3 mobile affirmait « ces garde-fous sont les mêmes que côté web, à ceci
+// près que le mobile en ajoute trois », alors qu'il en MANQUAIT deux dans
+// l'autre sens — « opérations idempotentes » et « nettoyage après coup ». Une
+// promesse de parité qu'aucun test ne mesurait, entre deux fichiers que
+// personne ne lit côte à côte.
+//
+// ⚠️ DÉRIVÉ, jamais recopié : les conditions sont LUES dans le skill web. Les
+// écrire ici ferait un garde qui suit le mobile au lieu de le surveiller — et
+// l'attendu comme la mesure viendraient alors de la même moitié du dépôt.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Les conditions d'écriture en staging, telles que le skill WEB les pose. */
+function conditionsEcritureWeb(texteWeb) {
+  const m = texteWeb.match(/ENV=staging\*\*[^:]*:\s*([^.]+)\./);
+  if (!m) return [];
+  return m[1].split(',').map((c) => c.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+/** La racine lexicale d'une condition : ses mots porteurs, tronqués aux accords. */
+function racinesDe(condition) {
+  const VIDES = new Set(['de', 'des', 'du', 'la', 'le', 'les', 'un', 'une', 'et', 'ou',
+    'apres', 'coup', 'test', 'donnees', 'operations', 'comptes']);
+  return condition.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .split(/[^a-z_]+/)
+    .filter((mot) => mot.length >= 4 && !VIDES.has(mot))
+    // ⚠️ L'ACCORD D'ABORD, LA TRONCATURE ENSUITE. Le web écrit « comptes de test
+    // dédiéS » et le mobile « un compte de test dédié » : une troncature à
+    // longueur fixe garde le `s` du pluriel et rate le singulier, ce qui fait
+    // rougir le garde sur une condition parfaitement couverte. Vécu le jour même
+    // de l'écriture — le garde a rendu son premier verdict sur SON défaut à lui.
+    .map((mot) => mot.replace(/s$/, '').slice(0, 5));
+}
+
+/** Ce que la §3 mobile ne porte NI comme condition NI comme écart assumé. */
+function conditionsManquantesCoteMobile(texteWeb, sectionMobile) {
+  const cible = sectionMobile.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return conditionsEcritureWeb(texteWeb).filter((cond) => {
+    const racines = racinesDe(cond);
+    // Une condition sans mot porteur ne peut pas être jugée : on ne l'invente pas.
+    if (racines.length === 0) return false;
+    return !racines.some((r) => cible.includes(r));
+  });
+}
+
+test('les conditions d\'écriture du web se retrouvent côté mobile, ou l\'écart est écrit (373)', () => {
+  const web = readFileSync(join(RACINE,
+    'plugins/argus-web/skills/argus/references/methodology.md'), 'utf8');
+  const mobile = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md'), 'utf8');
+
+  // ⚠️ D'ABORD : le motif a-t-il trouvé quelque chose ? Sans cette assertion, une
+  // reformulation de la phrase web viderait le garde en le laissant vert.
+  const conditions = conditionsEcritureWeb(web);
+  assert.ok(conditions.length >= 3,
+    `le skill web ne pose plus ses conditions d'écriture en staging sous la forme attendue `
+    + `(« ENV=staging … SI : a, b, c. »), ${conditions.length} lue(s) : si la phrase a été `
+    + 'reformulée, mets ce motif à jour, sinon ce garde ne garde plus rien');
+
+  // La §3 mobile, et elle seule : `qa_` vit ailleurs dans le fichier (bloc AUTH),
+  // et un balayage global rendrait ce garde vrai pour une mauvaise raison.
+  const debut = mobile.indexOf('## 3. Garde-fous');
+  const fin = mobile.indexOf('## 4.', debut);
+  assert.ok(debut !== -1 && fin > debut, 'la §3 des garde-fous a disparu de la méthodologie mobile');
+  const section = mobile.slice(debut, fin);
+
+  // Total et négatif : AUCUNE condition du web ne peut manquer en silence. Elle
+  // est soit appliquée, soit nommée comme écart argumenté — les deux se lisent.
+  assert.deepEqual(conditionsManquantesCoteMobile(web, section), [],
+    'une condition d\'écriture posée côté web n\'a aucune trace dans la §3 mobile : '
+    + 'applique-la, ou écris pourquoi elle ne se transpose pas — un écart tu, entre deux '
+    + 'fichiers que personne ne lit côte à côte, est exactement ce que le 373 a trouvé');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi un garde qui ne sait pas dire NON passerait sur
+  // n'importe quoi : amputée de la condition de nettoyage, la section doit la nommer.
+  const ampute = section.replace(/nettoy\w*/gi, 'xxx');
+  const vus = conditionsManquantesCoteMobile(web, ampute);
+  assert.ok(vus.some((c) => /nettoyage/i.test(c)),
+    'le garde ne voit plus une condition retirée de la §3 mobile : il ne mesure rien');
+});
+
+test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
+  // La moitié qui manquait : un point inscrit mais non clos prend un numéro sans
+  // rien devoir aux commits. Sans elle, ouvrir un point rend le dépôt rouge en
+  // permanence et le message envoie réparer ce qui n'est pas cassé.
+  const backlog = '## Run 10 — x\n### 1-10. x\n### 11. le point du jour\n\n'
+    + '**Ouvert le 04/09/2026, sur une question.** rien n\'est clos ici.\n';
+  assert.equal(pointsOuvertsDu(backlog), 1, 'le marqueur d\'ouverture n\'est plus lu');
+  assert.deepEqual(
+    ecartsDe(pageFictive({ libre: 12 }), depotFictif({ backlog, sujets: ['docs: close 1-10'] })).length,
+    0,
+    'un point ouvert fait encore réclamer une clôture qui n\'existe pas');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui garde la valeur du contrôle : une
+  // clôture NON commitée doit toujours faire rougir. Un remède qui rendrait le
+  // garde tolérant à tout aurait exactement l'air de celui-ci.
+  const sansMarqueur = backlog.replace('**Ouvert le 04/09/2026, sur une question.**', 'Corrigé.');
+  assert.equal(pointsOuvertsDu(sansMarqueur), 0, 'un texte sans marqueur ne compte aucun ouvert');
+  assert.ok(
+    ecartsDe(pageFictive({ libre: 12 }), depotFictif({ backlog: sansMarqueur, sujets: ['docs: close 1-10'] }))
+      .some((e) => e.cle === 'numeroLibre'),
+    'un point CLOS mais non commité ne fait plus rougir : le remède a coupé trop large');
+
+  // ⚠️ Et le marqueur est BORNÉ : un récit qui parle d'une ouverture n'en est
+  // pas une. Sans cette borne, toute prose citant une date d'ouverture décalerait
+  // le compte — et le contrôle deviendrait tolérant sans que personne le décide.
+  assert.equal(pointsOuvertsDu('on se souvient qu\'il fut **Ouvert le 01/01/2026** ce jour-là.\n'), 0,
+    'une mention en cours de ligne est comptée comme une ouverture');
 });

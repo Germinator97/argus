@@ -40,6 +40,22 @@ premier flow, parce que la réponse change le nombre de flows qu'on écrit.
 `argus.mobile.yaml`, c'est-à-dire dans un fichier qui **n'existe pas encore**
 quand on planifie. Un run l'a lue après avoir dû raisonner seul dessus, et c'est
 un des rares endroits où il aurait pu casser quelque chose d'irrattrapable.
+
+🚨 **PUIS DEMANDE CE QUE LE PARCOURS CONSOMME, pas seulement ce qu'il appelle.**
+Un quota **se recharge** : on attend une minute, la suite repart. D'autres états
+ne reviennent pas — un compte qui n'a pas encore créé son code secret, un code
+d'invitation, un stock, une commande qu'on ne peut passer qu'une fois. Le premier
+run est alors vert, le second rouge, et **rien dans le rapport ne distingue ça
+d'une régression**. La question à poser tient en une ligne :
+
+> *ce parcours consomme-t-il quelque chose que le serveur ne rend pas ?*
+
+⚠️ **Le geste qui protège l'isolation est celui qui consomme** : `clearState`
+garantit qu'un flow ne dépend pas du précédent, et c'est exactement ce qui lui
+fait repayer l'état serveur à chaque fois.
+📌 **Ce qu'il faut FAIRE de la réponse ne s'invente pas ici.** Pose la question,
+écris la réponse dans le compte rendu, et laisse l'utilisateur trancher : c'est
+son backend, ses données, et lui seul sait si un compte se régénère.
 ═══════════════════════════════════════════════════════════════════════════════
 N'agis jamais à l'aveugle. Pose d'abord les questions qui changent l'issue (via
 `AskUserQuestion` si disponible, sinon en clair). L'objectif d'abord :

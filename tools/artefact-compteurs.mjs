@@ -181,6 +181,26 @@ export function compteursDeLaPage(texte) {
   return releve;
 }
 
+/**
+ * Les points du backlog explicitement OUVERTS — numérotés, inscrits, mais dont
+ * la clôture n'est pas encore écrite.
+ *
+ * ⚠️ CE COMPTE N'EXISTAIT PAS, et le contrôle des deux sources s'en passait sans
+ * le savoir : en quarante-six passes, tout point inscrit avait été clos dans la
+ * foulée, si bien que « le numéro est PRIS » et « le point est CLOS » ne
+ * s'étaient jamais séparés. Le 373 les a séparés — ouvert un jour, mesurable le
+ * suivant — et le contrôle a réclamé un commit de clôture qui n'avait aucune
+ * raison d'exister. Un garde qui n'a jamais rencontré un état le prend pour un
+ * défaut, et son message envoie alors réparer ce qui n'est pas cassé.
+ *
+ * Le marqueur est en début de ligne, en gras et daté, pour qu'un récit qui
+ * *parle* d'une ouverture ne soit pas compté comme une ouverture — c'est la
+ * même précaution que pour les marqueurs de l'installeur.
+ */
+export function pointsOuvertsDu(backlog) {
+  return [...backlog.matchAll(/^\*\*Ouvert le \d{2}\/\d{2}\/\d{4}/gm)].length;
+}
+
 /** Le nombre le plus grand écrit dans `### 317-332.` — les titres de points du backlog. */
 export function dernierPointDu(backlog) {
   // ⚠️ Le point doit être suivi d'un ESPACE : sans ça, « ### 2.7 du run 40. »
@@ -252,6 +272,8 @@ export function compteursDuDepot({
     vidages: clotures.length,
     numeroLibre: parLeBacklog,
     numeroLibreSelonLesCommits: parLesCommits,
+    // Ce que le backlog doit aux commits de CLÔTURE : les points ouverts n'en ont pas.
+    pointsOuverts: pointsOuvertsDu(backlog),
     runs: dernierRunDu(backlog),
     plugins: lister('plugins').length,
     gardes: nombreDeGardes(lire('tools/run-guards.test.mjs')),
@@ -325,12 +347,18 @@ export function ecarts(releve, depot) {
 
   // Les deux sources du numéro libre doivent concorder entre elles, sans quoi
   // le chiffre comparé à la page n'est lui-même pas établi.
+  // ⚠️ Les points OUVERTS ne sont dus à personne : ils prennent un numéro sans
+  // avoir de commit de clôture, et les compter ici ferait réclamer un `docs:
+  // close` qui mentirait. C'est ce que le 373 a montré, en étant le premier
+  // point ouvert que ce contrôle ait jamais vu.
+  const closSelonLeBacklog = depot.numeroLibre - (depot.pointsOuverts ?? 0);
   if (depot.numeroLibreSelonLesCommits !== null
-      && depot.numeroLibreSelonLesCommits !== depot.numeroLibre) {
+      && depot.numeroLibreSelonLesCommits !== closSelonLeBacklog) {
     trouves.push({
       cle: 'numeroLibre', libelle: 'prochain numéro libre du backlog', genre: 'sources en désaccord',
-      attendu: depot.numeroLibre, trouve: depot.numeroLibreSelonLesCommits,
-      message: `le backlog mène à ${depot.numeroLibre} et les commits de clôture à ${depot.numeroLibreSelonLesCommits} : une passe a fermé des points sans les inscrire, ou l'inverse`,
+      attendu: closSelonLeBacklog, trouve: depot.numeroLibreSelonLesCommits,
+      message: `le backlog mène à ${closSelonLeBacklog} une fois ses ${depot.pointsOuverts ?? 0} point(s) ouvert(s) retirés, `
+        + `et les commits de clôture à ${depot.numeroLibreSelonLesCommits} : une passe a fermé des points sans les inscrire, ou l'inverse`,
     });
   }
 

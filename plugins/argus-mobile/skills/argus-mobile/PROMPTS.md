@@ -187,6 +187,12 @@ SI L'APPLICATION CONSOMME UNE API — cinq lignes, et aucune ne se déduit du d�
 - Ce que l'authentification COÛTE, si tu le sais : un quota, une limite de débit,
   un code à usage unique réellement envoyé. `clearState` impose une reconnexion
   par flow, et une suite complète peut à elle seule dépasser la limite.
+- Ce que le parcours CONSOMME et que le serveur ne rend pas — un compte sans code
+  secret encore, un code d'invitation, un stock, une commande unique. Un quota se
+  recharge ; ceci, non : le premier run passe et le second échoue, sans que rien
+  ne le distingue d'une régression. Dis-le si tu le sais, et dis aussi s'il
+  existe un moyen de remettre l'état à zéro — l'agent ne l'inventera pas, il
+  n'administre pas ton backend.
 - Où lire la documentation DU PROJET. Les flavors et la configuration de build y
   vivent, et le prompt n'envoie lire que le skill.
 
