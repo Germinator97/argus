@@ -94,6 +94,23 @@ CADRAGE — ce que je tranche, pour que tu ne le tranches pas en silence
                                  #   n'était pas à eux d'en décider. Ils avaient
                                  #   raison — mais tant que tu ne tranches pas, le
                                  #   livrable n'existe jamais.
+  EVIDENCE  : oui                # oui | non — les captures d'écran partent-elles
+                                 #   avec la page publiée ?
+                                 # ⚠️ NE LAISSE PAS L'AGENT TRANCHER : il ne peut
+                                 #   pas savoir D'OÙ viennent les données qu'il
+                                 #   voit. Un run a mis `evidence: none` en
+                                 #   apercevant des noms et des numéros à
+                                 #   l'écran — la base était LOCALE et jetable.
+                                 #   La page publiée n'avait donc AUCUNE capture,
+                                 #   et c'est précisément ce qu'on voulait
+                                 #   regarder ; personne ne s'en est aperçu avant
+                                 #   d'ouvrir la page.
+                                 # Le critère n'est pas « ça a l'air sensible »
+                                 #   mais « d'où vient ce que l'appareil
+                                 #   affiche » : base de développement locale et
+                                 #   jetable → oui ; recette partagée portant des
+                                 #   données réelles → non. L'agent voit l'écran,
+                                 #   toi seul sais ce qu'il y a derrière.
   BUDGET    : <N> min sur device # ce qui n'y tient pas est ÉCHANTILLONNÉ et DIT,
                                  #   jamais coupé en silence. Si tu dois couper,
                                  #   garde les parcours critiques et laisse le
@@ -151,6 +168,16 @@ SI L'APPLICATION CONSOMME UNE API — cinq lignes, et aucune ne se déduit du d�
   porter. ⚠️ `localhost` ne désigne pas la même machine depuis un émulateur :
   Android le voit en `10.0.2.2`, et un appareil physique en Wi-Fi voudra l'IP LAN
   du poste. C'est la valeur vue DU DEVICE qu'il faut donner.
+  ⚠️ **LA DOC DE BUILD DU PROJET EN LISTE SOUVENT PLUSIEURS, ET ELLES NE SE
+  VALENT PAS.** Une recette partagée et une API lancée sur le poste sont deux
+  cibles différentes : la première est lente, elle varie d'un run à l'autre, et
+  ses données sont réelles ; la seconde est jetable. Vécu : le bloc « Démarrer »
+  d'un README ne montrait que l'adresse distante, l'adresse locale vivait dans
+  le fichier que ce README RÉFÉRENCE, et le cadrage a repris la première sans
+  ouvrir le second. Cinq flows sur sept sont morts au plafond d'attente sur un
+  « service indisponible » qui n'appartenait ni au skill ni à l'application.
+  Ouvre le fichier de build que la doc d'accueil désigne, et dis LAQUELLE tu
+  veux — le choix commande aussi `ENV` et `EVIDENCE`.
 - Les injections de build obligatoires, mot pour mot. Beaucoup d'applications
   refusent de démarrer sans elles — et l'agent obtient alors un binaire qui ne
   s'ouvre pas, ce qu'il attribuera à son instrumentation.

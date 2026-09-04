@@ -8688,3 +8688,49 @@ test('le scaffold LIVRÉ porte le drapeau, le garde qui le lit, et ne crie pas �
   const nu = recadragesNonGardes(S, { visualCropOn: '', screens: [] });
   assert.equal(nu.size, 0, 'le scaffold livré, sans visualCropOn, déclenche déjà le contrôle');
 });
+
+test('le cadrage tranche les CAPTURES, il ne les laisse pas à l\'agent (353)', () => {
+  const prompts = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+  // ⚠️ DÉRIVÉ : la ligne de cadrage n'a de sens que parce que la config porte
+  // vraiment ce levier. Le jour où `evidence:` disparaît du scaffold, ce garde
+  // tombe au lieu de veiller sur une prescription sans objet.
+  assert.match(yaml, /^\s*evidence: /m,
+    "argus.mobile.yaml ne porte plus de clé `evidence` — la ligne de cadrage du 353 est sans objet");
+
+  // ⚠️ LE BLOC DE CADRAGE EST COMMENTÉ : aplatir les blancs ne suffit pas, les
+  // « # » de continuation restent AU MILIEU des phrases. Ce garde a rougi
+  // dessus le jour de son écriture, sur un texte pourtant exact. On retire donc
+  // les marqueurs de début de ligne avant d'aplatir.
+  const bloc = prompts.replace(/^[ \t]*#[ \t]?/gm, '').replace(/\s+/g, ' ');
+  assert.match(bloc, /EVIDENCE\s*: oui/,
+    "le cadrage ne tranche plus les captures : l'agent décide alors seul, et il ne peut pas "
+    + "savoir d'où viennent les données qu'il voit");
+  // Le cœur : le CRITÈRE. Sans lui, la ligne se remplit au hasard.
+  assert.match(bloc, /d'où vient ce que l'appareil affiche/,
+    "le cadrage ne donne plus le critère — « ça a l'air sensible » est justement le mauvais");
+  assert.match(bloc, /jetable/,
+    "le cadrage ne distingue plus une base locale jetable d'une recette portant des données réelles");
+});
+
+test('le cadrage envoie ouvrir la doc de BUILD, pas seulement la page d\'accueil (354)', () => {
+  const prompts = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const bloc = prompts.replace(/\s+/g, ' ');
+
+  // ⚠️ DÉRIVÉ : l'avertissement n'a de sens que tant que le cadrage réclame une
+  // adresse d'API. S'il cessait, ce garde tomberait plutôt que de veiller.
+  assert.match(bloc, /l'adresse EXACTE que le binaire doit porter/,
+    "le cadrage ne réclame plus d'adresse d'API — l'avertissement du 354 est sans objet");
+  assert.match(bloc, /LISTE SOUVENT PLUSIEURS, ET ELLES NE SE VALENT PAS/,
+    "le cadrage n'avertit plus qu'un projet documente plusieurs adresses : reprendre la première "
+    + "venue fait mesurer une recette partagée en croyant mesurer l'application");
+  // Ce qui distingue les deux cibles, et pourquoi ça compte au-delà de l'adresse.
+  assert.match(bloc, /elle varie d'un run à l'autre/,
+    "le cadrage ne dit plus ce qui sépare les deux cibles — sans ça, elles se valent");
+  assert.match(bloc, /commande aussi `ENV` et `EVIDENCE`/,
+    "le cadrage ne relie plus le choix d'adresse aux deux autres décisions qu'il entraîne");
+});
