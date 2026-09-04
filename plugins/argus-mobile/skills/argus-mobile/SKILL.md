@@ -1244,6 +1244,24 @@ dette assumée, c'est une dette cachée.
 les scripts et les flows lisent. Les autres portent du CODE et des PARCOURS, ce
 qui n'est pas la même chose et ne pouvait pas y tenir.
 
+⚠️ **L'AUTHENTIFICATION SE PARTAGE ENTRE LES DEUX, ET CE PARTAGE N'ÉTAIT ÉCRIT
+QUE DANS LA CONFIG.** `auth.anchors` porte cinq clés — `screen`, `user`,
+`password`, `submit`, `success` — et elles décrivent **un formulaire, pas un
+parcours**. Sur une authentification en plusieurs écrans (identifiant, puis code
+à usage unique, puis code secret), il n'y a pas de place pour la séquence ici, et
+il ne doit pas y en avoir : elle s'écrit dans `login.yaml`, qui t'appartient. Les
+cinq clés ne font alors que deux choses — ouvrir la porte (`ARGUS_AUTH_READY` les
+exige toutes) et dire où elle mène (`success`, la seule ancre POST-connexion).
+
+Ces clés nomment des **RÔLES dans la séquence**, pas des types de champ : le
+premier champ qu'on remplit, le second, ce qui valide. Un run a mis l'ancre du
+second facteur dans `password` et l'a écrit à côté — c'est la bonne réponse.
+
+📌 Un autre run a proposé d'ajouter un `auth.anchors.steps[]` ordonné, faute
+d'avoir trouvé cette limite : elle était écrite en toutes lettres dans le fichier
+qu'il éditait, et absente d'ici. Un lecteur qui planifie depuis ce document ne
+peut pas deviner ce qui n'y est pas — d'où ce paragraphe.
+
 ⚠️ **`screens[]` se remplit avec la table d'ancres de §2c-bis, pas en relisant le
 code.** Si tu reprends un chantier commencé ailleurs et que cette table n'existe
 nulle part, c'est un livrable manquant : réclame-la, ou reconstitue-la et rends-la,

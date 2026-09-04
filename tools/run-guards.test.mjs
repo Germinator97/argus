@@ -8806,3 +8806,36 @@ test("l'avertissement de secrets vides nomme les DEUX frontières (356)", () => 
   assert.ok(masquerSecrets(['-e', 'QA_PHONE=06']).includes('QA_PHONE=***'),
     'et un secret plein doit rester masqué');
 });
+
+test("le SKILL dit ce que auth.anchors peut et NE PEUT PAS décrire (357)", () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+  // ⚠️ DÉRIVÉ DES CLÉS RÉELLEMENT LIVRÉES : le paragraphe du SKILL les cite, donc
+  // il ment le jour où la config en porte d'autres. On les relit à la source.
+  const bloc = yaml.slice(yaml.indexOf('\nauth:'));
+  const anchors = bloc.slice(bloc.indexOf('anchors:'), bloc.indexOf('anchors:') + 600);
+  // ⚠️ Comparé LIGNE À LIGNE plutôt que par une regex construite : ma première
+  // version comptait mal ses barres obliques et cherchait un backslash littéral.
+  const clesLues = anchors.split('\n')
+    .map((l) => (l.match(/^\s{4}([a-z]+):/) ?? [])[1])
+    .filter(Boolean);
+  for (const cle of ['screen', 'user', 'password', 'submit', 'success']) {
+    assert.ok(clesLues.includes(cle),
+      `auth.anchors ne porte plus « ${cle} » (lues : ${clesLues.join(', ')}) — `
+      + 'le paragraphe du SKILL décrit alors un schéma périmé');
+  }
+
+  const plat = skill.replace(/\s+/g, ' ');
+  assert.match(plat, /un formulaire, pas un\s*parcours|un formulaire, pas un parcours/,
+    "le SKILL ne dit plus que auth.anchors décrit un formulaire et non un parcours : "
+    + "un run a proposé d'ajouter un steps[] faute de trouver la limite");
+  // Le cœur : où va la séquence, sinon le lecteur cherche une clé qui n'existera pas.
+  assert.match(plat, /elle s'écrit dans `login\.yaml`/,
+    "le SKILL ne dit plus OÙ vit la séquence — nommer la limite sans l'issue fait inventer une clé");
+  assert.match(plat, /RÔLES dans la séquence/,
+    "le SKILL ne dit plus que les clés nomment des rôles et non des types de champ : "
+    + "« mets l'identifiant dans user » est impossible quand chaque écran n'a qu'un champ");
+});
