@@ -51,6 +51,16 @@ LE SKILL — deux cas, prends celui qui s'applique
   scaffold à poser est dans `assets/scaffold-mobile/`, l'installeur est
   `scripts/install-mobile.sh`.
 
+⚠️ **Le clone rend le plugin PUBLIÉ, et ce n'est pas forcément celui que tu
+testes.** Si tu es en train de faire évoluer le skill sur ta machine et que tes
+commits ne sont pas poussés, la branche « sinon » ci-dessus fera lire à l'agent
+une version d'avant — et **rien ne le signalera** : le run se déroulera
+normalement, l'agent rendra un compte rendu propre, et tu croiras avoir éprouvé
+ce que tu venais d'écrire. Mesuré sur ce dépôt : 404 commits d'écart. Quand tu
+mets un skill à l'épreuve, envoie l'agent lire **ton dépôt de travail**, en
+lecture seule, et garde le clone pour les cas où la version publiée est bien
+celle que tu veux.
+
 Dans les deux cas : lis aussi tout ce que le SKILL.md référence (`references/`,
 `assets/`, `scripts/`) et applique-le comme il le demande — n'improvise pas une
 méthode à toi.
@@ -122,6 +132,15 @@ AUTORISATIONS ET LIMITES
   Le skill lui dit quoi faire sans cette permission — poser l'ancre au call-site
   et inscrire la dette — mais il ne peut pas deviner si le paquet est à toi. Deux
   projets réels y ont laissé six et cinq ancres inertes faute de cette ligne.>
+- <la TÉLÉMÉTRIE, si l'app en émet — Sentry, Crashlytics, analytics. Une passe
+  QA produit des dizaines de sessions et parfois des erreurs PROVOQUÉES (c'est
+  le travail de `resilience.yaml`) : sans instruction, elles partent dans le
+  projet de monitoring RÉEL et se mélangent aux vrais utilisateurs. Dis ce que
+  l'agent doit en faire — la neutraliser (une clé vide au build, un projet
+  jetable, un flavor de test) ou la laisser, et laquelle des deux tu assumes.
+  Un run a tranché seul, dans le bon sens, sans que rien le lui demande ;
+  c'est la fois où personne n'y pensera qui coûte.>
+
 - <les comptes de test, s'il en faut : identifiants dans $QA_USER et $QA_PASS —
   ne les écris nulle part. DIS D'OÙ ILS VIENNENT : un fichier hors dépôt à
   sourcer, un gestionnaire de secrets. Citer deux noms de variables ne suffit

@@ -15,6 +15,19 @@
 //     jour où elle l'est, elle ne garde plus rien du tout ;
 //   · FIGER le relevé, ce que fait ce fichier.
 //
+// ⚠️ AVANT D'ACCEPTER LE LOT, OUVRE-EN TROIS À LA MAIN.
+// Coller trente ou quarante lignes d'un coup est le geste normal — et c'est
+// aussi celui qui fige un défaut du MONTAGE en le prenant pour un défaut du
+// projet. Une police non chargée, un padding système non simulé, une locale
+// absente ne produisent pas un échec : ils en produisent des dizaines, tous
+// plausibles, tous du même genre que de vrais défauts. Le relevé devient alors
+// un mensonge figé, et il est PIRE qu'une suite rouge, parce qu'il est vert.
+// Trois suffisent, de trois natures différentes (un label, un contraste, un
+// débordement) : ce qu'on cherche est une cause COMMUNE, et une cause commune
+// s'attrape sur n'importe lequel de ses effets. Si les trois décrivent bien
+// l'application, le lot est du projet ; si l'un d'eux décrit ton harnais, ils
+// le décrivent probablement tous.
+
 // ⚠️ CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ.
 // Une ligne inscrite ici affirme que le défaut EST ENCORE LÀ. Le jour où tu le
 // corriges, le test rougit et te demande de retirer la ligne. C'est ce qui

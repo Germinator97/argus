@@ -8565,3 +8565,56 @@ test('le SKILL sépare la commande derrière un GESTE des deux cas voisins (348)
   assert.match(bloc, /dette et elle s'inscrit/,
     "le SKILL ne dit plus quoi faire quand le budget device ne suit pas — l'ancre se retirerait en silence");
 });
+
+test('le cadrage demande ce que devient la TÉLÉMÉTRIE pendant une passe QA (349)', () => {
+  const prompts = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const bloc = prompts.replace(/\s+/g, ' ');
+
+  // ⚠️ DÉRIVÉ : c'est `resilience.yaml` qui PROVOQUE des erreurs, donc qui rend
+  // la question inévitable. S'il disparaissait des flows livrés, cette ligne du
+  // cadrage perdrait sa cause — et ce garde le dirait au lieu de veiller sur
+  // une prose devenue sans objet.
+  const flows = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  assert.ok(readdirSync(flows).includes('resilience.yaml'),
+    "resilience.yaml a disparu des flows livrés — la passe QA ne provoque plus d'erreurs, "
+    + "et la ligne de cadrage sur la télémétrie n'a plus de raison d'être");
+
+  assert.match(bloc, /la TÉLÉMÉTRIE, si l'app en émet/,
+    "le cadrage ne demande plus ce que devient la télémétrie : une passe QA envoie alors "
+    + "ses sessions et ses erreurs provoquées dans le monitoring RÉEL du projet");
+  assert.match(bloc, /erreurs PROVOQUÉES/,
+    "le cadrage ne dit plus POURQUOI la question se pose — sans la cause, elle se lit comme un caprice");
+});
+
+test('le prompt avertit que le clone rend le plugin PUBLIÉ, pas celui en cours (350)', () => {
+  const prompts = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md'), 'utf8');
+  const bloc = prompts.replace(/\s+/g, ' ');
+
+  // ⚠️ DÉRIVÉ : l'avertissement n'a de sens que tant que le prompt propose un
+  // clone. Le jour où ce repli disparaît, le garde tombe plutôt que de veiller.
+  assert.match(bloc, /git clone --depth 1/,
+    "le prompt ne propose plus de clone — l'avertissement du 350 est sans objet");
+  assert.match(bloc, /Le clone rend le plugin PUBLIÉ/,
+    "le prompt n'avertit plus que le clone rend la version publiée : quelqu'un qui met son "
+    + "skill à l'épreuve testera une version d'avant, et RIEN ne le lui dira");
+  assert.match(bloc, /lecture seule/,
+    "le prompt ne dit plus quoi faire à la place — nommer le piège sans l'issue ne sert à rien");
+});
+
+test("known_issues prescrit d'ouvrir un échantillon avant d'accepter le lot (351)", () => {
+  const dette = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart'), 'utf8');
+  const bloc = dette.replace(/\s+/g, ' ');
+
+  assert.match(bloc, /OUVRE-EN TROIS/,
+    "known_issues ne prescrit plus de vérifier un échantillon : un défaut du MONTAGE "
+    + "(police non chargée, padding non simulé) se fige alors en dette du projet");
+  // Le cœur : POURQUOI trois suffisent. Sans la raison, le geste se lit comme
+  // un rite et se saute au premier lot pressé.
+  assert.match(bloc, /cause COMMUNE/,
+    "known_issues ne dit plus pourquoi trois suffisent — un geste sans raison ne se fait pas");
+  assert.match(bloc, /PIRE qu'une suite rouge/,
+    "known_issues ne dit plus ce que coûte un relevé faux : il est vert, c'est tout le problème");
+});
