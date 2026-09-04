@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
-  authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -8733,4 +8733,43 @@ test('le cadrage envoie ouvrir la doc de BUILD, pas seulement la page d\'accueil
     "le cadrage ne dit plus ce qui sépare les deux cibles — sans ça, elles se valent");
   assert.match(bloc, /commande aussi `ENV` et `EVIDENCE`/,
     "le cadrage ne relie plus le choix d'adresse aux deux autres décisions qu'il entraîne");
+});
+
+test("l'avertissement de locale dit ce qu'il COÛTE, et il survit au terminal (355)", () => {
+  // ⚠️ GARDE QUI APPELLE. Le message était exact et incomplet : « la clé est
+  // sans effet » se lit comme un réglage inopérant, alors que le vrai prix est
+  // qu'une DIMENSION cesse de mesurer. Vécu : un flow i18n assertant un libellé
+  // français, vert sur un appareil en « fr_CI » — français lui aussi. Il aurait
+  // été vert quoi qu'on déclare.
+  const w = localeWarnings('fr_FR', false, 'en_US', 'android');
+  assert.ok(w.length >= 2, "l'avertissement de locale a disparu");
+  assert.ok(w.some((l) => /vert quoi que tu déclares/.test(l)),
+    "l'avertissement ne dit plus ce qu'il coûte : sans cette phrase, on croit à un réglage "
+    + "inopérant au lieu d'une dimension qui ne mesure plus rien");
+
+  // ⚠️ L'AUTRE MOITIÉ : quand la locale COÏNCIDE, l'intention est satisfaite et
+  // le silence est juste. Un remède qui parlerait toujours serait du bruit, et
+  // un avertissement qu'on ne peut pas faire taire finit ignoré.
+  assert.deepEqual(localeWarnings('fr_FR', false, 'fr-FR', 'android'), [],
+    'la locale coïncide et le runner parle quand même — trois lignes de bruit par exécution');
+
+  // Le finding : il ne naît que s'il y a quelque chose à dire.
+  assert.deepEqual(localeFindings([], { id: 'x' }, 'android'), [],
+    'un finding de locale naît sans avertissement — il accuserait un run sain');
+  const f = localeFindings(w, { id: 'emulator-5554', os: '36' }, 'android');
+  assert.equal(f.length, 1);
+  assert.equal(f[0].dimension, 'i18n', "le finding ne porte plus sur la dimension qui a cessé de mesurer");
+  assert.equal(f[0].severity, 'info', "rien n'est cassé : c'est une COUVERTURE qui manque, pas un défaut");
+  assert.match(f[0].suggestedFix, /vert quoi que tu déclares/,
+    'le finding ne porte plus la raison — un lecteur du rapport ne peut pas la retrouver');
+
+  // ⚠️ ET LE CÂBLAGE. Le finding peut être parfait et n'atteindre personne : la
+  // version d'avant ne sortait qu'en `warn()`, donc elle mourait avec le
+  // terminal pendant que la page publiée montrait une dimension i18n verte.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const code = run.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  assert.match(code, /\.\.\.localeFindings\(/,
+    'localeFindings existe mais personne ne la verse dans les findings du rapport : '
+    + "l'avertissement retombe en ligne de console, qui meurt avec la session");
 });

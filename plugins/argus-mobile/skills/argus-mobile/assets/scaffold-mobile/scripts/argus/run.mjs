@@ -72,7 +72,45 @@ export function localeWarnings(demandee, autoStart, surDevice, platform = 'andro
     platform === 'ios'
       ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'
       : '  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.',
+    // ⚠️ CE QUE ÇA COÛTE, et c'est la phrase qui manquait. Dire « la clé est
+    // sans effet » laisse croire à un réglage inopérant ; le vrai prix est que
+    // la dimension i18n MESURE ALORS LA LOCALE DE L'APPAREIL. Vécu : un flow
+    // i18n qui assertait un libellé français est passé vert sur un appareil en
+    // « fr_CI » — français lui aussi. Il aurait été vert quoi qu'on déclare.
+    '  ⚠️ Tant que ce n\'est pas réglé, le flow i18n mesure la locale de L\'APPAREIL, '
+      + 'pas celle que tu déclares : il est vert quoi que tu déclares.',
   ];
+}
+
+/**
+ * Le finding qui fait SURVIVRE l'avertissement de locale au terminal.
+ *
+ * ⚠️ [localeWarnings] ne sortait qu'en console, donc elle mourait avec la
+ * session : la page publiée montrait une dimension i18n verte sans un mot sur
+ * le fait qu'elle n'avait pas mesuré ce qu'elle annonçait. Un lecteur du
+ * rapport n'avait aucun moyen de le savoir.
+ *
+ * `info`, pas `major` : rien n'est cassé, c'est une COUVERTURE qui manque.
+ * @param {string[]} avertissements @param {any} device @param {string} platform
+ * @returns {any[]}
+ */
+export function localeFindings(avertissements, device, platform) {
+  if (avertissements.length === 0) return [];
+  return [{
+    id: 'QAM-LOCALE-INERTE',
+    title: 'la locale déclarée n\'a pas été appliquée : le flow i18n mesure celle de l\'appareil',
+    suggestedFix: avertissements.join('\n'),
+    severity: 'info',
+    dimension: 'i18n',
+    screen: '',
+    step: 0,
+    selector: '',
+    device: device?.id ?? '',
+    platform,
+    osVersion: device?.os ?? '',
+    expected: 'la locale déclarée par locale.deviceLocale',
+    actual: 'celle que l\'appareil portait déjà',
+  }];
 }
 
 /**
@@ -1694,6 +1732,8 @@ export function runScope(include, excludeCli, excludeConfig) {
 }
 
 async function main() {
+  /** @type {string[]} Les avertissements de locale, à faire survivre au terminal. */
+  let avertissementsLocale = [];
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
   const startedAt = new Date();
@@ -1767,9 +1807,10 @@ async function main() {
         ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
         : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()
     );
-    for (const ligne of localeWarnings(
+    avertissementsLocale = localeWarnings(
       String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null, platform,
-    )) warn(ligne);
+    );
+    for (const ligne of avertissementsLocale) warn(ligne);
   }
 
   const reportDir = artifactsDir(config);
@@ -1937,6 +1978,9 @@ async function main() {
     // rend '' — le finding ne dira rien plutôt que de supposer.
     ...startupFindings(startup, reportDevice, platform, config,
       platform === 'android' ? installedVariant(resolved.udid, appId) : ''),
+    // ⚠️ Un avertissement de console meurt avec le terminal. Celui-ci dit qu'une
+    // dimension ne mesure pas ce qu'elle annonce : il doit atteindre la page.
+    ...localeFindings(avertissementsLocale, reportDevice, platform),
   ];
   const budget = budgetVerdict(config, startedAt, bundles.length);
   for (const line of budget.warnings) warn(line);
