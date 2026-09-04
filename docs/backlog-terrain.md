@@ -5189,7 +5189,83 @@ dira quelle case manquait vraiment.
 REJOUÉ**. Le second passage est la mesure ; le premier ne prouve rien — c'est
 exactement l'erreur que le critère « deux fois de suite » nomme.
 
-**Prochain numéro libre : 374.**
+### 374-379. Le run 50 — deux verdicts rendus sur la moitié des preuves
+
+**Fermés le 04/09/2026 au soir.** Le premier run joué sur l'AVD de remplacement,
+et le premier à rencontrer le 373 pour de vrai.
+
+🎯 **LA QUESTION DU CADRAGE A SERVI.** L'agent a identifié seul que le compte de
+test neuf **consomme un état que le serveur ne rend pas**, a écrit son flow, l'a
+tagué `manual` pour le sortir de la suite, et **ne l'a jamais lancé** — en rendant
+la décision. Il a même trouvé l'endpoint de remise à zéro et **refusé de
+l'appeler** : « administration du backend, hors de mon périmètre ». C'est la
+troisième issue que le 373 listait, trouvée sans qu'on la prescrive.
+📌 Et il a affiné le point : la première issue — « une commande de remise à zéro »
+— ne peut pas être *découverte* par l'agent, elle doit être **déclarée par
+l'utilisateur**, sinon elle est hors de sa limite.
+
+🔴 **DEUX VERDICTS RENDUS SUR LA MOITIÉ DES PREUVES**, et le premier est de moi,
+écrit le matin même. `sec.mjs` et `sca.mjs` partagent `security.acknowledged`
+sans partager leurs findings : chacun déclarait **périmés les acquittements de
+l'autre**. Mesuré : « acquittement PÉRIMÉ : QAM-SEC-CLEAR » imprimé par `sca`
+pendant que `sec` l'honorait, dans le même rapport. *Un relevé ne peut pas juger
+ce qu'il ne mesure pas* — le verdict appartient à `report.mjs`, seul à voir
+l'union. ⚠️ Le garde livré avec le défaut exerçait `acquitter` **en isolation**,
+jamais deux appelants partageant une table.
+
+Le second : **`QAM-START` prenait son pire cas sur des flows FAILED**. Un flow
+qui expire a mesuré **son propre plafond**, pas l'écran — 20 021 ms d'un flow mort
+sur une erreur d'application publiés en « l'écran de départ met 20 s », pendant
+que les six autres tenaient entre 947 et 2646 ms. Le code **connaissait** le
+statut (il le comptait dans `timedOut`) et ne s'en servait pas. Les échantillons
+censurés sont désormais exclus **et nommés**.
+
+**376** — le contrôle Firebase cherchait un chemin **littéral**, donc il était
+muet sur toute application dont le flavor range le fichier dans son source set,
+la disposition standard d'AGP. Le mécanisme était dérivé ; son **emplacement**
+était énuméré. ⚠️ Et mon premier correctif partait **inerte** :
+`fichiersSous(dir, [])` filtre par `extensions.some(...)`, qui rend `false` sur
+une liste vide — il aurait rendu zéro fichier en ayant l'air corrigé.
+
+**377** — des trois issues offertes au « flow qui a besoin de la connexion sans
+l'inclure », **aucune n'était praticable** : la première demande d'éditer
+`visual.yaml`, qui est du CADRE. La seule qui marche — poser la connexion dans
+`goto.yaml`, qui appartient au projet — n'était nommée nulle part. Un run l'a
+payée, puis a défait.
+
+**378** — `visual: true` et `reachedBy:` se contredisent **en silence** :
+`visual.yaml` appelle `goto` quoi qu'il arrive, donc la référence naît sur l'écran
+où `goto` s'est arrêté. Ni erreur, ni avertissement. 32 s d'appareil et une
+référence sur deux.
+
+**379** — « Sur Android le même appel est inoffensif » : **faux**. Maestro 2.8.0
+refuse `hideKeyboard` sur API 30 (« Couldn't hide the keyboard »), deux flows
+perdus. Une promesse de comportement que rien ne mesurait.
+
+🔴 **UN CONSTAT SUR SEPT EST DÉMENTI** — le run signalait que rien ne dit quoi
+faire quand `firstLaunchMs` est très inférieur à l'attente réelle. C'est écrit
+**deux fois** : dans le SKILL (« si `startup.samples` vaut plusieurs fois
+`firstLaunchMs`, c'est `startup.samples` qui commande », avec le même ordre de
+grandeur) et dans le message du runner lui-même (« pas de `firstLaunchMs` »).
+
+⚠️ **DEUX GARDES ANCIENS SONT TOMBÉS SUR CES CORRECTIFS JUSTES**, et la pente
+était de les supprimer : l'un figeait l'ancien dénominateur `3/3`, l'autre
+**citait** le libellé « Trois issues » — devenu faux le jour où une quatrième a
+été ajoutée. Tous deux **étendus** : le second compte désormais les issues.
+
+📌 **Ce que le run a trouvé DANS le projet, et qui n'est pas du plugin** : le
+`catch` d'initialisation n'a qu'un seul destinataire, `Sentry.captureException`,
+et le flavor de développement n'initialise jamais Sentry. Un échec d'init ne
+laisse donc **aucune trace** dans l'environnement où l'on développe — le
+commentaire du code promet pourtant l'inverse. Remonté à Germinator.
+
+⚠️ **Et deux gestes de MON cadrage ont coûté** : l'URL de republication venait de
+ma mémoire et **la page n'existait plus** (le run a mesuré, refusé de deviner
+laquelle la remplaçait, et publié une page neuve) ; et j'avais **dicté le titre**,
+que le skill sait dériver — `report.mjs` fait `ident.title || titreDuRapport(run)`,
+donc une valeur dictée écrase le dérivé. Le skill et le run étaient justes.
+
+**Prochain numéro libre : 380.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
