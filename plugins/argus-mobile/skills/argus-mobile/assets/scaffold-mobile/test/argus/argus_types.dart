@@ -32,6 +32,7 @@ class ArgusScreen {
     this.displaysAfterScroll = const <String>[],
     this.priority = 'p0',
     this.setUp,
+    this.cropRoot = false,
   });
 
   /// Ce qu'il faut FAIRE avant de monter cet écran — enregistrer un double,
@@ -71,6 +72,26 @@ class ArgusScreen {
   ///
   /// Les doubles eux-mêmes vivent dans `test/argus/argus_fakes.dart` — c'est ici
   /// qu'on en a besoin, et non au moment où l'on instrumente.
+  /// Cette racine sert-elle de `visualCropOn` au recadrage des captures ?
+  ///
+  /// ⚠️ LA RÈGLE ÉTAIT ÉCRITE, RIEN NE LA VÉRIFIAIT. « Pose la racine DANS le
+  /// `SafeArea` quand elle sert de `visualCropOn` » figure dans la méthodologie,
+  /// avec son coût chiffré (216 px, soit l'horloge système dans la référence).
+  /// Un run l'a lue, a cru l'appliquer — sa page A un `SafeArea` — et avait posé
+  /// le `Semantics` racine AUTOUR du `Scaffold` entier, donc au-dessus. Il l'a
+  /// rattrapé en le raisonnant après coup, par aucun garde.
+  ///
+  /// Le poser à `true` fait mesurer la racine : elle ne doit pas commencer plus
+  /// haut que l'inset système, sans quoi le cadrage embarque la barre d'état et
+  /// la référence devient non déterministe — elle changera à chaque minute qui
+  /// passe.
+  ///
+  /// ⚠️ Il ne se DEVINE pas : `--check-anchors` vérifie que l'écran désigné par
+  /// `visualCropOn` dans `argus.mobile.yaml` le déclare bien ici. Sans ce
+  /// croisement, oublier le drapeau retirerait le garde en silence — un
+  /// paramètre optionnel non passé est légal.
+  final bool cropRoot;
+
   final void Function()? setUp;
 
   /// Doit correspondre à `screens[].id` de argus.mobile.yaml, pour que les deux

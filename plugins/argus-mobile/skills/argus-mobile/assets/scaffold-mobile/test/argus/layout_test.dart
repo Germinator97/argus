@@ -24,6 +24,8 @@
 //
 // À brancher dans test/argus/harness.dart — rien à modifier dans ce fichier.
 
+import 'dart:ui' show Rect;
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'argus_harness.dart';
@@ -44,6 +46,48 @@ void main() {
 
   for (final ArgusScreen screen in argusScreens) {
     group('disposition — ${screen.id}', () {
+      // ⚠️ LA RACINE DE RECADRAGE NE DOIT PAS REMONTER SOUS LA BARRE D'ÉTAT.
+      // Un `visualCropOn` posé au-dessus du `SafeArea` embarque l'horloge
+      // système dans chaque référence visuelle : elle change à chaque minute,
+      // donc la comparaison devient un tirage. La règle est écrite depuis
+      // longtemps dans la méthodologie ; jusqu'ici rien ne la mesurait, et un
+      // run l'a rattrapée par relecture seule. Un seul gabarit suffit : ce qui
+      // est en cause est l'inset, pas la taille.
+      if (screen.cropRoot && screen.anchor != null) {
+        final ArgusViewport gabarit = argusViewports.first;
+        testWidgets(argusName('racine de recadrage sous la barre d\'état'), (
+          WidgetTester tester,
+        ) async {
+          await pumpArgus(
+            tester,
+            argusMonte(screen),
+            viewport: gabarit,
+            textScale: 1,
+            debugLabel: screen.id,
+          );
+          final Rect rect = tester.getRect(
+            find.bySemanticsIdentifier(screen.anchor!),
+          );
+          // `FakeViewPadding` est en pixels PHYSIQUES ; les rects sont logiques.
+          final double insetHaut =
+              gabarit.padding.top / gabarit.devicePixelRatio;
+          await argusCheck('${screen.id} · racine de recadrage', () async {
+            expect(
+              rect.top,
+              greaterThanOrEqualTo(insetHaut),
+              reason:
+                  'La racine « ${screen.anchor} » de ${screen.id} commence à '
+                  '${rect.top.toStringAsFixed(1)} dp, au-dessus de l\'inset '
+                  'système (${insetHaut.toStringAsFixed(1)} dp).\n'
+                  'Elle sert de visualCropOn : le recadrage embarque donc la '
+                  "barre d'état, et la référence changera à chaque minute.\n"
+                  'Pose le Semantics racine DANS le SafeArea (ou dans celui de '
+                  'la coquille), pas autour du Scaffold.',
+            );
+          });
+        }, skip: argusShouldSkip);
+      }
+
       for (final ArgusViewport viewport in argusViewports) {
         for (final double scale in argusTextScales) {
           final String label = '${viewport.name} · texte ×$scale';

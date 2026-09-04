@@ -57,6 +57,7 @@ import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skill
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
@@ -8617,4 +8618,66 @@ test("known_issues prescrit d'ouvrir un échantillon avant d'accepter le lot (35
     "known_issues ne dit plus pourquoi trois suffisent — un geste sans raison ne se fait pas");
   assert.match(bloc, /PIRE qu'une suite rouge/,
     "known_issues ne dit plus ce que coûte un relevé faux : il est vert, c'est tout le problème");
+});
+
+test('le câblage du garde de recadrage se voit, drapeau posé ou non (352)', () => {
+  // ⚠️ GARDE QUI APPELLE. Un `cropRoot` oublié est LÉGAL — un paramètre
+  // optionnel non passé l'est toujours —, donc aucun test de comportement ne
+  // peut le voir : le garde de position ne s'exécute simplement pas. Ce
+  // croisement est le seul endroit d'où on l'apprend.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-crop-'));
+  try {
+    mkdirSync(join(dir, 'test/argus'), { recursive: true });
+    writeFileSync(join(dir, 'test/argus/harness.dart'), [
+      "// cropRoot: true — cette MENTION en commentaire ne doit pas compter.",
+      'const List<ArgusScreen> argusScreens = <ArgusScreen>[',
+      "  ArgusScreen(id: 'a', anchor: 'a_root', cropRoot: true, build: _a),",
+      "  ArgusScreen(id: 'b', anchor: 'b_root', build: _b),",
+      '];',
+    ].join('\n'), 'utf8');
+
+    const verdicts = recadragesNonGardes(dir, {
+      visualCropOn: 'a_root',
+      screens: [{ visualCropOn: 'b_root' }, { visualCropOn: 'z_root' }],
+    });
+    assert.equal(verdicts.get('a_root'), true, "l'écran qui déclare le drapeau est vu comme gardé");
+    assert.equal(verdicts.get('b_root'), false,
+      "l'écran qui l'oublie doit ressortir : sans ça, le garde de position disparaît en silence");
+    assert.equal(verdicts.get('z_root'), null,
+      "une racine de recadrage qui n'est la racine d'AUCUN écran n'a rien à déclarer — "
+      + "l'exiger ferait rougir un projet sain");
+
+    // ⚠️ L'AUTRE MOITIÉ : le dartdoc de `cropRoot` cite `cropRoot: true` en
+    // l'expliquant. Un lecteur qui compte les commentaires trouve le drapeau
+    // partout et ne rapporte plus jamais rien.
+    writeFileSync(join(dir, 'test/argus/harness.dart'),
+      "// cropRoot: true\nArgusScreen(id: 'b', anchor: 'b_root', build: _b),", 'utf8');
+    assert.equal(recadragesNonGardes(dir, { visualCropOn: 'b_root' }).get('b_root'), false,
+      'un `cropRoot: true` en COMMENTAIRE compte comme le drapeau — le contrôle est vacant');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('le scaffold LIVRÉ porte le drapeau, le garde qui le lit, et ne crie pas à vide (352 bis)', () => {
+  // ⚠️ SUR LE FICHIER LIVRÉ, pas sur un montage : trois de mes gardes ont déjà
+  // été bâtis sur une fixture pendant que le gabarit réel contenait autre chose.
+  const S = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const types = readFileSync(join(S, 'test/argus/argus_types.dart'), 'utf8');
+  const layout = readFileSync(join(S, 'test/argus/layout_test.dart'), 'utf8');
+
+  assert.match(types, /this\.cropRoot = false,/, 'ArgusScreen ne porte plus le drapeau cropRoot');
+  // Le CÂBLAGE : le drapeau doit être LU par le test, pas seulement déclaré.
+  assert.match(layout, /screen\.cropRoot/,
+    'layout_test ne lit plus screen.cropRoot — le champ existerait sans que rien ne le mesure');
+  // Et la mesure elle-même : sans la division, on compare des pixels physiques
+  // à des dp et le garde devient un tirage.
+  assert.match(layout, /padding\.top \/ [A-Za-z]+\.devicePixelRatio/,
+    'layout_test ne ramène plus l\'inset en dp : FakeViewPadding est en pixels PHYSIQUES');
+
+  // ⚠️ ET IL NE DOIT PAS CRIER SUR LE SCAFFOLD NU. `visualCropOn` y vaut '' par
+  // défaut : un contrôle qui rougirait à l'installation serait désactivé le jour
+  // même.
+  const nu = recadragesNonGardes(S, { visualCropOn: '', screens: [] });
+  assert.equal(nu.size, 0, 'le scaffold livré, sans visualCropOn, déclenche déjà le contrôle');
 });

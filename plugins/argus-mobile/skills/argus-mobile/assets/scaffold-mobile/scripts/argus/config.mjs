@@ -1144,6 +1144,55 @@ export function branchesDeGoto(gotoSource) {
 }
 
 /**
+ * Les racines de recadrage NOMMÉES par la config, et ce que le Dart en dit.
+ *
+ * ⚠️ LE CÂBLAGE, PAS LA RÈGLE. `layout_test.dart` sait mesurer qu'une racine de
+ * recadrage ne remonte pas sous la barre d'état — mais seulement pour les écrans
+ * qui déclarent `cropRoot: true`. Un drapeau optionnel non passé est LÉGAL :
+ * l'oublier retire donc le garde en silence, et c'est précisément le mode de
+ * panne qu'aucun test de comportement ne voit. Ce croisement est le seul endroit
+ * d'où on peut le dire.
+ *
+ * Rend, pour chaque ancre citée par un `visualCropOn` : `true` si l'écran qui la
+ * porte déclare le drapeau, `false` s'il ne le déclare pas, `null` si aucun
+ * `ArgusScreen` ne porte cette ancre — auquel cas il n'y a rien à exiger, la
+ * racine de recadrage n'étant pas une racine d'écran.
+ * @param {string} root @param {any} config @returns {Map<string, boolean|null>}
+ */
+export function recadragesNonGardes(root, config) {
+  /** @type {Set<string>} */
+  const cites = new Set();
+  const global = String(config?.visualCropOn ?? '').trim();
+  if (global !== '') cites.add(global);
+  for (const s of config?.screens ?? []) {
+    const local = String(s?.visualCropOn ?? '').trim();
+    if (local !== '') cites.add(local);
+  }
+  /** @type {Map<string, boolean|null>} */
+  const verdict = new Map();
+  if (cites.size === 0) return verdict;
+
+  let brut = '';
+  try { brut = readFileSync(join(root, 'test/argus/harness.dart'), 'utf8'); } catch { brut = ''; }
+  // Les commentaires d'abord : le dartdoc de `cropRoot` cite `cropRoot: true`
+  // en l'expliquant, et un lecteur qui le compte trouve le drapeau partout.
+  const src = dartSansCommentaires(brut);
+  // Un bloc par écran : les déclarations se suivent dans la liste.
+  const blocs = src.split('ArgusScreen(').slice(1);
+  for (const a of cites) {
+    let vu = null;
+    for (const b of blocs) {
+      const m = b.match(/\banchor\s*:\s*'([^']*)'/);
+      if (!m || m[1] !== a) continue;
+      vu = /\bcropRoot\s*:\s*true\b/.test(b);
+      break;
+    }
+    verdict.set(a, vu);
+  }
+  return verdict;
+}
+
+/**
  * Les ancres DÉCLARÉES dans harness.dart.
  *
  * ⚠️ LA VERSION D'ORIGINE LISAIT LIGNE À LIGNE, et elle accusait le projet.
@@ -2151,8 +2200,28 @@ function main() {
       err('  qui porte pubspec.yaml et lib/, pas celui qui les contient.');
       process.exit(2);
     }
+    // ⚠️ LE CÂBLAGE DU GARDE DE RECADRAGE. `layout_test.dart` mesure qu'une
+    // racine de `visualCropOn` ne remonte pas sous la barre d'état — mais
+    // seulement pour les écrans qui portent `cropRoot: true`. Oublier ce
+    // drapeau est LÉGAL et retire le garde sans un mot, donc c'est ici qu'on
+    // le dit, au seul endroit qui voie les deux fichiers à la fois.
+    let recadrageOrphelin = false;
+    for (const [ancre, vu] of recadragesNonGardes(process.cwd(), config)) {
+      if (vu === null) {
+        warn(`visualCropOn nomme « ${ancre} », qu'aucun ArgusScreen ne porte comme racine.`);
+        warn('  Rien ne peut donc mesurer qu\'elle est bien SOUS la barre d\'état : si le');
+        warn('  cadrage l\'embarque, chaque référence visuelle changera à chaque minute.');
+      } else if (vu === false) {
+        recadrageOrphelin = true;
+        err(`« ${ancre} » sert de visualCropOn et son ArgusScreen ne déclare pas cropRoot: true.`);
+        err('  Le garde qui mesure sa position ne s\'exécute donc PAS — et son absence est');
+        err('  muette : les références se prendront, avec l\'horloge système dedans.');
+        err('  Ajoute `cropRoot: true` à cet écran dans test/argus/harness.dart.');
+      }
+    }
+
     const orphelines = undeclaredAnchors(process.cwd(), config);
-    if (orphelines.length === 0) {
+    if (orphelines.length === 0 && !recadrageOrphelin) {
       // ⚠️ LE COMPTE SEUL A DÉJÀ MENTI. « 54 littérales » était exact et taisait
       // qu'il en manquait cinq, invisibles au motif d'alors. On dit donc aussi
       // ce qu'on n'a PAS pu lire : un endroit où la clé est là sans littéral
@@ -2175,7 +2244,13 @@ function main() {
       }
       return;
     }
-    for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);
+    // ⚠️ N'ACCUSE QUE CE QU'ON A TROUVÉ. Un recadrage non gardé fait déjà sortir
+    // en 1 ; y ajouter « 0 ancre(s) posée(s) que harness.dart ne déclare pas »
+    // désignerait un défaut qui n'existe pas, et enverrait chercher au mauvais
+    // endroit — c'est le message, pas le code de sortie, qui oriente.
+    if (orphelines.length > 0) {
+      for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);
+    }
     process.exit(1);
   }
 

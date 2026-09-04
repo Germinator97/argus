@@ -233,6 +233,17 @@ Poser la racine **à l'intérieur** du `SafeArea` quand elle sert de `visualCrop
 Et si elle doit rester à l'extérieur pour une autre raison, recadrer sur un
 conteneur intérieur plutôt que sur elle.
 
+⚠️ **CETTE RÈGLE SE MESURE MAINTENANT — déclare-le, sinon rien ne la vérifie.**
+Elle est écrite ici depuis longtemps, avec son coût chiffré, et elle se relisait
+sans se contrôler : un run l'a lue, a cru l'appliquer — sa page A un `SafeArea` —
+et avait posé la racine autour du `Scaffold` entier, donc au-dessus. Il l'a
+rattrapé en le raisonnant, sur **un** écran ; mesuré ensuite sur le même projet,
+**trois autres racines de recadrage commençaient à 0 dp** et embarquaient
+l'horloge. Pose `cropRoot: true` sur l'`ArgusScreen` correspondant : l'étage 1
+compare alors sa position à l'inset système. `--check-anchors` refuse de conclure
+si un `visualCropOn` désigne un écran qui ne porte pas le drapeau — l'oublier
+retirerait le garde en silence.
+
 ⚠️ **Changer `visualCropOn` invalide les références déjà produites.** La doc de
 Maestro est explicite — « the comparison screenshot must also have been cropped » —
 et rien n'échoue proprement quand les deux cadrages divergent : Maestro compare
