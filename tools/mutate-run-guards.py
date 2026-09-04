@@ -600,9 +600,16 @@ MUTATIONS = [
      "for tool in node flutter maestro adb osv-scanner; do"),
     # ── Run 33 — dont TROIS défauts du contrôle écrit au run 32 ─────────────
     # ⚠️ Le pire n'était pas qu'il rate : il ACCUSAIT une déclaration correcte.
+    # ⚠️ ANCRÉES SUR LA LIGNE QUI SUIT, et c'est MOI qui l'ai rendu nécessaire :
+    # `recadragesNonGardes` (352) a créé une SECONDE occurrence de
+    # `const src = dartSansCommentaires(brut);` dans ce fichier, le jour même où
+    # j'y fermais une duplication du même genre. Le harnais l'a dit — « motif
+    # trouvé 2× » — au lieu de rendre un vert. Ici la duplication est LÉGITIME
+    # (deux fonctions dépouillent chacune leur propre lecture), donc on ancre
+    # au lieu d'extraire.
     ("config", "225 · le relevé des déclarées redevient ligne à ligne",
-     "  const src = dartSansCommentaires(brut);",
-     "  const src = dartSansCommentaires(brut).split('\\n')[0];"),
+     "  const src = dartSansCommentaires(brut);\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;",
+     "  const src = dartSansCommentaires(brut).split('\\n')[0];\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;"),
     ("config", "226 · le motif reperd les paramètres nommés",
      "['[a-zA-Z]*[Ii]dentifier', ...sur]",
      "['identifier', ...sur]"),
@@ -643,8 +650,8 @@ MUTATIONS = [
     # HARNAIS et non VACANT. Deuxième fois de la journée que la distinction
     # évite de chercher un garde manquant qui existe.
     ("config", "le croisement des ancres cesse d'exclure le dartdoc",
-     "  const src = dartSansCommentaires(brut);",
-     "  const src = brut;"),
+     "  const src = dartSansCommentaires(brut);\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;",
+     "  const src = brut;\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;"),
     ("makefile", "argus-anchors cesse d'appeler le croisement posé → déclaré",
      "\tnode scripts/argus/config.mjs --check-anchors || rc=$$?; \\",
      "\ttrue; \\"),
