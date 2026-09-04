@@ -113,6 +113,26 @@ cherchait et ce qu'il a trouvé — jamais un repli silencieux sur un autre
 appareil.
 
 ⚠️ **Conséquence sur la locale, et elle n'est écrite nulle part ailleurs :**
+⚠️ **UN ÉMULATEUR DÉJÀ DÉMARRÉ EST UN ÉMULATEUR PARTAGÉ, ET IL PEUT ÊTRE PLEIN.**
+`adb install` rend alors `INSTALL_FAILED_INSUFFICIENT_STORAGE: Failed to override
+installation location` — un message qui accuse l'installation qu'on vient de
+lancer, alors que la cause est ce qui l'occupait déjà. Vécu : `/data` à 92 % à
+cause d'applications **sans rapport avec le run**.
+
+Ce qu'on devine seul — désinstaller les autres apps — est justement ce qu'un
+garde-fou de permission bloque, à raison : elles ne t'appartiennent pas. Deux
+sorties qui, elles, restent dans ton périmètre :
+
+- **construire en `release` plutôt qu'en `debug`** : le binaire de recette est
+  couramment deux à trois fois plus petit (mesuré : 127,8 Mo → 47,8 Mo), et
+  `argus-perf` mesure de toute façon la release ;
+- **désinstaller TON application** avant de réinstaller, ce qui rend l'espace de
+  ta propre installation précédente.
+
+Et si tu désinstalles quoi que ce soit d'autre, **dis-le dans le compte rendu** :
+un run l'a fait pour se débloquer, l'a documenté, et c'est ce qui a permis à la
+personne concernée de la remettre.
+
 `locale.deviceLocale` ne s'applique qu'au DÉMARRAGE du device, donc
 
 ⚠️ **Et si l'AVD est DÉJÀ dans la bonne locale ?** Laisse la clé renseignée : elle

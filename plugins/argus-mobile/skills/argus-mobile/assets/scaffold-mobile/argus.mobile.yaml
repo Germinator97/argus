@@ -397,9 +397,15 @@ locale:
 # backend partagé, chaque exécution envoie un vrai message à un vrai numéro.
 # `env: local` n'est pas qu'une étiquette : c'est ce qui dit que tu as le droit.
 auth:
-  secretsFromEnv:
-    - QA_USER
-    - QA_PASS
+  # ⚠️ VIDE PAR DÉFAUT, ET C'EST VOULU. Ces deux clés étaient pré-remplies, si
+  # bien qu'une application SANS authentification héritait de deux secrets
+  # qu'elle n'a pas : le runner avertissait alors « déclarés mais VIDES » à
+  # CHAQUE invocation de maestro, des dizaines de fois par run. Un
+  # avertissement qu'on ne peut pas faire taire en corrigeant finit ignoré, et
+  # il emmène les autres avec lui. Déclare ici ce que TON parcours consomme.
+  secretsFromEnv: []
+  #   - QA_USER
+  #   - QA_PASS
   # Ancres consommées par .maestro/_subflows/login.yaml. Une seule vide → le
   # sous-flow skippe en entier plutôt que d'échouer à mi-parcours sur un champ
   # introuvable.

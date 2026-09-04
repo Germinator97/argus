@@ -8839,3 +8839,118 @@ test("le SKILL dit ce que auth.anchors peut et NE PEUT PAS décrire (357)", () =
     "le SKILL ne dit plus que les clés nomment des rôles et non des types de champ : "
     + "« mets l'identifiant dans user » est impossible quand chaque écran n'a qu'un champ");
 });
+
+// ── Les huit points du dépouillement des runs 47-48 (358-365) ──────────────
+
+test('un scope PARTIEL se dit au terminal, pas seulement dans la page (358)', () => {
+  const rep = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs'), 'utf8');
+  // ⚠️ DÉRIVÉ : la page porte déjà un bandeau « partiel ». Le terminal doit dire
+  // la même chose — c'est l'écart entre les deux qui a coûté, pas l'absence.
+  assert.match(rep, /badge bad">partiel</,
+    'la page ne porte plus le bandeau « partiel » — le garde du terminal veille sur un écart disparu');
+  const code = rep.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
+  assert.match(code, /scope \?\? 'complet'\) !== 'complet'/,
+    "le terminal ne teste plus le scope : un rapport partiel s'y annonce comme n'importe quel autre");
+  assert.match(code, /PAS d'une passe complète/,
+    'le terminal ne dit plus que la passe était partielle');
+});
+
+test("l'absence d'URL ne s'annonce plus comme une première publication (359)", () => {
+  // ⚠️ GARDE QUI APPELLE. Une URL absente de la config ne dit RIEN de
+  // l'existence d'une page : elle dit qu'on ne l'a pas enregistrée. Un run a
+  // trouvé, par la liste des artefacts, une page publiée deux jours plus tôt là
+  // où ce message annonçait une première fois.
+  const sans = consignePublication('', 'android').join(' ');
+  assert.doesNotMatch(sans, /première publication/,
+    "le message affirme de nouveau « première publication » — il ne peut pas le savoir, "
+    + "et c'est ainsi qu'une publication atterrit sur la page d'un autre run");
+  assert.match(sans, /ne veut PAS dire qu'aucune\s*page n'existe|ne veut PAS dire qu'aucune page n'existe/,
+    "le message ne dit plus ce que l'absence d'URL signifie vraiment");
+  assert.match(sans, /AVANT de publier/, 'le message ne dit plus QUAND chercher la page existante');
+
+  // ⚠️ L'AUTRE MOITIÉ : avec une URL, la consigne reste de la passer.
+  const avec = consignePublication('https://exemple/x', 'android').join(' ');
+  assert.match(avec, /à REPUBLIER sur https:\/\/exemple\/x/,
+    'avec une URL connue, le message doit toujours dire de la passer');
+});
+
+test('la contre-épreuve visuelle a un TITRE, elle ne se grepe plus (360)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const titres = skill.split('\n').filter((l) => /^#{2,4} /.test(l));
+  assert.ok(titres.some((t) => /contre-épreuve visuelle/i.test(t)),
+    'la contre-épreuve visuelle n\'a plus de titre : deux runs ne l\'ont trouvée qu\'en grepant, '
+    + 'et l\'un a failli la sacrifier — ce qui prouve qu\'une dimension mesure ne peut pas dépendre d\'un grep');
+});
+
+test("Semantics sans constructeur const est dit UNE fois, et près du geste (361)", () => {
+  // ⚠️ CE CONSTAT EST UN DÉMENTI, ET J'AI FAILLI ÉCRIRE LE DOUBLON. Un run a
+  // rapporté que le piège `const Semantics(...)` n'est pas signalé « à l'endroit
+  // qui explique comment ancrer une Icon ». Mesuré : il l'est, huit cents lignes
+  // plus tôt — au point où l'on INSTRUMENTE —, et son texte dit qu'il a déjà été
+  // rapproché une fois pour cette raison exacte. J'en ai ajouté un second avant
+  // de le voir : c'est ce garde qui l'a dit, en exigeant l'unicité.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const n = skill.split("N'A PAS DE CONSTRUCTEUR `const`").length - 1;
+  assert.equal(n, 1,
+    `la mise en garde const est écrite ${n} fois : deux copies d'une même règle divergent, `
+    + "et c'est celle que personne ne mesure qui dérive");
+  assert.match(skill, /const_with_non_const/,
+    "la mise en garde ne nomme plus l'erreur du compilateur — c'est elle qu'on cherche quand on la rencontre");
+  assert.match(skill, /descends le `const` d'un cran/,
+    'la mise en garde ne donne plus le geste, seulement le diagnostic');
+});
+
+test('device-matrix anticipe un émulateur PARTAGÉ et plein (362)', () => {
+  const dm = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/references/device-matrix.md'), 'utf8');
+  const plat = dm.replace(/\s+/g, ' ');
+  assert.match(plat, /INSTALL_FAILED_INSUFFICIENT_STORAGE/,
+    "device-matrix ne nomme plus l'erreur : elle accuse l'installation qu'on lance, "
+    + 'pas ce qui occupait déjà le disque');
+  // Nommer sans issue ne sert à rien, et l'issue évidente est bloquée à raison.
+  assert.match(plat, /désinstaller les autres apps/,
+    'device-matrix ne dit plus pourquoi le remède évident est bloqué');
+  assert.match(plat, /release` plutôt qu'en `debug/,
+    'device-matrix ne donne plus de sortie qui reste dans ton périmètre');
+});
+
+test('le gabarit ne pré-remplit plus des secrets qu\'une app peut ne pas avoir (363)', () => {
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const bloc = yaml.slice(yaml.indexOf('\nauth:'), yaml.indexOf('\nauth:') + 900);
+  const actives = bloc.split('\n')
+    .filter((l) => /^\s+-\s+QA_/.test(l) && !/^\s*#/.test(l));
+  assert.deepEqual(actives, [],
+    `le gabarit déclare ${actives.length} secret(s) d'office : une app SANS authentification en hérite, `
+    + "et le runner avertit « déclarés mais VIDES » à chaque invocation de maestro — "
+    + "un avertissement qu'on ne peut pas faire taire finit ignoré");
+  assert.match(bloc, /secretsFromEnv: \[\]/, 'la clé a disparu — le parcours qui en a besoin ne saurait plus où les mettre');
+});
+
+test('le SKILL dit comment fabriquer l\'aplat SANS outil d\'image (364)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  assert.match(plat, /Ni ImageMagick ni PIL ne sont garantis/,
+    "le SKILL suppose de nouveau qu'un outil d'image existe — un run s'est arrêté là "
+    + 'et a fini par écrire un générateur de PNG à la main');
+  assert.match(plat, /IHDR`, `IDAT`, `IEND/,
+    'le SKILL ne dit plus ce que contient un PNG minimal — nommer le manque sans le geste ne sert à rien');
+  assert.match(plat, /24 premiers octets/,
+    'le SKILL ne dit plus où lire les dimensions de la référence à remplacer');
+});
+
+test('le SKILL tranche la contradiction de publication, il ne la nomme plus seulement (365)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  // ⚠️ DÉRIVÉ : la sortie n'a de sens que tant que la consigne « tel quel » existe.
+  assert.match(plat, /LE FICHIER SE PUBLIE TEL QUEL/,
+    'la consigne « tel quel » a disparu — la sortie du 365 est sans objet');
+  assert.match(plat, /charge-la/,
+    'le SKILL ne dit plus comment satisfaire la contrainte de l\'outil : il nommait la '
+    + "contradiction sans la trancher, et un run s'est arrêté dessus");
+  assert.match(plat, /n'applique rien/,
+    'le SKILL ne dit plus que la passe de conception ne doit RIEN changer ici');
+  assert.match(plat, /elle fausserait le relevé/,
+    'le SKILL ne dit plus POURQUOI — sans la raison, la consigne se lit comme un caprice');
+});

@@ -1651,10 +1651,26 @@ le rapport publie un périmètre amputé sous un bandeau que personne ne lit. É
 l'exclusion et sa raison dans le rapport : « références générées hors
 `functional`, flow X rouge sur <défaut>, inscrit en dette ».
 
+### La contre-épreuve visuelle — le seul temps qui prouve que la comparaison MESURE
+
+⚠️ **Ce passage n'avait pas de titre, et deux runs ne l'ont pas trouvé.** Il
+vivait dans un aparté sur le budget device : l'un a failli le sacrifier faute de
+le voir, l'autre ne l'a trouvé qu'en cherchant « contre-épreuve » sur tout le
+fichier. Ce qui prouve qu'une dimension mesure ne peut pas dépendre d'un grep.
+
 ⚠️ **Et prouve-la en trois temps**, la première fois : générer, comparer (vert),
 puis **remplacer une référence par un aplat AUX DIMENSIONS EXACTES de celle
 qu'il remplace** et vérifier que celle-là seule rougit. Sans le troisième temps,
 le vert du deuxième ne dit pas si la comparaison mesure ou si elle dort.
+
+⚠️ **ET IL FAUT SAVOIR FABRIQUER L'APLAT SANS OUTIL D'IMAGE.** Ni ImageMagick ni
+PIL ne sont garantis sur un poste, et un run s'est arrêté là — il a fini par
+écrire un générateur de PNG en Python pur. Ce n'est pas au run de le réinventer :
+un PNG d'une seule couleur tient en quelques lignes, sans dépendance, parce que
+`zlib` et `struct` suffisent à écrire les trois morceaux d'un PNG minimal
+(`IHDR`, `IDAT`, `IEND`). Relis les dimensions de la référence que tu remplaces
+— elles se lisent dans les 24 premiers octets du fichier — et écris l'aplat à
+CETTE taille, sinon Maestro échoue sur la comparaison au lieu de la mesurer.
 
 Le troisième temps ne demande pas une passe complète, et le geste est **ici**
 parce que c'est ici qu'il change quelque chose — un run l'a cherché à une
@@ -1995,8 +2011,16 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
 7. **LE FICHIER SE PUBLIE TEL QUEL — ne le réécris pas, ne le « redesigne »
    pas.** L'outil de publication peut réclamer une passe de conception avant
    d'écrire une page ; elle ne s'applique pas ici, et un run s'est arrêté sur
-   cette contradiction sans savoir laquelle des deux consignes suivre. La raison
-   n'est pas une préférence esthétique :
+   cette contradiction sans savoir laquelle des deux consignes suivre.
+
+   ⚠️ **VOICI COMMENT ON EN SORT, parce que la nommer ne suffisait pas** : si
+   l'outil exige la passe de conception, **charge-la** — la contrainte est
+   satisfaite par le chargement, pas par une retouche — puis **n'applique rien**
+   et dis-le. Ce n'est pas un contournement : cette passe existe pour une page
+   qu'on AUTEURE, et celle-ci est GÉNÉRÉE par le script qu'on est en train de
+   mesurer. La retoucher ne l'embellirait pas, elle fausserait le relevé.
+
+   La raison n'est pas une préférence esthétique :
 
    - la page **porte son historique** dans un `<script type="application/json">`
      que `--previous` relit ; la réécrire le détruit, et la perte est silencieuse ;

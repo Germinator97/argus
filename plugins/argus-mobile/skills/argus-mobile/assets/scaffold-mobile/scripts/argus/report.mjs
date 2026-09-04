@@ -541,8 +541,16 @@ export function consignePublication(url, plateforme) {
     ];
   }
   return [
-    `première publication : reporte l'URL obtenue dans argus.mobile.yaml → `
-    + `artifact.url.${plateforme} — une page PAR PLATEFORME, pas une pour les deux`,
+    // ⚠️ « PREMIÈRE PUBLICATION » AFFIRMAIT CE QU'ON NE PEUT PAS SAVOIR. Une URL
+    // absente de la config ne dit rien de l'existence d'une page : elle dit
+    // qu'on ne l'a pas ENREGISTRÉE. Un run a trouvé, par la liste des artefacts,
+    // une page publiée deux jours plus tôt là où ce message annonçait une
+    // première fois — et c'est le mécanisme du défaut le plus grave de ce
+    // chantier, une publication qui atterrit sur la page d'un autre run.
+    `aucune URL enregistrée pour ${plateforme} — ce qui ne veut PAS dire qu'aucune `
+    + `page n'existe. Cherche-la AVANT de publier (liste des artefacts, titre `
+    + `identique), puis reporte l'URL dans argus.mobile.yaml → artifact.url.${plateforme} `
+    + `— une page PAR PLATEFORME, pas une pour les deux`,
     "et VÉRIFIE qu'elle n'a pas remplacé une page existante : relis le titre de"
     + " l'URL rendue, ou compare la liste des artefacts avant/après. Une publication"
     + ' sans URL est rapprochée par CHEMIN DE FICHIER, pas par intention',
@@ -861,6 +869,17 @@ function main() {
   }
 
   const notRun = parts.filter((p) => p.state !== 'ok');
+  // ⚠️ LE BANDEAU « PARTIEL » VIT DANS LA PAGE, ET LA PAGE N'EST PAS CE QU'ON
+  // REGARDE EN PREMIER. Un run a produit un rapport depuis une passe filtrée,
+  // et ne s'en est aperçu qu'en LISANT le JSON avant de publier — le terminal,
+  // lui, annonçait un compte de findings comme n'importe quel autre run. Le
+  // chiffre était exact et la conclusion qu'il invitait à tirer, fausse.
+  if (String(run?.scope ?? 'complet') !== 'complet') {
+    warn(`ce rapport vient d'un run « ${run.scope} », PAS d'une passe complète.`);
+    warn('    Les dimensions que le filtre a écartées ne sont pas mesurées : elles sont ABSENTES,');
+    warn('    et le compte ci-dessous ne décrit qu\'une partie. Rejoue `make argus-run` avant de');
+    warn('    conclure — c\'est notamment le cas après la contre-épreuve visuelle.');
+  }
   log(`${findings.length} finding(s) · gate ${gate} · ${parts.length - notRun.length}/${parts.length} dimension(s) exécutée(s)`);
   for (const part of notRun) log(`  ○ ${part.label} : ${part.reason}`);
   log(`rapport : ${htmlPath}`);
