@@ -1269,6 +1269,33 @@ MUTATIONS = [
      "- **Hygiène** : ce qu'un run crée en"),
     # 373 — l'autre sens : la SOURCE devient illisible. Le garde ne doit pas
     # conclure « tout va bien » parce qu'il n'a plus rien à comparer.
+    # 374 — le verdict des acquittements périmés retourne dans un producteur,
+    # qui ne voit que la moitié des findings et accuse donc ceux de son voisin.
+    ("report", "374 · les acquittements périmés se jugent sur une MOITIÉ",
+     "  const { perimes } = acquitter(findings, config);",
+     "  const { perimes } = acquitter(findings.filter((f) => String(f.id ?? '').startsWith('QAM-SEC')), config);"),
+    # 375 — le flow mort redevient éligible au pire temps de démarrage.
+    ("run", "375 · un flow MORT peut redevenir le pire temps de démarrage",
+     "  const mesures = samples.filter((s) => String(s.status ?? '').toUpperCase() !== 'FAILED');",
+     "  const mesures = samples.slice();"),
+    # 376 — le fichier Firebase redevient cherché à un chemin littéral, donc
+    # invisible dès qu'un flavor le range dans son propre source set.
+    ("config", "376 · le fichier Firebase redevient cherché à UN chemin",
+     "    quoi: { sous: 'android/app', nom: 'google-services.json' },",
+     "    quoi: 'android/app/google-services.json',"),
+    # 377 — la seule issue praticable disparaît de la liste.
+    ("yamlconf", "377 · la quatrième issue (goto.yaml) n'est plus nommée",
+     "  #   · ✅ LA BONNE : mets la connexion dans `_subflows/goto.yaml`, qui est À TOI",
+     "  #   · l'inclure — une reconnexion de plus par run, la plus simple ; À TOI"),
+    # 378 — la contradiction visual+reachedBy cesse d'être câblée : la fonction
+    # reste juste, plus personne ne l'appelle.
+    ("config", "378 · la contradiction visuelle n'est plus câblée",
+     "    const impossibles = visuelsInatteignables(config, source);",
+     "    const impossibles = [];"),
+    # 379 — le skill promet à nouveau que hideKeyboard est inoffensif ailleurs.
+    ("skill", "379 · hideKeyboard redevient « inoffensif sur Android »",
+     "⚠️ **ET « INOFFENSIF SUR ANDROID » ÉTAIT FAUX.**",
+     "Sur Android le même appel est inoffensif — et voici pourquoi."),
     # 373 quater — la tête du backlog cesse d'annoncer ses points ouverts, et
     # laisse donc la phrase de vacuité de la passe du matin décrire le présent.
     ("backlog", "373 quater · la tête du backlog n'annonce plus ses points ouverts",
