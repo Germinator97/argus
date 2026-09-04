@@ -5075,6 +5075,42 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+Les points **366 à 372** sont fermés le 04/09/2026 — backlog vide pour la
+**quarante-sixième** fois. Le run 49 rejouait le 48 sur l'**API locale**, pour
+lever l'erreur de cadrage qui avait tué son verdict device.
+
+🔴 **L'ÉTAGE 2 N'A PAS TOURNÉ NON PLUS, et cette fois la cause était la mienne.**
+`INSTALL_FAILED_INSUFFICIENT_STORAGE` : j'avais laissé `/data` à 92 % exprès,
+pour exercer le 362 écrit le matin même. Il l'a été — et l'émulateur était
+irrécupérable : neuf sessions de mise à jour Mainline que `pm install-abandon`
+refuse de toucher (`Session does not belong to uid 2000`). Diagnostic complet et
+honnête de l'agent. ⚠️ Son compte rendu ne dit pas s'il a essayé d'installer la
+**release** (63,7 Mo contre 127,8), la sortie que `device-matrix` prescrit et
+que le run 48 avait employée — reste à vérifier.
+
+🔴 **367 — UN RUN INTERROMPU SE RENDAIT EN VERT.** `run.mjs` écrit
+`incomplete: true` **exprès**, pour qu'on ne lise pas ses chiffres ; `report.mjs`
+ne regardait ni ce champ ni `status`, et la page annonçait « Parcours Maestro —
+exécutée, aucun finding » sur **six dimensions device dont aucun flow n'avait
+démarré**. Pire : le gate ne se calculait que sur les sévérités, donc un run qui
+n'a pas tourné rendait **`pass`** dès que les autres relevés étaient propres.
+Celui-ci n'a échoué que parce que `sec` avait trouvé autre chose.
+📌 C'est le stub sur lequel je m'appuyais la veille en disant « sans lui j'aurais
+conclu à un run vert ». La page me l'aurait dit **en vert**.
+
+⚠️ **366 — ET MON PROPRE CONTRÔLEUR AVAIT L'ANGLE MORT QU'IL SURVEILLE.** Il
+dérivait le prochain numéro libre des seuls titres `### n.`, or un point clos
+sans passer par le backlog n'en a pas : il annonçait 347 quand le fichier disait
+366, et rendait ✔ sur un compteur périmé.
+
+Les cinq autres (**368-372**) : deux schémas au vocabulaire commun sans champs
+communs (26 erreurs de compilation) · une app authentifiée a **deux racines** ·
+le **scan QR** qu'aucun flow ne peut produire · l'**acquittement** qui manquait
+aux findings de sécurité, avec son expiration · et une **parité** de plateforme
+qu'un contrôle honorait et pas son voisin.
+
+**Prochain numéro libre : 373.**
+
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
 47 · le même, iOS ; 48 · terrain avec API, Android), **treize constats**, et
