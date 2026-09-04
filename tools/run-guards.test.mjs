@@ -58,6 +58,7 @@ import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/a
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
@@ -9043,4 +9044,117 @@ test("un run INTERROMPU ne peut pas se rendre en vert (367)", () => {
     'un rapport COMPLET ne se rend plus comme exécuté — le remède a coupé trop large');
   assert.doesNotMatch(complet, /INTERROMPUE/,
     'un rapport complet est marqué interrompu — le remède accuse un run sain');
+});
+
+test('ArgusScreen dit ce qui n\'existe QUE dans le YAML (368)', () => {
+  const types = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_types.dart'), 'utf8');
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+  // ⚠️ DÉRIVÉ DES DEUX CÔTÉS : le paragraphe n'a de sens que tant que ces
+  // champs existent dans le YAML et PAS sur la classe. S'ils convergeaient un
+  // jour, ce garde tomberait au lieu de veiller sur une mise en garde périmée.
+  for (const cle of ['start:', 'visual:', 'visualCropOn:']) {
+    assert.ok(yaml.includes(cle), `${cle} a disparu du YAML — le paragraphe du 368 est périmé`);
+  }
+  const champs = [...types.matchAll(/this\.([a-zA-Z]+)\s*[,=]/g)].map((m) => m[1]);
+  for (const absent of ['start', 'visual', 'visualCropOn']) {
+    assert.ok(!champs.includes(absent),
+      `ArgusScreen porte maintenant « ${absent} » — les deux schémas ont convergé, mets ce garde à jour`);
+  }
+  // ⚠️ LES MARQUEURS `///` D'ABORD : aplatir les blancs ne suffit pas sur du
+  // dartdoc, ils restent AU MILIEU des phrases. Même piège que le bloc commenté
+  // du cadrage (353), rencontré deux fois dans la même journée.
+  const doc = types.replace(/^[ \t]*\/\/\/[ \t]?/gm, '').replace(/\s+/g, ' ');
+  assert.match(doc, /PARTAGENT LEUR VOCABULAIRE SANS PARTAGER LEURS CHAMPS/,
+    "le dartdoc ne prévient plus : un run a écrit ces trois champs dans harness.dart en toute "
+    + 'logique, puisqu\'il venait de les remplir dans le YAML — 26 erreurs de compilation');
+});
+
+test('le SKILL dit qu\'une app authentifiée a DEUX racines (369)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  assert.match(plat, /ARGUS_ANCHOR_HOME` N'EN DÉSIGNE QU'UNE/,
+    "le SKILL ne dit plus que la variable porte l'écran de DÉPART et pas l'accueil authentifié");
+  // L'issue, sans quoi nommer le piège ne sert à rien.
+  assert.match(plat, /auth\.anchors\.success/,
+    "le SKILL ne dit plus OÙ vit l'accueil authentifié — le lecteur cherchera une variable qui n'existe pas");
+  assert.match(plat, /trois pas plus loin|trois pas/,
+    'le SKILL ne dit plus ce que coûte la confusion : un échec qui accuse une ancre correcte');
+});
+
+test('le SKILL nomme le geste que Maestro ne peut pas produire (370)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const plat = skill.replace(/\s+/g, ' ');
+  // ⚠️ DÉRIVÉ : ce cas n'a de sens qu'à CÔTÉ de celui du geste, dont il est le
+  // cran suivant. Si le cas du geste disparaissait, celui-ci flotterait.
+  assert.match(plat, /DERRIÈRE UN GESTE/, 'le cas du geste a disparu — le 370 n\'a plus de voisin');
+  assert.match(plat, /MAESTRO NE PEUT PAS PRODUIRE DU TOUT/,
+    "le SKILL ne distingue plus le geste qu'on peut scripter de celui qu'on ne peut pas : "
+    + 'un scan de QR ne se règle pas à l\'étage 2, il sort des flows');
+  assert.match(plat, /ni shell ni système de fichiers/,
+    'le SKILL ne dit plus POURQUOI — sans la cause, on cherche un contournement qui n\'existe pas');
+  assert.match(plat, /l'étage 1 le monte quand même/,
+    "le SKILL ne dit plus que l'écran reste mesurable sans device — il se lirait comme hors périmètre");
+});
+
+test('un finding de sécurité peut être ACQUITTÉ, et l\'acquittement expire (371)', () => {
+  // ⚠️ GARDE QUI APPELLE. `status: 'open'` était codé en dur : un finding jugé
+  // inerte pour le binaire analysé réapparaissait indéfiniment, et un signal
+  // qu'on ne peut pas faire taire en ayant raison finit ignoré — avec ses voisins.
+  const f = [{ id: 'A', severity: 'critical', status: 'open' }, { id: 'B', severity: 'major', status: 'open' }];
+  const r = acquitter(f, { security: { acknowledged: [{ id: 'A', why: 'inerte en release' }, { id: 'Z', why: 'x' }] } });
+  assert.equal(r.findings[0].status, 'acknowledged', 'un finding acquitté doit changer de statut');
+  assert.equal(r.findings[0].acknowledgedWhy, 'inerte en release',
+    "l'acquittement ne porte plus sa raison — un motif perdu se relit comme un oubli");
+  assert.equal(r.findings[1].status, 'open', 'un finding NON acquitté ne doit pas bouger');
+
+  // ⚠️ L'EXPIRATION, et c'est elle qui en fait un relevé plutôt qu'une
+  // permission : un acquittement qui ne correspond plus à rien se DIT.
+  assert.deepEqual(r.perimes, ['Z'],
+    "un acquittement qui ne correspond à aucun finding n'est plus signalé : la liste survivrait "
+    + 'à ce qu\'elle décrit');
+
+  // ⚠️ ET LA RAISON EST OBLIGATOIRE : sans elle, l'acquittement ne compte pas.
+  const sansRaison = acquitter(f, { security: { acknowledged: [{ id: 'A' }] } });
+  assert.equal(sansRaison.findings[0].status, 'open',
+    'un acquittement SANS raison fait taire le finding — il deviendrait une permission muette');
+
+  // L'autre moitié : une config sans la clé ne doit rien changer.
+  assert.deepEqual(acquitter(f, {}).findings, f, 'une config sans acquittement modifie les findings');
+});
+
+test('le contrôle des fichiers de config honore platforms, comme ses voisins (372)', () => {
+  // ⚠️ UNE PARITÉ MANQUÉE, pas un oubli isolé : deux contrôles voisins de
+  // sec.mjs se suspendent proprement quand leur plateforme n'est pas déclarée
+  // (« non jugé — l'Info.plist iOS »), pendant que celui-ci jugeait un
+  // GoogleService-Info.plist sur un run android-only et rendait un `major` que
+  // personne ne pouvait corriger dans ce périmètre.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-cfg-'));
+  try {
+    mkdirSync(join(dir, 'ios/Runner.xcodeproj'), { recursive: true });
+    writeFileSync(join(dir, 'ios/Runner/../Runner.xcodeproj/project.pbxproj'), 'rien ici', 'utf8');
+    mkdirSync(join(dir, 'ios/Runner'), { recursive: true });
+    writeFileSync(join(dir, 'ios/Runner/GoogleService-Info.plist'), '<plist/>', 'utf8');
+
+    const ios = configNonEmbarquee(dir, { platforms: ['ios'] }).map((o) => o.id);
+    assert.ok(ios.includes('firebase-ios'),
+      'le contrôle ne voit plus le fichier iOS alors que la plateforme est déclarée');
+
+    const android = configNonEmbarquee(dir, { platforms: ['android'] }).map((o) => o.id);
+    assert.ok(!android.includes('firebase-ios'),
+      "un run android-only juge encore un fichier iOS : il rend un finding hors de son périmètre, "
+      + "que personne ne peut corriger — pendant que le contrôle d'à côté, sur le MÊME fichier, "
+      + 'se suspend correctement');
+
+    // ⚠️ L'AUTRE MOITIÉ : une règle SANS plateforme reste jugée partout. C'est
+    // le défaut sûr — une règle qu'on oublie de qualifier ne doit pas
+    // disparaître en silence.
+    mkdirSync(join(dir, 'assets'), { recursive: true });
+    writeFileSync(join(dir, 'assets/X.ttf'), 'ttf', 'utf8');
+    writeFileSync(join(dir, 'pubspec.yaml'), 'name: sonde\n', 'utf8');
+    assert.ok(configNonEmbarquee(dir, { platforms: ['android'] }).map((o) => o.id).includes('polices'),
+      'une règle sans plateforme a cessé d\'être jugée — le remède a coupé trop large');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

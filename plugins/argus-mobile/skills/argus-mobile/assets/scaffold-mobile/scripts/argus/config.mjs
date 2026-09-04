@@ -1364,9 +1364,53 @@ export function nomTechniqueEnTitre(root, config) {
  * silencieux sous des lignes sans valeur. On ne contrôle que ce qui échoue SANS
  * le dire.
  */
+/**
+ * Les findings de sécurité ACQUITTÉS, et ceux qui n'ont plus lieu de l'être.
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE. `sec.mjs` et `sca.mjs` codaient
+ * `status: 'open'` en dur : un finding jugé inerte pour le binaire analysé —
+ * un `usesCleartextTraffic` qui ne vit que dans le manifeste de DEBUG, vérifié
+ * absent du release — n'avait nulle part où être acté. Il réapparaissait
+ * identique à chaque run, indéfiniment. L'étage 1 a `known_issues.dart` ;
+ * l'étage sécurité n'avait rien, et un signal qu'on ne peut pas faire taire en
+ * ayant raison finit ignoré — avec ses voisins.
+ *
+ * ⚠️ ET CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ — même contrat que
+ * `known_issues.dart`. Un acquittement affirme que le finding EST ENCORE LÀ et
+ * qu'on l'assume. Le jour où il disparaît, l'acquittement devient **périmé** et
+ * se dit : sans ça, la liste survit à ce qu'elle décrit et se transforme en
+ * permission permanente.
+ *
+ * @param {any[]} findings @param {any} config
+ * @returns {{findings:any[], perimes:string[]}}
+ */
+export function acquitter(findings, config) {
+  const table = new Map(
+    (config?.security?.acknowledged ?? [])
+      .filter((a) => a && String(a.id ?? '').trim() !== '')
+      .map((a) => [String(a.id).trim(), String(a.why ?? '').trim()]),
+  );
+  const vus = new Set();
+  const sortie = (findings ?? []).map((f) => {
+    const why = table.get(String(f?.id ?? ''));
+    if (why === undefined) return f;
+    vus.add(String(f.id));
+    // ⚠️ La RAISON est obligatoire : un acquittement sans motif se relit dans
+    // six mois comme un oubli, et personne n'ose le retirer.
+    return {
+      ...f,
+      status: why === '' ? 'open' : 'acknowledged',
+      acknowledgedWhy: why,
+      ...(why === '' ? { suggestedFix: `${f.suggestedFix ?? ''}\n⚠️ acquittement SANS raison : il ne compte pas. Écris pourquoi.`.trim() } : {}),
+    };
+  });
+  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)) };
+}
+
 export const CONFIG_FILES = [
   {
     id: 'firebase-ios',
+    plateforme: 'ios',
     quoi: 'ios/Runner/GoogleService-Info.plist',
     cable: 'ios/Runner.xcodeproj/project.pbxproj',
     casse: "l'initialisation Firebase lève au lancement : l'app affiche son écran d'erreur "
@@ -1374,6 +1418,7 @@ export const CONFIG_FILES = [
   },
   {
     id: 'firebase-android',
+    plateforme: 'android',
     quoi: 'android/app/google-services.json',
     cable: ['android/app/build.gradle', 'android/app/build.gradle.kts'],
     motif: 'google-services',
@@ -1381,6 +1426,9 @@ export const CONFIG_FILES = [
   },
   {
     id: 'polices',
+    // ⚠️ Pas de `plateforme` : une police manquante casse partout. L'absence de
+    // clé vaut « toutes », et c'est le défaut SÛR — une règle qu'on oublie de
+    // qualifier continue d'être jugée, au lieu de disparaître en silence.
     quoi: { sous: 'assets', extensions: ['.ttf', '.otf'] },
     cable: 'pubspec.yaml',
     casse: 'la police retombe en SILENCE sur celle du système — aucune exception, aucun log, '
@@ -1400,7 +1448,15 @@ export const CONFIG_FILES = [
  * @param {string} root @param {any} config @returns {{id:string, fichier:string, cable:string, casse:string}[]}
  */
 export function configNonEmbarquee(root, config) {
-  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])];
+  // ⚠️ LE PÉRIMÈTRE DE PLATEFORME, ET C'ÉTAIT UNE PARITÉ MANQUÉE. Deux
+  // contrôles voisins de `sec.mjs` se suspendent proprement quand leur
+  // plateforme n'est pas dans `platforms` — « non jugé — l'Info.plist iOS » —
+  // pendant que celui-ci jugeait un `GoogleService-Info.plist` sur un run
+  // déclaré `android` seulement, et rendait un `major` que personne ne pouvait
+  // corriger dans ce périmètre. Le bon comportement existait à côté.
+  const plateformes = (config?.platforms ?? ['android', 'ios']).map(String);
+  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])]
+    .filter((r) => !r.plateforme || plateformes.includes(String(r.plateforme)));
   /** @type {{id:string, fichier:string, cable:string, casse:string}[]} */
   const orphelins = [];
 

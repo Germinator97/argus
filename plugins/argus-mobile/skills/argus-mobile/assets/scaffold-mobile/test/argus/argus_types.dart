@@ -21,6 +21,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Un écran à éprouver, tel qu'il se construit hors de l'application.
+///
+/// ⚠️ **CETTE CLASSE ET `screens[]` DE `argus.mobile.yaml` PARTAGENT LEUR
+/// VOCABULAIRE SANS PARTAGER LEURS CHAMPS.** `id`, `anchor`, `commands`,
+/// `displays` et `priority` existent des deux côtés et doivent coïncider —
+/// c'est voulu, et chaque champ le dit. Mais `start:`, `visual:` et
+/// `visualCropOn:` n'existent QUE dans le YAML : ils décrivent ce que fait
+/// l'étage 2 sur un device, dont cette classe ne sait rien.
+///
+/// Un run les a écrits ici en toute logique, puisqu'il venait de les remplir
+/// dans le YAML : **26 erreurs `undefined_named_parameter` d'un coup**. Le
+/// compilateur l'a dit tout de suite — c'est le seul cas de cette famille où
+/// rien ne se perd en silence —, mais le temps était passé.
+///
+/// Le seul champ de cette classe qui parle du device est [cropRoot], et il ne
+/// remplace pas `visualCropOn` : il DÉCLARE que cette racine en sert, pour que
+/// l'étage 1 puisse mesurer sa position.
 class ArgusScreen {
   const ArgusScreen({
     required this.id,

@@ -813,8 +813,14 @@ function main() {
   // avait trouvé autre chose — sans ça, la page aurait affiché un vert franc
   // sur du néant. On ne peut pas conclure « ça passe » sur ce qu'on n'a pas mesuré.
   const interrompues = parts.filter((p) => p.state === 'interrompu');
+  // ⚠️ UN FINDING ACQUITTÉ NE FAIT PAS ÉCHOUER LE GATE — c'est tout l'objet de
+  // l'acquittement. Mais il reste COMPTÉ et AFFICHÉ : un signal qu'on assume ne
+  // se supprime pas, il change de statut. Sans quoi l'acquittement deviendrait
+  // une suppression, et la page mentirait par omission.
+  const bloquants = Object.fromEntries(SEVERITIES.map((s) => [s,
+    findings.filter((f) => f.severity === s && f.status !== 'acknowledged').length]));
   const gate = interrompues.length > 0
-    || SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';
+    || SEVERITIES.some((s) => failOn.has(s) && bloquants[s] > 0) ? 'fail' : 'pass';
   const brut = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };
   // `report.json` ne porte pas le nom du projet — il décrit un run, pas un
   // dépôt. On le prend dans la config, sans écraser celui qui viendrait de là.

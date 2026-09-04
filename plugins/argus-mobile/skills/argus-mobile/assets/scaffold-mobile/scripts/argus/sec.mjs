@@ -35,7 +35,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, platformFor, projectBuildCmd,
-  configNonEmbarquee, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
+  acquitter, configNonEmbarquee, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /**
@@ -834,6 +834,12 @@ function main() {
   else nonJuges.push('le manifeste Android (android n\'est pas dans platforms)');
   if (plateformes.includes('ios')) sourceFindings.push(...auditIosPlist(root));
   else nonJuges.push('l\'Info.plist iOS (ios n\'est pas dans platforms)');
+  // ⚠️ Les fichiers de config suivent la même règle depuis le 372 : ce qui n'est
+  // pas jugé se DIT, sinon un audit absent ressemble à un audit qui n'a rien
+  // trouvé. `configNonEmbarquee` filtre déjà ; ici on le rend visible.
+  for (const p of ['android', 'ios']) {
+    if (!plateformes.includes(p)) nonJuges.push(`les fichiers de configuration ${p} (${p} n'est pas dans platforms)`);
+  }
   for (const quoi of nonJuges) warn(`non jugé — ${quoi}`);
 
   let binaryFindings = [];
@@ -878,7 +884,15 @@ function main() {
     warn('  puis relance ce scan — sinon la dimension est verte pour la mauvaise raison.');
   }
 
-  const findings = [...sourceFindings, ...binaryFindings];
+  // ⚠️ L'ACQUITTEMENT, ET SON EXPIRATION. Un finding jugé inerte pour CE binaire
+  // doit pouvoir être acté, sinon il réapparaît indéfiniment et on cesse de lire
+  // la dimension entière. Mais un acquittement qui survit à ce qu'il décrit est
+  // une permission permanente : on dit donc aussi ceux qui ne correspondent plus
+  // à rien.
+  const { findings, perimes } = acquitter([...sourceFindings, ...binaryFindings], config);
+  for (const id of perimes) {
+    warn(`acquittement PÉRIMÉ : « ${id} » n'est plus rapporté — retire-le de security.acknowledged.`);
+  }
   writeJson(reportPath, {
     platform, root,
     levels: {

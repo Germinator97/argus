@@ -474,6 +474,29 @@ auth:
 # ⚠️ Uniquement sur TES propres builds. Jamais de reverse-engineering d'une app
 # tierce : c'est la frontière, elle n'est pas négociable.
 security:
+  # ── Les findings de sécurité que tu ASSUMES ────────────────────────────────
+  # ⚠️ CE N'EST PAS UNE LISTE D'EXCEPTIONS, C'EST UN RELEVÉ — même contrat que
+  # `test/argus/known_issues.dart`. Une ligne ici affirme que le finding EST
+  # ENCORE LÀ et que tu l'assumes ; le jour où il disparaît, le scan le dit
+  # (« acquittement PÉRIMÉ ») et tu la retires. Sans cette expiration, la liste
+  # survivrait à ce qu'elle décrit et deviendrait une permission permanente.
+  #
+  # ⚠️ POURQUOI CETTE CLÉ EXISTE. `sec.mjs` et `sca.mjs` codaient `status:
+  # 'open'` en dur : un finding jugé inerte pour le binaire analysé — un
+  # `usesCleartextTraffic` qui ne vit que dans le manifeste de DEBUG, vérifié
+  # absent du release — n'avait nulle part où être acté, et réapparaissait à
+  # chaque run. Un signal qu'on ne peut pas faire taire en ayant raison finit
+  # ignoré, et il emmène ses voisins.
+  #
+  # Un acquittement ne SUPPRIME rien : le finding reste compté et affiché, avec
+  # sa raison, il cesse seulement de faire échouer le gate. Et la raison est
+  # OBLIGATOIRE — sans elle l'acquittement ne compte pas, parce qu'un motif vide
+  # se relit dans six mois comme un oubli que personne n'ose retirer.
+  acknowledged: []
+  #   - id: QAM-SEC-CLEAR
+  #     why: le drapeau vit dans src/debug/AndroidManifest.xml, jamais fusionné en
+  #          release — vérifié par aapt2 dump badging sur l'APK publié
+
   # Permissions attendues. Toute permission présente hors de cette liste est un
   # finding (permission excessive).
   #

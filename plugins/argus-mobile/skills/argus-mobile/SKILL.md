@@ -1044,6 +1044,19 @@ Ce qu'il faut faire, et ce n'est pas d'insister :
 - si le budget device ne le permet pas, **c'est une dette et elle s'inscrit** :
   l'ancre reste posée dans le code, elle ne se retire pas.
 
+⚠️ **ET UN CRAN PLUS LOIN : LE GESTE QUE MAESTRO NE PEUT PAS PRODUIRE DU TOUT.**
+Un swipe ou un appui long, il sait les faire — c'est le cas ci-dessus, qui se
+règle à l'étage 2. Un **scan de QR ou de code-barres**, non : sa sandbox JS n'a
+ni shell ni système de fichiers, donc rien ne peut pousser une image dans la
+caméra. L'écran existe, l'ancre est juste, et aucun flow ne l'atteindra jamais.
+
+Ce n'est pas « sous le pli », ni « derrière un geste » : c'est **hors de portée
+de l'outil**, et ça se déclare comme tel — l'écran sort des flows, sa raison
+s'écrit dans `goto.yaml` à côté des autres exclusions, et l'étage 1 le monte
+quand même, puisque lui n'a pas besoin de caméra. Un run l'a découvert et l'a
+documenté lui-même ; le cas est fréquent — paiement, livraison, contrôle
+d'accès en dépendent tous.
+
 ⚠️ **Le même paquet en pose souvent DEUX, à deux niveaux.** `flutter_slidable`
 donne aussi le piège du composant qui construit son propre `Expanded`
 (`SlidableAction`), traité plus haut. Trouver l'un ne dispense pas de l'autre.
@@ -1261,6 +1274,17 @@ second facteur dans `password` et l'a écrit à côté — c'est la bonne répon
 d'avoir trouvé cette limite : elle était écrite en toutes lettres dans le fichier
 qu'il éditait, et absente d'ici. Un lecteur qui planifie depuis ce document ne
 peut pas deviner ce qui n'y est pas — d'où ce paragraphe.
+
+⚠️ **ET UNE APP AUTHENTIFIÉE A DEUX RACINES, DONT `ARGUS_ANCHOR_HOME` N'EN
+DÉSIGNE QU'UNE.** Cette variable porte l'ancre de l'écran de DÉPART — celui que
+`launch-clean.yaml` attend après un `clearState`, donc l'écran de connexion.
+L'accueil **authentifié**, lui, n'a pas de variable : il est l'`auth.anchors.success`
+de la table ci-dessus, et c'est celui-là qu'un flow métier veut atteindre.
+
+Confondre les deux fait écrire des branches `goto` qui ramènent à l'écran de
+connexion en croyant revenir à l'accueil — l'étape suivante échoue alors sur une
+ancre parfaitement correcte, trois pas plus loin. Un run l'a appris par la
+pratique et l'a écrit dans SON `goto.yaml`, donc après l'avoir payé.
 
 ⚠️ **`screens[]` se remplit avec la table d'ancres de §2c-bis, pas en relisant le
 code.** Si tu reprends un chantier commencé ailleurs et que cette table n'existe

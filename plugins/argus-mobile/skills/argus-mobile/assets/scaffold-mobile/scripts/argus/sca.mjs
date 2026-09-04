@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
-  missingToolMessage, sh, warn, writeJson,
+  acquitter, missingToolMessage, sh, warn, writeJson,
 } from './config.mjs';
 
 /** Bandes CVSS v3, du plus grave au moins grave. */
@@ -237,15 +237,21 @@ function main() {
     });
   }
 
+  // ⚠️ Même contrat que `sec.mjs` : un finding peut être acquitté avec sa
+  // raison, et un acquittement qui ne correspond plus à rien se DIT.
+  const { findings: acquittes, perimes } = acquitter(findings, config);
+  for (const id of perimes) {
+    warn(`acquittement PÉRIMÉ : « ${id} » n'est plus rapporté — retire-le de security.acknowledged.`);
+  }
   writeJson(reportPath, {
     root, failOn, cve,
     outdated: { scanned: outdated.ok, count: outdated.outdated.length, packages: outdated.outdated, why: outdated.why },
-    findings,
+    findings: acquittes,
   });
 
   const counts = ['blocker', 'critical', 'major', 'minor', 'info']
-    .map((s) => `${findings.filter((f) => f.severity === s).length} ${s}`).join(' · ');
-  log(`${cve.scanned ? 'CVE scannées' : 'CVE NON scannées'} · ${findings.length} finding(s) — ${counts}`);
+    .map((s) => `${acquittes.filter((f) => f.severity === s).length} ${s}`).join(' · ');
+  log(`${cve.scanned ? 'CVE scannées' : 'CVE NON scannées'} · ${acquittes.length} finding(s) — ${counts}`);
   log(`rapport : ${reportPath}`);
   if (requireTools && !cve.scanned) {
     err('--require-tools : la dimension CVE n\'a pas été exécutée, le résultat ne peut pas être vert.');
