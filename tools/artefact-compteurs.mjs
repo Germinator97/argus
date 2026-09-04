@@ -187,8 +187,18 @@ export function dernierPointDu(backlog) {
   // est lu comme un point n° 2 et le maximum devient faux dans l'autre sens.
   const numeros = [...backlog.matchAll(/^### (\d+)(?:-(\d+))?\.\s/gm)]
     .map((m) => Number(m[2] ?? m[1]));
-  if (numeros.length === 0) throw new Error('dernierPointDu : aucun titre de point trouvé dans le backlog');
-  return Math.max(...numeros);
+  // ⚠️ DEUX SOURCES, ET LE MAXIMUM DES DEUX. Les titres seuls ne suffisent
+  // plus : un point peut être clos sans en avoir jamais eu, quand il va du
+  // compte rendu d'un run au correctif sans transiter par le backlog. C'est ce
+  // qui est arrivé aux points 347-365 — le contrôleur annonçait « prochain
+  // libre 347 » alors que le fichier disait 366, et il rendait ✔ sur un
+  // compteur périmé. Un outil qui garde des nombres dérivés doit dériver du
+  // TOTAL de ce qui les établit, pas d'une seule de leurs traces.
+  const annonces = [...backlog.matchAll(/Prochain numéro libre\s*:\s*(\d+)/g)]
+    .map((m) => Number(m[1]) - 1);
+  const tous = [...numeros, ...annonces];
+  if (tous.length === 0) throw new Error('dernierPointDu : aucun titre de point ni annonce de numéro libre dans le backlog');
+  return Math.max(...tous);
 }
 
 /**

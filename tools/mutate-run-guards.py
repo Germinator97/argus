@@ -1156,6 +1156,11 @@ MUTATIONS = [
      "      if (screen.cropRoot && screen.anchor != null) {",
      "      if (false && screen.anchor != null) {"),
     # ── Le dépouillement des runs 47-48 (358-365) ───────────────────────────
+    ("artefact", "366 · le numéro libre redevient aveugle aux points clos sans titre",
+     "  const annonces = [...backlog.matchAll(/Prochain numéro libre\\s*:\\s*(\\d+)/g)]\n"
+     "    .map((m) => Number(m[1]) - 1);\n"
+     "  const tous = [...numeros, ...annonces];",
+     "  const tous = [...numeros];"),
     ("report", "358 · un scope partiel ne se dit plus au terminal",
      "  if (String(run?.scope ?? 'complet') !== 'complet') {",
      "  if (false) {"),

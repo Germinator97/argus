@@ -59,7 +59,7 @@ import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/s
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -8953,4 +8953,37 @@ test('le SKILL tranche la contradiction de publication, il ne la nomme plus seul
     'le SKILL ne dit plus que la passe de conception ne doit RIEN changer ici');
   assert.match(plat, /elle fausserait le relevé/,
     'le SKILL ne dit plus POURQUOI — sans la raison, la consigne se lit comme un caprice');
+});
+
+test('le prochain numéro libre se dérive des DEUX traces d\'un point (366)', () => {
+  // ⚠️ MON PROPRE OUTIL AVAIT L'ANGLE MORT QU'IL SURVEILLE. Il dérivait le
+  // numéro des seuls titres `### n.`, or un point peut être clos sans en avoir
+  // jamais eu — quand il va du compte rendu d'un run au correctif sans
+  // transiter par le backlog. Les points 347-365 sont dans ce cas : le
+  // contrôleur annonçait « 347 » quand le fichier disait 366, et il rendait ✔
+  // sur un compteur périmé. C'est exactement « un nombre qui décrit le contenu
+  // sans être dérivé de la donnée », dans l'outil écrit pour l'attraper.
+  assert.equal(dernierPointDu('### 12. un point\n### 30. un autre\n'), 30,
+    'les titres seuls doivent toujours compter');
+  assert.equal(dernierPointDu('### 12. un point\n\n**Prochain numéro libre : 366.**\n'), 365,
+    "une annonce de numéro libre doit compter, même sans titre — c'est le cas des points "
+    + 'clos sans passer par le backlog');
+  // Le MAXIMUM des deux, dans les deux sens.
+  assert.equal(dernierPointDu('### 400. un point\n**Prochain numéro libre : 366.**\n'), 400,
+    'un titre plus haut que l\'annonce doit gagner');
+  assert.equal(dernierPointDu('### 12. un point\n**Prochain numéro libre : 400.**\n'), 399,
+    'une annonce plus haute qu\'un titre doit gagner');
+
+  // ⚠️ ET LE REFUS DE CONCLURE : sans aucune des deux traces, on ne devine pas.
+  assert.throws(() => dernierPointDu('du texte sans point ni annonce'),
+    /aucun titre de point ni annonce/,
+    'un backlog sans trace de point doit faire ÉCHOUER le contrôle, pas rendre un nombre inventé');
+
+  // Sur le VRAI backlog, pas sur un montage : la valeur doit suivre le fichier.
+  const reel = readFileSync(join(RACINE, 'docs/backlog-terrain.md'), 'utf8');
+  const annonce = Number((reel.match(/Prochain numéro libre\s*:\s*(\d+)/) ?? [])[1]);
+  assert.ok(annonce > 0, 'le backlog n\'annonce plus de prochain numéro libre — mets ce garde à jour');
+  assert.ok(dernierPointDu(reel) + 1 >= annonce,
+    `le contrôleur dérive ${dernierPointDu(reel) + 1} alors que le backlog annonce ${annonce} : `
+    + 'il rendrait ✔ sur un compteur périmé de la page');
 });
