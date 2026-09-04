@@ -72,6 +72,23 @@ function collect(dir) {
     const at = data === null ? null : statSync(path).mtime;
     if (data === null) {
       parts.push({ ...source, state: 'absent', reason: `jamais lancé — ${source.how}`, findings: [], data: null, at });
+    // ⚠️ LE STUB D'UN RUN INTERROMPU SE LISAIT COMME UNE DIMENSION VERTE.
+    // `run.mjs` écrit `incomplete: true` + `status: 'interrompu'` quand un run
+    // meurt avant d'écrire son rapport — précisément pour qu'on ne lise pas ses
+    // chiffres. Ce fichier ne regardait ni l'un ni l'autre : le stub tombait
+    // dans la branche `ok`, et la page annonçait « Parcours Maestro — exécutée,
+    // aucun finding » sur SIX dimensions device dont AUCUN flow n'avait
+    // démarré. Le pire mode de panne d'un harnais de non-régression :
+    // silencieux, vert, et faux là où il promet le plus.
+    } else if (data.incomplete === true || data.run?.status === 'interrompu') {
+      parts.push({
+        ...source,
+        state: 'interrompu',
+        reason: String(data.why ?? "ce run s'est arrêté avant d'écrire son rapport"),
+        findings: data.findings ?? [],
+        data,
+        at,
+      });
     } else if (data.skipped || data.cve?.scanned === false) {
       parts.push({ ...source, state: 'skipped', reason: data.skipReason ?? data.cve?.why ?? 'non exécutée', findings: data.findings ?? [], data, at });
     } else {
@@ -165,9 +182,13 @@ const metric = (label, value, cls = '') =>
 /** @param {any[]} parts @returns {string} */
 function coverageRows(parts) {
   /** @type {Record<string,string>} */
-  const badges = { ok: 'good', skipped: 'warn', absent: 'bad' };
+  const badges = { ok: 'good', skipped: 'warn', absent: 'bad', interrompu: 'bad' };
   /** @type {Record<string,string>} */
-  const states = { ok: 'exécutée', skipped: 'sautée', absent: 'non lancée' };
+  // ⚠️ « interrompue » n'est PAS « sautée » : sautée veut dire qu'on a décidé de
+  // ne pas la mesurer, interrompue qu'on a essayé et qu'on ne sait pas.
+  const states = {
+    ok: 'exécutée', skipped: 'sautée', absent: 'non lancée', interrompu: 'INTERROMPUE',
+  };
   return parts.map((part) => {
     const badge = badges[part.state];
     const state = states[part.state];
@@ -785,7 +806,15 @@ function main() {
   const counts = Object.fromEntries(SEVERITIES.map((s) => [s, findings.filter((f) => f.severity === s).length]));
 
   const failOn = new Set(config.gate?.failOn ?? []);
-  const gate = SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';
+  // ⚠️ ET LE GATE, QUI EST LA MOITIÉ QUI COMPTE. Il ne se calculait que sur les
+  // sévérités : une dimension interrompue ne produit AUCUN finding, donc un run
+  // dont pas un flow n'a démarré rendait `pass` dès que les autres relevés
+  // étaient propres. Vécu : un run n'a échoué que parce que le scan de sécurité
+  // avait trouvé autre chose — sans ça, la page aurait affiché un vert franc
+  // sur du néant. On ne peut pas conclure « ça passe » sur ce qu'on n'a pas mesuré.
+  const interrompues = parts.filter((p) => p.state === 'interrompu');
+  const gate = interrompues.length > 0
+    || SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';
   const brut = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };
   // `report.json` ne porte pas le nom du projet — il décrit un run, pas un
   // dépôt. On le prend dans la config, sans écraser celui qui viendrait de là.

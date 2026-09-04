@@ -8987,3 +8987,60 @@ test('le prochain numéro libre se dérive des DEUX traces d\'un point (366)', (
     `le contrôleur dérive ${dernierPointDu(reel) + 1} alors que le backlog annonce ${annonce} : `
     + 'il rendrait ✔ sur un compteur périmé de la page');
 });
+
+test("un run INTERROMPU ne peut pas se rendre en vert (367)", () => {
+  // ⚠️ LE PIRE MODE DE PANNE D'UN HARNAIS DE NON-RÉGRESSION : silencieux, vert,
+  // et faux là où il promet le plus. `run.mjs` écrit `incomplete: true` +
+  // `status: 'interrompu'` quand un run meurt avant d'écrire son rapport —
+  // exprès, pour qu'on ne lise pas ses chiffres. `report.mjs` ne regardait NI
+  // l'un NI l'autre : le stub tombait dans la branche `ok`, la page annonçait
+  // « Parcours Maestro — exécutée, aucun finding » sur six dimensions device
+  // dont aucun flow n'avait démarré, et le gate — calculé sur les seules
+  // sévérités — rendait `pass` dès que les autres relevés étaient propres.
+  //
+  // ⚠️ GARDE DE BOUT EN BOUT : il LANCE report.mjs. Un garde qui lirait la
+  // source ne verrait pas le rendu, et c'est le rendu qui ment.
+  const script = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs');
+
+  const rendre = (rapport) => {
+    const dir = mkdtempSync(join(tmpdir(), 'argus-interrompu-'));
+    try {
+      writeFileSync(join(dir, 'argus.mobile.yaml'),
+        'app:\n  name: sonde\n  id: com.exemple\nartifact:\n  enabled: false\n', 'utf8');
+      mkdirSync(join(dir, 'argus-mobile-report'), { recursive: true });
+      writeFileSync(join(dir, 'argus-mobile-report/report.json'),
+        JSON.stringify(rapport), 'utf8');
+      execFileSync(process.execPath, [script], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      return readFileSync(join(dir, 'argus-mobile-report/report.html'), 'utf8');
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  };
+
+  const interrompu = rendre({
+    run: { platform: 'android', status: 'interrompu' },
+    incomplete: true,
+    why: "ce run s'est arrêté avant d'écrire son rapport",
+    summary: {}, findings: [],
+  });
+  assert.match(interrompu, /INTERROMPUE/,
+    "un rapport interrompu ne se signale plus comme tel : il se lit comme une dimension mesurée");
+  assert.match(interrompu, /gate fail">gate: fail|gate: fail/,
+    "un run interrompu rend un gate VERT — on ne peut pas conclure « ça passe » sur ce qu'on n'a pas mesuré");
+  assert.match(interrompu, /s'est arrêté avant d'écrire son rapport/,
+    "la page ne dit plus POURQUOI : « interrompue » sans raison envoie chercher au mauvais endroit");
+  // Et il ne doit plus être compté parmi les dimensions exécutées.
+  assert.doesNotMatch(interrompu, /Parcours Maestro<\/td>[\s\S]{0,400}?badge good">exécutée/,
+    'le parcours interrompu est toujours compté « exécutée »');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi un remède qui marque TOUT interrompu passerait :
+  // un rapport complet doit rester vert et pouvoir conclure.
+  const complet = rendre({
+    run: { platform: 'android', scope: 'complet' },
+    summary: {}, findings: [],
+    coverage: { declared: [], visited: [], notConfigured: [] },
+  });
+  assert.match(complet, /badge good">exécutée/,
+    'un rapport COMPLET ne se rend plus comme exécuté — le remède a coupé trop large');
+  assert.doesNotMatch(complet, /INTERROMPUE/,
+    'un rapport complet est marqué interrompu — le remède accuse un run sain');
+});
