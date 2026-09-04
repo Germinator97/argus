@@ -9277,3 +9277,40 @@ test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
   assert.equal(pointsOuvertsDu('on se souvient qu\'il fut **Ouvert le 01/01/2026** ce jour-là.\n'), 0,
     'une mention en cours de ligne est comptée comme une ouverture');
 });
+
+test('un backlog qui porte des points OUVERTS ne peut pas s\'annoncer vide (373)', () => {
+  // ⚠️ CE QUE LE COMPTEUR DE VIDAGES NE PEUT PAS VOIR. Il dérive du nombre de
+  // commits `docs: close` — des ÉVÉNEMENTS PASSÉS. Il reste donc exact quand un
+  // point vient d'être ouvert, et « le backlog s'est vidé quarante-six fois »
+  // est toujours vrai pendant que le fichier PORTE un point ouvert. La phrase de
+  // tête, elle, décrit l'état présent, et elle s'est périmée en une soirée sans
+  // que rien ne puisse le dire. Trouvé en regardant l'artefact, pas en exécutant.
+  const backlog = readFileSync(join(RACINE, 'docs/backlog-terrain.md'), 'utf8');
+  const ouverts = pointsOuvertsDu(backlog);
+
+  // La section qui décrit l'état PRÉSENT : de « Ce qui reste » au premier
+  // compteur, c'est-à-dire avant que le fichier ne repasse au récit des passes.
+  const debut = backlog.indexOf('## Ce qui reste');
+  assert.ok(debut !== -1, 'la section « Ce qui reste » a disparu du backlog : si elle a été '
+    + 'renommée, mets ce motif à jour, sinon ce garde ne garde plus rien');
+  const fin = backlog.indexOf('Prochain numéro libre', debut);
+  assert.ok(fin > debut, 'la section « Ce qui reste » ne mène plus à un compteur');
+  const tete = backlog.slice(debut, fin);
+
+  // DÉRIVÉ des deux côtés : le nombre annoncé en tête doit égaler celui que le
+  // CORPS porte. Citer « backlog vide » ferait un garde qui nomme ce qu'il
+  // interdit — et qui se périmerait à la première reformulation.
+  const annonce = tete.match(/(\d+)\s+POINTS?\s+OUVERTS?/i);
+  if (ouverts === 0) {
+    assert.equal(annonce, null,
+      'la tête de « Ce qui reste » annonce des points ouverts alors que le corps du fichier '
+      + 'n\'en porte aucun : retire l\'annonce, ou remets le marqueur d\'ouverture');
+    return;
+  }
+  assert.ok(annonce,
+    `le corps du backlog porte ${ouverts} point(s) OUVERT(s) et sa tête ne le dit pas — `
+    + 'elle laisse donc une phrase de vacuité décrire un fichier qui n\'est plus vide. '
+    + 'Écris « N POINT(S) OUVERT(S) » en tête de « Ce qui reste »');
+  assert.equal(Number(annonce[1]), ouverts,
+    `la tête annonce ${annonce[1]} point(s) ouvert(s), le corps en porte ${ouverts}`);
+});

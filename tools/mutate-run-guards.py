@@ -98,6 +98,10 @@ CIBLES = {
     # ÉCRITURES. Sa parité avec le web n'a aucun comportement à casser — c'est un
     # écart entre deux fichiers que personne ne lit côte à côte, et la §3 a
     # longtemps AFFIRMÉ cette parité en étant fausse.
+    # Depuis le 373 : le backlog lui-même. Sa tête décrit l'état PRÉSENT pendant
+    # que le compteur de vidages compte des événements PASSÉS — les deux peuvent
+    # se contredire sans que rien ne lève, et c'est arrivé pendant une soirée.
+    "backlog": ROOT / "docs/backlog-terrain.md",
     "methodo": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md",
     # Et l'autre moitié de la même parité : le skill WEB est la SOURCE dont le
     # garde dérive les conditions. Muter le mobile prouve qu'il voit un manque ;
@@ -1265,6 +1269,11 @@ MUTATIONS = [
      "- **Hygiène** : ce qu'un run crée en"),
     # 373 — l'autre sens : la SOURCE devient illisible. Le garde ne doit pas
     # conclure « tout va bien » parce qu'il n'a plus rien à comparer.
+    # 373 quater — la tête du backlog cesse d'annoncer ses points ouverts, et
+    # laisse donc la phrase de vacuité de la passe du matin décrire le présent.
+    ("backlog", "373 quater · la tête du backlog n'annonce plus ses points ouverts",
+     "🔴 **1 POINT OUVERT : le 373.**",
+     "📌 Rien de particulier à signaler ici."),
     ("methodoweb", "373 · le web cesse d'énoncer ses conditions d'écriture",
      "**ENV=staging** — écritures autorisées SI :",
      "**ENV=staging** — écritures autorisées sous conditions."),

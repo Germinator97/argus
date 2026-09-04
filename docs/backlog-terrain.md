@@ -5081,6 +5081,21 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **1 POINT OUVERT : le 373.** Le backlog n'est donc **pas vide** — c'est le
+premier point laissé ouvert en quarante-six passes.
+
+⚠️ **La phrase qui suit décrit la passe du MATIN**, et elle reste vraie à sa
+date. Elle ne décrit plus l'état présent, et pendant quelques heures elle a
+affirmé le contraire de ce que le fichier portait trente lignes plus bas. C'est
+le motif que ce document traque partout ailleurs : une affirmation juste le jour
+où on l'écrit, fausse le lendemain, et que **rien ne pouvait signaler** — le
+compteur de vidages compte des **événements passés**, donc il ne peut par
+construction rien dire de l'état *présent*. Un garde le tient désormais : le
+nombre annoncé ici doit égaler celui que le corps du fichier porte.
+📌 Trouvé par Germinator **en regardant l'artefact**, où le 373 s'affiche
+« ouvert » pendant que le backlog se disait vide. Sixième fois que la lecture
+d'un livrable trouve ce que l'exécution ne voit pas.
+
 Les points **366 à 372** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-sixième** fois. Le run 49 rejouait le 48 sur l'**API locale**, pour
 lever l'erreur de cadrage qui avait tué son verdict device.
