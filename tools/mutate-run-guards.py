@@ -82,6 +82,10 @@ CIBLES = {
     "ci": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml",
     # Depuis le run 34 : l'installeur cherchait un pilote de plateforme sans
     # l'autre, et rien ne mutait ce fichier.
+    # Depuis le run 46 : son dartdoc porte une PRESCRIPTION (ouvrir un
+    # échantillon avant d'accepter le lot), donc une prose gardée par un test —
+    # et un texte n'a aucun comportement à casser.
+    "dette": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
@@ -1117,6 +1121,32 @@ MUTATIONS = [
      '\telse echo "  (aucune dette à inscrire — la suite est verte, ou elle n\'a pas tourné)"; fi',
      '\tprintf \'%s\\n\' "$$dettes" \\\n'
      '\t  || echo "  (aucune dette à inscrire — la suite est verte, ou elle n\'a pas tourné)"'),
+    # ── Le run 46 (347-352) ─────────────────────────────────────────────────
+    ("goto", "347 · l'exemple retape l'onglet sans redescendre",
+     "#       - tapOn:\n#           id: detail_back\n#           optional: true\n"
+     "#           label: Refermer un écran poussé, s'il y en a un\n#       - tapOn:\n#           id: nav_profile",
+     "#       - tapOn:\n#           id: nav_profile"),
+    ("skill", "348 · rendre le widget public redevient le remède du cas gestuel",
+     "Rendre le widget public n'y change rien",
+     "Rendre le widget public suffit"),
+    ("prompts", "349 · le cadrage cesse de demander ce que devient la télémétrie",
+     "- <la TÉLÉMÉTRIE, si l'app en émet",
+     "- <la télémétrie, on verra plus tard"),
+    ("prompts", "350 · plus rien n'avertit que le clone rend la version publiée",
+     "⚠️ **Le clone rend le plugin PUBLIÉ, et ce n'est pas forcément celui que tu\ntestes.**",
+     "Le clone rend le plugin, et c'est très bien comme ça."),
+    ("dette", "351 · le lot de dettes s'accepte de nouveau sans échantillon",
+     "// ⚠️ AVANT D'ACCEPTER LE LOT, OUVRE-EN TROIS À LA MAIN.",
+     "// Colle ce que le message d'échec te donne."),
+    # ⚠️ Celle-ci vise le CÂBLAGE, pas la règle : le champ reste déclaré, le test
+    # cesse simplement de le lire. C'est le mode de panne qu'aucun test de
+    # comportement ne voit — le garde ne s'exécute pas, donc il ne rougit pas.
+    ("layout", "352 · layout_test cesse de lire cropRoot, le garde ne tourne plus",
+     "      if (screen.cropRoot && screen.anchor != null) {",
+     "      if (false && screen.anchor != null) {"),
+    ("config", "352 bis · le croisement recompte les cropRoot en COMMENTAIRE",
+     "  const src = dartSansCommentaires(brut);\n  // Un bloc par écran",
+     "  const src = brut;\n  // Un bloc par écran"),
 ]
 
 

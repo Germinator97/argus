@@ -8629,7 +8629,6 @@ test('le câblage du garde de recadrage se voit, drapeau posé ou non (352)', ()
   try {
     mkdirSync(join(dir, 'test/argus'), { recursive: true });
     writeFileSync(join(dir, 'test/argus/harness.dart'), [
-      "// cropRoot: true — cette MENTION en commentaire ne doit pas compter.",
       'const List<ArgusScreen> argusScreens = <ArgusScreen>[',
       "  ArgusScreen(id: 'a', anchor: 'a_root', cropRoot: true, build: _a),",
       "  ArgusScreen(id: 'b', anchor: 'b_root', build: _b),",
@@ -8647,13 +8646,21 @@ test('le câblage du garde de recadrage se voit, drapeau posé ou non (352)', ()
       "une racine de recadrage qui n'est la racine d'AUCUN écran n'a rien à déclarer — "
       + "l'exiger ferait rougir un projet sain");
 
-    // ⚠️ L'AUTRE MOITIÉ : le dartdoc de `cropRoot` cite `cropRoot: true` en
-    // l'expliquant. Un lecteur qui compte les commentaires trouve le drapeau
-    // partout et ne rapporte plus jamais rien.
-    writeFileSync(join(dir, 'test/argus/harness.dart'),
-      "// cropRoot: true\nArgusScreen(id: 'b', anchor: 'b_root', build: _b),", 'utf8');
+    // ⚠️ L'AUTRE MOITIÉ, ET MA PREMIÈRE VERSION ÉTAIT VACANTE — le harnais l'a
+    // dit. J'avais mis la mention en TÊTE DE FICHIER, donc avant le premier
+    // `ArgusScreen(`, c'est-à-dire dans le morceau que le découpage jette : le
+    // contrôle ne pouvait pas la voir, et casser le retrait des commentaires ne
+    // changeait rien. Le cas réel est le drapeau COMMENTÉ DANS la déclaration —
+    // quelqu'un qui le désactive sans le supprimer.
+    writeFileSync(join(dir, 'test/argus/harness.dart'), [
+      "ArgusScreen(id: 'b',",
+      "  anchor: 'b_root',",
+      '  // cropRoot: true — à réactiver quand cet écran servira de recadrage',
+      '  build: _b),',
+    ].join('\n'), 'utf8');
     assert.equal(recadragesNonGardes(dir, { visualCropOn: 'b_root' }).get('b_root'), false,
-      'un `cropRoot: true` en COMMENTAIRE compte comme le drapeau — le contrôle est vacant');
+      'un `cropRoot: true` COMMENTÉ compte comme le drapeau : le contrôle est vacant, '
+      + 'et il suffirait de désactiver le drapeau sans le supprimer pour perdre le garde');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
