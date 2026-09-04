@@ -8531,3 +8531,37 @@ test("l'exemple de goto MONTRE le retour qu'il prescrit, il ne le décrit pas se
     "le retour défensif arrive APRÈS le tap sur l'onglet : dans cet ordre il ne sert à rien, "
     + "puisque c'est le tap qui échoue quand l'app est sur un écran poussé");
 });
+
+test('le SKILL sépare la commande derrière un GESTE des deux cas voisins (348)', () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const harness = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart'), 'utf8');
+
+  // ⚠️ DÉRIVÉ DU CODE, pas cité. La table du SKILL oppose ce que l'étage 1 DIT
+  // dans chacun des trois cas ; le jour où le harnais cesse de produire ce
+  // message, elle ment, et c'est ce garde qui le dit — plutôt que de veiller
+  // sur une prose que rien ne relie à ce qu'elle décrit.
+  assert.match(harness, /ELLE EXISTE, mais plus bas/,
+    "le harnais ne rend plus « ELLE EXISTE, mais plus bas » — la table du SKILL est périmée");
+  assert.ok(skill.includes('ELLE EXISTE, mais plus bas'),
+    "le SKILL n'oppose plus le message du pli à celui de l'absence : les trois cas redeviennent indiscernables");
+
+  const i = skill.indexOf('DERRIÈRE UN GESTE');
+  assert.notEqual(i, -1, 'le SKILL ne traite plus la commande derrière un geste (348)');
+  // Le markdown est enveloppé à ~78 colonnes : on aplatit avant de chercher.
+  const bloc = skill.slice(i, i + 2400).replace(/\s+/g, ' ');
+
+  // Le cœur du cas : c'est CE QUI LE DISTINGUE du voisin qui compte, pas son
+  // existence. Un run a perdu du temps précisément parce que « rendre public »
+  // — le remède du voisin — ne s'applique pas ici.
+  assert.match(bloc, /Rendre le widget public n'y change rien/,
+    "le SKILL ne dit plus que rendre le widget public ne résout PAS ce cas-là : "
+    + "sans cette phrase, le lecteur applique le remède du cas voisin");
+
+  // Et les trois gestes prescrits, faute de quoi le cas est nommé sans issue.
+  assert.match(bloc, /sort de `commands:`/, 'le SKILL ne dit plus ce que devient la commande');
+  assert.match(bloc, /swipe/, "le SKILL ne dit plus que l'assertion passe à l'étage 2, qui FAIT le geste");
+  assert.match(bloc, /dette et elle s'inscrit/,
+    "le SKILL ne dit plus quoi faire quand le budget device ne suit pas — l'ancre se retirerait en silence");
+});

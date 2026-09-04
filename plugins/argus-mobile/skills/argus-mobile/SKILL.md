@@ -1014,6 +1014,40 @@ construire. Deux issues, dans cet ordre :
    remplaçant par un ersatz monté à la main : on mesurerait alors un widget que
    personne n'affiche.
 
+⚠️ **LA COMMANDE DERRIÈRE UN GESTE N'EST NI L'UN NI L'AUTRE.** Un tiroir
+d'action (`flutter_slidable`, un `Dismissible`, un menu au long-press) ne
+construit son contenu **que si le geste a eu lieu** : dans
+`flutter_slidable`, `Slidable`'s `actionPane` rend `null` tant que
+`controller.actionPaneType` vaut son défaut, donc `endActionPane` n'est monté
+nulle part. Le sous-arbre n'existe **sous aucun gabarit, à aucune taille** — et
+c'est ce qui le sépare des deux cas voisins, dont l'étage 1 le rend pourtant
+indiscernable :
+
+| | où vit le widget | ce que l'étage 1 en dit | remède |
+|---|---|---|---|
+| Sous le pli | dans l'arbre, hors écran | « ELLE EXISTE, mais plus bas » | `commandsAfterScroll:` |
+| Ne se monte pas seul | nulle part, faute d'être NOMMABLE | « absente » | le rendre public |
+| **Derrière un geste** | **nulle part, faute du GESTE** | « absente » | **aucun des deux** |
+
+Rendre le widget public n'y change rien : le problème n'est pas de savoir le
+nommer, c'est que **personne ne le construit**. Les deux dernières lignes
+rendent le même message, et c'est ce qui coûte — un run a lu le source du paquet
+dans `.pub-cache` pour comprendre pourquoi « absente » ne voulait pas dire ce
+qu'il croyait.
+
+Ce qu'il faut faire, et ce n'est pas d'insister :
+
+- la commande **sort de `commands:`**, avec le geste qui la garde écrit à
+  côté — pas « invérifiable », mais « derrière un swipe » ;
+- son assertion vit à l'**étage 2**, dans un flow qui FAIT le geste
+  (`swipe`, `longPressOn`) avant de taper ;
+- si le budget device ne le permet pas, **c'est une dette et elle s'inscrit** :
+  l'ancre reste posée dans le code, elle ne se retire pas.
+
+⚠️ **Le même paquet en pose souvent DEUX, à deux niveaux.** `flutter_slidable`
+donne aussi le piège du composant qui construit son propre `Expanded`
+(`SlidableAction`), traité plus haut. Trouver l'un ne dispense pas de l'autre.
+
 ⚠️ **L'écran à animation perpétuelle se déclare comme les autres.** Halo qui
 respire, indicateur, point pulsé : `pumpArgus` ne dépend plus de la stabilisation
 pour ces écrans-là — il attend un temps borné, puis avance d'une durée fixe et
