@@ -5075,6 +5075,49 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
+**quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
+47 · le même, iOS ; 48 · terrain avec API, Android), **treize constats**, et
+dix-neuf points parce que deux sont nés de questions plutôt que d'un run.
+
+🎯 **LE RUN 47 A RENDU `gate: PASS`** — 1 finding (info), 10 flows, 0 échec,
+9 écrans sur 9, `notConfigured: []`. Deuxième run entièrement vert du chantier,
+et le premier sur un plugin corrigé le matin même.
+
+🔴 **QUATRE CONSTATS SUR TREIZE ÉTAIENT DÉJÀ TRAITÉS**, et les quatre ont été
+démentis **en exécutant**, jamais en relisant le fichier voisin. Ils restent ici
+avec leur mesure, parce que le remède demandé aurait chaque fois abîmé un
+mécanisme correct :
+
+| ce que le run affirmait | ce que la mesure a établi | résidu vrai |
+|---|---|---|
+| le masquage affiche `***` même pour une valeur vide | `masquerSecrets` rend `<VIDE>` depuis le 337, `secretsVides` les nomme, l'avertissement existe en quatre lignes | **356** — il nommait la frontière de PROCESSUS, pas celle de l'EXPORT |
+| `auth.anchors` suppose un écran, rien ne le signale | la limite est écrite dans le fichier que le run ÉDITAIT, et sa décision y est nommée « la bonne réponse » ; son remède (`steps[]`) y est refusé | **357** — `SKILL.md` ne contenait AUCUN `auth.` |
+| `run.scope` partiel n'est qu'un champ | la page publiée porte déjà un bandeau `partiel` | **358** — le TERMINAL, lui, se taisait |
+| `const Semantics` n'est signalé nulle part | documenté 800 lignes plus tôt, au point où l'on instrumente, dans une note qui dit avoir DÉJÀ été rapprochée pour cette raison | **361** — un doublon a été écrit avant qu'un garde d'unicité ne le dise |
+
+⚠️ **LE VERDICT DEVICE DU RUN 48 NE MESURE PAS LE PLUGIN — il mesure une erreur
+de cadrage.** `API_HOST` avait été pris dans le bloc « Démarrer » du README, qui
+ne montre que la recette **partagée et distante** ; le fichier de build que ce
+README RÉFÉRENCE documente aussi une API locale. Mesuré après coup : la locale
+répond en 16 ms, la distante en 922 ms et tombe par intermittence. Cinq flows sur
+sept sont morts au plafond d'attente sur un « service indisponible » qui
+n'appartenait ni au skill ni à l'application. → point **354**.
+
+📌 **Ce que le run 48 a bien fait** : il a PROUVÉ l'intermittence au lieu de la
+supposer — deux flows ont vu l'écran de départ en 23 et 71 ms **dans la même
+fenêtre** où cinq autres expiraient. Il n'a pas relancé jusqu'à obtenir du vert.
+
+🔴 **LA SORTIE RESTE FERMÉE**, et cette fois ce n'est pas une question de nombre :
+il reste **deux angles morts structurels**, tous deux propres aux applications
+qui consomment une API. L'authentification multi-écrans est désormais documentée
+(**357**) ; **le serveur qui varie n'a toujours pas d'histoire dans le skill** —
+où passer des secrets réels, comment distinguer « l'app est cassée » de « le
+serveur refuse », que faire d'un état qui change entre deux runs. Le run 48
+n'a pas pu le mesurer, puisqu'il pointait la mauvaise API.
+
+**Prochain numéro libre : 366.**
+
 Les points **343 à 346** sont fermés le 02/09/2026 — backlog vide pour la
 **quarante-quatrième** fois. Le run 45 était un run de **confirmation**, joué
 pour trancher la sortie sur une mesure.
