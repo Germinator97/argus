@@ -774,6 +774,15 @@ function runMaestro({ udid, target, junitPath, outputDir, env, includeTags, excl
     console.warn('    Le flow qui en dépend sera SAUTÉ, sans autre signe que cette ligne.');
     console.warn('    Chaque appel shell est un processus neuf : source les secrets et lance');
     console.warn('    le runner dans la MÊME commande, sinon ils ne survivent pas.');
+    // ⚠️ LA SECONDE FRONTIÈRE, ET C'EST ELLE QUI MORD. Un run a lu cet
+    // avertissement, sourcé le fichier dans la même commande — et les valeurs
+    // n'arrivaient toujours pas. Un fichier de lignes `CLE=valeur` nues donne
+    // des variables de SHELL, que le processus fils ne voit pas : il faut
+    // qu'elles soient EXPORTÉES. Nommer la frontière de processus sans nommer
+    // celle de l'export laisse à mi-chemin, au seul endroit où l'on regarde.
+    console.warn('    Et il faut qu\'ils soient EXPORTÉS : un fichier de `CLE=valeur` nues');
+    console.warn('    sourcé tel quel ne donne que des variables de shell, invisibles au');
+    console.warn('    processus fils. Utilise `set -a && source <fichier> && set +a`.');
   }
   log(shown);
   if (dryRun) return { ok: true, status: 0, command: shown };

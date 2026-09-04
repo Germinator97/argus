@@ -8773,3 +8773,36 @@ test("l'avertissement de locale dit ce qu'il COÛTE, et il survit au terminal (3
     'localeFindings existe mais personne ne la verse dans les findings du rapport : '
     + "l'avertissement retombe en ligne de console, qui meurt avec la session");
 });
+
+test("l'avertissement de secrets vides nomme les DEUX frontières (356)", () => {
+  // ⚠️ CE CONSTAT EST NÉ D'UN DÉMENTI. Un run a rapporté que le masquage
+  // affichait `***` même pour une valeur vide, donc qu'il cachait le défaut.
+  // MESURÉ EN L'EXÉCUTANT : faux — `masquerSecrets` rend `<VIDE>` depuis le 337,
+  // `secretsVides` les nomme, et l'avertissement existe. Le remède demandé
+  // aurait « corrigé » un mécanisme correct.
+  // Ce qui restait vrai est plus étroit : l'avertissement nommait la frontière
+  // de PROCESSUS (« chaque appel shell est neuf ») et pas celle de l'EXPORT.
+  // Un fichier de `CLE=valeur` nues, sourcé dans la même commande, donne des
+  // variables de shell que le fils ne voit pas — et c'est exactement là que le
+  // run s'est arrêté, après avoir suivi le conseil à la lettre.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const bloc = run.slice(run.indexOf('secretsVides(env)'));
+  const avert = bloc.slice(0, bloc.indexOf('log(shown)'));
+
+  assert.match(avert, /MÊME commande/,
+    "l'avertissement ne nomme plus la frontière de processus");
+  assert.match(avert, /EXPORTÉS/,
+    "l'avertissement ne nomme plus la frontière de l'EXPORT : un run a suivi le conseil "
+    + 'à la lettre, sourcé dans la même commande, et les valeurs n\'arrivaient toujours pas');
+  assert.match(avert, /set -a/,
+    "l'avertissement nomme le problème sans donner le geste — le lecteur doit le deviner");
+
+  // ⚠️ ET LE DÉMENTI LUI-MÊME EST GARDÉ : si `masquerSecrets` cessait de
+  // distinguer le vide, le constat démenti redeviendrait vrai et cette longue
+  // explication mentirait.
+  assert.ok(masquerSecrets(['-e', 'QA_PHONE=']).includes('QA_PHONE=<VIDE>'),
+    'le masquage ne distingue plus une valeur vide — le constat démenti au 356 redevient vrai');
+  assert.ok(masquerSecrets(['-e', 'QA_PHONE=06']).includes('QA_PHONE=***'),
+    'et un secret plein doit rester masqué');
+});
