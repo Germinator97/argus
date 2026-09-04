@@ -889,9 +889,15 @@ function main() {
   // la dimension entière. Mais un acquittement qui survit à ce qu'il décrit est
   // une permission permanente : on dit donc aussi ceux qui ne correspondent plus
   // à rien.
-  const { findings, perimes } = acquitter([...sourceFindings, ...binaryFindings], config);
-  for (const id of perimes) {
-    warn(`acquittement PÉRIMÉ : « ${id} » n'est plus rapporté — retire-le de security.acknowledged.`);
+  // ⚠️ ON IGNORE `perimes` ICI, ET C'EST LE CORRECTIF. Ce script ne voit QUE ses
+  // propres findings : tout acquittement appartenant à `sca.mjs` lui paraîtrait
+  // périmé, et réciproquement. Les deux partagent `security.acknowledged` sans
+  // partager leurs findings, si bien que chacun dénonçait les acquittements de
+  // l'autre. Mesuré : `sca.mjs` annonçait « PÉRIMÉ : QAM-SEC-CLEAR » pendant que
+  // `sec.mjs` l'honorait, sur le même run. Le verdict appartient à `report.mjs`,
+  // seul à voir l'UNION — un relevé ne peut pas juger ce qu'il ne mesure pas.
+  const { findings } = acquitter([...sourceFindings, ...binaryFindings], config);
+  {
   }
   writeJson(reportPath, {
     platform, root,

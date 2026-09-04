@@ -1798,8 +1798,6 @@ contre-épreuve dont l'absence serait impossible.
 feuille, **et valide au passage**. La capture de l'étape suivante montre alors la
 donnée créée et l'ancre de la feuille introuvable, ce qui se lit comme un défaut
 d'instrumentation. Coût relevé : deux flows rouges et une passe device de 220 s.
-Sur Android le même appel est inoffensif — c'est donc un piège qui n'apparaît
-qu'en changeant de plateforme, comme `setAirplaneMode` dans l'autre sens.
 Retire-le de tout contexte de feuille : le champ perd le focus en tapant ailleurs.
 
 ⚠️ **ET IL FAUT BIEN REFERMER CE CLAVIER.** Le proscrire sans remplaçant laisse
@@ -1807,6 +1805,15 @@ le problème entier : un clavier ouvert recouvre le bouton de validation, et
 `tapOn` sur un bouton recouvert échoue sans dire pourquoi. Ce qui marche, mesuré
 sur un run : **taper dans une zone vide de l'écran**, au-dessus des champs et
 hors de toute commande.
+
+⚠️ **ET « INOFFENSIF SUR ANDROID » ÉTAIT FAUX.** Cette phrase disait que le même
+appel ne coûte rien ailleurs ; mesuré sur un émulateur **Android 11 (API 30) avec
+Maestro 2.8.0**, la commande ÉCHOUE — « Couldn't hide the keyboard » — et fait
+rougir le flow qui la porte. Deux flows perdus sur un run. Le piège n'est donc pas
+« iOS le détourne, Android l'ignore » : c'est que la commande **n'est fiable sur
+aucune des deux**, pour deux raisons différentes. Ne l'écris nulle part, et
+referme le clavier en tapant dans une zone vide (ci-dessus) — ce qui marche
+partout, et n'a besoin d'aucune réserve de plateforme.
 
 🔴 **ET LE PIRE N'EST PAS QU'IL CACHE — C'EST QU'IL DÉPLACE.** Le paragraphe
 ci-dessus décrit le cas BRUYANT : un contrôle recouvert, un `tapOn` qui échoue.

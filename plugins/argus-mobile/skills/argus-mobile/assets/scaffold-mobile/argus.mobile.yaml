@@ -443,11 +443,19 @@ auth:
   # `login.yaml` mais dont les écrans sont derrière la connexion — la régression
   # visuelle, typiquement. Le conseil « retire login des flows qui n'en ont pas
   # besoin » ne le couvre pas : il en a besoin, il ne l'inclut simplement pas.
-  # Trois issues, à trancher et à ÉCRIRE :
-  #   · l'inclure — une reconnexion de plus par run, la plus simple ;
-  #   · ne garder en visuel que les écrans AVANT la connexion, et dire pourquoi ;
-  #   · sortir ce flow de la suite et le lancer à part, hors `clearState`.
-  # Aucune n'est bonne dans l'absolu : celle qui compte est celle que tu écris.
+  # ⚠️ ET LA SEULE ISSUE QUI MARCHE N'ÉTAIT NOMMÉE NULLE PART. Les trois
+  # ci-dessous ont été écrites sans regarder À QUI appartient chaque fichier :
+  # « l'inclure » veut dire éditer `visual.yaml`, qui est du CADRE — donc écrasé
+  # à la prochaine mise à jour. Un run l'a fait, puis a dû défaire.
+  #   · ✅ LA BONNE : mets la connexion dans `_subflows/goto.yaml`, qui est À TOI
+  #     et que `visual.yaml` appelle déjà pour chaque écran. Le cadre reste
+  #     intact, la connexion se fait une fois par écran visuel, et un
+  #     `_connexion-si-besoin.yaml` évite d'en payer une par capture ;
+  #   · ne garder en visuel que les écrans AVANT la connexion, et dire pourquoi —
+  #     c'est renoncer à la couverture visuelle de tout l'après-connexion ;
+  #   · sortir ce flow de la suite et le lancer à part, hors `clearState` ;
+  #   · ❌ PAS « l'inclure dans visual.yaml » : ce fichier ne t'appartient pas.
+  # Les trois premières se valent selon ton coût ; la quatrième est un piège.
   #
   # ⚠️ SI TON APP N'A AUCUNE AUTHENTIFICATION, c'est un cas prévu, pas un oubli :
   # laisse les cinq vides, RETIRE les cinq TODO ci-dessous et écris à leur place

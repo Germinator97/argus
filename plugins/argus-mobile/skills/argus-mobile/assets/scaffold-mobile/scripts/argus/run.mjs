@@ -1186,10 +1186,23 @@ function startupFindings(samples, device, platform, config, variante = '') {
   // chiffres : « 6200 ms dont 2000 assumés ».
   const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0));
   const net = (/** @type {any} */ s) => Math.max(0, s.ms - floor);
-  const over = samples.filter((s) => net(s) > budget);
+  // ⚠️ UN FLOW MORT NE MESURE PAS UNE DURÉE — IL MESURE LE PLAFOND. Un échantillon
+  // `FAILED` s'est arrêté parce que l'attente a expiré : sa valeur est le seuil
+  // qu'on lui a donné, pas le temps qu'aurait mis l'écran. C'est une mesure
+  // CENSURÉE, au sens statistique — on sait « au moins tant », jamais « tant ».
+  // La retenir comme pire cas transforme une panne d'application en finding de
+  // PERFORMANCE : mesuré sur un run réel, un flow tombé à 20 021 ms sur un écran
+  // d'erreur a produit « l'écran de départ met 20 s » pendant que les six autres
+  // étaient entre 947 et 2646 ms. Le code connaissait déjà le statut — il le
+  // comptait dans `timedOut` — et ne s'en servait pas pour choisir le pire.
+  const mesures = samples.filter((s) => String(s.status ?? '').toUpperCase() !== 'FAILED');
+  const timedOut = samples.length - mesures.length;
+  const over = mesures.filter((s) => net(s) > budget);
+  // ⚠️ Et si TOUT est censuré, on ne conclut pas : rendre un finding de lenteur
+  // sur zéro mesure serait exactement le « vert sur du néant » que le 367 a fermé,
+  // dans l'autre sens. Les flows morts se rapportent par leur propre échec.
   if (over.length === 0) return [];
   const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
-  const timedOut = samples.filter((s) => s.status.toUpperCase() === 'FAILED').length;
   const dont = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
   return [{
     id: 'QAM-START',
@@ -1207,12 +1220,17 @@ function startupFindings(samples, device, platform, config, variante = '') {
     expected: floor > 0
       ? `écran de départ visible sous ${budget} ms hors splash de marque (thresholds.coldStartMs + brandedSplashMs)`
       : `écran de départ visible sous ${budget} ms (thresholds.coldStartMs)`,
-    actual: `${over.length}/${samples.length} flows au-dessus du seuil${variante ? ` (${variante})` : ''} : `
+    actual: `${over.length}/${mesures.length} flows mesurés au-dessus du seuil${variante ? ` (${variante})` : ''} : `
       + over.map((s) => (floor > 0
         ? `${s.flow} ${Math.round(s.ms)} ms (${Math.round(net(s))} hors splash)`
         : `${s.flow} ${Math.round(s.ms)} ms`)).join(', ')
+      // ⚠️ Les flows morts sont NOMMÉS mais EXCLUS du calcul, et la phrase dit
+      // les deux. Elle affirmait auparavant « la cause est ce temps-ci » — ce qui
+      // est précisément l'erreur : un flow qui expire peut mourir sur une panne
+      // d'application, et son temps n'est alors que le plafond qu'on lui a donné.
       + (timedOut > 0
-        ? `. ${timedOut} y ont épuisé leur budget d'attente — l'échec rapporté nomme l'ancre, mais la cause est ce temps-ci.`
+        ? `. ${timedOut} flow(s) exclu(s) : ils ont épuisé leur budget d'attente, donc leur durée EST ce plafond — `
+          + 'ce n\'est pas une mesure de lenteur, et leur cause se lit dans leur propre échec.'
         : ''),
     evidence: [],
     repro: [`maestro --device=${device.udid} test .maestro/${worst.flow}.yaml`],

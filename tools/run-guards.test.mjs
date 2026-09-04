@@ -16,7 +16,7 @@ import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +28,7 @@ import {
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { visuelsInatteignables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -168,9 +169,15 @@ test('au-dessus du seuil : un seul finding pour le lot, pas un par flow', () => 
   const findings = startupFindings(samples, DEVICE, 'android', CONFIG);
   assert.equal(findings.length, 1, 'trois lignes disant la même chose, c\'est un rapport qu\'on cesse de lire');
   assert.equal(findings[0].dimension, 'performance');
-  assert.match(findings[0].actual, /3\/3/);
-  assert.match(findings[0].actual, /i18n 27289 ms/);
-  // Le flow qui a épuisé son budget doit être signalé POUR CE QU'IL EST.
+  // ⚠️ LE DÉNOMINATEUR A CHANGÉ, ET C'EST LE CORRECTIF 375. Ce garde exigeait
+  // « 3/3 » — donc que le flow FAILED compte comme une mesure. Il ne peut pas :
+  // sa durée est le PLAFOND qu'on lui a donné, pas le temps de l'écran. Le
+  // rapport compte désormais les mesures (2), et nomme l'exclu à part.
+  assert.match(findings[0].actual, /2\/2 flows mesurés/);
+  assert.ok(!/i18n 27289 ms/.test(findings[0].actual),
+    'le flow mort figure encore parmi les temps mesurés : sa durée est un plafond, pas une mesure');
+  // Mais il doit rester DIT — l'exclure du calcul n'est pas l'effacer du rapport.
+  assert.match(findings[0].actual, /1 flow\(s\) exclu\(s\)/);
   assert.match(findings[0].actual, /budget d'attente/);
 });
 
@@ -3755,7 +3762,14 @@ test('le bloc auth dit ce qu\'une suite authentifiée COÛTE (241, 244)', () => 
   // Le cas que rien ne couvrait : besoin d'auth SANS inclure login.
   assert.match(auth, /n'inclut PAS\s*\n?\s*#?\s*`?login\.yaml`?/,
     'le cas du flow qui a besoin de la connexion sans l\'inclure n\'est toujours pas traité (241)');
-  assert.match(auth, /Trois issues/, 'le cas est nommé mais aucune issue n\'est proposée');
+  // ⚠️ DÉRIVÉ, pas cité. Ce garde exigeait le libellé « Trois issues » : le jour
+  // où une QUATRIÈME a été ajoutée — celle qui marche, jusque-là absente — il est
+  // tombé sur un correctif juste, et la pente était de le supprimer. Il compte
+  // désormais les issues proposées, ce qui survit à leur nombre.
+  const issues = (auth.match(/^\s*#\s{2,}·\s/gm) ?? []).length;
+  assert.ok(issues >= 3,
+    `le cas est nommé mais seulement ${issues} issue(s) sont proposées : sans elles, il décrit `
+    + 'un problème sans dire quoi en faire');
 });
 
 test('le bloc device iOS ne se contredit pas, et l\'outillage nomme xcrun (243)', () => {
@@ -9313,4 +9327,212 @@ test('un backlog qui porte des points OUVERTS ne peut pas s\'annoncer vide (373)
     + 'Écris « N POINT(S) OUVERT(S) » en tête de « Ce qui reste »');
   assert.equal(Number(annonce[1]), ouverts,
     `la tête annonce ${annonce[1]} point(s) ouvert(s), le corps en porte ${ouverts}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 374 — Un acquittement n'est périmé que pour l'UNION des findings.
+// `sec.mjs` et `sca.mjs` lisent la MÊME liste `security.acknowledged` et ne
+// voient chacun que leurs propres findings : chacun dénonçait donc les
+// acquittements de l'autre. Mesuré sur un run réel — « acquittement PÉRIMÉ :
+// QAM-SEC-CLEAR » annoncé par `sca` pendant que `sec` l'honorait, dans le même
+// rapport. Le verdict appartient à `report.mjs`, seul à voir l'union.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('un acquittement n\'est périmé que pour l\'UNION, jamais pour une moitié (374)', () => {
+  const config = { security: { acknowledged: [
+    { id: 'QAM-SEC-CLEAR', why: 'ne vit que dans le manifeste de debug' },
+    { id: 'QAM-SCA-CVE-1', why: 'non atteignable depuis cette app' },
+  ] } };
+  const duSec = [{ id: 'QAM-SEC-CLEAR', severity: 'critical' }];
+  const duSca = [{ id: 'QAM-SCA-CVE-1', severity: 'major' }];
+
+  // LE DÉFAUT, reproduit : chaque moitié dénonce l'acquittement de l'autre.
+  // Ce n'est pas un bug d'`acquitter` — c'est ce qu'on lui demande. Le bug
+  // était de l'appeler avec une moitié et de croire son verdict.
+  assert.deepEqual(acquitter(duSec, config).perimes, ['QAM-SCA-CVE-1'],
+    'la moitié « sécurité » ne voit pas la CVE : sur SON lot, cet acquittement paraît périmé');
+  assert.deepEqual(acquitter(duSca, config).perimes, ['QAM-SEC-CLEAR'],
+    'et réciproquement — c\'est exactement ce qu\'un run a vu publié');
+
+  // LE CORRECTIF : sur l'union, aucun des deux n'est périmé.
+  assert.deepEqual(acquitter([...duSec, ...duSca], config).perimes, [],
+    'sur l\'union des findings, aucun acquittement ne peut être déclaré périmé');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi le remède serait « ne plus rien dénoncer » : un
+  // acquittement qui ne correspond à AUCUN finding doit toujours tomber, sinon
+  // la liste survit à ce qu'elle décrit et devient une permission permanente.
+  const orphelin = { security: { acknowledged: [{ id: 'QAM-DISPARU', why: 'corrigé depuis' }] } };
+  assert.deepEqual(acquitter([...duSec, ...duSca], orphelin).perimes, ['QAM-DISPARU'],
+    'un acquittement sans finding n\'est plus dénoncé : le remède a coupé trop large');
+});
+
+test('les producteurs ACQUITTENT sans juger ce qu\'ils ne voient pas (374)', () => {
+  // Garde de câblage : le verdict a bien changé de fichier. Il lit du texte, donc
+  // il ne prouve que la PLACE — la valeur, elle, est exercée par le garde ci-dessus.
+  const lu = (f) => readFileSync(join(RACINE,
+    `plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/${f}`), 'utf8');
+  const [sec, sca, report] = ['sec.mjs', 'sca.mjs', 'report.mjs'].map(lu);
+
+  // D'ABORD : le motif existe-t-il quelque part ? Sans ça, une reformulation du
+  // message viderait ce garde en le laissant vert.
+  assert.ok(/acquittement PÉRIMÉ/.test(report),
+    'plus personne ne dénonce les acquittements périmés : le mécanisme entier a disparu, '
+    + 'ou son message a été reformulé — mets ce motif à jour');
+
+  for (const [nom, src] of [['sec.mjs', sec], ['sca.mjs', sca]]) {
+    assert.ok(!/warn\([^)]*acquittement PÉRIMÉ/.test(src),
+      `${nom} dénonce à nouveau les acquittements périmés : il ne voit que SES findings, `
+      + 'donc il accuse ceux de son voisin — c\'est le défaut 374, revenu');
+  }
+  assert.ok(/acquitter\(findings, config\)/.test(report),
+    'report.mjs ne calcule plus les périmés sur l\'union `findings` qu\'il agrège');
+});
+
+test('un flow MORT ne peut pas devenir le pire temps de démarrage (375)', () => {
+  // ⚠️ Un échantillon FAILED s'est arrêté sur SON plafond d'attente : sa durée
+  // est le seuil qu'on lui a donné, pas le temps qu'aurait mis l'écran. Le
+  // retenir comme pire cas transforme une panne d'app en finding de PERFORMANCE.
+  // Mesuré sur un run : 20 021 ms d'un flow mort publié en « l'écran de départ
+  // met 20 s », pendant que les six autres tenaient entre 947 et 2646 ms.
+  const device = { id: 'emu', udid: 'emulator-5554', os: 'android-30' };
+  const config = { thresholds: { coldStartMs: 2000 } };
+  const sains = [
+    { flow: 'smoke', ms: 947, status: 'COMPLETED' },
+    { flow: 'a11y', ms: 1528, status: 'COMPLETED' },
+    { flow: 'i18n', ms: 1998, status: 'COMPLETED' },  // sous le seuil, exprès :
+  ];                                                //  le seul dépassement possible est le flow MORT
+  const mort = { flow: 'journey-critical', ms: 20021, status: 'FAILED' };
+
+  // Aucun flow sain ne dépasse le seuil → aucun finding, malgré le flow mort.
+  const avecMort = startupFindings([...sains, mort], device, 'android', config);
+  assert.deepEqual(avecMort, [],
+    'un flow mort à 20 s produit encore un finding de lenteur alors qu\'aucune mesure '
+    + 'ne dépasse le seuil : c\'est une panne d\'application publiée en performance');
+
+  // ⚠️ L'AUTRE MOITIÉ : une VRAIE lenteur mesurée doit toujours sortir, sinon le
+  // remède aurait simplement rendu la dimension muette.
+  const lent = [{ flow: 'smoke', ms: 6200, status: 'COMPLETED' }, mort];
+  const trouve = startupFindings(lent, device, 'android', config);
+  assert.equal(trouve.length, 1, 'une lenteur réellement mesurée ne sort plus : le remède a coupé trop large');
+  assert.match(trouve[0].title, /6 s/, 'le pire retenu doit être la mesure, pas le plafond du flow mort');
+  // Et le flow mort reste NOMMÉ — l'exclure du calcul n'est pas l'effacer.
+  assert.match(trouve[0].actual, /1 flow\(s\) exclu\(s\)/,
+    'les flows exclus ne sont plus dits : une exclusion muette est pire que le défaut');
+});
+
+test('un google-services.json rangé dans le source set du flavor est VU (376)', () => {
+  // ⚠️ Le contrôle cherchait `android/app/google-services.json`, un chemin
+  // LITTÉRAL. Dès qu'un projet a plusieurs environnements, AGP range le fichier
+  // dans le source set du flavor — `android/app/src/dev/` — et le contrôle
+  // devenait muet sur une application parfaitement concernée. Le mécanisme se
+  // voulait dérivé du phénomène ; c'est son emplacement qui était énuméré.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-376-'));
+  try {
+    const poser = (rel, contenu) => {
+      mkdirSync(join(dir, dirname(rel)), { recursive: true });
+      writeFileSync(join(dir, rel), contenu, 'utf8');
+    };
+
+    // La disposition qui rendait le contrôle muet, sans le câblage Gradle.
+    poser('android/app/src/dev/google-services.json', '{}');
+    poser('android/app/build.gradle.kts', 'plugins { id("the-app-plugin") }\n');
+    const vus = configNonEmbarquee(dir, { platforms: ['android'] });
+    assert.ok(vus.some((o) => o.id === 'firebase-android'),
+      'le fichier rangé dans le source set du flavor reste invisible : le contrôle ne juge '
+      + 'que le chemin historique, donc il se tait sur la disposition la plus courante');
+    assert.match(vus.find((o) => o.id === 'firebase-android').fichier, /src[/\\]dev/,
+      'le chemin rapporté doit être celui où le fichier vit vraiment');
+
+    // ⚠️ L'AUTRE MOITIÉ : câblé, il ne doit RIEN dire. Un contrôle qui accuse
+    // un projet correct coûte plus cher que celui qui se tait.
+    // ⚠️ Le motif que la règle cherche est « google-services », pas l'identifiant
+    // complet du plugin : l'écrire en entier ferait rougir le garde de
+    // confidentialité, qui ne distingue pas un plugin public d'un bundle.
+    writeFileSync(join(dir, 'android/app/build.gradle.kts'),
+      'plugins { id("gms.google-services") }\n', 'utf8');
+    assert.ok(!configNonEmbarquee(dir, { platforms: ['android'] }).some((o) => o.id === 'firebase-android'),
+      'un projet qui applique bien le plugin Gradle est accusé à tort');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('le chemin HISTORIQUE reste couvert par la recherche par nom (376)', () => {
+  // Non-régression : élargir la recherche ne doit pas perdre le cas d'origine,
+  // qui est celui d'un projet à un seul environnement.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-376b-'));
+  try {
+    mkdirSync(join(dir, 'android/app'), { recursive: true });
+    writeFileSync(join(dir, 'android/app/google-services.json'), '{}', 'utf8');
+    writeFileSync(join(dir, 'android/app/build.gradle'), 'apply plugin: "the-app-plugin"\n', 'utf8');
+    assert.ok(configNonEmbarquee(dir, { platforms: ['android'] }).some((o) => o.id === 'firebase-android'),
+      'la disposition historique n\'est plus vue : la recherche par nom a remplacé le cas au lieu de l\'englober');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('`visual: true` + `reachedBy:` sans branche goto est une contradiction VUE (378)', () => {
+  // ⚠️ Les deux clés se contredisent en silence : `reachedBy:` dit au rapport que
+  // goto ne dessert pas cet écran, et `visual.yaml` appelle goto quand même pour
+  // chaque écran visuel. La référence naît alors sur l'écran où goto s'est
+  // arrêté — sans erreur Maestro, sans avertissement. 32 s d'appareil et une
+  // référence sur deux, sur un run réel.
+  const goto = "- runFlow:\n    when:\n      true: ${SCREEN_ID === 'home'}\n";
+
+  const fautif = { screens: [{ id: 'orders-filled', anchor: 'a', visual: true, reachedBy: 'journey-critical' }] };
+  assert.deepEqual(visuelsInatteignables(fautif, goto), ['orders-filled'],
+    'un écran visuel atteint par un parcours et sans branche goto n\'est pas signalé : '
+    + 'sa référence naîtra sur le mauvais écran, et rien ne le dira');
+
+  // ⚠️ TROIS contre-épreuves, parce que trois façons d'accuser à tort :
+  const avecBranche = { screens: [{ id: 'home', anchor: 'a', visual: true, reachedBy: 'journey-critical' }] };
+  assert.deepEqual(visuelsInatteignables(avecBranche, goto), [],
+    'un écran qui A sa branche goto est accusé à tort — les deux clés sont alors compatibles');
+  const sansVisuel = { screens: [{ id: 'orders-filled', anchor: 'a', reachedBy: 'journey-critical' }] };
+  assert.deepEqual(visuelsInatteignables(sansVisuel, goto), [],
+    'un écran non visuel est accusé : `reachedBy` seul est la sortie NORMALE du troisième cas');
+  const sansReachedBy = { screens: [{ id: 'orders-filled', anchor: 'a', visual: true }] };
+  assert.deepEqual(visuelsInatteignables(sansReachedBy, goto), [],
+    'un écran visuel sans `reachedBy` est accusé : celui-là est déjà couvert par ecransSansBranche');
+});
+
+test('la contradiction visuelle est CÂBLÉE, pas seulement calculable (378)', () => {
+  // Troisième barreau : une fonction juste que personne n'appelle ne garde rien.
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  const appels = (src.match(/visuelsInatteignables\(/g) ?? []).length;
+  assert.ok(appels >= 2,
+    `visuelsInatteignables n'est plus appelée que ${appels} fois (déclaration comprise) : `
+    + 'elle est devenue du code sans lecteur');
+});
+
+test('la quatrième issue — celle qui MARCHE — est nommée (377)', () => {
+  // ⚠️ Les trois issues d'origine avaient été écrites sans regarder à QUI
+  // appartient chaque fichier : « l'inclure » veut dire éditer `visual.yaml`,
+  // qui est du CADRE. Un run l'a fait, puis a dû défaire. La seule qui marche —
+  // poser la connexion dans `goto.yaml`, qui est OWNED — n'était nulle part.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const debut = yaml.indexOf('CAS QUI N\'ÉTAIT PRÉVU NULLE PART');
+  assert.ok(debut !== -1, 'le passage des issues a disparu du gabarit : si sa formulation a changé, '
+    + 'mets ce motif à jour, sinon ce garde ne garde plus rien');
+  const bloc = yaml.slice(debut, debut + 1800);
+  assert.match(bloc, /goto\.yaml/,
+    'la seule issue praticable — poser la connexion dans `goto.yaml`, qui appartient au projet — '
+    + 'n\'est toujours pas nommée dans la liste des issues');
+  assert.match(bloc, /CADRE|t'appartient pas/,
+    'rien ne dit plus que `visual.yaml` appartient au cadre : la première issue redevient '
+    + 'un piège qu\'on suit de bonne foi');
+});
+
+test('le skill ne promet plus que `hideKeyboard` est inoffensif ailleurs (379)', () => {
+  // Une promesse de comportement technique, fausse et jamais mesurée : sur
+  // Android 11 avec Maestro 2.8.0, la commande ÉCHOUE (« Couldn't hide the
+  // keyboard ») et fait rougir le flow. Deux flows perdus sur un run.
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('hideKeyboard');
+  assert.ok(i !== -1, 'le passage sur hideKeyboard a disparu du skill');
+  const bloc = skill.slice(i, i + 2600);
+  assert.ok(!/Android le même appel est inoffensif/.test(bloc),
+    'le skill promet à nouveau que hideKeyboard est inoffensif sur Android — mesuré faux');
+  assert.match(bloc, /Couldn't hide the keyboard/,
+    'la mesure qui remplace la promesse a disparu : sans elle, la phrase se réécrira comme avant');
 });

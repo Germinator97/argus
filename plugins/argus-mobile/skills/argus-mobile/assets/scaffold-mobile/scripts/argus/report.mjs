@@ -23,7 +23,7 @@ import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { artifactFor, artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
+import { acquitter, artifactFor, artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -803,6 +803,28 @@ function main() {
   }
 
   const findings = parts.flatMap((p) => p.findings);
+
+  // ⚠️ LES ACQUITTEMENTS PÉRIMÉS SE JUGENT ICI, ET NULLE PART AILLEURS. Chaque
+  // producteur ne voit que ses propres findings : `sec.mjs` ignore les CVE,
+  // `sca.mjs` ignore le MASVS, et tous deux lisent la MÊME liste
+  // `security.acknowledged`. Chacun déclarait donc périmés les acquittements de
+  // l'autre — mesuré sur un run : « PÉRIMÉ : QAM-SEC-CLEAR » annoncé par `sca`
+  // pendant que `sec` l'honorait dans le même rapport. Un acquittement n'est
+  // périmé que s'il ne correspond à AUCUN finding, toutes dimensions réunies :
+  // c'est une propriété de l'union, donc de ce fichier.
+  // ⚠️ Et il faut que TOUTES les dimensions aient tourné pour conclure — sinon
+  // un relevé absent fait passer ses acquittements pour périmés. On se tait
+  // quand une source manque, plutôt que d'accuser sur un inventaire incomplet.
+  const toutesLues = parts.every((p) => p.state === 'ok' || p.state === 'skipped');
+  const { perimes } = acquitter(findings, config);
+  if (toutesLues) {
+    for (const id of perimes) {
+      warn(`acquittement PÉRIMÉ : « ${id} » ne correspond à aucun finding de ce run — retire-le de security.acknowledged.`);
+    }
+  } else if (perimes.length) {
+    warn(`${perimes.length} acquittement(s) sans finding, mais une dimension n'a pas tourné : rien n'est conclu.`);
+  }
+
   const counts = Object.fromEntries(SEVERITIES.map((s) => [s, findings.filter((f) => f.severity === s).length]));
 
   const failOn = new Set(config.gate?.failOn ?? []);

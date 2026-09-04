@@ -239,10 +239,9 @@ function main() {
 
   // ⚠️ Même contrat que `sec.mjs` : un finding peut être acquitté avec sa
   // raison, et un acquittement qui ne correspond plus à rien se DIT.
-  const { findings: acquittes, perimes } = acquitter(findings, config);
-  for (const id of perimes) {
-    warn(`acquittement PÉRIMÉ : « ${id} » n'est plus rapporté — retire-le de security.acknowledged.`);
-  }
+  // ⚠️ Voir `sec.mjs` : `perimes` est ignoré ici parce que ce script ne voit que
+  // les CVE. Le seul qui puisse conclure est celui qui agrège tout.
+  const { findings: acquittes } = acquitter(findings, config);
   writeJson(reportPath, {
     root, failOn, cve,
     outdated: { scanned: outdated.ok, count: outdated.outdated.length, packages: outdated.outdated, why: outdated.why },

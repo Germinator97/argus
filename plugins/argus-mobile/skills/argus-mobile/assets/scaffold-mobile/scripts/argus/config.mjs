@@ -22,7 +22,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { basename, dirname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -1091,6 +1091,38 @@ function sansCommentaires(texte) {
 }
 
 /**
+ * Les écrans que `visual.yaml` ne pourra PAS atteindre : déclarés `visual: true`
+ * ET `reachedBy:`, sans branche dans `goto.yaml`.
+ *
+ * ⚠️ LES DEUX CLÉS SE CONTREDISENT EN SILENCE. `reachedBy:` dit au RAPPORT
+ * « cet écran est créé par un parcours, ne me demande pas de branche » — et le
+ * contrôle des orphelins l'exclut, à raison. Mais `visual.yaml` ne lit pas
+ * `reachedBy` : il appelle `goto.yaml` avec le `SCREEN_ID`, quel que soit
+ * l'écran. Un écran qui porte les deux part donc se faire photographier par un
+ * sous-flow qui n'a rien pour lui — et selon la façon dont `goto` termine, la
+ * référence naît sur le MAUVAIS écran, ce qui ne lève rien du tout.
+ *
+ * Coût relevé sur un run : 32 s d'appareil et une référence sur deux, sans
+ * qu'aucun message ne relie la cause à l'effet.
+ *
+ * ⚠️ La branche dans `goto` fait foi : si elle existe, la combinaison est
+ * parfaitement valide — l'écran est atteint par un parcours pour le rapport ET
+ * par `goto` pour la capture. Juger sur les deux clés seules accuserait à tort.
+ * @param {any} config @param {string} gotoSource @returns {string[]}
+ */
+export function visuelsInatteignables(config, gotoSource) {
+  const utile = sansCommentaires(gotoSource);
+  const branches = new Set(
+    [...utile.matchAll(new RegExp(`${TETE_BRANCHE}'([^']+)'`, 'g'))].map((m) => m[1]),
+  );
+  return (config?.screens ?? [])
+    .filter((/** @type {any} */ s) => s && s.visual === true)
+    .filter((/** @type {any} */ s) => String(s.reachedBy ?? '').trim() !== '')
+    .filter((/** @type {any} */ s) => !branches.has(s.id))
+    .map((/** @type {any} */ s) => s.id);
+}
+
+/**
  * Les écrans déclarés qu'AUCUNE branche de `goto.yaml` ne sait atteindre.
  *
  * ⚠️ `coverage.notVisited` répond à « qu'ai-je atteint ? », jamais à « puis-je
@@ -1419,7 +1451,14 @@ export const CONFIG_FILES = [
   {
     id: 'firebase-android',
     plateforme: 'android',
-    quoi: 'android/app/google-services.json',
+    // ⚠️ UN NOM, PAS UN CHEMIN. Ce fichier vivait ici en `android/app/`, et le
+    // contrôle était donc MUET sur toute application qui le range dans le source
+    // set de son flavor — `android/app/src/dev/google-services.json`, la
+    // disposition standard d'AGP dès qu'il y a plusieurs environnements. Mesuré
+    // sur un projet réel : Firebase déclaré, fichier présent, contrôle silencieux.
+    // Le mécanisme se voulait dérivé ; c'est son EMPLACEMENT qui était énuméré,
+    // et une énumération d'un seul cas ne couvre que celui-là.
+    quoi: { sous: 'android/app', nom: 'google-services.json' },
     cable: ['android/app/build.gradle', 'android/app/build.gradle.kts'],
     motif: 'google-services',
     casse: "le plugin Gradle qui LIT ce fichier n'est pas appliqué : Firebase ne s'initialise pas",
@@ -1473,7 +1512,13 @@ export function configNonEmbarquee(root, config) {
       // « ./ », et `slice(root.length + 1)` retirait deux vrais caractères :
       // le rapport annonçait « sets/fonts/X.ttf ». Le verdict restait juste (le
       // motif dérive du basename), seul le chemin qu'on va chercher était faux.
-      trouves = fichiersSous(join(root, regle.quoi.sous), regle.quoi.extensions ?? [])
+      // ⚠️ Deux façons de désigner « où chercher », et la seconde manquait : une
+      // famille d'EXTENSIONS (les polices), ou un NOM exact rangé n'importe où
+      // sous un dossier (un `google-services.json`, que le source set du flavor
+      // déplace). Sans elle, il fallait un chemin littéral — donc un seul cas.
+      trouves = (regle.quoi.nom
+        ? fichiersNommes(join(root, regle.quoi.sous), regle.quoi.nom)
+        : fichiersSous(join(root, regle.quoi.sous), regle.quoi.extensions ?? []))
         .map((f) => relative(root, f));
     }
     if (trouves.length === 0) continue;
@@ -1511,6 +1556,27 @@ function fichiersSous(dir, extensions) {
     const chemin = join(dir, e.name);
     if (e.isDirectory()) out.push(...fichiersSous(chemin, extensions));
     else if (extensions.some((x) => e.name.toLowerCase().endsWith(x))) out.push(chemin);
+  }
+  return out;
+}
+
+/**
+ * Les fichiers portant un NOM donné sous un dossier, récursivement.
+ *
+ * ⚠️ Fonction distincte, et pas `fichiersSous(dir, [])` : celui-là filtre par
+ * `extensions.some(...)`, qui rend `false` sur une liste vide — il aurait donc
+ * rendu ZÉRO fichier, et le contrôle serait reparti inerte en ayant l'air
+ * corrigé. Changer sa sémantique était l'autre option, et elle est pire : un
+ * appelant qui passe `extensions ?? []` par défaut se serait mis à tout ramener.
+ */
+function fichiersNommes(dir, nom) {
+  if (!existsSync(dir)) return [];
+  /** @type {string[]} */
+  const out = [];
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    const chemin = join(dir, e.name);
+    if (e.isDirectory()) out.push(...fichiersNommes(chemin, nom));
+    else if (basename(e.name) === nom) out.push(chemin);
   }
   return out;
 }
@@ -2333,6 +2399,25 @@ function main() {
       process.exit(2);
     }
     const depart = startScreen(config).screen;
+
+    // ⚠️ D'ABORD LA CONTRADICTION, parce qu'elle est SILENCIEUSE et que l'autre
+    // contrôle l'excuse. Un écran `reachedBy:` est retiré de la liste des
+    // orphelins — c'est voulu — mais `visual.yaml` ne lit pas `reachedBy` : il
+    // appelle `goto.yaml` pour chaque écran visuel, quoi qu'il arrive. Les deux
+    // clés ensemble, sans branche, donnent donc une référence photographiée sur
+    // le mauvais écran, et rien ne lève. Coût relevé : 32 s d'appareil et une
+    // référence sur deux.
+    const impossibles = visuelsInatteignables(config, source);
+    if (impossibles.length > 0) {
+      warn(`${impossibles.length} écran(s) déclaré(s) À LA FOIS \`visual: true\` et \`reachedBy:\` sans branche goto :`);
+      for (const id of impossibles) warn(`    ${id}`);
+      warn('  Ces deux clés se contredisent : `reachedBy:` dit au rapport que goto ne dessert');
+      warn('  pas cet écran, et `visual.yaml` appelle goto quand même. La capture naîtra sur');
+      warn('  l\'écran où goto se sera arrêté — sans erreur, sans avertissement Maestro.');
+      warn('  Deux issues : écris une branche goto pour cet écran, ou passe-le `visual: false`');
+      warn('  en disant pourquoi. Garder les deux clés ne peut pas marcher.');
+    }
+
     const orphelins = ecransSansBranche(config, source, depart?.id ?? '');
     if (orphelins.length === 0) {
       log(`✔ tout écran ancré est desservi par goto.yaml (${branches} branche(s) lue(s))`);
