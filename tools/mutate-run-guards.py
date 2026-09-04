@@ -1274,6 +1274,11 @@ MUTATIONS = [
     ("artefact", "373 quinquies · tous les ouverts sont soustraits, même les antérieurs",
      "    .filter((n) => n >= (depot.numeroLibreSelonLesCommits ?? 0)).length;",
      "    .filter(() => true).length;"),
+    # 380 — le contrôle d'ordre cesse d'être borné au registre : il déborde sur
+    # les autres tableaux de la page, dont l'un décroît volontairement.
+    ("artefact", "380 · le contrôle d'ordre n'est plus borné au registre",
+     "  const debut = texte.indexOf('Le backlog terrain, entièrement');",
+     "  const debut = 0;"),
     # 374 — le verdict des acquittements périmés retourne dans un producteur,
     # qui ne voit que la moitié des findings et accuse donc ceux de son voisin.
     ("report", "374 · les acquittements périmés se jugent sur une MOITIÉ",

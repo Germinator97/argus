@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { compteursDeLaPage, compteursDuDepot, ecarts, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, ecarts, rupturesDOrdreDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { fuitesDe } from './artefact-confidentialite.mjs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -115,8 +115,20 @@ for (const { valeur, pourquoi } of mortes) {
   process.stdout.write(`      · exception morte : « ${valeur} » n'est plus dans la page — ${pourquoi}\n`);
 }
 
-if (trouves.length === 0 && fuites.length === 0 && mortes.length === 0) {
-  process.stdout.write('\n✔ compteurs à jour, et rien à anonymiser : la page peut être republiée.\n');
+// ── L'ORDRE du registre, dans le même geste ────────────────────────────────
+// Le tableau du backlog se LIT comme un registre : on y cherche un numéro, donc
+// on suppose qu'il croît. Deux fois une ligne a été insérée au mauvais endroit,
+// et les deux fois c'est un lecteur qui l'a vu — la page est valide, chaque
+// ligne est juste, les compteurs restent exacts. Rien d'autre ne peut le dire.
+const ruptures = rupturesDOrdreDu(texte);
+process.stdout.write(`  ${ruptures.length === 0 ? '✔' : '✖'} ordre du registre                   `
+  + `${ruptures.length === 0 ? 'les numéros croissent' : `${ruptures.length} rupture(s)`}\n`);
+for (const { avant, apres } of ruptures) {
+  process.stdout.write(`      · ${apres} vient après ${avant}\n`);
+}
+
+if (trouves.length === 0 && fuites.length === 0 && mortes.length === 0 && ruptures.length === 0) {
+  process.stdout.write('\n✔ compteurs à jour, ordre tenu, rien à anonymiser : la page peut être republiée.\n');
   process.exit(0);
 }
 

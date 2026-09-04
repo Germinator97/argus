@@ -61,7 +61,7 @@ import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, rupturesDOrdreDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -9562,4 +9562,37 @@ test('un point ouvert ANTÉRIEUR à la dernière clôture ne décale rien (373)'
     ecartsDe(pageFictive({ libre: 17 }), depotFictif({ backlog: apres, sujets: ['docs: close 12-15'] }))
       .filter((e) => e.cle === 'numeroLibre'), [],
     'un point ouvert postérieur n\'explique plus le retard des commits');
+});
+
+test('le registre de la page doit CROÎTRE, et seulement lui (380)', () => {
+  // ⚠️ Deux fois une ligne a été insérée au mauvais endroit du tableau, et les
+  // deux fois c'est un LECTEUR qui l'a vu : la page est valide, chaque ligne est
+  // juste, les compteurs restent exacts. Un registre se lit en supposant qu'il
+  // croît — c'est tout ce qui rend un numéro trouvable.
+  const page = (lignes) => '<h2>Le backlog terrain, entièrement</h2><table><tbody>'
+    + lignes.map((id) => `<tr><td class="id">${id}</td><td>x</td></tr>`).join('')
+    + '</tbody></table>';
+
+  assert.deepEqual(rupturesDOrdreDu(page(['1–5', '6', '373', '374&ndash;379'])), [],
+    'un registre croissant est signalé à tort — une plage se compare par sa borne HAUTE');
+
+  const rompu = rupturesDOrdreDu(page(['1–5', '374&ndash;379', '373']));
+  assert.equal(rompu.length, 1, 'la rupture exacte du 04/09 n\'est pas vue');
+  assert.deepEqual(rompu[0], { avant: '374&ndash;379', apres: '373' });
+
+  // ⚠️ LA MOITIÉ QUI COMPTE — LE BORNAGE. La page porte d'autres tableaux dont la
+  // colonne `id` DÉCROÎT volontairement : celui des réponses du device va de 10 à
+  // 8, du plus récent au plus ancien. Un contrôle non borné y verrait des
+  // ruptures et crierait au loup sur du contenu parfaitement juste — et un garde
+  // qui crie au loup apprend à être ignoré.
+  const avecAutreTableau = '<h2>Ce que le device a répondu</h2><table><tbody>'
+    + '<tr><td class="id">10</td><td>x</td></tr><tr><td class="id">9</td><td>x</td></tr>'
+    + '<tr><td class="id">8</td><td>x</td></tr></tbody></table>'
+    + page(['1–5', '373', '374&ndash;379']);
+  assert.deepEqual(rupturesDOrdreDu(avecAutreTableau), [],
+    'le contrôle déborde sur un tableau qui décroît volontairement : il n\'est plus borné '
+    + 'au registre, et il rougira sur du contenu juste');
+
+  // Et il ne conclut pas sur une page qui n'a pas de registre du tout.
+  assert.deepEqual(rupturesDOrdreDu('<p>rien ici</p>'), []);
 });

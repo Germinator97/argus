@@ -182,6 +182,45 @@ export function compteursDeLaPage(texte) {
 }
 
 /**
+ * Les ruptures d'ordre dans le tableau du backlog de la page publiée.
+ *
+ * ⚠️ POURQUOI CE CONTRÔLE EXISTE. Ce tableau se lit comme un registre : on y
+ * cherche un numéro, donc on suppose qu'il croît. Deux fois maintenant, une
+ * ligne a été insérée au mauvais endroit — la première signalée le 02/09
+ * (« deux sections de cette page étaient dans le désordre »), la seconde le
+ * 04/09, avec 374-379 posé AVANT 373. Aucun contrôle ne pouvait le voir : la
+ * page est valide, chaque ligne est juste, et les compteurs restent exacts.
+ * Seul quelqu'un qui LIT la page s'en aperçoit — et c'est ce qui est arrivé, deux
+ * fois sur deux.
+ *
+ * ⚠️ BORNÉ AU TABLEAU DU BACKLOG, et c'est la moitié qui compte : la page porte
+ * d'autres tableaux dont la colonne `id` décroît volontairement — celui des
+ * réponses du device va de 10 à 8, du plus récent au plus ancien. Un contrôle
+ * non borné y verrait trois ruptures et crierait au loup sur du contenu juste.
+ *
+ * @param {string} texte le HTML de la page
+ * @returns {{avant:string, apres:string}[]} les couples en rupture, vide si tout croît
+ */
+export function rupturesDOrdreDu(texte) {
+  const debut = texte.indexOf('Le backlog terrain, entièrement');
+  if (debut === -1) return [];
+  const fin = texte.indexOf('</table>', debut);
+  if (fin === -1) return [];
+  const ids = [...texte.slice(debut, fin).matchAll(/<td class="id">([^<]+)<\/td>/g)].map((m) => m[1]);
+  // La BORNE HAUTE d'une plage : « 374–379 » se compare par 379, sinon une plage
+  // paraîtrait rompre l'ordre avec la ligne suivante.
+  const borne = (/** @type {string} */ t) => {
+    const n = t.replace(/&ndash;|–/g, '-').match(/\d+/g);
+    return n ? Number(n[n.length - 1]) : -1;
+  };
+  const out = [];
+  for (let i = 1; i < ids.length; i += 1) {
+    if (borne(ids[i]) < borne(ids[i - 1])) out.push({ avant: ids[i - 1], apres: ids[i] });
+  }
+  return out;
+}
+
+/**
  * Les points du backlog explicitement OUVERTS — numérotés, inscrits, mais dont
  * la clôture n'est pas encore écrite.
  *
