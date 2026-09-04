@@ -86,6 +86,10 @@ CIBLES = {
     # échantillon avant d'accepter le lot), donc une prose gardée par un test —
     # et un texte n'a aucun comportement à casser.
     "dette": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart",
+    # Depuis le run 48 : la matrice d'appareils porte ce qu'on ne peut PAS
+    # deviner d'une plateforme (un émulateur partagé et plein, une locale qui ne
+    # s'applique qu'au démarrage). De la prose, donc rien à casser sans mutation.
+    "devices": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/device-matrix.md",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
@@ -1144,6 +1148,40 @@ MUTATIONS = [
     ("layout", "352 · layout_test cesse de lire cropRoot, le garde ne tourne plus",
      "      if (screen.cropRoot && screen.anchor != null) {",
      "      if (false && screen.anchor != null) {"),
+    # ── Le dépouillement des runs 47-48 (358-365) ───────────────────────────
+    ("report", "358 · un scope partiel ne se dit plus au terminal",
+     "  if (String(run?.scope ?? 'complet') !== 'complet') {",
+     "  if (false) {"),
+    ("report", "359 · l'absence d'URL se réannonce comme une première publication",
+     "    `aucune URL enregistrée pour ${plateforme} — ce qui ne veut PAS dire qu'aucune `",
+     "    `première publication : reporte l'URL — ce qui ne veut PAS dire qu'aucune `"),
+    ("skill", "360 · la contre-épreuve visuelle reperd son titre",
+     "### La contre-épreuve visuelle — le seul temps qui prouve que la comparaison MESURE\n",
+     ""),
+    ("skill", "361 · la mise en garde const est écrite une seconde fois",
+     "⚠️ **`Semantics` N'A PAS DE CONSTRUCTEUR `const`** — le rappel vivait à huit",
+     "⚠️ **`Semantics` N'A PAS DE CONSTRUCTEUR `const`** (bis, recopié ici).\n\n"
+     "⚠️ **`Semantics` N'A PAS DE CONSTRUCTEUR `const`** — le rappel vivait à huit"),
+    # ⚠️ MA PREMIÈRE VERSION RENDAIT VACANT, et le harnais avait raison : elle
+    # réécrivait le TITRE et laissait intacte la phrase que le garde mesure.
+    # Une mutation doit viser la valeur observée, jamais la ligne d'à côté.
+    ("skill", "364 · la contre-épreuve resuppose un outil d'image",
+     "Ni ImageMagick ni\nPIL ne sont garantis sur un poste",
+     "Un outil d'image est disponible partout"),
+    ("skill", "365 · la contradiction de publication est de nouveau sans issue",
+     "   ⚠️ **VOICI COMMENT ON EN SORT, parce que la nommer ne suffisait pas** : si\n"
+     "   l'outil exige la passe de conception, **charge-la** — la contrainte est\n"
+     "   satisfaite par le chargement, pas par une retouche — puis **n'applique rien**\n"
+     "   et dis-le.",
+     "   La sortie est laissée à ton jugement."),
+    ("devices", "362 · l'émulateur partagé et plein redevient imprévu",
+     "⚠️ **UN ÉMULATEUR DÉJÀ DÉMARRÉ EST UN ÉMULATEUR PARTAGÉ, ET IL PEUT ÊTRE PLEIN.**\n"
+     "`adb install` rend alors `INSTALL_FAILED_INSUFFICIENT_STORAGE",
+     "⚠️ **Un émulateur déjà démarré est prêt à recevoir l'application.**\n"
+     "`adb install` rend alors `OK"),
+    ("yamlconf", "363 · le gabarit repré-remplit des secrets d'office",
+     "  secretsFromEnv: []\n  #   - QA_USER\n  #   - QA_PASS",
+     "  secretsFromEnv:\n    - QA_USER\n    - QA_PASS"),
     ("run", "355 · l'avertissement de locale ne dit plus ce qu'il coûte",
      "    '  ⚠️ Tant que ce n\\'est pas réglé, le flow i18n mesure la locale de L\\'APPAREIL, '\n"
      "      + 'pas celle que tu déclares : il est vert quoi que tu déclares.',\n",
