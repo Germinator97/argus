@@ -94,6 +94,16 @@ CIBLES = {
     # qui sépare ses champs de ceux du YAML — deux schémas au vocabulaire commun.
     # De la prose dans du Dart : rien à casser sans mutation.
     "types": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_types.dart",
+    # Depuis le 373 : la §3 des garde-fous, dont la matrice gouverne les
+    # ÉCRITURES. Sa parité avec le web n'a aucun comportement à casser — c'est un
+    # écart entre deux fichiers que personne ne lit côte à côte, et la §3 a
+    # longtemps AFFIRMÉ cette parité en étant fausse.
+    "methodo": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md",
+    # Et l'autre moitié de la même parité : le skill WEB est la SOURCE dont le
+    # garde dérive les conditions. Muter le mobile prouve qu'il voit un manque ;
+    # muter le web prouve qu'il REFUSE DE CONCLURE quand il ne lit plus rien —
+    # c'est la façon dont ce garde-ci pourrait devenir vacant.
+    "methodoweb": ROOT / "plugins/argus-web/skills/argus/references/methodology.md",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
@@ -1246,6 +1256,29 @@ MUTATIONS = [
     ("config", "352 bis · le croisement recompte les cropRoot en COMMENTAIRE",
      "  const src = dartSansCommentaires(brut);\n  // Un bloc par écran",
      "  const src = brut;\n  // Un bloc par écran"),
+    # 373 — la condition d'écriture empruntée au web disparaît de la §3 mobile.
+    # ⚠️ Elle ne vit qu'à UN endroit exprès : la cellule du tableau dit « à
+    # retirer après » et non « nettoyées », pour qu'une mutation ici ne laisse
+    # pas une seconde copie rendre le garde vert sur rien.
+    ("methodo", "373 · la condition de NETTOYAGE quitte les garde-fous",
+     "- **Nettoyage** : ce qu'un run crée en",
+     "- **Hygiène** : ce qu'un run crée en"),
+    # 373 — l'autre sens : la SOURCE devient illisible. Le garde ne doit pas
+    # conclure « tout va bien » parce qu'il n'a plus rien à comparer.
+    ("methodoweb", "373 · le web cesse d'énoncer ses conditions d'écriture",
+     "**ENV=staging** — écritures autorisées SI :",
+     "**ENV=staging** — écritures autorisées sous conditions."),
+    # 373 bis — le contrôleur des compteurs redevient aveugle aux points OUVERTS,
+    # c'est-à-dire qu'il retrouve exactement l'angle mort qu'on vient de fermer.
+    ("artefact", "373 bis · les points ouverts cessent d'être retirés du compte",
+     "  const closSelonLeBacklog = depot.numeroLibre - (depot.pointsOuverts ?? 0);",
+     "  const closSelonLeBacklog = depot.numeroLibre;"),
+    # 373 ter — la BORNE du marqueur saute : une ouverture racontée en cours de
+    # phrase serait comptée comme une ouverture, et le contrôle deviendrait
+    # tolérant sans que personne l'ait décidé.
+    ("artefact", "373 ter · le marqueur d'ouverture n'est plus borné au début de ligne",
+     "  return [...backlog.matchAll(/^\\*\\*Ouvert le",
+     "  return [...backlog.matchAll(/\\*\\*Ouvert le"),
 ]
 
 
