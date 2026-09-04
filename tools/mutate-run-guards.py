@@ -90,6 +90,10 @@ CIBLES = {
     # deviner d'une plateforme (un émulateur partagé et plein, une locale qui ne
     # s'applique qu'au démarrage). De la prose, donc rien à casser sans mutation.
     "devices": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/device-matrix.md",
+    # Depuis le run 49 : le dartdoc d'`ArgusScreen` porte la seule mise en garde
+    # qui sépare ses champs de ceux du YAML — deux schémas au vocabulaire commun.
+    # De la prose dans du Dart : rien à casser sans mutation.
+    "types": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_types.dart",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
@@ -1156,6 +1160,26 @@ MUTATIONS = [
      "      if (screen.cropRoot && screen.anchor != null) {",
      "      if (false && screen.anchor != null) {"),
     # ── Le dépouillement des runs 47-48 (358-365) ───────────────────────────
+    ("types", "368 · le dartdoc ne prévient plus des deux schémas",
+     "/// ⚠️ **CETTE CLASSE ET `screens[]` DE `argus.mobile.yaml` PARTAGENT LEUR\n"
+     "/// VOCABULAIRE SANS PARTAGER LEURS CHAMPS.**",
+     "/// Les champs suivent argus.mobile.yaml."),
+    ("skill", "369 · l'accueil authentifié redevient ARGUS_ANCHOR_HOME",
+     "⚠️ **ET UNE APP AUTHENTIFIÉE A DEUX RACINES, DONT `ARGUS_ANCHOR_HOME` N'EN\nDÉSIGNE QU'UNE.**",
+     "⚠️ **L'accueil se désigne par `ARGUS_ANCHOR_HOME`.**"),
+    ("skill", "370 · le scan QR redevient un geste comme un autre",
+     "⚠️ **ET UN CRAN PLUS LOIN : LE GESTE QUE MAESTRO NE PEUT PAS PRODUIRE DU TOUT.**",
+     "⚠️ **Un scan de QR se script comme le reste.**"),
+    ("config", "371 · un acquittement sans raison compte quand même",
+     "      status: why === '' ? 'open' : 'acknowledged',",
+     "      status: 'acknowledged',"),
+    ("config", "371 bis · un acquittement périmé n'est plus signalé",
+     "  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)) };",
+     "  return { findings: sortie, perimes: [] };"),
+    ("config", "372 · le contrôle de config rejuge hors de sa plateforme",
+     "  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])]\n"
+     "    .filter((r) => !r.plateforme || plateformes.includes(String(r.plateforme)));",
+     "  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])];"),
     ("report", "367 · un run interrompu se rend de nouveau en vert",
      "    } else if (data.incomplete === true || data.run?.status === 'interrompu') {",
      "    } else if (false) {"),
