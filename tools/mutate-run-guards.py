@@ -1144,6 +1144,16 @@ MUTATIONS = [
     ("layout", "352 · layout_test cesse de lire cropRoot, le garde ne tourne plus",
      "      if (screen.cropRoot && screen.anchor != null) {",
      "      if (false && screen.anchor != null) {"),
+    ("run", "355 · l'avertissement de locale ne dit plus ce qu'il coûte",
+     "    '  ⚠️ Tant que ce n\\'est pas réglé, le flow i18n mesure la locale de L\\'APPAREIL, '\n"
+     "      + 'pas celle que tu déclares : il est vert quoi que tu déclares.',\n",
+     ""),
+    # ⚠️ LE CÂBLAGE, pas la fonction : `localeFindings` reste parfaite, elle
+    # n'atteint simplement plus le rapport. C'est l'état d'avant le correctif,
+    # et aucun test de comportement ne peut le voir.
+    ("run", "355 bis · le finding de locale n'atteint plus le rapport",
+     "    ...localeFindings(avertissementsLocale, reportDevice, platform),\n",
+     ""),
     ("prompts", "353 · le cadrage cesse de trancher les captures",
      "  EVIDENCE  : oui                # oui | non — les captures d'écran partent-elles",
      "  # EVIDENCE : l'agent verra bien"),
