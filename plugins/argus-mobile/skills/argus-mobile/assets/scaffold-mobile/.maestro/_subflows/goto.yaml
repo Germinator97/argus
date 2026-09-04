@@ -146,6 +146,19 @@ appId: ${APP_ID}
 #     when:
 #       true: "${SCREEN_ID === 'profile'}"
 #     commands:
+#       # ⚠️ REDESCENDRE D'ABORD — c'est la règle écrite plus haut, et l'exemple
+#       #    la contredisait en tapant l'onglet tout de suite. `goto` est appelé
+#       #    au MILIEU d'un flow : l'app peut être sur un écran POUSSÉ, qui ne
+#       #    montre aucune barre d'onglets. Le tap échoue alors sur « Element not
+#       #    found: Id matching regex: nav_profile » — donc en accusant une ancre
+#       #    parfaitement correcte, trois étapes avant la vraie cause. Mesuré sur
+#       #    un projet réel : un flow rouge et une passe device à refaire.
+#       #    Un retour ancré par écran poussé que ce flow peut avoir ouvert,
+#       #    `optional: true` pour ne rien casser quand on est déjà à la racine.
+#       - tapOn:
+#           id: detail_back
+#           optional: true
+#           label: Refermer un écran poussé, s'il y en a un
 #       - tapOn:
 #           id: nav_profile
 #           label: Onglet Profil

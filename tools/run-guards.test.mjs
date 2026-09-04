@@ -8500,3 +8500,34 @@ test('le retrait des commentaires n\'a qu\'UNE source dans config.mjs (m76 bis)'
     `le retrait des lignes commentées est écrit ${copies}× dans config.mjs — une seule `
     + 'source, sinon la copie que rien ne mesure diverge de celle qui est gardée');
 });
+
+test("l'exemple de goto MONTRE le retour qu'il prescrit, il ne le décrit pas seulement (347)", () => {
+  const goto = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+
+  // ⚠️ LA RÈGLE ÉTAIT DÉJÀ ÉCRITE — « écris-la comme un RETOUR, pas comme un
+  // aller ». C'est l'EXEMPLE qui la contredisait, en tapant l'onglet dès sa
+  // première commande. Un run l'a recopié et a perdu un flow sur « Element not
+  // found », donc en accusant une ancre correcte. Même classe que le 229 : la
+  // forme inerte enseignée comme la bonne. Ce garde tient les DEUX — la règle
+  // en prose, et l'exemple qui doit la montrer.
+  assert.match(goto, /comme un RETOUR, pas comme un aller/,
+    "goto.yaml ne prescrit plus le retour — l'exemple ci-dessous n'aurait plus de raison d'être");
+
+  const i = goto.lastIndexOf('#     when:');
+  assert.notEqual(i, -1, "l'exemple commenté a disparu de goto.yaml — mets ce garde à jour");
+  const exemple = goto.slice(i);
+
+  // ⚠️ ANCRÉ SUR LA LIGNE YAML, jamais sur le mot : le commentaire que je viens
+  // d'écrire au-dessus de l'exemple contient « optional: true » et
+  // « nav_profile » en toutes lettres. Un garde qui les cherche nus se
+  // satisferait de ma propre explication et resterait vert sur un exemple vidé.
+  const retour = exemple.search(/^#\s+optional: true$/m);
+  const onglet = exemple.search(/^#\s+id: nav_/m);
+  assert.notEqual(retour, -1,
+    "l'exemple ne montre plus de retour défensif : il enseigne l'aller que la règle interdit");
+  assert.notEqual(onglet, -1, "l'exemple ne tape plus d'onglet — mets ce garde à jour");
+  assert.ok(retour < onglet,
+    "le retour défensif arrive APRÈS le tap sur l'onglet : dans cet ordre il ne sert à rien, "
+    + "puisque c'est le tap qui échoue quand l'app est sur un écran poussé");
+});
