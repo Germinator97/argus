@@ -5265,7 +5265,89 @@ laquelle la remplaçait, et publié une page neuve) ; et j'avais **dicté le tit
 que le skill sait dériver — `report.mjs` fait `ident.title || titreDuRapport(run)`,
 donc une valeur dictée écrase le dérivé. Le skill et le run étaient justes.
 
-**Prochain numéro libre : 380.**
+### 380. Le registre de la page se lit comme ORDONNÉ, et rien ne le vérifiait
+
+**Fermé le 04/09/2026 au soir.** Germinator a lu « 373 · ouvert » posé **après**
+374-379 dans le tableau de la page publiée. C'est la **deuxième fois** — la
+première signalée le 02/09 (« deux sections étaient dans le désordre ») — et les
+deux fois c'est un **lecteur** qui l'a vu : la page est valide, chaque ligne est
+juste, les compteurs restent exacts. Un registre n'est cherchable que parce qu'on
+suppose qu'il croît.
+
+`check-artefact.mjs` refuse désormais une page en rupture. ⚠️ **La moitié qui
+compte est le BORNAGE** : la page porte d'autres tableaux dont la colonne `id`
+décroît volontairement (les réponses du device vont de 10 à 8). Un contrôle non
+borné y verrait trois ruptures et crierait au loup sur du contenu juste. Et une
+plage se compare par sa **borne haute**, sinon `374-379` paraîtrait rompre
+l'ordre avec la ligne suivante.
+
+### 381-385. Les runs 51 et 52 — et `clearState` ne remettait rien à zéro sur iOS
+
+**Fermés le 05/09/2026.** Deux runs en parallèle, Android sur le terrain sans API
+et iOS sur celui qui en consomme une.
+
+🔴 **381 — LE DÉFAUT LE PLUS LOURD TROUVÉ SUR UNE PLATEFORME.** `launch-clean.yaml`
+appelait `clearState` « la première règle anti-flake mobile » et promettait, pour
+iOS, « Maestro RÉINSTALLE l'app (plus lent, mais **état vraiment neuf**) ». C'est
+faux : les jetons vivent dans le **trousseau**, qui SURVIT à la suppression de
+l'app — là où le `pm clear` d'Android les emporte. Mesuré sur quatre passes,
+trousseau vidé à la main juste avant : **premier flow 78-142 ms** sur l'écran
+d'identification, **tous les suivants ~20 200 ms**, parce que l'app y démarre
+après la connexion. La règle tombait en silence sur toute la plateforme, et
+l'échec accusait une ancre correcte — le pire verdict que ce harnais sache
+produire. Le geste ne peut pas vivre dans le sous-flow (sandbox sans shell) : il
+appartient au runner, comme la coupure des animations côté Android, et il est
+câblé **avant** les flows — après, il ne servirait qu'au run suivant.
+
+🔴 **382** — `permissions.all: allow` **ne couvre pas** l'alerte système des
+notifications sur iOS 26.3. Un seul flow qui la laisse ouverte fait échouer les
+cinq suivants, et la capture montrait l'accueil **entièrement rendu derrière
+elle** pendant que le flow rapportait l'ancre introuvable. Le geste est
+documenté avec sa **PLACE** — `goto.yaml`, qui appartient au projet, le sous-flow
+étant du cadre — et avec le `when:` qui le rend rejouable.
+
+**383-385, trois instruments qui mentent.** `command -v aapt2` rend « ABSENT » sur
+une machine équipée (l'outil vit dans `build-tools/` du SDK) — **deux runs
+indépendants s'y sont fait prendre le même soir**, ce qui est le signal le plus
+fort qu'une paire de runs sache donner ; sous `zsh`, `time` n'imprime pas `real`
+mais « … cpu … total », et une sentinelle qui l'attend **bloque la chaîne entière**
+sans message ; et « relève TON point sur TA capture » suppose une capture que
+seul le premier run produit.
+
+⚠️ **EN ÉCRIVANT LE 383, J'AI CITÉ UNE COMMANDE QUI N'EXISTE PAS** (`config.mjs
+--doctor` ; la cible s'appelle `make argus-doctor`). Le garde ne vérifie donc pas
+cette phrase-là : il **dérive toutes** les cibles `make` que le skill prescrit et
+exige qu'elles existent dans le Makefile livré. La classe, pas le cas.
+
+⚠️ **ET LE GARDE DU 256 M'A REPRIS SUR LE POINT MÊME QU'IL SURVEILLE** : mon
+exemple du 382 était écrit en map de flow (`{ visible: … }`), que le parseur
+refuse. Maestro l'accepterait, mais un exemple se recopie. Récrit en bloc, garde
+intact.
+
+🔴 **UN CONSTAT SUR SEPT EST DÉMENTI** — le run 51 signalait que `report.json` est
+tronqué au démarrage « et rien ne le dit ». C'est écrit sur **douze lignes** à
+l'endroit exact (`run.mjs:1847`), né du septième run : le rapport précédent ne
+doit pas survivre, sinon il se lit comme frais.
+
+📌 **Trois gestes de MON cadrage ont coûté, et jamais le skill** : le run 51 a émis
+de la **télémétrie dans le projet de monitoring réel** pendant deux passes device,
+parce que mon prompt omettait le point que `PROMPTS.md:152` demande explicitement
+(constat **349**) — 7 des 8 points couverts, et le huitième était le seul à effet
+sortant. Avant lui : l'API du run 48, l'URL périmée et le titre dicté du run 50.
+La procédure porte désormais un geste de plus, **avant** d'écrire le prompt :
+dériver la liste du gabarit au lieu de la reconstituer.
+
+📌 **Ce que les deux runs ont bien fait** : le 52 a **refusé de générer les
+références visuelles** sur une suite instable (« figer une capture d'un flow dont
+on n'a pas prouvé qu'il tourne rend vert pour toujours ce qu'elle a photographié
+de travers ») et rapporté la dimension **non exécutée**, pas verte ; il a refusé
+de relever `startTimeoutMs` malgré l'invite du runner, la capture montrant que les
+20 s n'étaient pas de la lenteur ; et **les deux ont exercé le compte neuf hors
+suite sans le brûler**, en rendant la décision. Le 51 a appliqué la consigne de
+charge à la lettre — 4312 ms contre 4000, mais `loadAvg` 9,25 et pic 15,34 :
+« je n'en conclus rien sur l'application ».
+
+**Prochain numéro libre : 386.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
