@@ -1274,6 +1274,23 @@ MUTATIONS = [
     ("artefact", "373 quinquies · tous les ouverts sont soustraits, même les antérieurs",
      "    .filter((n) => n >= (depot.numeroLibreSelonLesCommits ?? 0)).length;",
      "    .filter(() => true).length;"),
+    # 381 — le vidage du trousseau iOS cesse d'être tenté : la règle anti-flake
+    # redevient muette sur toute la plateforme.
+    ("run", "381 · le trousseau iOS n'est plus vidé",
+     "  if (platform !== 'ios') {\n    return { ok: false, detail: 'Android : `pm clear` emporte déjà les données, trousseau compris' };",
+     "  if (platform !== 'nulle-part') {\n    return { ok: false, detail: 'Android : `pm clear` emporte déjà les données, trousseau compris' };"),
+    # 381 bis — la fonction reste juste, plus personne ne l'appelle.
+    ("run", "381 bis · le vidage du trousseau n'est plus câblé",
+     "  const keychain = resetKeychain(platform, resolved.udid, opts.dryRun);",
+     "  const keychain = { ok: false, detail: 'neutralisé' };"),
+    # 382 — la place du geste disparaît : on éditerait le cadre, qui est écrasé.
+    ("login", "382 · l'alerte système iOS n'est plus documentée",
+     "# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS.",
+     "# Rien de particulier à signaler sur les permissions."),
+    # 383 — le skill prescrit une cible `make` que le Makefile ne porte pas.
+    ("skill", "383 · le skill prescrit une cible make inexistante",
+     "et la réponse est **`make argus-doctor`**",
+     "et la réponse est **`make argus-diagnostic`**"),
     # 380 — le contrôle d'ordre cesse d'être borné au registre : il déborde sur
     # les autres tableaux de la page, dont l'un décroît volontairement.
     ("artefact", "380 · le contrôle d'ordre n'est plus borné au registre",
