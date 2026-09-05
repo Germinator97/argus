@@ -9705,8 +9705,14 @@ test('la commande de release a une PLACE où être notée, pas seulement une con
   const i = yaml.indexOf('androidScan');
   assert.ok(i !== -1, 'la clé androidScan a disparu du gabarit : mets ce motif à jour');
   const bloc = yaml.slice(i, i + 2600);
-  assert.match(bloc, /construit par|# NOTE ICI|NOTE ICI/i,
-    'la FORME de la note a disparu : « note ici » sans forme laisse chacun inventer la sienne');
+  // ⚠️ LA FORME CONCRÈTE, pas le titre du paragraphe. Ce garde acceptait trois
+  // motifs alternatifs — dont l'en-tête « NOTE ICI » —, si bien qu'en retirer un
+  // laissait les autres : deux mutations de suite ont rendu VACANT alors qu'elles
+  // avaient bien muté. Un garde qui accepte des synonymes ne mesure que le plus
+  // facile à écrire, jamais celui qui porte l'information.
+  assert.match(bloc, /construit par\s*:/i,
+    'la FORME de la note a disparu : « note ici » sans gabarit laisse chacun inventer la sienne, '
+    + 'et c\'est exactement ce que deux runs ont fait');
   assert.match(bloc, /source/i,
     'la SOURCE n\'est plus demandée — sans elle le suivant cherchera au même endroit que toi');
   // ⚠️ L'autre moitié : surtout PAS une clé. Un run l'a créée puis retirée en
