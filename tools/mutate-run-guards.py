@@ -72,6 +72,10 @@ CIBLES = {
     # appartient le parcours d'authentification, ce qu'on asserte après lui, et
     # ce qui part dans une référence visuelle commitée.
     "login": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/login.yaml",
+    # Depuis le 382 : le point d'entrée de TOUS les flows. Il porte la promesse
+    # d'état neuf — fausse sur iOS jusqu'au 381 — et le piège de l'alerte
+    # système. De la prose dans un flow : rien à casser sans mutation.
+    "launchclean": FLOWS / "_subflows/launch-clean.yaml",
     "lifecycle": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/lifecycle.yaml",
     "yamlconf": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml",
     "gitignore": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.gitignore",
@@ -1284,7 +1288,7 @@ MUTATIONS = [
      "  const keychain = resetKeychain(platform, resolved.udid, opts.dryRun);",
      "  const keychain = { ok: false, detail: 'neutralisé' };"),
     # 382 — la place du geste disparaît : on éditerait le cadre, qui est écrasé.
-    ("login", "382 · l'alerte système iOS n'est plus documentée",
+    ("launchclean", "382 · l'alerte système iOS n'est plus documentée",
      "# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS.",
      "# Rien de particulier à signaler sur les permissions."),
     # 383 — le skill prescrit une cible `make` que le Makefile ne porte pas.
