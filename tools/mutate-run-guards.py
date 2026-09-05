@@ -1278,6 +1278,15 @@ MUTATIONS = [
     ("artefact", "373 quinquies · tous les ouverts sont soustraits, même les antérieurs",
      "    .filter((n) => n >= (depot.numeroLibreSelonLesCommits ?? 0)).length;",
      "    .filter(() => true).length;"),
+    # 373 — le skill repose la QUESTION sans dire quoi faire de la réponse :
+    # l'agent se retrouve exactement où il était avant de la poser.
+    ("skill", "373 · le skill ne dit plus quoi faire d'un parcours à usage unique",
+     "1. **Écris le parcours, sors-le de la suite, ne le lance pas.** Un fichier tagué\n   `manual`",
+     "1. **À toi de voir.** Un fichier quelconque, tagué\n   `au-choix`"),
+    # 386 — la consigne « note ici » retrouve son absence d'endroit.
+    ("yamlconf", "386 · « note ici » redevient une consigne sans endroit",
+     "  # ⚠️ « NOTE ICI » VEUT DIRE : EN COMMENTAIRE, AVEC SA SOURCE",
+     "  # Note-la quelque part."),
     # 381 — le vidage du trousseau iOS cesse d'être tenté : la règle anti-flake
     # redevient muette sur toute la plateforme.
     ("run", "381 · le trousseau iOS n'est plus vidé",
