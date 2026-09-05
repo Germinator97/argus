@@ -1284,9 +1284,12 @@ MUTATIONS = [
      "1. **Écris le parcours, sors-le de la suite, ne le lance pas.** Un fichier tagué\n   `manual`",
      "1. **À toi de voir.** Un fichier quelconque, tagué\n   `au-choix`"),
     # 386 — la consigne « note ici » retrouve son absence d'endroit.
+    # ⚠️ Elle vise la FORME, pas le titre du paragraphe : muter l'en-tête laissait
+    # la ligne `construit par : …` en place, donc le garde restait vert à raison —
+    # la forme était toujours dite. Le harnais l'a rendu VACANT, et il avait raison.
     ("yamlconf", "386 · « note ici » redevient une consigne sans endroit",
-     "  # ⚠️ « NOTE ICI » VEUT DIRE : EN COMMENTAIRE, AVEC SA SOURCE",
-     "  # Note-la quelque part."),
+     "`# construit par : <commande>  (source : <fichier\n  # §>)`",
+     "quelque part dans ce fichier`"),
     # 381 — le vidage du trousseau iOS cesse d'être tenté : la règle anti-flake
     # redevient muette sur toute la plateforme.
     ("run", "381 · le trousseau iOS n'est plus vidé",
