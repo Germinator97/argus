@@ -5081,11 +5081,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT : le 373.** Le backlog n'est donc **pas vide** — c'est le
-premier point laissé ouvert en quarante-six passes.
+✅ **Backlog vide.** Le 373, seul point jamais laissé ouvert de ce chantier, est
+fermé le 05/09 — et ce qui l'a tenu ouvert n'était pas sa difficulté.
 
-⚠️ **La phrase qui suit décrit la passe du MATIN**, et elle reste vraie à sa
-date. Elle ne décrit plus l'état présent, et pendant quelques heures elle a
+⚠️ **La phrase qui suit décrit la passe du 04/09 au matin**, et elle reste vraie à
+sa date. Elle ne décrit plus l'état présent, et pendant quelques heures elle a
 affirmé le contraire de ce que le fichier portait trente lignes plus bas. C'est
 le motif que ce document traque partout ailleurs : une affirmation juste le jour
 où on l'écrit, fausse le lendemain, et que **rien ne pouvait signaler** — le
@@ -5130,9 +5130,9 @@ le **scan QR** qu'aucun flow ne peut produire · l'**acquittement** qui manquait
 aux findings de sécurité, avec son expiration · et une **parité** de plateforme
 qu'un contrôle honorait et pas son voisin.
 
-### 373. Le skill avertit sur ce qui se RECHARGE, jamais sur ce qui se CONSOMME
+### 373. ✅ Fermé le 05/09/2026 — et sa condition de clôture était IMPOSSIBLE
 
-**Ouvert le 04/09/2026, sur une question de Germinator.** C'est le dernier des
+**Né le 04/09/2026 d'une question de Germinator, fermé le 05.** C'était le dernier des
 deux angles morts structurels — l'authentification multi-écrans a été fermée par
 le 357, celui-ci ne l'est pas.
 
@@ -5185,9 +5185,31 @@ second compte de test, **neuf**, sera fourni sur le terrain qui consomme une API
 le prochain run rencontrera le cas pour de vrai, et ce qu'il fera — ou ratera —
 dira quelle case manquait vraiment.
 
-**Ce qui ferme le point** : un run qui a joué le parcours de création **puis l'a
-REJOUÉ**. Le second passage est la mesure ; le premier ne prouve rien — c'est
-exactement l'erreur que le critère « deux fois de suite » nomme.
+🔴 **CE QUI L'A TENU OUVERT N'ÉTAIT PAS SA DIFFICULTÉ — C'ÉTAIT MA CONDITION.**
+J'avais écrit : « se ferme quand un run aura joué le parcours de création **puis
+l'aura REJOUÉ** ». Or rejouer exige de remettre l'état à zéro, donc
+d'**administrer le backend** — ce que `PROMPTS.md:185` interdit à l'agent en
+toutes lettres. *Une condition qui exige un geste qu'on interdit ne peut jamais
+être remplie* : elle ne se vérifie pas, elle attend indéfiniment. C'est la
+quatrième façon de naître vacant — guetter un phénomène que le code interdit par
+construction — appliquée non à un test mais à un **critère de sortie**.
+
+✅ **ET LA RÉPONSE ÉTAIT DÉJÀ LÀ, RENDUE DEUX FOIS.** Les runs **50** et **52**,
+en aveugle, sur deux passes sans rapport, ont rencontré le cas et rendu la MÊME
+décision sans qu'on la leur prescrive : écrire le parcours, le taguer `manual`
+pour le sortir de la suite, **ne pas le lancer**, et rendre l'arbitrage à qui
+possède les données. Le 52 a même trouvé l'endpoint de remise à zéro et **refusé
+de l'appeler** — « administration du backend, hors de mon périmètre ». C'est la
+convergence de deux agents indépendants, le signal le plus fort qu'une paire de
+runs sache donner, et il attendait qu'on veuille bien le lire.
+
+Le skill porte désormais les **trois issues**, avec ce que les runs y ont ajouté :
+la commande de remise à zéro doit être **DÉCLARÉE PAR L'UTILISATEUR** au cadrage,
+puisque l'agent ne peut ni la découvrir ni l'appeler. Et il porte la leçon sur le
+critère lui-même, pour qu'on ne la repose pas ailleurs.
+
+📌 Ce qui se mesure ici est ce que l'agent **DÉCIDE** devant un parcours à usage
+unique — pas ce qu'il parvient à rejouer.
 
 ### 374-379. Le run 50 — deux verdicts rendus sur la moitié des preuves
 
@@ -5347,7 +5369,19 @@ suite sans le brûler**, en rendant la décision. Le 51 a appliqué la consigne 
 charge à la lettre — 4312 ms contre 4000, mais `loadAvg` 9,25 et pic 15,34 :
 « je n'en conclus rien sur l'application ».
 
-**Prochain numéro libre : 386.**
+### 386. « Note ici la commande de release » — sans endroit où la noter
+
+**Fermé le 05/09/2026.** Le gabarit demandait de chercher la commande de release
+dans le dépôt « et de noter ici celle que tu as employée », sans dire **où ni sous
+quelle forme**. Deux runs s'y sont arrêtés : l'un a trouvé sa commande dans un
+`SENTRY.md §7` et n'a pas su où la reporter ; l'autre a **créé une clé** pour la
+porter, puis l'a **retirée** en mesurant qu'aucun script ne la lit — et il avait
+raison, une clé morte se relit comme un geste outillé alors qu'il ne l'est pas.
+La forme est désormais écrite (`# construit par : <commande>  (source : <fichier
+§>)`), et le garde exige aussi que **la source** y soit : sans elle, le suivant
+cherchera au même endroit que toi, et ce n'est jamais le même selon les projets.
+
+**Prochain numéro libre : 387.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;

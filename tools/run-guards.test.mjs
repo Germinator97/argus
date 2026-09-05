@@ -9694,3 +9694,53 @@ test('l\'alerte système iOS est dite, avec sa PLACE et son `when:` (382)', () =
   assert.match(yaml, /goto\.yaml/, 'la PLACE du geste n\'est plus dite : sans elle on édite le cadre, qui sera écrasé');
   assert.match(yaml, /when:/, 'le `when:` a disparu : un tap inconditionnel échoue dès le second run');
 });
+
+test('la commande de release a une PLACE où être notée, pas seulement une consigne (386)', () => {
+  // ⚠️ Le gabarit disait « note ici celle que tu as employée » sans offrir
+  // d'endroit : un run a trouvé sa commande dans un `SENTRY.md §7` et n'a pas su
+  // où la reporter, un autre a créé une clé pour la porter puis l'a retirée en
+  // mesurant que rien ne la lit. La consigne existait, la case non.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const i = yaml.indexOf('androidScan');
+  assert.ok(i !== -1, 'la clé androidScan a disparu du gabarit : mets ce motif à jour');
+  const bloc = yaml.slice(i, i + 2600);
+  assert.match(bloc, /construit par|# NOTE ICI|NOTE ICI/i,
+    'la FORME de la note a disparu : « note ici » sans forme laisse chacun inventer la sienne');
+  assert.match(bloc, /source/i,
+    'la SOURCE n\'est plus demandée — sans elle le suivant cherchera au même endroit que toi');
+  // ⚠️ L'autre moitié : surtout PAS une clé. Un run l'a créée puis retirée en
+  // mesurant qu'aucun script ne la lit, et il avait raison.
+  const scripts = ['config.mjs', 'sec.mjs', 'perf.mjs'].map((f) => readFileSync(join(RACINE,
+    `plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/${f}`), 'utf8')).join('\n');
+  const declaree = /^\s*(release|scan)BuildCmd\s*:/m.test(yaml);
+  const lue = /(release|scan)BuildCmd/.test(scripts.replace(/releaseBuildCmd\(/g, ''));
+  assert.ok(!declaree || lue,
+    'le gabarit déclare une clé de commande de release que rien ne lit : une clé morte se relit '
+    + 'comme un geste outillé alors qu\'il ne l\'est pas');
+});
+
+test('le skill dit quoi FAIRE d\'un parcours à usage unique, et pas seulement de le demander (373)', () => {
+  // ⚠️ Le point est resté ouvert deux jours pour une raison qui n'était pas la
+  // sienne : sa condition de clôture exigeait un run qui joue la création PUIS la
+  // rejoue — or rejouer demande de remettre l'état à zéro, donc d'administrer le
+  // backend, que le skill interdit. Une condition qui exige un geste qu'on
+  // interdit ne peut jamais être remplie. Pendant ce temps DEUX runs avaient
+  // rendu la même réponse, sans qu'on la leur prescrive.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('consomme-t-il quelque chose que le serveur ne rend pas');
+  assert.ok(i !== -1, 'la question du cadrage a disparu : mets ce motif à jour');
+  const bloc = skill.slice(i, i + 3200);
+
+  // Les trois issues doivent être NOMMÉES — poser la question sans dire quoi
+  // faire de la réponse laisse l'agent exactement où il était.
+  assert.match(bloc, /manual/, 'la première issue (sortir le flow de la suite) n\'est plus nommée');
+  assert.match(bloc, /DÉCLARÉE PAR L'UTILISATEUR|déclarée par l'utilisateur/i,
+    'rien ne dit plus que la commande de remise à zéro ne peut pas être découverte par l\'agent');
+  assert.match(bloc, /EXPLORE/, 'la troisième issue a disparu');
+
+  // ⚠️ Et la leçon sur le CRITÈRE, qui vaut au-delà de ce point : une condition
+  // de preuve qui exige un geste interdit n'est pas exigeante, elle est vacante.
+  assert.match(bloc, /ne peut jamais être remplie|jamais être remplie/,
+    'la leçon sur la condition impossible a disparu — c\'est elle qui empêche de la reposer ailleurs');
+});

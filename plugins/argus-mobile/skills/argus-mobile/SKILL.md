@@ -53,9 +53,33 @@ d'une régression**. La question à poser tient en une ligne :
 ⚠️ **Le geste qui protège l'isolation est celui qui consomme** : `clearState`
 garantit qu'un flow ne dépend pas du précédent, et c'est exactement ce qui lui
 fait repayer l'état serveur à chaque fois.
-📌 **Ce qu'il faut FAIRE de la réponse ne s'invente pas ici.** Pose la question,
-écris la réponse dans le compte rendu, et laisse l'utilisateur trancher : c'est
-son backend, ses données, et lui seul sait si un compte se régénère.
+📌 **ET VOICI CE QU'IL FAUT EN FAIRE — mesuré deux fois plutôt qu'inventé.** Deux
+runs en aveugle, sur deux passes sans rapport, ont rencontré ce cas et rendu **la
+même réponse** sans qu'on la leur prescrive. C'est la convergence, le signal le
+plus fort qu'une paire de runs sache donner :
+
+1. **Écris le parcours, sors-le de la suite, ne le lance pas.** Un fichier tagué
+   `manual` (donc exclu par `config.yaml`), sa commande d'exécution dans
+   l'en-tête, et la décision rendue à qui possède les données. Les deux runs ont
+   fait exactement cela, et les deux ont eu raison : lancer aurait consommé
+   l'état, et le second passage — celui qui prouve quelque chose — n'aurait plus
+   été possible.
+2. **Une commande de remise à zéro, si le projet en fournit une** — et elle doit
+   être **DÉCLARÉE PAR L'UTILISATEUR dans le cadrage**, jamais découverte par
+   l'agent. Un run a trouvé l'endpoint de reset tout seul et a refusé de
+   l'appeler : « administration du backend, hors de mon périmètre ». Il avait
+   raison, et c'est ce qui rend cette issue inatteignable sans toi.
+3. **Le jouer une seule fois en EXPLORE**, jamais en REGRESS — une suite de
+   non-régression suppose la rejouabilité, et celui-ci ne l'a pas.
+
+⚠️ **ET NE POSE PAS « JOUÉ PUIS REJOUÉ » COMME CRITÈRE DE PREUVE.** C'est
+exactement l'erreur qu'a faite le suivi de ce chantier : la condition de clôture
+du point exigeait un run qui joue la création *puis la rejoue*, or rejouer
+demande de remettre l'état à zéro, donc d'administrer le backend — ce que ce
+document interdit deux paragraphes plus loin. Une condition qui exige un geste
+qu'on interdit ne peut jamais être remplie : elle ne se vérifie pas, elle
+attend indéfiniment. Ce qui se mesure ici est ce que l'agent **DÉCIDE** devant un
+parcours à usage unique, pas ce qu'il parvient à rejouer.
 ═══════════════════════════════════════════════════════════════════════════════
 N'agis jamais à l'aveugle. Pose d'abord les questions qui changent l'issue (via
 `AskUserQuestion` si disponible, sinon en clair). L'objectif d'abord :

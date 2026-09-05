@@ -102,6 +102,17 @@ build:
   #
   # Cherche la commande dans le dépôt (script de release, CI, doc de
   # déploiement) avant d'en inventer une, et note ici celle que tu as employée.
+  #
+  # ⚠️ « NOTE ICI » VEUT DIRE : EN COMMENTAIRE, AVEC SA SOURCE — juste sous
+  # `androidScan`, sous la forme `# construit par : <commande>  (source : <fichier
+  # §>)`. Deux runs s'y sont arrêtés : l'un a trouvé la commande dans un
+  # `SENTRY.md §7` et n'a pas su où la reporter ; l'autre a créé une clé
+  # `iosScanBuildCmd` pour la porter, puis l'a RETIRÉE en mesurant qu'aucun
+  # script ne la lit. Il avait raison : une clé que rien ne lit se relit comme un
+  # geste outillé alors qu'il ne l'est pas — c'est le défaut que le point 11 a
+  # fermé, et le rouvrir coûterait plus que la prose qu'il remplace.
+  # La source compte autant que la commande : sans elle, le suivant la cherchera
+  # au même endroit que toi, et ce n'est jamais le même selon les projets.
   ios: build/ios/iphonesimulator/Runner.app
   # Sa jumelle iOS, LUE PAR QUATRE SITES et déclarée nulle part jusqu'au run 31 :
   # un message d'erreur envoyait la renseigner, et le seul moyen d'apprendre
