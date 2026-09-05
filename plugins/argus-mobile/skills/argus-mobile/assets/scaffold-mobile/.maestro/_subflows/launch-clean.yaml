@@ -12,12 +12,42 @@ appId: ${APP_ID}
 # Sans elle, un flow hérite de l'onboarding déjà passé, du cache et de la session
 # du flow précédent : son résultat dépend alors de l'ordre d'exécution, ce qui est
 # la définition même d'une suite non déterministe.
-#   Android : équivalent de `adb shell pm clear <package>`
-#   iOS     : Maestro RÉINSTALLE l'app (plus lent, mais état vraiment neuf)
+#   Android : équivalent de `adb shell pm clear <package>` — emporte TOUT,
+#             trousseau compris.
+#   iOS     : Maestro RÉINSTALLE l'app (plus lent) — mais l'état n'est PAS neuf :
+#             le TROUSSEAU survit à la suppression, donc les jetons de session
+#             aussi. Mesuré sur un projet réel : le premier flow atteint l'écran
+#             d'identification en 78-142 ms, les cinq suivants expirent à
+#             ~20 200 ms parce que l'app y démarre APRÈS la connexion — et
+#             l'échec accuse l'ancre, qui est correcte.
+#             C'est `run.mjs` qui le corrige (`resetKeychain`, un
+#             `xcrun simctl keychain <udid> reset` avant les flows), parce que la
+#             sandbox de Maestro n'a ni shell ni système de fichiers.
 #
 # `permissions.all: allow` est déjà le défaut de Maestro ; il est écrit ici pour
 # être explicite — resilience.yaml refait un `launchApp` avec `all: deny` pour
 # éprouver le parcours inverse.
+#
+# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS. Mesuré sur
+# iOS 26.3 avec Maestro 2.8.0 : `permissions.all: allow` accorde les permissions
+# du bac à sable, pas la modale que le SYSTÈME présente au premier
+# `requestAuthorization`. Un seul flow qui la laisse ouverte fait échouer les
+# CINQ suivants — et l'échec accuse l'ancre de l'écran, qui est correcte : la
+# capture montrait l'accueil ENTIÈREMENT rendu derrière l'alerte pendant que le
+# flow rapportait `home_root` introuvable.
+#   Le geste qui la ferme dépend de ta langue et de ton app, donc il ne peut pas
+#   vivre ICI — ce fichier appartient au cadre et serait écrasé. Pose-le dans
+#   `_subflows/goto.yaml`, qui est à toi, juste après le lancement :
+#     - runFlow:
+#         when:
+#           visible: 'Autoriser'        # ou 'Allow', selon la langue du système
+#         commands:
+#           - tapOn: 'Autoriser'
+#   ⚠️ En syntaxe BLOC, jamais en map de flow (`{ visible: … }`) : Maestro
+#   l'accepterait, mais le sous-ensemble YAML d'Argus non — et un exemple se
+#   recopie. C'est le défaut 256, et c'est son garde qui m'a repris ici.
+#   ⚠️ Un `tapOn` inconditionnel échouerait sur les runs suivants, où l'alerte
+#   n'apparaît plus : c'est le `when:` qui rend le geste rejouable.
 - launchApp:
     clearState: true
     permissions:

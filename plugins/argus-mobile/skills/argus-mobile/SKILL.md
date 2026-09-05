@@ -2185,6 +2185,47 @@ l'`evidence` le liste. C'est ce qui distingue « on n'a pas pu mesurer » de
 « voici ce qu'il faut faire pour qu'on puisse ».
 
 ═══════════════════════════════════════════════════════════════════════════════
+## 4-bis. Trois instruments qui mentent, et ce qui les démasque
+
+Chacun a coûté à un run réel, et aucun ne lève d'erreur : ils rendent un chiffre
+ou un verdict parfaitement plausible.
+
+⚠️ **`command -v <outil>` N'EST PAS LA BONNE QUESTION.** `aapt2` ne vit pas au
+PATH — il est rangé dans `build-tools/<version>/` du SDK Android, et `config.mjs`
+l'y résout tout seul. Un `command -v aapt2` rend donc « ABSENT » sur une machine
+parfaitement équipée, et **deux runs indépendants s'y sont fait prendre le même
+soir** : l'un a écrit la mauvaise raison dans sa configuration, l'autre a failli
+déclarer une dimension non exécutable. La question est « le harnais le
+trouve-t-il ? », et la réponse est **`make argus-doctor`** — la cible
+existe, elle imprime la config résolue ET l'outillage détecté. ⚠️ Vérifié en
+lisant le Makefile : `config.mjs` n'a pas de drapeau `--doctor`, et l'inventer
+aurait été la promesse non mesurée que ce document reproche partout ailleurs. Vaut pour tout outil que le harnais sait chercher
+ailleurs qu'au PATH.
+
+⚠️ **SOUS `zsh`, `time` N'IMPRIME PAS `real`.** Il rend `… cpu … total`, là où
+`bash` écrit `real / user / sys`. Une sentinelle qui attend `real` ne voit donc
+jamais rien et **bloque la chaîne entière** — vécu sur un run, sans message
+d'erreur, la commande ayant parfaitement réussi. Emploie `/usr/bin/time -p`, dont
+la sortie est stable, ou mesure en `date +%s%N` autour de l'appel. C'est le
+troisième zshisme de ce chantier, après le word-splitting et `mapfile` : le shell
+par défaut de macOS n'est pas celui pour lequel la plupart des recettes sont
+écrites.
+
+⚠️ **« RELÈVE TON POINT SUR TA CAPTURE » SUPPOSE UNE CAPTURE QUI N'EXISTE PAS
+ENCORE.** Le conseil est juste et arrive trop tôt : les captures naissent du
+premier run, or c'est avant ce run qu'il faut choisir où taper. Prends-la
+directement, l'app installée et lancée à la main :
+
+```bash
+adb -s "$UDID" exec-out screencap -p > /tmp/ecran.png        # Android
+xcrun simctl io "$UDID" screenshot /tmp/ecran.png            # iOS
+```
+
+et croise-la avec l'arbre (`maestro hierarchy`) pour vérifier que le point ne
+tombe sur rien de tapable. Sans ça, on parie, on lance, et on découvre son pari
+en lisant un flow rouge.
+
+═══════════════════════════════════════════════════════════════════════════════
 ## 5. Garde-fous de sécurité (NON NÉGOCIABLE — adaptés à ENV)
 ═══════════════════════════════════════════════════════════════════════════════
 Règle d'or : par défaut **READ-ONLY**. Toute action sortante ou irréversible exige

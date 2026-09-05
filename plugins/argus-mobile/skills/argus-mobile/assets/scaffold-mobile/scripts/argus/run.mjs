@@ -575,6 +575,44 @@ function disableAnimations(platform, udid, dryRun) {
   return { ok, detail: `${ANIMATION_SCALES.length} échelles → ${readback.join(', ')}` };
 }
 
+/**
+ * Vide le TROUSSEAU du simulateur iOS — ce que `clearState` ne fait pas.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE, et c'est la panne la plus coûteuse trouvée
+ * sur cette plateforme. `launch-clean.yaml` annonce `clearState` comme « la
+ * première règle anti-flake mobile », et ce fichier promet ailleurs qu'il « remet
+ * l'app à l'état d'une installation fraîche ». **C'est faux sur iOS** : les jetons
+ * d'authentification vivent dans le trousseau, qui SURVIT à la suppression de
+ * l'app — là où le `pm clear` d'Android les emporte.
+ *
+ * Mesuré sur quatre passes d'un projet réel, trousseau vidé à la main juste
+ * avant : le PREMIER flow atteint l'écran d'identification en **78 à 142 ms**,
+ * tous les suivants expirent à **~20 200 ms** parce que l'application y démarre
+ * sur l'écran de code secret. La règle anti-flake tombe donc en silence sur une
+ * plateforme entière, et l'échec accuse une ancre parfaitement correcte — le pire
+ * verdict que ce harnais sache produire.
+ *
+ * ⚠️ Le geste ne peut pas vivre dans le sous-flow : la sandbox de Maestro n'a ni
+ * shell ni système de fichiers. Il appartient au runner, exactement comme la
+ * coupure des animations côté Android.
+ *
+ * ⚠️ Et il RELIT son propre effet plutôt que de l'annoncer : `simctl` rend 0 même
+ * quand il n'a rien fait, donc seul le code de sortie ne prouve rien.
+ * @param {string} platform @param {string} udid @param {boolean} dryRun
+ * @returns {{ok:boolean, detail:string}}
+ */
+function resetKeychain(platform, udid, dryRun) {
+  if (platform !== 'ios') {
+    return { ok: false, detail: 'Android : `pm clear` emporte déjà les données, trousseau compris' };
+  }
+  if (dryRun) return { ok: true, detail: 'dry-run' };
+  const r = sh('xcrun', ['simctl', 'keychain', udid, 'reset']);
+  if (r.status !== 0) {
+    return { ok: false, detail: `xcrun simctl keychain reset a échoué (${(r.stderr || '').trim().slice(0, 120)})` };
+  }
+  return { ok: true, detail: 'trousseau vidé — les jetons d\'une session précédente ne survivent pas' };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 5. Variables injectées dans les flows
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1643,7 +1681,8 @@ export function buildCoverage(config, avecAncre, visites, visuels, visualMode, h
  * machine peu chargée.
  *
  * ⚠️ ET LA CAUSE N'EST PAS LA LENTEUR, C'EST LA GRANDEUR DONT LE PLAFOND SE
- * DÉRIVE. `clearState` remet l'app à l'état d'une installation fraîche, donc
+ * DÉRIVE. `clearState` remet l'app à l'état d'une installation fraîche (sur iOS,
+ * à condition que `resetKeychain` ait vidé le trousseau — voir sa note), donc
  * CHAQUE flow paie un PREMIER lancement — 13 463 ms mesurés — tandis que le
  * plafond se dérive de `coldStartMs`, qui décrit le régime stabilisé : 1 801 ms
  * sur le même projet, soit sept fois et demie moins. `argus-perf` mesure déjà la
@@ -1886,6 +1925,13 @@ async function main() {
 
   const animations = disableAnimations(platform, resolved.udid, opts.dryRun);
   (animations.ok ? log : warn)(`animations : ${animations.detail}`);
+
+  // 🔴 LE PENDANT iOS DE `clearState`, et il manquait. Voir `resetKeychain` : sans
+  // lui, le premier flow part d'une app vierge et TOUS les suivants démarrent sur
+  // l'écran d'après-connexion, parce que le trousseau a survécu. Mesuré : 78 ms
+  // pour le premier, ~20 200 ms pour les cinq autres, sur la même ancre.
+  const keychain = resetKeychain(platform, resolved.udid, opts.dryRun);
+  if (platform === 'ios') (keychain.ok ? log : warn)(`trousseau : ${keychain.detail}`);
 
   const secretsPassed = (config.auth?.secretsFromEnv ?? []).filter((/** @type {string} */ n) => process.env[n]);
   if (secretsPassed.length) {
@@ -2193,5 +2239,5 @@ if (invokedDirectly) {
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
   anchorAfterAuth,
-  startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
+  resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

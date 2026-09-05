@@ -24,7 +24,7 @@ const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
-  startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
+  resetKeychain, startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -9595,4 +9595,102 @@ test('le registre de la page doit CROÎTRE, et seulement lui (380)', () => {
 
   // Et il ne conclut pas sur une page qui n'a pas de registre du tout.
   assert.deepEqual(rupturesDOrdreDu('<p>rien ici</p>'), []);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 381 — Sur iOS, `clearState` ne remet PAS l'app à zéro : le trousseau survit.
+// Le sous-flow annonçait « état vraiment neuf » et le runner « l'état d'une
+// installation fraîche ». Mesuré sur quatre passes : premier flow 78-142 ms sur
+// l'écran d'identification, tous les suivants ~20 200 ms — l'app y démarre
+// APRÈS la connexion, et l'échec accuse une ancre correcte.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le trousseau iOS se vide, et Android n\'y touche pas (381)', () => {
+  // dry-run : on éprouve la DÉCISION, pas l'appel système.
+  const ios = resetKeychain('ios', 'UDID', true);
+  assert.equal(ios.ok, true, 'le geste iOS n\'est plus tenté : la règle anti-flake redevient muette');
+
+  // ⚠️ L'AUTRE MOITIÉ — Android ne doit RIEN faire : `pm clear` emporte déjà le
+  // trousseau, et lancer `xcrun` là-bas échouerait pour rien.
+  const android = resetKeychain('android', 'emulator-5554', true);
+  assert.equal(android.ok, false, 'le geste iOS est tenté sur Android');
+  assert.match(android.detail, /pm clear/,
+    'la raison ne dit plus POURQUOI Android n\'en a pas besoin — un « false » nu se lit comme une panne');
+});
+
+test('le geste du trousseau est CÂBLÉ, pas seulement défini (381)', () => {
+  // Troisième barreau : la fonction juste que personne n'appelle ne garde rien.
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.ok((src.match(/resetKeychain\(/g) ?? []).length >= 2,
+    'resetKeychain n\'est plus appelée dans le corps du runner : elle est devenue du code sans lecteur');
+  // Et elle doit être appelée AVANT les flows, pas après — sinon elle ne vide
+  // le trousseau que pour le run suivant.
+  const appel = src.indexOf('resetKeychain(platform');
+  const flows = src.indexOf('const before = new Set(subdirs(outputDir))');
+  assert.ok(appel !== -1 && flows !== -1 && appel < flows,
+    'le vidage du trousseau n\'est plus fait avant les flows : il ne servirait qu\'au run d\'après');
+});
+
+test('le sous-flow ne promet plus un « état vraiment neuf » sur iOS (381)', () => {
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'), 'utf8');
+  assert.ok(!/état vraiment neuf/.test(yaml),
+    'le sous-flow promet à nouveau un état neuf sur iOS — mesuré faux, le trousseau survit');
+  assert.match(yaml, /TROUSSEAU survit|trousseau survit/i,
+    'la mesure qui remplace la promesse a disparu : la phrase se réécrira comme avant');
+});
+
+test('toute cible `make` citée par le skill EXISTE dans le Makefile livré (383)', () => {
+  // ⚠️ LA CLASSE, PAS LE CAS. En écrivant le remède du 383 j'ai cité
+  // `config.mjs --doctor` — un drapeau qui n'existe pas. La cible s'appelle
+  // `argus-doctor` et vit dans le Makefile. Rien n'aurait signalé l'écart : une
+  // commande inventée se lit exactement comme une commande vraie, et le lecteur
+  // ne le découvre qu'en la lançant. Ce garde vaut pour toutes les suivantes.
+  const lu = (f) => readFileSync(join(RACINE, `plugins/argus-mobile/skills/argus-mobile/${f}`), 'utf8');
+  const mk = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const cibles = new Set([...mk.matchAll(/^([a-z0-9-]+):/gm)].map((m) => m[1]));
+  assert.ok(cibles.size > 5, `le Makefile ne déclare plus que ${cibles.size} cible(s) : `
+    + 'si sa forme a changé, mets ce motif à jour, sinon ce garde ne garde plus rien');
+
+  const citees = new Set();
+  for (const f of ['SKILL.md', 'PROMPTS.md', 'references/methodology-mobile.md']) {
+    for (const m of lu(f).matchAll(/`?make ([a-z0-9-]+)/g)) citees.add(m[1]);
+  }
+  assert.ok(citees.size > 3, `seulement ${citees.size} cible(s) citée(s) dans le skill : le motif ne trouve plus rien`);
+
+  const inventees = [...citees].filter((c) => !cibles.has(c));
+  assert.deepEqual(inventees, [],
+    'le skill prescrit des cibles `make` que le Makefile livré ne porte pas : une commande '
+    + 'inventée se lit comme une commande vraie, et ne se découvre qu\'en la lançant');
+});
+
+test('les trois instruments qui mentent sont écrits, avec leur remède (383, 384, 385)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const d = skill.indexOf('## 4-bis.');
+  assert.ok(d !== -1, 'la section des instruments trompeurs a disparu du skill');
+  const bloc = skill.slice(d, skill.indexOf('## 5. Garde-fous'));
+
+  // Chacun avec ce qui le DÉMASQUE, pas seulement son nom — un piège nommé sans
+  // remède laisse le lecteur exactement où il était.
+  for (const [quoi, remede, pourquoi] of [
+    [/command -v/, /argus-doctor/, '`command -v` sans la commande qui répond vraiment'],
+    [/zsh/i, /usr\/bin\/time|date \+%s/, 'le zshisme de `time` sans son remplaçant'],
+    [/screencap|simctl io/, /hierarchy/, 'la capture avant le premier run sans le croisement avec l\'arbre'],
+  ]) {
+    assert.match(bloc, quoi, `${pourquoi} : le piège n'est plus décrit`);
+    assert.match(bloc, remede, `${pourquoi} : le remède a disparu`);
+  }
+});
+
+test('l\'alerte système iOS est dite, avec sa PLACE et son `when:` (382)', () => {
+  // ⚠️ Le geste ne peut pas vivre dans le sous-flow du cadre — il serait écrasé.
+  // Et un `tapOn` inconditionnel échouerait dès le second run, l'alerte
+  // n'apparaissant plus : c'est le `when:` qui le rend rejouable.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'), 'utf8');
+  assert.match(yaml, /alerte système|ALERTE SYSTÈME/i, 'le piège de l\'alerte système n\'est plus décrit');
+  assert.match(yaml, /goto\.yaml/, 'la PLACE du geste n\'est plus dite : sans elle on édite le cadre, qui sera écrasé');
+  assert.match(yaml, /when:/, 'le `when:` a disparu : un tap inconditionnel échoue dès le second run');
 });
