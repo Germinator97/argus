@@ -975,7 +975,20 @@ export function posedAnchors(root, config = undefined) {
           //
           // On les range donc à part. Elles ne sont ni « posées » (on ne peut
           // pas les confronter) ni « inconnues » (on sait ce qu'elles sont).
-          const gabarit = /'[^']*\$\{[^']*'/.test(nu);
+          // ⚠️ ET LE PARAMÈTRE NU EN EST UNE AUSSI. Le critère ne voyait que
+          // la chaîne INTERPOLÉE, si bien qu'`identifier: semanticIdentifier`
+          // — la forme que le §2c PRESCRIT pour un composant partagé, et qu'il
+          // nomme — tombait dans les opaques, avec le conseil « rends-la
+          // littérale, ou inscris-la dans allowUndeclared ». C'est-à-dire écrire
+          // « hors périmètre » sur des ancres bel et bien vérifiées : exactement
+          // ce que le commentaire ci-dessus dit vouloir éviter. Un run en a eu
+          // huit, couvrant 24 call-sites.
+          // Les deux noms sont DÉRIVÉS du SKILL, jamais devinés (§2c :
+          // « Nomme ce paramètre `semanticIdentifier` » · « `anchorPrefix`
+          // quand il préfixe une famille »). Tout autre nom reste opaque : on ne
+          // sait pas ce qu'il porte.
+          const parametreDAncre = /(^|[.\s])(semanticIdentifier|anchorPrefix)$/;
+          const gabarit = /'[^']*\$\{[^']*'/.test(nu) || parametreDAncre.test(nu);
           if (nu && gabarit) familles.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
           else if (nu) opaques.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
           continue;

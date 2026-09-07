@@ -10177,3 +10177,51 @@ test('la taille du binaire iOS arrive jusqu\'au bandeau du rapport (403)', () =>
   assert.equal(perfRows({ platform: 'ios', skipped: true, findings: [] }), '',
     'et sans bloc metrics, il n\'y a rien à rendre — le garde doit voir la différence');
 });
+
+// ── 404 · LE PARAMÈTRE QUE LE SKILL PRESCRIT N'EST PAS UNE ANCRE OPAQUE ────
+//
+// Le croisement POSÉ→DÉCLARÉ range à part les gabarits interpolés, et son
+// commentaire dit pourquoi : les mettre avec les opaques pousse à écrire « hors
+// périmètre » sur des ancres bel et bien vérifiées. Mais le critère ne voyait
+// que la chaîne interpolée — `identifier: semanticIdentifier`, la forme que le
+// §2c PRESCRIT et NOMME pour les composants partagés, tombait dans les opaques.
+// Un run en avait huit, couvrant 24 call-sites.
+//
+// ⚠️ Les deux noms sont DÉRIVÉS du SKILL et le garde le vérifie : si le §2c en
+// prescrit un troisième un jour, c'est ce test qui doit tomber, pas l'usager qui
+// doit deviner.
+test('un paramètre d\'ancre prescrit par le §2c est une famille, pas une opaque (404)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  for (const nom of ['semanticIdentifier', 'anchorPrefix']) {
+    assert.match(skill, new RegExp(`\`${nom}\``),
+      `le SKILL ne prescrit plus \`${nom}\` : le classement des ancres en dérive, mets les deux à jour`);
+  }
+
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-familles-'));
+  mkdirSync(join(dossier, 'lib'), { recursive: true });
+  writeFileSync(join(dossier, 'lib', 'partage.dart'), [
+    "      identifier: semanticIdentifier,",        // paramètre nu prescrit
+    "      identifier: widget.anchorPrefix,",       // le même, porté par le widget
+    "      identifier: 'nav_${spec.id}',",          // gabarit interpolé
+    "      identifier: 'home_root',",               // littérale
+    "      identifier: widget.peuImporte,",         // vraiment opaque
+  ].join('\n') + '\n');
+
+  const vues = posedAnchors(dossier, {});
+  const familles = (vues.familles ?? []).join(' | ');
+  const opaques = (vues.opaques ?? []).join(' | ');
+  assert.ok(vues.length > 0, 'aucune ancre littérale lue : le motif ne matche plus');
+
+  assert.match(familles, /semanticIdentifier/,
+    'le paramètre que le §2c prescrit est rangé en OPAQUE : le message conseille alors de '
+    + 'l\'inscrire dans allowUndeclared, c\'est-à-dire d\'écrire « hors périmètre » sur des '
+    + 'ancres vérifiées, développées dans harness.dart (404)');
+  assert.match(familles, /anchorPrefix/, 'et son jumeau, prescrit dans la même phrase du SKILL');
+
+  // L'autre moitié — un classement qui accepte tout ne mesure plus rien.
+  assert.match(opaques, /peuImporte/,
+    'une variable quelconque n\'est PAS une famille : on ne sait pas ce qu\'elle porte, '
+    + 'et le dire est le seul moyen de ne pas la compter comme vérifiée');
+  assert.doesNotMatch(familles, /peuImporte/, 'et elle ne doit pas se glisser chez les familles');
+  rmSync(dossier, { recursive: true, force: true });
+});
