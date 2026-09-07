@@ -5530,7 +5530,67 @@ Remède : un balayage **gauche à droite** qui respecte les quotes — une regex
 compris « un `#` DANS le motif ne termine pas la valeur » et « un motif nu reste
 nu ».
 
-**Prochain numéro libre : 395.**
+### 395-399. Le run 54 — la seconde vérification, et TROIS constats sur cinq démentis
+
+**La confirmation iOS jouée sur le plugin corrigé une heure plus tôt.** Dix
+passes, ~22 min sur 60, gate **pass** — 0 blocker / 0 critical / 0 major /
+0 minor / 1 info, 7/7 écrans, 568 tests du projet verts, aucun DSN, aucun
+identifiant dans la page.
+
+✅ **LES TROIS CORRECTIFS DU MATIN ONT PORTÉ.** Plus aucun symptôme de trousseau
+sur dix passes (**387**), l'écran de départ tombant à **99 / 104 / 121 / 136 ms**.
+L'étage 1 remonte au gate (**391**). Et le **389** a fait mieux que tenir : l'agent
+l'a **cité pour raisonner** sans savoir qu'il était neuf, refusant de relever
+`startTimeoutMs` malgré la suggestion du runner — « la pire attente était collée
+au plafond à **349 ms** près, ce qui désigne un écran qui n'arrive jamais ».
+
+✅ **395 — DÉMENTI, ET IL ALLAIT ME FAIRE DÉFAIRE UN CORRECTIF JUSTE.** Le run
+affirmait, mesure à l'appui, que le geste prescrit pour l'invite système ne peut
+pas fonctionner : `maestro hierarchy | grep -icE "autoriser|allow|notification"`
+→ 0, « l'alerte appartient à SpringBoard, pas à l'arbre de l'app ». Reproduit sur
+appareil, avec contre-épreuve à chaque étape : l'arbre pris **pendant** que
+l'alerte est affichée porte « Autorisez-vous… », « Refuser » et « Autoriser » ;
+le `tapOn: text: '(?s).*(Refuser|Don.t Allow).*'` rend COMPLETED ; et le dump
+suivant montre l'alerte **partie** et l'app revenue à l'accueil. *Le geste
+marche.* Son `hierarchy` et sa capture n'étaient pas simultanés — un état final
+lu là où il fallait l'ordre des événements — et **SpringBoard a crashé à 13:04,
+en plein milieu de son run** (`XCTAutomationSession initWithAccessibilityFramework`,
+le crash que la procédure décrit, sur un simulateur à 1 h 06 de sessions
+accumulées). ⚠️ Sans le rapport de crash que Germinator a lu, j'inscrivais ce
+constat et je retirais un remède qui fonctionne.
+
+🔴 **396 — ET LE VRAI DÉFAUT EST LE MIEN, ÉCRIT LE MATIN MÊME.** L'observation de
+départ du run était juste : ses trois gestes ne s'exécutaient pas. La cause n'est
+pas le sélecteur, c'est la PLACE — celle que le **388** a prescrite. Mesuré sur le
+scaffold livré : `goto.yaml` n'a **qu'un seul appelant réel**, `visual.yaml` ; les
+mentions d'`a11y.yaml` sont dans un `TODO` commenté, et **six flows sur huit**
+entrent par `launch-clean.yaml`. J'ai donc déplacé le geste vers le fichier qui ne
+le joue presque jamais — en écrivant un garde qui fige cette place. *Un garde ne
+rend pas vrai ce qu'il garde.*
+
+✅ **397 — DÉMENTI sur le cas documenté.** Le run signalait qu'`argus-anchors`
+valide l'action et non la tapabilité du centre du rect. Le skill le dit déjà, mot
+pour mot, dans le message d'échec du garde : « Maestro la tapera quand même (il
+vise le centre du rect), mais TalkBack annoncera un bouton anonyme ». **Résidu
+vrai et plus étroit** : ce message couvre l'enveloppe INERTE ; le cas du run est
+un conteneur **actif** dont le centre tombe hors du contrôle — verte au garde,
+inopérante sur l'appareil.
+
+✅ **398 — DÉMENTI, avec son remède déjà écrit.** `argus_types.dart` porte huit
+lignes sur le sujet : « CE RAPPEL EST SYNCHRONE, ET LES CONTENEURS D'INJECTION NE
+LE SONT PAS — `GetIt.reset()` et `unregister()` rendent des `Future` », suivies du
+montage qui marche (enregistrer une fois en `setUpAll` des fabriques qui lisent
+une variable de module). **Résidu vrai** : le message d'échec du garde dit
+« aucun nœud ne porte cet identifiant » — un diagnostic d'INSTRUMENTATION pour un
+défaut de MONTAGE — et ne renvoie pas vers cette note. 22 gardes rouges sur 26.
+
+🔴 **399 — L'ÉCRAN D'APRÈS `killApp` N'EST PAS CELUI D'APRÈS UN RETOUR
+D'ARRIÈRE-PLAN.** `lifecycle.yaml` attend `ARGUS_ANCHOR_AFTER_AUTH` dans les deux
+cas, sous le libellé « L'app repart proprement après mort du processus ». Une app
+qui redemande son code secret après une mort de processus — décision de sécurité
+courante — échoue donc sur une assertion qui décrit une AUTRE application.
+
+**Prochain numéro libre : 400.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
