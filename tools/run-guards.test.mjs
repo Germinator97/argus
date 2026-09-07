@@ -10474,9 +10474,12 @@ test('le gabarit de screens[] nomme cropRoot là où il pose visualCropOn (408)'
     'le gabarit ne montre plus visualCropOn sur un écran — mets ce garde à jour');
 
   const fenetre = skill.slice(i, i + 900);
-  assert.match(fenetre, /cropRoot/,
-    'le gabarit pose visualCropOn sans dire que l\'ArgusScreen doit déclarer cropRoot: true — '
-    + 'l\'outil le refusera, mais après que la section a été crue complète (408)');
+  // ⚠️ Pas `cropRoot` tout court : le mot apparaît trois fois dans cette fenêtre,
+  // donc en muter une occurrence ne mesurait rien (le harnais a rendu VACANT).
+  // Ce qui compte est que les deux clés soient RELIÉES dans une même phrase.
+  assert.match(fenetre.replace(/\s+/g, ' '), /ArgusScreen DE CET ÉCRAN DOIT DÉCLARER `cropRoot: true`/,
+    'le gabarit pose visualCropOn sans RELIER la clé à cropRoot : l\'outil le refusera, '
+    + 'mais après que la section a été crue complète (408)');
   assert.match(fenetre, /inset|barre d'état|horloge/i,
     'et sans dire ce que cropRoot GOUVERNE, la consigne se lit comme une formalité : '
     + 'ce qui est en jeu est le recadrage qui embarque l\'horloge du système');
@@ -10567,10 +10570,50 @@ test('le skill dit comment trancher un écran inattendu, et fait chercher les ca
   const j = skill.search(/canaux sortants/i);
   assert.ok(j !== -1, 'la consigne des canaux sortants a disparu — mets ce garde à jour');
   const bloc = skill.slice(j, j + 1800).replace(/\s+/g, ' ');
-  assert.match(bloc, /sans passer par un SDK nommé|ne t'arrête pas au SDK/i,
-    'un balayage qui ne cherche que les SDK connus manque ce qui s\'envoie à la main — '
-    + 'un run a manqué un jeton enregistré malgré des permissions refusées (413)');
+  // ⚠️ DEUX ASSERTIONS, PAS UNE ALTERNATIVE. La première version acceptait
+  // `A|B` — et les deux phrases existaient, si bien qu'en muter une laissait
+  // l'autre debout : le harnais a rendu VACANT, à raison. Un garde qui accepte
+  // des synonymes ne mesure que le plus facile à écrire.
+  assert.match(bloc, /ne t'arrête pas au SDK/i,
+    'le balayage ne dit plus de dépasser les SDK qu\'on reconnaît (413)');
+  assert.match(bloc, /sans passer par un SDK nommé/i,
+    'et il ne dit plus quoi chercher d\'autre : un run a manqué un jeton enregistré '
+    + 'malgré des permissions refusées, qui ne passait par aucun SDK nommé (413)');
   assert.match(bloc, /release/i,
     'et vérifier sur le DEBUG ne tranche rien : un fromEnvironment y garde sa valeur '
     + 'par défaut. Sans cette phrase, la preuve se fait sur le mauvais binaire');
+});
+
+// ── 406 bis · LE CÂBLAGE DU REFUS, ET PAS SEULEMENT SON MESSAGE ───────────
+//
+// ⚠️ CE GARDE EXISTE PARCE QUE LE HARNAIS A EU RAISON. Le garde du 406 appelle
+// `verdictSansFlow` et lit ce qui revient — barreau deux. La mutation qui
+// NEUTRALISE le refus (`if (false && bundles.length === 0)`) l'a laissé vert :
+// la fonction restait juste, c'est son appel que plus rien ne tenait. C'est le
+// troisième barreau, et il manquait exactement là où on croyait avoir fini.
+test('le refus de conclure sur zéro flow est CÂBLÉ, pas seulement écrit (406)', () => {
+  const brut = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+  const src = brut
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
+
+  const i = src.search(/if\s*\(\s*bundles\.length === 0\s*\)/);
+  assert.ok(i !== -1,
+    'le runner ne teste plus `bundles.length === 0` : un run qui n\'exécute aucun flow '
+    + 'redevient un succès, et deux runs en aveugle l\'ont produit par deux causes (406)');
+
+  // La condition doit être NUE : `false &&`, un drapeau, une négation en font
+  // une décision morte que le garde du message ne peut pas voir.
+  const avant = src.slice(Math.max(0, i - 60), i + 40).replace(/\s+/g, ' ');
+  assert.doesNotMatch(avant, /(false|0)\s*&&|if\s*\(\s*!/,
+    `la condition du refus est neutralisée : « ${avant.trim()} » — elle reste lisible dans la `
+    + 'source, et le run rendrait vert quand même (406)');
+
+  // Et elle doit MENER au refus, pas à un simple avertissement.
+  const bloc = src.slice(i, i + 500);
+  assert.match(bloc, /verdictSansFlow/,
+    'le refus n\'appelle plus la décision : le message ne serait plus celui qu\'on garde');
+  assert.match(bloc, /process\.exit\(\s*[12]\s*\)/,
+    'le refus n\'échoue plus — avertir ne suffit pas : c\'est le code de sortie qu\'une CI lit, '
+    + 'et c\'est lui qui rendait vert sur du néant (406)');
 });

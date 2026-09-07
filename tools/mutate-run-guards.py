@@ -1468,8 +1468,8 @@ MUTATIONS = [
      "node scripts/argus/run.mjs --tags=journey --no-install"),
     # 408 — le gabarit repose visualCropOn sans dire que cropRoot va avec.
     ("skill", "408 · le gabarit ne dit plus que cropRoot accompagne visualCropOn",
-     "#   incomplète (« sert de visualCropOn et son ArgusScreen ne déclare pas",
-     "#   incomplète (voir le message de l'outil, qui la nomme"),
+     "# 🔴 ET L'ArgusScreen DE CET ÉCRAN DOIT DÉCLARER `cropRoot: true` (408).",
+     "# 🔴 ET PENSE AU RECADRAGE (408)."),
     # 410 — la consigne dit de lire le code, et cesse de dire QUOI FAIRE ensuite.
     ("skill", "410 · le skill ne dit plus quoi faire quand le comportement est voulu",
      "**corrige\nl'assertion, pas l'app**",
@@ -1482,8 +1482,8 @@ MUTATIONS = [
     # 412 — l'attente ressort du retry : le geste redevient un ORDRE, et la
     # course que le 412 a mesurée n'est plus couverte.
     ("login", "412 · l'attente ressort du retry, la course n'est plus couverte",
-     "      - retry:\n          maxRetries: 2",
-     "      - retry:\n          maxRetries: 1"),
+     "          commands:\n            - runFlow: dismiss-system-alerts.yaml",
+     "          commands:\n            - runFlow: dismiss-system-alerts.yaml\n      - assertTrue:\n          condition: \"${true}\""),
     # 414 — le détecteur compte les diffs : il invente un doublon qui n'en est
     # pas, donc il crie sur un dépôt sain — et on apprend à l'ignorer.
     ("run", "414 · le détecteur de doublons compte aussi les fichiers de diff",
