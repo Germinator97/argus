@@ -5081,6 +5081,20 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **7 POINTS OUVERTS — 415 à 421, inscrits le 07/09/2026, PASSE NON FAITE.**
+Les runs **59 et 60** (seconde confirmation) n'ont trouvé **aucun mécanisme cassé,
+aucun faux vert, aucune passe device perdue** : `scope: complet`, 8 flows, 0 major
+des deux côtés. Il reste **un** défaut de code — le **415**, mon correctif 404
+incomplet, signalé par les DEUX runs — et six informations mal placées.
+📌 Les correctifs du jour ont payé : le **401** attrape une ancre fusionnée à
+l'étage 1 SANS device (deux runs de suite), le **413** fait trouver les canaux
+sortants que le run 57 avait manqués, le **410** est appliqué mot pour mot.
+🔴 **LA PASSE 415-421 RESTE À FAIRE** — séance arrêtée après les runs, pas après
+la correction. Les comptes rendus complets sont dans `~/.argus-etalon/run59-constats.md`
+et `run60-constats.md`.
+
+### Verdict précédent — les runs 57 et 58
+
 ✅ **406 à 414 FERMÉS le 07/09/2026.** La passe de
 CONFIRMATION (runs 57 et 58) a trouvé un **faux vert** que deux runs indépendants
 ont produit par deux causes différentes : un run qui n'exécute AUCUN flow rend
@@ -6101,6 +6115,102 @@ Sur le terrain 1, `shell.png` et `home-empty.png` portent la **même empreinte**
 la coquille EST l'écran de départ, et les deux recadrent sur la même racine. L'un
 des deux ne garde donc rien de plus que l'autre — 32 s de device par run, et une
 référence commitée en double. Rien dans le skill ne prévient de ce cas.
+
+### 415-421. Les runs 59 et 60 — la seconde confirmation, et ce qu'elle n'a PAS trouvé
+
+Deux runs joués **séparément** (la mémoire avait tué l'émulateur deux fois dans
+la journée), sur le plugin corrigé quelques heures plus tôt. Les deux rendent
+`scope: complet`, **8 flows, 0 major** — 15 min 47 s et ~20 min de device sur 60.
+
+✅ **AUCUN MÉCANISME CASSÉ, AUCUN FAUX VERT, AUCUNE PASSE DEVICE PERDUE.** Ce qui
+reste est de sept ordres différents, dont **un seul est un défaut de code** — et
+c'est un de mes correctifs de la veille, incomplet.
+
+📌 **Les correctifs du jour ont payé, et ça se lit dans ce que les agents ont
+écrit** : le **401** a attrapé une ancre fusionnée **à l'étage 1, sans device**,
+deux runs de suite (« le nœud retenu mesure 320×38 dp quand le widget en fait
+38×38 ; le centre visé (180, 51) tombe HORS du contrôle ») ; le **413** a fait
+trouver au run 59 le canal sortant que le run 57 avait manqué — il **cite le §2**
+en le rapportant — et au run 60 deux canaux de plus ; le **410** a été appliqué
+mot pour mot (« c'est un garde de sécurité : j'ai corrigé l'assertion, pas
+l'app »).
+
+### 415. 🔴 Le 404 est incomplet : la convention n'est reconnue qu'au mot près
+
+**Ouvert le 07/09/2026.**
+
+**Les DEUX runs le signalent, sur deux terrains.** Le croisement POSÉ→DÉCLARÉ
+reconnaît `semanticIdentifier` et `anchorPrefix` **exactement**, jamais les noms
+dérivés de la même convention. Reproduit : `detailsSemanticIdentifier` et
+`widget.codeSemanticIdentifier` tombent chez les **opaques** — donc « ancre NON
+LISIBLE », avec le conseil de les déclarer hors périmètre — alors qu'ils sont
+inscrits dans `anchors.paramNames`.
+
+📌 La cause est nette : `paramNames` gouverne la détection de la **clé**
+(`[a-zA-Z]*[Ii]dentifier:`), jamais le classement de la **valeur**. Le run 60 le
+formule exactement : *« Elles SONT déclarées, le croisement ne peut simplement
+pas le lire. »* Remède dérivé, pas deviné : une valeur dont le nom suit la
+convention que la clé accepte déjà (`*[Ii]dentifier`, `*[Pp]refix`), ou qui
+figure dans `paramNames`, est une **famille**.
+
+### 416. L'ordre du §3g bis fait renseigner le titre AVANT de lire la page
+
+**Ouvert le 07/09/2026.**
+
+Le point 5 (« garde le titre stable ») se lit **avant** le point 3 (« récupère la
+page »), alors que le skill prescrit l'inverse deux paragraphes plus bas. Un run
+a donc rempli `artifact.title` dans le YAML avant le `read` : la valeur est
+tombée juste, la méthode était celle que le skill interdit.
+
+⚠️ **Et `artifact.icon` était FAUX** : il portait le défaut du scaffold (👁) quand
+la page publiée porte 🧪. *« Sans le `read`, je publiais une page qui changeait
+d'identité. »* Le défaut du scaffold agit ici comme une valeur plausible — le
+pire genre.
+
+### 417. Le chemin du `.app` avec flavor est donné sans son parent
+
+**Ouvert le 07/09/2026.**
+
+L'avertissement nomme `Debug-dev-iphonesimulator/` sans dire **sous quel
+dossier** : deux lectures sont plausibles, une seule existe.
+`✖ BUILD RÉUSSI, MAIS AUCUN PAQUET ici après 20s`. Le conseil qui sauve
+(« demande le chemin au disque ») est dans le même encadré, **après**.
+
+### 418. Le §3g fait dériver un seuil d'une mesure qui n'existe pas sur iOS
+
+**Ouvert le 07/09/2026.**
+
+Il envoie dériver `startTimeoutMs` de `firstLaunchMs` ; la table du §1 dit
+« démarrage ✖ sur iOS » — **neuf cents lignes plus haut**. Sur un run iOS, la
+prescription n'a donc pas d'objet, et rien ne le dit là où on la lit.
+
+### 419. Le `_diff.png` résiduel n'est mentionné nulle part
+
+**Ouvert le 07/09/2026.**
+
+La contre-épreuve visuelle laisse son diff **dans le dossier des références**,
+que le projet versionne. ⚠️ Le démenti des runs 55/56 tient — `.gitignore:110`
+l'empêche de partir au commit — mais le skill n'en dit rien, et c'est le contrôle
+par empreinte d'un agent qui l'a attrapé, pas une consigne.
+
+### 420. L'avertissement de locale inerte arrive après qu'on en a eu besoin
+
+**Ouvert le 07/09/2026.**
+
+« La clé est sans effet, le flow i18n mesure la locale de l'APPAREIL » ne sort
+qu'au **premier `argus-run`**, donc une fois `i18n.yaml` écrit. L'information est
+exacte et arrive trop tard pour décider.
+
+### 421. La table des encodages vit à 200 lignes du geste qu'elle explique
+
+**Ouvert le 07/09/2026.**
+
+Un run a compté **1 occurrence résiduelle** d'un DSN dans le kernel debug et a
+**failli conclure à un échec de neutralisation** — l'occurrence est le
+`defaultValue` en tant que littéral de source, présent quelle que soit la valeur
+effective. Ce qui l'a sauvé est la phrase du §2 (« la preuve se fait sur la
+release »), pas la table du §3g, qui explique le phénomène deux cents lignes plus
+loin.
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
