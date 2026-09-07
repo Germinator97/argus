@@ -321,6 +321,82 @@ List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
       .toList();
 }
 
+/// Les ancres dont le CENTRE VISÉ ne tombe pas sur le widget ancré.
+///
+/// ⚠️ **Une ancre peut être présente, active, et rester intapable.** Le garde
+/// « commande active » ne voit que l'enveloppe inerte ; celui-ci mesure ce qu'il
+/// annonçait sans le mesurer. Quand un `Semantics` fusionne avec son parent —
+/// faute de `container: true` —, le nœud retenu est celui d'un ANCÊTRE, et son
+/// rect englobe les voisins. Maestro vise le CENTRE de ce rect : le tap part
+/// alors sur le titre de la rangée ou sur le nom au milieu d'une carte, à des
+/// centaines de pixels du contrôle. Le tap est rapporté COMPLETED, et c'est
+/// l'écran SUIVANT qui échoue, en accusant une ancre parfaitement correcte.
+///
+/// 📌 Le critère est le centre, pas le débordement : une fusion qui laisse le
+/// centre sur le contrôle est sans conséquence (`InkWell`, `ListTile` et
+/// `TextField` fusionnent ainsi, et le §2c s'appuie dessus). C'est le tap qui
+/// manque sa cible qui casse, et lui seul.
+///
+/// Mesuré sur deux projets réels, deux plateformes, par deux runs qui
+/// s'ignoraient : une commande de retour dont le nœud faisait 975 px de large au
+/// lieu de 99, et le lien d'une carte dont le nœud couvrait la carte entière.
+///
+/// Rend une description par occurrence, vide quand tout va bien.
+List<String> argusCentresHorsCible(WidgetTester tester, String identifier) {
+  final List<String> hors = <String>[];
+  for (final Element element in tester.elementList(
+    find.bySemanticsIdentifier(identifier),
+  )) {
+    final RenderObject? vise = element.renderObject;
+    if (vise is! RenderBox || !vise.attached || !vise.hasSize) continue;
+    final Rect duNoeud = vise.localToGlobal(Offset.zero) & vise.size;
+    if (duNoeud.isEmpty) continue;
+
+    // ⚠️ ET LE WIDGET ANCRÉ NE SE TROUVE PAS PAR SA SÉMANTIQUE — c'est tout le
+    // piège, et il a fait passer une première version de ce garde pour verte.
+    // `find.bySemanticsIdentifier` rend l'élément qui PORTE le nœud : sous un
+    // `MergeSemantics`, c'est déjà l'ancêtre fusionnant, si bien que le comparer
+    // à lui-même ne dit jamais rien. Mesuré sur la sonde : rect rendu
+    // 0,0→800,48 (la rangée) là où le bouton fait 48×48.
+    // Le contrôle qu'on a voulu désigner est le WIDGET `Semantics`, qu'on
+    // retrouve par son arbre de widgets et non par la sémantique qu'il produit.
+    final Iterable<RenderBox> ancres = tester
+        .elementList(
+          find.byWidgetPredicate(
+            (Widget w) =>
+                w is Semantics && w.properties.identifier == identifier,
+          ),
+        )
+        .map((Element e) => e.renderObject)
+        .whereType<RenderBox>()
+        .where((RenderBox b) => b.attached && b.hasSize);
+    if (ancres.isEmpty) continue;
+
+    // Celui que ce nœud recouvre : le rect visé englobe le contrôle ancré.
+    Rect? duWidget;
+    for (final RenderBox b in ancres) {
+      final Rect r = b.localToGlobal(Offset.zero) & b.size;
+      if (r.isEmpty || !duNoeud.overlaps(r)) continue;
+      if (duWidget == null ||
+          r.width * r.height < duWidget.width * duWidget.height) {
+        duWidget = r;
+      }
+    }
+    if (duWidget == null) continue;
+    if (duWidget.contains(duNoeud.center)) continue;
+
+    hors.add(
+      '« $identifier » : le nœud retenu mesure '
+      '${duNoeud.width.toStringAsFixed(0)}×${duNoeud.height.toStringAsFixed(0)} dp '
+      'quand le widget ancré en fait '
+      '${duWidget.width.toStringAsFixed(0)}×${duWidget.height.toStringAsFixed(0)} ; '
+      'le centre visé (${duNoeud.center.dx.toStringAsFixed(0)}, '
+      '${duNoeud.center.dy.toStringAsFixed(0)}) tombe HORS du contrôle',
+    );
+  }
+  return hors;
+}
+
 /// Consomme l'exception qu'un montage a pu laisser en attente, sans la juger.
 ///
 /// ⚠️ **Ce n'est pas une mise sous le tapis, et ça ne le reste que sous une

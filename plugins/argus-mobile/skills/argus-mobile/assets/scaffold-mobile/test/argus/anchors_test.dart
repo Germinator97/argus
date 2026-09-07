@@ -225,6 +225,32 @@ void main() {
                 '« présente et active ». Ancre le contrôle lui-même.',
           );
         });
+
+        // Et active ne suffit pas non plus : le CENTRE doit tomber dessus.
+        //
+        // Le message ci-dessus annonçait ce défaut sans le mesurer — c'était un
+        // avertissement, pas un garde. Deux runs en aveugle, deux projets, deux
+        // plateformes, l'ont trouvé le même jour sans se connaître.
+        final List<String> horsCible = argusCentresHorsCible(tester, commande);
+        await argusCheck(
+          '${screen.id} · commande « $commande » visée au centre',
+          () async {
+            expect(
+              horsCible,
+              isEmpty,
+              reason:
+                  'L\'ancre « $commande » de « ${screen.id} » a FUSIONNÉ avec un '
+                  'ancêtre, et le rect que Maestro visera n\'est plus celui du '
+                  'contrôle :\n  ${horsCible.join('\n  ')}\n'
+                  'Maestro tape le CENTRE de ce rect — donc le titre de la '
+                  'rangée, ou le nom au milieu de la carte. Le tap sera rapporté '
+                  'COMPLETED et c\'est l\'écran SUIVANT qui échouera, en accusant '
+                  'une ancre correcte.\n'
+                  'Remède : `container: true` sur le Semantics de cette commande, '
+                  'pour qu\'il cesse de se fondre dans son parent.',
+            );
+          },
+        );
       }
 
       handle.dispose();
