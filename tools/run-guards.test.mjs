@@ -34,10 +34,10 @@ import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
-import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { LIGHTBOX, STYLE, findingCards, perfRows } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -10138,4 +10138,42 @@ test('tout garde de disposition qui mesure draine son exception d\'abord (400)',
   assert.ok(mesurants >= 1,
     'aucun bloc de layout_test.dart ne mesure (getRect / argusTruncatedTexts) : '
     + 'le motif ne matche plus, ce garde ne surveille plus rien');
+});
+
+// ── 403 · LA TAILLE MESURÉE SUR iOS DOIT ARRIVER JUSQU'AU RAPPORT ─────────
+//
+// `perf.mjs` mesure la taille du binaire sur les deux plateformes. Sur iOS il
+// l'écrivait à la RACINE du JSON, sans bloc `metrics` — et `perfRows` fait
+// `if (!metrics) return ''`. La ligne disparaissait donc du bandeau, sans un
+// mot : sous le budget, aucun finding ne la porte non plus, et l'absence se lit
+// comme « pas mesuré ». `report-format-mobile.md` promet ces clés sans réserve
+// de plateforme.
+//
+// ⚠️ Ce garde APPELLE la fonction et lit ce qui revient. Un garde qui aurait
+// cherché `metrics:` dans la source de perf.mjs serait resté vert sur une
+// valeur neutralisée — et surtout il n'aurait rien dit du RENDU, qui est la
+// seule chose que le lecteur du rapport voit.
+test('la taille du binaire iOS arrive jusqu\'au bandeau du rapport (403)', () => {
+  // ⚠️ Le rapport est CONSTRUIT par le script, jamais recopié ici : un objet
+  // écrit à la main garderait le rendu et laisserait le câblage libre de partir.
+  const perfIos = rapportSansDemarrage(
+    'ios',
+    { path: 'build/ios/Release-dev-iphoneos/Runner.app', isRelease: true },
+    28.7,
+    { thresholds: { binarySizeMb: 60 } },
+    [],
+  );
+  const rendu = perfRows(perfIos);
+  assert.match(rendu, /Taille du binaire/,
+    'un run iOS mesure la taille et la compare à son budget : si le bandeau ne la rend pas, '
+    + 'la mesure est perdue en silence et se lit comme « non mesuré » (403)');
+  assert.match(rendu, /28\.7/, 'et la VALEUR, pas seulement le libellé');
+  assert.match(rendu, /60/, 'avec son budget, sans quoi le chiffre ne se juge pas');
+
+  // Les moitiés qui doivent rester silencieuses : ce qu'iOS ne mesure PAS ne
+  // doit pas apparaître à zéro — un vert inventé est pire qu'une absence.
+  assert.doesNotMatch(rendu, /Démarrage à froid/,
+    'iOS ne mesure pas le démarrage : le rendre ferait passer une absence pour un relevé');
+  assert.equal(perfRows({ platform: 'ios', skipped: true, findings: [] }), '',
+    'et sans bloc metrics, il n\'y a rien à rendre — le garde doit voir la différence');
 });

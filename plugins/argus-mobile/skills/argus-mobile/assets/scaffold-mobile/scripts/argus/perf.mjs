@@ -472,6 +472,47 @@ export function sizeFinding(pese, sizeMb, config, platform, buildCmd) {
 // Point d'entrée
 // ═══════════════════════════════════════════════════════════════════════════
 
+/**
+ * Le rapport d'une plateforme dont le DÉMARRAGE ne se mesure pas ici — mais
+ * dont la taille du binaire, elle, a été pesée.
+ *
+ * ⚠️ **`metrics` n'est pas décoratif : c'est le SEUL endroit que le rapport
+ * lit.** `perfRows` fait `if (!metrics) return ''`, si bien qu'un perf.json iOS
+ * qui n'écrivait la taille qu'à la racine la faisait disparaître du bandeau —
+ * une valeur pourtant mesurée et comparée à son budget. Rien ne le disait :
+ * sous le budget, aucun finding ne la porte non plus, et l'absence se lit comme
+ * « pas mesuré ». `report-format-mobile.md` promet `binaryPath` et
+ * `binaryIsRelease` sans réserve de plateforme ; la décision existait côté
+ * Android et n'avait jamais traversé.
+ *
+ * 📌 Extrait de `main()` exprès, comme `pertePossible` : laissé dedans, il ne
+ * serait gardable qu'en cherchant son texte dans la source — le barreau le plus
+ * faible, celui qu'une valeur neutralisée laisse vert. Ici le garde APPELLE et
+ * lit ce qui revient. La clé de racine est conservée : des rapports archivés la
+ * portent.
+ *
+ * @param {string} platform @param {{path:string,isRelease:boolean}} pese
+ * @param {number|null} sizeMb @param {any} config @param {any[]} findings
+ * @returns {any}
+ */
+export function rapportSansDemarrage(platform, pese, sizeMb, config, findings) {
+  return {
+    platform,
+    skipped: true,
+    skipReason: 'iOS : aucun équivalent local de `adb shell am start -W` / `dumpsys gfxinfo`. '
+      + 'Le démarrage iOS se mesure avec Instruments (App Launch, Animation Hitches), '
+      + 'hors périmètre automatisable de ce harness.',
+    binarySizeMb: sizeMb,
+    metrics: {
+      binarySizeMb: sizeMb,
+      binaryPath: pese.path,
+      binaryIsRelease: pese.isRelease,
+    },
+    thresholds: config?.thresholds ?? {},
+    findings,
+  };
+}
+
 function main() {
   const opts = parseArgs(process.argv.slice(2));
   let config;
@@ -505,13 +546,7 @@ function main() {
   // `skipped`, plutôt que de rendre un vert qui laisserait croire à une mesure.
   if (platform !== 'android') {
     const findings = [sizeFinding(pese, sizeMb, config, platform, buildRelease)].filter(Boolean);
-    writeJson(reportPath, {
-      platform, skipped: true,
-      skipReason: 'iOS : aucun équivalent local de `adb shell am start -W` / `dumpsys gfxinfo`. '
-        + 'Le démarrage iOS se mesure avec Instruments (App Launch, Animation Hitches), '
-        + 'hors périmètre automatisable de ce harness.',
-      binarySizeMb: sizeMb, findings,
-    });
+    writeJson(reportPath, rapportSansDemarrage(platform, pese, sizeMb, config, findings));
     warn('perf iOS non mesurée (voir skipReason dans perf.json) — seule la taille du binaire est relevée.');
     process.exit(exitCodeFor(findings, config.gate));
   }

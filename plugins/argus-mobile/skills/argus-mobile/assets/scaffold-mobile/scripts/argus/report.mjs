@@ -254,7 +254,7 @@ function coverageRows(parts) {
 }
 
 /** @param {any} perf @returns {string} */
-function perfRows(perf) {
+export function perfRows(perf) {
   const metrics = perf?.metrics;
   if (!metrics) return '';
   const thresholds = perf.thresholds ?? {};
