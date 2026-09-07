@@ -124,7 +124,15 @@ argus-reach: ## Quels écrans ancrés aucun `goto` ne dessert ? (sans device)
 	@node scripts/argus/config.mjs --check-reachability
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
-	@$(FLUTTER) test test/argus
+# ⚠️ `--file-reporter` EN PLUS de la sortie lisible, pas à sa place : le rapport
+# ne voyait RIEN de cet étage. Il agrège cinq JSON de dimension et aucun résultat
+# de `flutter test`, si bien qu'un projet dont 117 gardes rouges décrivent des
+# défauts réels publiait `gate: pass` sur deux findings info (391). Le producteur
+# est `flutter test` lui-même — inutile de livrer un script pour ça.
+# ⚠️ Et le dossier est DEMANDÉ à la config, jamais recopié : il est configurable,
+# donc l'écrire en dur ferait écrire la recette là où le rapport ne lit pas, et
+# la dimension se rapporterait « jamais lancée » au sortir d'un run vert.
+	@$(FLUTTER) test --file-reporter json:"$$(node scripts/argus/config.mjs --print-artifacts-dir)/stage1.jsonl" test/argus
 
 # ⚠️ QUATRE LANCEMENTS POUR UNE PREMIÈRE INSTALLATION, et deux étaient du
 # recopiage. Un run l'a mesuré : obtenir les échecs, les lister, capturer la

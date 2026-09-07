@@ -36,7 +36,7 @@ import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureB
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
-import { coverageLine, stalenessOf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -9936,4 +9936,68 @@ test('lifecycle DIT qu\'il ouvre une session, et le PROUVE avant d\'asserter (39
   assert.match(entreDeux, /assertVisible:[\s\S]{0,120}ARGUS_ANCHOR_AFTER_AUTH/,
     'rien ne prouve que la session est ouverte avant le premier scénario : un échec de '
     + 'connexion se rapporterait alors sur l\'écran retrouvé, trois écrans plus loin (390)');
+});
+
+test('les échecs d\'étage 1 remontent dans le rapport, et le gate les voit (391)', () => {
+  // ⚠️ LE SECOND FAUX VERT PUBLIÉ DE CE CHANTIER, APRÈS LE 367. `report.mjs`
+  // agrégeait cinq relevés de device et AUCUN résultat de `flutter test` : il ne
+  // parlait de l'étage 1 que pour la couverture — quels états y sont montés —
+  // jamais pour ses findings. Un run a mesuré 117 échecs réels pendant que la
+  // page annonçait `gate: pass` sur deux findings info.
+  //
+  // Le garde APPELLE le lecteur au lieu de chercher un motif : un garde de
+  // câblage qui lit du texte ne voit pas une valeur neutralisée.
+  //
+  // ⚠️ LES FIXTURES VIENNENT DU RÉEL. Le format écrit `"result":"error"`, jamais
+  // `"failure"` — relevé sur un vrai rapport (117 error, 246 success). Une
+  // fixture inventée aurait porté le mauvais mot et le garde aurait mesuré un
+  // format que `flutter test` ne produit pas.
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-stage1-'));
+  const ecrire = (nom, lignes) => {
+    const chemin = join(tmp, nom);
+    writeFileSync(chemin, lignes.map((l) => JSON.stringify(l)).join('\n') + '\n', 'utf8');
+    return chemin;
+  };
+  const debut = { protocolVersion: '0.1.1', type: 'start', time: 0 };
+  const depart = (id, name) => ({ test: { id, name, hidden: false }, type: 'testStart', time: 1 });
+  const fin = (testID, result) => ({ testID, result, skipped: false, hidden: false, type: 'testDone', time: 2 });
+
+  // 1 · des échecs → UN finding agrégé, bloquant.
+  const rouge = readStage1(ecrire('rouge.jsonl', [
+    debut, depart(1, 'a11y — cibles ≥ 48 dp'), fin(1, 'error'),
+    depart(2, 'disposition — rien ne déborde'), fin(2, 'success'),
+    { type: 'done', success: false, time: 3 },
+  ]));
+  assert.equal(rouge.findings.length, 1, 'un échec d\'étage 1 ne produit aucun finding : le gate ne le verra pas');
+  assert.equal(rouge.findings[0].severity, 'major',
+    'la sévérité est descendue sous le seuil du gate — les échecs redeviennent invisibles au verdict');
+  assert.match(rouge.findings[0].title, /1 garde/, 'le finding ne porte plus le COMPTE des échecs');
+  assert.match(rouge.findings[0].detail, /cibles ≥ 48 dp/, 'le finding ne nomme plus aucun test échoué');
+
+  // 2 · tout vert → aucun finding. Sans ce sens-là, un lecteur toujours rouge passerait.
+  const vert = readStage1(ecrire('vert.jsonl', [
+    debut, depart(1, 'a11y — cibles ≥ 48 dp'), fin(1, 'success'),
+    { type: 'done', success: true, time: 3 },
+  ]));
+  assert.deepEqual(vert.findings, [], 'une suite verte produit un finding : le rapport crierait au loup');
+
+  // 3 · tronqué → INTERROMPU, jamais vert. `flutter test` écrit au fil de l'eau :
+  //     tué en cours, il laisse un fichier lisible dont tout est passé.
+  const coupe = readStage1(ecrire('coupe.jsonl', [
+    debut, depart(1, 'a11y — cibles ≥ 48 dp'), fin(1, 'success'),
+  ]));
+  assert.equal(coupe.status, 'interrompu',
+    'un rapport SANS sa ligne `done` se lit comme un run complet — exactement le faux vert que ce garde interdit');
+
+  // 4 · le câblage : la source est déclarée, et le Makefile écrit LÀ où elle lit.
+  const report = readFileSync(join(SCRIPTS_DIR, 'report.mjs'), 'utf8');
+  const decl = /file: '([^']+\.jsonl)'/.exec(report);
+  assert.ok(decl, 'aucune source .jsonl déclarée dans report.mjs : l\'étage 1 n\'est plus agrégé');
+  const make = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  assert.ok(make.includes(`/${decl[1]}"`) || make.includes(`/${decl[1]} `) || make.includes(`/${decl[1]}\n`),
+    `le Makefile n'écrit pas ${decl[1]}, que report.mjs lit : la dimension se rapporterait « jamais lancée » `
+    + 'au sortir d\'un run qui vient de tourner');
+  assert.match(make, /--print-artifacts-dir/,
+    'le Makefile RECOPIE le dossier d\'artefacts au lieu de le demander : il est configurable, donc la '
+    + 'recette écrirait là où le rapport ne lit pas');
 });

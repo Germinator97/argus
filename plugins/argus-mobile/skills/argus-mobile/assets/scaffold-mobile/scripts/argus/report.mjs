@@ -27,14 +27,66 @@ import { acquitter, artifactFor, artifactsDir, loadConfig, log, err, warn, write
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
-/** Les cinq sources, avec la dimension qu'elles couvrent. */
+/** Les sources agrégées, avec la dimension que chacune couvre. */
 const SOURCES = [
+  // ⚠️ L'ÉTAGE 1 N'ÉTAIT LU PAR PERSONNE, ET LA PAGE PUBLIAIT `gate: pass`
+  // PAR-DESSUS. Ce fichier agrégeait cinq relevés de device et aucun résultat de
+  // `flutter test` : il ne parlait de l'étage 1 que pour la COUVERTURE — quels
+  // états y sont montés — jamais pour ses findings. Un run a mesuré 117 échecs
+  // réels (contrastes, cibles sous 48 dp, troncatures, débordements) pendant que
+  // la page annonçait un run vert sur deux findings info. C'est la seconde fois
+  // que ce chantier publie un faux vert, après le 367 (391).
+  { file: 'stage1.jsonl', label: 'Gardes d\'étage 1 (sans device)', dimensions: 'a11y · disposition · ancres', how: 'make argus-guards' },
   { file: 'report.json', label: 'Parcours Maestro', dimensions: 'functional · visual · a11y · resilience · stability · i18n', how: 'node scripts/argus/run.mjs' },
   { file: 'perf.json', label: 'Performance', dimensions: 'performance', how: 'node scripts/argus/perf.mjs' },
   { file: 'a11y.json', label: 'Accessibilité (device)', dimensions: 'a11y', how: 'node scripts/argus/a11y.mjs' },
   { file: 'sec.json', label: 'Sécurité MASVS', dimensions: 'security', how: 'node scripts/argus/sec.mjs' },
   { file: 'sca.json', label: 'Dépendances (CVE)', dimensions: 'security', how: 'node scripts/argus/sca.mjs' },
 ];
+
+/**
+ * Agrège le rapport JSON-lines que `flutter test --file-reporter json:` écrit.
+ *
+ * Rend la MÊME forme que les autres sources — `{findings}` ou `{skipped}` — pour
+ * que `collect` n'ait pas à connaître deux façons de lire une dimension.
+ *
+ * ⚠️ UN FICHIER SANS SA LIGNE `done` EST UN RUN INTERROMPU, pas un run vert.
+ * `flutter test` écrit au fil de l'eau : tué en cours, il laisse un fichier
+ * parfaitement lisible dont les tests passés sont tous verts. Le lire comme un
+ * résultat rendrait exactement le faux vert que ce fichier existe pour empêcher.
+ *
+ * @param {string} path @returns {any}
+ */
+export function readStage1(path) {
+  if (!existsSync(path)) return null;
+  let done = null;
+  const echecs = [];
+  const noms = new Map();
+  for (const ligne of readFileSync(path, 'utf8').split('\n')) {
+    if (!ligne.trim()) continue;
+    let e;
+    try { e = JSON.parse(ligne); } catch { continue; }
+    if (e.type === 'testStart' && e.test && !e.test.hidden) noms.set(e.test.id, e.test.name);
+    else if (e.type === 'testDone' && !e.hidden && !e.skipped && e.result !== 'success') {
+      echecs.push(noms.get(e.testID) ?? `test #${e.testID}`);
+    } else if (e.type === 'done') done = e;
+  }
+  if (!done) {
+    return { incomplete: true, status: 'interrompu',
+      why: 'le rapport d\'étage 1 n\'a pas de ligne `done` : la suite a été tuée en cours, '
+        + 'et ses tests passés ne décrivent pas une exécution complète' };
+  }
+  if (echecs.length === 0) return { findings: [] };
+  // Un seul finding : 117 lignes noieraient la page, et le détail vit dans la
+  // sortie de `make argus-guards`, qui donne la ligne EXACTE à corriger.
+  return { findings: [{
+    id: 'QAM-STAGE1', severity: 'major', dimension: 'a11y',
+    title: `${echecs.length} garde(s) d'étage 1 en échec`,
+    detail: `Mesurés sans device par \`make argus-guards\`. Les premiers : `
+      + `${echecs.slice(0, 5).join(' · ')}${echecs.length > 5 ? ` … et ${echecs.length - 5} autres` : ''}. `
+      + 'Relance la cible pour la liste complète : ses messages donnent la ligne à corriger.',
+  }] };
+}
 
 /** @param {string} path @returns {any} */
 function readJson(path) {
@@ -63,7 +115,7 @@ function collect(dir) {
   const parts = [];
   for (const source of SOURCES) {
     const path = join(dir, source.file);
-    const data = readJson(path);
+    const data = source.file.endsWith('.jsonl') ? readStage1(path) : readJson(path);
     // ⚠️ L'ÂGE de chaque part, parce que rien ne l'obligeait à être du même run.
     // Ce script agrège les JSON présents, quels qu'ils soient : après une preuve
     // par corruption de baseline, le HTML décrivait un état qui n'existait plus,

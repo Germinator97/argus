@@ -2290,6 +2290,17 @@ function main() {
     return;
   }
 
+  // Le dossier d'artefacts, pour que le Makefile n'ait pas à le RECOPIER.
+  // ⚠️ Il est configurable (`artifacts.dir`), donc le figer dans une recette
+  // ferait diverger le geste OUTILLÉ du geste CONFIGURÉ : la recette écrirait
+  // dans un dossier que le rapport ne lit pas, et la dimension se rapporterait
+  // « jamais lancée » alors qu'elle vient de tourner. Une seule source, que le
+  // raccourci INTERROGE au lieu de la recopier.
+  if (process.argv.slice(2).includes('--print-artifacts-dir')) {
+    console.log(artifactsDir(config));
+    return;
+  }
+
   // ── `--print-platforms` : ce que le projet déclare, pour la CI. ──────────
   //
   // La CI livrée porte deux jobs qui n'ont de sens que sur Android (build APK,
