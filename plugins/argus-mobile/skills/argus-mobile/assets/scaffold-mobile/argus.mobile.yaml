@@ -113,6 +113,14 @@ build:
   # fermé, et le rouvrir coûterait plus que la prose qu'il remplace.
   # La source compte autant que la commande : sans elle, le suivant la cherchera
   # au même endroit que toi, et ce n'est jamais le même selon les projets.
+  # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.
+  # `flutter build ios --flavor dev` écrit sous `Debug-dev-iphonesimulator/`, pas
+  # sous `iphonesimulator/` — et `--release --flavor dev` sous
+  # `Release-dev-iphoneos/`. Le défaut pointe alors un chemin qui n'existe pas, le
+  # harnais s'arrête sur « AUCUN PAQUET à cet emplacement » et on cherche du côté
+  # du build. L'échec est bruyant, donc il ne coûte que du temps — mais il en
+  # coûte à chaque projet à flavors. Demande le chemin au disque plutôt que de le
+  # deviner : `find build/ios -name Runner.app -maxdepth 2` (392).
   ios: build/ios/iphonesimulator/Runner.app
   # Sa jumelle iOS, LUE PAR QUATRE SITES et déclarée nulle part jusqu'au run 31 :
   # un message d'erreur envoyait la renseigner, et le seul moyen d'apprendre
@@ -726,7 +734,12 @@ artifact:
   # personne n'a tranché, et insupportable une fois que si : un avertissement
   # qu'on ne peut pas acquitter finit ignoré, et il emmène les autres avec lui.
   # Écris la RAISON, pas un booléen — « app interne, aucune donnée client » se
-  # relit dans six mois, `true` ne se relit pas. Et si les captures ne doivent
+  # relit dans six mois, `true` ne se relit pas. ⚠️ SUR UNE SEULE LIGNE : ce
+  # parseur n'accepte ni bloc `|`/`>` ni chaîne repliée, et une invitation à
+  # « écrire une phrase » y a déjà conduit deux fois. Il refuse en nommant la
+  # ligne, donc rien ne casse en silence — mais toutes les commandes s'arrêtent
+  # tant que ce n'est pas corrigé. Si ta raison ne tient pas sur une ligne,
+  # raccourcis-la : elle est faite pour être relue (393). Et si les captures ne doivent
   # PAS partir, c'est `evidence: none` qu'il faut, pas un acquittement.
   evidenceAcknowledged: ''
   # Plafond de la page. Ce qui ne rentre pas est ANNONCÉ dans le rapport, jamais

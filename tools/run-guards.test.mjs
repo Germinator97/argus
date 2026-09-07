@@ -10001,3 +10001,30 @@ test('les échecs d\'étage 1 remontent dans le rapport, et le gate les voit (39
     'le Makefile RECOPIE le dossier d\'artefacts au lieu de le demander : il est configurable, donc la '
     + 'recette écrirait là où le rapport ne lit pas');
 });
+
+test('deux contraintes sont dites À LA CLÉ qu\'elles gouvernent (392, 393)', () => {
+  // ⚠️ LES DEUX EXISTAIENT AILLEURS, ET C'EST TOUT LE DÉFAUT. Le §3g du SKILL
+  // décrit la cohabitation `Debug-*-iphonesimulator` / `iphoneos`, et le
+  // sous-ensemble YAML accepté est écrit en tête du gabarit — 700 lignes
+  // au-dessus de la clé qui invite à « écrire une phrase ». Un run s'est arrêté
+  // sur chacune. Une information juste au mauvais endroit ne sert personne.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+  // 392 · la fenêtre autour de la clé, pas le fichier entier : c'est la
+  // PROXIMITÉ qu'on garde, et une assertion sur tout le fichier passerait déjà.
+  const iOS = yaml.indexOf('\n  ios: build/ios/');
+  assert.ok(iOS !== -1, 'la clé build.ios a changé de forme — mets ce garde à jour');
+  const avantIOS = yaml.slice(Math.max(0, iOS - 900), iOS);
+  assert.match(avantIOS, /flavor/i,
+    'rien ne dit à la clé `build.ios` qu\'un flavor déplace ce chemin : le défaut pointe alors '
+    + 'un dossier qui n\'existe pas, et on cherche du côté du build (392)');
+
+  // 393 · la contrainte d'UNE ligne, là où on écrit la phrase.
+  const ack = yaml.indexOf('evidenceAcknowledged:');
+  assert.ok(ack !== -1, 'la clé evidenceAcknowledged a disparu — mets ce garde à jour');
+  const avantAck = yaml.slice(Math.max(0, ack - 1200), ack);
+  assert.match(avantAck, /UNE seule ligne|SUR UNE SEULE LIGNE/i,
+    'la clé invite à écrire une phrase sans rappeler que le parseur n\'accepte ni bloc ni chaîne '
+    + 'repliée : deux runs s\'y sont arrêtés (393)');
+});

@@ -5516,7 +5516,21 @@ phrase « une valeur tient sur UNE ligne ; si elle est longue, raccourcis-la ».
 Résidu vrai et plus étroit : le commentaire d'`evidenceAcknowledged` invite à
 écrire une phrase sans rappeler la contrainte d'une ligne.
 
-**Prochain numéro libre : 394.**
+🔴 **394 — NÉ DE LA PASSE : LE GARDE DES SÉLECTEURS ACCUSAIT UN FLOW JUSTE.** En
+écrivant l'exemple du 388, un garde ancien m'a repris — tout sélecteur `text:`
+doit être encadré (`'(?s).*Libellé.*'`), parce qu'un nœud Flutter fusionne le
+texte qu'il recouvre. Il avait raison. Mais il dépouille le `#` de **début** de
+ligne et jamais celui de **fin** : `text: '(?s).*Valider.*'   # le bouton` était
+rapporté comme NU, puisque la valeur extraite ne se termine plus par `.*'`. C'est
+un **faux positif**, donc le pire des deux sens — il envoie « corriger » ce qui
+est déjà juste, et sur un fichier du projet, pas du cadre. Troisième fois que ce
+chantier retire des commentaires par la gauche en oubliant ceux de fin de ligne.
+Remède : un balayage **gauche à droite** qui respecte les quotes — une regex
+`#.*$` couperait au premier `#` du motif lui-même. Gardé dans les deux sens, y
+compris « un `#` DANS le motif ne termine pas la valeur » et « un motif nu reste
+nu ».
+
+**Prochain numéro libre : 395.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
