@@ -5081,7 +5081,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **6 POINTS OUVERTS — 400 à 405, inscrits le 07/09/2026 au soir.** Les runs
+✅ **400 à 405 FERMÉS le 07/09/2026, backlog vide.** Les runs
 **55 et 56** ont été joués en parallèle, iOS sur le projet à API et Android sur
 le projet hors ligne, par deux agents vierges qui s'ignoraient. Ils ont trouvé
 **indépendamment le même défaut de fond** (401) : une ancre peut être présente,
@@ -5861,6 +5861,8 @@ une contrainte de conception, pas un détail d'installation.
 
 ### 400-405. Les runs 55 et 56 — deux runs en aveugle, un même défaut de fond
 
+**Fermés le 07/09/2026** — cinquante-deuxième fois que le backlog se vide.
+
 Deux runs joués EN PARALLÈLE sur deux terrains, deux
 plateformes, par deux agents vierges qui s'ignoraient : iOS sur le projet qui
 consomme une API (run 55, 19 min 26 s sur 60, gate propre, 8 flows / 0 finding),
@@ -5886,8 +5888,6 @@ l'écart est documenté dans les relevés, il ne se répare pas dans l'outil.
 
 ### 400. Le garde de cadrage MESURE SANS DRAINER, quand ses deux voisins drainent
 
-**Ouvert le 07/09/2026.**
-
 `layout_test.dart`, garde « racine de recadrage sous la barre d'état » : il
 appelle `tester.getRect()` sans avoir consommé l'exception que le montage a pu
 laisser. Les DEUX gardes de la boucle suivante, eux, la consomment (l. 105 et
@@ -5907,8 +5907,6 @@ de vérification du projet d'accueil. Mesuré : le fichier corrigé passe
 
 ### 401. Une ancre PRÉSENTE et ACTIVE peut désigner le MAUVAIS RECTANGLE
 
-**Ouvert le 07/09/2026.**
-
 🔴 **Trouvé indépendamment par les deux runs, sur deux plateformes.** L'étage 1
 valide l'ancre — elle existe, elle porte une action — et Maestro vise le CENTRE
 de son rect, qui tombe sur du texte inerte à des centaines de pixels du contrôle.
@@ -5926,8 +5924,6 @@ CTA pleine largeur n'en contient aucune ; une ancre qui a absorbé ses sœurs, s
 
 ### 402. `pertePossible()` se tait exactement là où le danger vit
 
-**Ouvert le 07/09/2026.**
-
 `if (!url) return null; // aucune page n'existe : rien à écraser` — la prémisse
 est fausse, et **le dartdoc de la fonction suivante la contredit dix lignes plus
 bas** : l'outil de publication rapproche par CHEMIN DE FICHIER, donc une
@@ -5942,8 +5938,6 @@ cette initiative.
 
 ### 403. Sur iOS, la taille du binaire est mesurée, écrite, et INVISIBLE au rapport
 
-**Ouvert le 07/09/2026.**
-
 `perf.mjs:508` (chemin iOS) écrit `binarySizeMb` **à la racine** du JSON, sans
 bloc `metrics` ; `report.mjs:258` fait `const metrics = perf?.metrics; if
 (!metrics) return ''`. Le bandeau ne rend donc **aucune ligne de perf** sur iOS —
@@ -5956,8 +5950,6 @@ Et `report-format-mobile.md:212` promet l'inverse, sans réserve de plateforme :
 plateformes : la décision existe d'un côté et n'a jamais traversé.
 
 ### 404. Le paramètre nu que le skill PRESCRIT est classé « ancre opaque »
-
-**Ouvert le 07/09/2026.**
 
 Le croisement POSÉ→DÉCLARÉ range à part les gabarits interpolés (`'x_${y}'`,
 critère `/'[^']*\$\{[^']*'/`) — bien vu, et le commentaire explique pourquoi les
@@ -5973,8 +5965,6 @@ et il la NOMME (l. 836-838 : « Nomme ce paramètre `semanticIdentifier` » ·
 noms-là sont des familles, pas des opaques.
 
 ### 405. Mon correctif du 396 a DÉPLACÉ le défaut au lieu de le fermer
-
-**Ouvert le 07/09/2026.**
 
 Le geste qui referme l'invite système vivait dans `goto.yaml` — un seul appelant.
 Je l'ai porté dans `launch-clean.yaml`, par où six flows sur huit entrent : il est
