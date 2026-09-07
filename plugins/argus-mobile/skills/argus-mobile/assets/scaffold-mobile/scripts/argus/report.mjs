@@ -575,10 +575,27 @@ const MARQUE_HISTO = 'argus-runs';
  */
 export function pertePossible(prevPath, url) {
   if (prevPath) return null;   // l'historique est repris : rien à perdre
-  if (!url) return null;       // aucune page n'existe : rien à écraser
-  return `une page existe (${url}) et --previous n'a pas été passé :`
-    + ' cette republication EFFACERAIT ses onglets. Enregistre la page publiée,'
-    + ' puis relance report.mjs avec --previous=<fichier>';
+  if (url) {
+    return `une page existe (${url}) et --previous n'a pas été passé :`
+      + ' cette republication EFFACERAIT ses onglets. Enregistre la page publiée,'
+      + ' puis relance report.mjs avec --previous=<fichier>';
+  }
+  // ⚠️ ET C'EST ICI QUE LE DANGER VIT, PAS AU-DESSUS. Ce cas rendait `null` sur
+  // la prémisse « aucune page n'existe : rien à écraser » — que le commentaire
+  // de `consignePublication`, dix lignes plus bas, contredit depuis qu'il a été
+  // écrit : l'outil de publication rapproche par CHEMIN DE FICHIER, donc une
+  // publication sans URL atterrit sur la page du run précédent et la REMPLACE.
+  // Une URL vide dit que la CONFIG ne la connaît pas, jamais qu'il n'y a rien.
+  // Deux runs en aveugle y étaient exposés le même jour ; seule leur initiative
+  // d'aller lire la galerie a évité d'effacer quatre onglets et de renommer une
+  // page. Un troisième, plus tôt, ne l'avait pas eue — d'où deux pages au même
+  // titre, dont l'une est morte.
+  return 'aucune artifact.url en config, et --previous n\'a pas été passé — ce qui ne'
+    + ' prouve PAS qu\'aucune page n\'existe : la publication rapproche par CHEMIN,'
+    + ' donc elle atterrirait sur la page d\'un run précédent et REMPLACERAIT ses'
+    + ' onglets. Va lire la galerie ; si une page de ce terrain existe, enregistre-la,'
+    + ' relance avec --previous=<fichier>, et reporte son URL dans'
+    + ' argus.mobile.yaml → artifact.url.<plateforme>.';
 }
 
 /**

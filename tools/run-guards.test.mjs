@@ -7388,9 +7388,21 @@ test('sans --previous, la republication AVERTIT qu\'elle va effacer (249)', () =
   const dit = pertePossible('', 'https://a/ios');
   assert.ok(dit, 'une page existe et --previous manque : il FAUT le dire');
   assert.match(dit, /--previous/, 'et nommer le remède, pas seulement le symptôme');
-  // Les deux autres moitiés : un avertissement qui crie toujours s'ignore.
+  // L'autre moitié : un avertissement qui crie toujours s'ignore. Reprendre
+  // l'historique est le seul cas où il n'y a RIEN à dire.
   assert.equal(pertePossible('/tmp/page.html', 'https://a/ios'), null, 'historique repris : rien à perdre');
-  assert.equal(pertePossible('', ''), null, 'première publication : rien à écraser');
+
+  // ⚠️ 402 · ET LE CAS SANS URL EST LE PLUS DANGEREUX, PAS LE PLUS SÛR. Ce test
+  // figeait « première publication : rien à écraser » — la prémisse que le
+  // commentaire de `consignePublication` contredit : la publication rapproche
+  // par CHEMIN, donc sans URL elle atterrit sur la page du run précédent et
+  // remplace ses onglets. Deux runs en aveugle y étaient exposés le même jour.
+  const sansUrl = pertePossible('', '');
+  assert.ok(sansUrl, 'aucune URL en config ne veut pas dire aucune page : il FAUT le dire');
+  assert.match(sansUrl, /--previous/, 'et nommer le remède');
+  assert.match(sansUrl, /galerie|CHEMIN/,
+    'le message doit dire POURQUOI l\'absence d\'URL ne prouve rien — sinon il se lit '
+    + 'comme une formalité et on publie quand même');
 });
 
 test('le geste documenté est le geste outillé : ARGS arrive jusqu\'au rapport (250)', () => {
