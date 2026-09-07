@@ -24,6 +24,39 @@ appId: ${APP_ID}
 # ci-dessous est un `when` sur l'identifiant d'écran déclaré dans
 # `argus.mobile.yaml → screens[].id`.
 #
+# 🔴 UNE INVITE SYSTÈME PEUT RECOUVRIR L'ÉCRAN QUE TU VIENS D'ATTEINDRE, ET LE
+# GESTE QUI LA FERME VIT ICI. `permissions.all: allow` accorde les permissions du
+# bac à sable, PAS la modale que le système présente lui-même au premier
+# `requestAuthorization` — mesuré sur iOS 26.3 avec Maestro 2.8.0. Un seul flow
+# qui la laisse ouverte fait échouer les CINQ suivants, et l'échec accuse l'ancre
+# de l'écran, qui est correcte : la capture montre l'accueil ENTIÈREMENT rendu
+# DERRIÈRE l'alerte.
+#
+# Le geste dépend de ta langue et de ton app, donc il ne peut pas vivre dans un
+# sous-flow du CADRE, qui serait écrasé à la prochaine mise à jour. Deux formes,
+# toutes deux exercées sur un projet réel — la première suffit presque toujours :
+#
+#   - tapOn:
+#       text: '(?s).*(Refuser|Don.t Allow).*'   # les libellés de TON système
+#       optional: true                          # sauté si l'alerte n'est pas là
+#
+#   - runFlow:                        # la forme longue, pour grouper plusieurs gestes
+#       when:
+#         visible: '(?s).*Autoriser.*'
+#       commands:
+#         - tapOn: '(?s).*Autoriser.*'
+#
+# ⚠️ Sans `optional:` ni `when:`, le geste échoue dès le SECOND run — l'alerte
+# n'apparaît qu'une fois par installation, et un tap inconditionnel devient alors
+# une étape rouge sur un parcours sain.
+# ⚠️ En syntaxe BLOC, jamais en map de flow (`{ visible: … }`) : Maestro
+# l'accepterait, le sous-ensemble YAML d'Argus non — et un exemple se recopie.
+# ⚠️ ET FERMER L'ALERTE NE SUFFIT PAS SEUL. Sur iOS le TROUSSEAU survit lui aussi
+# à `clearState` : les deux causes rendent le MÊME symptôme — une ancre correcte
+# accusée — donc traiter l'une laisse l'autre, et on croit son remède faux. Le
+# trousseau est couvert par `clearKeychain` dans `launch-clean.yaml` ; celle-ci
+# est à toi.
+#
 # ⚠️ Tu peux taper dès la première ligne d'une branche : `launch-clean.yaml`
 # attend désormais l'ancre de départ, pas seulement la fin des animations. Avant
 # ça, une branche qui tapait tout de suite le faisait PENDANT le sas de

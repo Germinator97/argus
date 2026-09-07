@@ -2002,6 +2002,39 @@ test('sans ancre de départ, le lancement ne prétend rien attendre', () => {
 // commentés, puisque c'est exactement ce qu'on décommente.
 
 /** Les sélecteurs `text:` des flows, commentés compris. */
+/**
+ * Retire le commentaire de FIN de ligne d'une valeur YAML, en respectant les
+ * quotes — un `#` peut vivre DANS le motif.
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE (394). `selecteursTexte` dépouillait le `#`
+ * de DÉBUT de ligne, jamais celui de fin : un motif parfaitement encadré suivi
+ * d'une explication (`text: '(?s).*Valider.*'   # le bouton principal`) était
+ * rapporté comme NU, puisqu'il ne se termine plus par `.*'`. Le garde accusait
+ * donc un flow correct — un faux positif, c'est-à-dire le pire des deux sens,
+ * parce qu'il envoie « corriger » ce qui est juste. Trouvé en écrivant l'exemple
+ * du 388, qui portait exactement cette forme.
+ *
+ * C'est la troisième fois que ce chantier retire des commentaires par la
+ * gauche et oublie ceux de fin de ligne. Le balayage gauche-à-droite est le seul
+ * qui tienne : une regex `#.*$` couperait au premier `#` du motif lui-même.
+ *
+ * @param {string} valeur @returns {string}
+ */
+function sansCommentaireFinal(valeur) {
+  let quote = '';
+  for (let i = 0; i < valeur.length; i += 1) {
+    const c = valeur[i];
+    if (quote) {
+      if (c === quote) quote = '';
+    } else if (c === "'" || c === '"') {
+      quote = c;
+    } else if (c === '#' && (i === 0 || /\s/.test(valeur[i - 1]))) {
+      return valeur.slice(0, i).trim();
+    }
+  }
+  return valeur.trim();
+}
+
 function selecteursTexte() {
   const trouves = [];
   let lignesLues = 0;
@@ -2019,7 +2052,7 @@ function selecteursTexte() {
         // `inputText:` ouvre un bloc dont `text:` est la valeur SAISIE, pas une
         // cible : rien à encadrer, et l'encadrer taperait les points au clavier.
         const parent = precedente.replace(/^\s*#?\s*/, '').replace(/^-\s*/, '');
-        if (!/^inputText:/.test(parent)) trouves.push({ fichier, ligne: i + 1, motif: m[1].trim() });
+        if (!/^inputText:/.test(parent)) trouves.push({ fichier, ligne: i + 1, motif: sansCommentaireFinal(m[1]) });
       }
       if (nue.trim()) precedente = brute;
     }
@@ -9784,4 +9817,51 @@ test('`clearKeychain` accompagne CHAQUE `clearState` du point d\'entrée (387)',
       'un `launchApp` purge l\'état sans purger le trousseau : sur iOS les jetons y survivent, '
       + 'donc le premier flow ouvre une session dont tous les suivants héritent (387)');
   }
+});
+
+test('le geste de l\'invite système est écrit LÀ OÙ on l\'écrit (388)', () => {
+  // ⚠️ LE 382 DONNAIT LA PLACE SANS L'OCCUPER. Il disait « pose-le dans
+  // goto.yaml » — et ne le disait QUE dans le commentaire de launch-clean.yaml,
+  // un fichier du CADRE que personne n'édite. Contre-épreuve du jour : le mot
+  // « alerte » vivait dans DEUX fichiers du scaffold, et goto.yaml n'en faisait
+  // pas partie. Un run a donc dû retrouver le geste seul, et l'a posé dans le
+  // cadre — donc écrasé au prochain `--update`.
+  //
+  // Le garde exige les DEUX formes, pas l'une OU l'autre : un garde qui accepte
+  // des synonymes ne mesure que le plus facile à écrire (386), et en muter un
+  // laisserait l'autre debout.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+
+  const i = yaml.search(/INVITE SYSTÈME/);
+  assert.ok(i !== -1,
+    'goto.yaml ne décrit plus le piège de l\'invite système : le geste redevient introuvable '
+    + 'depuis le fichier qu\'on ÉDITE, et il finira dans le cadre, qui est écrasé (388)');
+  const bloc = yaml.slice(i, i + 2200);
+
+  assert.match(bloc, /optional:\s*true/,
+    'la forme courte a disparu — c\'est celle qui suffit presque toujours');
+  assert.match(bloc, /when:/,
+    'la forme longue a disparu — elle sert dès qu\'on groupe plusieurs gestes');
+  assert.match(bloc, /trousseau/i,
+    'le bloc ne dit plus que fermer l\'alerte NE SUFFIT PAS SEUL : les deux causes rendent '
+    + 'le même symptôme, et traiter l\'une laisse croire que le remède est faux (387 + 388)');
+});
+
+test('le dépouillement du commentaire de fin de ligne coupe au bon `#` (394)', () => {
+  // ⚠️ LES DEUX SENS, parce qu'un seul laisse le défaut inverse. Trop peu couper
+  // rend le faux positif d'origine (un motif encadré suivi d'une explication
+  // rapporté comme nu) ; trop couper rend un faux NÉGATIF, en amputant un motif
+  // qui contient un `#` — et celui-là ne se voit jamais, puisqu'il rend du vert.
+  assert.equal(sansCommentaireFinal("'(?s).*Valider.*'   # le bouton principal"),
+    "'(?s).*Valider.*'", 'le commentaire de fin de ligne n\'est pas retiré : le garde accuse un flow JUSTE');
+  assert.equal(sansCommentaireFinal("'(?s).*Valider.*'"),
+    "'(?s).*Valider.*'", 'une valeur sans commentaire ne doit pas bouger');
+  assert.equal(sansCommentaireFinal("'(?s).*#42.*'"),
+    "'(?s).*#42.*'", 'un `#` DANS le motif ne termine pas la valeur — une regex `#.*$` couperait ici');
+  assert.equal(sansCommentaireFinal("'(?s).*a#b.*'   # et son commentaire"),
+    "'(?s).*a#b.*'", 'les deux à la fois : `#` dans le motif ET commentaire après');
+  // Et le nu reste nu : le garde d'encadrement doit continuer de l'attraper.
+  assert.equal(sansCommentaireFinal('"Refuser"   # nu, et il doit le rester'),
+    '"Refuser"', 'un motif NON encadré ne doit pas être blanchi par le dépouillement');
 });
