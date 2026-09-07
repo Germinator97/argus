@@ -5843,6 +5843,122 @@ ne pouvait pas vivre dans `harness.dart` ni `known_issues.dart`, tous deux
 installées. Elle vit en config, lue défensivement. La structure du scaffold est
 une contrainte de conception, pas un détail d'installation.
 
+### 400-405. Les runs 55 et 56 — deux runs en aveugle, un même défaut de fond
+
+**Ouverts le 07/09/2026.** Deux runs joués EN PARALLÈLE sur deux terrains, deux
+plateformes, par deux agents vierges qui s'ignoraient : iOS sur le projet qui
+consomme une API (run 55, 19 min 26 s sur 60, gate propre, 8 flows / 0 finding),
+Android sur le projet hors ligne (run 56, 10 flows, `scope: complet`, 14/14
+écrans visités, `notVisited: []`).
+
+✅ **CE QUE LA PASSE DE LA VEILLE A RENDU** — le **387** tient (démarrage 87 →
+219 ms au pire sur huit flows, budget 2000, aucun symptôme de trousseau) ; le
+**391** agrège (467 tests d'un côté, 632 de l'autre, tous au gate) ; et les
+messages du **397-399** ont **servi à trouver** : c'est le garde disant lui-même
+qu'il prouve un nœud *actif* et non que son centre soit sur le contrôle qui a
+mené au 401 ci-dessous.
+
+⚠️ **DEUX CONSTATS DES RUNS N'ONT PAS ÉTÉ INSCRITS, LA REPRODUCTION LES A
+DÉMENTIS** — le `*_diff.png` laissé dans `_baselines/` est déjà couvert par
+`.gitignore:110` (`/.maestro/_baselines/**/*_diff.png`), vérifié sur les deux
+terrains ; et les deux écarts entre mes relevés et les comptes rendus
+(`harness.screens` +2, `maestro.baselines` +1, constants sur les deux runs)
+viennent de **mon comparateur**, qui compte `ArgusScreen(` jusque dans les
+déclarations de type et tous les `*.png` sans exclure les diffs. `compare-runs.sh`
+n'est pas corrigé : il est figé par sha256 et sert à comparer 55 runs entre eux —
+l'écart est documenté dans les relevés, il ne se répare pas dans l'outil.
+
+### 400. Le garde de cadrage MESURE SANS DRAINER, quand ses deux voisins drainent
+
+`layout_test.dart`, garde « racine de recadrage sous la barre d'état » : il
+appelle `tester.getRect()` sans avoir consommé l'exception que le montage a pu
+laisser. Les DEUX gardes de la boucle suivante, eux, la consomment (l. 105 et
+131) — dont un dont le commentaire explique précisément pourquoi. *Trois gardes
+du même fichier, deux drainent, le troisième pas.*
+
+Conséquence mesurée sur un vrai projet : un `RenderFlex overflowed by 41 pixels`
+laissé en attente fait échouer le test **au démontage, donc HORS d'`argusCheck`**
+— il ne propose aucune clé de dette, et la clé écrite de mémoire ne correspond à
+rien. Le garde devient impossible à faire taire autrement qu'en le retirant, sur
+un projet où le débordement est **déjà** mesuré et inscrit par le garde voisin.
+
+📌 **Et le même correctif ferme un second constat** : le fichier livré n'était pas
+`dart format`-propre sous Dart 3.8 (le seul des sept), ce qui cassait la commande
+de vérification du projet d'accueil. Mesuré : le fichier corrigé passe
+`--set-exit-if-changed`. Les deux runs ont dû le patcher chacun de leur côté.
+
+### 401. Une ancre PRÉSENTE et ACTIVE peut désigner le MAUVAIS RECTANGLE
+
+🔴 **Trouvé indépendamment par les deux runs, sur deux plateformes.** L'étage 1
+valide l'ancre — elle existe, elle porte une action — et Maestro vise le CENTRE
+de son rect, qui tombe sur du texte inerte à des centaines de pixels du contrôle.
+
+- run 56 : `session_form_back` → `[53,163][1028,263]`, **975 px, toute la
+  rangée** (titre et pastille RESET absorbés), faute de `container: true` — que
+  sa voisine `session_form_reset` portait, elle. Après correction : 99 px.
+- run 55 : `delivery_card_details` → `[20,348][381,485]`, **la carte entière**,
+  centre à ~100 pt du lien « Détails ».
+
+Le message du 397-399 le DIT déjà — mais rien ne le MESURE, et c'est la
+différence entre un avertissement et un garde. Critère **dérivé, non deviné** :
+*le rect d'une ancre ne doit pas contenir celui d'une autre ancre déclarée.* Un
+CTA pleine largeur n'en contient aucune ; une ancre qui a absorbé ses sœurs, si.
+
+### 402. `pertePossible()` se tait exactement là où le danger vit
+
+`if (!url) return null; // aucune page n'existe : rien à écraser` — la prémisse
+est fausse, et **le dartdoc de la fonction suivante la contredit dix lignes plus
+bas** : l'outil de publication rapproche par CHEMIN DE FICHIER, donc une
+publication sans `url` atterrit sur la page du run précédent et la REMPLACE. Une
+URL vide veut dire « la config ne la connaît pas », jamais « la page n'existe
+pas ».
+
+Les deux runs y étaient exposés ; **seule leur initiative de lire la galerie** a
+évité d'effacer 4 onglets d'historique et de renommer une page. Le run 56 a
+trouvé DEUX pages au même titre — la trace d'un run antérieur qui n'a pas eu
+cette initiative.
+
+### 403. Sur iOS, la taille du binaire est mesurée, écrite, et INVISIBLE au rapport
+
+`perf.mjs:508` (chemin iOS) écrit `binarySizeMb` **à la racine** du JSON, sans
+bloc `metrics` ; `report.mjs:258` fait `const metrics = perf?.metrics; if
+(!metrics) return ''`. Le bandeau ne rend donc **aucune ligne de perf** sur iOS —
+y compris la taille, pourtant mesurée (28,7 Mo) et comparée à son budget. Tant
+qu'elle est SOUS le budget, aucun finding ne la porte non plus : la mesure
+disparaît sans un mot.
+
+Et `report-format-mobile.md:212` promet l'inverse, sans réserve de plateforme :
+« **`perf.metrics` porte `binaryPath` et `binaryIsRelease`** ». Parité entre
+plateformes : la décision existe d'un côté et n'a jamais traversé.
+
+### 404. Le paramètre nu que le skill PRESCRIT est classé « ancre opaque »
+
+Le croisement POSÉ→DÉCLARÉ range à part les gabarits interpolés (`'x_${y}'`,
+critère `/'[^']*\$\{[^']*'/`) — bien vu, et le commentaire explique pourquoi les
+ranger avec les opaques « pousserait à écrire *hors périmètre* sur des ancres bel
+et bien vérifiées ». Mais le critère ne reconnaît **que la chaîne interpolée** :
+un paramètre NU (`identifier: semanticIdentifier`) tombe dans `opaques`, avec le
+conseil « Rends-la littérale, ou inscris-la dans `anchors.allowUndeclared` ».
+
+Or c'est la forme que le SKILL prescrit lui-même pour les composants partagés,
+et il la NOMME (l. 836-838 : « Nomme ce paramètre `semanticIdentifier` » ·
+« `anchorPrefix` quand il préfixe une famille »). Le run 56 en a huit, couvrant
+24 call-sites. Le remède se dérive donc du skill au lieu de se deviner : ces deux
+noms-là sont des familles, pas des opaques.
+
+### 405. Mon correctif du 396 a DÉPLACÉ le défaut au lieu de le fermer
+
+Le geste qui referme l'invite système vivait dans `goto.yaml` — un seul appelant.
+Je l'ai porté dans `launch-clean.yaml`, par où six flows sur huit entrent : il est
+désormais **atteint**. Et il arrive **trop tôt**. L'app du run 55 déclenche
+`requestAuthorization` au montage de l'ACCUEIL, donc *après* la connexion, quand
+`launch-clean` a déjà refermé au lancement. Trois flows rouges, un quatrième vert
+**par chronométrage** — un flake, pas un succès.
+
+*Un remède ne supprime pas toujours un mode de panne : il le déplace.* J'avais
+corrigé l'ATTEINTE et cassé le MOMENT, et les deux moitiés sont nécessaires — le
+geste doit être joué par tous les chemins ET là où l'invite naît.
+
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
 **Il n'y aura pas de troisième terrain : les deux couvrent la totalité.** Le plan
