@@ -5081,6 +5081,59 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **LA SORTIE RESTE FERMÉE — verdict rendu le 07/09/2026, et c'est iOS qui la
+ferme.** Le critère du 26/08 se juge sur les constats du dernier run ; les
+derniers sont les deux du 05/09, joués en parallèle sur les deux plateformes.
+Sur leurs sept constats, **trois coûtent** :
+
+- **381** — `clearState` ne remet rien à zéro sur iOS : premier flow 78-142 ms,
+  tous les suivants ~20 200 ms, et **l'échec accuse une ancre correcte** ;
+- **382** — l'alerte système des notifications fait tomber les cinq flows
+  suivants, l'accueil rendu derrière elle pendant que le flow annonce l'ancre
+  introuvable ;
+- **384** — une sentinelle qui attend `real` sous `zsh` **bloque la chaîne
+  entière sans message** : c'est le 176 à l'identique, l'exemple même que le
+  critère cite comme ce qui ferme la sortie.
+
+Les trois autres ne coûtent que du temps de lecture — **383** est à la
+frontière (une dimension abandonnée sur une croyance fausse), **385** et **386**
+sont des consignes sans endroit où s'appliquer. Le septième est un **démenti** :
+le skill était juste.
+
+⚠️ **AUCUN DES TROIS N'EST UN DÉFAUT ANDROID**, et c'est ce que le classement
+fait apparaître plutôt que le comptage. 381 et 382 sont iOS ; 383 et 384 sont
+l'environnement du poste. La décrue côté Android est nette : le run 50 rendait
+**cinq** constats qui coûtent — 375 publiait 20 021 ms d'un flow mort en
+« l'écran met 20 s », 376 rendait le contrôle Firebase muet sur la disposition
+standard d'AGP, 377 n'offrait aucune issue praticable, 378 brûlait 32 s
+d'appareil pour une référence sur deux, 379 perdait deux flows — quand le run 51
+n'en rend **aucun** en propre.
+
+Côté iOS le compte est tout autre : **trois passes seulement** en cinquante-deux
+(les runs 31, 47 et celui du 05/09), et la dernière découvre que la règle
+anti-flake fondamentale du harnais ne fait rien sur la plateforme. C'est la
+maturité d'un chantier jeune, pas d'un chantier qui sort. 📌 Le skill annonce
+honnêtement les dimensions qu'iOS ne couvre PAS (table §« Ce que chaque
+plateforme reçoit vraiment ») ; ce que rien ne dit encore, c'est que le peu
+qu'il couvre y a été bien moins éprouvé.
+
+⚠️ **ET UN VOLET DE L'ANGLE MORT N'A JAMAIS ÉTÉ FERMÉ.** Le verdict précédent
+nommait trois choses sous « le serveur qui varie ». Deux sont traitées — où
+passer les secrets (`secrets_from_env`, passage par `-e`) et l'état qui ne
+revient pas (**373**). La troisième — **distinguer « l'app est cassée » de « le
+serveur refuse »** — rend **zéro occurrence** sur tout le skill, scripts et
+assets compris ; contre-épreuve faite, le mot « serveur » y vit dans quatre
+fichiers et les seuls `500`/`503` sont des millisecondes. Le 373 s'annonce comme
+« le dernier des deux angles morts » et n'en a refermé qu'un tiers : ce qui
+restait n'était pas UN angle mort mais trois, dont deux seulement ont été vus.
+
+✅ **CE QUI OUVRIRAIT LA SORTIE** : une passe de confirmation **par plateforme**,
+avec 381 et 382 en place — iOS d'abord, puisque c'est elle qui décide, et une
+seconde sur Android pour que « aucun constat qui coûte » ne repose pas sur un
+relevé unique. Une seule passe couvrant les deux plateformes suffirait si le
+terrain s'y prête.
+
+
 ✅ **Backlog vide.** Le 373, seul point jamais laissé ouvert de ce chantier, est
 fermé le 05/09 — et ce qui l'a tenu ouvert n'était pas sa difficulté.
 
