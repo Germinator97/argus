@@ -5081,7 +5081,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **9 POINTS OUVERTS — 406 à 414, inscrits le 07/09/2026 au soir.** La passe de
+✅ **406 à 414 FERMÉS le 07/09/2026.** La passe de
 CONFIRMATION (runs 57 et 58) a trouvé un **faux vert** que deux runs indépendants
 ont produit par deux causes différentes : un run qui n'exécute AUCUN flow rend
 `exit 0`. La sortie reste donc fermée. ✅ Mais le garde 401, né le matin, a fait
@@ -5988,6 +5988,11 @@ geste doit être joué par tous les chemins ET là où l'invite naît.
 
 ### 406-414. Les runs 57 et 58 — la passe de CONFIRMATION, et le faux vert qu'elle a trouvé
 
+**Fermés le 07/09/2026** — cinquante-troisième fois que le backlog se vide.
+⚠️ **Deux des neuf sont des DÉMENTIS** : le 409 (le flow porte bien sa marque, comme
+les 14 livrés) et le constat d'origine du 411 (le contrôle du graphe attrape le cas,
+reproduit dans les deux sens). Les deux gardent leur numéro et leur mesure.
+
 Deux runs joués pour **trancher la sortie sur une mesure** plutôt que sur une
 impression : iOS sur le projet à API, Android sur le projet hors ligne, tous deux
 sur le plugin corrigé le jour même. ⚠️ Les deux ont été **coupés par une limite
@@ -6004,8 +6009,6 @@ chantier — DSN mesuré sur les DEUX variants, deux sondes runtime avec leur
 mutation, rebuild après mutation, et l'encodage latin-1 de l'AOT confirmé.
 
 ### 406. 🔴 Un run qui n'exécute AUCUN flow rend `exit 0`
-
-**Ouvert le 07/09/2026.**
 
 Confirmé par **deux runs indépendants, deux terrains, deux plateformes, deux
 causes différentes** — le signal le plus fort qu'une paire de runs sache donner :
@@ -6028,8 +6031,6 @@ pour le run qui ne démarre jamais.
 
 ### 407. L'exemple `--tags=journey` du skill ne correspond à aucun tag livré
 
-**Ouvert le 07/09/2026.**
-
 Le §3g donne `--tags=journey` comme la façon de rejouer un flow seul. **Ce tag
 n'existe dans aucun flow du scaffold** : ils portent `argus`, `functional`, `p0`.
 Le suivre à la lettre produit exactement le run vide du **406** — et aucune liste
@@ -6037,8 +6038,6 @@ des tags réellement livrés n'existe nulle part. Le run 58 l'a payé en croyant
 rejouer son parcours.
 
 ### 408. `cropRoot: true` est exigé par l'outil et absent de là où on le remplit
-
-**Ouvert le 07/09/2026.**
 
 `argus-anchors` refuse — correctement — qu'une racine serve de `visualCropOn`
 sans que son `ArgusScreen` déclare `cropRoot: true`. Mais cette exigence n'est
@@ -6049,16 +6048,12 @@ avoir cru la section complète. *Le refus est excellent ; il arrive après.*
 
 ### 409. `lifecycle.yaml` appartient au projet, et le run l'a cru du cadre
 
-**Ouvert le 07/09/2026.**
-
 Le run 57 a raisonné une bonne partie de sa passe en le croyant intouchable, et
 allait laisser un `major` **faux** dans le rapport plutôt que de corriger une
 assertion. C'est l'inventaire d'`install-mobile.sh --check` qui l'a détrompé,
 après coup — rien dans le flow lui-même ne dit à qui il appartient.
 
 ### 410. Rien ne sépare « l'app fait autre chose » de « l'app est cassée »
-
-**Ouvert le 07/09/2026.**
 
 Le skill donne le **geste** (regarder la capture avant de soupçonner l'ancre) et
 le **tell chiffré** (la pire attente est-elle collée au plafond ? — au run 57,
@@ -6069,8 +6064,6 @@ voulu. Aucun outil ne l'a rendu, et c'est le troisième volet de l'angle mort
 « le serveur qui varie », sous une autre forme.
 
 ### 411. Le chemin d'un `runFlow` est relatif au fichier appelant — jamais écrit
-
-**Ouvert le 07/09/2026.**
 
 ⚠️ **Le constat qui l'a fait naître est DÉMENTI** : le run 57 accusait
 `argus-lint` de conclure « tous les flows parsent » sur un workspace cassé.
@@ -6086,8 +6079,6 @@ justes, mais le geste est deux fois plus copiable au mauvais endroit.
 
 ### 412. Le 405 est incomplet : l'invite peut naître PENDANT l'attente
 
-**Ouvert le 07/09/2026.**
-
 Mon correctif place l'appel **après** l'attente de l'ancre post-connexion. Or
 l'app du run 57 monte son bloc d'amorçage en `lazy: false` : l'invite système
 naît alors qu'`extendedWaitUntil` court **déjà**. Ce n'est pas un ordre à
@@ -6097,8 +6088,6 @@ en cours d'attente.
 
 ### 413. Rien ne prescrit de CHERCHER les canaux sortants
 
-**Ouvert le 07/09/2026.**
-
 Le gabarit demande à l'utilisateur de trancher la télémétrie, et le run 58 l'a
 prouvée admirablement. Mais le run 57 a manqué
 `RegisterDeviceToken(ignorePermission: true)` — le jeton FCM enregistré **même
@@ -6107,8 +6096,6 @@ qu'on lui nommait, pas ce que l'app émet. Le skill n'a aucun geste pour
 **inventorier** les canaux sortants avant la première passe device.
 
 ### 414. Deux références visuelles pixel-identiques, sans que rien ne prévienne
-
-**Ouvert le 07/09/2026.**
 
 Sur le terrain 1, `shell.png` et `home-empty.png` portent la **même empreinte** :
 la coquille EST l'écran de départ, et les deux recadrent sur la même racine. L'un
