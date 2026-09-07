@@ -1419,6 +1419,37 @@ MUTATIONS = [
     ("artefact", "373 ter · le marqueur d'ouverture n'est plus borné au début de ligne",
      "  return [...backlog.matchAll(/^\\*\\*Ouvert le",
      "  return [...backlog.matchAll(/\\*\\*Ouvert le"),
+    # ── Runs 55 et 56 · 400-405 ──────────────────────────────────────────
+    # 400 — le garde de cadrage cesse de drainer : une exception laissée en
+    # attente le ferait échouer au démontage, hors d'argusCheck, sans clé de dette.
+    ("layout", "400 · le garde de cadrage mesure sans drainer",
+     "            tester.takeException();\n            final Rect rect = tester.getRect(",
+     "            final Rect rect = tester.getRect("),
+    # 401 — la mesure du centre visé est débranchée : une ancre présente ET
+    # active peut à nouveau désigner le mauvais rect sans que rien ne le dise.
+    ("anchorsdart", "401 · la mesure du centre visé est débranchée",
+     "        final List<String> horsCible = argusCentresHorsCible(tester, commande);",
+     "        final List<String> horsCible = <String>[];"),
+    # 402 — le publieur retrouve sa prémisse fausse : « pas d'URL, donc pas de
+    # page », alors qu'il rapproche par CHEMIN et remplacerait la page voisine.
+    ("report", "402 · l'absence d'URL redevient une preuve d'absence de page",
+     "  if (url) {\n    return `une page existe",
+     "  if (!url) return null;\n  if (url) {\n    return `une page existe"),
+    # 403 — le rapport iOS reperd son bloc `metrics`, donc la taille mesurée
+    # disparaît du bandeau sans qu'aucun finding ne la porte.
+    ("perf", "403 · le rapport iOS reperd son bloc metrics",
+     "    metrics: {\n      binarySizeMb: sizeMb,\n      binaryPath: pese.path,",
+     "    metricsAbsent: {\n      binarySizeMb: sizeMb,\n      binaryPath: pese.path,"),
+    # 404 — le paramètre que le §2c prescrit retombe chez les opaques, avec le
+    # conseil de l'inscrire « hors périmètre ».
+    ("config", "404 · le paramètre d'ancre prescrit redevient une opaque",
+     " || parametreDAncre.test(nu)",
+     ""),
+    # 405 — la connexion cesse de refermer l'invite qu'elle fait naître : le
+    # geste ne se joue plus qu'au lancement, donc trop tôt pour ces apps-là.
+    ("login", "405 · la connexion ne referme plus l'invite qu'elle fait naître",
+     "      - runFlow: dismiss-system-alerts.yaml",
+     "      - assertTrue:\n          condition: \"${true}\""),
 ]
 
 
