@@ -10524,3 +10524,53 @@ test('des références visuelles identiques sont signalées, et les autres non (
     'un dossier absent rend une liste vide, jamais une erreur');
   rmSync(dir, { recursive: true, force: true });
 });
+
+// ── 410 et 413 · DEUX MANQUES DE FOND, ÉCRITS LÀ OÙ ILS MORDENT ──────────
+//
+// 410 — la capture montre OÙ l'on est, jamais si c'est normal. Devant un écran
+// cohérent mais inattendu (un verrouillage après mort de processus), aucun outil
+// ne sépare « l'app est cassée » de « l'app fait délibérément autre chose » : un
+// run a payé une passe device dessus, et seule une lecture de code l'a tranché.
+// 413 — le skill ne disait RIEN des canaux sortants : zéro occurrence de
+// « télémétrie » dans tout le document, alors qu'une suite QA en produit des
+// dizaines et provoque des erreurs par métier.
+test('le skill dit comment trancher un écran inattendu, et fait chercher les canaux sortants (410, 413)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // 410 — la consigne doit vivre À CÔTÉ du geste de la capture, pas ailleurs :
+  // c'est là qu'on la cherche, et c'est là qu'un run ne l'a pas trouvée.
+  const i = skill.indexOf('regarde la capture');
+  assert.ok(i !== -1, 'le geste de la capture a été reformulé — mets ce garde à jour');
+  // ⚠️ BLANCS APLATIS. La prose est repliée à ~80 colonnes et reformatée à chaque
+  // édition : un motif de plusieurs mots enjambe un retour à la ligne et ne
+  // matche jamais. Ce dépôt l'a payé deux fois ; le remède est ici, pas dans un
+  // motif plus court — un motif court matcherait n'importe quoi.
+  const fenetre = skill.slice(i, i + 2600).replace(/\s+/g, ' ');
+  assert.match(fenetre, /lecture de code|lis(ez)? ce qui DÉCIDE|qui DÉCIDE de la navigation/,
+    'la capture montre où l\'on est, jamais si c\'est normal : sans le geste qui tranche '
+    + '(lire ce qui décide de la navigation), le lecteur reste devant deux hypothèses (410)');
+  assert.match(fenetre, /corrige l'assertion, pas l'app/i,
+    'et sans dire QUOI FAIRE quand le comportement est voulu, on laisse un major faux '
+    + 'dans le rapport — c\'est ce qu\'un run a failli publier');
+
+  // 413 — la commande doit être là, et elle doit chercher plus qu'un SDK connu.
+  assert.match(skill, /canaux sortants/i,
+    'le skill ne fait plus inventorier les canaux sortants : une passe QA émet pour de vrai, '
+    + 'et le cadrage ne peut nommer que ce qu\'on lui a rapporté (413)');
+  for (const sdk of ['sentry', 'crashlytics', 'analytics']) {
+    assert.match(skill, new RegExp(sdk, 'i'), `le balayage ne cite plus ${sdk}`);
+  }
+  // ⚠️ INDEX INSENSIBLE À LA CASSE. La consigne est écrite en capitales dans le
+  // skill : un `indexOf` littéral rend -1, `slice(-1, …)` part de la FIN du
+  // document, et le garde mesure alors une fenêtre sans rapport — après avoir
+  // passé l'assertion d'existence, qui elle est insensible à la casse.
+  const j = skill.search(/canaux sortants/i);
+  assert.ok(j !== -1, 'la consigne des canaux sortants a disparu — mets ce garde à jour');
+  const bloc = skill.slice(j, j + 1800).replace(/\s+/g, ' ');
+  assert.match(bloc, /sans passer par un SDK nommé|ne t'arrête pas au SDK/i,
+    'un balayage qui ne cherche que les SDK connus manque ce qui s\'envoie à la main — '
+    + 'un run a manqué un jeton enregistré malgré des permissions refusées (413)');
+  assert.match(bloc, /release/i,
+    'et vérifier sur le DEBUG ne tranche rien : un fromEnvironment y garde sa valeur '
+    + 'par défaut. Sans cette phrase, la preuve se fait sur le mauvais binaire');
+});

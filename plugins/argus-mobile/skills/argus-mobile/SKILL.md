@@ -208,6 +208,33 @@ choix du designer**. Mesuré sur un même projet à deux runs d'écart — clé 
 `QAM-START major, « 3 s pour afficher l'écran de départ »` ; clé à `2000` :
 3415 ms relevés, budget 2000, **zéro finding**. Le verdict change, l'app non.
 
+🔴 **ET INVENTORIE LES CANAUX SORTANTS, AVANT LA PREMIÈRE PASSE DEVICE (413).**
+Une suite QA produit des dizaines de sessions et **provoque des erreurs par
+métier** (c'est le travail de `resilience.yaml`) : ce qui part, part pour de
+vrai, dans le projet de monitoring de quelqu'un. Le cadrage te dit quoi faire de
+ceux qu'on te NOMME ; personne ne peut te nommer ceux que tu n'as pas cherchés.
+
+Le geste, une fois, avant de poser le premier binaire — il coûte deux minutes :
+
+```bash
+grep -rniE 'sentry|crashlytics|firebase_analytics|analytics|amplitude|mixpanel|posthog|datadog|bugsnag' \
+  lib/ pubspec.yaml | grep -v '^\s*//'
+```
+
+⚠️ **Et ne t'arrête pas au SDK que tu reconnais.** Un run a vérifié Sentry — bien
+— et manqué un `RegisterDeviceToken(ignorePermission: true)` : le jeton de
+notification s'enregistrait **même quand les permissions étaient refusées**, donc
+un appel sortant à chaque lancement. Cherche aussi ce qui s'ENVOIE sans passer
+par un SDK nommé : `http`/`dio` vers un hôte tiers, un `token` poussé au
+démarrage, un `POST` dans un `initState`.
+
+Rends la liste à qui te cadre **avant** de construire, avec pour chacun comment
+le neutraliser (une clé vide au build, un flavor de test) — et si la réponse est
+« laisse-le », que ce soit une décision prise, pas un oubli. 📌 Vérifier qu'un
+canal est bien coupé se fait **sur la release**, jamais sur le debug : un
+`String.fromEnvironment` garde sa valeur par défaut dans le kernel JIT, donc le
+binaire de debug ne tranche rien.
+
 **b. Audit d'instrumentation Semantics.** C'est le livrable de cette étape.
 Cherche dans `lib/` les `Semantics(identifier:` et `semanticLabel:` déjà posés,
 puis les widgets interactifs qui n'en ont pas : `ElevatedButton`, `TextButton`,
@@ -1893,6 +1920,26 @@ Deux gestes, et le second vaut pour tout diagnostic :
 touche ce contrôle pendant que le champ a le focus déclenche la même chose. Si tu
 le rencontres, inscris-le comme finding fonctionnel — le contournement côté flow
 ne le fait pas disparaître pour l'utilisateur.
+
+🔴 **ET LA CAPTURE NE TRANCHE QUE LA MOITIÉ : ELLE MONTRE OÙ TU ES, JAMAIS SI
+C'EST NORMAL (410).** Devant un écran qui n'est pas celui attendu mais qui est
+*cohérent* — un verrouillage après une mort de processus, un onboarding qui
+revient, une redirection — deux lectures restent possibles et **aucun outil ne
+les sépare** : l'app est cassée, ou l'app fait délibérément autre chose. Un run
+a payé une passe device sur exactement ça.
+
+Ce qui tranche est une **lecture de code**, et c'est le seul endroit du parcours
+où l'on quitte la mesure : ouvre ce qui DÉCIDE de la navigation à cet instant
+(l'écran d'amorçage, le garde de route, le bloc qui redirige) et cherche si le
+chemin observé y est écrit. S'il y est, ce n'est pas une régression — **corrige
+l'assertion, pas l'app**, et garde le vrai comportement dans le flow : un écran
+de reverrouillage attendu est un garde de sécurité, une assertion qui l'ignore
+est un `major` faux. S'il n'y est pas, tu tiens un finding fonctionnel.
+
+📌 Le tell chiffré reste utile AVANT d'en arriver là : si la pire attente n'est
+pas collée au plafond (relevé `startup` du rapport), le problème n'est pas un
+délai — relever `startTimeoutMs` ne changerait rien, et deux passes device s'en
+trouvent épargnées.
 
 🚨 **LE POINT DÉPEND DE L'ÉCRAN — il n'y a pas de valeur par défaut, et en
 donner une est dangereux.** Ce paragraphe prescrivait `tapOn: point: 50%,25%`.
