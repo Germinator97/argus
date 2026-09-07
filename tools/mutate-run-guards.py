@@ -76,6 +76,8 @@ CIBLES = {
     # d'état neuf — fausse sur iOS jusqu'au 381 — et le piège de l'alerte
     # système. De la prose dans un flow : rien à casser sans mutation.
     "launchclean": FLOWS / "_subflows/launch-clean.yaml",
+    "dismiss": FLOWS / "_subflows/dismiss-system-alerts.yaml",
+    "anchorsdart": FLOWS.parent / "test/argus/anchors_test.dart",
     "lifecycle": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/lifecycle.yaml",
     "yamlconf": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml",
     "gitignore": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.gitignore",
@@ -1334,6 +1336,23 @@ MUTATIONS = [
     ("yamlconf", "392 · la clé build.ios ne dit plus ce qu'un flavor déplace",
      "  # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.",
      "  # Le chemin du bundle de simulateur."),
+    # 396 — le geste de l'invite redevient inatteignable : launch-clean cesse de
+    # l'appeler, donc il retombe dans un fichier que la plupart des flows ne
+    # traversent pas. ⚠️ La mutation vise l'APPEL, pas le fichier : c'est
+    # l'atteinte qui manquait, jamais le contenu.
+    ("launchclean", "396 · le geste de l'invite redevient inatteignable",
+     "- runFlow: dismiss-system-alerts.yaml",
+     "# (plus appelé)"),
+    # 396 bis — le geste cesse d'appartenir au projet : un fichier du CADRE serait
+    # écrasé au prochain --update, avec les libellés que l'utilisateur a réglés.
+    ("dismiss", "396 bis · le geste passe au CADRE, donc écrasable",
+     "# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.",
+     "# ARGUS:CADRE — au plugin."),
+    # 398 — le message d'ancre absente reperd la cause de MONTAGE, celle qui
+    # n'accuse pas l'instrumentation.
+    ("anchorsdart", "398 · le message reperd la cause de montage",
+     "'n\\'existe pas. Le cas courant est un conteneur d\\'injection : '",
+     "'n\\'existe pas. '"),
     # 387 — le trousseau cesse d'être purgé à la cadence de `clearState`.
     # ⚠️ La mutation vise la VALEUR, jamais le commentaire qui l'explique : celui-ci
     # nomme `clearKeychain` deux fois, et un garde qui se contenterait de trouver le
