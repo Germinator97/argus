@@ -78,6 +78,15 @@ appId: ${APP_ID}
 # FLOWS TRAVERSENT (396). Le geste a d'abord été prescrit dans `goto.yaml` — à toi,
 # donc jamais écrasé, mais appelé par UN seul flow du scaffold. Le sous-flow
 # appelé ci-dessous t'appartient aussi, et il est joué par tous.
+#
+# ⚠️ MAIS « ICI » NE SUFFIT PAS, ET LE CROIRE A COÛTÉ (405). Corriger l'ATTEINTE
+# a déplacé le défaut au lieu de le fermer : ce geste se joue au LANCEMENT, or
+# beaucoup d'applications ne demandent leurs permissions qu'APRÈS la connexion,
+# au montage de l'accueil. L'invite naît alors une fois ce flow terminé, et rien
+# ne la referme. `login.yaml` porte donc le MÊME appel après son
+# `extendedWaitUntil` — les deux moments sont nécessaires, et ils ne se
+# remplacent pas : un remède ne supprime pas toujours un mode de panne, il le
+# déplace. Si ton app demande à un troisième moment, appelle-le là aussi.
 - runFlow: dismiss-system-alerts.yaml
 
 # Attend que l'UI se stabilise plutôt que de dormir un temps fixe. Un `sleep`

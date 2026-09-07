@@ -5076,8 +5076,17 @@ test('aucun flow n\'asserte l\'écran de départ APRÈS s\'être connecté', () 
   const tous = flows(dir);
   assert.ok(tous.length >= 10, `${tous.length} flow(s) lu(s) — le scaffold a bougé`);
 
+  // ⚠️ COMMENTAIRES DÉPOUILLÉS — ce garde mesure une CONDUITE (se connecter puis
+  // asserter l'écran quitté), pas une mention. Il lisait le fichier brut, si
+  // bien qu'un commentaire expliquant le rapport entre `launch-clean` et le
+  // sous-flow de connexion suffisait à le faire rougir sur un flow parfaitement
+  // correct — le marqueur présent pour une AUTRE raison, légitime.
+  /** @param {string} f */
+  const conduite = (f) => readFileSync(f, 'utf8')
+    .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
   const fautifs = tous.filter((f) => {
-    const src = readFileSync(f, 'utf8');
+    const src = conduite(f);
     return src.includes('login.yaml') && src.includes('ARGUS_ANCHOR_HOME');
   }).map((f) => basename(f));
   assert.deepEqual(fautifs, [],
@@ -5085,7 +5094,7 @@ test('aucun flow n\'asserte l\'écran de départ APRÈS s\'être connecté', () 
 
   // ⚠️ Et le garde doit voir que quelqu'un se connecte : sans ça il resterait
   // vert le jour où plus aucun flow n'appelle login, en ne mesurant rien.
-  const connectants = tous.filter((f) => readFileSync(f, 'utf8').includes('login.yaml'));
+  const connectants = tous.filter((f) => conduite(f).includes('login.yaml'));
   assert.ok(connectants.length >= 2,
     'aucun flow n\'appelle login.yaml — ce garde ne mesure plus rien');
 });
@@ -5093,8 +5102,12 @@ test('aucun flow n\'asserte l\'écran de départ APRÈS s\'être connecté', () 
 test('launch-clean attend toujours l\'écran de départ, lui', () => {
   // La moitié qu'un balayage trop large aurait emportée : AVANT la connexion,
   // l'écran de départ est exactement ce qu'il faut attendre.
-  const src = readFileSync(join(RACINE,
+  const brut = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'), 'utf8');
+  // Même dépouillement que ci-dessus, et pour la même raison : ce fichier
+  // EXPLIQUE en commentaire pourquoi le sous-flow de connexion porte le même
+  // appel que lui (405). Ce n'est pas une connexion, c'est une phrase.
+  const src = brut.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
   assert.match(src, /ARGUS_ANCHOR_HOME/,
     'le lancement à état vide vise bien l\'écran de départ, et doit continuer');
   assert.ok(!src.includes('login.yaml'),
@@ -10224,4 +10237,46 @@ test('un paramètre d\'ancre prescrit par le §2c est une famille, pas une opaqu
     + 'et le dire est le seul moyen de ne pas la compter comme vérifiée');
   assert.doesNotMatch(familles, /peuImporte/, 'et elle ne doit pas se glisser chez les familles');
   rmSync(dossier, { recursive: true, force: true });
+});
+
+// ── 405 · LE GESTE D'INVITE SYSTÈME SE JOUE LÀ OÙ L'INVITE NAÎT ───────────
+//
+// Le 396 avait corrigé l'ATTEINTE : le geste, prescrit dans `goto.yaml` (un seul
+// appelant), est passé dans `launch-clean.yaml`, par où tous les flows entrent.
+// Il est atteint — et il arrive trop tôt. Beaucoup d'applications ne demandent
+// leurs permissions qu'APRÈS la connexion, au montage de l'accueil : l'invite
+// naît alors une fois `launch-clean` terminé. Trois flows rouges sur un projet
+// réel, et un quatrième vert par simple chronométrage.
+//
+// *Un remède ne supprime pas toujours un mode de panne : il le déplace.*
+// Le scaffold doit donc porter les DEUX moments, et ce garde les dérive des
+// fichiers livrés — commentaires dépouillés, sans quoi les explications
+// ci-dessus le satisferaient à elles seules.
+test('l\'invite système se referme au lancement ET après la connexion (405)', () => {
+  /** @param {string} f */
+  const sansCommentaires = (f) => readFileSync(join(FLOWS_DIR, '_subflows', f), 'utf8')
+    .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+  const APPEL = /runFlow:\s*(file:\s*)?dismiss-system-alerts\.yaml/;
+
+  const lancement = sansCommentaires('launch-clean.yaml');
+  assert.match(lancement, APPEL,
+    'launch-clean.yaml ne referme plus l\'invite système : c\'est le seul endroit que TOUS '
+    + 'les flows traversent, donc les apps qui la demandent au démarrage restent bloquées (405)');
+
+  const connexion = sansCommentaires('login.yaml');
+  assert.match(connexion, APPEL,
+    'login.yaml ne referme pas l\'invite que la CONNEXION fait naître : une app qui demande '
+    + 'ses permissions au montage de l\'accueil rend l\'écran DERRIÈRE la modale, et l\'échec '
+    + 'accuse une ancre correcte (405)');
+
+  // ⚠️ Et APRÈS l'attente de session, pas avant : appelé plus tôt, il rejouerait
+  // le geste du lancement et manquerait à nouveau le moment où l'invite naît.
+  const attente = connexion.indexOf('extendedWaitUntil');
+  assert.ok(attente !== -1,
+    'login.yaml n\'attend plus l\'ancre post-connexion — le motif a changé, mets ce garde à jour');
+  assert.ok(APPEL.exec(connexion.slice(attente)),
+    'l\'appel de login.yaml précède l\'attente de session : il se jouerait AVANT que la '
+    + 'connexion ait pu faire naître quoi que ce soit, donc au même moment que celui de '
+    + 'launch-clean — deux fois le premier moment, jamais le second (405)');
 });

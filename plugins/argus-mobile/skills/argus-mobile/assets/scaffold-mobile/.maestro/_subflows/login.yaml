@@ -82,6 +82,16 @@ appId: ${APP_ID}
             id: ${ARGUS_AUTH_SUCCESS}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Session ouverte (ancre post-connexion visible)
+      # 🔴 REFERMER CE QUE LA CONNEXION VIENT DE FAIRE NAÎTRE (405).
+      # `launch-clean.yaml` joue déjà ce geste au LANCEMENT, et il le joue pour
+      # tous les flows — mais beaucoup d'applications ne demandent leurs
+      # permissions qu'APRÈS la connexion, au montage de l'accueil. Le geste doit
+      # donc être joué là où l'invite NAÎT, pas seulement là où tous les flows
+      # passent : les deux moitiés sont nécessaires, et n'avoir que la seconde
+      # est ce qui a coûté trois flows rouges sur un projet réel — plus un
+      # quatrième vert par simple chronométrage, donc un faux succès.
+      # Le tap est `optional: true` : sans invite, ce passage ne coûte rien.
+      - runFlow: dismiss-system-alerts.yaml
 
 - runFlow:
     when:

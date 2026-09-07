@@ -17,6 +17,16 @@ appId: ${APP_ID}
 # Ce fichier-ci est appelé par `launch-clean.yaml`, donc par tous les flows, tout
 # en restant à toi.
 #
+# 🔴 ET IL EST APPELÉ DEUX FOIS, CE QUI N'EST PAS UN OUBLI (405). Corriger
+# l'ATTEINTE avait cassé le MOMENT : `launch-clean.yaml` joue le geste au
+# LANCEMENT, alors que beaucoup d'applications ne demandent leurs permissions
+# qu'APRÈS la connexion, au montage de l'accueil. L'invite naissait donc une fois
+# le lancement fini, et rien ne la refermait — trois flows rouges sur un projet
+# réel, plus un quatrième vert par simple chronométrage, donc un faux succès.
+# `login.yaml` porte le second appel. La règle qui reste, quand tu adaptes :
+# **le geste se joue là où l'invite NAÎT**, autant de fois qu'il le faut ; le
+# `optional: true` rend chaque passage inoffensif quand il n'y a rien à fermer.
+#
 # ⚠️ MESURÉ, PAS SUPPOSÉ — un run avait conclu l'inverse. L'arbre relevé PENDANT
 # que l'alerte est affichée porte bien « Autorisez-vous … », « Refuser » et
 # « Autoriser » : elle EST dans ce que Maestro interroge, et le `tapOn` ci-dessous
