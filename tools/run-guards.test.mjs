@@ -9905,3 +9905,35 @@ test('le NOMBRE de causes est dérivé, jamais cité — SKILL et runner s\'acco
     `le SKILL annonce ${annonce_n} causes, le runner en imprime ${numeros.length} — `
     + 'un lecteur qui suit la doc cherchera une cause que l\'outil ne nomme pas');
 });
+
+test('lifecycle DIT qu\'il ouvre une session, et le PROUVE avant d\'asserter (390)', () => {
+  // ⚠️ DEUX DÉFAUTS D'UN COUP, ET LE SECOND EST LE PIRE. Le flux inclut
+  // `login.yaml` sans que son nom ni son en-tête ne le disent : sur un projet
+  // dont l'API borne l'envoi de code à trois par minute, ce `runFlow` invisible
+  // mangeait un jeton et faisait tomber les flows suivants. Et ses blocs
+  // post-auth se déclenchaient sur `typeof <var> !== 'undefined'` — la
+  // DÉCLARATION d'une variable, jamais l'existence d'une session : sans
+  // connexion ils s'exécutaient quand même et échouaient trois écrans plus loin,
+  // en accusant l'écran retrouvé.
+  const yaml = readFileSync(join(FLOWS_DIR, 'lifecycle.yaml'), 'utf8');
+
+  const i = yaml.indexOf('_subflows/login.yaml');
+  assert.ok(i !== -1,
+    'lifecycle n\'inclut plus login.yaml : si c\'est voulu, retire ce garde en écrivant '
+    + 'pourquoi la couverture post-auth disparaît');
+
+  // 1 · le coût est dit, AVANT la ligne qui le paie.
+  assert.match(yaml.slice(0, i), /OUVRE UNE SESSION/,
+    'rien n\'annonce que ce flow ouvre une session : son nom parle de cycle de vie, et le '
+    + 'lecteur ne peut pas deviner qu\'il consomme un code à usage unique (390)');
+
+  // 2 · la session est PROUVÉE avant que quoi que ce soit ne s'appuie dessus.
+  //     Dérivé : la première assertion sur l'ancre post-auth doit tomber APRÈS
+  //     l'inclusion et AVANT le premier `pressKey`, qui ouvre le premier scénario.
+  const premierScenario = yaml.indexOf('- pressKey:', i);
+  assert.ok(premierScenario > i, 'plus aucun scénario après la connexion — mets ce garde à jour');
+  const entreDeux = yaml.slice(i, premierScenario);
+  assert.match(entreDeux, /assertVisible:[\s\S]{0,120}ARGUS_ANCHOR_AFTER_AUTH/,
+    'rien ne prouve que la session est ouverte avant le premier scénario : un échec de '
+    + 'connexion se rapporterait alors sur l\'écran retrouvé, trois écrans plus loin (390)');
+});

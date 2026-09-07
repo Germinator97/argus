@@ -10,7 +10,30 @@ tags:
 # tuer l'app puis la relancer, parce qu'il meurt avec elle.
 
 - runFlow: _subflows/launch-clean.yaml
+# 🔴 CE FLOW OUVRE UNE SESSION, ET SON NOM NE LE DIT PAS. Sur une app
+# authentifiée, la ligne ci-dessous consomme ce que la connexion consomme — un
+# code à usage unique, un quota d'envoi, une place dans une limite de débit —
+# alors qu'on croit ne mesurer qu'un retour d'arrière-plan. Un projet dont l'API
+# borne l'envoi à trois par minute a vu ce `runFlow` invisible manger le second
+# jeton et faire tomber les flows suivants (390).
+#   Si tu n'as pas besoin de la session ici, retire la ligne ET écris pourquoi :
+#   les assertions post-auth plus bas se skipperont d'elles-mêmes, et la
+#   couverture que tu perds doit être dite, pas subie.
 - runFlow: _subflows/login.yaml
+
+# ⚠️ ET CE QUI SUIT GARDAIT SUR LA MAUVAISE CHOSE. Les blocs post-auth de ce
+# fichier se déclenchent sur `typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined'` —
+# c'est-à-dire sur la DÉCLARATION d'une variable, jamais sur l'existence d'une
+# session. Sans connexion réussie ils s'exécutaient quand même, et échouaient
+# trois écrans plus loin en accusant l'écran retrouvé. Cette assertion-ci fait
+# tomber l'échec ICI, avec sa cause dans le libellé.
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined' && ARGUS_ANCHOR_AFTER_AUTH !== ''}"
+    commands:
+      - assertVisible:
+          id: ${ARGUS_ANCHOR_AFTER_AUTH}
+          label: Session réellement ouverte — sans elle, tout ce qui suit teste le vide
 
 # ── 1. Arrière-plan puis retour ────────────────────────────────────────────
 # `stopApp: false` ramène l'app au premier plan SANS la redémarrer : c'est la
