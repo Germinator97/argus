@@ -55,37 +55,49 @@ void main() {
       // est en cause est l'inset, pas la taille.
       if (screen.cropRoot && screen.anchor != null) {
         final ArgusViewport gabarit = argusViewports.first;
-        testWidgets(argusName('racine de recadrage sous la barre d\'état'), (
-          WidgetTester tester,
-        ) async {
-          await pumpArgus(
-            tester,
-            argusMonte(screen),
-            viewport: gabarit,
-            textScale: 1,
-            debugLabel: screen.id,
-          );
-          final Rect rect = tester.getRect(
-            find.bySemanticsIdentifier(screen.anchor!),
-          );
-          // `FakeViewPadding` est en pixels PHYSIQUES ; les rects sont logiques.
-          final double insetHaut =
-              gabarit.padding.top / gabarit.devicePixelRatio;
-          await argusCheck('${screen.id} · racine de recadrage', () async {
-            expect(
-              rect.top,
-              greaterThanOrEqualTo(insetHaut),
-              reason:
-                  'La racine « ${screen.anchor} » de ${screen.id} commence à '
-                  '${rect.top.toStringAsFixed(1)} dp, au-dessus de l\'inset '
-                  'système (${insetHaut.toStringAsFixed(1)} dp).\n'
-                  'Elle sert de visualCropOn : le recadrage embarque donc la '
-                  "barre d'état, et la référence changera à chaque minute.\n"
-                  'Pose le Semantics racine DANS le SafeArea (ou dans celui de '
-                  'la coquille), pas autour du Scaffold.',
+        testWidgets(
+          argusName('racine de recadrage sous la barre d\'état'),
+          (WidgetTester tester) async {
+            await pumpArgus(
+              tester,
+              argusMonte(screen),
+              viewport: gabarit,
+              textScale: 1,
+              debugLabel: screen.id,
             );
-          });
-        }, skip: argusShouldSkip);
+            // ⚠️ DRAINER AVANT DE MESURER — et ce garde-ci était le seul des trois
+            // à ne pas le faire. Une exception laissée EN ATTENTE par le montage
+            // (un `RenderFlex overflowed` de l'écran, mesuré ailleurs) fait échouer
+            // le test au DÉMONTAGE, donc hors d'`argusCheck` : il ne propose alors
+            // aucune clé de dette, et la clé écrite de mémoire ne correspond à
+            // rien. Le garde devient impossible à faire taire autrement qu'en le
+            // retirant — sur un projet où le débordement est déjà mesuré et
+            // inscrit par « rien ne déborde », qui le draine, lui.
+            // Deux runs en aveugle ont dû ajouter cette ligne chacun de leur côté.
+            tester.takeException();
+            final Rect rect = tester.getRect(
+              find.bySemanticsIdentifier(screen.anchor!),
+            );
+            // `FakeViewPadding` est en pixels PHYSIQUES ; les rects sont logiques.
+            final double insetHaut =
+                gabarit.padding.top / gabarit.devicePixelRatio;
+            await argusCheck('${screen.id} · racine de recadrage', () async {
+              expect(
+                rect.top,
+                greaterThanOrEqualTo(insetHaut),
+                reason:
+                    'La racine « ${screen.anchor} » de ${screen.id} commence à '
+                    '${rect.top.toStringAsFixed(1)} dp, au-dessus de l\'inset '
+                    'système (${insetHaut.toStringAsFixed(1)} dp).\n'
+                    'Elle sert de visualCropOn : le recadrage embarque donc la '
+                    "barre d'état, et la référence changera à chaque minute.\n"
+                    'Pose le Semantics racine DANS le SafeArea (ou dans celui de '
+                    'la coquille), pas autour du Scaffold.',
+              );
+            });
+          },
+          skip: argusShouldSkip,
+        );
       }
 
       for (final ArgusViewport viewport in argusViewports) {

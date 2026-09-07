@@ -10082,3 +10082,48 @@ test('les messages d\'ancre nomment la cause qui n\'accuse PAS l\'instrumentatio
     'rien ne dit que l\'écran d\'après une mort de processus peut différer de celui d\'un retour '
     + 'd\'arrière-plan : l\'assertion décrit alors une AUTRE application (399)');
 });
+
+// ── 400 · TOUT GARDE QUI MESURE DRAINE D'ABORD ────────────────────────────
+//
+// `layout_test.dart` portait trois `testWidgets` ; deux consommaient l'exception
+// laissée par le montage avant de mesurer, le troisième — celui du recadrage —
+// non. Une exception EN ATTENTE fait alors échouer le test au DÉMONTAGE, donc
+// hors d'`argusCheck` : aucune clé de dette proposée, et la clé écrite de
+// mémoire ne correspond à rien. Deux runs en aveugle, sur deux plateformes, ont
+// dû ajouter la ligne manquante chacun de leur côté.
+//
+// ⚠️ Le scan DÉPOUILLE LES COMMENTAIRES : l'en-tête du fichier explique le rôle
+// de `takeException()`, et un garde qui lit le texte nu serait satisfait par
+// cette seule mention — vacant le jour de son écriture.
+test('tout garde de disposition qui mesure draine son exception d\'abord (400)', () => {
+  const brut = readFileSync(join(SCAFFOLD_DIR_TEST, 'layout_test.dart'), 'utf8');
+  // Les commentaires deviennent des espaces : les positions restent justes.
+  const dart = brut
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
+
+  const debuts = [...dart.matchAll(/\btestWidgets\s*\(/g)].map((m) => m.index);
+  assert.ok(debuts.length >= 3,
+    `seuls ${debuts.length} testWidgets lus dans layout_test.dart — le motif ne matche plus, mets ce garde à jour`);
+
+  const MESURES = /\btester\.getRect\s*\(|\bargusTruncatedTexts\s*\(/;
+  let mesurants = 0;
+  for (let i = 0; i < debuts.length; i += 1) {
+    const bloc = dart.slice(debuts[i], debuts[i + 1] ?? dart.length);
+    const mesure = MESURES.exec(bloc);
+    if (!mesure) continue;   // un garde qui ne mesure pas n'a rien à drainer
+    mesurants += 1;
+    const drainage = bloc.indexOf('takeException()');
+    assert.ok(drainage !== -1 && drainage < mesure.index,
+      `le garde n° ${i + 1} de layout_test.dart mesure (${mesure[0]}) sans avoir consommé `
+      + 'l\'exception du montage : un débordement laissé en attente le fera échouer au DÉMONTAGE, '
+      + 'hors d\'argusCheck — donc sans clé de dette, et impossible à faire taire autrement '
+      + 'qu\'en le retirant (400)');
+  }
+  // Anti-vacant : le CARDINAL n'est pas la propriété gardée — il bougera au
+  // prochain garde ajouté — mais un scan qui ne rencontre AUCUN bloc mesurant
+  // ne mesure rien et doit le dire plutôt que de virer au vert.
+  assert.ok(mesurants >= 1,
+    'aucun bloc de layout_test.dart ne mesure (getRect / argusTruncatedTexts) : '
+    + 'le motif ne matche plus, ce garde ne surveille plus rien');
+});
