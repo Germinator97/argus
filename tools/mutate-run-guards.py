@@ -1318,9 +1318,12 @@ MUTATIONS = [
      "    + ` plafond n'y changera rien. (2) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`",
      "    + ` plafond n'y changera rien. (9) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`"),
     # 390 — la preuve de session retombe sur la DÉCLARATION de la variable.
+    # ⚠️ PREMIÈRE VERSION VACANTE, et le harnais avait raison : elle changeait le
+    # `label:`, que le garde ne mesure pas. C'est l'assertion elle-même qu'il faut
+    # retirer — une mutation doit viser la valeur gardée, jamais ce qui l'entoure.
     ("lifecycle", "390 · rien ne prouve plus que la session est ouverte",
-     "          label: Session réellement ouverte — sans elle, tout ce qui suit teste le vide",
-     "          label: Écran d'accueil"),
+     "      - assertVisible:\n          id: ${ARGUS_ANCHOR_AFTER_AUTH}\n          label: Session réellement ouverte",
+     "      - assertVisible:\n          id: ${ARGUS_ANCHOR_HOME}\n          label: Session réellement ouverte"),
     # 391 — les échecs d'étage 1 repassent sous le seuil du gate. ⚠️ La mutation
     # vise la SÉVÉRITÉ, pas la présence de la source : retirer la source ferait
     # tomber le garde par une autre voie, et on croirait la sévérité gardée.

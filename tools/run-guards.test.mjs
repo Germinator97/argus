@@ -9843,9 +9843,14 @@ test('le geste de l\'invite système est écrit LÀ OÙ on l\'écrit (388)', () 
     'la forme courte a disparu — c\'est celle qui suffit presque toujours');
   assert.match(bloc, /when:/,
     'la forme longue a disparu — elle sert dès qu\'on groupe plusieurs gestes');
-  assert.match(bloc, /trousseau/i,
+  // ⚠️ L'AFFIRMATION, PAS LE MOT. Ce garde cherchait « trousseau » n'importe où
+  // dans le bloc — et le mot y vit DEUX fois, si bien qu'en retirer une laissait
+  // l'autre : le harnais a rendu VACANT. C'est le défaut du 386 reproduit dans le
+  // garde même qui devait le fermer. On mesure la phrase qui porte l'information.
+  assert.match(bloc, /NE SUFFIT PAS SEUL/i,
     'le bloc ne dit plus que fermer l\'alerte NE SUFFIT PAS SEUL : les deux causes rendent '
     + 'le même symptôme, et traiter l\'une laisse croire que le remède est faux (387 + 388)');
+  assert.match(bloc, /trousseau/i, 'le bloc ne nomme plus l\'autre cause');
 });
 
 test('le dépouillement du commentaire de fin de ligne coupe au bon `#` (394)', () => {
@@ -10016,7 +10021,10 @@ test('deux contraintes sont dites À LA CLÉ qu\'elles gouvernent (392, 393)', (
   const iOS = yaml.indexOf('\n  ios: build/ios/');
   assert.ok(iOS !== -1, 'la clé build.ios a changé de forme — mets ce garde à jour');
   const avantIOS = yaml.slice(Math.max(0, iOS - 900), iOS);
-  assert.match(avantIOS, /flavor/i,
+  // ⚠️ Même leçon qu'au 388 : « flavor » apparaît plusieurs fois dans la fenêtre,
+  // donc en retirer une occurrence laissait le garde vert. On mesure ce que la
+  // phrase AFFIRME, pas la présence du mot.
+  assert.match(avantIOS, /DÉPLACE CE CHEMIN/i,
     'rien ne dit à la clé `build.ios` qu\'un flavor déplace ce chemin : le défaut pointe alors '
     + 'un dossier qui n\'existe pas, et on cherche du côté du build (392)');
 
