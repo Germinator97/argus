@@ -10280,3 +10280,42 @@ test('l\'invite système se referme au lancement ET après la connexion (405)', 
     + 'connexion ait pu faire naître quoi que ce soit, donc au même moment que celui de '
     + 'launch-clean — deux fois le premier moment, jamais le second (405)');
 });
+
+// ── 401 bis · LE GARDE DART EST-IL SEULEMENT CÂBLÉ ? ──────────────────────
+//
+// ⚠️ CE GARDE-CI EST LE BARREAU FAIBLE, ET IL FAUT LE DIRE. Le garde du 401 est
+// écrit en Dart, dans le scaffold : il ne s'exécute que chez un projet d'accueil
+// BRANCHÉ. Le job `harness` de la CI monte le scaffold non branché — les suites
+// s'y déclarent skippées —, donc aucun garde d'étage 1 n'y est joué. Ce test
+// n'observe donc pas le comportement : il vérifie que la mesure est CÂBLÉE là où
+// elle doit l'être, ce qui attrape le seul mode de panne restant à sa portée —
+// la décision retirée du fichier qui l'exerce.
+//
+// La preuve du comportement a été faite à la main, sur un projet jetable et dans
+// les deux sens : écran fusionnant → rouge avec sa clé de dette (nœud 800×48
+// pour un bouton de 48×48, centre visé hors du contrôle), écran propre → vert,
+// et tenue avec `explicitChildNodes: true`, la configuration prescrite.
+test('la mesure du centre visé est câblée dans le garde des commandes (401)', () => {
+  const brut = readFileSync(join(SCAFFOLD_DIR_TEST, 'anchors_test.dart'), 'utf8');
+  // Commentaires dépouillés : ce fichier EXPLIQUE le défaut juste au-dessus de
+  // l'appel, et un scan du texte nu serait satisfait par cette explication.
+  const dart = brut
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
+
+  assert.match(dart, /argusCentresHorsCible\s*\(/,
+    'le garde des commandes n\'appelle plus argusCentresHorsCible : une ancre présente ET '
+    + 'active peut désigner le mauvais rect, et plus rien ne le mesure (401)');
+
+  // Et l'appel doit nourrir une assertion, pas dormir dans une variable : deux
+  // runs ont montré que le message existait déjà sans que rien ne le mesure.
+  const i = dart.indexOf('argusCentresHorsCible');
+  assert.match(dart.slice(i, i + 900), /argusCheck\([\s\S]*?expect\(/,
+    'la mesure est faite mais aucun argusCheck ne l\'assère : elle ne rendrait ni verdict '
+    + 'ni clé de dette — c\'est un relevé, pas un garde');
+
+  // La fonction mesurée existe bien dans le harnais qu'il importe.
+  const harnais = readFileSync(join(SCAFFOLD_DIR_TEST, 'argus_harness.dart'), 'utf8');
+  assert.match(harnais, /List<String>\s+argusCentresHorsCible\(/,
+    'argus_harness.dart ne fournit plus la mesure que le garde appelle');
+});
