@@ -1482,8 +1482,8 @@ MUTATIONS = [
     # 412 — l'attente ressort du retry : le geste redevient un ORDRE, et la
     # course que le 412 a mesurée n'est plus couverte.
     ("login", "412 · l'attente ressort du retry, la course n'est plus couverte",
-     "          commands:\n            - runFlow: dismiss-system-alerts.yaml",
-     "          commands:\n            - runFlow: dismiss-system-alerts.yaml\n      - assertTrue:\n          condition: \"${true}\""),
+     "          commands:\n            - runFlow: dismiss-system-alerts.yaml\n",
+     "          commands:\n"),
     # 414 — le détecteur compte les diffs : il invente un doublon qui n'en est
     # pas, donc il crie sur un dépôt sain — et on apprend à l'ignorer.
     ("run", "414 · le détecteur de doublons compte aussi les fichiers de diff",
