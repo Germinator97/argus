@@ -34,6 +34,7 @@ import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -10484,4 +10485,42 @@ test('le gabarit de screens[] nomme cropRoot là où il pose visualCropOn (408)'
   const types = readFileSync(join(SCAFFOLD_DIR_TEST, 'argus_types.dart'), 'utf8');
   assert.match(types, /\bcropRoot\b/,
     'argus_types.dart ne porte plus cropRoot : le gabarit prescrirait une clé inexistante');
+});
+
+// ── 414 · DEUX RÉFÉRENCES PIXEL-IDENTIQUES SE DISENT ──────────────────────
+//
+// Sur un projet réel, la coquille de navigation EST l'écran de départ : les deux
+// recadrent sur la même racine, et leurs références portaient la même empreinte.
+// L'un des deux ne gardait rien de plus que l'autre — une passe device par run,
+// et une image commitée en double. Rien ne le disait : seul le harnais peut le
+// voir, en comparant les fichiers deux à deux après génération.
+test('des références visuelles identiques sont signalées, et les autres non (414)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-baselines-'));
+  const sousDir = join(dir, 'android-emu');
+  mkdirSync(sousDir, { recursive: true });
+
+  // Deux écrans distincts qui rendent la même image, plus un troisième différent.
+  writeFileSync(join(sousDir, 'shell.png'), 'PIXELS-IDENTIQUES');
+  writeFileSync(join(sousDir, 'home-empty.png'), 'PIXELS-IDENTIQUES');
+  writeFileSync(join(sousDir, 'settings.png'), 'AUTRE-CONTENU');
+  // Un diff traîne toujours après une contre-épreuve : le compter ferait naître
+  // un doublon qui n'en est pas.
+  writeFileSync(join(sousDir, 'shell_diff.png'), 'PIXELS-IDENTIQUES');
+
+  const groupes = baselinesEnDoublon(dir);
+  assert.equal(groupes.length, 1, `${groupes.length} groupe(s) au lieu d'un seul`);
+  assert.deepEqual(groupes[0], ['home-empty.png', 'shell.png'],
+    'les deux références identiques doivent être nommées ENSEMBLE — c\'est la paire qui '
+    + 'informe, pas le fait qu\'un doublon existe (414)');
+  assert.ok(!groupes[0].includes('shell_diff.png'),
+    'un `_diff.png` n\'est pas une référence : le compter inventerait un doublon');
+
+  // L'autre moitié — un détecteur qui crie sur des références distinctes est pire
+  // qu'aucun détecteur : il apprend à être ignoré.
+  rmSync(join(sousDir, 'home-empty.png'));
+  assert.deepEqual(baselinesEnDoublon(dir), [],
+    'deux références DIFFÉRENTES ne doivent rien déclencher');
+  assert.deepEqual(baselinesEnDoublon(join(dir, 'nexistepas')), [],
+    'un dossier absent rend une liste vide, jamais une erreur');
+  rmSync(dir, { recursive: true, force: true });
 });

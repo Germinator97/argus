@@ -25,6 +25,7 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -1336,6 +1337,43 @@ function selectorOf(step) {
  * @param {Array<{dir:string}>} bundles @param {string} baselineDir
  * @returns {number} nombre de références écrites
  */
+/**
+ * Les références visuelles PIXEL-IDENTIQUES entre elles.
+ *
+ * ⚠️ **Deux écrans distincts peuvent produire la même image**, et rien ne le
+ * disait. Mesuré sur un projet réel : la coquille de navigation EST l'écran de
+ * départ, les deux recadrent sur la même racine, et leurs deux références
+ * portaient la même empreinte. L'un des deux ne gardait donc **rien de plus**
+ * que l'autre — au prix d'une passe device par run et d'une image commitée en
+ * double.
+ *
+ * Ce n'est pas un défaut : c'est une information que seul le harnais peut voir,
+ * puisqu'il faut comparer les fichiers deux à deux après génération. On
+ * AVERTIT, on ne fait pas échouer — le doublon peut être assumé (deux écrans qui
+ * doivent rester identiques), et faire rougir là-dessus apprendrait à ignorer le
+ * rouge.
+ *
+ * @param {string} baselineDir @returns {string[][]} un groupe par empreinte partagée
+ */
+export function baselinesEnDoublon(baselineDir) {
+  if (!existsSync(baselineDir)) return [];
+  /** @type {Map<string, string[]>} */
+  const parEmpreinte = new Map();
+  const visiter = (/** @type {string} */ dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const chemin = join(dir, e.name);
+      if (e.isDirectory()) { visiter(chemin); continue; }
+      // Les diffs ne sont pas des références : les compter ferait naître des
+      // doublons qui n'en sont pas.
+      if (!/\.png$/i.test(e.name) || /_diff\.png$/i.test(e.name)) continue;
+      const cle = createHash('sha1').update(readFileSync(chemin)).digest('hex');
+      parEmpreinte.set(cle, [...(parEmpreinte.get(cle) ?? []), basename(chemin)]);
+    }
+  };
+  visiter(baselineDir);
+  return [...parEmpreinte.values()].filter((g) => g.length > 1).map((g) => g.sort());
+}
+
 function promoteBaselines(bundles, baselineDir) {
   let written = 0;
   for (const bundle of bundles) {
@@ -2077,6 +2115,12 @@ async function main() {
   if (opts.updateBaselines) {
     const written = promoteBaselines(bundles, baselineDir);
     baselinesWritten = written;
+    for (const groupe of baselinesEnDoublon(baselineDir)) {
+      warn(`références PIXEL-IDENTIQUES : ${groupe.join(' = ')}`);
+      warn('  Ces écrans produisent la même image : l\'un ne garde rien de plus que l\'autre,');
+      warn('  et chacun coûte une passe device par run. Assume-le, ou retire `visual: true`');
+      warn('  à celui des deux qui est déjà couvert.');
+    }
     // Graver le cadrage EFFECTIF de chaque écran, pas la valeur globale : c'est
     // ce que la comparaison relira, écran par écran.
     stampBaselineCrops(baselineDir, Object.fromEntries(
