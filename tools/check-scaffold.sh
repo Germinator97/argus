@@ -21,6 +21,7 @@ EXPECTED=$(cat <<'EOF'
 cadre	.github/workflows/argus-mobile.yml
 merge	.gitignore
 cadre	.maestro/_subflows/disable-animations.yaml
+owned	.maestro/_subflows/dismiss-system-alerts.yaml
 owned	.maestro/_subflows/goto.yaml
 cadre	.maestro/_subflows/launch-clean.yaml
 owned	.maestro/_subflows/login.yaml

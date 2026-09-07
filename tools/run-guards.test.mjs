@@ -917,6 +917,8 @@ test('perf.mjs APPELLE binaryToWeigh au lieu de lire build.android en direct', (
 // aurait vieilli à la première variable ajoutée, et se serait tue précisément
 // là où elle devait parler.
 
+const SCAFFOLD_DIR_TEST = join(RACINE,
+  'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
 const FLOWS_DIR = fileURLToPath(new URL('../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/', import.meta.url));
 
 /** Tous les fichiers de flow, sous-flows compris. @returns {string[]} */
@@ -9819,39 +9821,36 @@ test('`clearKeychain` accompagne CHAQUE `clearState` du point d\'entrée (387)',
   }
 });
 
-test('le geste de l\'invite système est écrit LÀ OÙ on l\'écrit (388)', () => {
-  // ⚠️ LE 382 DONNAIT LA PLACE SANS L'OCCUPER. Il disait « pose-le dans
-  // goto.yaml » — et ne le disait QUE dans le commentaire de launch-clean.yaml,
-  // un fichier du CADRE que personne n'édite. Contre-épreuve du jour : le mot
-  // « alerte » vivait dans DEUX fichiers du scaffold, et goto.yaml n'en faisait
-  // pas partie. Un run a donc dû retrouver le geste seul, et l'a posé dans le
-  // cadre — donc écrasé au prochain `--update`.
+test('le geste de l\'invite système est écrit là où TOUS les flows passent (388, 396)', () => {
+  // ⚠️ CE GARDE A DÉJÀ FIGÉ UNE PRESCRIPTION FAUSSE. Sa première version exigeait
+  // le geste dans `goto.yaml` — un fichier qui appartient bien au projet, mais qui
+  // n'a QU'UN appelant dans le scaffold livré. Le geste s'y trouvait donc au bon
+  // endroit du point de vue de la propriété et au mauvais du point de vue de
+  // l'atteinte, et `optional: true` l'empêchait de s'en plaindre. *Un garde ne
+  // rend pas vrai ce qu'il garde.*
   //
-  // Le garde exige les DEUX formes, pas l'une OU l'autre : un garde qui accepte
-  // des synonymes ne mesure que le plus facile à écrire (386), et en muter un
-  // laisserait l'autre debout.
-  const yaml = readFileSync(join(RACINE,
-    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/goto.yaml'), 'utf8');
+  // Il porte désormais sur les DEUX moitiés, et la seconde est dérivée : le
+  // fichier qui contient le geste doit être appelé par `launch-clean.yaml`, par où
+  // passent tous les flows.
+  const dir = join(FLOWS_DIR, '_subflows');
+  const nom = 'dismiss-system-alerts.yaml';
+  const geste = readFileSync(join(dir, nom), 'utf8');
 
-  const i = yaml.search(/INVITE SYSTÈME/);
-  assert.ok(i !== -1,
-    'goto.yaml ne décrit plus le piège de l\'invite système : le geste redevient introuvable '
-    + 'depuis le fichier qu\'on ÉDITE, et il finira dans le cadre, qui est écrasé (388)');
-  const bloc = yaml.slice(i, i + 2200);
+  assert.match(geste, /ARGUS:OWNED/,
+    `${nom} n'appartient plus au projet : les libellés dépendent de la langue et des permissions, `
+    + 'un fichier du CADRE serait écrasé au prochain --update');
+  assert.match(geste, /^\s*text: '\(\?s\)\.\*.*Refuser/m,
+    'le sélecteur de l\'invite a disparu ou n\'est plus encadré — un sélecteur porte sur le nœud ENTIER');
+  assert.match(geste, /optional:\s*true/,
+    'sans `optional:`, le geste échoue dès le SECOND run : l\'alerte n\'apparaît qu\'une fois par installation');
 
-  assert.match(bloc, /optional:\s*true/,
-    'la forme courte a disparu — c\'est celle qui suffit presque toujours');
-  assert.match(bloc, /when:/,
-    'la forme longue a disparu — elle sert dès qu\'on groupe plusieurs gestes');
-  // ⚠️ L'AFFIRMATION, PAS LE MOT. Ce garde cherchait « trousseau » n'importe où
-  // dans le bloc — et le mot y vit DEUX fois, si bien qu'en retirer une laissait
-  // l'autre : le harnais a rendu VACANT. C'est le défaut du 386 reproduit dans le
-  // garde même qui devait le fermer. On mesure la phrase qui porte l'information.
-  assert.match(bloc, /NE SUFFIT PAS SEUL/i,
-    'le bloc ne dit plus que fermer l\'alerte NE SUFFIT PAS SEUL : les deux causes rendent '
-    + 'le même symptôme, et traiter l\'une laisse croire que le remède est faux (387 + 388)');
-  assert.match(bloc, /trousseau/i, 'le bloc ne nomme plus l\'autre cause');
+  // ⚠️ LA MOITIÉ QUI MANQUAIT, ET DÉRIVÉE : le geste doit être ATTEIGNABLE.
+  const clean = readFileSync(join(dir, 'launch-clean.yaml'), 'utf8');
+  assert.match(clean, new RegExp(`runFlow:\\s*${nom.replace('.', '\\.')}`),
+    `launch-clean.yaml n'appelle plus ${nom} : le geste retombe dans un fichier que la plupart des `
+    + 'flows ne traversent pas, et il ne se plaindra pas (396)');
 });
+
 
 test('le dépouillement du commentaire de fin de ligne coupe au bon `#` (394)', () => {
   // ⚠️ LES DEUX SENS, parce qu'un seul laisse le défaut inverse. Trop peu couper
@@ -10035,4 +10034,51 @@ test('deux contraintes sont dites À LA CLÉ qu\'elles gouvernent (392, 393)', (
   assert.match(avantAck, /UNE seule ligne|SUR UNE SEULE LIGNE/i,
     'la clé invite à écrire une phrase sans rappeler que le parseur n\'accepte ni bloc ni chaîne '
     + 'repliée : deux runs s\'y sont arrêtés (393)');
+});
+
+test('les messages d\'ancre nomment la cause qui n\'accuse PAS l\'instrumentation (397, 398, 399)', () => {
+  // ⚠️ TROIS RÉSIDUS D'UN MÊME MOTIF : une information juste, écrite ailleurs que
+  // là où on la lit. Le skill DIT que Maestro vise le centre du rect et que
+  // `GetIt.reset()` rend un Future — mais pas dans les messages que le lecteur
+  // reçoit quand ça le mord. Un run a donc cherché ses ancres pendant que 22
+  // gardes sur 26 décrivaient sa purge d'injection.
+  const dart = readFileSync(join(SCAFFOLD_DIR_TEST, 'anchors_test.dart'), 'utf8');
+
+  // 398 · la cause de MONTAGE est nommée, et renvoie où le remède est écrit.
+  // ⚠️ ANCRÉ SUR LA BONNE OCCURRENCE. « aucun nœud » apparaît DEUX fois dans ce
+  // fichier — le message de la racine et celui de la commande — et un `indexOf`
+  // nu prenait le second, où rien de tout ceci n'est écrit. Le garde mesurait
+  // donc un message qu'il ne visait pas.
+  const i = dart.indexOf('causes, par ordre de fréquence');
+  assert.ok(i !== -1, 'le message de l\'ancre absente a été reformulé — mets ce garde à jour');
+  const bloc = dart.slice(Math.max(0, i - 200), i + 1600);
+  assert.match(bloc, /MONTAGE/,
+    'le message n\'envisage toujours pas que le montage soit en cause : il fait chercher '
+    + 'l\'instrumentation devant un défaut d\'injection (398)');
+  assert.match(bloc, /argus_types\.dart/,
+    'le message ne renvoie pas où le remède est écrit — la note d\'ArgusScreen.setUp');
+
+  // ⚠️ Et le compte annoncé doit suivre : une énumération qui dit « trois » en
+  // listant quatre est le défaut que le 389 vient de fermer ailleurs.
+  const nb = /\b(Trois|Quatre|Cinq) causes\b/.exec(bloc);
+  assert.ok(nb, 'le message n\'annonce plus un nombre de causes');
+  const attendu = { Trois: 3, Quatre: 4, Cinq: 5 }[nb[1]];
+  const points = (bloc.slice(0, bloc.indexOf('Tant que ce test')).match(/ ; /g) || []).length + 1;
+  assert.equal(points, attendu,
+    `le message annonce ${nb[1]} causes et en sépare ${points} : un compteur périmé se lit comme un juste`);
+
+  // 397 · une ancre verte ne veut pas dire TAPABLE.
+  const j = dart.indexOf('nœud INERTE');
+  assert.ok(j !== -1, 'le message de l\'ancre inerte a été reformulé — mets ce garde à jour');
+  assert.match(dart.slice(j, j + 1800), /centre du rect[\s\S]{0,400}intapable|intapable/,
+    'rien ne dit qu\'un conteneur ACTIF peut rester intapable : ce test ne voit que l\'enveloppe '
+    + 'inerte, et une ancre verte se lit alors comme une promesse qu\'elle ne tient pas (397)');
+
+  // 399 · l'écran d'après killApp peut différer de celui d'après l'arrière-plan.
+  const cycle = readFileSync(join(FLOWS_DIR, 'lifecycle.yaml'), 'utf8');
+  const k = cycle.indexOf('killApp');
+  assert.ok(k !== -1, 'lifecycle ne tue plus le processus — mets ce garde à jour');
+  assert.match(cycle.slice(k, k + 2200), /code secret|biométrie|déverrouillage/i,
+    'rien ne dit que l\'écran d\'après une mort de processus peut différer de celui d\'un retour '
+    + 'd\'arrière-plan : l\'assertion décrit alors une AUTRE application (399)');
 });

@@ -216,7 +216,13 @@ void main() {
                 'TalkBack annoncera un bouton anonyme et la dimension a11y le '
                 'comptera comme tel. Pose l\'ancre sur l\'ENFANT que le composant '
                 'reçoit (son `icon:`, son `child:`) plutôt qu\'autour de lui — '
-                'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label.',
+                'mesuré : un seul nœud, qui porte l\'ancre, l\'action et le label. '
+                '⚠️ ET CE TEST NE VOIT QUE L\'ENVELOPPE INERTE. Un conteneur qui '
+                'porte BIEN une action passe ici et peut rester intapable : '
+                'Maestro vise le CENTRE du rect, et sur une carte large ce centre '
+                'tombe souvent sur du texte, à des centaines de pixels du bouton. '
+                'Une ancre verte à ce test ne dit donc pas « tapable » — elle dit '
+                '« présente et active ». Ancre le contrôle lui-même.',
           );
         });
       }
@@ -504,10 +510,19 @@ void main() {
           reason:
               'L\'écran « ${screen.id} » se construit, mais aucun nœud '
               'sémantique ne porte l\'identifiant « ${screen.anchor} ». '
-              'Trois causes, par ordre de fréquence : l\'ancre n\'est pas posée '
+              'Quatre causes, par ordre de fréquence : l\'ancre n\'est pas posée '
               'sur ce sous-arbre ; elle est posée sur un widget qui ne construit '
-              'pas de nœud propre ; ou un parent l\'absorbe faute de '
-              '`explicitChildNodes: true`. Tant que ce test est rouge, tout flow '
+              'pas de nœud propre ; un parent l\'absorbe faute de '
+              '`explicitChildNodes: true` ; ou — et celle-ci n\'accuse PAS ton '
+              'instrumentation — le MONTAGE ne fournit pas ce que l\'écran '
+              'attend, si bien qu\'il rend un état d\'erreur où l\'ancre '
+              'n\'existe pas. Le cas courant est un conteneur d\'injection : '
+              '`GetIt.reset()` et `unregister()` rendent des `Future`, que le '
+              '`setUp` SYNCHRONE de ce harnais ne peut pas attendre — voir la '
+              'note d\'`ArgusScreen.setUp` dans argus_types.dart, qui donne le '
+              'montage qui marche. Un run a lu ce message comme un défaut '
+              'd\'instrumentation et a cherché ses ancres pendant que 22 gardes '
+              'sur 26 décrivaient sa purge. Tant que ce test est rouge, tout flow '
               'Maestro visant cet écran échouera sur device.',
         );
       });

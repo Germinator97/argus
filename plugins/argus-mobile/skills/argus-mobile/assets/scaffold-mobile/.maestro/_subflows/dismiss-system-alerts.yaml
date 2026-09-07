@@ -1,0 +1,40 @@
+appId: ${APP_ID}
+# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas.
+---
+# Les modales que le SYSTÈME présente lui-même, et que `permissions.all: allow`
+# ne couvre pas — il accorde les permissions du bac à sable, jamais l'alerte que
+# l'OS affiche au premier `requestAuthorization`.
+#
+# 🔴 POURQUOI CE FICHIER EXISTE, ET PAS UNE LIGNE DANS goto.yaml (396). Le geste
+# a d'abord été prescrit dans `goto.yaml`, qui appartient bien au projet — mais
+# qui n'a **qu'un seul appelant** dans le scaffold livré, `visual.yaml`. Six flows
+# sur huit entrent par `launch-clean.yaml`. Le geste était donc au bon endroit du
+# point de vue de la PROPRIÉTÉ et au mauvais du point de vue de l'ATTEINTE : il ne
+# se jouait presque jamais, et avec `optional: true` il ne se plaignait pas.
+# Ce fichier-ci est appelé par `launch-clean.yaml`, donc par tous les flows, tout
+# en restant à toi.
+#
+# ⚠️ MESURÉ, PAS SUPPOSÉ — un run avait conclu l'inverse. L'arbre relevé PENDANT
+# que l'alerte est affichée porte bien « Autorisez-vous … », « Refuser » et
+# « Autoriser » : elle EST dans ce que Maestro interroge, et le `tapOn` ci-dessous
+# la ferme (vérifié par le dump suivant : alerte partie, app revenue). Le run qui
+# a conclu le contraire avait pris sa capture et son dump à deux instants
+# différents, sur un simulateur dont SpringBoard venait de tomber.
+#
+# ⚠️ ADAPTE LES LIBELLÉS À TA LANGUE ET À TES PERMISSIONS. Ceux-ci couvrent
+# l'alerte de notifications en français et en anglais. Si ton app demande la
+# localisation, la caméra ou le suivi, ajoute leurs boutons ici.
+# ⚠️ GARDE `optional: true` : l'alerte n'apparaît qu'une fois par installation, et
+# un tap inconditionnel ferait rougir tous les runs suivants sur un parcours sain.
+# ⚠️ Et le sélecteur est ENCADRÉ (`(?s).*…*`) : un sélecteur porte sur le nœud
+# ENTIER, et un nœud fusionne le texte qu'il recouvre.
+# TODO(argus): adapte les libellés à ta langue et ajoute les autres invites que
+# ton app déclenche — localisation, caméra, suivi. Retire ce TODO quand c'est
+# fait, ou écris en une ligne pourquoi la valeur livrée te suffit.
+- tapOn:
+    text: '(?s).*(Refuser|Don.t Allow).*'
+    optional: true
+    label: Refermer l'invite système, si elle recouvre l'écran

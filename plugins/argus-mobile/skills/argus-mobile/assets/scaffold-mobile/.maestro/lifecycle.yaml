@@ -71,6 +71,16 @@ tags:
             id: ${ARGUS_ANCHOR_AFTER_AUTH}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: L'app repart proprement après mort du processus
+      # 🔴 ET CET ÉCRAN N'EST PAS FORCÉMENT LE MÊME QU'APRÈS UN RETOUR
+      # D'ARRIÈRE-PLAN (399). Beaucoup d'applications redemandent un code secret,
+      # une biométrie ou un déverrouillage après une mort de processus — c'est une
+      # décision de sécurité, pas un défaut. L'assertion ci-dessus réutilise
+      # pourtant l'ancre du retour d'arrière-plan, et elle échoue alors en
+      # décrivant une AUTRE application que la tienne.
+      #   Si c'est ton cas : remplace l'identifiant ci-dessus par celui de l'écran
+      #   que TON app affiche ici, et écris en une ligne pourquoi il diffère. Ce
+      #   que tu assertes doit être ce que ton app fait, pas ce qu'un gabarit
+      #   suppose.
       # TODO(argus): asserte ici la DONNÉE restaurée, pas seulement l'écran.
       # Un écran qui revient vide après une mort de processus est un défaut que
       # l'assertion ci-dessus ne voit pas.

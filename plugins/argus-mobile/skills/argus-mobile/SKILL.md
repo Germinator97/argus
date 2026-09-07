@@ -1280,7 +1280,7 @@ pour du travail achevé. Le compteur affichait faux dans les deux sens.
 | **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
 | **Étage 1** | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
 | | `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
-| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — huit fichiers, tous porteurs de `TODO(argus)` |
+| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — neuf fichiers, tous porteurs de `TODO(argus)` |
 
 ⚠️ **Combien de dettes avant de dire qu'un projet n'est pas prêt ?** Aucun
 seuil, et c'était le trou : sur un projet réel, la première exécution en a
