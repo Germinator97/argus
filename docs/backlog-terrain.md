@@ -5532,6 +5532,8 @@ nu ».
 
 ### 395-399. Le run 54 — la seconde vérification, et TROIS constats sur cinq démentis
 
+**Fermés le 07/09/2026** — cinquante et unième fois que le backlog se vide.
+
 **La confirmation iOS jouée sur le plugin corrigé une heure plus tôt.** Dix
 passes, ~22 min sur 60, gate **pass** — 0 blocker / 0 critical / 0 major /
 0 minor / 1 info, 7/7 écrans, 568 tests du projet verts, aucun DSN, aucun
