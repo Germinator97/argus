@@ -9750,3 +9750,38 @@ test('le skill dit quoi FAIRE d\'un parcours à usage unique, et pas seulement d
   assert.match(bloc, /ne peut jamais être remplie|jamais être remplie/,
     'la leçon sur la condition impossible a disparu — c\'est elle qui empêche de la reposer ailleurs');
 });
+
+test('`clearKeychain` accompagne CHAQUE `clearState` du point d\'entrée (387)', () => {
+  // ⚠️ LE 381 AVAIT POSÉ LE REMÈDE À LA MAUVAISE CADENCE. Il vidait le trousseau
+  // dans le runner (`resetKeychain`, un `xcrun simctl keychain reset`) au motif
+  // que « la sandbox de Maestro n'a ni shell ni système de fichiers » — vrai de
+  // `xcrun`, faux de Maestro, qui porte `clearKeychain` depuis 2.8.0. Surtout,
+  // `resetKeychain` a UN SEUL site d'appel, avant la boucle des flows, quand
+  // `clearState` s'exécute avant CHACUN : le premier flow ouvrait une session et
+  // tous les suivants en héritaient, échouant sur l'ancre de départ à trois
+  // écrans de la cause. Mesuré sur appareil, trousseau volontairement sali :
+  // `clearState` seul → l'ancre ÉCHOUE ; `clearState` + `clearKeychain` → elle
+  // PASSE. Android : inoffensif (témoin sans, puis avec — les deux COMPLETED).
+  //
+  // Le garde porte donc sur la CADENCE, jamais sur la présence du mot : chaque
+  // bloc qui purge doit purger les DEUX. Un `clearKeychain` posé ailleurs dans le
+  // fichier — un commentaire qui l'explique, un second `launchApp` — laisserait
+  // le défaut entier, et c'est précisément ainsi qu'un garde de ce chantier s'est
+  // déjà vidé.
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'), 'utf8');
+
+  const blocs = [...yaml.matchAll(/^- launchApp:\n((?:^[ \t]+.*\n|^\n)*)/gm)].map((m) => m[1]);
+  assert.ok(blocs.length > 0,
+    'aucun bloc `launchApp` lu dans launch-clean.yaml : le motif de ce garde est périmé, mets-le à jour');
+
+  const purgeants = blocs.filter((b) => /^\s+clearState:\s*true\s*$/m.test(b));
+  assert.ok(purgeants.length > 0,
+    'plus aucun `launchApp` ne porte `clearState: true` — ce garde ne mesure plus rien');
+
+  for (const bloc of purgeants) {
+    assert.match(bloc, /^\s+clearKeychain:\s*true\s*$/m,
+      'un `launchApp` purge l\'état sans purger le trousseau : sur iOS les jetons y survivent, '
+      + 'donc le premier flow ouvre une session dont tous les suivants héritent (387)');
+  }
+});

@@ -20,9 +20,24 @@ appId: ${APP_ID}
 #             d'identification en 78-142 ms, les cinq suivants expirent à
 #             ~20 200 ms parce que l'app y démarre APRÈS la connexion — et
 #             l'échec accuse l'ancre, qui est correcte.
-#             C'est `run.mjs` qui le corrige (`resetKeychain`, un
-#             `xcrun simctl keychain <udid> reset` avant les flows), parce que la
-#             sandbox de Maestro n'a ni shell ni système de fichiers.
+#             🔴 ET MAESTRO PORTE LA PRIMITIVE — le harnais l'ignorait. Le
+#             premier remède posait `resetKeychain` dans `run.mjs`
+#             (`xcrun simctl keychain <udid> reset`) « parce que la sandbox de
+#             Maestro n'a ni shell ni système de fichiers ». C'était vrai de
+#             `xcrun`, et faux de Maestro : `clearKeychain: true` existe depuis
+#             2.8.0. Or `resetKeychain` a UN SEUL site d'appel, avant la boucle
+#             des flows, quand `clearState` s'exécute avant CHACUN — le trousseau
+#             n'était donc vidé qu'une fois, le premier flow ouvrait une session,
+#             et tous les suivants en héritaient. *Ce qui isole doit s'exécuter à
+#             la même cadence que ce qu'il isole.*
+#             Mesuré sur appareil, trousseau volontairement sali, dans les deux
+#             sens : `clearState` seul → l'ancre de départ ÉCHOUE ;
+#             `clearState` + `clearKeychain` → elle PASSE. Et sur Android le
+#             drapeau est inoffensif (témoin sans lui : COMPLETED ; avec lui :
+#             COMPLETED), donc il n'a pas besoin d'être gardé par plateforme.
+#             `resetKeychain` RESTE dans le runner : il nettoie ce qu'un run
+#             précédent a laissé, y compris pour les flows qui n'entrent pas par
+#             ce sous-flow.
 #
 # `permissions.all: allow` est déjà le défaut de Maestro ; il est écrit ici pour
 # être explicite — resilience.yaml refait un `launchApp` avec `all: deny` pour
@@ -50,9 +65,12 @@ appId: ${APP_ID}
 #   n'apparaît plus : c'est le `when:` qui rend le geste rejouable.
 - launchApp:
     clearState: true
+    # Le pendant iOS de `clearState`, à la MÊME cadence que lui. Inoffensif sur
+    # Android, où `pm clear` a déjà tout emporté — mesuré, pas supposé.
+    clearKeychain: true
     permissions:
       all: allow
-    label: Lancement à état vide (clearState)
+    label: Lancement à état vide (clearState + clearKeychain)
 
 - runFlow: disable-animations.yaml
 
