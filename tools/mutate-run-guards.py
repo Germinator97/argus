@@ -1303,6 +1303,13 @@ MUTATIONS = [
     ("launchclean", "382 · l'alerte système iOS n'est plus documentée",
      "# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS.",
      "# Rien de particulier à signaler sur les permissions."),
+    # 387 — le trousseau cesse d'être purgé à la cadence de `clearState`.
+    # ⚠️ La mutation vise la VALEUR, jamais le commentaire qui l'explique : celui-ci
+    # nomme `clearKeychain` deux fois, et un garde qui se contenterait de trouver le
+    # mot resterait vert sur un bloc qui ne purge plus rien.
+    ("launchclean", "387 · le trousseau n'est plus purgé avec l'état",
+     "    clearKeychain: true\n    permissions:",
+     "    permissions:"),
     # 383 — le skill prescrit une cible `make` que le Makefile ne porte pas.
     ("skill", "383 · le skill prescrit une cible make inexistante",
      "et la réponse est **`make argus-doctor`**",
