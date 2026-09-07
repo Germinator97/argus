@@ -2198,6 +2198,71 @@ export function flowCycles(flows) {
  * démarrage, l'autre échoue à l'étape, sur device, après avoir payé le run.
  * @param {Record<string,string>} flows @returns {Array<[string,string]>}
  */
+/**
+ * Tous les flows d'un workspace Maestro, indexés par chemin relatif.
+ *
+ * 📌 Extraite de `main()` : deux lecteurs en avaient besoin — le contrôle du
+ * graphe et le garde qui refuse un run sans flow — et la dupliquer aurait laissé
+ * les deux dériver. `config.yaml` est écarté : ce n'est pas un flow.
+ * @param {string} racine @returns {Record<string,string>}
+ */
+export function lireFlows(racine) {
+  /** @type {Record<string,string>} */
+  const flows = {};
+  const lire = (/** @type {string} */ dir, /** @type {string} */ prefixe) => {
+    if (!existsSync(dir)) return;
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      if (e.isDirectory()) lire(join(dir, e.name), `${prefixe}${e.name}/`);
+      else if (/\.ya?ml$/.test(e.name) && e.name !== 'config.yaml') {
+        flows[`${prefixe}${e.name}`] = readFileSync(join(dir, e.name), 'utf8');
+      }
+    }
+  };
+  lire(racine, '');
+  return flows;
+}
+
+/**
+ * Les tags que les flows livrés déclarent RÉELLEMENT.
+ *
+ * ⚠️ **Un filtre qui ne matche rien ne lève pas** : Maestro est lancé, ne joue
+ * aucun flow, et le runner récolte zéro bundle — donc aucun finding, donc un
+ * verdict vert sur un run qui n'a rien mesuré. Deux runs en aveugle l'ont
+ * produit le même soir, par deux causes différentes (workspace refusé ; tag
+ * inexistant), et **aucun des deux n'a été alerté par le code de sortie**.
+ *
+ * 📌 Aggravant, et c'est pour ça que cette fonction existe : le §3g du SKILL
+ * donnait `--tags=journey` en exemple, un tag qu'AUCUN flow du scaffold ne
+ * porte. Le suivre à la lettre produisait exactement ce run vide. Un message
+ * d'échec qui se contente de dire « aucun flow » laisserait chercher ; celui qui
+ * NOMME les tags disponibles referme la question sur place.
+ *
+ * Tolère les deux écritures YAML : la liste indentée et la liste en ligne.
+ * @param {Record<string,string>} flows @returns {string[]} triés, sans doublon
+ */
+export function tagsDeclares(flows) {
+  const tags = new Set();
+  for (const texte of Object.values(flows ?? {})) {
+    // La section `tags:` d'un flow vit dans son en-tête, avant le `---`.
+    const entete = String(texte).split(/^---\s*$/m)[0];
+    const enLigne = /^tags:\s*\[([^\]]*)\]/m.exec(entete);
+    if (enLigne) {
+      for (const t of enLigne[1].split(',')) {
+        const v = t.trim().replace(/^['"]|['"]$/g, '');
+        if (v) tags.add(v);
+      }
+      continue;
+    }
+    const bloc = /^tags:\s*\n((?:\s*-\s*.+\n?)+)/m.exec(entete);
+    if (!bloc) continue;
+    for (const ligne of bloc[1].split('\n')) {
+      const m = /^\s*-\s*(.+?)\s*$/.exec(ligne);
+      if (m) tags.add(m[1].replace(/^['"]|['"]$/g, ''));
+    }
+  }
+  return [...tags].sort();
+}
+
 export function flowsIntrouvables(flows) {
   const noms = new Set(Object.keys(flows ?? {}));
   /** @type {Array<[string,string]>} */
@@ -2217,19 +2282,7 @@ function main() {
   // veut l'éprouver. Un contrôle qu'on ne peut pas voir dire NON n'a rien prouvé.
   // ── `--check-flows` : le graphe d'appels, que check-syntax ne résout pas. ──
   if (process.argv.slice(2).includes('--check-flows')) {
-    const racine = resolve(process.cwd(), '.maestro');
-    /** @type {Record<string,string>} */
-    const flows = {};
-    const lire = (/** @type {string} */ dir, /** @type {string} */ prefixe) => {
-      if (!existsSync(dir)) return;
-      for (const e of readdirSync(dir, { withFileTypes: true })) {
-        if (e.isDirectory()) lire(join(dir, e.name), `${prefixe}${e.name}/`);
-        else if (/\.ya?ml$/.test(e.name) && e.name !== 'config.yaml') {
-          flows[`${prefixe}${e.name}`] = readFileSync(join(dir, e.name), 'utf8');
-        }
-      }
-    };
-    lire(racine, '');
+    const flows = lireFlows(resolve(process.cwd(), '.maestro'));
     const n = Object.keys(flows).length;
     if (n === 0) {
       err('aucun flow lu sous .maestro/ — le contrôle du graphe n\'a rien mesuré.');

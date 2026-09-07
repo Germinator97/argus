@@ -1969,11 +1969,24 @@ facteur 3,6, à chaque itération. Le runner n'a pas de `--flow` (il refuse
 proprement et imprime son aide), mais il a de quoi faire :
 
 ```bash
-node scripts/argus/run.mjs --tags=journey --no-install   # le flow seul, app déjà posée
+node scripts/argus/run.mjs --tags=smoke --no-install   # le flow seul, app déjà posée
 ```
 
 `--tags` / `--include-tags` / `--exclude-tags` filtrent, `--no-install` saute la
 pose du binaire quand il n'a pas changé.
+
+🔴 **UN TAG QUI N'EXISTE PAS NE LÈVE PAS — il rend un run VIDE (406, 407).** Ce
+bloc a nommé pendant des semaines un tag — `journey` — qu'**aucun flow du
+scaffold ne porte**, et un filtre qui ne matche rien laisse Maestro démarrer, ne
+jouer aucun flow, et le runner rendre **exit 0** — zéro flow ne produit aucun
+finding, donc aucune sévérité. Un run en aveugle l'a suivi à la lettre et s'en est aperçu
+à la **durée** (9 s), jamais au code de sortie.
+
+Les tags livrés sont ceux que portent les flows : `argus`, `smoke`, `functional`,
+`visual`, `a11y`, `i18n`, `resilience`, `lifecycle`, `p0`. Ceux de TON projet
+s'ajoutent à cette liste — lis-les dans l'en-tête de tes flows plutôt que de les
+deviner. **Le runner refuse désormais de conclure sur zéro flow, et il te dit
+quels tags existent** ; ce n'est pas une raison pour lui donner un nom au hasard.
 
 ⚠️ **`--no-install` vaut pour TOUTE commande du runner, pas seulement avec
 `--tags`** — `argus-baselines` compris, où il économise le plus (2 min 28 au

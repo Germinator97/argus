@@ -34,6 +34,7 @@ import {
   startScreen,
   deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml, projectBuildCmd,
   sh, validateConfig, warn, writeJson,
+  lireFlows, tagsDeclares,
 } from './config.mjs';
 // La réserve de variant vit là où elle a été écrite ; la recopier ici l'aurait
 // laissée diverger de celle des deux autres démarrages, qui disent la même chose.
@@ -1548,6 +1549,41 @@ function stampBaselineCrops(baselineDir, crops) {
  * @param {string[]} includeTags @param {string[]} excludeTags
  * @returns {{main:boolean, visual:boolean}}
  */
+/**
+ * Ce qu'on dit quand AUCUN flow n'a été exécuté — et pourquoi ça n'est pas un succès.
+ *
+ * ⚠️ **Rien ne gardait ce cas (406).** `flowsExecuted` n'existait que dans le
+ * rapport, et le code de sortie ne regarde que les sévérités : un run qui ne joue
+ * rien ne produit aucun finding, donc aucune sévérité, donc vert. Deux runs en
+ * aveugle l'ont produit le même soir, par DEUX causes différentes — un workspace
+ * refusé par Maestro au démarrage, et un `--tags=` qui ne matche aucun flow (un
+ * filtre inconnu ne lève pas). **Aucun des deux n'a été alerté par le code de
+ * sortie** : c'est la DURÉE qui les a sauvés, 18 s au lieu de 180, puis 9 s.
+ *
+ * 📌 Le garde voisin couvre « Maestro a échoué sans étape fautive » ; celui-ci
+ * couvre « Maestro n'a jamais démarré », qui n'est pas le même cas.
+ *
+ * 📌 Extraite de `main()` exprès : un garde qui chercherait ce refus dans la
+ * source resterait vert sur une valeur neutralisée. Ici il APPELLE et lit ce qui
+ * revient — y compris les tags nommés, qui sont la moitié utile du message.
+ * @param {string[]} includeTags @param {string[]} tagsDisponibles
+ * @returns {string[]} les lignes à écrire, la première dit toujours le fait
+ */
+export function verdictSansFlow(includeTags, tagsDisponibles) {
+  const lignes = ['aucun flow n\'a été exécuté — ce run n\'a RIEN mesuré, et un verdict ne peut pas en sortir.'];
+  if (includeTags.length) {
+    // Nommer les tags qui EXISTENT referme la question sur place. Le §3g du
+    // SKILL donnait lui-même un tag qu'aucun flow ne porte : un message qui
+    // dirait seulement « aucun flow » laisserait chercher au mauvais endroit.
+    lignes.push(`  --tags=${includeTags.join(',')} ne correspond à aucun flow du workspace.`);
+    lignes.push(`  Tags réellement déclarés : ${tagsDisponibles.length ? tagsDisponibles.join(', ') : '(aucun)'}`);
+  } else {
+    lignes.push('  Maestro n\'a produit aucun bundle : le workspace a été refusé au démarrage,');
+    lignes.push('  ou aucun flow ne vit sous .maestro/. `make argus-lint` dit lequel des deux.');
+  }
+  return lignes;
+}
+
 function dimensionsToRun(includeTags, excludeTags) {
   const exclus = new Set(excludeTags);
   // Rien de demandé = tout ce qui n'est pas exclu. C'est le run complet.
@@ -2217,6 +2253,24 @@ async function main() {
     for (const line of verdict.warnings) warn(line);
     process.exit(verdict.exit);
   }
+  // ⚠️ ZÉRO FLOW EXÉCUTÉ N'EST PAS UN SUCCÈS (406). Rien ne gardait ce cas :
+  // `flowsExecuted` n'existait que dans le rapport, et le code de sortie ne
+  // regarde que les sévérités — or un run qui ne joue rien ne produit aucun
+  // finding, donc aucune sévérité, donc vert. Deux runs en aveugle l'ont produit
+  // le même soir, par DEUX causes différentes : un workspace refusé par Maestro
+  // au démarrage, et un `--tags=` qui ne matche aucun flow (un filtre inconnu ne
+  // lève pas). Aucun des deux n'a été alerté par le code de sortie — c'est la
+  // DURÉE qui les a sauvés, 18 s au lieu de 180, puis 9 s.
+  // Le garde voisin ci-dessous couvre « Maestro a échoué sans étape fautive » ;
+  // celui-ci couvre « Maestro n'a jamais démarré », qui n'est pas le même cas.
+  if (bundles.length === 0) {
+    const dispo = includeTags.length
+      ? tagsDeclares(lireFlows(resolve(process.cwd(), '.maestro')))
+      : [];
+    for (const ligne of verdictSansFlow(includeTags, dispo)) err(ligne);
+    process.exit(2);
+  }
+
   if (code === 0 && failedRuns > 0 && findings.length === 0) {
     // Maestro a échoué sans qu'aucune étape ne soit marquée FAILED : le défaut
     // est en amont des flows (device perdu, app absente, driver). Ne pas rendre

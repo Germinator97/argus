@@ -34,6 +34,8 @@ import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -10318,4 +10320,65 @@ test('la mesure du centre visé est câblée dans le garde des commandes (401)',
   const harnais = readFileSync(join(SCAFFOLD_DIR_TEST, 'argus_harness.dart'), 'utf8');
   assert.match(harnais, /List<String>\s+argusCentresHorsCible\(/,
     'argus_harness.dart ne fournit plus la mesure que le garde appelle');
+});
+
+// ── 406 · UN RUN QUI N'EXÉCUTE AUCUN FLOW N'EST PAS UN SUCCÈS ─────────────
+//
+// Deux runs en aveugle l'ont produit le même soir, par DEUX causes différentes :
+// un workspace refusé par Maestro au démarrage (flowsExecuted: 0) et un
+// `--tags=` qui ne matche aucun flow — un filtre inconnu ne lève pas. Les deux
+// rendaient exit 0, parce que zéro flow ne produit aucun finding, donc aucune
+// sévérité. Aucun des deux agents n'a été alerté par le code de sortie : c'est
+// la DURÉE qui les a sauvés.
+//
+// ⚠️ Ce garde APPELLE la décision et lit ce qui revient — un garde qui aurait
+// cherché `bundles.length === 0` dans la source serait resté vert sur une valeur
+// neutralisée, et n'aurait rien dit du MESSAGE, qui est la moitié utile.
+test('un run sans flow le DIT, et nomme les tags qui existent (406, 407)', () => {
+  const dispo = ['argus', 'smoke', 'visual'];
+
+  const filtre = verdictSansFlow(['journey'], dispo);
+  assert.ok(filtre.length >= 2, 'le verdict doit dire plus que le fait brut');
+  assert.match(filtre[0], /RIEN mesuré/,
+    'la première ligne doit dire que rien n\'a été mesuré : c\'est elle qu\'on lit');
+  assert.match(filtre.join('\n'), /journey/, 'et rappeler le filtre demandé');
+  for (const t of dispo) {
+    assert.match(filtre.join('\n'), new RegExp(`\\b${t}\\b`),
+      `le tag « ${t} » existe et doit être nommé — sans la liste, on cherche au mauvais endroit (407)`);
+  }
+
+  // L'autre cause, qui n'est pas la même et ne doit pas rendre le même message :
+  // sans filtre, ce n'est pas un tag qui manque, c'est le workspace qui a été refusé.
+  const sansFiltre = verdictSansFlow([], []);
+  assert.match(sansFiltre[0], /RIEN mesuré/, 'le fait est le même');
+  assert.match(sansFiltre.join('\n'), /argus-lint/,
+    'et il faut renvoyer vers ce qui tranche entre workspace refusé et flows absents');
+  assert.doesNotMatch(sansFiltre.join('\n'), /--tags=/,
+    'parler de tags quand aucun n\'a été demandé enverrait chercher un défaut qui n\'existe pas');
+});
+
+// ── 407 · TOUT TAG CITÉ DANS LE SKILL EXISTE DANS UN FLOW LIVRÉ ───────────
+//
+// Le §3g a donné `--tags=journey` pendant des semaines — un tag qu'aucun flow ne
+// porte. ⚠️ DÉRIVÉ des deux côtés : les tags cités viennent du SKILL, ceux qui
+// existent viennent des flows. Figer une liste ici la ferait mentir au premier
+// flow ajouté, et c'est exactement le défaut qu'on ferme.
+test('aucun exemple du skill ne cite un tag que les flows ne portent pas (407)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const flows = lireFlows(join(FLOWS_DIR));
+  const existants = new Set(tagsDeclares(flows));
+  assert.ok(existants.size >= 5,
+    `seuls ${existants.size} tags lus dans les flows livrés — le lecteur ne matche plus, mets-le à jour`);
+
+  const cites = new Set();
+  for (const m of skill.matchAll(/--(?:tags|include-tags|exclude-tags)=([\w,-]+)/g)) {
+    for (const t of m[1].split(',')) if (t) cites.add(t);
+  }
+  assert.ok(cites.size > 0, 'le skill ne cite plus aucun tag — ce garde ne mesure plus rien');
+
+  const fantomes = [...cites].filter((t) => !existants.has(t));
+  assert.deepEqual(fantomes, [],
+    `le skill cite ${fantomes.join(', ')}, qu'AUCUN flow livré ne porte. Un filtre qui ne matche `
+    + 'rien ne lève pas : Maestro démarre, ne joue aucun flow, et le run rend un verdict sur du '
+    + `néant. Tags réellement déclarés : ${[...existants].join(', ')} (407)`);
 });
