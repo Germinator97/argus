@@ -10453,3 +10453,35 @@ test('un runFlow mal résolu est vu sans device, et le bon ne l\'est pas (411)',
     '_subflows/dismiss-system-alerts.yaml': 'appId: x\n---\n- tapOn:\n    text: ok\n',
   }), [], 'un voisin de dossier s\'appelle par son nom nu — le scaffold en livre deux');
 });
+
+// ── 408 · `cropRoot` SE DÉCIDE LÀ OÙ L'ON REMPLIT `visualCropOn` ──────────
+//
+// L'outil refuse — correctement — qu'une racine serve de `visualCropOn` sans que
+// son ArgusScreen déclare `cropRoot: true`. Mais l'exigence n'était écrite ni là
+// où l'on remplit `screens[]`, ni là où l'on pose `visualCropOn` : elle vivait
+// dans un dartdoc et dans la méthodologie. Un run ne l'a apprise que par le
+// refus, après avoir cru la section complète. *Le refus est juste, il arrive
+// après.*
+//
+// ⚠️ DÉRIVÉ : le garde ne cite pas une phrase, il exige que les deux clés se
+// rencontrent dans la même fenêtre du gabarit — ce qui survit à une reformulation
+// et tombe le jour où l'une des deux déménage.
+test('le gabarit de screens[] nomme cropRoot là où il pose visualCropOn (408)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('visualCropOn: home_filled_root');
+  assert.ok(i !== -1,
+    'le gabarit ne montre plus visualCropOn sur un écran — mets ce garde à jour');
+
+  const fenetre = skill.slice(i, i + 900);
+  assert.match(fenetre, /cropRoot/,
+    'le gabarit pose visualCropOn sans dire que l\'ArgusScreen doit déclarer cropRoot: true — '
+    + 'l\'outil le refusera, mais après que la section a été crue complète (408)');
+  assert.match(fenetre, /inset|barre d'état|horloge/i,
+    'et sans dire ce que cropRoot GOUVERNE, la consigne se lit comme une formalité : '
+    + 'ce qui est en jeu est le recadrage qui embarque l\'horloge du système');
+
+  // L'autre moitié : la clé doit exister pour de vrai, sinon on prescrit du vent.
+  const types = readFileSync(join(SCAFFOLD_DIR_TEST, 'argus_types.dart'), 'utf8');
+  assert.match(types, /\bcropRoot\b/,
+    'argus_types.dart ne porte plus cropRoot : le gabarit prescrirait une clé inexistante');
+});

@@ -1171,6 +1171,15 @@ screens:
     #   écran : aucune valeur globale ne convient à deux dispositions. La valeur
     #   est l'ancre de la racine, celle de la ligne `anchor:` juste au-dessus.
     visualCropOn: home_filled_root
+    # 🔴 ET L'ArgusScreen DE CET ÉCRAN DOIT DÉCLARER `cropRoot: true` (408).
+    #   C'est dans `harness.dart` que ça se pose, pas ici — mais ça se DÉCIDE
+    #   ici, à la ligne du dessus. `make argus-anchors` refuse la paire
+    #   incomplète (« sert de visualCropOn et son ArgusScreen ne déclare pas
+    #   cropRoot: true ») : le refus est juste, et il arrive APRÈS. Un run l'a
+    #   découvert ainsi, en ayant cru cette section complète.
+    #   Ce que `cropRoot` gouverne : l'étage 1 vérifie alors que la racine
+    #   commence SOUS l'inset système — sans quoi le recadrage embarque la barre
+    #   d'état, donc l'horloge, et la référence rougit à chaque minute.
   # ⚠️ Le TROISIÈME ÉTAT des ancres se déclare dans `harness.dart`, pas ici — mais
   #   il existe, et ce gabarit ne le montrerait pas : `commandsAfterScroll:` et
   #   `displaysAfterScroll:` pour ce qu'une liste paresseuse ne construit qu'après
