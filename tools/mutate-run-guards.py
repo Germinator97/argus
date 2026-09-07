@@ -1303,6 +1303,34 @@ MUTATIONS = [
     ("launchclean", "382 · l'alerte système iOS n'est plus documentée",
      "# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS.",
      "# Rien de particulier à signaler sur les permissions."),
+    # 388 — le geste de l'invite système perd sa forme conditionnelle : un tap
+    # inconditionnel échoue dès le second run, l'alerte n'apparaissant qu'une fois.
+    ("goto", "388 · le geste de l'invite n'est plus conditionnel",
+     "#       optional: true                          # sauté si l'alerte n'est pas là",
+     "#                                               # (toujours joué)"),
+    # 388 bis — la moitié que le 382 avait manquée : fermer l'alerte ne suffit pas.
+    ("goto", "388 bis · le lien avec le trousseau disparaît",
+     "# ⚠️ ET FERMER L'ALERTE NE SUFFIT PAS SEUL. Sur iOS le TROUSSEAU survit lui aussi",
+     "# ⚠️ Et voilà, c'est tout ce qu'il y a à savoir sur cette alerte."),
+    # 389 — le message du runner retombe à trois causes pendant que le SKILL en
+    # annonce quatre : c'est l'ACCORD des trois sources que le garde dérive.
+    ("run", "389 · le runner reperd la cause de l'écran couvert",
+     "    + ` plafond n'y changera rien. (2) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`",
+     "    + ` plafond n'y changera rien. (9) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`"),
+    # 390 — la preuve de session retombe sur la DÉCLARATION de la variable.
+    ("lifecycle", "390 · rien ne prouve plus que la session est ouverte",
+     "          label: Session réellement ouverte — sans elle, tout ce qui suit teste le vide",
+     "          label: Écran d'accueil"),
+    # 391 — les échecs d'étage 1 repassent sous le seuil du gate. ⚠️ La mutation
+    # vise la SÉVÉRITÉ, pas la présence de la source : retirer la source ferait
+    # tomber le garde par une autre voie, et on croirait la sévérité gardée.
+    ("report", "391 · l'étage 1 repasse sous le seuil du gate",
+     "    id: 'QAM-STAGE1', severity: 'major', dimension: 'a11y',",
+     "    id: 'QAM-STAGE1', severity: 'info', dimension: 'a11y',"),
+    # 392 — la clé du binaire iOS reperd ce qu'un flavor y change.
+    ("yamlconf", "392 · la clé build.ios ne dit plus ce qu'un flavor déplace",
+     "  # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.",
+     "  # Le chemin du bundle de simulateur."),
     # 387 — le trousseau cesse d'être purgé à la cadence de `clearState`.
     # ⚠️ La mutation vise la VALEUR, jamais le commentaire qui l'explique : celui-ci
     # nomme `clearKeychain` deux fois, et un garde qui se contenterait de trouver le
