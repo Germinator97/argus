@@ -1450,6 +1450,45 @@ MUTATIONS = [
     ("login", "405 · la connexion ne referme plus l'invite qu'elle fait naître",
      "      - runFlow: dismiss-system-alerts.yaml",
      "      - assertTrue:\n          condition: \"${true}\""),
+    # ── Runs 57 et 58 · 406-414 ──────────────────────────────────────────
+    # 406 — le runner cesse de refuser un run sans flow : le faux vert revient,
+    # et il revient exactement comme deux runs l'ont produit.
+    ("run", "406 · un run sans flow redevient un succès",
+     "  if (bundles.length === 0) {",
+     "  if (false && bundles.length === 0) {"),
+    # 407 — le message ne nomme plus les tags qui existent : il reste juste, et
+    # il laisse chercher au mauvais endroit — ce qui EST le défaut.
+    ("run", "407 · le message cesse de nommer les tags disponibles",
+     "    lignes.push(`  Tags réellement déclarés : ${tagsDisponibles.length ? tagsDisponibles.join(', ') : '(aucun)'}`);",
+     "    lignes.push('  (aucune liste)');"),
+    # 407 bis — le skill recite le tag mort. Le garde dérive les deux côtés :
+    # il doit tomber sans qu'on touche au code.
+    ("skill", "407 bis · le skill recite un tag qu'aucun flow ne porte",
+     "node scripts/argus/run.mjs --tags=smoke --no-install",
+     "node scripts/argus/run.mjs --tags=journey --no-install"),
+    # 408 — le gabarit repose visualCropOn sans dire que cropRoot va avec.
+    ("skill", "408 · le gabarit ne dit plus que cropRoot accompagne visualCropOn",
+     "#   incomplète (« sert de visualCropOn et son ArgusScreen ne déclare pas",
+     "#   incomplète (voir le message de l'outil, qui la nomme"),
+    # 410 — la consigne dit de lire le code, et cesse de dire QUOI FAIRE ensuite.
+    ("skill", "410 · le skill ne dit plus quoi faire quand le comportement est voulu",
+     "**corrige\nl'assertion, pas l'app**",
+     "**revois ta suite**"),
+    # 413 — le balayage se limite aux SDK connus, donc manque ce qui s'envoie
+    # à la main : exactement ce qu'un run a manqué.
+    ("skill", "413 · le balayage des canaux sortants se limite aux SDK connus",
+     "ne t'arrête pas au SDK que tu reconnais",
+     "la liste ci-dessus suffit"),
+    # 412 — l'attente ressort du retry : le geste redevient un ORDRE, et la
+    # course que le 412 a mesurée n'est plus couverte.
+    ("login", "412 · l'attente ressort du retry, la course n'est plus couverte",
+     "      - retry:\n          maxRetries: 2",
+     "      - retry:\n          maxRetries: 1"),
+    # 414 — le détecteur compte les diffs : il invente un doublon qui n'en est
+    # pas, donc il crie sur un dépôt sain — et on apprend à l'ignorer.
+    ("run", "414 · le détecteur de doublons compte aussi les fichiers de diff",
+     "      if (!/\\.png$/i.test(e.name) || /_diff\\.png$/i.test(e.name)) continue;",
+     "      if (!/\\.png$/i.test(e.name)) continue;"),
 ]
 
 
