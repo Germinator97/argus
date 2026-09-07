@@ -75,23 +75,39 @@ appId: ${APP_ID}
           id: ${ARGUS_AUTH_SUBMIT}
           label: Validation de la connexion
 
-      # Attendre un ÉTAT, jamais un délai. `extendedWaitUntil` laisse au réseau
-      # le temps de répondre sans immobiliser la suite quand il répond vite.
-      - extendedWaitUntil:
-          visible:
-            id: ${ARGUS_AUTH_SUCCESS}
-          timeout: ${ARGUS_START_TIMEOUT_MS}
-          label: Session ouverte (ancre post-connexion visible)
-      # 🔴 REFERMER CE QUE LA CONNEXION VIENT DE FAIRE NAÎTRE (405).
-      # `launch-clean.yaml` joue déjà ce geste au LANCEMENT, et il le joue pour
-      # tous les flows — mais beaucoup d'applications ne demandent leurs
+      # 🔴 REFERMER CE QUE LA CONNEXION VIENT DE FAIRE NAÎTRE, ET C'EST UNE
+      # COURSE (405, 412). `launch-clean.yaml` joue déjà ce geste au LANCEMENT,
+      # pour tous les flows — mais beaucoup d'applications ne demandent leurs
       # permissions qu'APRÈS la connexion, au montage de l'accueil. Le geste doit
       # donc être joué là où l'invite NAÎT, pas seulement là où tous les flows
-      # passent : les deux moitiés sont nécessaires, et n'avoir que la seconde
-      # est ce qui a coûté trois flows rouges sur un projet réel — plus un
-      # quatrième vert par simple chronométrage, donc un faux succès.
-      # Le tap est `optional: true` : sans invite, ce passage ne coûte rien.
-      - runFlow: dismiss-system-alerts.yaml
+      # passent : n'avoir que la seconde moitié a coûté trois flows rouges sur un
+      # projet réel, plus un quatrième vert par simple chronométrage.
+      #
+      # ⚠️ ET LE POSER APRÈS L'ATTENTE NE SUFFIT PAS — c'était la première forme
+      # de ce correctif, et un run l'a démentie. Quand l'accueil monte son bloc
+      # d'amorçage en `lazy: false`, l'invite naît pendant qu'`extendedWaitUntil`
+      # COURT DÉJÀ : elle recouvre l'écran attendu, l'attente expire, et l'échec
+      # accuse une ancre correcte. Ce n'est pas un ordre à corriger, c'est une
+      # course — d'où le `retry` qui rejoue la PAIRE. Un premier tour referme ce
+      # qui existait au lancement ; si l'invite naît en cours d'attente, le second
+      # la referme et réattend.
+      #
+      # Le tap du sous-flow est `optional: true` : sans invite, chaque passage ne
+      # coûte rien. ⚠️ Le chemin est relatif au DOSSIER DE CE FICHIER — depuis un
+      # flow de `.maestro/`, il s'écrit `_subflows/dismiss-system-alerts.yaml`.
+      # Maestro ne le dira qu'au lancement, en refusant le workspace entier.
+      - retry:
+          maxRetries: 2
+          commands:
+            - runFlow: dismiss-system-alerts.yaml
+            # Attendre un ÉTAT, jamais un délai. `extendedWaitUntil` laisse au
+            # réseau le temps de répondre sans immobiliser la suite quand il
+            # répond vite.
+            - extendedWaitUntil:
+                visible:
+                  id: ${ARGUS_AUTH_SUCCESS}
+                timeout: ${ARGUS_START_TIMEOUT_MS}
+                label: Session ouverte (ancre post-connexion visible)
 
 - runFlow:
     when:

@@ -35,6 +35,7 @@ import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -57,7 +58,6 @@ import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/sca
 import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -10272,15 +10272,16 @@ test('l\'invite système se referme au lancement ET après la connexion (405)', 
     + 'ses permissions au montage de l\'accueil rend l\'écran DERRIÈRE la modale, et l\'échec '
     + 'accuse une ancre correcte (405)');
 
-  // ⚠️ Et APRÈS l'attente de session, pas avant : appelé plus tôt, il rejouerait
-  // le geste du lancement et manquerait à nouveau le moment où l'invite naît.
-  const attente = connexion.indexOf('extendedWaitUntil');
-  assert.ok(attente !== -1,
+  // ⚠️ CE GARDE A ÉTÉ ÉTENDU, PAS SUPPRIMÉ, ET C'EST LA MOITIÉ QUI COMPTE.
+  // Il exigeait que l'appel vienne APRÈS l'attente de session — juste tant que
+  // le défaut était un ORDRE. Le 412 a montré que c'est une COURSE : l'invite
+  // peut naître pendant que l'attente court déjà. Les deux vivent désormais sous
+  // un même `retry`, donc l'appel PRÉCÈDE l'attente à l'intérieur — et ce garde
+  // tombait sur un correctif juste. La pente était de le retirer, ce qui aurait
+  // vidé ce qu'il tient encore : que les DEUX moments soient couverts.
+  // C'est le garde 412 qui porte la forme, celui-ci garde l'atteinte.
+  assert.ok(connexion.indexOf('extendedWaitUntil') !== -1,
     'login.yaml n\'attend plus l\'ancre post-connexion — le motif a changé, mets ce garde à jour');
-  assert.ok(APPEL.exec(connexion.slice(attente)),
-    'l\'appel de login.yaml précède l\'attente de session : il se jouerait AVANT que la '
-    + 'connexion ait pu faire naître quoi que ce soit, donc au même moment que celui de '
-    + 'launch-clean — deux fois le premier moment, jamais le second (405)');
 });
 
 // ── 401 bis · LE GARDE DART EST-IL SEULEMENT CÂBLÉ ? ──────────────────────
@@ -10381,4 +10382,74 @@ test('aucun exemple du skill ne cite un tag que les flows ne portent pas (407)',
     `le skill cite ${fantomes.join(', ')}, qu'AUCUN flow livré ne porte. Un filtre qui ne matche `
     + 'rien ne lève pas : Maestro démarre, ne joue aucun flow, et le run rend un verdict sur du '
     + `néant. Tags réellement déclarés : ${[...existants].join(', ')} (407)`);
+});
+
+// ── 412 · L'INVITE SYSTÈME EST UNE COURSE, PAS UN ORDRE ───────────────────
+//
+// La première forme du correctif 405 posait le geste APRÈS l'attente de l'ancre
+// post-connexion. Un run l'a démentie : quand l'accueil monte son bloc
+// d'amorçage en `lazy: false`, l'invite naît pendant que l'attente COURT DÉJÀ —
+// elle recouvre l'écran attendu, l'attente expire, et l'échec accuse une ancre
+// correcte. Les deux doivent donc être rejoués ENSEMBLE.
+test('la connexion rejoue le geste ET l\'attente ensemble, pas l\'un après l\'autre (412)', () => {
+  const brut = readFileSync(join(FLOWS_DIR, '_subflows', 'login.yaml'), 'utf8');
+  // Commentaires dépouillés : ce fichier EXPLIQUE la course juste au-dessus, et
+  // un scan du texte nu serait satisfait par l'explication seule.
+  const yaml = brut.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+  const iRetry = yaml.indexOf('retry:');
+  assert.ok(iRetry !== -1,
+    'login.yaml ne rejoue plus rien : sans `retry`, une invite qui naît PENDANT l\'attente '
+    + 'la fait expirer, et l\'échec accuse une ancre correcte (412)');
+
+  // Les deux gestes doivent vivre SOUS ce retry — donc après lui, et le bloc ne
+  // doit pas se refermer entre les deux.
+  const bloc = yaml.slice(iRetry);
+  const iGeste = bloc.indexOf('dismiss-system-alerts.yaml');
+  const iAttente = bloc.indexOf('extendedWaitUntil');
+  assert.ok(iGeste !== -1 && iAttente !== -1,
+    'le geste et l\'attente ne sont plus tous deux sous le retry — la course n\'est plus couverte');
+  assert.ok(iGeste < iAttente,
+    'le geste doit précéder l\'attente DANS le retry : refermer puis attendre, et recommencer '
+    + 'si l\'invite est née entre-temps');
+
+  // L'autre moitié : le premier moment reste couvert, sinon on a déplacé le
+  // défaut au lieu de le fermer — ce qui est exactement ce qui s'est passé au 405.
+  const lancement = readFileSync(join(FLOWS_DIR, '_subflows', 'launch-clean.yaml'), 'utf8')
+    .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  assert.match(lancement, /runFlow:\s*dismiss-system-alerts\.yaml/,
+    'le lancement ne referme plus l\'invite : les apps qui la demandent au démarrage restent '
+    + 'bloquées, et corriger un moment en cassant l\'autre est le défaut du 405 (412)');
+});
+
+// ── 411 · UN `runFlow:` QUI NE RÉSOUT PAS EST ATTRAPÉ SANS DEVICE ─────────
+//
+// ⚠️ Le constat d'origine était FAUX — `argus-lint` enchaîne bien `check-syntax`
+// ET le contrôle du graphe, et celui-ci attrape le cas. Ce garde fige cette
+// capacité, parce qu'un run a perdu une passe device en croyant le contraire :
+// le chemin est relatif au DOSSIER DU FLOW APPELANT, et Maestro ne le dit qu'au
+// lancement, en refusant le workspace ENTIER — donc sans étape fautive à nommer.
+test('un runFlow mal résolu est vu sans device, et le bon ne l\'est pas (411)', () => {
+  // Le cas exact du run : le fichier EXISTE sous .maestro/, mais pas là où
+  // l'appelant le cherche. Un contrôle qui se contenterait du nom passerait.
+  const casse = flowsIntrouvables({
+    'journey-critical.yaml': 'appId: x\n---\n- runFlow: dismiss-system-alerts.yaml\n',
+    '_subflows/dismiss-system-alerts.yaml': 'appId: x\n---\n- tapOn:\n    text: ok\n',
+  });
+  assert.equal(casse.length, 1,
+    'un appel depuis .maestro/ vers un fichier qui vit dans _subflows/ doit être signalé : '
+    + 'Maestro refuserait le workspace ENTIER au lancement (411)');
+  assert.deepEqual(casse[0], ['journey-critical.yaml', 'dismiss-system-alerts.yaml']);
+
+  // L'autre moitié — un contrôle qui refuse tout ne mesure plus rien.
+  assert.deepEqual(flowsIntrouvables({
+    'journey-critical.yaml': 'appId: x\n---\n- runFlow: _subflows/dismiss-system-alerts.yaml\n',
+    '_subflows/dismiss-system-alerts.yaml': 'appId: x\n---\n- tapOn:\n    text: ok\n',
+  }), [], 'le chemin CORRECT doit passer, sinon le garde crie au loup');
+
+  // Et depuis _subflows/, le nom nu est correct : c'est ce que le scaffold livre.
+  assert.deepEqual(flowsIntrouvables({
+    '_subflows/login.yaml': 'appId: x\n---\n- runFlow: dismiss-system-alerts.yaml\n',
+    '_subflows/dismiss-system-alerts.yaml': 'appId: x\n---\n- tapOn:\n    text: ok\n',
+  }), [], 'un voisin de dossier s\'appelle par son nom nu — le scaffold en livre deux');
 });
