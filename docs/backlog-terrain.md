@@ -5081,7 +5081,16 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **400 à 405 FERMÉS le 07/09/2026, backlog vide.** Les runs
+🔴 **9 POINTS OUVERTS — 406 à 414, inscrits le 07/09/2026 au soir.** La passe de
+CONFIRMATION (runs 57 et 58) a trouvé un **faux vert** que deux runs indépendants
+ont produit par deux causes différentes : un run qui n'exécute AUCUN flow rend
+`exit 0`. La sortie reste donc fermée. ✅ Mais le garde 401, né le matin, a fait
+corriger deux ancres **à l'étage 1, sans device** — le défaut que les runs 55 et 56
+avaient dû diagnostiquer sur appareil.
+
+### Verdict précédent — les runs 55 et 56
+
+✅ **400 à 405 FERMÉS le 07/09/2026.** Les runs
 **55 et 56** ont été joués en parallèle, iOS sur le projet à API et Android sur
 le projet hors ligne, par deux agents vierges qui s'ignoraient. Ils ont trouvé
 **indépendamment le même défaut de fond** (401) : une ancre peut être présente,
@@ -5976,6 +5985,135 @@ désormais **atteint**. Et il arrive **trop tôt**. L'app du run 55 déclenche
 *Un remède ne supprime pas toujours un mode de panne : il le déplace.* J'avais
 corrigé l'ATTEINTE et cassé le MOMENT, et les deux moitiés sont nécessaires — le
 geste doit être joué par tous les chemins ET là où l'invite naît.
+
+### 406-414. Les runs 57 et 58 — la passe de CONFIRMATION, et le faux vert qu'elle a trouvé
+
+Deux runs joués pour **trancher la sortie sur une mesure** plutôt que sur une
+impression : iOS sur le projet à API, Android sur le projet hors ligne, tous deux
+sur le plugin corrigé le jour même. ⚠️ Les deux ont été **coupés par une limite
+de quota d'API**, puis **repris** en leur mesurant l'état du disque — l'un après
+que son émulateur eut été tué par la pression mémoire, donc sur un appareil neuf.
+
+✅ **La passe du matin a porté, et ça se lit dans ce qu'ils ont ÉCRIT.** Le garde
+**401**, né le matin, a fait corriger **deux ancres** au run 57 pour la raison
+exacte qu'il mesure (`container: true`, ancre descendue sur le `label:`) : le
+défaut que les runs 55 et 56 avaient dû diagnostiquer **sur device** a été
+attrapé **à l'étage 1, sans appareil**. Et plus aucun patch de `layout_test.dart`
+(**400**). Le run 58 signe par ailleurs la meilleure preuve de télémétrie du
+chantier — DSN mesuré sur les DEUX variants, deux sondes runtime avec leur
+mutation, rebuild après mutation, et l'encodage latin-1 de l'AOT confirmé.
+
+### 406. 🔴 Un run qui n'exécute AUCUN flow rend `exit 0`
+
+**Ouvert le 07/09/2026.**
+
+Confirmé par **deux runs indépendants, deux terrains, deux plateformes, deux
+causes différentes** — le signal le plus fort qu'une paire de runs sache donner :
+
+- run 57 — Maestro refuse le workspace entier (`Parsing Failed`),
+  `flowsExecuted: 0`, **exit 0** ;
+- run 58 — `--tags=journey`, un filtre qui ne matche rien, 0 flow joué, **exit 0**.
+
+Mesuré : `flowsExecuted` n'apparaît qu'**une fois** dans `run.mjs` (l. 2130), dans
+le rapport, **jamais dans un verdict**. Le code de sortie vient de
+`exitCodeFor(findings, gate)`, et le seul garde voisin porte sur `failedRuns > 0`
+— il couvre « Maestro a échoué sans étape fautive », pas « Maestro n'a jamais
+démarré ». Zéro flow ne produit aucun finding, donc aucune sévérité, donc vert.
+
+📌 **Aucun des deux agents n'a été alerté par le code de sortie** : c'est la
+**durée** qui les a sauvés (18 s au lieu de 180 ; 9 s), et pour l'un
+l'avertissement sur les écrans jamais atteints. C'est la classe du **366-372**
+— un run interrompu se rendait en vert — fermée pour l'interruption et **pas**
+pour le run qui ne démarre jamais.
+
+### 407. L'exemple `--tags=journey` du skill ne correspond à aucun tag livré
+
+**Ouvert le 07/09/2026.**
+
+Le §3g donne `--tags=journey` comme la façon de rejouer un flow seul. **Ce tag
+n'existe dans aucun flow du scaffold** : ils portent `argus`, `functional`, `p0`.
+Le suivre à la lettre produit exactement le run vide du **406** — et aucune liste
+des tags réellement livrés n'existe nulle part. Le run 58 l'a payé en croyant
+rejouer son parcours.
+
+### 408. `cropRoot: true` est exigé par l'outil et absent de là où on le remplit
+
+**Ouvert le 07/09/2026.**
+
+`argus-anchors` refuse — correctement — qu'une racine serve de `visualCropOn`
+sans que son `ArgusScreen` déclare `cropRoot: true`. Mais cette exigence n'est
+écrite **ni au §3f-bis ni au §2c-bis**, c'est-à-dire nulle part où l'on remplit
+`screens[]` et `visualCropOn` : elle vit dans un dartdoc d'`argus_types.dart` et
+dans `methodology-mobile.md`. Le run 58 ne l'a apprise que par le refus, après
+avoir cru la section complète. *Le refus est excellent ; il arrive après.*
+
+### 409. `lifecycle.yaml` appartient au projet, et le run l'a cru du cadre
+
+**Ouvert le 07/09/2026.**
+
+Le run 57 a raisonné une bonne partie de sa passe en le croyant intouchable, et
+allait laisser un `major` **faux** dans le rapport plutôt que de corriger une
+assertion. C'est l'inventaire d'`install-mobile.sh --check` qui l'a détrompé,
+après coup — rien dans le flow lui-même ne dit à qui il appartient.
+
+### 410. Rien ne sépare « l'app fait autre chose » de « l'app est cassée »
+
+**Ouvert le 07/09/2026.**
+
+Le skill donne le **geste** (regarder la capture avant de soupçonner l'ancre) et
+le **tell chiffré** (la pire attente est-elle collée au plafond ? — au run 57,
+non : 103-205 ms pour un plafond de 20 000). Ces deux-là ont épargné deux passes
+device. Mais devant une relance post-`killApp` qui retombe sur un écran de
+verrouillage, seule la **lecture du code de l'app** a permis de dire que c'est
+voulu. Aucun outil ne l'a rendu, et c'est le troisième volet de l'angle mort
+« le serveur qui varie », sous une autre forme.
+
+### 411. Le chemin d'un `runFlow` est relatif au fichier appelant — jamais écrit
+
+**Ouvert le 07/09/2026.**
+
+⚠️ **Le constat qui l'a fait naître est DÉMENTI** : le run 57 accusait
+`argus-lint` de conclure « tous les flows parsent » sur un workspace cassé.
+Reproduit dans les deux sens sur un workspace jetable — la cible enchaîne
+`check-syntax` **et** `--check-flows`, et celui-ci attrape le cas (`exit 1`), avec
+un message qui nomme la cause. Le chemin correct rend `exit 0`. L'agent n'avait
+pas relancé la cible après avoir écrit son appel.
+
+📌 Résidu vrai et plus étroit : **le skill ne dit nulle part** que ce chemin est
+relatif au fichier appelant. Et le correctif **405 a doublé** le nombre d'appels
+copiables depuis `_subflows/` vers `.maestro/` — les deux sites livrés sont
+justes, mais le geste est deux fois plus copiable au mauvais endroit.
+
+### 412. Le 405 est incomplet : l'invite peut naître PENDANT l'attente
+
+**Ouvert le 07/09/2026.**
+
+Mon correctif place l'appel **après** l'attente de l'ancre post-connexion. Or
+l'app du run 57 monte son bloc d'amorçage en `lazy: false` : l'invite système
+naît alors qu'`extendedWaitUntil` court **déjà**. Ce n'est pas un ordre à
+corriger mais une **course**, que l'agent a tranchée par un `retry` rejouant la
+paire. Le geste est au bon endroit ; il lui manque de tenir quand l'invite naît
+en cours d'attente.
+
+### 413. Rien ne prescrit de CHERCHER les canaux sortants
+
+**Ouvert le 07/09/2026.**
+
+Le gabarit demande à l'utilisateur de trancher la télémétrie, et le run 58 l'a
+prouvée admirablement. Mais le run 57 a manqué
+`RegisterDeviceToken(ignorePermission: true)` — le jeton FCM enregistré **même
+quand les notifications sont refusées** —, et le dit lui-même : il a vérifié ce
+qu'on lui nommait, pas ce que l'app émet. Le skill n'a aucun geste pour
+**inventorier** les canaux sortants avant la première passe device.
+
+### 414. Deux références visuelles pixel-identiques, sans que rien ne prévienne
+
+**Ouvert le 07/09/2026.**
+
+Sur le terrain 1, `shell.png` et `home-empty.png` portent la **même empreinte** :
+la coquille EST l'écran de départ, et les deux recadrent sur la même racine. L'un
+des deux ne garde donc rien de plus que l'autre — 32 s de device par run, et une
+référence commitée en double. Rien dans le skill ne prévient de ce cas.
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
