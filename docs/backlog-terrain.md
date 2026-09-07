@@ -5434,7 +5434,89 @@ La forme est désormais écrite (`# construit par : <commande>  (source : <fichi
 §>)`), et le garde exige aussi que **la source** y soit : sans elle, le suivant
 cherchera au même endroit que toi, et ce n'est jamais le même selon les projets.
 
-**Prochain numéro libre : 387.**
+### 387-393. Le run 53 — la vérification qui trouve la MOITIÉ manquante d'un correctif
+
+**Le run de confirmation iOS**, joué le 07/09 sur le terrain à API, sans qu'un mot
+du cadrage ne souffle 381 ni 382. Cinq passes, ~20 min 40 de simulateur sur 60, et
+la progression dit que les remèdes portent : pire attente sur l'écran de départ
+**20 268 ms → 45 205 → … → 101 ms**, dernière passe **7/7 flows verts**,
+`gate: pass`, scope « complet ». Instrumentation partie de zéro : 14 racines / 14,
+19 commandes / 19. Aucun DSN Sentry dans le kernel — la consigne de télémétrie a
+tenu. **Six constats sur sept reproduits, un démenti.**
+
+🔴 **387 — MON CORRECTIF DU 381 N'EN COUVRAIT QUE LA MOITIÉ.** `resetKeychain` a
+**un seul site d'appel** (`run.mjs:1933`), dans la préparation du run, avant la
+boucle des flows. Or `clearState`, lui, s'exécute **avant chaque flow**. Le
+trousseau est donc vidé une fois : le premier flow part d'une app vierge, s'y
+connecte, écrit son jeton — et **tous les suivants démarrent connectés**, sur
+l'écran d'après-connexion, où ils échouent sur l'ancre de départ à trois écrans de
+la cause. Le commentaire du correctif décrit exactement ce symptôme et le traite
+une seule fois. *Le correctif était local, le défaut est une manière de raisonner :
+ce qui isole doit s'exécuter à la même cadence que ce qu'il isole.*
+
+🔴 **388 — LE GESTE QUI FERME L'INVITE SYSTÈME N'EST PAS LÀ OÙ ON L'ÉCRIT.** Le
+382 documente le geste **avec sa place** — `goto.yaml`, qui appartient au projet —
+mais il ne le documente QUE dans le commentaire de `launch-clean.yaml`, qui
+appartient au cadre. Contre-épreuve : le mot « alerte » vit dans **deux** fichiers
+du scaffold, et `goto.yaml` n'en fait pas partie. L'agent a donc dû retrouver le
+geste seul, et il l'a posé **dans le fichier du cadre** — donc écrasé à la
+prochaine mise à jour. ⚠️ Et son relevé ajoute ce que le 382 ne disait pas :
+**l'invite ne suffisait pas seule**. L'invite et le trousseau sont deux causes
+distinctes d'un même symptôme, et l'échec accuse une ancre correcte dans les deux
+cas — donc rien ne les sépare tant qu'on n'a pas traité les deux.
+
+🔴 **389 — LES TROIS CAUSES DE `startupHint` EN MANQUENT UNE, ET C'EST CELLE QUI
+EST ARRIVÉE.** Le message énumère « l'app ne démarre pas · l'écran est lent ·
+l'ancre est fausse ». Le cas du run n'est aucun des trois : l'app démarre, l'écran
+arrive, l'ancre est juste — mais **ce n'est pas l'écran qu'on croit**, parce
+qu'une modale système le couvre ou qu'une session a survécu. Le lecteur regarde la
+capture comme (1) le lui dit, n'y voit pas d'erreur d'application, et passe à (2) :
+relever le plafond. **Le run l'a fait deux fois.** ⚠️ Et le tell était dans les
+chiffres : la pire attente s'est collée au plafond à ~200 ms près **deux fois de
+suite** (20 268/20 000 puis 45 205/45 000) — signature d'un écran qui n'arrive
+JAMAIS, pas d'un écran lent. Même famille que le **343** : une énumération de
+causes qui manque la plus fréquente.
+
+🔴 **390 — `lifecycle.yaml` INCLUT `login.yaml` SANS LE DIRE**, et ses assertions
+post-authentification sont gardées par la **déclaration** de l'ancre
+(`typeof ARGUS_ANCHOR_AFTER_AUTH !== 'undefined' && !== ''`), jamais par
+l'existence d'une session. Sans connexion elles s'exécutent quand même et
+échouent. Sur un terrain à quota d'OTP, ce `runFlow` invisible consomme en plus un
+second envoi et contamine les flows suivants.
+
+🔴 **391 — LES 117 GARDES ROUGES DE L'ÉTAGE 1 NE REMONTENT PAS DANS LE RAPPORT, ET
+LA PAGE PUBLIE `gate: pass`.** `report.mjs` lit cinq relevés de dimensions et
+**aucun résultat de `flutter test`** : il ne parle de l'étage 1 que pour la
+*couverture*, jamais pour ses findings. Le run a mesuré 117 échecs réels —
+14 labels de cible, 12 contrastes, 12 cibles < 48 dp, 42 troncatures, 8
+débordements, dont `home_account` à **40×40 dp** et un contraste à **2,83:1** — et
+la page publiée annonce **un run vert sur deux findings info**. C'est le pire mode
+de panne d'un harnais de non-régression, et c'est la seconde fois que ce chantier
+le rencontre après le **367**. ⚠️ Le run, lui, a refusé d'inscrire ces 117 en
+dette : « les inscrire aurait rendu la suite verte sur 117 défauts réels et non
+lus ». Il les a laissés rouges. C'est le harnais qui ne les a pas publiés.
+
+🟠 **392 — LE CHEMIN DU BINAIRE iOS NE DIT PAS CE QU'UN FLAVOR Y CHANGE.** Le
+scaffold livre `ios: build/ios/iphonesimulator/Runner.app` ; avec un flavor Flutter
+écrit sous `Debug-dev-iphonesimulator`, et le défaut pointe alors un chemin qui
+n'existe pas. L'information EXISTE — `SKILL.md` §3g décrit la cohabitation
+`Debug-*-iphonesimulator` / `iphoneos` — mais pas à la clé qu'on remplit. L'échec
+est bruyant (« AUCUN PAQUET à cet emplacement »), donc le coût est du temps de
+lecture, pas un faux verdict.
+
+✅ **393 — DÉMENTI : les blocs YAML sont refusés avec un message qui nomme la
+ligne.** Le run signalait que `config.mjs` casse sur un bloc `|` et que le
+sous-ensemble « est documenté 780 lignes plus haut ». Reproduit **en exécutant**,
+sur une copie du scaffold : le parseur rend `✖ argus.mobile.yaml:731 — bloc
+multi-lignes (| ou >) non supporté` avec la ligne fautive affichée, et la forme
+repliée en quotes rend `valeur sur la ligne ET bloc indenté en dessous`. Le
+sous-ensemble accepté ET refusé est écrit en tête du fichier, et il porte déjà la
+phrase « une valeur tient sur UNE ligne ; si elle est longue, raccourcis-la ».
+*Appliquer le remède aurait ajouté ce qui existait déjà, pour la huitième fois.*
+Résidu vrai et plus étroit : le commentaire d'`evidenceAcknowledged` invite à
+écrire une phrase sans rappeler la contrainte d'une ligne.
+
+**Prochain numéro libre : 394.**
 
 Les points **347 à 365** sont fermés le 04/09/2026 — backlog vide pour la
 **quarante-cinquième** fois. Trois runs (46 · terrain sans API, Android ;
