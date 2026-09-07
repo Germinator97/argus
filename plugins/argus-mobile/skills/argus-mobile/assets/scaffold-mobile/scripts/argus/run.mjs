@@ -1061,6 +1061,13 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
   // deux textes n'a aucun comportement à casser. Trouvé au seizième run.
   const plafond = startTimeoutMs(config);
   const froid = config.thresholds?.coldStartMs ?? 2000;
+  // ⚠️ ET LA QUATRIÈME EST ARRIVÉE APRÈS (point 389) : deux runs ont relevé le
+  // plafond parce qu'aucune des trois ne décrivait ce qu'ils voyaient — l'écran
+  // arrivait, l'ancre était juste, mais une modale système le couvrait, puis une
+  // session survivante en affichait un AUTRE. Le tell était dans les chiffres et
+  // n'était écrit nulle part : la pire attente collée au plafond à ~200 ms près,
+  // DEUX fois de suite (20 268/20 000 puis 45 205/45 000), signe d'un écran qui
+  // n'arrive jamais et non d'un écran lent.
   // ⚠️ ET IL MANQUAIT LA TROISIÈME HYPOTHÈSE, celle qui coûte le plus (point
   // 237). Ce message opposait « ancre fausse » à « écran lent » et envoyait
   // relever un plafond — or l'écran peut n'être ni l'un ni l'autre : une app
@@ -1072,13 +1079,19 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
   // Le geste qui tranche en une seconde ne coûte rien : Maestro écrit une
   // capture À L'INSTANT de l'échec. On la NOMME, plutôt que de laisser
   // quelqu'un la chercher ou la reprendre à la main.
-  return ` — trois causes possibles, et la plus chère n'est pas celle qu'on`
+  return ` — quatre causes possibles, et la plus chère n'est pas celle qu'on`
     + ` cherche. (1) L'app ne démarre PAS : REGARDE D'ABORD la capture que`
     + ` Maestro vient de prendre, dans argus-mobile-report/maestro/<horodatage>/`
     + `<nom du flow>/screenshots/ — si elle montre une erreur de l'app, aucun`
-    + ` plafond n'y changera rien. (2) L'écran de départ est LENT : relève`
-    + ` thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`
-    + ` maximum que montre startup.samples du rapport. (3) L'ancre est fausse :`
+    + ` plafond n'y changera rien. (2) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`
+    + ` MÊME capture, une modale SYSTÈME par-dessus (permissions.all: allow ne`
+    + ` couvre pas celle que l'OS présente lui-même), ou un écran d'APRÈS-connexion`
+    + ` (sur iOS le trousseau survit à clearState — mets clearKeychain avec lui).`
+    + ` L'ancre est correcte dans les deux cas, et l'attente consomme TOUT le`
+    + ` plafond : si la pire attente est collée au plafond à quelques dizaines de`
+    + ` ms, c'est ce cas-ci et jamais une lenteur. (3) L'écran de départ est LENT :`
+    + ` relève thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`
+    + ` maximum que montre startup.samples du rapport. (4) L'ancre est fausse :`
     + ` \`make argus-anchors\` le dit sans device. Ne touche PAS à`
     + ` thresholds.coldStartMs (${froid} ms) : la lenteur de démarrage doit`
     + ` rester un finding, pas disparaître dans un seuil.`;

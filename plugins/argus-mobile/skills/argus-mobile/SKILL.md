@@ -1583,8 +1583,18 @@ vert pour toujours ce qu'elle a photographié de travers.
 
 ⚠️ **Un cas que ça ne couvre pas : le flow rouge parce que l'app est LENTE.**
 ⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a
-TROIS causes, et la plus chère n'est pas celle qu'on cherche.** Le runner les
+QUATRE causes, et la plus chère n'est pas celle qu'on cherche.** Le runner les
 imprime désormais dans cet ordre, en console — suis-le, ne devine pas :
+
+🔴 **UN CHIFFRE LES AIGUILLE, ET IL EST GRATUIT : la pire attente est-elle COLLÉE
+au plafond ?** À quelques dizaines de millisecondes près, c'est que l'écran
+**n'arrive jamais** — les causes 1 et 2 — et relever le plafond ne fera que
+déplacer le chiffre. Une vraie lenteur, elle, laisse une marge. Mesuré deux fois
+sur le même run : 20 268 ms contre un plafond de 20 000, puis 45 205 contre
+45 000. ⚠️ Ce tell existait, rangé sous la seule cause 1 : le lecteur qui
+regardait la capture, n'y voyait **pas** d'erreur d'application et passait à la
+cause « lent » — sans jamais lire le tell qui le lui interdisait. *Une
+information juste au mauvais endroit ne sert personne.*
 
 🚨 **AVANT les trois, une commande de CINQ SECONDES les départage** — elle
 demande à l'appareil ce qu'il porte vraiment :
@@ -1612,7 +1622,18 @@ de `auth_identification_root` — le compteur rendait « 2 » et rassurait.
    attente est venue se coller au plafond **à 80 ms près** à chaque fois —
    l'écran affichait « Service indisponible ». Trois passes device perdues. Ce
    motif-là ne décrit pas une lenteur, il décrit un écran qui n'arrive jamais.
-2. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de
+2. **CE N'EST PAS L'ÉCRAN QU'ON CROIT** — et la capture le montre, à condition
+   de ne pas y chercher seulement une erreur. Deux formes, toutes deux vécues :
+   une **modale système** par-dessus l'écran (`permissions.all: allow` accorde
+   les permissions du bac à sable, jamais celle que l'OS présente lui-même au
+   premier `requestAuthorization` : la capture montrait l'accueil ENTIÈREMENT
+   rendu derrière elle) ; ou un **écran d'après-connexion**, parce que sur iOS le
+   trousseau survit à `clearState` et qu'une session ouverte par le flow
+   précédent est encore là. Dans les deux cas l'ancre est **correcte** et
+   l'attente consomme tout le plafond. Le geste qui ferme la modale vit dans
+   `_subflows/goto.yaml`, qui t'appartient ; le trousseau est couvert par
+   `clearKeychain`, à poser **avec** `clearState` et non une fois par run.
+3. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de
    générer les références — il concerne tous les flows, y compris ceux qui
    produisent les captures. ⚠️ **Sur Android, dérive-le de `firstLaunchMs`**, que
    `argus-perf` mesure : chaque flow fait `clearState`, donc chacun paie un
@@ -1658,7 +1679,7 @@ de `auth_identification_root` — le compteur rendait « 2 » et rassurait.
    (N ms) a consommé X % du plafond »), et c'est exactement ce que
    `firstLaunchMs` approche sur Android. Le runner te donne désormais la valeur
    et un plafond calculé ; chronomètre à la main si tu veux mieux.
-3. **L'ancre est fausse.** `make argus-anchors` le dit sans device. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
+4. **L'ancre est fausse.** `make argus-anchors` le dit sans device. Un run a mesuré une dispersion de 6 090 à 23 244 ms sur le même
 écran, sans mécanisme identifié — c'est exactement le cas où l'on relève le
 plafond sans rien conclure.
 

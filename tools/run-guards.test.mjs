@@ -5840,7 +5840,7 @@ test('le SKILL et le runner prescrivent la MÊME base de dérivation (259)', () 
   assert.ok(!/n'est pas l'instrumentation, c'est le plafond/.test(skill),
     'le SKILL réaffirme un diagnostic UNIQUE là où il y a trois causes, et la plus '
     + 'chère — l\'app qui ne démarre pas — n\'est pas celle-là');
-  assert.match(skill, /TROIS causes/,
+  assert.match(skill, /[A-ZÉ]+ causes/,
     'le SKILL ne présente plus les trois causes dans l\'ordre du runner');
 });
 
@@ -6424,7 +6424,7 @@ test('trois choses écrites là où elles servent (293, 294, 295)', () => {
   // moment ; dans la DOC elle vivait à des centaines de lignes de la séquence.
   const sequence = ligneDe(/^make argus-report\s+# rapport HTML/, 'la séquence de commandes');
   const renvoi = ligneDe(/NE DEVINE PAS : LE RUNNER TE/, 'le renvoi vers le diagnostic du runner');
-  const detail = ligneDe(/TROIS causes, et la plus chère/, 'le détail des trois causes');
+  const detail = ligneDe(/[A-ZÉ]+ causes, et la plus chère/, 'le détail des trois causes');
   assert.ok(renvoi - sequence > 0 && renvoi - sequence < 40,
     `le renvoi vers le diagnostic est à ${renvoi - sequence} lignes de la séquence : c'est là `
     + 'qu\'on lance argus-run, donc là qu\'il faut savoir que le runner donne l\'ordre');
@@ -7793,7 +7793,7 @@ test('la contre-épreuve à cinq secondes vient AVANT les trois causes (344, 345
   // dans le document — 430 lignes après la liste des causes, donc après le
   // moment où l'on en a besoin. Un run a payé ~35 min pour la retrouver.
   const contre = plat.indexOf('maestro hierarchy | grep -c');
-  const causes = plat.indexOf('TROIS causes, et la plus chère');
+  const causes = plat.search(/[A-ZÉ]+ causes, et la plus chère/);
   assert.ok(contre > 0, 'la contre-épreuve doit être écrite');
   assert.ok(causes > 0, 'la liste des trois causes a changé de forme — mets ce garde à jour');
   assert.ok(contre > causes && contre - causes < 1200,
@@ -9864,4 +9864,44 @@ test('le dépouillement du commentaire de fin de ligne coupe au bon `#` (394)', 
   // Et le nu reste nu : le garde d'encadrement doit continuer de l'attraper.
   assert.equal(sansCommentaireFinal('"Refuser"   # nu, et il doit le rester'),
     '"Refuser"', 'un motif NON encadré ne doit pas être blanchi par le dépouillement');
+});
+
+test('le NOMBRE de causes est dérivé, jamais cité — SKILL et runner s\'accordent (389)', () => {
+  // ⚠️ CE GARDE EXISTE PARCE QU'ON VIENT D'EN AFFAIBLIR TROIS. Ils cherchaient
+  // « TROIS causes » mot pour mot et sont tombés le jour où une quatrième est
+  // arrivée — le motif est désormais tolérant au nombre, ce qui les empêche de
+  // se périmer ET leur retire la mesure du compte. Rendre tolérant sans dériver
+  // ailleurs, c'est perdre une moitié sans le dire.
+  //
+  // Trois sources doivent s'accorder : le mot-nombre annoncé par le SKILL, les
+  // items de sa liste, et les `(n)` du message que le runner imprime. Un
+  // correctif qui ajoute une cause à l'un des trois fait tomber ce garde.
+  const MOTS = { DEUX: 2, TROIS: 3, QUATRE: 4, CINQ: 5, SIX: 6, SEPT: 7 };
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const annonce = /\b([A-ZÉ]+) causes, et la plus chère/.exec(skill);
+  assert.ok(annonce, 'le SKILL n\'annonce plus un nombre de causes : ce garde ne mesure plus rien');
+  const annonce_n = MOTS[annonce[1]];
+  assert.ok(annonce_n,
+    `« ${annonce[1]} » n'est pas dans la table des mots-nombres — ajoute-le plutôt que de citer un chiffre`);
+
+  // Les items de la liste, à partir de l'annonce et jusqu'au premier titre.
+  const apres = skill.slice(annonce.index);
+  const fin = apres.search(/\n#{1,6} /);
+  const section = fin > 0 ? apres.slice(0, fin) : apres;
+  const items = [...section.matchAll(/^(\d+)\. \*\*/gm)].map((m) => Number(m[1]));
+  assert.ok(items.length > 0, 'aucun item de cause lu dans le SKILL — la liste a changé de forme');
+  assert.deepEqual(items, items.map((_, i) => i + 1),
+    `les causes du SKILL ne sont pas numérotées de 1 à ${items.length} : reçues ${items.join(', ')}`);
+  assert.equal(items.length, annonce_n,
+    `le SKILL annonce ${annonce_n} causes et en liste ${items.length}`);
+
+  // Et le message que le runner imprime vraiment.
+  const h = startupHint('id=home_root', 'home_root', CONFIG);
+  const numeros = [...h.matchAll(/\((\d)\)/g)].map((m) => Number(m[1]));
+  assert.deepEqual(numeros, numeros.map((_, i) => i + 1),
+    `les causes du runner ne se suivent pas : reçues ${numeros.join(', ')}`);
+  assert.equal(numeros.length, annonce_n,
+    `le SKILL annonce ${annonce_n} causes, le runner en imprime ${numeros.length} — `
+    + 'un lecteur qui suit la doc cherchera une cause que l\'outil ne nomme pas');
 });
