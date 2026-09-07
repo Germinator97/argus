@@ -1350,9 +1350,13 @@ MUTATIONS = [
      "# ARGUS:CADRE — au plugin."),
     # 398 — le message d'ancre absente reperd la cause de MONTAGE, celle qui
     # n'accuse pas l'instrumentation.
-    ("anchorsdart", "398 · le message reperd la cause de montage",
-     "'n\\'existe pas. Le cas courant est un conteneur d\\'injection : '",
-     "'n\\'existe pas. '"),
+    # ⚠️ PREMIÈRE VERSION VACANTE, et le harnais avait raison : elle retirait une
+    # phrase intermédiaire que le garde ne mesure pas. Ce qu'il mesure, c'est le
+    # RENVOI vers l'endroit où le remède est écrit — sans lui, le message nomme la
+    # cause sans dire quoi en faire, ce qui est la moitié du défaut.
+    ("anchorsdart", "398 · le message ne renvoie plus où le remède est écrit",
+     "'note d\\'`ArgusScreen.setUp` dans argus_types.dart, qui donne le '",
+     "'documentation du harnais, qui donne le '"),
     # 387 — le trousseau cesse d'être purgé à la cadence de `clearState`.
     # ⚠️ La mutation vise la VALEUR, jamais le commentaire qui l'explique : celui-ci
     # nomme `clearKeychain` deux fois, et un garde qui se contenterait de trouver le
