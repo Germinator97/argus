@@ -153,33 +153,94 @@ Set<String> argusThemeFontFamilies() {
 /// thème demande et que le manifeste n'enregistre sous AUCUNE forme. Le nom
 /// composé avec `package:` arrive ici déjà préfixé, donc il correspond — pas de
 /// faux positif sur un projet sain qui fait les choses correctement.
-String? argusFontResolutionIssue() {
-  final Set<String> demandees = argusThemeFontFamilies();
-  if (demandees.isEmpty) {
+String? argusFontResolutionIssue() => argusFontMismatch(
+  demandeesParLeTheme: argusThemeFontFamilies(),
+  chargeesParLeHarnais: argusFonts.keys.toSet(),
+  enregistreesAuBundle: argusBundledFontFamilies(),
+);
+
+/// La décision, PURE : trois ensembles entrent, un défaut ou `null` sort.
+///
+/// Extraite pour être exerçable sans projet, sans device et sans manifeste sur
+/// le disque — un garde qui l'APPELLE lit ce qu'elle rend, là où un garde qui
+/// lirait la source ne verrait pas une valeur neutralisée.
+///
+/// 🔴 POURQUOI TROIS TERMES ET NON DEUX (437). La première version comparait le
+/// thème au bundle, et elle était juste — mais aveugle au cas rencontré : un
+/// projet dont l'app résout PARFAITEMENT sa police, et dont le harnais la charge
+/// sous un AUTRE nom. Le thème demande alors une famille que `argusFonts` n'a
+/// pas chargée, le montage retombe sur la police de `flutter_test` — deux fois
+/// plus large — et TOUTE mesure de disposition devient fausse pendant que ce
+/// contrôle reste vert. Mesuré sur un projet réel, seule cette clé changeant :
+/// **297 verts / 186 rouges** sous le nom nu contre **356 / 127** sous le nom
+/// résolu, soit **59 gardes** qui décrivaient un rendu inexistant.
+///
+/// ⚠️ Le garde voisin ne le voit pas non plus : il vérifie que
+/// [argusFontFamily] est une clé de [argusFonts], donc la cohérence INTERNE du
+/// harnais. Ici les deux étaient cohérents entre eux, et faux tous les deux.
+///
+/// L'ordre des deux verdicts est un ordre de DIAGNOSTIC : une famille absente
+/// du bundle est un défaut de l'APPLICATION — l'appareil ne rend pas cette
+/// police —, tandis qu'une famille non chargée est un défaut du HARNAIS : l'app
+/// va bien, ce sont les mesures qui mentent. Le second se contrôle même sans
+/// manifeste, d'où sa place après la sortie « pas pu mesurer ».
+String? argusFontMismatch({
+  required Set<String> demandeesParLeTheme,
+  required Set<String> chargeesParLeHarnais,
+  required List<String> enregistreesAuBundle,
+}) {
+  if (demandeesParLeTheme.isEmpty) {
     return null; // rien à confronter — l'appelant le dit, il ne le tait pas
   }
-  final List<String> bundle = argusBundledFontFamilies();
-  if (bundle.isEmpty) {
-    return null; // manifeste absent : « pas pu mesurer », pas « conforme »
+
+  // 1. Le bundle : ce que l'APPLICATION enregistre. Sauté si le manifeste
+  //    manque — « pas pu mesurer » n'est pas « conforme ».
+  if (enregistreesAuBundle.isNotEmpty) {
+    final List<String> introuvables =
+        demandeesParLeTheme
+            .where((String f) => !enregistreesAuBundle.contains(f))
+            .toList()
+          ..sort();
+    if (introuvables.isNotEmpty) {
+      final String proches = enregistreesAuBundle
+          .where(
+            (String b) => introuvables.any((String f) => b.endsWith('/$f')),
+          )
+          .join(', ');
+      return "Le thème de l'app demande ${introuvables.join(', ')}, "
+          "que le bundle n'enregistre pas sous ce nom. Familles enregistrées : "
+          '${enregistreesAuBundle.join(', ')}.'
+          '${proches.isEmpty ? '' : "\n⚠️ « $proches » ne diffère que par le "
+                    "préfixe de paquet : la police vient d'une DÉPENDANCE, et il "
+                    "faut alors la demander avec son paquet — "
+                    "`TextStyle(fontFamily: '<famille>', package: '<paquet>')` — "
+                    "ou la déclarer dans le pubspec de l'app. Sans ça Flutter "
+                    'retombe EN SILENCE sur la police système.'}'
+          "\n📌 Tant que ce n'est pas réglé, toute mesure de disposition de cette "
+          "suite décrit un rendu que l'appareil ne produit pas.";
+    }
   }
-  final List<String> introuvables =
-      demandees.where((String f) => !bundle.contains(f)).toList()..sort();
-  if (introuvables.isEmpty) {
-    return null;
+
+  // 2. Le HARNAIS : ce que la suite charge réellement. Ne dépend d'aucun
+  //    manifeste, donc se contrôle toujours.
+  final List<String> nonChargees =
+      demandeesParLeTheme
+          .where((String f) => !chargeesParLeHarnais.contains(f))
+          .toList()
+        ..sort();
+  if (nonChargees.isNotEmpty) {
+    return "Le thème de l'app demande ${nonChargees.join(', ')}, "
+        "qu'argusFonts ne charge PAS. Familles chargées : "
+        '${chargeesParLeHarnais.isEmpty ? '(aucune)' : chargeesParLeHarnais.join(', ')}.'
+        "\n⚠️ L'application, elle, va peut-être très bien : c'est la SUITE qui "
+        'mesure faux. Une famille que le thème demande sans qu\'elle soit '
+        'chargée retombe sur la police de `flutter_test` — un carré d\'un '
+        'cadratin par glyphe, environ deux fois plus large.'
+        "\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, "
+        'préfixe de paquet compris, et fais-en argusFontFamily.';
   }
-  final String proches = bundle
-      .where((String b) => introuvables.any((String f) => b.endsWith('/$f')))
-      .join(', ');
-  return "Le thème de l'app demande ${introuvables.join(', ')}, "
-      "que le bundle n'enregistre pas sous ce nom. Familles enregistrées : "
-      '${bundle.join(', ')}.'
-      '${proches.isEmpty ? '' : "\n⚠️ « $proches » ne diffère que par le préfixe "
-                'de paquet : la police vient d\'une DÉPENDANCE, et il faut alors la '
-                "demander avec son paquet — `TextStyle(fontFamily: '<famille>', "
-                "package: '<paquet>')` — ou la déclarer dans le pubspec de l'app. "
-                'Sans ça Flutter retombe EN SILENCE sur la police système.'}'
-      "\n📌 Tant que ce n'est pas réglé, toute mesure de disposition de cette "
-      "suite décrit un rendu que l'appareil ne produit pas.";
+
+  return null;
 }
 
 /// Raison de sauter les gardes, ou `null` s'ils sont exploitables.

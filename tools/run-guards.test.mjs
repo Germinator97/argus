@@ -5005,7 +5005,15 @@ test('le message de débordement n\'annonce pas ce que `Actual:` dit déjà', ()
   // un correctif qui « marche ».
   const src = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/layout_test.dart'), 'utf8');
-  const bloc = src.match(/reason:\s*\n([\s\S]{0,400}?)\);/);
+  // ⚠️ ANCRER SUR LE TEST GARDÉ, jamais sur « le premier `reason:` du fichier ».
+  // Ce garde lisait le premier, et il a rougi le jour où un groupe de tests a
+  // été ajouté PLUS HAUT dans le même fichier (437) : il mesurait alors le
+  // message de quelqu'un d'autre. Le test se reconnaît à son propre nom.
+  const debut = src.indexOf("— rien ne déborde'");
+  assert.ok(debut > 0,
+    'le test « rien ne déborde » a été renommé : ce garde ne trouve plus ce qu\'il mesure, '
+    + 'mets son ancre à jour plutôt que de le supprimer');
+  const bloc = src.slice(debut).match(/reason:\s*\n([\s\S]{0,400}?)\);/);
   assert.ok(bloc, 'le `reason:` du test de débordement a disparu — mets ce garde à jour');
   assert.match(bloc[1], /error-causing widget/,
     'le message doit continuer de dire où chercher le vrai coupable');
@@ -11355,6 +11363,61 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 //
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
+// ── 437 ────────────────────────────────────────────────────────────────────
+// Le 436 comparait DEUX termes — le thème de l'app et le manifeste — et il
+// avait raison sur les deux. Il restait pourtant vert sur le cas suivant, que
+// le run 64 a produit : une app qui résout PARFAITEMENT sa police, et un
+// harnais qui la charge sous un autre nom. Le montage retombe alors sur la
+// police de `flutter_test`, deux fois plus large, et toute mesure de
+// disposition ment. Mesuré : 297/186 sous le nom nu contre 356/127 sous le nom
+// résolu — 59 gardes qui basculent, pendant que le contrôle disait « conforme ».
+//
+// ⚠️ Comme pour le 436, ce garde-ci ne tient que le CÂBLAGE et la DISTINCTION
+// des deux verdicts. Ce qui exerce vraiment la décision est le groupe de tests
+// Dart posé dans `layout_test.dart` : il appelle la fonction sur des valeurs
+// fabriquées, donc il tourne chez chaque utilisateur ET dans la CI, sans
+// dépendre d'un projet, d'un device ni d'un manifeste.
+test('la résolution de police confronte les TROIS termes, pas deux (437)', () => {
+  const base = 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile';
+  const mecanique = readFileSync(join(RACINE, base, 'test/argus/argus_harness.dart'), 'utf8');
+  const suite = readFileSync(join(RACINE, base, 'test/argus/layout_test.dart'), 'utf8');
+
+  // 1. La décision est EXTRAITE et pure — c'est ce qui la rend exerçable sans
+  //    projet. Sans extraction, aucun test ne pourrait la joindre.
+  assert.match(mecanique, /String\?\s+argusFontMismatch\(\{/,
+    'la décision de résolution n\'est plus extraite : sans elle, aucun test ne peut l\'exercer '
+    + 'sans monter un vrai projet, et le contrôle retombe sur la seule lecture de source (437)');
+  for (const terme of ['demandeesParLeTheme', 'chargeesParLeHarnais', 'enregistreesAuBundle']) {
+    assert.ok(mecanique.includes(terme),
+      `le terme « ${terme} » a disparu de la décision : elle ne confronte plus les trois sources, `
+      + 'et c\'est exactement l\'angle mort du 436 qui revient');
+  }
+
+  // 2. Le CÂBLAGE du troisième terme. La fonction peut rester parfaite pendant
+  //    que l'appelant ne lui passe plus ce que le harnais charge.
+  assert.match(mecanique, /chargeesParLeHarnais:\s*argusFonts\.keys\.toSet\(\)/,
+    'argusFontResolutionIssue ne passe plus ce que le harnais CHARGE : la décision garde ses trois '
+    + 'paramètres et n\'en reçoit que deux utiles, ce qui la rend verte sur le cas du 437');
+
+  // 3. Les DEUX verdicts doivent rester distincts : ils appellent des gestes
+  //    opposés — corriger l'app, ou corriger la déclaration de la suite.
+  assert.match(mecanique, /ne charge PAS/,
+    'le verdict « le harnais ne charge pas ce que le thème demande » a disparu');
+  assert.match(mecanique, /n'enregistre pas sous ce nom/,
+    'le verdict « l\'app ne résout pas sa police » a disparu — le 436 est parti avec le 437');
+
+  // 4. Et le groupe qui EXERCE la décision doit exister, avec ses deux moitiés.
+  assert.match(suite, /argusFontMismatch\(/,
+    'plus aucun test n\'appelle la décision : elle redevient du texte que seul un garde de source '
+    + 'peut lire, ce qui ne voit pas une valeur neutralisée');
+  assert.match(suite, /sans manifeste, le défaut de HARNAIS se voit quand même/,
+    'le cas « pas de manifeste » n\'est plus exercé : sans lui, le second contrôle pourrait être '
+    + 'rangé derrière la sortie « pas pu mesurer » et redevenir vacant sur une machine neuve');
+  assert.match(suite, /reste détecté, et se distingue/,
+    'plus rien ne vérifie que les deux verdicts ne se confondent pas — les confondre envoie '
+    + 'réparer une application qui marche');
+});
+
 // ── 436 ────────────────────────────────────────────────────────────────────
 // ⚠️ CE GARDE EST LE BARREAU FAIBLE, ET C'EST ASSUMÉ. La preuve qui compte est
 // une EXÉCUTION — elle a eu lieu, dans les trois sens, sur un projet réel : le

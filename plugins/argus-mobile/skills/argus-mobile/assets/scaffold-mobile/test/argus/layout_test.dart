@@ -35,6 +35,91 @@ void main() {
     await loadArgusFonts();
   });
 
+  // ── 437 ──────────────────────────────────────────────────────────────────
+  // La décision de résolution, exercée sur des valeurs FABRIQUÉES : elle ne
+  // dépend ni d'un projet, ni d'un device, ni d'un manifeste sur le disque,
+  // donc elle tourne partout — y compris sur une installation neuve où le
+  // contrôle réel ci-dessous se met en `skip`.
+  //
+  // ⚠️ C'est ce qui manquait au 436 : il comparait DEUX termes sur trois, et
+  // restait vert sur un projet dont l'app résolvait parfaitement sa police
+  // pendant que la suite la chargeait sous un autre nom.
+  group('résolution de police — les trois termes (437)', () {
+    const String demandee = 'packages/mon_paquet/MaPolice';
+
+    test('accord des trois : aucun défaut', () {
+      expect(
+        argusFontMismatch(
+          demandeesParLeTheme: <String>{demandee},
+          chargeesParLeHarnais: <String>{demandee},
+          enregistreesAuBundle: <String>[demandee],
+        ),
+        isNull,
+      );
+    });
+
+    test("le HARNAIS charge un autre nom que celui que le thème demande", () {
+      final String? defaut = argusFontMismatch(
+        demandeesParLeTheme: <String>{demandee},
+        chargeesParLeHarnais: <String>{'MaPolice'}, // le nom NU
+        enregistreesAuBundle: <String>[demandee], //   l'app va BIEN
+      );
+      expect(
+        defaut,
+        isNotNull,
+        reason:
+            "l'app résout sa police et la suite la charge sous un autre nom : le "
+            'montage retombe sur la police de flutter_test et TOUTE mesure de '
+            'disposition est fausse, sans que rien ne le dise (437)',
+      );
+      expect(defaut, contains('ne charge PAS'));
+    });
+
+    test("sans manifeste, le défaut de HARNAIS se voit quand même", () {
+      // Le second contrôle ne dépend d'aucun manifeste : le sauter quand le
+      // fichier manque le rendrait vacant sur une machine qui n'a pas encore
+      // lancé `flutter test`.
+      expect(
+        argusFontMismatch(
+          demandeesParLeTheme: <String>{demandee},
+          chargeesParLeHarnais: <String>{'MaPolice'},
+          enregistreesAuBundle: const <String>[],
+        ),
+        contains('ne charge PAS'),
+      );
+    });
+
+    test("le défaut de l'APPLICATION reste détecté, et se distingue", () {
+      final String? defaut = argusFontMismatch(
+        demandeesParLeTheme: <String>{'MaPolice'}, // le thème demande le nom NU
+        chargeesParLeHarnais: <String>{'MaPolice'},
+        enregistreesAuBundle: <String>[
+          demandee,
+        ], // le bundle n'a que le préfixé
+      );
+      expect(defaut, contains("n'enregistre pas sous ce nom"));
+      expect(
+        defaut,
+        isNot(contains('ne charge PAS')),
+        reason:
+            'les deux défauts appellent des gestes opposés — corriger le code de '
+            "l'app, ou corriger la déclaration de la suite : les confondre envoie "
+            'réparer ce qui marche',
+      );
+    });
+
+    test('aucun thème déclaré : rien à confronter, pas un vert', () {
+      expect(
+        argusFontMismatch(
+          demandeesParLeTheme: const <String>{},
+          chargeesParLeHarnais: const <String>{},
+          enregistreesAuBundle: const <String>[],
+        ),
+        isNull,
+      );
+    });
+  });
+
   // ── 436 ──────────────────────────────────────────────────────────────────
   // 🔴 CE CONTRÔLE COMMANDE TOUS LES AUTRES DE CE FICHIER. Le harnais charge
   // les polices par CHEMIN, donc elles existent toujours en test ; l'app, elle,
