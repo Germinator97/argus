@@ -3696,12 +3696,19 @@ test('argus-anchors lance ses DEUX moitiés, même si la première échoue (234)
   assert.match(corps, /--check-anchors/, 'le croisement a disparu de la cible');
   assert.match(corps, /test test\/argus\/anchors_test\.dart/, 'le test Dart a disparu de la cible');
   // Les deux gestes doivent être TOLÉRANTS à l'échec l'un de l'autre…
-  assert.match(corps, /--check-anchors \|\| rc=/,
+  // ⚠️ Le MÉCANISME, pas la forme : ce garde exigeait `|| rc=` et il est tombé
+  // sur le 423, qui donne une variable à CHAQUE moitié pour dire laquelle a
+  // échoué. Citer une forme fait rougir un correctif juste — et la pente est
+  // alors de supprimer le garde, ce qui vide la moitié qu'il tient.
+  const capture = (/** @type {string} */ geste) =>
+    new RegExp(`${geste}[^\n]*\\|\\|\\s*\\w+=\\$\\$\\?`).test(corps);
+  assert.ok(capture('--check-anchors'),
     'le croisement bloque de nouveau le test Dart : un garde qui empêche un autre garde de tourner');
-  assert.match(corps, /anchors_test\.dart \|\| rc=/, 'le test Dart n\'accumule plus son code de sortie');
+  assert.ok(capture('anchors_test\\.dart'), 'le test Dart n\'accumule plus son code de sortie');
   // …et la cible doit RESTER rouge si l'un des deux a échoué.
-  assert.match(corps, /exit \$\$rc/,
-    'la cible ne rend plus le code de sortie accumulé — elle passerait au vert sur un échec');
+  const sorties = [...corps.matchAll(/\bexit\s+(\$\$\w+|[1-9]\d*)/g)].map((m) => m[1]);
+  assert.ok(sorties.length > 0,
+    'la cible ne rend plus aucun code de sortie non nul — elle passerait au vert sur un échec');
 });
 
 test('un conseil ne nomme pas un objet que la plateforme n\'a pas (235)', () => {
@@ -11015,4 +11022,53 @@ test('un chemin de paquet qui ignore le flavor déclaré est signalé, sur les D
   // Et sans flavor déclaré, il n'y a rien à dire — le défaut n'existe pas.
   assert.deepEqual(surLeFlavor({ flavor: '' }, { ios: 'build/ios/iphonesimulator/Runner.app' }), [],
     'sans flavor, un chemin sans segment est le chemin NORMAL : l\'avertissement serait faux');
+});
+
+// ── 423 · LA DERNIÈRE LIGNE NE PEUT PAS DIRE L'INVERSE DU VERDICT ────────
+//
+// `argus-anchors` a deux moitiés — POSÉ→DÉCLARÉ, puis DÉCLARÉ→PRÉSENT — et
+// garde le PIRE code de sortie, ce qui est juste. Mais le croisement tourne en
+// premier : croisement rouge + suite verte affiche « All tests passed! » en
+// DERNIER et sort en 2. Un run l'a lu comme un vert.
+//
+// On ne réordonne pas — la seconde moitié doit tourner même si la première
+// échoue (point 234) —, on RÉSUME après les deux. Le garde ne cherche donc pas
+// une phrase : il exige le mécanisme, une variable de sortie PAR moitié et
+// chacune testée. Revenir à un `rc` unique le fait tomber.
+test('une cible à deux moitiés dit LAQUELLE a échoué, après les deux (423)', () => {
+  const make = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const debut = make.indexOf('\nargus-anchors:');
+  assert.ok(debut > 0, 'la cible argus-anchors a disparu du Makefile');
+  // La recette s'arrête à la prochaine cible en début de ligne.
+  const suite = make.slice(debut + 1);
+  const fin = suite.search(/\n[a-z][\w-]*:/);
+  const recette = fin === -1 ? suite : suite.slice(0, fin);
+
+  // Les moitiés se DÉRIVENT de la recette : chaque commande dont l'échec est
+  // capturé. Deux aujourd'hui ; une troisième demain devra suivre la règle.
+  const captures = [...recette.matchAll(/\|\|\s*(\w+)=\$\$\?/g)].map((m) => m[1]);
+  assert.ok(captures.length >= 2,
+    `la recette ne capture que ${captures.length} code(s) de sortie : soit elle a changé de forme, `
+    + 'soit elle est revenue à un compteur unique — et alors la dernière ligne affichée peut '
+    + 'à nouveau dire l\'inverse du verdict (423)');
+  assert.equal(new Set(captures).size, captures.length,
+    `deux moitiés partagent la même variable (${captures.join(', ')}) : on ne peut plus dire `
+    + 'laquelle a échoué, ce qui est tout l\'objet du correctif');
+
+  for (const v of captures) {
+    assert.match(recette, new RegExp(`\\[\\s*\\$\\$${v}\\s+-ne\\s+0\\s*\\]`),
+      `« ${v} » est capturé mais jamais relu : sa moitié peut échouer sans que le résumé la nomme`);
+  }
+  // Et le résumé vient APRÈS les deux commandes, sinon il décrit un état
+  // qu'aucune des deux n'a encore produit.
+  // ⚠️ Mesuré sur le CODE, commentaires ôtés : la première version de ce garde
+  // cherchait le mot « ÉCHOUE », qui vit aussi dans le commentaire du point 234.
+  // Un mot présent deux fois dans la fenêtre ne garde aucune de ses occurrences.
+  const code = recette.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const derniereCommande = Math.max(...captures.map((v) => code.lastIndexOf(`${v}=$$?`)));
+  const premierTest = code.search(new RegExp(`\\[\\s*\\$\\$(?:${captures.join('|')})\\s+-ne`));
+  assert.ok(derniereCommande > 0 && premierTest > 0, 'la recette a changé de forme — mets ce garde à jour');
+  assert.ok(premierTest > derniereCommande,
+    'le résumé se lit AVANT que les deux moitiés aient tourné : il ne peut pas dire laquelle a échoué');
 });

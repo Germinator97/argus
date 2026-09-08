@@ -115,10 +115,28 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 # les ancres sous le pli, ne tournait alors JAMAIS : il a fallu deux passes à un
 # run pour découvrir sept ancres sous le pli qu'il aurait nommées du premier coup.
 # Un garde qui en empêche un autre de s'exécuter coûte plus qu'il ne rapporte.
-	@rc=0; \
-	node scripts/argus/config.mjs --check-anchors || rc=$$?; \
-	$(FLUTTER) test test/argus/anchors_test.dart || rc=$$?; \
-	exit $$rc
+# ⚠️ ET LA DERNIÈRE LIGNE DISAIT L'INVERSE DU VERDICT (422-427, point 423). Les
+# deux moitiés gardent le pire code de sortie — c'est juste — mais le croisement
+# tourne AVANT la suite : un croisement rouge suivi d'une suite verte affiche
+# « All tests passed! » en DERNIER et sort en 2. Un run l'a lu comme un vert.
+# On ne réordonne pas (la seconde moitié doit tourner même si la première
+# échoue) : on RÉSUME après les deux, en nommant celle qui a échoué.
+	@croise=0; suite=0; \
+	node scripts/argus/config.mjs --check-anchors || croise=$$?; \
+	$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \
+	if [ $$croise -ne 0 ] || [ $$suite -ne 0 ]; then \
+	  echo ""; \
+	  echo "  ✖ argus-anchors ÉCHOUE — ce que la dernière ligne ci-dessus ne dit pas :"; \
+	  if [ $$croise -ne 0 ]; then \
+	    echo "      · POSÉ → DÉCLARÉ (exit $$croise) : une ancre est posée dans lib/ sans être"; \
+	    echo "        déclarée. Elle n'est vérifiée nulle part — c'est une ABSENCE, pas un échec."; \
+	  fi; \
+	  if [ $$suite -ne 0 ]; then \
+	    echo "      · DÉCLARÉ → PRÉSENT (exit $$suite) : une ancre déclarée n'arrive pas dans"; \
+	    echo "        l'arbre sémantique — absorbée, inerte, ou sous le pli."; \
+	  fi; \
+	  exit 1; \
+	fi
 
 argus-reach: ## Quels écrans ancrés aucun `goto` ne dessert ? (sans device)
 	@node scripts/argus/config.mjs --check-reachability

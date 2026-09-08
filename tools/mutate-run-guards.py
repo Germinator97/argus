@@ -662,7 +662,7 @@ MUTATIONS = [
      "    if: needs.cadre.outputs.ios == 'true' && vars.ARGUS_IOS_CI == 'true'",
      "    if: false"),
     ("makefile", "234 · le croisement rebloque le test Dart",
-     "\tnode scripts/argus/config.mjs --check-anchors || rc=$$?; \\",
+     "\tnode scripts/argus/config.mjs --check-anchors || croise=$$?; \\",
      "\tnode scripts/argus/config.mjs --check-anchors; \\"),
     ("run", "235 · le conseil de locale reparle d'émulateur sur iOS",
      "      ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'",
@@ -1571,6 +1571,12 @@ MUTATIONS = [
     ("config", "422 · le contrôle du flavor perd une plateforme",
      "for (const [plateforme, chemin] of [['ios', config.build?.ios], ['android', config.build?.android]]) {",
      "for (const [plateforme, chemin] of [['ios', config.build?.ios]]) {"),
+    # 423 — les deux moitiés repartagent une variable : la cible reste rouge,
+    # mais plus rien ne peut dire LAQUELLE a échoué, et la dernière ligne
+    # affichée redevient celle de la moitié qui passe.
+    ("makefile", "423 · les deux moitiés repartagent un compteur unique",
+     "$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \\",
+     "$(FLUTTER) test test/argus/anchors_test.dart || croise=$$?; \\"),
 ]
 
 
