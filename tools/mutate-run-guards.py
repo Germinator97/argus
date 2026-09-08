@@ -1592,6 +1592,11 @@ MUTATIONS = [
     ("goto", "425 · l'aiguillage ne nomme plus l'ancre post-connexion",
      "`ARGUS_AUTH_SUCCESS`.",
      "l'ancre prévue à cet effet."),
+    # 426 — l'issue disparaît : la consigne redevient inconditionnelle, et celui
+    # qui n'a pas d'interlocuteur bloque ou tranche en silence.
+    ("skill", "426 · l'issue cesse de dire de LAISSER ce qui ne se neutralise pas",
+     "2. **Laisse le reste**, et ne va pas couper un appel dans `lib/` pour le faire",
+     "2. Fais au mieux, et ne va pas couper un appel dans `lib/` pour le faire"),
 ]
 
 
