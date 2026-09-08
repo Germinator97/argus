@@ -1597,6 +1597,11 @@ MUTATIONS = [
     ("skill", "426 · l'issue cesse de dire de LAISSER ce qui ne se neutralise pas",
      "2. **Laisse le reste**, et ne va pas couper un appel dans `lib/` pour le faire",
      "2. Fais au mieux, et ne va pas couper un appel dans `lib/` pour le faire"),
+    # 427 — l'arbitrage cesse de renvoyer à la mesure qui le borne : « garde
+    # l'active » devient une permission permanente au lieu d'un compromis.
+    ("skill", "427 · l'arbitrage perd la mesure qui le borne",
+     "c'est exactement ce que `make argus-anchors`",
+     "c'est ce que ton jugement"),
 ]
 
 
