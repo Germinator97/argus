@@ -860,7 +860,7 @@ const IMAGE_MIME = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/
 function embedEvidence(findings, options) {
   /** @type {Map<string,string>} */
   const shots = new Map();
-  const result = { shots, embedded: 0, tooBig: 0, missing: 0, bytes: 0 };
+  const result = { shots, embedded: 0, tooBig: 0, missing: 0, filtered: 0, bytes: 0 };
   if (options.evidence === 'none') return result;
 
   const keep = options.evidence === 'major'
@@ -869,7 +869,17 @@ function embedEvidence(findings, options) {
   const budget = options.maxMb * 1024 * 1024;
 
   for (const severity of SEVERITIES) {
-    if (!keep.has(severity)) continue;
+    if (!keep.has(severity)) {
+      // Ce que le SEUIL de sévérité écarte se compte aussi : « 0 capture » et
+      // « 3 captures écartées par ton réglage » sont deux situations
+      // différentes, et une seule appelle une action.
+      for (const finding of findings.filter((f) => f.severity === severity)) {
+        for (const rel of finding.evidence ?? []) {
+          if (IMAGE_MIME[extname(rel).toLowerCase()]) result.filtered += 1;
+        }
+      }
+      continue;
+    }
     for (const finding of findings.filter((f) => f.severity === severity)) {
       for (const rel of finding.evidence ?? []) {
         if (shots.has(rel)) continue;
@@ -886,6 +896,42 @@ function embedEvidence(findings, options) {
     }
   }
   return result;
+}
+
+/**
+ * Ce que la page dit de ses preuves — appelée, jamais recopiée.
+ *
+ * 🔴 LE CAS QUI SE TAISAIT, ET C'ÉTAIT LE RUN VERT. Une capture ne part
+ * qu'attachée à un FINDING. Un run sans finding porteur — donc le run vert,
+ * celui qu'on publie — sortait une page sans une seule image et sans une ligne
+ * pour le dire : les quatre compteurs valaient zéro, la note n'était pas rendue,
+ * et le lecteur qui avait demandé `all` ne pouvait pas distinguer « il n'y avait
+ * rien à montrer » d'un mécanisme en panne. Le dartdoc d'`embedEvidence`
+ * promettait déjà l'inverse — « une preuve absente sans un mot se lit *il n'y
+ * avait pas de preuve* » — pour tous les cas sauf celui-là.
+ *
+ * ⚠️ Ne pas confondre les deux zéros : aucune image à embarquer, et des images
+ * ÉCARTÉES par `evidence: major`. Le second est un réglage à revoir, le premier
+ * n'appelle aucune action — les annoncer pareil ferait chercher une panne
+ * inexistante.
+ *
+ * @param {string} evidence @param {{embedded:number, tooBig:number, missing:number, filtered:number, bytes:number}} shot
+ * @param {number} maxMb @returns {string[]}
+ */
+export function notesDePreuve(evidence, shot, maxMb) {
+  const notes = [];
+  if (evidence === 'none') notes.push('captures laissées en chemin (artifact.evidence: none)');
+  if (shot.embedded) notes.push(`${shot.embedded} capture(s) embarquée(s), ${humanSize(shot.bytes)}`);
+  if (shot.tooBig) notes.push(`${shot.tooBig} au-delà du plafond de ${maxMb} Mo, laissée(s) en chemin`);
+  if (shot.missing) notes.push(`${shot.missing} introuvable(s) sur le disque`);
+  if (shot.filtered) notes.push(`${shot.filtered} écartée(s) par artifact.evidence: ${evidence}`);
+  if (evidence !== 'none' && !shot.embedded && !shot.tooBig && !shot.missing && !shot.filtered) {
+    notes.push(
+      `aucune capture malgré artifact.evidence: ${evidence} — une preuve `
+      + "s'attache à un finding, et aucun finding n'en portait",
+    );
+  }
+  return notes;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -984,11 +1030,7 @@ function main() {
     const evidence = config.artifact.evidence ?? 'all';
     const maxMb = config.artifact.maxMb ?? 12;
     const shot = embedEvidence(findings, { evidence, maxMb });
-    const notes = [];
-    if (evidence === 'none') notes.push('captures laissées en chemin (artifact.evidence: none)');
-    if (shot.embedded) notes.push(`${shot.embedded} capture(s) embarquée(s), ${humanSize(shot.bytes)}`);
-    if (shot.tooBig) notes.push(`${shot.tooBig} au-delà du plafond de ${maxMb} Mo, laissée(s) en chemin`);
-    if (shot.missing) notes.push(`${shot.missing} introuvable(s) sur le disque`);
+    const notes = notesDePreuve(evidence, shot, maxMb);
     const evidenceNote = notes.length ? `<p class="muted">Preuves : ${esc(notes.join(' · '))}</p>` : '';
     // ⚠️ LE NOM PORTE LA PLATEFORME, et ce n'est pas cosmétique. L'outil de
     // publication rapproche par CHEMIN DE FICHIER : tant que les deux runs d'un

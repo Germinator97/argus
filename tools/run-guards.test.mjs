@@ -45,6 +45,7 @@ import { LIGHTBOX, STYLE, findingCards, perfRows } from '../plugins/argus-mobile
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identitePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -11348,6 +11349,56 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 //
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
+// ── 434 ────────────────────────────────────────────────────────────────────
+// Le garde APPELLE la construction et lit ce qu'elle rend : lire le texte de
+// `report.mjs` ne verrait pas une note neutralisée (`[] ?? …`, `&& false`), et
+// c'est justement une valeur rendue qu'on veut ici.
+//
+// ⚠️ Les deux moitiés comptent. Le défaut était un SILENCE, donc la tentation
+// est de n'asserter que « ça parle » — un garde vert sur une fonction qui
+// bavarderait à tort. On exige donc aussi que les cas nominaux gardent leur
+// note, et que les DEUX zéros ne se disent pas de la même façon.
+test('une page sans capture dit pourquoi, et le run vert est le cas visé (434)', () => {
+  const zero = { embedded: 0, tooBig: 0, missing: 0, filtered: 0, bytes: 0 };
+
+  // 1. Le run VERT : rien à embarquer, et `all` demandé. C'est le cas qui se
+  //    taisait — la page sortait nue, sans une ligne pour le dire.
+  const vert = notesDePreuve('all', zero, 12);
+  assert.ok(vert.length > 0,
+    'un run sans finding porteur produit une page SANS capture et sans un mot : le lecteur qui a '
+    + 'demandé `evidence: all` ne peut pas distinguer « rien à montrer » d\'un mécanisme en panne (434)');
+  assert.match(vert.join(' · '), /aucune capture/i,
+    'la note ne dit pas qu\'aucune capture n\'est partie');
+  assert.match(vert.join(' · '), /finding/i,
+    'la note ne dit pas POURQUOI — une preuve s\'attache à un finding : sans cette raison, '
+    + 'elle se lit comme une panne');
+
+  // 2. Le jumeau qui prouve que l'assertion sait chercher : `none` est un choix
+  //    explicite, il portait déjà sa note et doit la garder.
+  const aucune = notesDePreuve('none', zero, 12);
+  assert.match(aucune.join(' · '), /artifact\.evidence: none/,
+    'le réglage explicite `none` a perdu sa note');
+  assert.ok(!/aucune capture malgré/i.test(aucune.join(' · ')),
+    '`none` reçoit la note du run vert : on annonce un manque là où c\'est un choix assumé');
+
+  // 3. Le cas nominal garde la sienne — le correctif ne doit pas l'avoir mangée.
+  const embarquees = notesDePreuve('all', { ...zero, embedded: 3, bytes: 2 * 1048576 }, 12);
+  assert.match(embarquees.join(' · '), /3 capture/,
+    'le compte des captures embarquées a disparu');
+  assert.ok(!/aucune capture malgré/i.test(embarquees.join(' · ')),
+    'la note du run vert s\'affiche alors que trois captures sont parties');
+
+  // 4. Les DEUX zéros ne se disent pas pareil. Des images écartées par le seuil
+  //    de sévérité, c'est un réglage à revoir ; aucune image, c'est un fait sans
+  //    action. Les annoncer pareil enverrait chercher une panne inexistante.
+  const ecartees = notesDePreuve('major', { ...zero, filtered: 4 }, 12);
+  assert.match(ecartees.join(' · '), /4 .*écartée/,
+    'les captures écartées par `evidence: major` ne sont pas comptées : leur absence se lit alors '
+    + 'comme « il n\'y avait rien », alors qu\'un réglage les a retirées');
+  assert.ok(!/aucune capture malgré/i.test(ecartees.join(' · ')),
+    'le seuil a écarté des captures et la page annonce qu\'aucune n\'existait');
+});
+
 test('la mise en garde sur `label:` nomme le canal des captures (430)', () => {
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
   const i = skill.indexOf('- **Secrets** :');
