@@ -634,6 +634,12 @@ security:
   # utilises Firebase, les deux entrées à écrire sont :
   #     - android/app/google-services.json
   #     - ios/Runner/GoogleService-Info.plist
+  # ⚠️ …À CONDITION QU'ILS SOIENT SUIVIS PAR GIT. Le scan ne lit que ce que le
+  # dépôt porte : un `google-services.json` **gitignoré** est déjà hors de sa
+  # portée, et le dispenser rend l'entrée INERTE — ce que le scan te signalera,
+  # à raison. Mesuré sur un projet réel qui utilise pourtant Firebase : les deux
+  # entrées ci-dessus ne dispensaient rien. Vérifie avant d'écrire :
+  #     git check-ignore -q <le fichier> && echo "déjà hors scan"
   allowSecretsIn: []
   # Sévérité SCA (osv-scanner) qui fait échouer.
   scaFailOn: high

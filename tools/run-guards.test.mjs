@@ -11413,3 +11413,34 @@ test('la fraîcheur du paquet se relève AVANT le build (431)', () => {
     `« ${v} » est relevé avant le build et jamais relu après : c'est la comparaison qui décide, `
     + 'pas la mesure');
 });
+
+// ── 432 · UNE DISPENSE SUGGÉRÉE DIT À QUELLE CONDITION ELLE SERT ─────────
+//
+// Le gabarit propose deux entrées à écrire « si tu utilises Firebase ». Sur un
+// projet qui l'utilise, elles se sont révélées INERTES : les fichiers sont
+// gitignorés, donc déjà hors de portée du scan. Le scan l'a signalé — à raison
+// —, mais la suggestion, elle, ne disait pas à quelle condition elle vaut.
+//
+// Une dispense sans objet se relit comme une dispense nécessaire, et c'est ce
+// qui la fait recopier d'un projet à l'autre.
+test('la dispense suggérée dit à quelle condition elle a un objet (432)', () => {
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const cle = yaml.indexOf('\n  allowSecretsIn:');
+  assert.ok(cle > 0, 'la clé allowSecretsIn a changé de forme — mets ce garde à jour');
+  // Le bloc de commentaires qui précède la clé, jusqu'au titre de section.
+  const debut = yaml.lastIndexOf('\n  # ', yaml.lastIndexOf('\n  #', cle - 1) - 900);
+  const bloc = yaml.slice(Math.max(0, debut), cle);
+
+  // La suggestion existe — sans elle, ce garde n'a rien à qualifier.
+  assert.match(bloc, /google-services\.json/,
+    'la suggestion d\'entrées a disparu : ce garde ne mesure plus rien');
+  assert.match(bloc, /gitignor/i,
+    'le gabarit suggère des dispenses sans dire qu\'elles n\'ont d\'objet que si le fichier est '
+    + 'SUIVI : un fichier gitignoré est déjà hors du scan, et l\'entrée est inerte — mesuré sur '
+    + 'un projet qui utilise pourtant Firebase (432)');
+  // Et il doit donner le geste qui tranche, pas seulement la condition.
+  assert.match(bloc, /check-ignore/,
+    'la condition est énoncée sans le geste qui la vérifie : « est-il suivi ? » se mesure en une '
+    + 'commande, et sans elle on recopie la dispense d\'un projet à l\'autre');
+});
