@@ -235,6 +235,27 @@ canal est bien coupé se fait **sur la release**, jamais sur le debug : un
 `String.fromEnvironment` garde sa valeur par défaut dans le kernel JIT, donc le
 binaire de debug ne tranche rien.
 
+⚠️ **ET SI TU COMPTES QUAND MÊME DANS LE DEBUG, TU TROUVERAS UNE OCCURRENCE —
+CE N'EST PAS UN ÉCHEC DE NEUTRALISATION.** Le `defaultValue` est un littéral de
+SOURCE : il vit dans le kernel quelle que soit la valeur effective, donc `1` est
+le seul résultat possible et il ne dit rien. Un run l'a compté et a failli
+conclure que la clé n'avait pas été neutralisée ; ce qui l'a sauvé est la phrase
+ci-dessus, pas la table qui explique le phénomène deux cents lignes plus loin.
+La mesure qui tranche porte sur l'AOT, et **dans les trois encodages** — un run
+y a relevé `0` partout, contre `26` avec un DSN volontairement muté :
+
+```bash
+unzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \
+  | grep -a -c "<la clé>"   # ⚠️ pipe, ne capture jamais ; latin-1 ET utf-16-le
+```
+
+⚠️ **L'encodage n'est pas un détail ici** : en AOT, un seul caractère accentué
+fait basculer toute la chaîne en UTF-16 et un `grep` UTF-8 rend `0` sur un texte
+présent — c'est-à-dire le zéro qu'on cherchait à éviter, rendu par l'instrument
+lui-même. La règle complète, avec la table par mode de build, est au §3g
+(« Deux contre-épreuves, une ACCENTUÉE et une ASCII ») ; fais toujours porter au
+relevé une contre-épreuve dont l'absence serait impossible (421).
+
 **b. Audit d'instrumentation Semantics.** C'est le livrable de cette étape.
 Cherche dans `lib/` les `Semantics(identifier:` et `semanticLabel:` déjà posés,
 puis les widgets interactifs qui n'en ont pas : `ElevatedButton`, `TextButton`,

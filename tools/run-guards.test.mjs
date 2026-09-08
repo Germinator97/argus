@@ -10933,3 +10933,39 @@ test('le prix d\'une locale inerte est dit à la clé, pas seulement au premier 
     'la clé nomme le flow sans dire ce qu\'il devient — « sans effet » se lit comme un réglage '
     + 'inopérant, alors que le prix est une dimension qui passe sans mesurer');
 });
+
+// ── 421 · LE COMPTAGE BINAIRE PORTE SA RÈGLE D'ENCODAGE, OÙ QU'IL SOIT ────
+//
+// Un run a compté un DSN dans le kernel DEBUG, en a trouvé 1, et a failli
+// conclure à un échec de neutralisation. L'occurrence était le `defaultValue`
+// en tant que littéral de source — présent quelle que soit la valeur effective,
+// donc le seul résultat possible. Ce qui l'a sauvé est une phrase du §2 ; la
+// table qui explique le phénomène vit au §3g, deux cents lignes plus loin.
+//
+// Le garde ne rapproche pas les deux textes à la main : il exige que TOUT geste
+// de comptage dans un binaire vive dans une section qui porte la règle
+// d'encodage. Un troisième site, écrit demain ailleurs, tombera dessus — et
+// c'est la seule forme qui tienne, la distance entre un geste et sa règle
+// n'ayant aucun comportement à casser.
+test('tout comptage dans un binaire vit avec sa règle d\'encodage (421)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // Les sections du document, découpées sur ses propres titres : pas de fenêtre
+  // en nombre de lignes, qui serait un chiffre deviné.
+  const titres = [...skill.matchAll(/^## .*$/gm)];
+  assert.ok(titres.length >= 5, 'le SKILL n\'a plus ses sections : ce découpage ne veut plus rien dire');
+  const sections = titres.map((t, i) => ({
+    titre: t[0],
+    corps: skill.slice(t.index, i + 1 < titres.length ? titres[i + 1].index : skill.length),
+  }));
+
+  const COMPTAGE = /grep -a -c/;
+  const REGLE = /encodage/i;
+  const avecGeste = sections.filter((s) => COMPTAGE.test(s.corps));
+  assert.ok(avecGeste.length >= 2,
+    `le geste de comptage binaire n'apparaît plus que dans ${avecGeste.length} section(s) : ce `
+    + 'garde ne mesure plus la dispersion qu\'il surveille');
+  assert.deepEqual(avecGeste.filter((s) => !REGLE.test(s.corps)).map((s) => s.titre), [],
+    'ces sections prescrivent de compter une chaîne dans un binaire sans dire un mot de '
+    + 'l\'encodage : un littéral accentué en AOT rend alors `0`, et ce zéro-là se lit comme '
+    + 'la preuve qu\'on cherchait — c\'est l\'instrument qui l\'a produit (421)');
+});
