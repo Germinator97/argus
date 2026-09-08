@@ -11414,33 +11414,40 @@ test('la fraîcheur du paquet se relève AVANT le build (431)', () => {
     + 'pas la mesure');
 });
 
-// ── 432 · UNE DISPENSE SUGGÉRÉE DIT À QUELLE CONDITION ELLE SERT ─────────
+// ── 432 · LA SUGGESTION PORTE SA CONDITION, LÀ OÙ ON LA LIT ─────────────
 //
-// Le gabarit propose deux entrées à écrire « si tu utilises Firebase ». Sur un
-// projet qui l'utilise, elles se sont révélées INERTES : les fichiers sont
-// gitignorés, donc déjà hors de portée du scan. Le scan l'a signalé — à raison
-// —, mais la suggestion, elle, ne disait pas à quelle condition elle vaut.
+// ⚠️ CE CONSTAT EST EN PARTIE DÉMENTI, et c'est ma correction qui l'a montré.
+// Le run signalait que les deux entrées suggérées sont inertes sur un projet
+// qui utilise pourtant Firebase — vrai — et j'ai commencé par ÉCRIRE la
+// condition… qui existait déjà quatorze lignes plus haut, mieux dite : « n'y
+// liste QUE des fichiers VERSIONNÉS ; un fichier gitignoré n'est déjà pas
+// regardé ». J'ajoutais ce qui était là, pour la neuvième fois du chantier.
 //
-// Une dispense sans objet se relit comme une dispense nécessaire, et c'est ce
-// qui la fait recopier d'un projet à l'autre.
-test('la dispense suggérée dit à quelle condition elle a un objet (432)', () => {
+// Le résidu vrai est plus étroit : la SUGGESTION se lit seule, loin de sa
+// condition — c'est ce que le garde tient, la condition rappelée là où les
+// entrées sont proposées, et non ailleurs dans le bloc.
+test('les entrées suggérées rappellent leur condition, là où on les lit (432)', () => {
   const yaml = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
   const cle = yaml.indexOf('\n  allowSecretsIn:');
   assert.ok(cle > 0, 'la clé allowSecretsIn a changé de forme — mets ce garde à jour');
-  // Le bloc de commentaires qui précède la clé, jusqu'au titre de section.
-  const debut = yaml.lastIndexOf('\n  # ', yaml.lastIndexOf('\n  #', cle - 1) - 900);
-  const bloc = yaml.slice(Math.max(0, debut), cle);
+  const lignes = yaml.slice(0, cle).split('\n');
 
-  // La suggestion existe — sans elle, ce garde n'a rien à qualifier.
-  assert.match(bloc, /google-services\.json/,
-    'la suggestion d\'entrées a disparu : ce garde ne mesure plus rien');
-  assert.match(bloc, /gitignor/i,
-    'le gabarit suggère des dispenses sans dire qu\'elles n\'ont d\'objet que si le fichier est '
-    + 'SUIVI : un fichier gitignoré est déjà hors du scan, et l\'entrée est inerte — mesuré sur '
-    + 'un projet qui utilise pourtant Firebase (432)');
-  // Et il doit donner le geste qui tranche, pas seulement la condition.
-  assert.match(bloc, /check-ignore/,
-    'la condition est énoncée sans le geste qui la vérifie : « est-il suivi ? » se mesure en une '
-    + 'commande, et sans elle on recopie la dispense d\'un projet à l\'autre');
+  // La dernière entrée suggérée, et ce qui la suit jusqu'à la clé : c'est cette
+  // fenêtre-là qu'on lit en recopiant, pas le bloc entier.
+  const derniere = lignes.map((l, k) => (/^\s*#\s+- \S+\.(json|plist)/.test(l) ? k : -1))
+    .filter((k) => k >= 0).pop();
+  assert.ok(derniere !== undefined,
+    'plus aucune entrée suggérée : ce garde ne mesure rien — si la suggestion a disparu, la '
+    + 'condition n\'a plus à être rappelée et il faut le dire ici');
+  const apres = lignes.slice(derniere + 1).join('\n');
+
+  assert.match(apres, /VERSIONN|gitignor/i,
+    'les entrées suggérées ne rappellent pas, là où on les recopie, qu\'elles n\'ont d\'objet que '
+    + 'si le fichier est VERSIONNÉ. La règle vit plus haut dans le bloc — et c\'est la suggestion '
+    + 'qu\'on lit quand on remplit (432)');
+  assert.match(apres, /check-ignore/,
+    'et sans le geste qui tranche, la condition reste une phrase : « est-il suivi ? » se mesure '
+    + 'en une commande');
 });
+
