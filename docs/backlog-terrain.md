@@ -5081,6 +5081,15 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **3 POINTS OUVERTS — 434 à 436, ouverts le 08/09/2026** par le **run 63**
+(confirmation iOS, 7 flows, `scope: complet`). Neuf correctifs des trois passes
+ont payé de façon mesurable — dont le **427**, que deux runs avaient rencontré
+sans savoir quoi faire et que le troisième a appliqué à la lettre. Ce qui reste
+est d'une seule espèce : **trois instruments qui mesuraient autre chose que ce
+qu'ils annonçaient**, et aucun ne produisait d'erreur. Le pire des trois, le
+436, est né du **429**, fermé la veille — un correctif juste qui a ouvert la
+porte suivante.
+
 ✅ **429 à 433 FERMÉS le 08/09/2026 — backlog VIDE (57e vidage).** Cinq gardes,
 six mutations. Le **run 62** (confirmation Android) avait rendu 4 flows sur 6 —
 les deux rouges étant un défaut de l'app et une absorption d'ancre non résolue.
