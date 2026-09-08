@@ -11355,6 +11355,55 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 //
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
+// ── 436 ────────────────────────────────────────────────────────────────────
+// ⚠️ CE GARDE EST LE BARREAU FAIBLE, ET C'EST ASSUMÉ. La preuve qui compte est
+// une EXÉCUTION — elle a eu lieu, dans les trois sens, sur un projet réel : le
+// nom nu contre un manifeste préfixé ROUGIT avec son remède, le nom préfixé des
+// deux côtés PASSE, et l'absence de thème SKIPPE en imprimant sa raison. Rien
+// de tout cela ne se rejoue depuis Node. Ce que ce garde tient, c'est le
+// CÂBLAGE : une mécanique que plus personne n'appelle mesure encore
+// parfaitement, et sa suite reste verte.
+test('le contrôle de résolution des polices est CÂBLÉ, et ses trois états distincts (436)', () => {
+  const base = 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile';
+  const mecanique = readFileSync(join(RACINE, base, 'test/argus/argus_harness.dart'), 'utf8');
+  const suite = readFileSync(join(RACINE, base, 'test/argus/layout_test.dart'), 'utf8');
+
+  // 1. La mécanique existe et lit une source EXTÉRIEURE au harnais. Sans elle,
+  //    on comparerait deux valeurs venues du même endroit — circulaire.
+  assert.match(mecanique, /String\?\s+argusFontResolutionIssue\(\)/,
+    'la mécanique de résolution des polices a disparu : ce garde ne mesure plus rien');
+  assert.match(mecanique, /FontManifest\.json/,
+    'le contrôle ne lit plus le manifeste que `flutter test` produit — c\'est la seule source '
+    + 'EXTÉRIEURE au harnais, donc la seule qui ne soit pas circulaire (436)');
+
+  // 2. Le câblage. C'est le seul mode de panne que Node peut voir : la fonction
+  //    reste juste, et plus personne ne l\'appelle.
+  assert.match(suite, /argusFontResolutionIssue\(\)/,
+    'layout_test.dart n\'appelle plus argusFontResolutionIssue() : la mécanique existe et rien ne '
+    + 'l\'exerce, donc les mesures de disposition redeviennent muettes sur la police qu\'elles '
+    + 'mesurent (436)');
+
+  // 3. Les TROIS états, chacun avec sa sortie propre. Deux d'entre eux sont des
+  //    refus de conclure, et un refus muet se lit comme un vert.
+  assert.match(suite, /markTestSkipped\(/,
+    'les cas « pas de thème » et « pas de manifeste » ne se déclarent plus : ils passeraient alors '
+    + 'pour conformes, ce qui est la panne exacte que ce contrôle existe pour éviter');
+  assert.match(suite, /argusThemeFontFamilies\(\)/,
+    'la suite ne distingue plus le cas « aucun thème déclaré » : sans lui, le contrôle compare le '
+    + 'thème que le HARNAIS fabrique au bundle, ce qui est circulaire');
+  assert.match(suite, /argusBundledFontFamilies\(\)/,
+    'la suite ne distingue plus le cas « manifeste absent » : « pas pu mesurer » deviendrait '
+    + '« conforme »');
+
+  // 4. Et la CI EXERCE le troisième état sur un projet neuf. C'est le seul
+  //    barreau qui exécute vraiment — le garder ici évite qu'il parte en
+  //    silence lors d'une réécriture du workflow.
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  assert.match(ci, /argusTheme\(\) ne rend pas le thème de l'app/,
+    'la CI ne vérifie plus que le contrôle DIT pourquoi il n\'a rien mesuré sur un projet neuf : '
+    + 'c\'est la seule exécution réelle de ce mécanisme dans le dépôt (436)');
+});
+
 // ── 435 ────────────────────────────────────────────────────────────────────
 // Ce garde EXÉCUTE la commande que le skill prescrit, sur un corpus qui porte
 // le cas. Lire son texte ne dirait rien : le motif d'origine était parfaitement

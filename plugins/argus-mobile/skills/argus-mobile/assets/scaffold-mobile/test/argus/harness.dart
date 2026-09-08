@@ -111,6 +111,24 @@ const Map<String, List<String>> argusFonts =
 /// la famille appliquée par défaut au thème de test — celle que
 /// `ThemeData.fontFamily` porte dans l'app. DOIT être une clé de [argusFonts] :
 /// un nom qui n'y figure pas retombe en silence sur la police de test.
+///
+/// 🔴 ET CE N'EST QUE LA MOITIÉ DU PIÈGE. Être une clé de [argusFonts] garantit
+/// que la police est chargée EN TEST — le harnais lit le `.ttf` par son CHEMIN,
+/// donc il le trouve toujours. Ça ne dit rien de ce que l'APPLICATION résout :
+/// elle, elle demande une famille par son NOM.
+///
+/// L'écart apparaît dès que la police vient d'une DÉPENDANCE : le bundle
+/// l'enregistre sous `packages/<paquet>/<famille>` pendant que le code demande
+/// le nom nu, Flutter ne trouve pas, et retombe sur la police système — sans
+/// exception, sans log, sans rien à l'écran qui le dise. Toute mesure de
+/// disposition décrit alors un rendu que l'appareil ne produit pas. Mesuré sur
+/// un projet réel : 45 troncatures relevées sur un écran que personne ne voit,
+/// suite verte.
+///
+/// 📌 Tu n'as rien à vérifier à la main : renseigne [argusTheme] et le garde
+/// « la police mesurée est celle que l'app résout » confronte le thème RÉEL au
+/// manifeste que `flutter test` produit. Sans [argusTheme], il ne peut pas
+/// conclure — et il le dit plutôt que de passer au vert.
 const String argusFontFamily = ''; // TODO(argus): la famille par défaut
 
 /// ⚠️ REMPLIS-LES DÈS QU'UN ÉCRAN MONTE UN `AppBar` OU UN `TextField`, c'est-à-dire

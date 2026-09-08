@@ -19,6 +19,7 @@
 // Flutter.
 // ═══════════════════════════════════════════════════════════════════════════
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -71,6 +72,114 @@ Future<int> loadArgusFonts() async {
     await loader.load();
   }
   return loaded;
+}
+
+/// Les familles de polices que l'APPLICATION enregistre, lues dans le manifeste
+/// que `flutter test` produit **lui-même** avant d'exécuter la suite.
+///
+/// C'est une source EXTÉRIEURE au harnais — dérivée des `pubspec.yaml` par
+/// l'outil, pas de ce qu'on lui a déclaré. Sans elle, le contrôle de résolution
+/// comparerait deux valeurs venues du même endroit et ne garderait rien.
+///
+/// Rend une liste vide si le manifeste n'existe pas : c'est « je n'ai pas pu
+/// mesurer », que l'appelant doit distinguer de « rien n'est enregistré ».
+List<String> argusBundledFontFamilies() {
+  final File manifest = File('build/unit_test_assets/FontManifest.json');
+  if (!manifest.existsSync()) {
+    return const <String>[];
+  }
+  try {
+    final dynamic brut = jsonDecode(manifest.readAsStringSync());
+    if (brut is! List<dynamic>) {
+      return const <String>[];
+    }
+    return <String>[
+      for (final dynamic e in brut)
+        if (e is Map<String, dynamic> && e['family'] is String)
+          e['family'] as String,
+    ];
+  } on FormatException {
+    return const <String>[];
+  }
+}
+
+/// Les familles que le THÈME RÉEL de l'application demande.
+///
+/// Vide quand le projet n'a pas renseigné [argusTheme] : il n'y a alors rien à
+/// confronter, et le harnais monte un thème qu'il fabrique lui-même — comparer
+/// ce thème-là au manifeste serait circulaire.
+///
+/// 📌 `TextStyle(fontFamily: 'X', package: 'Y')` compose `packages/Y/X` dès le
+/// constructeur : cette fonction voit donc le nom TEL QUE Flutter le résoudra,
+/// ce qui est exactement ce qu'il faut comparer.
+Set<String> argusThemeFontFamilies() {
+  final ThemeData? theme = argusTheme();
+  if (theme == null) {
+    return const <String>{};
+  }
+  final TextTheme t = theme.textTheme;
+  return <String>{
+    for (final TextStyle? s in <TextStyle?>[
+      t.displayLarge,
+      t.displayMedium,
+      t.headlineLarge,
+      t.headlineMedium,
+      t.titleLarge,
+      t.titleMedium,
+      t.bodyLarge,
+      t.bodyMedium,
+      t.bodySmall,
+      t.labelLarge,
+      t.labelMedium,
+    ])
+      if (s?.fontFamily != null) s!.fontFamily!,
+  };
+}
+
+/// Le défaut de RÉSOLUTION de police, ou `null` s'il n'y en a pas.
+///
+/// 🔴 CE QUE CE CONTRÔLE EXISTE POUR VOIR. Le harnais charge les `.ttf` par
+/// CHEMIN, ce qui garantit qu'ils existent en test — mais l'application, elle,
+/// résout une famille par son NOM. Les deux mondes ne se rencontrent nulle
+/// part, et l'écart apparaît dès que la police vient d'une DÉPENDANCE : le
+/// manifeste enregistre alors `packages/<paquet>/<famille>` pendant que le code
+/// demande le nom NU. Flutter ne trouve pas, retombe sur la police système, et
+/// ne dit rien — ni exception, ni log.
+///
+/// Mesuré sur un projet réel : un relevé de 45 troncatures décrivait le rendu
+/// VOULU, pas celui de l'appareil. La suite était verte.
+///
+/// ⚠️ Ne rend un défaut que sur le cas SANS AMBIGUÏTÉ : une famille que le
+/// thème demande et que le manifeste n'enregistre sous AUCUNE forme. Le nom
+/// composé avec `package:` arrive ici déjà préfixé, donc il correspond — pas de
+/// faux positif sur un projet sain qui fait les choses correctement.
+String? argusFontResolutionIssue() {
+  final Set<String> demandees = argusThemeFontFamilies();
+  if (demandees.isEmpty) {
+    return null; // rien à confronter — l'appelant le dit, il ne le tait pas
+  }
+  final List<String> bundle = argusBundledFontFamilies();
+  if (bundle.isEmpty) {
+    return null; // manifeste absent : « pas pu mesurer », pas « conforme »
+  }
+  final List<String> introuvables =
+      demandees.where((String f) => !bundle.contains(f)).toList()..sort();
+  if (introuvables.isEmpty) {
+    return null;
+  }
+  final String proches = bundle
+      .where((String b) => introuvables.any((String f) => b.endsWith('/$f')))
+      .join(', ');
+  return "Le thème de l'app demande ${introuvables.join(', ')}, "
+      "que le bundle n'enregistre pas sous ce nom. Familles enregistrées : "
+      '${bundle.join(', ')}.'
+      '${proches.isEmpty ? '' : "\n⚠️ « $proches » ne diffère que par le préfixe "
+                'de paquet : la police vient d\'une DÉPENDANCE, et il faut alors la '
+                "demander avec son paquet — `TextStyle(fontFamily: '<famille>', "
+                "package: '<paquet>')` — ou la déclarer dans le pubspec de l'app. "
+                'Sans ça Flutter retombe EN SILENCE sur la police système.'}'
+      "\n📌 Tant que ce n'est pas réglé, toute mesure de disposition de cette "
+      "suite décrit un rendu que l'appareil ne produit pas.";
 }
 
 /// Raison de sauter les gardes, ou `null` s'ils sont exploitables.

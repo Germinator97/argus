@@ -170,3 +170,10 @@ jobs:
           flutter test test/argus 2>&1 | tee /tmp/sortie.txt
           grep -q 'SKIP — aucun écran déclaré' /tmp/sortie.txt \
             || { echo "✖ les suites devraient se déclarer non branchées, avec leur raison"; exit 1; }
+          # 436 — le contrôle de résolution des polices a TROIS états, et c'est
+          # le troisième qui compte ici : sur un projet neuf, `argusTheme()`
+          # rend `null`, donc il n'y a rien à confronter. Il doit le DIRE. Un
+          # troisième état muet se lirait comme un vert, et c'est exactement la
+          # panne qu'il existe pour éviter.
+          grep -q "argusTheme() ne rend pas le thème de l'app" /tmp/sortie.txt \
+            || { echo "✖ le contrôle de résolution des polices (436) ne dit pas pourquoi il n'a rien mesuré"; exit 1; }

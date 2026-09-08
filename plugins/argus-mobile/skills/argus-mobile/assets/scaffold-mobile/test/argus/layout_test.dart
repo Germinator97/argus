@@ -35,6 +35,35 @@ void main() {
     await loadArgusFonts();
   });
 
+  // ── 436 ──────────────────────────────────────────────────────────────────
+  // 🔴 CE CONTRÔLE COMMANDE TOUS LES AUTRES DE CE FICHIER. Le harnais charge
+  // les polices par CHEMIN, donc elles existent toujours en test ; l'app, elle,
+  // les résout par NOM. Quand les deux divergent — le cas dès que la police
+  // vient d'une dépendance — l'appareil rend la police système et chaque mesure
+  // de disposition ci-dessous décrit un écran que personne ne voit. Mesuré sur
+  // un projet réel : 45 troncatures relevées sur un rendu qui n'existait pas.
+  test(argusName("la police mesurée est celle que l'app résout"), () {
+    final Set<String> demandees = argusThemeFontFamilies();
+    if (demandees.isEmpty) {
+      // Pas un vert : on le DIT. Sans `argusTheme()`, le harnais monte un thème
+      // qu'il fabrique, et le comparer au bundle serait circulaire.
+      markTestSkipped(
+        "argusTheme() ne rend pas le thème de l'app : la résolution des polices "
+        'ne peut pas être confrontée. Renseigne-le dans test/argus/harness.dart.',
+      );
+      return;
+    }
+    if (argusBundledFontFamilies().isEmpty) {
+      markTestSkipped(
+        'build/unit_test_assets/FontManifest.json est absent ou illisible : '
+        "le contrôle n'a rien mesuré (ce n'est pas « conforme »).",
+      );
+      return;
+    }
+    final String? defaut = argusFontResolutionIssue();
+    expect(defaut, isNull, reason: defaut ?? '');
+  });
+
   if (argusScreens.isEmpty) {
     testWidgets(
       argusName('gardes de disposition non branchées'),
