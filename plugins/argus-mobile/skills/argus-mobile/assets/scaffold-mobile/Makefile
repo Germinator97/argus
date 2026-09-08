@@ -48,6 +48,7 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	BKIND=$$(printf '%s' "$$M" | cut -f1); BEFORE=$$(printf '%s' "$$M" | cut -f2); \
 	BEFOREH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "→ $$CMD"; \
+	FRESHBEFORE="$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)"; \
 	START=$$(date +%s); eval "$$CMD"; RC=$$?; ELAPSED=$$(( $$(date +%s) - START )); \
 	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
 	AKIND=$$(printf '%s' "$$M" | cut -f1); AFTER=$$(printf '%s' "$$M" | cut -f2); \
@@ -74,8 +75,7 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	if [ "$$BKIND" = absent ]; then \
 	  echo "  ✔ paquet créé — rien à cet emplacement avant le build."; \
 	elif [ "$$BEFOREH" = "$$AFTERH" ]; then \
-	  FRESH="$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)"; \
-	  if [ "$$FRESH" = perime ]; then \
+	  if [ "$$FRESHBEFORE" = perime ]; then \
 	    echo "  ✖ PAQUET PÉRIMÉ — même empreinte, alors que lib/ a changé DEPUIS."; \
 	    echo "      Le build n'a rien recompilé : tu piloterais le binaire d'AVANT tes"; \
 	    echo "      ancres, et les flows échoueraient sur des ancres pourtant justes."; \
@@ -83,7 +83,11 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 	    exit 1; \
 	  else \
 	    echo "  ⚠️  PAQUET INTACT — le paquet n'a pas été réécrit (même empreinte),"; \
-	    echo "      et lib/ n'a pas changé depuis : c'est normal."; \
+	    echo "      et lib/ n'avait pas changé AVANT ce build : c'est normal."; \
+	    echo "      ⚠️ L'empreinte ne prouve pas le CONTENU. Un build peut réussir sans"; \
+	    echo "      recompiler le kernel — Gradle tient sa tâche pour à jour — et rendre"; \
+	    echo "      en quelques secondes ce qui en prend des dizaines. Devant un doute,"; \
+	    echo "      compte un MARQUEUR de ton changement dans le binaire."; \
 	    echo "      Si tu viens de toucher la COMMANDE (ciblage d'ABI, flavor, flags),"; \
 	    echo "      rien n'a été re-packagé non plus : \`$(FLUTTER) clean\` puis relance."; \
 	  fi; \

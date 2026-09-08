@@ -11370,3 +11370,46 @@ test('la mise en garde sur `label:` nomme le canal des captures (430)', () => {
     'la mise en garde ne dit pas comment sortir la capture des preuves : prévenir sans donner '
     + 'l\'issue laisse le lecteur devant un choix qu\'il ne sait pas exprimer');
 });
+
+// ── 431 · LA FRAÎCHEUR SE RELÈVE AVANT LE BUILD, SINON ELLE NE DIT JAMAIS NON ─
+//
+// 🔴 La garde du 343-346 était VACANTE PAR CONSTRUCTION. `binaryFreshness`
+// compare la date du paquet à la plus récente des sources — et la recette la
+// relevait APRÈS le build, qui vient de réécrire cette date. `stale` ne pouvait
+// donc plus être vrai dès que le build touchait le paquet.
+//
+// Un run l'a payé : « PAQUET INTACT — lib/ n'a pas changé depuis », en 6 s,
+// alors que trois fichiers venaient de changer. Le build avait réécrit le paquet
+// SANS recompiler le kernel (Gradle tient sa tâche pour à jour) : date fraîche,
+// empreinte identique, et personne pour lire la conjonction. Seul le comptage
+// d'un marqueur l'a démenti.
+//
+// Le garde mesure la POSITION : le relevé doit précéder l'exécution de la
+// commande de build. C'est structurel — aucun texte à citer.
+test('la fraîcheur du paquet se relève AVANT le build (431)', () => {
+  const make = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const debut = make.indexOf('\nargus-build:');
+  assert.ok(debut > 0, 'la cible argus-build a disparu du Makefile');
+  const suite = make.slice(debut + 1);
+  const fin = suite.search(/\n[a-z][\w-]*:/);
+  const recette = (fin === -1 ? suite : suite.slice(0, fin))
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+
+  const releve = recette.search(/--print-freshness/);
+  const build = recette.search(/eval "\$\$CMD"/);
+  assert.ok(releve > 0, 'la recette ne relève plus la fraîcheur : le paquet périmé ne sera plus vu');
+  assert.ok(build > 0, 'la recette n\'exécute plus la commande de build — mets ce garde à jour');
+  assert.ok(releve < build,
+    'la fraîcheur est relevée APRÈS le build, qui vient de réécrire la date du paquet : `stale` '
+    + 'ne peut alors plus jamais être vrai, et la garde est vacante par construction. Un run a lu '
+    + '« PAQUET INTACT » en 6 s sur trois fichiers modifiés (431)');
+
+  // ⚠️ L'autre moitié : le relevé doit être RELU, sinon il ne sert à rien. La
+  // variable se dérive de la ligne qui le capture.
+  const v = (/(\w+)="\$\$\(node [^)]*--print-freshness/.exec(recette) ?? [])[1];
+  assert.ok(v, 'le relevé n\'est plus capturé dans une variable : il est calculé et jeté');
+  assert.ok(recette.lastIndexOf(`$$${v}`) > build,
+    `« ${v} » est relevé avant le build et jamais relu après : c'est la comparaison qui décide, `
+    + 'pas la mesure');
+});
