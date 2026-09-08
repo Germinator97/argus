@@ -5081,14 +5081,26 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS — 434 à 436, ouverts le 08/09/2026** par le **run 63**
-(confirmation iOS, 7 flows, `scope: complet`). Neuf correctifs des trois passes
-ont payé de façon mesurable — dont le **427**, que deux runs avaient rencontré
-sans savoir quoi faire et que le troisième a appliqué à la lettre. Ce qui reste
-est d'une seule espèce : **trois instruments qui mesuraient autre chose que ce
-qu'ils annonçaient**, et aucun ne produisait d'erreur. Le pire des trois, le
-436, est né du **429**, fermé la veille — un correctif juste qui a ouvert la
-porte suivante.
+✅ **434 à 436 FERMÉS le 08/09/2026 — backlog VIDE (58e vidage).** Trois gardes,
+trois mutations. Le **run 63** (confirmation iOS) a rendu **7 flows,
+`scope: complet`**, et neuf correctifs des trois passes ont payé de façon
+mesurable — dont le **427**, que deux runs avaient rencontré sans savoir quoi
+faire et que le troisième a appliqué à la lettre.
+
+🔴 **LES TROIS POINTS ÉTAIENT LA MÊME ESPÈCE : des instruments qui mesuraient
+autre chose que ce qu'ils annonçaient**, et aucun ne produisait d'erreur. Une
+page qui se tait, un compteur qui sous-compte les écrans les plus imbriqués, un
+harnais qui mesure une police que l'appareil ne rend pas.
+
+🔴 **ET LE PIRE EST NÉ D'UN CORRECTIF JUSTE, FERMÉ LA VEILLE.** Le 429 a fait
+charger les polices d'une dépendance — c'était le bon remède, il a rendu 371
+tests à une dimension qui se sautait en silence. Il a du même geste ouvert le
+436 : rien ne vérifiait que la famille chargée soit celle que l'app RÉSOUT.
+*Une correction ne ferme pas un mode de panne, elle le déplace souvent.*
+
+⚠️ **UN GARDE EN PLACE A REFUSÉ UN CORRECTIF JUSTE, pour la quatrième fois du
+chantier**, et un second m'a repris sur la tête du backlog que je laissais
+mentir. Les deux avaient raison.
 
 ✅ **429 à 433 FERMÉS le 08/09/2026 — backlog VIDE (57e vidage).** Cinq gardes,
 six mutations. Le **run 62** (confirmation Android) avait rendu 4 flows sur 6 —
@@ -6669,7 +6681,18 @@ produisait d'erreur.
 
 ### 434. Une page publiée sans capture ne dit pas pourquoi, et c'est le run VERT qui la produit
 
-**Ouvert le 08/09/2026.** Le rapport n'embarque une image que si un **finding**
+**Fermé le 08/09/2026.** La construction des notes est **extraite** dans
+`notesDePreuve`, que le garde APPELLE — lire le texte de `report.mjs` ne verrait
+pas une note neutralisée. Le cas zéro parle désormais, et il dit POURQUOI : une
+preuve s'attache à un finding. Les deux zéros sont séparés, parce qu'ils
+n'appellent pas la même action — « rien à montrer » est un fait, « quatre
+captures écartées par ton seuil » est un réglage à revoir.
+📌 Le garde tient les deux moitiés. Le défaut était un SILENCE, donc la pente est
+de n'asserter que « ça parle » — ce qui serait vert sur une fonction qui
+bavarderait à tort. Les cas nominaux doivent garder leurs notes, et `none` ne
+doit pas recevoir celle du run vert.
+
+Le rapport n'embarque une image que si un **finding**
 la porte. Un run sans finding porteur — c'est-à-dire le run **vert**, celui qu'on
 publie — sort donc une page sans une seule capture, et les quatre notes que le
 rapport sait écrire sont toutes fausses dans ce cas : `evidence: none` non,
@@ -6687,7 +6710,22 @@ ce qui s'est passé, à l'endroit prévu pour ça.
 
 ### 435. La commande de comptage que le skill PRESCRIT rate les arguments repliés par le formateur
 
-**Ouvert le 08/09/2026.** Le skill donne la commande qui compte les sites
+**Fermé le 08/09/2026.** Les deux commandes **recollent** la valeur à sa clé
+avant de compter, et l'encadré dit pourquoi, avec sa mesure. Le garde EXÉCUTE la
+commande telle que le skill l'écrit, sur un corpus qui porte un argument replié —
+lire son texte n'aurait rien dit : le motif d'origine était parfaitement lisible
+et comptait faux. L'autre moitié y est aussi : les exemples du dartdoc ne doivent
+toujours pas compter, sinon un remède qui compterait TOUT passerait pour un
+correctif.
+⚠️ **Le garde voisin a refusé le correctif d'abord**, et il avait raison : il
+cherchait une ligne unique commençant par `grep`, or la commande en occupe trois.
+Son extraction lit le PARAGRAPHE maintenant — l'unité, pas la ligne. C'est la
+quatrième fois du chantier qu'un garde en place arrête un correctif juste.
+📌 Et la première mutation a rendu « motif trouvé 0× » : une r-string Python
+garde le backslash de `\"`, donc la chaîne cherchée n'était pas celle du fichier.
+Le harnais a **refusé de conclure** au lieu d'annoncer un garde vacant.
+
+Le skill donne la commande qui compte les sites
 d'instrumentation, et l'encadré qui l'entoure prévient déjà contre trois pièges —
 les commentaires, les gabarits interpolés, les `grep -c` chaînés par `&&`. Il ne
 prévient pas contre le quatrième, qui est dans la commande elle-même : elle exige
@@ -6706,7 +6744,31 @@ motif rate sont ceux des écrans les plus profondément imbriqués.
 
 ### 436. L'étage 1 charge la police par CHEMIN et ne vérifie jamais que l'app la RÉSOUT par nom
 
-**Ouvert le 08/09/2026.** Le harnais garantit que la famille déclarée est bien
+**Fermé le 08/09/2026.** Le contrôle croise le thème **RÉEL** de l'app
+(`argusTheme()`) avec le manifeste de polices que `flutter test` produit
+lui-même — une source **extérieure** au harnais, dérivée des pubspecs par
+l'outil. Comparer quoi que ce soit de déclaré au harnais avec lui-même aurait
+été circulaire, et c'est exactement ce qui manquait au garde existant.
+
+📌 **Aucun faux positif possible** : `TextStyle(fontFamily:, package:)` compose
+le nom préfixé dès son constructeur, donc un projet qui fait les choses
+correctement correspond au manifeste. C'est le piège inverse — resserrer un
+matcher crée un sous-matching — et il a été écarté en mesurant les deux sens.
+
+🔴 **Prouvé par EXÉCUTION sur le cas réel, dans les trois directions** : le nom
+nu contre un manifeste préfixé **rougit** en nommant le remède ; le nom préfixé
+des deux côtés **passe** ; l'absence de thème **skippe en imprimant sa raison**.
+Le troisième état compte autant que les deux autres — un refus muet se lit comme
+un vert —, et la **CI l'exerce** sur un projet fraîchement créé, seule exécution
+réelle de ce mécanisme dans le dépôt.
+
+⚠️ **Le garde Node n'est que le barreau du CÂBLAGE, et il le dit.** Une mécanique
+que plus personne n'appelle mesure encore parfaitement, et sa suite reste verte :
+c'est le seul mode de panne que Node puisse voir ici. La hiérarchie du chantier
+vaut telle quelle — lire du texte < appeler et lire ce qui revient < exécuter de
+bout en bout — et le dernier barreau vit dans la CI, pas dans la suite de gardes.
+
+Le harnais garantit que la famille déclarée est bien
 **chargée en test** — c'est le garde écrit contre le repli silencieux sur la
 police de `flutter_test`. Rien ne garantit qu'elle soit celle que l'**application**
 enregistre : le test charge un fichier par son chemin, l'app résout une famille
