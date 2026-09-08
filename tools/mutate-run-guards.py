@@ -1613,6 +1613,11 @@ MUTATIONS = [
     ("harness", "429 · le message de saut reperd le cas de la dépendance",
      "de police : elle vient alors d'une DÉPENDANCE. Cherche `fonts:` dans ",
      "de police : cherche `fonts:` dans "),
+    # 430 — la puce reperd le canal des pixels : le secret repart en clair dans
+    # la page avec le finding, masqué partout ailleurs.
+    ("skill", "430 · la mise en garde reperd le canal des captures",
+     "🔴 **NI DANS LES PIXELS.**",
+     "⚠️ **Et fais attention aux captures.**"),
 ]
 
 
