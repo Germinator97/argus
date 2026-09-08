@@ -1618,6 +1618,16 @@ MUTATIONS = [
     ("skill", "430 · la mise en garde reperd le canal des captures",
      "🔴 **NI DANS LES PIXELS.**",
      "⚠️ **Et fais attention aux captures.**"),
+    # 431 — le relevé repasse APRÈS le build : la garde redevient vacante par
+    # construction, et « PAQUET INTACT » se remet à mentir.
+    ("makefile", "431 · la fraîcheur se relève de nouveau après le build",
+     "\tFRESHBEFORE=\"$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)\"; \\\n\tSTART=",
+     "\tSTART="),
+    # 432 — la condition disparaît : la dispense redevient une suggestion nue,
+    # qu'on recopie d'un projet à l'autre sans qu'elle dispense rien.
+    ("yamlconf", "432 · la dispense suggérée reperd sa condition",
+     "# ⚠️ …À CONDITION QU'ILS SOIENT SUIVIS PAR GIT.",
+     "# ⚠️ …selon ton projet."),
 ]
 
 
