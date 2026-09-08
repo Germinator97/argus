@@ -466,7 +466,15 @@ export function validateConfig(config) {
   // que ce chantier passe son temps à trouver.
   const flavor = String(config.app?.flavor ?? '').trim();
   if (flavor) {
-    for (const [plateforme, chemin] of [['ios', config.build?.ios], ['android', config.build?.android]]) {
+    // ⚠️ LES PLATEFORMES DÉCLARÉES, PAS LES DEUX. Sans ce filtre, un projet
+    // `platforms: [android]` reçoit un avertissement sur `build.ios` à chaque
+    // exécution — un avertissement sur une plateforme hors périmètre, qu'on
+    // apprend à ignorer et qui emmène les autres avec lui. C'est le symétrique
+    // du 237-244, où l'audit du manifeste Android faisait échouer le gate d'un
+    // projet iOS : le même axe, l'autre sens.
+    const declarees = [['ios', config.build?.ios], ['android', config.build?.android]]
+      .filter(([nom]) => platforms.includes(nom));
+    for (const [plateforme, chemin] of declarees) {
       const valeur = String(chemin ?? '').trim();
       // Le critère est le FLAVOR dans le chemin, pas une forme de segment : les
       // deux plateformes le placent différemment, et c'est sa présence qui dit

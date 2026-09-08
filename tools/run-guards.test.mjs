@@ -10995,8 +10995,12 @@ test('un chemin de paquet qui ignore le flavor déclaré est signalé, sur les D
     thresholds: { visualMatchPercentage: 95 },
     artifact: { enabled: false, evidence: 'all', maxMb: 16 }, devices: [],
   };
-  const surLeFlavor = (/** @type {any} */ app, /** @type {any} */ build) =>
-    (validateConfig({ ...base, app: { ...base.app, ...app }, build }) ?? [])
+  // ⚠️ La plateforme du cas est DÉCLARÉE : depuis le 428, le contrôle ne regarde
+  // que le périmètre, et un `build.android` testé sous `platforms: [ios]` ne
+  // serait plus lu — le garde mesurerait alors le silence du filtre, pas le
+  // classement qu'il croit éprouver.
+  const surLeFlavor = (/** @type {any} */ app, /** @type {any} */ build, /** @type {string[]} */ platforms = ['ios']) =>
+    (validateConfig({ ...base, platforms, app: { ...base.app, ...app }, build }) ?? [])
       .filter((/** @type {any} */ p) => /ne porte pas le flavor/.test(p.message));
 
   // Les deux plateformes, leurs deux formes — dérivées de ce que l'outil écrit :
@@ -11006,7 +11010,7 @@ test('un chemin de paquet qui ignore le flavor déclaré est signalé, sur les D
     { cle: 'android', muet: 'build/app/outputs/flutter-apk/app-dev-debug.apk', sourd: 'build/app/outputs/flutter-apk/app-debug.apk' },
   ];
   for (const { cle, muet, sourd } of cas) {
-    const alerte = surLeFlavor({}, { [cle]: sourd });
+    const alerte = surLeFlavor({}, { [cle]: sourd }, [cle]);
     assert.equal(alerte.length, 1,
       `build.${cle} ignore le flavor déclaré et rien ne le dit : le harnais s'arrêtera vingt `
       + 'secondes plus tard sur « AUCUN PAQUET », en envoyant chercher du côté de la commande (422)');
@@ -11015,7 +11019,7 @@ test('un chemin de paquet qui ignore le flavor déclaré est signalé, sur les D
       + 'affiche, et c\'est elle qu\'on recopie');
     // L'autre moitié : un chemin juste ne doit rien déclencher, sinon le
     // contrôle crie sur une configuration saine et on apprend à l'ignorer.
-    assert.deepEqual(surLeFlavor({}, { [cle]: muet }), [],
+    assert.deepEqual(surLeFlavor({}, { [cle]: muet }, [cle]), [],
       `build.${cle} porte pourtant le flavor : ce contrôle accuse une config correcte`);
   }
 
@@ -11251,4 +11255,42 @@ test('le §2c dit quoi garder quand les deux remèdes s\'excluent (427)', () => 
   assert.ok(bloc.includes(cible),
     `l'issue ne renvoie pas à \`${cible}\`, qui mesure si le centre tombe encore sur le contrôle : `
     + 'sans cette borne, « garde l\'active » devient une permission permanente');
+});
+
+// ── 428 · UN CONTRÔLE NE JUGE QUE LES PLATEFORMES DU PÉRIMÈTRE ───────────
+//
+// 🔴 RÉGRESSION QUE J'AI INTRODUITE EN FERMANT LE 422, trouvée par le run
+// suivant : la boucle contrôlait les deux plateformes sans regarder lesquelles
+// sont DÉCLARÉES, si bien qu'un projet `platforms: [android]` recevait un
+// avertissement sur `build.ios` à chaque exécution.
+//
+// C'est le symétrique exact du 237-244, fermé le 02/09 dans l'autre sens : là,
+// l'audit du manifeste Android faisait échouer le gate d'un projet iOS. Le même
+// axe, l'autre sens — et refait en fermant un point sans rapport. Un
+// avertissement hors périmètre s'apprend à ignorer, et il emmène les autres.
+test('le contrôle des chemins ne juge que les plateformes déclarées (428)', () => {
+  const base = {
+    app: { id: 'com.exemple', flavor: 'dev' }, screens: [],
+    thresholds: { visualMatchPercentage: 95 },
+    artifact: { enabled: false, evidence: 'all', maxMb: 16 },
+    // Les DEUX chemins sont faux : seul le périmètre doit décider de ce qu'on lit.
+    build: { android: 'build/app/outputs/flutter-apk/app-debug.apk', ios: 'build/ios/iphonesimulator/Runner.app' },
+  };
+  const devices = { android: { id: 'e', platform: 'android', avd: 'X' }, ios: { id: 's', platform: 'ios', udid: 'U' } };
+  const juges = (/** @type {string[]} */ platforms) =>
+    (validateConfig({ ...base, platforms, devices: platforms.map((p) => devices[p]) }) ?? [])
+      .filter((/** @type {any} */ p) => /ne porte pas le flavor/.test(p.message))
+      .map((/** @type {any} */ p) => (/build\.(\w+)/.exec(p.message) ?? [])[1])
+      .sort();
+
+  assert.deepEqual(juges(['android']), ['android'],
+    'un projet Android reçoit un avertissement sur build.ios : un avertissement hors périmètre '
+    + 's\'apprend à ignorer, et il emmène les autres avec lui (428)');
+  assert.deepEqual(juges(['ios']), ['ios'],
+    'et le symétrique — c\'est le même défaut que le 237-244, dans l\'autre sens');
+  // L'autre moitié : sur un projet qui déclare les deux, les deux sont jugées.
+  // Sans elle, « ne rien dire » passerait pour un correctif.
+  assert.deepEqual(juges(['android', 'ios']), ['android', 'ios'],
+    'un projet qui déclare les deux plateformes doit voir ses DEUX chemins contrôlés : filtrer '
+    + 'trop est l\'autre façon de se tromper');
 });
