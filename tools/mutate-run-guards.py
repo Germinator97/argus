@@ -1631,6 +1631,14 @@ MUTATIONS = [
     # 433 — le renvoi disparaît du gabarit : la règle reste écrite cent
     # soixante-dix lignes plus haut, et personne ne la lit là où l'on cadre.
     # ⚠️ L'UNITÉ, pas une ligne : le garde protège le renvoi entier (leçon 432).
+    # 434 — le SILENCE d'origine, remis. La branche du cas zéro est ce que le
+    # garde asserte (il APPELLE `notesDePreuve` et lit ce qui revient) : la
+    # retirer rend une page nue sans un mot, exactement comme avant.
+    # ⚠️ Viser la branche, pas le dartdoc qui l'explique : muter le commentaire
+    # laisserait le garde vert sur un garde parfaitement bon.
+    ("report", "434 · la page sans capture se retait, et c'est le run vert",
+     "  if (evidence !== 'none' && !shot.embedded && !shot.tooBig && !shot.missing && !shot.filtered) {\n    notes.push(\n      `aucune capture malgré artifact.evidence: ${evidence} — une preuve `\n      + \"s'attache à un finding, et aucun finding n'en portait\",\n    );\n  }\n",
+     ""),
     ("skill", "433 · le cadrage reperd son renvoi à la règle de l'ancre d'état",
      "    #   ⚠️ Donc si la racine PHYSIQUE est partagée entre plusieurs états, ce\n    #   n'est pas elle qu'on cadre : c'est l'ancre d'ÉTAT qui sert d'`anchor:`\n    #   (et la racine commune passe en `displays:`) — la règle est plus haut,\n    #   au cinquième écart d'ancrage. Le plein écran, lui, embarquerait\n    #   l'horloge.\n",
      ""),
