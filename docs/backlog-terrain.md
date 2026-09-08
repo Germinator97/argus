@@ -5081,6 +5081,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **1 POINT OUVERT — le 437, ouvert le 08/09/2026** par le **run 64**
+(confirmation Android, 8 flows, `scope: complet`, 7/7 écrans visités). Il ne
+vient pas de l'application : **il vient de mon correctif de la veille**. Le 436
+comparait deux termes sur trois et restait vert pendant que 59 gardes de
+disposition mesuraient un rendu inexistant.
+
 ✅ **434 à 436 FERMÉS le 08/09/2026 — backlog VIDE (58e vidage).** Trois gardes,
 trois mutations. Le **run 63** (confirmation iOS) a rendu **7 flows,
 `scope: complet`**, et neuf correctifs des trois passes ont payé de façon
@@ -6788,6 +6794,31 @@ l'appareil. Un relevé de dette entier porte sur un écran que personne ne voit.
 lui-même** le manifeste des polices de l'app, à l'étage 1, sans device et sans
 build. C'est une source **extérieure** au harnais, donc elle ne peut pas être
 circulaire — ce qui est exactement ce qui manquait au garde existant.
+
+### 437. Le garde de résolution de police ne confrontait que DEUX termes sur trois
+
+**Ouvert le 08/09/2026.** Le **436**, écrit la veille, compare ce que le THÈME de
+l'app demande à ce que le BUNDLE enregistre. Les deux mesures sont justes, et il
+reste **vert** sur le cas que le run 64 a produit : une application qui résout
+parfaitement sa police, et un harnais qui la charge **sous un autre nom**.
+
+Le thème demande alors une famille que `argusFonts` n'a pas chargée, le montage
+retombe sur la police de `flutter_test` — un carré d'un cadratin par glyphe,
+environ deux fois plus large — et **toute mesure de disposition devient fausse**
+pendant que le contrôle annonce « conforme ».
+
+🔴 Mesuré par le run, seule cette clé changeant : **297 verts / 186 rouges** sous
+le nom nu contre **356 / 127** sous le nom résolu. **59 gardes basculent**, et ils
+décrivaient un rendu que l'appareil ne produit jamais.
+
+⚠️ **Le garde voisin ne le voit pas non plus** : il vérifie que `argusFontFamily`
+est une clé de `argusFonts`, c'est-à-dire la cohérence **interne** du harnais.
+Ici les deux étaient cohérents entre eux, et faux tous les deux. Reproduit sur le
+terrain, restauration prouvée par hash à chaque essai.
+
+📌 C'est le motif du chantier appliqué à mon propre correctif, deux jours de
+suite : le **429** a ouvert le **436**, et le **436** ouvre celui-ci. *Une
+correction déplace un mode de panne plus souvent qu'elle ne le ferme.*
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
