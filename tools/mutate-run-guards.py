@@ -1602,6 +1602,11 @@ MUTATIONS = [
     ("skill", "427 · l'arbitrage perd la mesure qui le borne",
      "c'est exactement ce que `make argus-anchors`",
      "c'est ce que ton jugement"),
+    # 428 — le filtre de périmètre saute : l'avertissement ressort sur une
+    # plateforme que le projet ne cible pas, à chaque exécution.
+    ("config", "428 · le contrôle rejuge les plateformes hors périmètre",
+     "      .filter(([nom]) => platforms.includes(nom));",
+     "      .filter(() => true);"),
 ]
 
 
