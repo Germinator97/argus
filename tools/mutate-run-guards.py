@@ -1636,6 +1636,13 @@ MUTATIONS = [
     # qu'on vise ici — retirer le recollage, pas le commentaire qui l'explique.
     # 436 — le DÉCÂBLAGE, seul mode de panne que Node puisse voir. La
     # mécanique reste juste et complète ; plus personne ne l'appelle, et la
+    # 437 — le TROISIÈME terme retiré : on revient au 436 tel qu'il était,
+    # juste sur ce qu'il compare et aveugle au harnais qui charge un autre
+    # nom. C'est ce que le garde ASSERTE (le verdict « ne charge PAS »), et
+    # le reste de la fonction continue de compiler — un `return null` suit.
+    ("harness", "437 · la résolution de police reperd son troisième terme",
+     '  // 2. Le HARNAIS : ce que la suite charge réellement. Ne dépend d\'aucun\n  //    manifeste, donc se contrôle toujours.\n  final List<String> nonChargees =\n      demandeesParLeTheme\n          .where((String f) => !chargeesParLeHarnais.contains(f))\n          .toList()\n        ..sort();\n  if (nonChargees.isNotEmpty) {\n    return "Le thème de l\'app demande ${nonChargees.join(\', \')}, "\n        "qu\'argusFonts ne charge PAS. Familles chargées : "\n        \'${chargeesParLeHarnais.isEmpty ? \'(aucune)\' : chargeesParLeHarnais.join(\', \')}.\'\n        "\\n⚠️ L\'application, elle, va peut-être très bien : c\'est la SUITE qui "\n        \'mesure faux. Une famille que le thème demande sans qu\\\'elle soit \'\n        \'chargée retombe sur la police de `flutter_test` — un carré d\\\'un \'\n        \'cadratin par glyphe, environ deux fois plus large.\'\n        "\\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, "\n        \'préfixe de paquet compris, et fais-en argusFontFamily.\';\n  }\n',
+     ''),
     # suite de disposition redevient muette sur la police qu'elle mesure.
     # ⚠️ Les deux lignes ensemble : retirer l'appel seul ne compilerait pas,
     #    et une mutation qui casse le build rougit pour une autre raison.
