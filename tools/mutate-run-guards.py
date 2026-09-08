@@ -1553,6 +1553,18 @@ MUTATIONS = [
     ("run", "420 · l'avertissement ne nomme plus le flow qu'il rend vacant",
      "Tant que ce n\\'est pas réglé, le flow i18n mesure",
      "Tant que ce n\\'est pas réglé, la dimension mesure"),
+    # 421 a — le §2 represcrit la preuve SANS le geste : c'est l'état d'avant,
+    # celui où le run devait aller chercher la commande deux cents lignes plus
+    # loin, avec la table qui va avec.
+    ("skill", "421 · le §2 prescrit la preuve sans le geste qui la fait",
+     "unzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \\\n  | grep -a -c \"<la clé>\"",
+     "(voir le geste au §3g)"),
+    # 421 b — l'autre moitié : le geste RESTE, la règle d'encodage s'en va. Le
+    # `grep` rend alors `0` sur un littéral accentué, et ce zéro se lit comme la
+    # preuve qu'on cherchait.
+    ("skill", "421 · le geste reste, sa règle d'encodage s'en va",
+     'La mesure qui tranche porte sur l\'AOT, et **dans les trois encodages** — un run\ny a relevé `0` partout, contre `26` avec un DSN volontairement muté :\n\n```bash\nunzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \\\n  | grep -a -c "<la clé>"   # ⚠️ pipe, ne capture jamais ; latin-1 ET utf-16-le\n```\n\n⚠️ **L\'encodage n\'est pas un détail ici** : en AOT, un seul caractère accentué\nfait basculer toute la chaîne en UTF-16 et un `grep` UTF-8 rend `0` sur un texte\nprésent — c\'est-à-dire le zéro qu\'on cherchait à éviter, rendu par l\'instrument\nlui-même. La règle complète, avec la table par mode de build, est au §3g\n(« Deux contre-épreuves, une ACCENTUÉE et une ASCII ») ; fais toujours porter au\nrelevé une contre-épreuve dont l\'absence serait impossible (421).',
+     'La mesure qui tranche porte sur l\'AOT — un run y a relevé `0`, contre `26`\navec un DSN volontairement muté :\n\n```bash\nunzip -p build/app/outputs/flutter-apk/app-release.apk lib/arm64-v8a/libapp.so \\\\\n  | grep -a -c "<la clé>"   # ⚠️ pipe, ne capture jamais\n```'),
 ]
 
 
