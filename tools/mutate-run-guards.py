@@ -1628,6 +1628,12 @@ MUTATIONS = [
     ("yamlconf", "432 · la dispense suggérée reperd sa condition",
      "  # ⚠️ …seulement s'ils sont VERSIONNÉS (voir plus haut) : sur un projet qui\n  # utilise pourtant Firebase, ces deux entrées se sont révélées INERTES, les\n  # fichiers étant gitignorés. `git check-ignore -q <fichier>` tranche.",
      "  # ⚠️ …selon les cas."),
+    # 433 — le renvoi disparaît du gabarit : la règle reste écrite cent
+    # soixante-dix lignes plus haut, et personne ne la lit là où l'on cadre.
+    # ⚠️ L'UNITÉ, pas une ligne : le garde protège le renvoi entier (leçon 432).
+    ("skill", "433 · le cadrage reperd son renvoi à la règle de l'ancre d'état",
+     "    #   ⚠️ Donc si la racine PHYSIQUE est partagée entre plusieurs états, ce\n    #   n'est pas elle qu'on cadre : c'est l'ancre d'ÉTAT qui sert d'`anchor:`\n    #   (et la racine commune passe en `displays:`) — la règle est plus haut,\n    #   au cinquième écart d'ancrage. Le plein écran, lui, embarquerait\n    #   l'horloge.\n",
+     ""),
 ]
 
 
