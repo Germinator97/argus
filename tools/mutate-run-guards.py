@@ -1540,6 +1540,19 @@ MUTATIONS = [
     ("skill", "419 · le geste qui retire le résidu disparaît",
      "find .maestro/_baselines -name '*_diff.png' -delete",
      "echo 'rien a faire'"),
+    # 420 a — la clé nomme le flow et cesse de dire ce qu'il devient : « sans
+    # effet » se relit comme un réglage inopérant, pas comme une dimension qui
+    # passe sans mesurer.
+    ("yamlconf", "420 · la clé ne dit plus que le flow passe VERT",
+     "il passe VERT",
+     "il n'est pas appliqué"),
+    # 420 b — et la preuve que le garde DÉRIVE du runner : c'est l'avertissement
+    # qui cesse de nommer le flow, et le croisement doit refuser de conclure.
+    # ⚠️ Motif ancré sur la ligne 82 : la même phrase vit aussi dans le titre du
+    # finding, et un motif court y matcherait deux fois.
+    ("run", "420 · l'avertissement ne nomme plus le flow qu'il rend vacant",
+     "Tant que ce n\\'est pas réglé, le flow i18n mesure",
+     "Tant que ce n\\'est pas réglé, la dimension mesure"),
 ]
 
 
