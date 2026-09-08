@@ -442,8 +442,8 @@ MUTATIONS = [
     # `identitePubliee`, et son `|| '👁'` a disparu avec elle. L'intention ne
     # change pas — la valeur DÉCLARÉE n'est plus lue, la mention reste.
     ("report", "l'icône de la page n'est plus lue, la mention RESTE",
-     "`icône ${icone} — la même à chaque republication",
-     "`icône 👁 — la même à chaque republication"),
+     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim();",
+     "  const icone = '';"),
     # ── Vingt-sixième run ───────────────────────────────────────────────────
     # ⚠️ Les trois premières visent la VALEUR RENDUE, jamais la ligne d'appel :
     # les gardes correspondants BÂTISSENT le finding et regardent dedans, donc
