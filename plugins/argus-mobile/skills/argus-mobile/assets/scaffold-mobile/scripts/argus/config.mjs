@@ -906,6 +906,19 @@ export function litterauxDart(source) {
  * @param {string} root @param {any} [config]
  * @returns {string[] & {opaques:string[], familles:string[], fichiers:number}}
  */
+// ⚠️ UNE SEULE SOURCE POUR LA CONVENTION D'ANCRE. La CLÉ s'en sert pour décider
+// qu'il y a une ancre (`semanticIdentifier: …`), la VALEUR pour décider que c'en
+// est une famille (`identifier: widget.codeSemanticIdentifier`). Le 415 est né
+// de leur séparation : la valeur portait sa propre liste de deux noms, écrite au
+// mot près, pendant que la clé lisait un motif. Deux copies d'un même motif dont
+// une seule est mesurée — c'est toujours l'autre qui dérive.
+const CONVENTION_IDENTIFIANT = '[a-zA-Z]*[Ii]dentifier';
+// ⚠️ Le préfixe n'appartient QU'À LA VALEUR, et c'est le même raisonnement qui
+// l'écarte de la clé : `anchorPrefix:` ne POSE pas d'ancre (il en rapporterait
+// une que rien ne déclare), mais `identifier: widget.rowAnchorPrefix` en désigne
+// bien une famille.
+const CONVENTION_PREFIXE = '[a-zA-Z]*[Pp]refix';
+
 export function posedAnchors(root, config = undefined) {
   // ⚠️ `[a-zA-Z]*[Ii]dentifier:` ET NON `identifier:`. Le motif minuscule ne
   // voyait que `Semantics(identifier: …)` et ratait `semanticIdentifier: '…'`,
@@ -930,7 +943,22 @@ export function posedAnchors(root, config = undefined) {
   // annonçant « 54 littérales ». Le chiffre était honnête ; il ne disait pas
   // qu'il en manquait cinq. Un garde vert par accident, sur la forme même que
   // le skill recommande.
-  const cle = new RegExp(`(?:${['[a-zA-Z]*[Ii]dentifier', ...sur].join('|')}):`, 'g');
+  const cle = new RegExp(`(?:${[CONVENTION_IDENTIFIANT, ...sur].join('|')}):`, 'g');
+  // ⚠️ AU MOT PRÈS NE SUFFIT PAS — c'est le 415, signalé par DEUX runs sur deux
+  // terrains. `detailsSemanticIdentifier` et `widget.codeSemanticIdentifier`
+  // tombaient chez les OPAQUES — donc « ancre NON LISIBLE », avec le conseil de
+  // les inscrire hors périmètre — ALORS QU'ILS SONT DÉCLARÉS dans
+  // `anchors.paramNames`. La cause, mesurée : `paramNames` gouvernait la
+  // détection de la CLÉ, jamais le classement de la VALEUR. Un run le formule
+  // ainsi : « Elles SONT déclarées, le croisement ne peut simplement pas le
+  // lire. »
+  //
+  // Le critère est donc DÉRIVÉ de ce que la clé accepte déjà — la convention du
+  // §2c, ou un nom que le projet a inscrit —, et non d'une liste de deux noms.
+  // ⚠️ Tout autre nom reste opaque (`widget.peuImporte`) : on ne sait pas ce
+  // qu'il porte, et élargir jusque-là viderait le contrôle au lieu de l'étendre.
+  const parametreDAncre = new RegExp(
+    `(^|[.\\s])(?:${[CONVENTION_IDENTIFIANT, CONVENTION_PREFIXE, ...sur].join('|')})$`);
   /** @type {Set<string>} */
   const poses = new Set();
   // Le dénominateur de tout ce qui suit : une liste vide ne veut rien dire tant
@@ -983,11 +1011,11 @@ export function posedAnchors(root, config = undefined) {
           // « hors périmètre » sur des ancres bel et bien vérifiées : exactement
           // ce que le commentaire ci-dessus dit vouloir éviter. Un run en a eu
           // huit, couvrant 24 call-sites.
-          // Les deux noms sont DÉRIVÉS du SKILL, jamais devinés (§2c :
-          // « Nomme ce paramètre `semanticIdentifier` » · « `anchorPrefix`
-          // quand il préfixe une famille »). Tout autre nom reste opaque : on ne
-          // sait pas ce qu'il porte.
-          const parametreDAncre = /(^|[.\s])(semanticIdentifier|anchorPrefix)$/;
+          // Les noms sont DÉRIVÉS du SKILL, jamais devinés (§2c : « Nomme ce
+          // paramètre `semanticIdentifier` » · « `anchorPrefix` quand il préfixe
+          // une famille ») — et `parametreDAncre` en dérive la CONVENTION, plus
+          // ce que le projet a inscrit. Tout autre nom reste opaque : on ne sait
+          // pas ce qu'il porte.
           const gabarit = /'[^']*\$\{[^']*'/.test(nu) || parametreDAncre.test(nu);
           if (nu && gabarit) familles.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);
           else if (nu) opaques.add(`${abs.slice(root.length + 1)} — ${nu.slice(0, 60)}`);

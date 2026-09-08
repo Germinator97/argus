@@ -10617,3 +10617,72 @@ test('le refus de conclure sur zéro flow est CÂBLÉ, pas seulement écrit (406
     'le refus n\'échoue plus — avertir ne suffit pas : c\'est le code de sortie qu\'une CI lit, '
     + 'et c\'est lui qui rendait vert sur du néant (406)');
 });
+
+// ── 415 · CE QUE LA CLÉ ACCEPTE, LA VALEUR LE CLASSE EN FAMILLE ───────────
+//
+// Le 404 avait sorti `identifier: semanticIdentifier` des opaques — au MOT
+// PRÈS. Les deux runs suivants, sur deux terrains, ont rendu le même constat :
+// `detailsSemanticIdentifier` et `widget.codeSemanticIdentifier` tombaient chez
+// les opaques ALORS QU'ILS ÉTAIENT DÉCLARÉS dans `anchors.paramNames` — donc
+// avec le conseil de les inscrire hors périmètre. « Elles SONT déclarées, le
+// croisement ne peut simplement pas le lire. »
+//
+// La cause n'est pas la longueur de la liste, c'est sa SÉPARATION d'avec la
+// clé : `paramNames` gouvernait la détection de la CLÉ, jamais le classement de
+// la VALEUR. Le garde porte donc sur leur ACCORD, et le corpus est DÉRIVÉ du
+// SKILL — un troisième nom prescrit demain, ou une forme dérivée de plus, le
+// fait tomber sans que personne ait à y penser.
+test('tout nom accepté comme clé d\'ancre est une famille en valeur, jamais une opaque (415)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // ⚠️ Le corpus se DÉRIVE, il ne s'écrit pas : les noms que le §2c prescrit,
+  // les formes que la convention en dérive — la classe même du défaut —, et un
+  // nom hors convention qui n'existe QUE parce que le projet l'a inscrit.
+  const prescrits = ['semanticIdentifier', 'anchorPrefix']
+    .filter((n) => new RegExp(`\`${n}\``).test(skill));
+  assert.equal(prescrits.length, 2,
+    'le §2c ne prescrit plus ces deux noms : le corpus de ce garde en dérive, mets-le à jour');
+  const derives = prescrits.map((n) => `details${n[0].toUpperCase()}${n.slice(1)}`);
+  const duProjet = ['monAncreAMoi'];
+  const corpus = [...prescrits, ...derives, ...duProjet];
+
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-415-'));
+  mkdirSync(join(dossier, 'lib'), { recursive: true });
+  // Chaque nom est posé DES DEUX CÔTÉS : en clé (elle pose une ancre littérale)
+  // et en valeur (elle en nomme une famille). C'est ce qui rend l'accord
+  // mesurable au lieu d'être supposé.
+  writeFileSync(join(dossier, 'lib', 'partage.dart'),
+    corpus.flatMap((n) => [`      ${n}: 'ancre_${n}',`, `      identifier: widget.${n},`])
+      // Le témoin : hors convention ET non inscrit. Il doit rester opaque, sinon
+      // le remède a vidé le contrôle au lieu de l'étendre.
+      .concat(['      identifier: widget.peuImporte,']).join('\n') + '\n');
+
+  const vues = posedAnchors(dossier, { anchors: { paramNames: duProjet } });
+  const familles = vues.familles ?? [];
+  const opaques = (vues.opaques ?? []).join(' | ');
+  assert.ok(vues.fichiers > 0, 'aucun .dart lu : le montage est cassé, le garde ne mesure rien');
+
+  const enCle = corpus.filter((n) => vues.includes(`ancre_${n}`));
+  const enValeur = corpus.filter((n) => familles.some((f) => f.endsWith(`widget.${n}`)));
+  // La prémisse, mesurée et non supposée : sans clé reconnue, tout ce qui suit
+  // serait vert en ne comparant rien. (`anchorPrefix` n'en est pas une, et c'est
+  // voulu — un préfixe ne POSE pas d'ancre, il en nomme une famille.)
+  assert.ok(enCle.length >= 2,
+    `aucune clé reconnue dans ${JSON.stringify(corpus)} : le motif de la clé ne matche plus, `
+    + 'ce garde ne mesure plus rien');
+  assert.deepEqual(enCle.filter((n) => !enValeur.includes(n)), [],
+    'ces noms sont acceptés comme CLÉ et rangés en OPAQUE quand ils sont la VALEUR : c\'est '
+    + 'exactement le 415 — la détection de la clé et le classement de la valeur ont cessé de '
+    + 'lire la même convention');
+  assert.deepEqual(corpus.filter((n) => !enValeur.includes(n)), [],
+    'ces noms suivent la convention du §2c, ou sont inscrits dans anchors.paramNames, et '
+    + 'tombent pourtant chez les opaques — le message conseille alors d\'écrire « hors '
+    + 'périmètre » sur des ancres bel et bien vérifiées (415)');
+
+  // L'autre moitié : élargir jusqu'à tout accepter ne serait pas un remède.
+  assert.match(opaques, /peuImporte/,
+    'un nom hors convention et non inscrit n\'est PAS une famille : on ne sait pas ce qu\'il '
+    + 'porte, et le remède du 415 ne doit pas vider le 404');
+  assert.ok(!familles.some((f) => f.endsWith('widget.peuImporte')),
+    'et il ne doit pas se glisser chez les familles');
+  rmSync(dossier, { recursive: true, force: true });
+});
