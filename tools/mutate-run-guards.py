@@ -438,9 +438,12 @@ MUTATIONS = [
     # le message de publication cite `artifact.icon` en toutes lettres. Depuis
     # que le corpus est balayé, elle ne retire plus QUE la lecture — la mention
     # reste dans le message, et le garde doit tomber quand même.
+    # ⚠️ RÉ-ANCRÉE AU 416 : la ligne composée dans `main()` a été extraite dans
+    # `identitePubliee`, et son `|| '👁'` a disparu avec elle. L'intention ne
+    # change pas — la valeur DÉCLARÉE n'est plus lue, la mention reste.
     ("report", "l'icône de la page n'est plus lue, la mention RESTE",
-     "· icône ${config.artifact.icon || '👁'}",
-     "· icône 👁"),
+     "`icône ${icone} — la même à chaque republication",
+     "`icône 👁 — la même à chaque republication"),
     # ── Vingt-sixième run ───────────────────────────────────────────────────
     # ⚠️ Les trois premières visent la VALEUR RENDUE, jamais la ligne d'appel :
     # les gardes correspondants BÂTISSENT le finding et regardent dedans, donc
@@ -1497,6 +1500,18 @@ MUTATIONS = [
     ("config", "415 · le classement de la valeur se resserre au mot près",
      "${[CONVENTION_IDENTIFIANT, CONVENTION_PREFIXE, ...sur].join('|')}",
      "${['semanticIdentifier', 'anchorPrefix'].join('|')}"),
+    # 416 a — le gabarit du titre remonte dans la première phrase du point 5 :
+    # on a de quoi renseigner `artifact.title` avant d'apprendre qu'il faut
+    # d'abord lire la page. C'est l'ordre exact qu'un run a suivi.
+    ("skill", "416 · le gabarit du titre repasse avant la consigne de le relever",
+     "5. **Garde le titre et l'icône stables** d'un run à l'autre (`artifact.title`,\n   `artifact.icon`) : c'est ainsi qu'on retrouve la page",
+     "5. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,\n   ou, s'il est vide, `<nom du projet> — <plateforme> — rapport QA` : c'est ainsi qu'on retrouve la page"),
+    # 416 b — le journal réaffirme le pictogramme du gabarit quand rien n'est
+    # déclaré : la valeur plausible revient, et avec elle la page qui change
+    # d'identité.
+    ("report", "416 · le journal réaffirme l'icône du gabarit",
+     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim();",
+     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim() || '👁';"),
 ]
 
 

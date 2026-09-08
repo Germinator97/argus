@@ -44,6 +44,7 @@ import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/sk
 import { LIGHTBOX, STYLE, findingCards, perfRows } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { identitePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -10685,4 +10686,72 @@ test('tout nom accepté comme clé d\'ancre est une famille en valeur, jamais un
   assert.ok(!familles.some((f) => f.endsWith('widget.peuImporte')),
     'et il ne doit pas se glisser chez les familles');
   rmSync(dossier, { recursive: true, force: true });
+});
+
+// ── 416 · L'IDENTITÉ DE LA PAGE SE RELÈVE, ELLE NE SE CHOISIT PAS ─────────
+//
+// Un run a renseigné `artifact.title` AVANT le `read` de la page : la valeur
+// est tombée juste, la méthode était celle que le skill interdit deux
+// paragraphes plus bas. Et son `artifact.icon` était FAUX — il portait le
+// défaut du gabarit (le journal l'annonçait faute de mieux) quand la page en
+// portait un autre : « sans le `read`, je publiais une page qui changeait
+// d'identité. »
+//
+// Deux moitiés, et elles se tiennent : le SKILL doit poser la condition AVANT
+// le défaut qu'elle conditionne, et le JOURNAL doit cesser d'affirmer une
+// icône que le programme ne peut pas connaître (le favicon part à l'outil de
+// publication, pas dans le HTML — il n'y a rien à relire).
+test('la consigne de relever précède le défaut qu\'elle conditionne (416)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const bloc = skill.slice(skill.indexOf('Garde le titre et l\'icône stables'));
+  assert.ok(bloc.length > 400, 'le passage sur la stabilité du titre a disparu');
+  // ⚠️ Le défaut se DÉRIVE de la fonction qui le produit — le citer ferait
+  // tomber ce garde sur un changement de format, en accusant un correctif juste.
+  const gabarit = titreDuRapport({ name: '<nom du projet>', platform: '<plateforme>' });
+  const iDefaut = bloc.indexOf(gabarit);
+  const iReleve = bloc.indexOf('LIS SON TITRE ACTUEL');
+  assert.ok(iDefaut > 0, `le défaut n'est plus donné sous la forme que le code produit (${gabarit})`);
+  assert.ok(iReleve > 0, 'rien ne dit plus de relever le titre existant');
+  assert.ok(iReleve < iDefaut,
+    'le gabarit du titre se lit AVANT la consigne de relever celui de la page : on a de quoi '
+    + 'remplir `artifact.title` avant d\'apprendre qu\'il faut d\'abord lire la page, et c\'est '
+    + 'exactement l\'ordre qu\'un run a suivi (416)');
+  // L'icône est nommée dans la même phrase que le titre depuis toujours ; ce
+  // qui manquait, c'est qu'elle soit soumise à la MÊME condition.
+  assert.ok(bloc.slice(0, iDefaut).includes('ICÔNE AVEC'),
+    'la condition ne porte que sur le titre : l\'icône se relève de la même façon, et c\'est '
+    + 'celle des deux qu\'un run a publiée fausse');
+});
+
+test('le journal n\'annonce jamais une icône que personne n\'a déclarée (416)', () => {
+  // ⚠️ Un garde qui APPELLE, jamais un motif cherché dans la source : c'est une
+  // valeur neutralisée qu'on garde ici, et un `contains` y survivrait.
+  const PICTO = /\p{Extended_Pictographic}/u;
+  const titre = 'Sonde — Android — rapport QA';
+
+  // 1. Rien de déclaré : la ligne ne doit nommer AUCUN pictogramme. Le critère
+  // est dérivé — « aucune icône » —, il ne cite pas le défaut du gabarit, qui
+  // se périmerait le jour où le gabarit en changerait.
+  for (const url of ['https://exemple/page', '']) {
+    const lignes = identitePubliee({ artifact: { icon: '' } }, titre, url);
+    assert.ok(lignes.length >= 2, 'le journal ne dit plus rien de l\'identité de la page');
+    const rendu = lignes.join(' | ');
+    assert.doesNotMatch(rendu, PICTO,
+      'le journal NOMME une icône alors qu\'aucune n\'est déclarée : le défaut du gabarit '
+      + 'passe pour une valeur relevée, et un run l\'a publié sur une page qui en portait '
+      + `une autre (416) — ${rendu}`);
+    assert.match(rendu, /artifact\.icon/,
+      'et il doit quand même dire où l\'inscrire, sinon on ne sait pas quoi faire');
+  }
+
+  // 2. L'autre moitié : déclarée, elle doit être annoncée telle quelle — un
+  // journal qui se tait toujours ne vaut pas mieux qu'un journal qui invente.
+  const declaree = identitePubliee({ artifact: { icon: '🧪' } }, titre, 'https://exemple/page').join(' | ');
+  assert.match(declaree, /🧪/,
+    'l\'icône déclarée n\'est plus annoncée : c\'est elle qu\'on doit repasser à l\'identique');
+
+  // 3. Et le titre, lui, reste annoncé sous la forme que le garde du câblage
+  // relit (`titre « … »`) : le corriger côté icône ne doit pas le rompre.
+  assert.match(declaree, /titre « Sonde — Android — rapport QA »/,
+    'le journal n\'annonce plus le titre dans la forme que le garde de bout en bout relit');
 });

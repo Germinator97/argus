@@ -2118,28 +2118,33 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    `artifact.url`**, sous la clé de la plateforme. C'est toi qui édites ce
    fichier, pas le script : il t'appartient, il porte des commentaires, et un
    script qui réécrit du YAML les perd.
-5. **Garde le titre et l'icône stables** d'un run à l'autre — `artifact.title`,
-   ou, s'il est vide, `<nom du projet> — <plateforme> — rapport QA`
-   (`app.name`, et son identifiant en repli). C'est ainsi qu'on
-   retrouve la page ; la renommer à chaque run donne l'impression d'une page
-   différente. **Le journal te dit le titre qu'il va publier** : c'est la même
+5. **Garde le titre et l'icône stables** d'un run à l'autre (`artifact.title`,
+   `artifact.icon`) : c'est ainsi qu'on retrouve la page, et en changer à chaque
+   run donne l'impression d'une seconde page.
+
+   🔴 **SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD — ET SON
+   ICÔNE AVEC.** Les deux se RELÈVENT, ils ne se choisissent pas, et c'est le
+   `read` du point 3 qui les donne. **DANS CET ORDRE, ET PAS L'INVERSE : le
+   `read` D'ABORD, `artifact.title` ENSUITE** — un run a renseigné
+   `artifact.title` d'un titre **inventé** avant de découvrir que l'URL était
+   morte, ayant suivi ce point avant le point 3. Si le `read` échoue, tu es dans
+   le troisième cas ci-dessus et il n'y a aucun titre à reprendre.
+
+   **À LA PREMIÈRE PUBLICATION SEULEMENT**, quand `artifact.title` est vide :
+   `<nom du projet> — <plateforme> — rapport QA` (`app.name`, et son identifiant
+   en repli). Sur une page qui existe, ce défaut la **renomme en croyant la
+   stabiliser** — vécu, une page « Argus Mobile — <projet> » redevenue générique
+   en silence. **Le journal te dit le titre qu'il va publier** : c'est la même
    valeur, pas une seconde estimation — vérifie-la là.
 
-   ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le
-   défaut est juste pour une PREMIÈRE publication et faux pour une
-   republication : si la page s'appelle autre chose et que `artifact.title` est
-   vide, suivre cette consigne la **renomme en croyant la stabiliser** — vécu,
-   une page « Argus Mobile — <projet> » redevenue générique en silence.
-   Republier sur `artifact.url` te fait de toute façon lire la page : relève le
-   titre à ce moment-là et **reporte-le dans `artifact.title`** avant de
-   publier.
-
-   ⚠️ **DANS CET ORDRE, ET PAS L'INVERSE : le `read` D'ABORD, `artifact.title`
-   ENSUITE.** « Lis son titre actuel » suppose que la page existe, et cette
-   consigne se retourne quand elle n'existe pas : un run a renseigné
-   `artifact.title` d'un titre **inventé** avant de découvrir que l'URL était
-   morte — il avait suivi le point 5 avant le point 3. Si le `read` échoue, tu
-   es dans le troisième cas ci-dessus et il n'y a aucun titre à reprendre.
+   ⚠️ **ET L'ICÔNE NE S'INVENTE PAS DAVANTAGE — LE JOURNAL, LUI, NE LA CONNAÎT
+   PAS.** Le titre est dans la page, donc vérifiable ; le favicon part à l'outil
+   de publication et non dans le HTML, donc rien ne peut te dire ce que la page
+   porte. Une republication **garde** l'icône en place tant qu'on ne lui en
+   passe pas : n'en passe pas, sauf pour rétablir celle que le `read` vient de
+   te montrer. Vécu — un run a publié celle du gabarit, que le journal annonçait
+   faute de mieux : *« sans le `read`, je publiais une page qui changeait
+   d'identité. »* Un défaut de gabarit est une valeur plausible, le pire genre.
 
 6. 🚨 **UNE PUBLICATION SANS `url` N'EST PAS UNE PAGE NEUVE.** *(Long. Si tu
    viens ici pour savoir quoi publier, le point 7 tranche en une phrase : le

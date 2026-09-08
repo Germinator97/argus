@@ -647,6 +647,49 @@ export function consignePublication(url, plateforme) {
   ];
 }
 
+/**
+ * Ce que le journal dit de l'IDENTITÉ de la page — titre, icône — au moment de
+ * republier.
+ *
+ * ⚠️ IL ANNONÇAIT UNE ICÔNE QUE PERSONNE N'AVAIT CHOISIE. La ligne rendait
+ * `config.artifact.icon || '👁'` : sur un projet qui n'a rien déclaré — c'est le
+ * défaut du scaffold —, elle nommait donc le pictogramme du gabarit avec
+ * l'aplomb d'une valeur relevée. Un run l'a recopié tel quel sur une page qui
+ * en portait un autre : « sans le `read`, je publiais une page qui changeait
+ * d'identité ». Le défaut du gabarit agit ici comme une valeur plausible, le
+ * pire genre — rien ne lève, et l'écart ne se voit qu'en rouvrant la page.
+ *
+ * Le titre, lui, se VÉRIFIE : il est dans la page, et un garde compare l'annonce
+ * au `<title>` publié. L'icône NON — le favicon part à l'outil de publication,
+ * pas dans le HTML, donc le programme ne peut pas savoir ce que la page porte.
+ * D'où la règle : sur ce qu'il ne peut pas mesurer, le journal dit QUOI FAIRE,
+ * il n'affirme pas. Une republication garde l'icône en place tant qu'on ne lui
+ * en passe pas ; le seul geste juste est de relever celle de la page.
+ *
+ * Extraite de `main()` pour la raison du 373 : un garde qui APPELLE lit ce qui
+ * revient, là où un garde qui cherche un motif de source reste vert sur une
+ * valeur neutralisée.
+ * @param {any} config @param {string} titre @param {string} url @returns {string[]}
+ */
+export function identitePubliee(config, titre, url) {
+  const icone = String((config?.artifact ?? {}).icon ?? '').trim();
+  const lignes = [`titre « ${titre} » — le MÊME à chaque republication (argus.mobile.yaml → artifact.title)`];
+  if (icone) {
+    lignes.push(`icône ${icone} — la même à chaque republication (argus.mobile.yaml → artifact.icon)`);
+  } else if (url) {
+    // ⚠️ AUCUN PICTOGRAMME ICI : nommer celui du gabarit est exactement le
+    // défaut. On ne sait pas ce que la page porte, on dit où le lire.
+    lignes.push('aucune icône déclarée (artifact.icon vide) — n\'en passe pas : une republication'
+      + ' GARDE celle de la page. Si tu renseignes artifact.icon, relève d\'abord celle que la'
+      + ' page porte, avec le read qui t\'a rendu son historique');
+  } else {
+    lignes.push('aucune icône déclarée (artifact.icon vide) — choisis-la à cette première'
+      + ' publication et reporte-la dans argus.mobile.yaml, sinon la prochaine republication'
+      + ' en choisira une autre et la page changera d\'identité');
+  }
+  return lignes;
+}
+
 /** L'enregistrement compact d'un run — ce qu'un onglet passé sait montrer. */
 export function runRecord(context) {
   const { run, counts, gate, parts, findings, generatedAt } = context;
@@ -990,8 +1033,7 @@ function main() {
     // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
     // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
     // republie en choisit d'autres et la page se lit comme une seconde page.
-    log(`  titre « ${titre} » · icône ${config.artifact.icon || '👁'}`
-      + ' — les MÊMES à chaque republication (argus.mobile.yaml → artifact.title / artifact.icon)');
+    for (const ligne of identitePubliee(config, titre, ident.url)) log(`  ${ligne}`);
   }
 
   const notRun = parts.filter((p) => p.state !== 'ok');
