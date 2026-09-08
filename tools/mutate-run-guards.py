@@ -1518,6 +1518,12 @@ MUTATIONS = [
     ("skill", "417 · le chemin du .app redevient un segment nu",
      "`build/ios/Debug-*-iphonesimulator/Runner.app` d'un côté",
      "`Debug-*-iphonesimulator` d'un côté"),
+    # 418 — le renvoi iOS ressort de la phrase : la prescription redevient
+    # valable en apparence sur les deux plateformes, et le lecteur iOS court 34
+    # lignes avant d'apprendre qu'elle ne le concerne pas.
+    ("skill", "418 · le renvoi iOS ressort de la phrase qui prescrit",
+     "`firstLaunchMs`** \u2014\n   **sur iOS, cette grandeur N'EXISTE PAS : va droit au \U0001f534 qui ferme ce point** \u2014,\n   que",
+     "`firstLaunchMs`**, que"),
 ]
 
 
