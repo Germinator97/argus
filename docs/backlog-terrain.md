@@ -5081,17 +5081,28 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS — 429 à 433, inscrits le 08/09/2026, PASSE NON FAITE.**
-Le **run 62** (confirmation Android) rend **4 flows sur 6** — les deux rouges sont
-un défaut de l'app et une absorption d'ancre non résolue, pas le skill. Trois
-correctifs ont porté, dont le **421 qui a sauvé le run** : `argus-build` annonçait
-« PAQUET INTACT » alors que trois fichiers venaient de changer, et seul le
-comptage du marqueur l'a démenti.
+✅ **429 à 433 FERMÉS le 08/09/2026 — backlog VIDE (57e vidage).** Cinq gardes,
+six mutations. Le **run 62** (confirmation Android) avait rendu 4 flows sur 6 —
+les deux rouges étant un défaut de l'app et une absorption d'ancre non résolue.
 
-🔴 **ET LE RUN A TROUVÉ UNE RÉGRESSION QUE J'AVAIS INTRODUITE LE MATIN** (428,
-fermée le jour même) : le contrôle du 422 jugeait une plateforme **hors
-périmètre**. C'est le symétrique du 237-244, refait dans l'autre sens en fermant
-un point sans rapport.
+🔴 **LE DÉFAUT LE PLUS GRAVE ÉTAIT PIRE QUE SON CONSTAT.** Le 431 : la garde de
+fraîcheur relevait sa mesure APRÈS le build, qui vient de réécrire la date du
+paquet — elle était **vacante par construction** depuis le 343-346, et ne pouvait
+plus jamais dire « périmé ». Un run a lu « PAQUET INTACT » en 6 s sur trois
+fichiers modifiés ; seul le comptage d'un marqueur l'a démenti.
+
+⚠️ **DEUX CONSTATS SUR CINQ SONT EN PARTIE DÉMENTIS, et j'ai écrit le doublon
+avant de le voir — une fois sur deux.** Le 432 : j'ai ajouté une condition qui
+existait quatorze lignes plus haut, **neuvième fois du chantier**. Le 433 : même
+forme, mais vérifiée AVANT d'écrire, une demi-heure plus tard. *La leçon a tenu
+au deuxième essai, pas au premier.*
+
+⚠️ **Et il a fallu QUATRE mutations pour faire tomber un seul garde** (432), les
+trois premières visant mon INTENTION au lieu de ce que le garde ASSERTE. Le
+harnais a par ailleurs refusé de démarrer sur un fichier non commité — le
+garde-fou a fonctionné.
+
+✅ **422 à 427 FERMÉS le 08/09/2026 — 55e vidage.**
 
 ✅ **422 à 427 FERMÉS le 08/09/2026 — 55e vidage.**
 
@@ -6530,7 +6541,14 @@ l'autre façon de se tromper**.
 
 ### 429. 🔴 « Recopie la section `fonts:` du pubspec » n'a pas de réponse quand la police vient d'une dépendance
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** Les DEUX endroits qui portent la consigne le disent
+désormais : le message d'exécution — qui vit dans le CADRE, donc descend chez les
+installations existantes — et le dartdoc du gabarit, qu'on lit en remplissant.
+Les deux nomment toujours le pubspec, sinon on enverrait le lecteur à deux
+endroits différents.
+📌 Lignes gardées sous 80 colonnes : `dart format` reformate le code, les
+concaténations de chaînes comprises, et la CI le joue avec
+`--set-exit-if-changed` sur un projet neuf.
 
 Le dartdoc de `argusFonts` dit : « les polices du projet, **recopiées de la
 section `fonts:` du `pubspec.yaml`** ». Le terrain n'en a AUCUNE — sa police
@@ -6545,7 +6563,9 @@ nu ») — c'est le même genre de piège, sur la source cette fois.
 
 ### 430. La capture publie le secret que `label:` protège partout ailleurs
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** Le §5 nomme le quatrième canal — les **pixels** — et
+dit quoi faire : sortir ce finding des preuves plutôt que d'avertir seulement.
+Un avertissement sans issue se lit une fois puis s'oublie.
 
 Le §5 énumère les canaux que `label:` masque — console, rapports — et nomme celui
 qu'il ne masque pas : les journaux de debug bruts. Il manque le quatrième : **les
@@ -6559,7 +6579,14 @@ quatrième absente : c'est la parité entre canaux d'une même phrase.
 
 ### 431. La garde de fraîcheur compare des DATES, et rate un kernel non recompilé
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026 — et le défaut était pire que le constat.** La garde du
+343-346 était **VACANTE PAR CONSTRUCTION** : elle relevait la fraîcheur APRÈS le
+build, qui vient de réécrire la date du paquet. `stale` ne pouvait donc plus
+jamais être vrai dès que le build touchait le paquet.
+📌 Le relevé se fait maintenant AVANT, et le message « PAQUET INTACT » dit ce
+qu'une empreinte ne prouve pas, avec le tell — la DURÉE. Le garde mesure la
+POSITION, et que le relevé soit **relu** après : une mesure prise et jetée est
+pire que pas de mesure, parce qu'elle ressemble à un contrôle.
 
 `argus-build` a annoncé « PAQUET INTACT — lib/ n'a pas changé depuis » **en 6 s**
 alors que trois fichiers venaient d'être modifiés. La branche « PAQUET PÉRIMÉ »
@@ -6574,7 +6601,19 @@ devrait dire ce qu'elle ne peut pas voir, ou compter au lieu de dater.
 
 ### 432. Les entrées que la doc suggère pour les secrets sont inertes ici
 
-**Ouvert le 08/09/2026.**
+⚠️ **EN PARTIE DÉMENTI le 08/09/2026, et c'est ma correction qui l'a montré.**
+J'ai commencé par ÉCRIRE la condition — qui existait déjà quatorze lignes plus
+haut, et mieux dite : « n'y liste QUE des fichiers VERSIONNÉS ; un fichier
+gitignoré n'est déjà pas regardé ». J'ajoutais ce qui était là, **pour la
+neuvième fois du chantier**.
+📌 Le résidu vrai est plus étroit : la SUGGESTION se lit seule, loin de sa
+condition, et c'est elle qu'on recopie. Un renvoi de trois lignes remplace ma
+redite de six, et le garde tient exactement ça.
+⚠️ **Quatre mutations ont été nécessaires**, et les trois premières manquaient
+pour la même raison : elles visaient mon INTENTION (le titre, puis le mot
+« INERTE ») au lieu de ce que le garde ASSERTE. Et le garde acceptait
+`VERSIONN|gitignor` — un garde qui accepte des synonymes ne mesure que le plus
+facile à écrire. *Partir de l'assertion, jamais de ce qu'on croit protéger.*
 
 `allowSecretsIn` : les deux entrées Firebase que la documentation propose ne
 servent à rien sur ce terrain — les fichiers sont **gitignorés**, donc déjà hors
@@ -6583,7 +6622,14 @@ objet se relit comme une dispense nécessaire.
 
 ### 433. Rien ne dit quoi faire quand la racine de cadrage est PARTAGÉE entre états
 
-**Ouvert le 08/09/2026.**
+⚠️ **EN PARTIE DÉMENTI le 08/09/2026 — et cette fois vérifié AVANT d'écrire.**
+La règle existe : « quand plusieurs états partagent une racine d'écran, c'est
+l'ancre d'ÉTAT qui sert d'`anchor:`, et la racine commune passe en `displays:` ».
+Elle vit ~170 lignes avant le gabarit, dans les écarts d'ancrage.
+📌 Le résidu vrai : rien ne la reliait au CADRAGE, où la question se pose. Un
+renvoi, pas une redite — c'est la leçon du 432, appliquée dans la demi-heure.
+Le garde tient le LIEN : la règle d'un côté, le renvoi de l'autre, et il suit la
+formulation de la règle plutôt que de la citer.
 
 `visualCropOn` se cadre sur une racine ; ici la même racine sert **quatre états**,
 donc aucun `ArgusScreen` ne peut la porter comme `anchor:` (elle doit être
