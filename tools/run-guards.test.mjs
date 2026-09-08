@@ -10879,8 +10879,20 @@ test('le résidu de la contre-épreuve est nommé là où le geste se fait (419)
   const suite = skill.slice(debut + 4);
   const fin = suite.indexOf('\n## ') === -1 ? suite.length : suite.indexOf('\n## ');
   const section = suite.slice(0, fin);
-  assert.ok(section.includes(residu),
-    `la section qui PRESCRIT la contre-épreuve ne nomme pas le résidu qu'elle laisse (${residu}) : `
+  // ⚠️ LE HARNAIS A REPRIS LA PREMIÈRE VERSION DE CE GARDE. Il cherchait le
+  // résidu N'IMPORTE OÙ dans la section : retirer la phrase qui l'explique le
+  // laissait vert, parce que la commande de nettoyage porte le même mot vingt
+  // lignes plus bas. Un mot présent deux fois dans la fenêtre ne garde ni l'une
+  // ni l'autre de ses occurrences. On sépare donc les deux RÔLES — la prose qui
+  // dit ce que c'est, le geste qui l'efface —, et chacun a sa mutation.
+  const gestes = [...section.matchAll(/```[\s\S]*?```/g)].map((m) => m[0]).join('\n');
+  const prose = section.replace(/```[\s\S]*?```/g, ' ');
+  assert.ok(prose.includes(residu),
+    `la PROSE de la section ne nomme pas le résidu que la contre-épreuve laisse (${residu}) : `
     + 'restaurer la référence ne l\'efface pas, et le suivant le découvrira comme un fichier '
     + 'inconnu dans le dossier qu\'il vient de restaurer (419)');
+  assert.ok(new RegExp(`${residu}[\\s\\S]*?(-delete|rm )|(-delete|rm )[\\s\\S]*?${residu}`).test(gestes),
+    `la section dit ce qu'est le résidu (${residu}) et ne donne aucun geste pour l'ôter : `
+    + 'le lecteur doit alors décider seul s\'il peut effacer un fichier du dossier qu\'il vient '
+    + 'de restaurer — c\'est exactement ce qu\'un run a eu à faire (419)');
 });

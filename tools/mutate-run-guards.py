@@ -1524,6 +1524,22 @@ MUTATIONS = [
     ("skill", "418 · le renvoi iOS ressort de la phrase qui prescrit",
      "`firstLaunchMs`** \u2014\n   **sur iOS, cette grandeur N'EXISTE PAS : va droit au \U0001f534 qui ferme ce point** \u2014,\n   que",
      "`firstLaunchMs`**, que"),
+    # 419 a — le SKILL cesse de nommer le résidu : il reste dans le dossier des
+    # références, et le suivant le découvre comme un fichier inconnu.
+    ("skill", "419 · le skill ne nomme plus le résidu de la contre-épreuve",
+     "`<écran>_diff.png` **à côté des références**",
+     "son image de comparaison **à côté des références**"),
+    # 419 b — et la preuve que le garde DÉRIVE : c'est la source qui bouge, pas
+    # le skill. Le .gitignore exclut un autre nom, le skill nomme l'ancien.
+    ("gitignore", "419 · le .gitignore exclut un autre résidu que celui nommé",
+     "/.maestro/_baselines/**/*_diff.png",
+     "/.maestro/_baselines/**/*_delta.png"),
+    # 419 c — l'autre rôle : la section dit ce qu'est le résidu et ne donne plus
+    # aucun geste pour l'ôter. C'est la moitié que la première version de ce
+    # garde ne voyait pas, le même mot vivant dans les deux.
+    ("skill", "419 · le geste qui retire le résidu disparaît",
+     "find .maestro/_baselines -name '*_diff.png' -delete",
+     "echo 'rien a faire'"),
 ]
 
 
