@@ -85,7 +85,12 @@ String? argusSkipReason() {
     return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
         'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
         "d'un cadratin). Recopie la section fonts: du pubspec dans "
-        'test/argus/harness.dart.';
+        'test/argus/harness.dart.\n'
+        "⚠️ Si ton pubspec n'en a AUCUNE, ce n'est PAS que le projet n'a pas "
+        "de police : elle vient alors d'une DÉPENDANCE. Cherche `fonts:` dans "
+        'le pubspec des paquets dont tu dépends, et donne ici le chemin '
+        'relatif de leurs .ttf — sinon cette dimension entière se saute, et '
+        'un « 371 skippés » se lit comme un projet sans police.';
   }
   if (argusFontFamily.isEmpty) {
     return 'argusFontFamily est vide : indique la famille par défaut du thème.';

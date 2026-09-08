@@ -78,6 +78,14 @@ final List<ArgusScreen> argusScreens =
 /// les polices du projet, recopiées de la section `fonts:` du
 /// `pubspec.yaml` — une entrée par FAMILLE, avec ses fichiers.
 ///
+/// ⚠️ ET SI TON `pubspec.yaml` N'A AUCUNE SECTION `fonts:`, CE N'EST PAS QUE LE
+/// PROJET N'A PAS DE POLICE. Elle vient alors d'une DÉPENDANCE — un design
+/// system partagé, un paquet voisin — et l'absence se lit « rien à déclarer »,
+/// ce qui est faux. Vécu : la dimension de disposition s'est sautée en entier,
+/// **371 tests sur 401**, et le compte de skips ressemblait à un projet sans
+/// police. Cherche `fonts:` dans le pubspec des paquets dont tu dépends, et
+/// donne ici le chemin relatif de leurs `.ttf`.
+///
 /// ⚠️ SANS ELLES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
 /// défaut de `flutter_test` rend chaque glyphe dans un carré d'un cadratin : un
 /// texte y est jusqu'à deux fois plus large qu'en Inter ou en Roboto, il replie

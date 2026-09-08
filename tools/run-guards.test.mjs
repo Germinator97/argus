@@ -11294,3 +11294,45 @@ test('le contrôle des chemins ne juge que les plateformes déclarées (428)', (
     'un projet qui déclare les deux plateformes doit voir ses DEUX chemins contrôlés : filtrer '
     + 'trop est l\'autre façon de se tromper');
 });
+
+// ── 429 · UNE CONSIGNE SANS RÉPONSE FERME UNE DIMENSION EN SILENCE ───────
+//
+// « Recopie la section `fonts:` du pubspec » n'a AUCUNE réponse quand le projet
+// n'en a pas — parce que sa police vient d'une dépendance. L'absence se lit
+// alors « ce projet n'a pas de police », ce qui est faux, et `argusSkipReason()`
+// saute toute la dimension de disposition : 371 tests sur 401, en silence.
+//
+// Le garde exige la PARITÉ des deux endroits qui portent la consigne : le
+// dartdoc du gabarit, que l'on lit en remplissant, et le message d'exécution,
+// que l'on lit quand ça saute. Le second vit dans le CADRE, donc il descend chez
+// les installations existantes ; le premier non — raison de plus pour que les
+// deux le disent.
+test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endroits (429)', () => {
+  const argus = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  const cadre = readFileSync(join(argus, 'argus_harness.dart'), 'utf8');
+  const gabarit = readFileSync(join(argus, 'harness.dart'), 'utf8');
+
+  // Le message d'exécution : la branche qui saute doit dire où chercher.
+  const i = cadre.indexOf('argusFonts.isEmpty');
+  assert.ok(i > 0, 'la branche qui saute sur des polices absentes a disparu : ce garde ne mesure rien');
+  const message = cadre.slice(i, cadre.indexOf('argusFontFamily.isEmpty', i));
+  assert.match(message, /DÉPENDANCE/,
+    'le message qui explique le saut redit « recopie la section fonts: du pubspec » sans dire quoi '
+    + 'faire quand il n\'y en a pas : la police vient alors d\'une dépendance, et la dimension '
+    + 'entière se saute pendant qu\'on croit le projet sans police (429)');
+
+  // Et le gabarit, qu'on lit AVANT de se faire sauter la dimension.
+  const j = gabarit.indexOf('const Map<String, List<String>> argusFonts');
+  assert.ok(j > 0, 'la déclaration argusFonts a changé de forme — mets ce garde à jour');
+  const dartdoc = gabarit.slice(0, j);
+  assert.match(dartdoc, /DÉPENDANCE/,
+    'le dartdoc du gabarit ne couvre pas le cas de la dépendance : c\'est lui qu\'on lit en '
+    + 'remplissant, donc avant de payer le saut');
+
+  // ⚠️ L'autre moitié : les deux doivent parler des mêmes fichiers. Un message
+  // qui renvoie ailleurs que le dartdoc rouvrirait l'écart d'un cran.
+  for (const [nom, texte] of [['message', message], ['dartdoc', dartdoc]]) {
+    assert.match(texte, /pubspec/,
+      `le ${nom} ne nomme plus le pubspec, où la section se cherche des deux côtés`);
+  }
+});
