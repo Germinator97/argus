@@ -5081,7 +5081,17 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **415 à 421 FERMÉS le 08/09/2026 — backlog VIDE (54e vidage).** La passe a
+🔴 **6 POINTS OUVERTS — 422 à 427, inscrits le 08/09/2026, PASSE NON FAITE.**
+Le **run 61** (confirmation iOS, sur le plugin corrigé le matin) rend **7 flows,
+`scope: complet`, gate `pass`, 0 major** en ~13 min de device sur 60. **Aucun
+mécanisme cassé, aucun faux vert.** Deux correctifs du matin ont payé mot pour
+mot (416, 419). Ce qui reste : un **417 incomplet** — c'est `flutter build` qui
+imprime le mauvais chemin —, une sortie dont la dernière ligne dit l'inverse du
+verdict, une promesse d'unicité qui a détruit 40 lignes chez l'agent, et trois
+informations mal placées. 🔴 **La sortie reste fermée** : trois de ces constats
+coûtent à qui applique le skill sans le connaître.
+
+✅ **415 à 421 FERMÉS le 08/09/2026 — 54e vidage.** La passe a
 rendu **8 gardes** et **12 mutations**, chacune vérifiée en tombant. Un seul des
 sept était un défaut de code (**415**), un était **FAUX** (**418**), cinq étaient
 des informations exactes au mauvais endroit.
@@ -6307,6 +6317,101 @@ Un run a compté **1 occurrence résiduelle** d'un DSN dans le kernel debug et a
 effective. Ce qui l'a sauvé est la phrase du §2 (« la preuve se fait sur la
 release »), pas la table du §3g, qui explique le phénomène deux cents lignes plus
 loin.
+
+### 422-427. Le run 61 — la confirmation iOS, et ce qu'elle a encore trouvé
+
+Sous-agent vierge, simulateur redémarré et prouvé, joué SEUL sur le plugin corrigé
+le matin même. **7 flows, `scope: complet`, gate `pass`** — 0 blocker, 0 critical,
+0 major, 0 minor, 1 info — en **~13 min de device sur 60**. 614 tests du projet
+verts, instrumentation partie de zéro (15 racines / 15, 28 commandes / 28).
+
+✅ **Deux correctifs du matin ont payé, mot pour mot.** Le **416** : le rapport
+s'ouvre sur « titre et icône **relevés** sur la page avant d'être écrits », neuf
+onglets, aucun écrasement — c'est l'ordre que le correctif a mis devant le
+gabarit, et l'icône est nommée avec le titre. Le **419** : « restauration prouvée
+par empreinte **+ `_diff.png` retiré** », le résidu nommé et le geste joué sans y
+penser. 📌 Et le **401** parle toujours : `home_scan` rend « nœud 324×48 dp pour
+un widget de 18×18 », à l'étage 1, sans device.
+
+### 422. 🔴 Le 417 est incomplet : c'est `flutter build` qui imprime le mauvais chemin
+
+**Ouvert le 08/09/2026.**
+
+> « `flutter build` imprime `✓ Built build/ios/iphonesimulator/Runner.app`, alors
+> que le paquet réel avec flavor est `build/ios/Debug-dev-iphonesimulator/Runner.app`.
+> L'avertissement est dans le gabarit, **que je n'avais pas encore ouvert quand
+> j'ai rempli `build:`**. »
+
+Le correctif du matin a mis le chemin ENTIER à la clé — ce qui est juste — et il
+suppose qu'on lise la clé avant de la remplir. Le run remplit `build:` en se
+fiant à **ce que l'outil vient d'imprimer**, et cette ligne-là ment sur un projet
+à flavors. *Bon du point de vue de la PROPRIÉTÉ, à côté du point de vue du
+MOMENT* — la même paire que le 396. Mesuré : le skill ne met en garde nulle part
+contre le chemin que `flutter build` affiche (0 occurrence).
+
+### 423. `argus-anchors` sort en 2 en affichant « All tests passed! »
+
+**Ouvert le 08/09/2026.**
+
+Reproduit dans le `Makefile` livré : la cible garde le **pire** code de sortie de
+ses deux moitiés (`rc`), et lance le croisement AVANT le test Dart. Un croisement
+rouge suivi d'un test vert affiche donc « All tests passed! » **en dernier** et
+sort en 2. La dernière ligne qu'on lit dit l'inverse du verdict.
+
+📌 Le chaînage est délibéré et il est bon (point 234 : un garde qui en empêche un
+autre coûte plus qu'il ne rapporte). Ce qui manque est le **résumé** qui dit
+laquelle des deux moitiés a échoué, après les deux.
+
+### 424. « Ce marqueur est unique dans le fichier » — une promesse que le premier commentaire dément
+
+**Ouvert le 08/09/2026.**
+
+`known_issues.dart:74` l'écrit en toutes lettres : *« Ce marqueur est unique dans
+le fichier : ancre-toi dessus. »* C'est vrai à la livraison et faux dès que
+quelqu'un le CITE — ce que le run a fait en écrivant son propre commentaire. Son
+script s'est ancré sur la première occurrence et a **détruit 40 lignes de
+raisonnement** (données intactes, restauré à la main).
+
+Le fichier avertit du dartdoc en double ; il ne dit rien du marqueur qu'on ajoute
+soi-même. C'est une **promesse de comportement technique sans garde**, dans un
+fichier que le projet possède — donc jamais mis à jour chez les installations
+existantes.
+
+### 425. L'avertissement des deux racines vit à 900 lignes du fichier qui l'emploie
+
+**Ouvert le 08/09/2026.**
+
+Sur une app authentifiée, `ARGUS_ANCHOR_HOME` n'est pas l'accueil : c'est l'écran
+de connexion. Le SKILL le dit (« UNE APP AUTHENTIFIÉE A DEUX RACINES, DONT
+`ARGUS_ANCHOR_HOME` N'EN [nomme qu'une] »), à ~900 lignes de `goto.yaml`, qui
+emploie la variable **six fois** sans porter la mise en garde. Le 366-372 avait
+écrit la phrase ; il ne l'a pas mise là où elle mord.
+
+### 426. Le skill demande de signaler « avant de lancer » à qui n'a pas de canal
+
+**Ouvert le 08/09/2026.**
+
+Le §1 fait rendre l'inventaire des canaux sortants « avant la première passe
+device », avec ce qu'on propose d'en faire. Un agent qui travaille en une passe
+n'a qu'un seul canal — son compte rendu — et il arrive APRÈS. Le run le nomme
+lui-même : *« C'est la contradiction que le skill nomme au §1. »*
+
+⚠️ **Part de responsabilité du cadrage** : mon prompt disait aussi « dis-le-moi
+avant de lancer quoi que ce soit ». Le remède doit dire ce qu'on fait quand
+personne ne peut répondre — le skill le fait déjà ailleurs (« §1 dit quoi faire
+quand personne n'écoute », point 71-76) : c'est cette forme-là qui manque ici.
+
+### 427. Sur un composant à enfant iconique, les deux remèdes s'excluent
+
+**Ouvert le 08/09/2026.**
+
+Mesuré dans les deux sens, et **pour la seconde fois** (déjà au run 59) : sans
+`container: true`, l'ancre est active et le nœud mesure 324×48 dp pour un widget
+de 18×18 ; avec, la géométrie colle et l'ancre devient **inerte**. Le run a gardé
+l'active et inscrit l'écart.
+
+La recette du §2c ne couvre pas ce composant-là, et c'est la mesure qui le dit,
+pas la lecture. Deux runs indépendants y sont tombés.
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
