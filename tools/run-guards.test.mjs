@@ -11336,3 +11336,37 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
       `le ${nom} ne nomme plus le pubspec, où la section se cherche des deux côtés`);
   }
 });
+
+// ── 430 · `label:` PROTÈGE TROIS CANAUX, PAS LE QUATRIÈME ────────────────
+//
+// Le §5 énumère où un secret passé par `-e` est masqué — console, rapports — et
+// nomme l'endroit où il ne l'est pas : les journaux de debug bruts. Il en
+// manquait un : les PIXELS. Avec `artifact.evidence: all`, la capture d'un
+// écran où le secret est saisi le publie en clair dans la page, et rien ne le
+// signale. Trois protections nommées, une quatrième absente — c'est la parité
+// entre les canaux d'une même phrase.
+//
+// Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
+// un demain, la phrase devra le dire ou ce garde tombera.
+test('la mise en garde sur `label:` nomme le canal des captures (430)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('- **Secrets** :');
+  assert.ok(i > 0, 'la puce Secrets du §5 a disparu : ce garde en dérive la fenêtre');
+  // La fenêtre est la puce, jusqu'à la suivante — structurel, pas un nombre.
+  const suite = skill.slice(i + 3);
+  const bloc = suite.slice(0, suite.indexOf('\n- **'));
+
+  assert.match(bloc, /label:/,
+    'la puce ne parle plus du masquage : ce garde ne mesure rien');
+  assert.match(bloc, /journaux de debug bruts/,
+    'le canal déjà connu a disparu — c\'est lui qui rendait la liste crédible');
+  assert.match(bloc, /pixels/i,
+    'la puce énumère les canaux que `label:` masque et celui qu\'il ne masque pas, sans nommer '
+    + 'les PIXELS : une capture de l\'écran où le secret est saisi le publie en clair avec le '
+    + 'finding, alors qu\'il est masqué partout ailleurs (430)');
+  // Et elle doit dire QUOI FAIRE, pas seulement prévenir : un avertissement sans
+  // issue se lit puis s'oublie.
+  assert.match(bloc, /evidence/,
+    'la mise en garde ne dit pas comment sortir la capture des preuves : prévenir sans donner '
+    + 'l\'issue laisse le lecteur devant un choix qu\'il ne sait pas exprimer');
+});

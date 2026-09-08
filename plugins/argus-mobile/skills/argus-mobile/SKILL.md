@@ -2432,6 +2432,13 @@ soit `ENV=staging` avec données jetables, soit une confirmation explicite.
   par `-e`, donc **visibles dans `ps`** le temps du run. Et `label:` les masque en
   console et dans les rapports **mais pas dans les journaux de debug bruts** :
   ne publie jamais `--debug-output` comme artefact CI ouvert.
+  🔴 **NI DANS LES PIXELS.** `label:` protège trois canaux et pas le quatrième :
+  une capture de l'écran où le secret est SAISI le montre en clair, et
+  `artifact.evidence: all` la publie avec le finding. Vécu sur un écran de code à
+  usage unique — le code part dans la page, alors qu'il est masqué partout
+  ailleurs. Si un écran affiche un secret, mets ce finding hors preuve
+  (`evidence: major`, ou l'écran hors du périmètre visuel) : le masquage de la
+  ligne de commande ne dit rien de ce que l'appareil AFFICHE.
 - **Captures** : une baseline d'un écran authentifié contient des données réelles.
 - **Analyse de binaire** : uniquement sur **tes propres builds**, en détection.
 
