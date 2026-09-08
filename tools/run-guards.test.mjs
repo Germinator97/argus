@@ -11211,3 +11211,44 @@ test('la demande d\'inventaire des canaux dit quoi faire sans réponse (426)', (
     'l\'issue ne dit pas de laisser le reste : sans ça, un agent coupe un appel dans lib/ pour le '
     + 'faire taire, et change l\'app qu\'il est venu mesurer');
 });
+
+// ── 427 · QUAND LES REMÈDES S'EXCLUENT, LE SKILL DIT LEQUEL GARDER ───────
+//
+// Le §2c donne trois remèdes et désigne le bon — l'ancre sur l'enfant que le
+// composant reçoit. Deux runs indépendants ont trouvé un composant où il ne
+// suffit pas : l'ancre est active mais son nœud fusionne avec la rangée
+// (324×48 dp pour un widget de 18×18), et `container: true` colle la géométrie
+// en rendant l'ancre inerte. Aucune quatrième case.
+//
+// Sans arbitrage écrit, chacun tranche seul — et les deux runs ont tranché
+// juste, ce qui ne se reproduira pas indéfiniment. Le garde exige que la table
+// des remèdes soit suivie d'une issue, et que l'issue renvoie à la MESURE qui
+// la conditionne plutôt qu'à un jugement.
+test('le §2c dit quoi garder quand les deux remèdes s\'excluent (427)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const table = skill.indexOf('**Trois remèdes, dont deux sont mauvais**');
+  assert.ok(table > 0, 'la table des remèdes a changé de forme : ce garde en dérive la fenêtre');
+  // La fenêtre : de la table jusqu'à la prochaine mise en garde de même rang —
+  // structurel, pas un nombre de caractères deviné.
+  const suite = skill.slice(table);
+  const fin = suite.indexOf('LE BON REMÈDE T\'EST INTERDIT');
+  assert.ok(fin > 0, 'la section des remèdes ne mène plus au cas du dépôt voisin');
+  const bloc = suite.slice(0, fin);
+
+  assert.match(bloc, /aucun des trois ne donne les deux/i,
+    'la table donne trois remèdes sans dire qu\'aucun ne suffit sur certains composants : deux '
+    + 'runs y sont tombés, chacun a tranché seul (427)');
+  assert.match(bloc, /garde alors l'ancre active/i,
+    'l\'issue ne dit pas LEQUEL garder — une ancre inerte n\'est tapable par rien, une ancre '
+    + 'active mal cadrée l\'est encore');
+  // ⚠️ Et l'arbitrage doit renvoyer à la MESURE qui le conditionne : sans elle,
+  // « garde l'active » devient une permission permanente au lieu d'un compromis
+  // borné. Le nom de la cible se dérive du Makefile livré.
+  const make = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+  const cible = (/^(argus-anchors):/m.exec(make) ?? [])[1];
+  assert.ok(cible, 'la cible qui mesure les ancres a disparu du Makefile');
+  assert.ok(bloc.includes(cible),
+    `l'issue ne renvoie pas à \`${cible}\`, qui mesure si le centre tombe encore sur le contrôle : `
+    + 'sans cette borne, « garde l\'active » devient une permission permanente');
+});

@@ -866,6 +866,20 @@ IconButton(
 )
 ```
 
+🔴 **ET SUR CERTAINS COMPOSANTS, AUCUN DES TROIS NE DONNE LES DEUX.** Mesuré par
+**deux runs indépendants**, sur un bouton dont l'enfant est une icône de 18×18 dp
+dans une rangée : l'ancre posée sur l'enfant est bien active, mais son nœud est
+**fusionné avec la rangée** — 324×48 dp relevés ; ajouter `container: true` colle
+la géométrie et rend l'ancre **inerte**. Les deux remèdes s'excluent, et il n'y a
+pas de quatrième case.
+
+**Garde alors l'ancre ACTIVE, et inscris l'écart.** Une ancre inerte n'est
+tapable par rien ; une ancre active mal cadrée reste tapable **tant que le centre
+du nœud tombe sur le contrôle** — c'est exactement ce que `make argus-anchors`
+mesure et te dit, avec le rectangle, le centre visé et le remède. S'il te dit que
+le centre tombe DEHORS, alors le compromis ne tient plus : c'est le moment de
+remonter au composant, ou de déclarer l'écran `stageOneOnly` avec sa raison.
+
 ⚠️ **ET SI LE COMPOSANT VIT DANS UN AUTRE DÉPÔT, LE BON REMÈDE T'EST INTERDIT.**
 Tout ce qui précède suppose que tu peux éditer le composant. Un projet mature
 tire souvent son design system d'un paquet **voisin** — dépendance par chemin,
