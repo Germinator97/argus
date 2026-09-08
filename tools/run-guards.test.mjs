@@ -11174,3 +11174,40 @@ test('un fichier qui emploie l\'ancre de départ dit qu\'elle n\'est pas l\'accu
     + 'ramène là d\'où l\'on vient — c\'est l\'étape suivante qui échoue, en accusant une ancre '
     + 'correcte (425)');
 });
+
+// ── 426 · UNE CONSIGNE QUI ATTEND UNE RÉPONSE DIT QUOI FAIRE SANS ELLE ───
+//
+// Le §2 fait rendre l'inventaire des canaux sortants « avant de construire »,
+// avec ce qu'on propose d'en faire. Un agent qui travaille en une passe n'a
+// qu'un canal — son compte rendu — et il arrive APRÈS. Il l'a nommé lui-même :
+// « le cadrage dit de le signaler avant de lancer, or mon seul canal est ce
+// rapport ». Une consigne qui suppose un interlocuteur bloque celui qui n'en a
+// pas, ou le laisse trancher en silence.
+//
+// Le skill sait déjà faire ça ailleurs (point 71-76 : « §1 dit quoi faire quand
+// personne n'écoute »). Le garde exige la PAIRE : la demande, et l'issue.
+test('la demande d\'inventaire des canaux dit quoi faire sans réponse (426)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const demande = skill.indexOf('Rends la liste à qui te cadre');
+  assert.ok(demande > 0,
+    'la demande d\'inventaire a changé de forme : ce garde en dérive la fenêtre, mets-le à jour');
+  // La fenêtre est le bloc du §2, jusqu'à sa prochaine sous-partie — structurel,
+  // pas un nombre de lignes deviné.
+  const suite = skill.slice(demande);
+  const fin = suite.search(/\n\*\*[a-z]\.\s/);
+  const bloc = fin === -1 ? suite : suite.slice(0, fin);
+
+  // L'issue est une PRESCRIPTION, pas une phrase d'excuse : au moins deux
+  // gestes numérotés, donc quelque chose qu'on peut appliquer seul.
+  const gestes = [...bloc.matchAll(/^\d+\.\s+\*\*/gm)];
+  assert.ok(gestes.length >= 2,
+    'le §2 demande de rendre l\'inventaire « avant de construire » sans dire ce qu\'on fait quand '
+    + 'personne ne peut répondre : un agent en une seule passe n\'a que son compte rendu, et il '
+    + 'arrive après. Il bloque, ou il tranche en silence (426)');
+
+  // Et l'issue doit couvrir les deux sorties : ce qu'on coupe, ce qu'on laisse.
+  assert.match(bloc, /Neutralise/i, 'l\'issue ne dit pas ce qui se neutralise sans risque');
+  assert.match(bloc, /Laisse le reste/i,
+    'l\'issue ne dit pas de laisser le reste : sans ça, un agent coupe un appel dans lib/ pour le '
+    + 'faire taire, et change l\'app qu\'il est venu mesurer');
+});

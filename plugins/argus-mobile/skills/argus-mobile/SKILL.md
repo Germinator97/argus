@@ -235,6 +235,23 @@ canal est bien coupé se fait **sur la release**, jamais sur le debug : un
 `String.fromEnvironment` garde sa valeur par défaut dans le kernel JIT, donc le
 binaire de debug ne tranche rien.
 
+🔴 **ET SI PERSONNE NE PEUT RÉPONDRE, NE BLOQUE PAS.** Tu travailles peut-être en
+une seule passe, sans interlocuteur : ton seul canal est alors ton compte rendu,
+et il arrive APRÈS. Un run l'a nommé — *« le cadrage dit de le signaler avant de
+lancer, or mon seul canal est ce rapport »*. Dans ce cas :
+
+1. **Neutralise ce qui se neutralise sans toucher au comportement de l'app** —
+   une clé vide au build, un flavor de test. Ça, tu peux le décider seul : ça ne
+   change rien à ce que tu mesures.
+2. **Laisse le reste**, et ne va pas couper un appel dans `lib/` pour le faire
+   taire : tu changerais l'app que tu es venu tester, et `resilience.yaml` en
+   particulier mesurerait autre chose.
+3. **Écris les DEUX listes** dans ton compte rendu — ce que tu as coupé, ce que
+   tu as laissé partir, et pourquoi pour chacun.
+
+Un canal laissé ouvert et DIT vaut mieux qu'une passe qui n'a pas eu lieu ; un
+canal laissé ouvert et tu ne vaut rien.
+
 ⚠️ **ET SI TU COMPTES QUAND MÊME DANS LE DEBUG, TU TROUVERAS UNE OCCURRENCE —
 CE N'EST PAS UN ÉCHEC DE NEUTRALISATION.** Le `defaultValue` est un littéral de
 SOURCE : il vit dans le kernel quelle que soit la valeur effective, donc `1` est
