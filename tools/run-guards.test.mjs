@@ -11451,3 +11451,41 @@ test('les entrées suggérées rappellent leur condition, là où on les lit (43
     + 'en une commande');
 });
 
+
+// ── 433 · LE CADRAGE RENVOIE À LA RÈGLE DE L'ANCRE D'ÉTAT ────────────────
+//
+// ⚠️ CONSTAT EN PARTIE DÉMENTI, et cette fois vérifié AVANT d'écrire — la
+// leçon du 432, appliquée. Le run demandait quoi faire quand la racine de
+// `visualCropOn` est partagée entre états. La règle EXISTE : « quand plusieurs
+// états partagent une racine d'écran, c'est l'ancre d'ÉTAT qui sert d'anchor:,
+// et la racine commune passe en displays: ». Elle vit ~170 lignes avant le
+// gabarit, dans les écarts d'ancrage, et rien ne la reliait au CADRAGE — où la
+// question se pose.
+//
+// Le garde tient le lien, pas la redite : la règle d'un côté, le renvoi de
+// l'autre. Si la règle change de formulation, c'est elle que ce garde suit.
+test('le gabarit de cadrage renvoie à la règle de l\'ancre d\'état (433)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // 1. La règle existe — sinon il n'y a rien vers quoi renvoyer, et c'est ELLE
+  //    qu'il faudrait écrire.
+  const regle = /plusieurs états partagent une racine d'écran, c'est l'ancre d'ÉTAT/;
+  assert.match(skill, regle,
+    'la règle du cas partagé a disparu : le renvoi du gabarit pointerait alors dans le vide, et '
+    + 'c\'est la règle qu\'il faut réécrire, pas le renvoi');
+
+  // 2. Et le gabarit de cadrage y renvoie, là où la question se pose.
+  const i = skill.indexOf('    visualCropOn: home_filled_root');
+  assert.ok(i > 0, 'la ligne de cadrage du gabarit a changé de forme — mets ce garde à jour');
+  // Le bloc de commentaires contigu qui la précède, remonté ligne à ligne.
+  const lignes = skill.slice(0, i).split('\n');
+  let k = lignes.length - 1;
+  while (k >= 0 && lignes[k].trim() === '') k -= 1;
+  const bloc = [];
+  for (; k >= 0 && /^\s*#/.test(lignes[k]); k -= 1) bloc.unshift(lignes[k]);
+  assert.ok(bloc.length > 2, `la ligne de cadrage n'a plus de commentaire (${bloc.length}) : ce garde ne mesure rien`);
+  assert.match(bloc.join('\n'), /partagée entre plusieurs états/,
+    'le gabarit dit que la valeur est l\'ancre de la racine, sans dire ce qu\'on fait quand cette '
+    + 'racine est PARTAGÉE — la règle est écrite cent soixante-dix lignes plus haut, et rien ne '
+    + 'la relie à l\'endroit où l\'on cadre (433)');
+});

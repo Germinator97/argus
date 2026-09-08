@@ -1249,6 +1249,11 @@ screens:
     # ⚠️ Dès le DEUXIÈME écran en `visual: true`, le cadrage se déclare par
     #   écran : aucune valeur globale ne convient à deux dispositions. La valeur
     #   est l'ancre de la racine, celle de la ligne `anchor:` juste au-dessus.
+    #   ⚠️ Donc si la racine PHYSIQUE est partagée entre plusieurs états, ce
+    #   n'est pas elle qu'on cadre : c'est l'ancre d'ÉTAT qui sert d'`anchor:`
+    #   (et la racine commune passe en `displays:`) — la règle est plus haut,
+    #   au cinquième écart d'ancrage. Le plein écran, lui, embarquerait
+    #   l'horloge.
     visualCropOn: home_filled_root
     # 🔴 ET L'ArgusScreen DE CET ÉCRAN DOIT DÉCLARER `cropRoot: true` (408).
     #   C'est dans `harness.dart` que ça se pose, pas ici — mais ça se DÉCIDE
