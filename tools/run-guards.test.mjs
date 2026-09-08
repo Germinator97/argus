@@ -11119,3 +11119,58 @@ test('le geste d\'ancrage survit à la duplication du marqueur (424)', () => {
     'le fichier ne dit pas de s\'ancrer sur la dernière occurrence — sans quoi la mesure ci-dessus '
     + 'reste vraie et personne ne s\'en sert (424)');
 });
+
+// ── 425 · LA MISE EN GARDE VIT LÀ OÙ LA VARIABLE S'EMPLOIE ───────────────
+//
+// Sur une app authentifiée, `ARGUS_ANCHOR_HOME` n'est pas l'accueil : c'est
+// l'écran de connexion, puisque c'est lui qui porte `start: true`. Le SKILL le
+// dit — à ~900 lignes du sous-flow qui emploie la variable six fois. Un run l'a
+// découvert en le payant, et le point 366-372 avait écrit la phrase sans la
+// mettre là où elle mord.
+//
+// Le garde ne compare pas deux textes : il exige que TOUT fichier livré qui
+// EMPLOIE la variable porte la mise en garde. Un septième emploi écrit demain
+// dans un autre flow tombera dessus.
+test('un fichier qui emploie l\'ancre de départ dit qu\'elle n\'est pas l\'accueil (425)', () => {
+  const flows = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  /** @type {string[]} */
+  const fichiers = [];
+  (function marcher(/** @type {string} */ dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) marcher(abs);
+      else if (/\.ya?ml$/.test(e.name)) fichiers.push(abs);
+    }
+  })(flows);
+  assert.ok(fichiers.length > 5, `corpus de flows vide ou tronqué (${fichiers.length})`);
+
+  // L'ancre post-connexion se DÉRIVE du runner, jamais citée ici : si elle
+  // change de nom, c'est le flow qui doit suivre, et ce garde le dira.
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const post = (/(ARGUS_AUTH_\w+):\s*anchors\.success/.exec(run) ?? [])[1];
+  assert.ok(post, 'le runner n\'injecte plus d\'ancre post-connexion : ce garde ne mesure rien');
+
+  /** @type {string[]} */
+  const muets = [];
+  let retenus = 0;
+  for (const f of fichiers) {
+    const texte = readFileSync(f, 'utf8');
+    // Les emplois, hors commentaires : c'est l'usage qui crée le besoin.
+    const code = texte.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+    const emplois = code.split('ARGUS_ANCHOR_HOME').length - 1;
+    // Seul ce qui AIGUILLE peut confondre les deux racines : attendre l'écran
+    // de départ est le rôle même de l'ancre de départ.
+    if (emplois === 0 || !code.includes('SCREEN_ID')) continue;
+    retenus += 1;
+    if (!texte.includes(post)) muets.push(`${f.slice(flows.length + 1)} (${emplois} emploi(s))`);
+  }
+  assert.ok(retenus > 0,
+    'aucun flow livré n\'aiguille vers un écran en lisant l\'ancre de départ : ce garde ne mesure '
+    + 'plus rien — si l\'aiguillage a changé de forme, dérive-le de la nouvelle');
+  assert.deepEqual(muets, [],
+    `ces flows emploient l'ancre de DÉPART sans nommer l'ancre post-connexion (${post}) : sur une `
+    + 'app authentifiée, la première est l\'écran de connexion, et une branche qui les confond '
+    + 'ramène là d\'où l\'on vient — c\'est l\'étape suivante qui échoue, en accusant une ancre '
+    + 'correcte (425)');
+});

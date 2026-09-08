@@ -9,6 +9,19 @@ appId: ${APP_ID}
 # Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`,
 # QUEL QUE SOIT L'ENDROIT D'OÙ ELLE PART.
 #
+# ⚠️ ET `ARGUS_ANCHOR_HOME` N'EST PAS « L'ACCUEIL » SUR UNE APP AUTHENTIFIÉE.
+# Cette variable porte l'ancre de l'écran déclaré `start: true` — celui que
+# `launch-clean.yaml` attend après un `clearState`. Sur une app qui demande une
+# connexion, c'est donc l'écran de CONNEXION, pas celui qu'on voit une fois
+# entré. L'accueil authentifié, lui, est `auth.anchors.success`, injecté sous
+# `ARGUS_AUTH_SUCCESS`.
+#
+# Le §3c du SKILL le dit déjà — à neuf cents lignes d'ici, et ce fichier emploie
+# la variable six fois. Une information juste au mauvais endroit ne sert
+# personne : confondre les deux fait écrire des branches qui ramènent à l'écran
+# de connexion en croyant revenir à l'accueil, et c'est l'étape SUIVANTE qui
+# échoue, en accusant une ancre correcte.
+#
 # ⚠️ C'EST LE CONTRAT, ET CE N'EST PAS CELUI QU'ON CROIT. `goto` n'est presque
 # jamais appelé au lancement : il l'est AU MILIEU d'un flow, après que les blocs
 # précédents ont navigué ailleurs. Chaque branche doit donc être écrite comme un
