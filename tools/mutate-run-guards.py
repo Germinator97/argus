@@ -1577,6 +1577,16 @@ MUTATIONS = [
     ("makefile", "423 · les deux moitiés repartagent un compteur unique",
      "$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \\",
      "$(FLUTTER) test test/argus/anchors_test.dart || croise=$$?; \\"),
+    # 424 a — le fichier cesse de prescrire la DERNIÈRE occurrence : il ne reste
+    # que le piège, sans le geste qui y survit.
+    ("dette", "424 · le fichier ne prescrit plus la dernière occurrence",
+     "Ancre-toi donc sur la DERNIÈRE occurrence",
+     "Ancre-toi donc sur la bonne occurrence"),
+    # 424 b — le marqueur s'éloigne de ce qu'il ancre : le couple qui reste
+    # unique cesse d'être un couple.
+    ("dette", "424 · le marqueur est cité une seconde fois dans le fichier livré",
+     "// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.",
+     "// une note qui parle de ARGUS:DECLARATION\n// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE."),
 ]
 
 
