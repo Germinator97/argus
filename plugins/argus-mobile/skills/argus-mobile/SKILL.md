@@ -307,17 +307,35 @@ de vraies ancres. Un run a ainsi annoncé dix-sept écrans et deux ancres qui
 n'existent nulle part.
 
 ```bash
-# SITES d'instrumentation dans le code (le filtre `///` est indispensable)
-grep -rn "identifier: *'" lib/ | grep -v "^\s*///" | wc -l
+# SITES d'instrumentation dans le code (le filtre `///` est indispensable).
+# ⚠️ On RECOLLE la valeur à sa clé AVANT de compter : voir juste en dessous.
+find lib -name '*.dart' -exec cat {} + | grep -v "^\s*///" \
+  | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' | grep -c "identifier: *'"
 
 # ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : compte-les à part.
 #    La forme -F évite d'avoir à échapper `${` correctement pour ton shell.
-grep -rnF 'identifier: ' lib/ | grep -vF '///' | grep -cF '${'
+find lib -name '*.dart' -exec cat {} + | grep -vF '///' \
+  | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' \
+  | grep -F 'identifier: ' | grep -cF '${'
 
 # Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
 grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
 ```
+
+⚠️ **UN MOTIF QUI EXIGE LA VALEUR SUR LA MÊME LIGNE QUE LA CLÉ COMPTE FAUX.**
+`dart format` **replie** l'argument sur la ligne suivante dès que l'imbrication
+est profonde, et `identifier: *'` ne matche alors plus rien — sans erreur, sans
+ligne en trop, juste un total plus petit. D'où le recollage par `perl -0777`
+avant de compter. Mesuré sur un projet réel : le motif d'origine rendait **48**
+pour **50** posées, et **1 pour 3** dans le fichier le plus imbriqué.
+
+📌 Deux choses rendent celui-ci pire que les trois autres pièges de cet encadré.
+Ce chiffre **ouvre le rapport** — c'est écrit deux paragraphes plus haut —, donc
+un sous-comptage y passe pour une mesure. Et l'erreur est **corrélée à la
+complexité** : ce que le motif rate, ce sont exactement les écrans les plus
+imbriqués. Le run qui l'a trouvé ne le pouvait que par **désaccord**, sachant
+avoir posé trois ancres là où son compteur en voyait une.
 
 ⚠️ **NE CHAÎNE JAMAIS DES `grep -c` PAR `&&` — ici NI AILLEURS.** `grep -c` **sort en 1 quand il
 compte 0** : la chaîne s'arrête alors au premier compteur nul, **sans erreur**,

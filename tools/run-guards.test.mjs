@@ -807,7 +807,13 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
 // ne mesure que si elle a lieu dans les conditions réelles. Vingtième run.
 test('la commande prescrite VOIT un gabarit interpolé', () => {
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
-  const ligne = skill.split('\n').find((l) => l.startsWith('grep') && l.includes('${'));
+  // ⚠️ La commande a cessé de tenir sur UNE ligne le 08/09 (435 : il a fallu
+  // recoller la valeur que `dart format` replie). On lit donc le PARAGRAPHE qui
+  // porte `${`, continuations comprises — l'unité, pas la ligne.
+  const paragraphes = skill.split('\n\n').filter((b) => b.includes('${') && /^\s*(find|grep)\b/m.test(b));
+  const ligne = paragraphes
+    .map((b) => b.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n').trim())
+    .find((c) => c.includes('${') && c.includes('identifier'));
   assert.ok(ligne, 'le SKILL ne prescrit plus de commande pour compter les gabarits interpolés — '
     + 'si le bloc a été réécrit, mets ce motif à jour ; sinon ce garde ne garde plus rien');
 
@@ -11349,6 +11355,66 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 //
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
+// ── 435 ────────────────────────────────────────────────────────────────────
+// Ce garde EXÉCUTE la commande que le skill prescrit, sur un corpus qui porte
+// le cas. Lire son texte ne dirait rien : le motif d'origine était parfaitement
+// lisible et comptait faux. Et le corpus est fabriqué exprès pour porter un
+// argument REPLIÉ, que `dart format` produit dès que l'imbrication est profonde.
+test('la commande de comptage du skill survit au repli du formateur (435)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf("# SITES d'instrumentation dans le code");
+  assert.ok(i > 0, 'la commande de comptage des sites a disparu du skill : ce garde ne mesure plus rien');
+  // La fenêtre est le bloc jusqu'à la ligne vide — structurel, pas un nombre.
+  const apres = skill.slice(i);
+  const bloc = apres.slice(0, apres.indexOf('\n\n'));
+  const commande = bloc.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.ok(/identifier/.test(commande),
+    'le bloc lu ne contient aucune commande : la fenêtre est fausse, pas le skill');
+
+  // Un corpus qui porte les quatre formes, dont celle que le formateur produit.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-435-'));
+  try {
+    mkdirSync(join(dir, 'lib'));
+    writeFileSync(join(dir, 'lib', 'ecran.dart'), [
+      "/// Exemple en dartdoc — ne DOIT pas compter :",
+      "///   identifier: 'exemple_en_doc',",
+      "Semantics(identifier: 'sur_une_ligne_a', child: x);",
+      "Semantics(identifier: 'sur_une_ligne_b', child: x);",
+      "                          Semantics(",
+      "                            identifier:",
+      "                                'replie_par_le_formateur',",
+      "                            child: x,",
+      "                          );",
+      "",
+    ].join('\n'));
+
+    const r = spawnSync('bash', ['-c', commande], { cwd: dir, encoding: 'utf8' });
+    const compte = Number((r.stdout || '').trim());
+
+    // 1. La moitié qui manquait : l'argument replié se compte.
+    assert.equal(compte, 3,
+      `la commande rend ${compte} pour 3 sites posés : elle rate l'argument que \`dart format\` `
+      + 'REPLIE sur la ligne suivante. Ce chiffre ouvre le rapport, et il est faux exactement sur '
+      + 'les écrans les plus imbriqués (435)');
+
+    // 2. L'autre moitié : le dartdoc ne compte toujours pas. Sans elle, un
+    //    remède qui compterait TOUT passerait pour un correctif.
+    writeFileSync(join(dir, 'lib', 'doc.dart'), [
+      "/// Trois exemples en doc, aucun n'est un site :",
+      "///   identifier: 'faux_un',",
+      "///   identifier: 'faux_deux',",
+      "///   identifier: 'faux_trois',",
+      "",
+    ].join('\n'));
+    const r2 = spawnSync('bash', ['-c', commande], { cwd: dir, encoding: 'utf8' });
+    assert.equal(Number((r2.stdout || '').trim()), 3,
+      'le recollage a emporté le filtre des commentaires : les exemples du dartdoc sont comptés '
+      + "comme des ancres, ce qui est le piège d'origine de cet encadré");
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ── 434 ────────────────────────────────────────────────────────────────────
 // Le garde APPELLE la construction et lit ce qu'elle rend : lire le texte de
 // `report.mjs` ne verrait pas une note neutralisée (`[] ?? …`, `&& false`), et
