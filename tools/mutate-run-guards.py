@@ -1631,6 +1631,12 @@ MUTATIONS = [
     # 433 — le renvoi disparaît du gabarit : la règle reste écrite cent
     # soixante-dix lignes plus haut, et personne ne la lit là où l'on cadre.
     # ⚠️ L'UNITÉ, pas une ligne : le garde protège le renvoi entier (leçon 432).
+    # 435 — le motif d'ORIGINE remis : la valeur exigée sur la même ligne que
+    # la clé. Le garde EXÉCUTE la commande, donc c'est bien ce qu'il asserte
+    # qu'on vise ici — retirer le recollage, pas le commentaire qui l'explique.
+    ("skill", "435 · le comptage reperd ce que le formateur replie",
+     '  | perl -0777 -pe \'s/identifier:\\s*\\n\\s*/identifier: /g\' | grep -c "identifier: *\'"',
+     '  | grep -c "identifier: *\'"'),
     # 434 — le SILENCE d'origine, remis. La branche du cas zéro est ce que le
     # garde asserte (il APPELLE `notesDePreuve` et lit ce qui revient) : la
     # retirer rend une page nue sans un mot, exactement comme avant.
