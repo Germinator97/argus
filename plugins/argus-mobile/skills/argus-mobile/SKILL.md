@@ -1822,6 +1822,19 @@ périmètre (`run.scope`) et affiche un bandeau « partiel » quand il vient d'u
 filtré, mais l'ordre reste le tien : **le dernier run avant le rapport doit être
 un run complet.**
 
+⚠️ **ET LA COMPARAISON EN ÉCHEC A LAISSÉ SON DIFF.** Maestro écrit
+`<écran>_diff.png` **à côté des références**, dans le dossier que tu viens de
+restaurer : restaurer la référence ne l'efface pas — c'est un fichier de plus,
+pas une version d'un fichier. Un contrôle par empreinte du dossier compte alors
+une référence de plus qu'il n'en existe, et c'est ce qui a mis un run en alerte,
+à raison. Il est **gitignoré** (rien ne partira au commit, la ligne est dans le
+`.gitignore` que l'installeur pose, avec son pourquoi), mais retire-le quand
+même — un résidu dont personne ne parle se relit comme un défaut :
+
+```bash
+find .maestro/_baselines -name '*_diff.png' -delete
+```
+
 ⚠️ **L'installation prouvée ne prouve PAS le contenu.** Le runner vérifie que
 l'APK est bien posé (« Success », puis `pm list packages`) — c'est nécessaire et
 ça ne dit rien du code embarqué : un binaire peut être installé et porter le

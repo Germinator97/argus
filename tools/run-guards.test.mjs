@@ -10850,3 +10850,37 @@ test('une prescription marquée « Sur Android » renvoie iOS dans sa propre phr
     + 'ce que fait le lecteur iOS : il applique la consigne avant d\'atteindre celle qui l\'en '
     + 'dispense — 34 lignes plus bas, sur le cas mesuré (418)');
 });
+
+// ── 419 · LE RÉSIDU D'UN GESTE PRESCRIT EST NOMMÉ LÀ OÙ ON LE PRODUIT ─────
+//
+// La contre-épreuve visuelle laisse un `<écran>_diff.png` À CÔTÉ des
+// références. Le `.gitignore` que l'installeur pose l'exclut — le démenti des
+// runs 55/56 tient, rien ne part au commit — mais le SKILL n'en disait rien :
+// restaurer la référence n'efface pas le diff, et c'est le contrôle par
+// empreinte d'un agent qui l'a attrapé, pas une consigne. Il a compté une
+// référence de plus qu'il n'en existe et s'est demandé, à raison, ce que
+// c'était.
+//
+// ⚠️ Le nom se DÉRIVE du `.gitignore` livré, jamais cité ici : si Maestro
+// renomme son résidu, c'est cette source qui bouge et le SKILL doit suivre.
+test('le résidu de la contre-épreuve est nommé là où le geste se fait (419)', () => {
+  const gitignore = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.gitignore'), 'utf8');
+  const exclu = /^\/?\.maestro\/_baselines\/.*?([\w*]+\.png)$/m.exec(gitignore);
+  assert.ok(exclu,
+    'le .gitignore livré n\'exclut plus de résidu du dossier de références : ce garde en dérive '
+    + 'son nom, il ne mesure plus rien — vérifie que Maestro n\'en écrit plus');
+  const residu = exclu[1].replace(/^\*/, '');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const debut = skill.indexOf('### La contre-épreuve visuelle');
+  assert.ok(debut > 0, 'la section de la contre-épreuve visuelle a disparu ou changé de titre');
+  // La section, pas une fenêtre en caractères : sa fin est le prochain titre.
+  const suite = skill.slice(debut + 4);
+  const fin = suite.indexOf('\n## ') === -1 ? suite.length : suite.indexOf('\n## ');
+  const section = suite.slice(0, fin);
+  assert.ok(section.includes(residu),
+    `la section qui PRESCRIT la contre-épreuve ne nomme pas le résidu qu'elle laisse (${residu}) : `
+    + 'restaurer la référence ne l\'efface pas, et le suivant le découvrira comme un fichier '
+    + 'inconnu dans le dossier qu\'il vient de restaurer (419)');
+});
