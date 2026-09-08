@@ -10969,3 +10969,50 @@ test('tout comptage dans un binaire vit avec sa règle d\'encodage (421)', () =>
     + 'l\'encodage : un littéral accentué en AOT rend alors `0`, et ce zéro-là se lit comme '
     + 'la preuve qu\'on cherchait — c\'est l\'instrument qui l\'a produit (421)');
 });
+
+// ── 422 · UN FLAVOR DÉPLACE LE PAQUET, ET L'OUTIL IMPRIME L'AUTRE CHEMIN ──
+//
+// Le 417 avait écrit le chemin ENTIER à la clé du gabarit. Le run suivant a
+// quand même rempli `build:` faux, et il dit pourquoi : `flutter build` imprime
+// lui-même « ✓ Built build/ios/iphonesimulator/Runner.app », et c'est cette
+// ligne qu'on recopie — l'avertissement de la clé se lit APRÈS l'avoir remplie.
+// Bon du point de vue de la propriété, à côté du point de vue du moment.
+//
+// D'où un contrôle qui MESURE, avant le build plutôt qu'après vingt secondes de
+// « AUCUN PAQUET à cet emplacement ». Le garde exige la PARITÉ des deux
+// plateformes : le défaut n'en connaît qu'une à la fois, et n'en traiter qu'une
+// recréerait l'écart que ce chantier passe son temps à trouver.
+test('un chemin de paquet qui ignore le flavor déclaré est signalé, sur les DEUX plateformes (422)', () => {
+  const base = {
+    app: { id: 'com.exemple', flavor: 'dev' }, platforms: ['ios'], screens: [],
+    thresholds: { visualMatchPercentage: 95 },
+    artifact: { enabled: false, evidence: 'all', maxMb: 16 }, devices: [],
+  };
+  const surLeFlavor = (/** @type {any} */ app, /** @type {any} */ build) =>
+    (validateConfig({ ...base, app: { ...base.app, ...app }, build }) ?? [])
+      .filter((/** @type {any} */ p) => /ne porte pas le flavor/.test(p.message));
+
+  // Les deux plateformes, leurs deux formes — dérivées de ce que l'outil écrit :
+  // `app-dev-debug.apk` côté Android, `Debug-dev-iphonesimulator/` côté iOS.
+  const cas = [
+    { cle: 'ios', muet: 'build/ios/Debug-dev-iphonesimulator/Runner.app', sourd: 'build/ios/iphonesimulator/Runner.app' },
+    { cle: 'android', muet: 'build/app/outputs/flutter-apk/app-dev-debug.apk', sourd: 'build/app/outputs/flutter-apk/app-debug.apk' },
+  ];
+  for (const { cle, muet, sourd } of cas) {
+    const alerte = surLeFlavor({}, { [cle]: sourd });
+    assert.equal(alerte.length, 1,
+      `build.${cle} ignore le flavor déclaré et rien ne le dit : le harnais s'arrêtera vingt `
+      + 'secondes plus tard sur « AUCUN PAQUET », en envoyant chercher du côté de la commande (422)');
+    assert.match(alerte[0].message, /imprime lui-même/,
+      `le message ne dit pas d'où vient le mauvais chemin — c'est la ligne que \`flutter build\` `
+      + 'affiche, et c\'est elle qu\'on recopie');
+    // L'autre moitié : un chemin juste ne doit rien déclencher, sinon le
+    // contrôle crie sur une configuration saine et on apprend à l'ignorer.
+    assert.deepEqual(surLeFlavor({}, { [cle]: muet }), [],
+      `build.${cle} porte pourtant le flavor : ce contrôle accuse une config correcte`);
+  }
+
+  // Et sans flavor déclaré, il n'y a rien à dire — le défaut n'existe pas.
+  assert.deepEqual(surLeFlavor({ flavor: '' }, { ios: 'build/ios/iphonesimulator/Runner.app' }), [],
+    'sans flavor, un chemin sans segment est le chemin NORMAL : l\'avertissement serait faux');
+});

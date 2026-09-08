@@ -447,6 +447,42 @@ export function validateConfig(config) {
       });
     }
   }
+  // ⚠️ UN FLAVOR DÉPLACE LE PAQUET, ET `flutter build` IMPRIME L'AUTRE CHEMIN.
+  // Le 417 avait écrit le chemin ENTIER à la clé du gabarit ; le 422 dit pourquoi
+  // ça ne suffit pas — un run remplit `build:` en se fiant à ce que l'outil vient
+  // d'afficher (« ✓ Built build/ios/iphonesimulator/Runner.app »), et cette
+  // ligne-là ment dès qu'il y a un flavor. Le correctif était bon du point de vue
+  // de la PROPRIÉTÉ — l'avertissement vit à la clé qu'il gouverne — et à côté du
+  // point de vue du MOMENT : on lit la clé après l'avoir remplie.
+  //
+  // Alors on MESURE, au lieu d'espérer qu'on ait lu. Et AVANT le build, pas après
+  // vingt secondes de « AUCUN PAQUET à cet emplacement », qui envoie chercher du
+  // côté de la commande alors que c'est la clé qui pointe à côté.
+  //
+  // ⚠️ LES DEUX PLATEFORMES, parce que le défaut n'en connaît qu'une seule à la
+  // fois : `--flavor dev` écrit `build/app/outputs/flutter-apk/app-dev-debug.apk`
+  // côté Android et `build/ios/Debug-dev-iphonesimulator/Runner.app` côté iOS.
+  // N'en traiter qu'une recréerait l'écart
+  // que ce chantier passe son temps à trouver.
+  const flavor = String(config.app?.flavor ?? '').trim();
+  if (flavor) {
+    for (const [plateforme, chemin] of [['ios', config.build?.ios], ['android', config.build?.android]]) {
+      const valeur = String(chemin ?? '').trim();
+      // Le critère est le FLAVOR dans le chemin, pas une forme de segment : les
+      // deux plateformes le placent différemment, et c'est sa présence qui dit
+      // qu'on a écrit le chemin du paquet plutôt que celui de la vitrine.
+      if (valeur && !valeur.includes(flavor)) {
+        problems.push({
+          level: 'warn',
+          message: `build.${plateforme} = « ${valeur} » ne porte pas le flavor « ${flavor} » : `
+            + 'un flavor DÉPLACE le paquet, et ce chemin est celui qu\'un build sans flavor produit. '
+            + '⚠️ `flutter build` imprime lui-même le chemin SANS flavor — ne le recopie pas. '
+            + 'Demande-le au disque : `find build -name Runner.app -o -name "*.apk"`.',
+        });
+      }
+    }
+  }
+
   const evidence = config.artifact?.evidence ?? 'all';
   if (!['all', 'major', 'none'].includes(evidence)) {
     problems.push({ level: 'error', message: `artifact.evidence vaut « ${evidence} » : attendu all, major ou none.` });
