@@ -1634,6 +1634,14 @@ MUTATIONS = [
     # 435 — le motif d'ORIGINE remis : la valeur exigée sur la même ligne que
     # la clé. Le garde EXÉCUTE la commande, donc c'est bien ce qu'il asserte
     # qu'on vise ici — retirer le recollage, pas le commentaire qui l'explique.
+    # 436 — le DÉCÂBLAGE, seul mode de panne que Node puisse voir. La
+    # mécanique reste juste et complète ; plus personne ne l'appelle, et la
+    # suite de disposition redevient muette sur la police qu'elle mesure.
+    # ⚠️ Les deux lignes ensemble : retirer l'appel seul ne compilerait pas,
+    #    et une mutation qui casse le build rougit pour une autre raison.
+    ("layout", "436 · la résolution de police n'est plus câblée",
+     "    final String? defaut = argusFontResolutionIssue();\n    expect(defaut, isNull, reason: defaut ?? '');\n",
+     ''),
     ("skill", "435 · le comptage reperd ce que le formateur replie",
      '  | perl -0777 -pe \'s/identifier:\\s*\\n\\s*/identifier: /g\' | grep -c "identifier: *\'"',
      '  | grep -c "identifier: *\'"'),
