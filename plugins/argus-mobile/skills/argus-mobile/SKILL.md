@@ -1487,8 +1487,10 @@ l'invente pas, il la lit dans `build.androidScan` / `build.iosScan`. Deux
 minutes de build changent deux verdicts.
 
 ⚠️ **SUR iOS, le `.app` de simulateur SURVIT au build de release** : les deux
-cohabitent sous `build/ios/`, l'un sous `Debug-*-iphonesimulator`, l'autre sous
-`iphoneos`. Rien à réinstaller après — vérifié par empreinte
+cohabitent, `build/ios/Debug-*-iphonesimulator/Runner.app` d'un côté et
+`build/ios/iphoneos/Runner.app` de l'autre — chemins ENTIERS, parce qu'un
+segment nu se lit de deux façons et qu'une seule existe (417). Rien à
+réinstaller après — vérifié par empreinte
 (`--measure-binary` identique avant et après). Et sans identité de signature,
 `--no-codesign` suffit : on pèse et on scanne, on ne distribue pas.
 

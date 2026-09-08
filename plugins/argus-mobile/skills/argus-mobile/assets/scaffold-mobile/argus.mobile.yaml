@@ -114,13 +114,17 @@ build:
   # La source compte autant que la commande : sans elle, le suivant la cherchera
   # au même endroit que toi, et ce n'est jamais le même selon les projets.
   # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.
-  # `flutter build ios --flavor dev` écrit sous `Debug-dev-iphonesimulator/`, pas
-  # sous `iphonesimulator/` — et `--release --flavor dev` sous
-  # `Release-dev-iphoneos/`. Le défaut pointe alors un chemin qui n'existe pas, le
-  # harnais s'arrête sur « AUCUN PAQUET à cet emplacement » et on cherche du côté
-  # du build. L'échec est bruyant, donc il ne coûte que du temps — mais il en
-  # coûte à chaque projet à flavors. Demande le chemin au disque plutôt que de le
-  # deviner : `find build/ios -name Runner.app -maxdepth 2` (392).
+  # ⇒ DEMANDE-LE AU DISQUE plutôt que de le deviner, c'est le seul geste sûr :
+  #     find build/ios -name Runner.app -maxdepth 2
+  # Le segment de configuration REMPLACE `iphonesimulator/`, il ne s'y ajoute
+  # pas — d'où les chemins ENTIERS ci-dessous, un segment nu se lisant de deux
+  # façons dont une seule existe (417) :
+  #   flutter build ios --flavor dev            → build/ios/Debug-dev-iphonesimulator/Runner.app
+  #   flutter build ios --release --flavor dev  → build/ios/Release-dev-iphoneos/Runner.app
+  # Le défaut pointe sinon un chemin qui n'existe pas, le harnais s'arrête sur
+  # « AUCUN PAQUET à cet emplacement » et on cherche du côté du build. L'échec
+  # est bruyant, donc il ne coûte que du temps — mais il en coûte à chaque projet
+  # à flavors, et un run l'a payé deux fois (392, 417).
   ios: build/ios/iphonesimulator/Runner.app
   # Sa jumelle iOS, LUE PAR QUATRE SITES et déclarée nulle part jusqu'au run 31 :
   # un message d'erreur envoyait la renseigner, et le seul moyen d'apprendre

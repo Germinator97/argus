@@ -10755,3 +10755,57 @@ test('le journal n\'annonce jamais une icône que personne n\'a déclarée (416)
   assert.match(declaree, /titre « Sonde — Android — rapport QA »/,
     'le journal n\'annonce plus le titre dans la forme que le garde de bout en bout relit');
 });
+
+// ── 417 · UN CHEMIN DE BUILD SE DONNE ENTIER, JAMAIS EN SEGMENT NU ────────
+//
+// « `flutter build ios --flavor dev` écrit sous `Debug-dev-iphonesimulator/`,
+// pas sous `iphonesimulator/` » : juste, et lisible de deux façons — le segment
+// REMPLACE-t-il `iphonesimulator/`, ou s'y ajoute-t-il ? Une seule existe. Un
+// run a suivi l'autre et s'est arrêté sur « ✖ BUILD RÉUSSI, MAIS AUCUN PAQUET
+// ici après 20s », en cherchant du côté du build ; le geste qui sauve (demander
+// le chemin au disque) était dans le même encadré, mais APRÈS.
+//
+// Le garde ne vise pas les deux lignes du constat : il balaie TOUT ce que le
+// plugin livre et refuse un segment de configuration Xcode qui ne serait pas
+// précédé de sa racine. C'est un critère total et négatif — la prochaine
+// mention, écrite ailleurs, tombera dessus sans qu'on ait à y penser.
+test('un chemin de build iOS est donné ENTIER, jamais en segment nu (417)', () => {
+  const livre = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const LISIBLES = /\.(md|ya?ml|mjs|dart|sh|json|html)$|(^|\/)Makefile$/;
+  const SEGMENT = /(?:Debug|Release)-[A-Za-z*]*-?(?:iphonesimulator|iphoneos)/g;
+  const RACINE_ATTENDUE = 'build/ios/';
+
+  /** @type {string[]} */
+  const fichiers = [];
+  (function marcher(/** @type {string} */ dir) {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const abs = join(dir, e.name);
+      if (e.isDirectory()) marcher(abs);
+      else if (LISIBLES.test(e.name)) fichiers.push(abs);
+    }
+  })(livre);
+  assert.ok(fichiers.length > 20, `corpus vide ou tronqué (${fichiers.length}) : le plugin a-t-il bougé ?`);
+
+  let vus = 0;
+  /** @type {string[]} */
+  const nus = [];
+  for (const f of fichiers) {
+    const texte = readFileSync(f, 'utf8');
+    for (const m of texte.matchAll(SEGMENT)) {
+      vus += 1;
+      const avant = texte.slice(Math.max(0, m.index - RACINE_ATTENDUE.length), m.index);
+      if (avant !== RACINE_ATTENDUE) {
+        nus.push(`${f.slice(livre.length + 1)} — ${texte.slice(m.index - 24, m.index + m[0].length + 12).replace(/\n/g, '⏎')}`);
+      }
+    }
+  }
+  // ⚠️ La prémisse d'abord : sans occurrence, la boucle ne s'exécute pas et
+  // l'assertion suivante serait verte en ne comparant rien.
+  assert.ok(vus >= 2,
+    `aucun segment de configuration Xcode dans ce que le plugin livre (${vus}) : le motif ne `
+    + 'matche plus, ou la doc a cessé d\'en parler — ce garde ne mesure alors rien');
+  assert.deepEqual(nus, [],
+    'ces chemins de build iOS sont donnés en segment NU : on ne sait pas s\'il remplace '
+    + '`iphonesimulator/` ou s\'y ajoute, et un run a suivi la mauvaise lecture pour finir sur '
+    + '« AUCUN PAQUET ici ». Écris-le depuis `build/ios/` (417)');
+});
