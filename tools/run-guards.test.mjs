@@ -10809,3 +10809,44 @@ test('un chemin de build iOS est donné ENTIER, jamais en segment nu (417)', () 
     + '`iphonesimulator/` ou s\'y ajoute, et un run a suivi la mauvaise lecture pour finir sur '
     + '« AUCUN PAQUET ici ». Écris-le depuis `build/ios/` (417)');
 });
+
+// ── 418 · UNE PRESCRIPTION DE PLATEFORME RENVOIE L'AUTRE DANS SA PHRASE ───
+//
+// ⚠️ CE CONSTAT EST DÉMENTI SUR LE FOND, ET LE GARDE EXISTE POUR CE QU'IL
+// RESTE. Le run 59 a rapporté que le §3g envoie dériver `startTimeoutMs` de
+// `firstLaunchMs` sans dire que la grandeur n'existe pas sur iOS. Mesuré sur le
+// SKILL tel qu'il l'a lu (062812a, deux heures avant son run) : la prescription
+// portait déjà « Sur Android », le bloc « SUR iOS, `firstLaunchMs` N'EXISTE
+// PAS » était là depuis le 01/09 (279), et le runner imprimait déjà la
+// dérivation iOS. Le run a même repris la formulation du correctif — « à neuf
+// cents lignes d'ici » — pour décrire le manque qu'elle décrit.
+//
+// Ce qui reste est le SYMPTÔME, qui lui est réel : entre la prescription et le
+// bloc qui la borne, il y avait 34 lignes et trois avertissements qui ne
+// concernent pas iOS. Un lecteur iOS applique donc la première phrase avant
+// d'atteindre celle qui l'en dispense. Le renvoi vit désormais DANS la phrase,
+// et c'est ce que ce garde mesure — la classe, pas la ligne.
+test('une prescription marquée « Sur Android » renvoie iOS dans sa propre phrase (418)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // La fin de phrase se DÉRIVE de la typographie du document : un point suivi
+  // d'une majuscule ou d'un pictogramme d'attaque. Pas de fenêtre en nombre de
+  // caractères, qui serait un chiffre deviné.
+  const FIN_DE_PHRASE = /\.\s+(?=[A-ZÀ-ÖØ-Þ⚠🔴🚨]|$)/;
+  const prescriptions = [...skill.matchAll(/\*\*Sur Android[,.]/g)];
+  assert.ok(prescriptions.length >= 1,
+    'plus aucune prescription marquée « Sur Android » : ce garde ne mesure rien — si elles ont '
+    + 'changé de forme, dérive-les de la nouvelle');
+
+  /** @type {string[]} */
+  const orphelines = [];
+  for (const m of prescriptions) {
+    const suite = skill.slice(m.index);
+    const coupe = FIN_DE_PHRASE.exec(suite);
+    const phrase = suite.slice(0, coupe ? coupe.index : 400);
+    if (!/iOS/.test(phrase)) orphelines.push(phrase.replace(/\n\s*/g, ' ').slice(0, 120));
+  }
+  assert.deepEqual(orphelines, [],
+    'ces prescriptions ne valent que pour Android et ne disent pas, dans leur propre phrase, '
+    + 'ce que fait le lecteur iOS : il applique la consigne avant d\'atteindre celle qui l\'en '
+    + 'dispense — 34 lignes plus bas, sur le cas mesuré (418)');
+});

@@ -1673,8 +1673,9 @@ de `auth_identification_root` — le compteur rendait « 2 » et rassurait.
    `clearKeychain`, à poser **avec** `clearState` et non une fois par run.
 3. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de
    générer les références — il concerne tous les flows, y compris ceux qui
-   produisent les captures. ⚠️ **Sur Android, dérive-le de `firstLaunchMs`**, que
-   `argus-perf` mesure : chaque flow fait `clearState`, donc chacun paie un
+   produisent les captures. ⚠️ **Sur Android, dérive-le de `firstLaunchMs`** —
+   **sur iOS, cette grandeur N'EXISTE PAS : va droit au 🔴 qui ferme ce point** —,
+   que `argus-perf` mesure : chaque flow fait `clearState`, donc chacun paie un
    PREMIER lancement, jamais le régime stabilisé dont `coldStartMs` parle. Et ne
    touche pas à `coldStartMs` : la lenteur doit rester un finding, pas
    disparaître dans un seuil.
