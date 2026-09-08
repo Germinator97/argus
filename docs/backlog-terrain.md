@@ -5081,17 +5081,48 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **7 POINTS OUVERTS — 415 à 421, inscrits le 07/09/2026, PASSE NON FAITE.**
-Les runs **59 et 60** (seconde confirmation) n'ont trouvé **aucun mécanisme cassé,
-aucun faux vert, aucune passe device perdue** : `scope: complet`, 8 flows, 0 major
-des deux côtés. Il reste **un** défaut de code — le **415**, mon correctif 404
-incomplet, signalé par les DEUX runs — et six informations mal placées.
-📌 Les correctifs du jour ont payé : le **401** attrape une ancre fusionnée à
+✅ **415 à 421 FERMÉS le 08/09/2026 — backlog VIDE (54e vidage).** La passe a
+rendu **8 gardes** et **12 mutations**, chacune vérifiée en tombant. Un seul des
+sept était un défaut de code (**415**), un était **FAUX** (**418**), cinq étaient
+des informations exactes au mauvais endroit.
+
+🔴 **UN CONSTAT SUR SEPT ÉTAIT DÉMENTI, ET IL ACCUSAIT UN CORRECTIF DÉJÀ ÉCRIT.**
+Le **418** reprochait au §3g d'envoyer dériver `startTimeoutMs` de
+`firstLaunchMs` sans dire que la grandeur n'existe pas sur iOS. Mesuré sur le
+SKILL **tel que le run l'a lu** (`062812a`, deux heures avant lui) : la
+prescription portait déjà « Sur Android », le bloc « SUR iOS, `firstLaunchMs`
+N'EXISTE PAS » était là depuis le 01/09 (279), et `startupMarginWarning` imprimait
+déjà la dérivation iOS — le tout gardé dans les deux sens. Le run a même repris
+la formulation du correctif (« à neuf cents lignes d'ici ») pour décrire le manque
+qu'elle décrit. 📌 *Le symptôme restait vrai* : 34 lignes séparaient la
+prescription du bloc qui la borne, et un lecteur iOS applique la première avant
+d'atteindre la seconde. C'est ce qui a été corrigé, pas ce qui était demandé.
+
+⚠️ **LE HARNAIS M'A REPRIS DEUX FOIS, ET UNE MUTATION A MENTI UNE FOIS.**
+- Mon garde **419** cherchait le résidu N'IMPORTE OÙ dans sa section : retirer la
+  phrase qui l'explique le laissait vert, la commande de nettoyage portant le même
+  mot vingt lignes plus bas. Les deux RÔLES sont maintenant séparés — la prose qui
+  dit ce que c'est, le geste qui l'efface — et chacun a sa mutation.
+- Ma mutation **420 b** a rendu « motif trouvé 0× » : l'apostrophe est échappée
+  dans le source JS. Le harnais a refusé de conclure au lieu de rendre un
+  « garde vacant » — c'est la différence entre un instrument et un chiffre.
+- ⚠️ Et la mutation du **192**, que le 416 obligeait à déplacer, a d'abord été
+  ré-ancrée **au mauvais endroit** : elle réécrivait la ligne rendue alors que la
+  lecture de `.icon` avait migré deux lignes plus haut, dans la fonction extraite.
+  Elle a donc cessé de prouver ce pour quoi elle existait et est tombée sur le
+  garde NEUF, ce qui se lit comme un succès. Vérifié à la main — mutation
+  appliquée, garde des clés mortes joué seul, restauration prouvée — puis
+  ré-ancrée sur la lecture.
+
+📌 Les correctifs du 07/09 ont payé : le **401** attrape une ancre fusionnée à
 l'étage 1 SANS device (deux runs de suite), le **413** fait trouver les canaux
 sortants que le run 57 avait manqués, le **410** est appliqué mot pour mot.
-🔴 **LA PASSE 415-421 RESTE À FAIRE** — séance arrêtée après les runs, pas après
-la correction. Les comptes rendus complets sont dans `~/.argus-etalon/run59-constats.md`
-et `run60-constats.md`.
+Les comptes rendus des runs sont dans `~/.argus-etalon/run59-constats.md` et
+`run60-constats.md`.
+
+🔴 **CE QUI RESTE EST LA SORTIE, ET UNE CONFIRMATION DE PLUS.** Le critère se juge
+sur le DERNIER run : la passe qui vient d'être faite n'a pas encore été éprouvée
+par un run en aveugle.
 
 ### Verdict précédent — les runs 57 et 58
 
@@ -6137,7 +6168,16 @@ l'app »).
 
 ### 415. 🔴 Le 404 est incomplet : la convention n'est reconnue qu'au mot près
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** La convention vit désormais en UN SEUL endroit, que la
+CLÉ et la VALEUR composent toutes deux — deux copies d'un même motif dont une
+seule est mesurée, c'est toujours l'autre qui dérive. La valeur accepte en plus
+la forme de préfixe que la clé écarte délibérément (`anchorPrefix:` ne POSE pas
+d'ancre, mais `identifier: widget.rowAnchorPrefix` en nomme une famille). Tout
+nom hors convention et non inscrit reste opaque : le remède ne vide pas le 404.
+📌 Le garde porte sur l'ACCORD des deux moitiés, pas sur les deux noms du
+constat : chaque nom du corpus est posé en clé ET en valeur, et le classement ne
+doit jamais les séparer. Le corpus se dérive du SKILL, si bien qu'un troisième
+nom prescrit demain le fera tomber sans qu'on y pense.
 
 **Les DEUX runs le signalent, sur deux terrains.** Le croisement POSÉ→DÉCLARÉ
 reconnaît `semanticIdentifier` et `anchorPrefix` **exactement**, jamais les noms
@@ -6155,7 +6195,18 @@ figure dans `paramNames`, est une **famille**.
 
 ### 416. L'ordre du §3g bis fait renseigner le titre AVANT de lire la page
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** La condition passe devant : le point 5 dit d'abord que
+titre ET icône se RELÈVENT sur une page qui existe, et le défaut est explicitement
+borné à une première publication.
+🔴 **Et l'icône était le vrai défaut, parce que rien ne pouvait l'attraper.** Le
+journal rendait `config.artifact.icon || '👁'` : un projet qui n'a rien déclaré
+s'entendait donc annoncer l'icône du gabarit, avec l'aplomb d'une valeur relevée.
+Le titre, lui, est VÉRIFIABLE — il est dans la page, et un garde compare l'annonce
+au `<title>` publié ; l'icône ne l'est pas, le favicon partant à l'outil de
+publication et jamais dans le HTML. Sur ce qu'il ne peut pas mesurer, le journal
+dit maintenant QUOI FAIRE au lieu d'affirmer. La construction a été extraite
+(`identitePubliee`) pour qu'un garde l'APPELLE, et le critère est dérivé — aucun
+pictogramme quand rien n'est déclaré — plutôt que de citer celui du gabarit.
 
 Le point 5 (« garde le titre stable ») se lit **avant** le point 3 (« récupère la
 page »), alors que le skill prescrit l'inverse deux paragraphes plus bas. Un run
@@ -6169,7 +6220,13 @@ pire genre.
 
 ### 417. Le chemin du `.app` avec flavor est donné sans son parent
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** Les deux fichiers livrés qui le mentionnaient donnent
+le chemin depuis `build/ios/`, la phrase dit que le segment REMPLACE
+`iphonesimulator/` au lieu de s'y ajouter, et le geste qui tranche (`find`) passe
+AVANT l'explication.
+📌 Le garde ne vise pas les deux lignes du constat : il balaie tout ce que le
+plugin livre et refuse tout segment de configuration Xcode qui ne porte pas sa
+racine — la prochaine mention, écrite ailleurs, tombera dessus.
 
 L'avertissement nomme `Debug-dev-iphonesimulator/` sans dire **sous quel
 dossier** : deux lectures sont plausibles, une seule existe.
@@ -6178,7 +6235,20 @@ dossier** : deux lectures sont plausibles, une seule existe.
 
 ### 418. Le §3g fait dériver un seuil d'une mesure qui n'existe pas sur iOS
 
-**Ouvert le 07/09/2026.**
+🔴 **DÉMENTI le 08/09/2026 — le constat accusait un correctif déjà écrit.**
+Mesuré sur le SKILL tel que le run 59 l'a lu (`062812a`) : la prescription portait
+déjà « **Sur Android**, dérive-le de `firstLaunchMs` », le bloc « SUR iOS,
+`firstLaunchMs` N'EXISTE PAS » y était depuis le 01/09 (**279**), et
+`startupMarginWarning` imprimait déjà, sur iOS, « dérive-le de la pire attente
+ci-dessus, pas de `firstLaunchMs` ». Les deux sont gardés dans les deux sens
+(279 et 259). Le run a repris la formulation du correctif — « à neuf cents lignes
+d'ici » — pour décrire le manque que cette phrase décrit.
+📌 **Le symptôme, lui, était réel**, et c'est lui qui a été traité : 34 lignes et
+trois avertissements qui ne concernent pas iOS séparaient la prescription du bloc
+qui la borne. Le renvoi vit désormais DANS la phrase qui prescrit, et le garde
+mesure la classe — toute prescription marquée « Sur Android » doit router l'autre
+plateforme dans sa propre phrase, la fin de phrase étant dérivée de la
+typographie du document et non d'une fenêtre en caractères.
 
 Il envoie dériver `startTimeoutMs` de `firstLaunchMs` ; la table du §1 dit
 « démarrage ✖ sur iOS » — **neuf cents lignes plus haut**. Sur un run iOS, la
@@ -6186,7 +6256,17 @@ prescription n'a donc pas d'objet, et rien ne le dit là où on la lit.
 
 ### 419. Le `_diff.png` résiduel n'est mentionné nulle part
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** La section qui PRESCRIT la contre-épreuve nomme
+maintenant le résidu et donne le geste qui l'ôte : restaurer la référence ne
+l'efface pas — c'est un fichier de plus, pas une version d'un fichier.
+📌 Le nom se DÉRIVE du `.gitignore` livré, jamais cité : si Maestro renomme son
+résidu, c'est cette source qui bouge et le SKILL doit suivre. Une mutation le
+prouve en renommant l'exclusion.
+⚠️ **La première version du garde était trop faible, et le harnais l'a dit** :
+il cherchait le résidu n'importe où dans la section, si bien que retirer la phrase
+qui l'explique le laissait vert — la commande de nettoyage porte le même mot vingt
+lignes plus bas. Un mot présent deux fois dans une fenêtre ne garde aucune de ses
+occurrences.
 
 La contre-épreuve visuelle laisse son diff **dans le dossier des références**,
 que le projet versionne. ⚠️ Le démenti des runs 55/56 tient — `.gitignore:110`
@@ -6195,7 +6275,15 @@ par empreinte d'un agent qui l'a attrapé, pas une consigne.
 
 ### 420. L'avertissement de locale inerte arrive après qu'on en a eu besoin
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** Le prix est dit À LA CLÉ, là où on décide : non pas
+« ce réglage est sans effet » mais « le flow `i18n.yaml` mesure alors la locale de
+L'APPAREIL, donc il passe VERT quoi que tu écrives ici », avec le cas qui le
+prouve (une assertion de libellé français verte sur un appareil en `fr_CI`).
+📌 Le garde croise deux sources VIVANTES, comme le 259 croise le SKILL et le
+runner : il APPELLE `localeWarnings`, prend dans ce qu'elle rend le nom du flow
+rendu vacant, et exige que le gabarit le nomme à la clé. Aucun des deux côtés
+n'est recopié — une mutation qui retire le nom du message fait refuser de
+conclure, ce qui prouve la dérivation.
 
 « La clé est sans effet, le flow i18n mesure la locale de l'APPAREIL » ne sort
 qu'au **premier `argus-run`**, donc une fois `i18n.yaml` écrit. L'information est
@@ -6203,7 +6291,15 @@ exacte et arrive trop tard pour décider.
 
 ### 421. La table des encodages vit à 200 lignes du geste qu'elle explique
 
-**Ouvert le 07/09/2026.**
+**Fermé le 08/09/2026.** Le §2 porte désormais le geste qui tranche — sur
+l'AOT, pipé, dans les trois encodages, avec sa contre-épreuve — et dit ce que le
+kernel debug rend : **une occurrence, toujours**, le `defaultValue` étant un
+littéral de source présent quelle que soit la valeur effective. Ce `1` n'est pas
+un échec de neutralisation, c'est le seul résultat possible.
+📌 Le garde ne rapproche pas deux textes à la main : il découpe le SKILL sur ses
+propres titres et exige que TOUTE section prescrivant un comptage binaire dise
+quelque chose de l'encodage — un littéral accentué en AOT rend `0`, et ce zéro-là
+se lit comme la preuve qu'on cherchait alors qu'il vient de l'instrument.
 
 Un run a compté **1 occurrence résiduelle** d'un DSN dans le kernel debug et a
 **failli conclure à un échec de neutralisation** — l'occurrence est le
