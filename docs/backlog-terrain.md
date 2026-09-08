@@ -5081,10 +5081,19 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **422 à 427 FERMÉS le 08/09/2026 — backlog VIDE (55e vidage).** La passe a
-rendu **6 gardes** et **7 mutations**. Le **run 61** (confirmation iOS) avait
-rendu **7 flows, `scope: complet`, gate `pass`, 0 major** — aucun mécanisme
-cassé, aucun faux vert — et deux correctifs du matin avaient payé mot pour mot.
+🔴 **5 POINTS OUVERTS — 429 à 433, inscrits le 08/09/2026, PASSE NON FAITE.**
+Le **run 62** (confirmation Android) rend **4 flows sur 6** — les deux rouges sont
+un défaut de l'app et une absorption d'ancre non résolue, pas le skill. Trois
+correctifs ont porté, dont le **421 qui a sauvé le run** : `argus-build` annonçait
+« PAQUET INTACT » alors que trois fichiers venaient de changer, et seul le
+comptage du marqueur l'a démenti.
+
+🔴 **ET LE RUN A TROUVÉ UNE RÉGRESSION QUE J'AVAIS INTRODUITE LE MATIN** (428,
+fermée le jour même) : le contrôle du 422 jugeait une plateforme **hors
+périmètre**. C'est le symétrique du 237-244, refait dans l'autre sens en fermant
+un point sans rapport.
+
+✅ **422 à 427 FERMÉS le 08/09/2026 — 55e vidage.**
 
 🔴 **CE QUI A COÛTÉ LE PLUS N'EST AUCUN DES SIX : c'est ce que la passe a trouvé
 en les fermant.** Quatre gardes ont refusé un correctif juste ou une mutation à
@@ -6481,6 +6490,106 @@ l'active et inscrit l'écart.
 
 La recette du §2c ne couvre pas ce composant-là, et c'est la mesure qui le dit,
 pas la lecture. Deux runs indépendants y sont tombés.
+
+### 428-433. Le run 62 — la confirmation Android, et une régression du matin
+
+Sous-agent vierge, émulateur Android, joué SEUL après le run 61, sur le plugin
+corrigé quelques heures plus tôt. **4 flows sur 6**, trois passes device.
+`argus-anchors` +30, `argus-guards` **+402**, suite du projet +259, `analyze`
+sans un mot. Instrumentation partie de zéro : 25 racines / 25, 19 commandes / 19.
+
+⚠️ **Plus dur que le run 61, et ce n'est pas le skill** : un flow rouge est un
+défaut de l'app (une sonde de joignabilité amorcée mais non attendue, qui échoue
+au démarrage à froid sous charge), l'autre une absorption d'ancre non résolue.
+
+✅ **Trois correctifs ont porté, mesurés dans ce que l'agent a fait.** Le **421**
+a SAUVÉ le run : `argus-build` a annoncé « PAQUET INTACT » en 6 s alors que trois
+fichiers venaient de changer, et c'est le comptage prescrit qui l'a démenti —
+marqueur du jour **0**, ancre retirée **2**, contre-épreuves ASCII 2, accentuée 2,
+impossibilité 0 ; après `clean` : 3 / 0 / 2. *« Sans ce comptage je pilotais le
+binaire d'avant. »* Le **426** a été appliqué sans que rien ne le souffle : deux
+canaux trouvés là où le cadrage en nommait un, Sentry coupé et **prouvé sur la
+release**, Firebase laissé avec le raisonnement écrit, les deux listes rendues.
+Et le **401/427** a parlé **avant le device** sur une ancre absorbée.
+
+### 428. 🔴 Ma régression du matin : un contrôle qui juge une plateforme hors périmètre
+
+**Fermé le 08/09/2026, le jour où il est né.**
+
+Le correctif 422 bouclait sur les deux plateformes sans regarder lesquelles sont
+DÉCLARÉES : un projet `platforms: [android]` recevait un avertissement sur
+`build.ios` **à chaque exécution**. Reproduit en dix secondes.
+
+📌 **C'est le symétrique exact du 237-244**, fermé le 02/09 dans l'autre sens —
+là, l'audit du manifeste Android faisait échouer le gate d'un projet iOS. Le même
+axe, l'autre sens, et refait en fermant un point sans rapport. Un avertissement
+hors périmètre s'apprend à ignorer, et il emmène les autres avec lui.
+Le garde tient les deux moitiés : un projet mono-plateforme ne voit juger que la
+sienne, un projet qui déclare les deux les voit toutes deux — **filtrer trop est
+l'autre façon de se tromper**.
+
+### 429. 🔴 « Recopie la section `fonts:` du pubspec » n'a pas de réponse quand la police vient d'une dépendance
+
+**Ouvert le 08/09/2026.**
+
+Le dartdoc de `argusFonts` dit : « les polices du projet, **recopiées de la
+section `fonts:` du `pubspec.yaml`** ». Le terrain n'en a AUCUNE — sa police
+arrive par une **dépendance**. L'absence se lit alors « ce projet n'a pas de
+police », ce qui est faux, et `argusSkipReason()` saute toute la dimension :
+**371 tests sautés sur 401, en silence**. Renseignée en chemin relatif vers la
+dépendance : **+283 −118**, puis +402 une fois la dette inscrite.
+
+📌 Une consigne sans réponse possible ferme une dimension entière sans rien dire.
+Le dartdoc met déjà en garde contre `google_fonts` (« la famille n'est PAS le nom
+nu ») — c'est le même genre de piège, sur la source cette fois.
+
+### 430. La capture publie le secret que `label:` protège partout ailleurs
+
+**Ouvert le 08/09/2026.**
+
+Le §5 énumère les canaux que `label:` masque — console, rapports — et nomme celui
+qu'il ne masque pas : les journaux de debug bruts. Il manque le quatrième : **les
+pixels**. Avec `evidence: all`, la capture d'un écran de code à usage unique
+publie ce code **en clair** dans la page, et rien ne le signale.
+
+📌 La ligne voisine dit bien qu'« une baseline d'un écran authentifié contient des
+données réelles » — mais elle parle des RÉFÉRENCES et de données, pas des
+**preuves de findings** et d'un **secret**. Trois protections nommées, une
+quatrième absente : c'est la parité entre canaux d'une même phrase.
+
+### 431. La garde de fraîcheur compare des DATES, et rate un kernel non recompilé
+
+**Ouvert le 08/09/2026.**
+
+`argus-build` a annoncé « PAQUET INTACT — lib/ n'a pas changé depuis » **en 6 s**
+alors que trois fichiers venaient d'être modifiés. La branche « PAQUET PÉRIMÉ »
+existe (343-346) et n'a pas parlé : elle s'appuie sur `--print-freshness`, qui
+compare des **horodatages**. Un build qui réécrit le paquet sans recompiler le
+kernel le rend donc « frais ».
+
+📌 Ce que le run a fait est ce qu'il fallait : compter un **marqueur** dans le
+binaire — 0 pour l'ancre du jour, 2 pour celle qu'il venait de retirer. Le tell
+était la DURÉE (6 s), exactement ce que le CLAUDE.md du chantier décrit. La garde
+devrait dire ce qu'elle ne peut pas voir, ou compter au lieu de dater.
+
+### 432. Les entrées que la doc suggère pour les secrets sont inertes ici
+
+**Ouvert le 08/09/2026.**
+
+`allowSecretsIn` : les deux entrées Firebase que la documentation propose ne
+servent à rien sur ce terrain — les fichiers sont **gitignorés**, donc déjà hors
+du scan. La suggestion n'est pas fausse, elle est sans objet, et une dispense sans
+objet se relit comme une dispense nécessaire.
+
+### 433. Rien ne dit quoi faire quand la racine de cadrage est PARTAGÉE entre états
+
+**Ouvert le 08/09/2026.**
+
+`visualCropOn` se cadre sur une racine ; ici la même racine sert **quatre états**,
+donc aucun `ArgusScreen` ne peut la porter comme `anchor:` (elle doit être
+unique), et le garde refuse la paire `visualCropOn`/`cropRoot`. L'agent a cadré
+sur l'état plein et écarté le plein écran (qui embarquerait l'horloge) — bon
+arbitrage, rendu sans instruction.
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
