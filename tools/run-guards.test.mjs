@@ -10896,3 +10896,40 @@ test('le résidu de la contre-épreuve est nommé là où le geste se fait (419)
     + 'le lecteur doit alors décider seul s\'il peut effacer un fichier du dossier qu\'il vient '
     + 'de restaurer — c\'est exactement ce qu\'un run a eu à faire (419)');
 });
+
+// ── 420 · CE QUE LE RUNNER AVERTIT EST DIT LÀ OÙ ON DÉCIDE ────────────────
+//
+// L'avertissement de locale est juste, complet, et il arrive au premier
+// `argus-run` — donc une fois `i18n.yaml` écrit. « Exact, et trop tard » : à ce
+// moment-là on a déjà payé l'écriture du flow, et ce qu'on apprend est qu'il
+// sera vert quoi qu'on déclare.
+//
+// Le garde croise deux sources vivantes — ce que la FONCTION rend, et ce que le
+// gabarit dit à la clé —, comme le 259 croise le SKILL et le runner. Il ne
+// recopie ni l'un ni l'autre : si le message change de flow, la clé doit
+// suivre, et c'est ce garde qui le dira.
+test('le prix d\'une locale inerte est dit à la clé, pas seulement au premier run (420)', () => {
+  // ⚠️ La source est la fonction APPELÉE : un motif cherché dans run.mjs
+  // resterait vert sur un message neutralisé.
+  const avert = localeWarnings('fr_FR', false, 'en_US', 'android').join(' ');
+  assert.ok(avert.length > 0, 'le runner n\'avertit plus sur une locale inerte : ce garde est vacant');
+  const flow = /`?\b(i18n)\b/.exec(avert);
+  assert.ok(flow, `l'avertissement ne nomme plus le flow que la locale rend vacant — ${avert}`);
+
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const cle = yaml.indexOf('\n  deviceLocale:');
+  assert.ok(cle !== -1, 'la clé locale.deviceLocale a changé de forme — mets ce garde à jour');
+  // La fenêtre, c'est le bloc de commentaires qui précède la clé : il commence
+  // au titre de section. Pas de nombre de caractères deviné.
+  const debutBloc = yaml.lastIndexOf('\n# ──', cle);
+  assert.ok(debutBloc !== -1 && debutBloc < cle, 'le bloc qui présente la clé a disparu');
+  const aLaCle = yaml.slice(debutBloc, cle);
+
+  assert.match(aLaCle, new RegExp(flow[1]),
+    `la clé ne nomme pas le flow (${flow[1]}) que cette locale rend vacant : on l'écrit, puis on `
+    + 'apprend au premier run qu\'il sera vert quoi qu\'on déclare (420)');
+  assert.match(aLaCle, /\bVERT\b|\bvert\b/,
+    'la clé nomme le flow sans dire ce qu\'il devient — « sans effet » se lit comme un réglage '
+    + 'inopérant, alors que le prix est une dimension qui passe sans mesurer');
+});

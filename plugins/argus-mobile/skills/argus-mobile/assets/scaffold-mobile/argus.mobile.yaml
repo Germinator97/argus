@@ -389,6 +389,16 @@ a11y:
 # écrire les assertions de `.maestro/i18n.yaml`, et c'est là qu'ils vivent, en
 # regard du TODO qui les emploie. Une app qui n'affiche aucun montant n'a donc
 # rien à renseigner.
+#
+# ⚠️ ET SI TU NE LAISSES PAS LE RUNNER DÉMARRER LE DEVICE (`autoStart: false`,
+# la disposition que le skill recommande), CETTE CLÉ N'A AUCUN EFFET — et le
+# prix n'est pas un réglage inopérant, c'est que le flow `i18n.yaml` mesure
+# alors la locale de L'APPAREIL et non celle que tu déclares : il passe VERT
+# quoi que tu écrives ici. Vécu : une assertion de libellé français verte sur un
+# appareil en `fr_CI`, français lui aussi — elle l'aurait été quoi qu'on déclare.
+# ⇒ règle la langue sur l'appareil AVANT le run, ou n'écris pas ce flow.
+# Le runner le dit aussi, mais au premier `argus-run` : une fois `i18n.yaml`
+# écrit, c'est-à-dire trop tard pour décider (420).
 locale:
   deviceLocale: fr_FR
 
