@@ -1489,6 +1489,14 @@ MUTATIONS = [
     ("run", "414 · le détecteur de doublons compte aussi les fichiers de diff",
      "      if (!/\\.png$/i.test(e.name) || /_diff\\.png$/i.test(e.name)) continue;",
      "      if (!/\\.png$/i.test(e.name)) continue;"),
+    # ── Runs 59 et 60 · 415-421 ──────────────────────────────────────────
+    # 415 — le classement de la VALEUR redevient une liste de deux noms, écrite
+    # au mot près, pendant que la CLÉ continue de lire un motif et `paramNames`.
+    # C'est l'état exact que les deux runs ont signalé : une ancre DÉCLARÉE
+    # rangée chez les opaques, avec le conseil de l'inscrire hors périmètre.
+    ("config", "415 · le classement de la valeur se resserre au mot près",
+     "${[CONVENTION_IDENTIFIANT, CONVENTION_PREFIXE, ...sur].join('|')}",
+     "${['semanticIdentifier', 'anchorPrefix'].join('|')}"),
 ]
 
 
