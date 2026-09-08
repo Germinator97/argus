@@ -1512,6 +1512,12 @@ MUTATIONS = [
     ("report", "416 · le journal réaffirme l'icône du gabarit",
      "  const icone = String((config?.artifact ?? {}).icon ?? '').trim();",
      "  const icone = String((config?.artifact ?? {}).icon ?? '').trim() || '👁';"),
+    # 417 — le chemin du .app redevient un segment nu : le lecteur ne peut plus
+    # savoir s'il remplace `iphonesimulator/` ou s'y ajoute, et c'est la lecture
+    # qu'un run a suivie jusqu'à « AUCUN PAQUET ici ».
+    ("skill", "417 · le chemin du .app redevient un segment nu",
+     "`build/ios/Debug-*-iphonesimulator/Runner.app` d'un côté",
+     "`Debug-*-iphonesimulator` d'un côté"),
 ]
 
 
