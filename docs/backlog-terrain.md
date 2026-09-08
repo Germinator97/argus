@@ -5081,15 +5081,26 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **6 POINTS OUVERTS — 422 à 427, inscrits le 08/09/2026, PASSE NON FAITE.**
-Le **run 61** (confirmation iOS, sur le plugin corrigé le matin) rend **7 flows,
-`scope: complet`, gate `pass`, 0 major** en ~13 min de device sur 60. **Aucun
-mécanisme cassé, aucun faux vert.** Deux correctifs du matin ont payé mot pour
-mot (416, 419). Ce qui reste : un **417 incomplet** — c'est `flutter build` qui
-imprime le mauvais chemin —, une sortie dont la dernière ligne dit l'inverse du
-verdict, une promesse d'unicité qui a détruit 40 lignes chez l'agent, et trois
-informations mal placées. 🔴 **La sortie reste fermée** : trois de ces constats
-coûtent à qui applique le skill sans le connaître.
+✅ **422 à 427 FERMÉS le 08/09/2026 — backlog VIDE (55e vidage).** La passe a
+rendu **6 gardes** et **7 mutations**. Le **run 61** (confirmation iOS) avait
+rendu **7 flows, `scope: complet`, gate `pass`, 0 major** — aucun mécanisme
+cassé, aucun faux vert — et deux correctifs du matin avaient payé mot pour mot.
+
+🔴 **CE QUI A COÛTÉ LE PLUS N'EST AUCUN DES SIX : c'est ce que la passe a trouvé
+en les fermant.** Quatre gardes ont refusé un correctif juste ou une mutation à
+côté, et chacun avait raison — le **417** sur mon propre commentaire, le **239**
+sur un marqueur qui dérivait de ce qu'il ancre, le **410/413** sur une phrase
+poussée hors de sa fenêtre, le harnais sur une mutation qui ne mutait pas la
+valeur gardée. Et **mon script d'édition est tombé deux fois dans le piège que le
+marqueur du 424 ferme** ; il a levé avant d'écrire, ce qui est la seule raison
+pour laquelle rien n'a été détruit.
+
+📌 **Un motif trop large a failli me faire AGIR à tort** : le garde du 425
+signalait `launch-clean.yaml`, qui emploie l'ancre de départ pour ATTENDRE
+l'écran de départ — son rôle exact. Attendre n'est pas aiguiller.
+
+🔴 **LA SORTIE : il faut une confirmation de plus.** Le critère se juge sur le
+DERNIER run, et rien de ce qui vient d'être écrit n'a été éprouvé en aveugle.
 
 ✅ **415 à 421 FERMÉS le 08/09/2026 — 54e vidage.** La passe a
 rendu **8 gardes** et **12 mutations**, chacune vérifiée en tombant. Un seul des
@@ -6335,7 +6346,16 @@ un widget de 18×18 », à l'étage 1, sans device.
 
 ### 422. 🔴 Le 417 est incomplet : c'est `flutter build` qui imprime le mauvais chemin
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** Le harnais MESURE désormais au lieu d'espérer qu'on ait
+lu : un flavor déclaré déplace le paquet, et un chemin qui ne le porte pas est
+celui qu'un build sans flavor produit. L'avertissement tombe **avant** le build,
+là où le Makefile ne parlait qu'après vingt secondes de « AUCUN PAQUET ».
+📌 **Les deux plateformes**, parce que le défaut n'en montre qu'une à la fois —
+`app-dev-debug.apk` d'un côté, `build/ios/Debug-dev-iphonesimulator/` de l'autre.
+Le garde tient la parité, et se tait sur un chemin correct comme sur un projet
+sans flavor.
+⚠️ **Le garde 417 m'a attrapé sur ce commit même** : j'avais écrit le segment iOS
+nu dans le commentaire du correctif. Il avait raison — la règle est totale.
 
 > « `flutter build` imprime `✓ Built build/ios/iphonesimulator/Runner.app`, alors
 > que le paquet réel avec flavor est `build/ios/Debug-dev-iphonesimulator/Runner.app`.
@@ -6351,7 +6371,17 @@ contre le chemin que `flutter build` affiche (0 occurrence).
 
 ### 423. `argus-anchors` sort en 2 en affichant « All tests passed! »
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** On ne réordonne pas — la seconde moitié doit tourner
+même si la première échoue (234) : la cible **résume** après les deux, en nommant
+celle qui a échoué et ce qu'elle mesure. Exercée dans les quatre cas.
+📌 Le garde exige le MÉCANISME, pas une phrase : une variable de sortie par
+moitié, chacune relue, le résumé après les deux. Revenir à un `rc` unique le fait
+tomber.
+⚠️ **Deux gardes ont dû bouger, et aucun n'avait tort.** Ma première version
+cherchait le mot « ÉCHOUE », qui vit déjà dans le commentaire du 234 — le défaut
+du 419, refait le même jour. Et le **234** CITAIT l'ancienne forme (`|| rc=`) :
+étendu au mécanisme, pas supprimé, avec sa mutation ré-ancrée sur ce qu'elle doit
+retirer.
 
 Reproduit dans le `Makefile` livré : la cible garde le **pire** code de sortie de
 ses deux moitiés (`rc`), et lance le croisement AVANT le test Dart. Un croisement
@@ -6364,7 +6394,20 @@ laquelle des deux moitiés a échoué, après les deux.
 
 ### 424. « Ce marqueur est unique dans le fichier » — une promesse que le premier commentaire dément
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** L'explication passe AVANT, et le marqueur devient la
+dernière ligne avant la déclaration : un écart d'une ligne, ce qui est tout
+l'objet d'un point d'ancrage. Ce qui reste unique est le COUPLE, et le fichier
+prescrit désormais la **dernière** occurrence.
+📌 Le garde n'assarte pas la phrase : il EXERCE le piège sur le fichier livré —
+il duplique le marqueur comme le run l'a fait, et mesure que la dernière
+occurrence serre la déclaration là où la première ne le fait plus.
+⚠️ Trois choses apprises en le fermant : une assertion qui CITAIT l'ancienne
+promesse a été retirée (nommer ce qu'on interdit est proscrit partout ailleurs) ;
+le garde **239** a refusé la première version, où le marqueur dérivait à vingt
+lignes de ce qu'il ancre ; et **mon propre script d'édition est tombé dans le
+piège que ce marqueur ferme**, deux fois — `index('const Set<String> …')` trouve
+l'exemplaire du dartdoc, plus haut. Il a levé avant d'écrire : « tout calculer
+d'abord, ouvrir ensuite » est ce qui a sauvé le fichier.
 
 `known_issues.dart:74` l'écrit en toutes lettres : *« Ce marqueur est unique dans
 le fichier : ancre-toi dessus. »* C'est vrai à la livraison et faux dès que
@@ -6379,7 +6422,15 @@ existantes.
 
 ### 425. L'avertissement des deux racines vit à 900 lignes du fichier qui l'emploie
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** La mise en garde vit désormais dans le sous-flow
+d'aiguillage, qui emploie la variable six fois, et nomme l'ancre post-connexion.
+📌 Le garde ne compare pas deux textes : il exige que tout flow livré qui
+**aiguille** vers un écran — signature : il lit `SCREEN_ID` — nomme l'ancre
+post-connexion, dont il dérive le nom du runner.
+⚠️ **Sa première version était trop large et m'aurait fait AGIR** :
+`launch-clean.yaml` emploie l'ancre de départ pour ATTENDRE l'écran de départ,
+ce qui est son rôle exact. Attendre n'est pas aiguiller — sans la contre-épreuve,
+une mise en garde inutile atterrissait dans un flow correct.
 
 Sur une app authentifiée, `ARGUS_ANCHOR_HOME` n'est pas l'accueil : c'est l'écran
 de connexion. Le SKILL le dit (« UNE APP AUTHENTIFIÉE A DEUX RACINES, DONT
@@ -6389,7 +6440,18 @@ emploie la variable **six fois** sans porter la mise en garde. Le 366-372 avait
 
 ### 426. Le skill demande de signaler « avant de lancer » à qui n'a pas de canal
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** Le §2 porte l'autre moitié : neutraliser ce qui se
+neutralise sans toucher au comportement de l'app, **laisser le reste** plutôt que
+de couper un appel dans `lib/` — on changerait l'app qu'on est venu mesurer —, et
+écrire les DEUX listes dans le compte rendu. C'est ce que le run a fait de
+lui-même ; le correctif en fait la prescription plutôt qu'un bon réflexe.
+⚠️ Le garde **410/413** a attrapé l'insertion : sa fenêtre est un nombre de
+caractères, et le nouveau bloc en poussait dehors la phrase « la preuve se fait
+sur la release ». Cette phrase appartient à la neutralisation — elle a été
+REMONTÉE près de la demande plutôt que la fenêtre élargie. Le garde avait raison
+que les deux se lisent ensemble.
+⚠️ Et la mutation est revenue VACANTE d'abord : elle dégraissait un item que le
+garde ne mesure pas. Une mutation vise la valeur GARDÉE.
 
 Le §1 fait rendre l'inventaire des canaux sortants « avant la première passe
 device », avec ce qu'on propose d'en faire. Un agent qui travaille en une passe
@@ -6403,7 +6465,14 @@ quand personne n'écoute », point 71-76) : c'est cette forme-là qui manque ici
 
 ### 427. Sur un composant à enfant iconique, les deux remèdes s'excluent
 
-**Ouvert le 08/09/2026.**
+**Fermé le 08/09/2026.** Le §2c dit maintenant qu'aucun des trois remèdes ne
+suffit sur certains composants, et **lequel garder** : l'ancre ACTIVE, parce
+qu'une ancre inerte n'est tapable par rien tandis qu'une active mal cadrée l'est
+encore — tant que le centre du nœud tombe sur le contrôle.
+📌 L'arbitrage renvoie à la MESURE qui le borne (`make argus-anchors`, qui rend
+le rectangle, le centre visé et le remède), et le garde l'exige : sans cette
+borne, « garde l'active » deviendrait une permission permanente au lieu d'un
+compromis. Le nom de la cible se dérive du Makefile livré.
 
 Mesuré dans les deux sens, et **pour la seconde fois** (déjà au run 59) : sans
 `container: true`, l'ancre est active et le nœud mesure 324×48 dp pour un widget
