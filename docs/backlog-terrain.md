@@ -6637,6 +6637,87 @@ unique), et le garde refuse la paire `visualCropOn`/`cropRoot`. L'agent a cadré
 sur l'état plein et écarté le plein écran (qui embarquerait l'horloge) — bon
 arbitrage, rendu sans instruction.
 
+### 434-436. Le run 63 — la confirmation iOS, et trois mesures qui décrivent autre chose que ce qu'on croit
+
+Sous-agent vierge, simulateur iOS, terrain remis à neuf, sur le plugin corrigé
+la veille. **7 flows, `scope: complet`**, `argus-anchors` exit 0 (41 tests,
+58 ancres), `argus-guards` **+434**, suite du projet +259, instrumentation partie
+de zéro : 22 racines / 22, 39 commandes / 39.
+
+✅ **Neuf correctifs des trois passes ont payé, et ça se mesure.** Le 429 a fait
+remplir les polices depuis la dépendance au lieu de sauter la dimension ; le 430
+a fait sortir du périmètre visuel les deux écrans qui affichent un secret, le run
+écrivant lui-même que « le masquage ne protège pas les pixels » ; le **427**, que
+deux runs avaient rencontré sans savoir quoi faire, a été appliqué à la lettre au
+troisième — ancre active gardée, centre vérifié tombant sur le contrôle ; le 421
+a refermé son piège d'encodage, une chaîne accentuée ressortant **0 en UTF-8 et 1
+en Latin-1**, ce qu'une recherche UTF-8 seule aurait lu comme « le marqueur est
+absent ».
+
+🔴 **Ce que le run a rendu de neuf tient en une phrase : trois instruments
+mesuraient autre chose que ce qu'ils annonçaient**, et aucun des trois ne
+produisait d'erreur.
+
+### 434. Une page publiée sans capture ne dit pas pourquoi, et c'est le run VERT qui la produit
+
+**Ouvert le 08/09/2026.** Le rapport n'embarque une image que si un **finding**
+la porte. Un run sans finding porteur — c'est-à-dire le run **vert**, celui qu'on
+publie — sort donc une page sans une seule capture, et les quatre notes que le
+rapport sait écrire sont toutes fausses dans ce cas : `evidence: none` non,
+`embedded` non, `tooBig` non, `missing` non. La ligne « Preuves : … » n'est alors
+pas rendue du tout.
+
+Le lecteur qui a demandé `all` voit une page nue et ne peut pas distinguer « il
+n'y avait rien à montrer » de « le mécanisme a échoué ». C'est le motif du
+livrable que personne ne relit : le run l'a signalé de lui-même — « aucune
+capture, **malgré** `evidence: all` » — parce qu'il avait le réglage sous les yeux
+et pas seulement la page.
+
+📌 Le remède n'est pas d'embarquer des captures sans finding : c'est de **dire**
+ce qui s'est passé, à l'endroit prévu pour ça.
+
+### 435. La commande de comptage que le skill PRESCRIT rate les arguments repliés par le formateur
+
+**Ouvert le 08/09/2026.** Le skill donne la commande qui compte les sites
+d'instrumentation, et l'encadré qui l'entoure prévient déjà contre trois pièges —
+les commentaires, les gabarits interpolés, les `grep -c` chaînés par `&&`. Il ne
+prévient pas contre le quatrième, qui est dans la commande elle-même : elle exige
+la valeur **sur la même ligne** que la clé, or le formateur la replie dès que
+l'imbrication est profonde.
+
+Mesuré sur le terrain, en exécutant : la commande prescrite rend **48**, la
+réalité est **50** ; sur le seul fichier le plus imbriqué, elle compte **1** là
+où il y en a **3**. Le run l'a vu par **désaccord** — il savait en avoir posé
+trois — et personne d'autre n'aurait pu.
+
+📌 Deux choses aggravent. Ce chiffre **ouvre le rapport**, l'encadré le dit
+lui-même (« ils donnent le ton de tout le reste »), donc un sous-comptage y passe
+pour une mesure. Et l'erreur est **corrélée à la complexité** : les sites que le
+motif rate sont ceux des écrans les plus profondément imbriqués.
+
+### 436. L'étage 1 charge la police par CHEMIN et ne vérifie jamais que l'app la RÉSOUT par nom
+
+**Ouvert le 08/09/2026.** Le harnais garantit que la famille déclarée est bien
+**chargée en test** — c'est le garde écrit contre le repli silencieux sur la
+police de `flutter_test`. Rien ne garantit qu'elle soit celle que l'**application**
+enregistre : le test charge un fichier par son chemin, l'app résout une famille
+par son **nom**, et les deux mondes ne se rencontrent nulle part.
+
+L'écart apparaît dès que la police vient d'une **dépendance** — le cas que le 429
+vient d'ouvrir. Le manifeste de polices enregistre alors la famille **préfixée**
+(`packages/<paquet>/<famille>`) tandis que le code de l'app demande le nom **nu** :
+Flutter ne trouve pas, retombe sur la police système, sans erreur ni log. Mesuré
+sur le terrain — code `'<Famille>'`, manifeste `packages/<paquet>/<Famille>`.
+
+🔴 **Conséquence directe, que le run a eu l'honnêteté d'écrire lui-même** : les
+45 troncatures qu'il a relevées décrivent le rendu **voulu**, pas celui de
+l'appareil. Un relevé de dette entier porte sur un écran que personne ne voit.
+
+📌 La source de vérité existe et elle est gratuite : `flutter test` **produit
+lui-même** le manifeste des polices de l'app, à l'étage 1, sans device et sans
+build. C'est une source **extérieure** au harnais, donc elle ne peut pas être
+circulaire — ce qui est exactement ce qui manquait au garde existant.
+
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
 **Il n'y aura pas de troisième terrain : les deux couvrent la totalité.** Le plan
