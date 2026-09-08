@@ -1587,6 +1587,11 @@ MUTATIONS = [
     ("dette", "424 · le marqueur est cité une seconde fois dans le fichier livré",
      "// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.",
      "// une note qui parle de ARGUS:DECLARATION\n// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE."),
+    # 425 — le sous-flow d'aiguillage cesse de nommer l'ancre post-connexion :
+    # la mise en garde retourne vivre à neuf cents lignes de là.
+    ("goto", "425 · l'aiguillage ne nomme plus l'ancre post-connexion",
+     "`ARGUS_AUTH_SUCCESS`.",
+     "l'ancre prévue à cet effet."),
 ]
 
 
