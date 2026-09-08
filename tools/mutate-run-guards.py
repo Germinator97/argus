@@ -1607,6 +1607,12 @@ MUTATIONS = [
     ("config", "428 · le contrôle rejuge les plateformes hors périmètre",
      "      .filter(([nom]) => platforms.includes(nom));",
      "      .filter(() => true);"),
+    # ── Run 62 · 429-433 ─────────────────────────────────────────────────
+    # 429 — le message d'exécution reperd le cas de la dépendance : la dimension
+    # se saute et le compte de skips se lit comme un projet sans police.
+    ("harness", "429 · le message de saut reperd le cas de la dépendance",
+     "de police : elle vient alors d'une DÉPENDANCE. Cherche `fonts:` dans ",
+     "de police : cherche `fonts:` dans "),
 ]
 
 
