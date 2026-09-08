@@ -1626,8 +1626,8 @@ MUTATIONS = [
     # 432 — la condition disparaît : la dispense redevient une suggestion nue,
     # qu'on recopie d'un projet à l'autre sans qu'elle dispense rien.
     ("yamlconf", "432 · la dispense suggérée reperd sa condition",
-     "# ⚠️ …À CONDITION QU'ILS SOIENT SUIVIS PAR GIT.",
-     "# ⚠️ …selon ton projet."),
+     "  # ⚠️ …seulement s'ils sont VERSIONNÉS (voir plus haut) : sur un projet qui\n  # utilise pourtant Firebase, ces deux entrées se sont révélées INERTES, les\n  # fichiers étant gitignorés. `git check-ignore -q <fichier>` tranche.",
+     "  # ⚠️ …selon les cas."),
 ]
 
 
