@@ -11072,3 +11072,50 @@ test('une cible à deux moitiés dit LAQUELLE a échoué, après les deux (423)'
   assert.ok(premierTest > derniereCommande,
     'le résumé se lit AVANT que les deux moitiés aient tourné : il ne peut pas dire laquelle a échoué');
 });
+
+// ── 424 · UNE PROMESSE D'UNICITÉ QUE LE PREMIER COMMENTAIRE DÉMENT ───────
+//
+// Le fichier promettait : « Ce marqueur est unique dans le fichier : ancre-toi
+// dessus. » Vrai à la livraison, faux dès que quelqu'un le CITE — ce qui arrive
+// au premier commentaire qui explique comment s'ancrer. Un run a écrit sa note,
+// son script a pris la PREMIÈRE occurrence, et quarante lignes de raisonnement
+// ont disparu.
+//
+// Le garde n'assarte pas la phrase : il EXERCE le piège sur le fichier livré —
+// il le duplique comme le run l'a fait, montre que la première occurrence ne
+// désigne plus la déclaration, et que le geste prescrit, lui, tient encore.
+test('le geste d\'ancrage survit à la duplication du marqueur (424)', () => {
+  const chemin = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart');
+  const livre = readFileSync(chemin, 'utf8');
+  // Le marqueur se DÉRIVE du fichier : s'il change de nom, le garde suit.
+  const marqueur = (/^\/\/ (ARGUS:[A-Z]+)/m.exec(livre) ?? [])[1];
+  assert.ok(marqueur, 'plus aucun marqueur d\'ancrage en tête de ligne : ce garde ne mesure rien');
+  const declaration = 'const Set<String> argusKnownIssues';
+  assert.ok(livre.includes(declaration), 'la déclaration a changé de forme — mets ce garde à jour');
+
+  // 1. À la livraison il est unique, sinon la promesse serait fausse d'entrée.
+  assert.equal(livre.split(marqueur).length - 1, 1,
+    `${marqueur} apparaît plusieurs fois dans le fichier LIVRÉ : même la première occurrence ne `
+    + 'désigne plus la déclaration');
+
+  // 2. Le piège, reproduit comme le run l'a produit : un commentaire qui CITE.
+  const cite = livre.replace(/^(\/\/ ARGUS:)/m, `// une note qui parle de ${marqueur}\n$1`);
+  assert.equal(cite.split(marqueur).length - 1, 2, 'le montage n\'a pas dupliqué le marqueur');
+  assert.ok(cite.indexOf(marqueur) < cite.indexOf(`// une note`) + 1
+    || cite.indexOf(marqueur) !== cite.lastIndexOf(marqueur),
+    'le montage ne reproduit pas la duplication');
+
+  // 3. La PREMIÈRE occurrence ne précède plus la déclaration de près — c'est le
+  //    défaut —, et la DERNIÈRE, si. C'est la mesure, pas la phrase.
+  const entrePremier = cite.slice(cite.indexOf(marqueur), cite.indexOf(declaration));
+  const entreDernier = cite.slice(cite.lastIndexOf(marqueur), cite.indexOf(declaration));
+  assert.ok(entreDernier.length < entrePremier.length,
+    'la dernière occurrence ne serre pas la déclaration de plus près que la première : le geste '
+    + 'prescrit ne vaudrait pas mieux que celui qui a détruit quarante lignes');
+
+  // 4. Et le fichier doit PRESCRIRE ce geste-là, pas promettre l'unicité.
+  assert.match(livre, /DERNIÈRE occurrence/,
+    'le fichier ne dit pas de s\'ancrer sur la dernière occurrence — sans quoi la mesure ci-dessus '
+    + 'reste vraie et personne ne s\'en sert (424)');
+});

@@ -62,8 +62,6 @@
 ///
 /// Vide est le bon état par défaut : sur un projet neuf il n'y a rien à
 /// assumer, et le premier défaut doit se corriger, pas s'inscrire.
-// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.
-//
 // ⚠️ N'ANCRE JAMAIS UNE ÉDITION SUR LA LIGNE DE DÉCLARATION ELLE-MÊME. Le
 // dartdoc ci-dessus en porte un exemplaire mot pour mot, plus HAUT dans le
 // fichier : un `indexOf` ou un `sed` sur la déclaration matche donc le
@@ -71,6 +69,19 @@
 // réel : deux fichiers détruits, deux reconstructions. Le SKILL prévenait pour
 // COMPTER (`grep -v '///'`) — pas pour ÉDITER, et c'est le geste dangereux.
 //
-// Ce marqueur est unique dans le fichier : ancre-toi dessus.
+// ⚠️ ET LE POINT D'ANCRAGE CI-DESSOUS N'EST PAS UNIQUE POUR AUTANT. Il
+// l'est à la LIVRAISON, et il
+// cesse de l'être dès que quelqu'un le CITE — ce qui arrive au premier
+// commentaire qui explique comment s'ancrer dessus. Vécu : un run a écrit sa
+// propre note au-dessus, son script s'est ancré sur la PREMIÈRE occurrence, et
+// quarante lignes de raisonnement ont disparu (les données, elles, étaient
+// intactes). La phrase qui promettait l'unicité était vraie le jour où elle a
+// été écrite, et fausse le jour où on s'en est servi.
+//
+// Ce qui reste unique, c'est le COUPLE : ce marqueur SUIVI de la déclaration.
+// Ancre-toi donc sur la DERNIÈRE occurrence — `lastIndexOf`, `rindex`,
+// `tac | grep -m1` — jamais sur la première, et compte-les avant d'écrire.
+//
+// ARGUS:DECLARATION — le point d'ancrage d'une édition PROGRAMMATIQUE.
 const Set<String> argusKnownIssues =
     <String>{}; // TODO(argus): la dette assumée
