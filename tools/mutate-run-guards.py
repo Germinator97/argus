@@ -1644,6 +1644,15 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 448 — la précision de commande disparaît de chacun des deux textes. Le
+    # paragraphe reste juste (le croisement EST dans argus-anchors) : c'est
+    # exactement ce qui rend le défaut invisible à la relecture.
+    ("types", "448 · le dartdoc reperd la commande qui mesure la position",
+     "  /// 📌 DEUX COMMANDES, ET CE PARAGRAPHE N'EN NOMMAIT QU'UNE (point 448). Le\n  /// croisement ci-dessus tourne dans `make argus-anchors` ; **la mesure de\n  /// position, elle, vit dans `layout_test.dart`, donc dans\n  /// `make argus-guards`**",
+     "  /// 📌 Le croisement ci-dessus tourne dans `make argus-anchors`"),
+    ("methodo", "448 · la méthodologie reperd la distinction des deux suites",
+     "position** vit dans `layout_test.dart`, donc dans **`make argus-guards`** —",
+     "position** vit dans un test de l'étage 1 —"),
     # 447 — LES DEUX MOITIÉS, une mutation chacune. La première est le remède
     # qui PARAÎT juste : poser le SafeArea dans le harnais. Il ferait passer
     # toute racine sous l'inset, y compris celle posée au-dessus du SafeArea de
