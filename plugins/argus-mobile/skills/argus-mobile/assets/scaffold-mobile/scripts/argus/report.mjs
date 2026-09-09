@@ -669,10 +669,16 @@ export function consignePublication(url, plateforme) {
  * Extraite de `main()` pour la raison du 373 : un garde qui APPELLE lit ce qui
  * revient, là où un garde qui cherche un motif de source reste vert sur une
  * valeur neutralisée.
- * @param {any} config @param {string} titre @param {string} url @returns {string[]}
+ * ⚠️ 441 — ELLE PREND L'ICÔNE DÉJÀ RÉSOLUE, et c'est le correctif lui-même.
+ * Elle recevait `config` et relisait `artifact.icon` À PLAT, pendant que le
+ * titre et l'url lui arrivaient résolus par `artifactFor` : deux valeurs sur
+ * trois traitées, la troisième laissée derrière. Passer l'icône résolue ne
+ * corrige pas seulement le cas — il supprime l'endroit où le défaut pouvait
+ * vivre, ce qu'une relecture attentive de la lecture à plat n'aurait pas fait.
+ * @param {string} icone @param {string} titre @param {string} url @returns {string[]}
  */
-export function identitePubliee(config, titre, url) {
-  const icone = String((config?.artifact ?? {}).icon ?? '').trim();
+export function identitePubliee(icone, titre, url) {
+  icone = String(icone ?? '').trim();
   const lignes = [`titre « ${titre} » — le MÊME à chaque republication (argus.mobile.yaml → artifact.title)`];
   if (icone) {
     lignes.push(`icône ${icone} — la même à chaque republication (argus.mobile.yaml → artifact.icon)`);
@@ -1075,7 +1081,7 @@ function main() {
     // ⚠️ L'identité de la page se LIT ici, elle ne se retient pas. Le skill exige
     // titre et icône stables d'un run à l'autre ; sans les rappeler, celui qui
     // republie en choisit d'autres et la page se lit comme une seconde page.
-    for (const ligne of identitePubliee(config, titre, ident.url)) log(`  ${ligne}`);
+    for (const ligne of identitePubliee(ident.icon, titre, ident.url)) log(`  ${ligne}`);
   }
 
   const notRun = parts.filter((p) => p.state !== 'ok');

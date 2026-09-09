@@ -1813,7 +1813,14 @@ export function artifactFor(config, platform) {
     if (v && typeof v === 'object') return String(v[platform] ?? '');
     return '';
   };
-  return { url: choisir(a.url), title: choisir(a.title) };
+  // 441 — `icon` était la SEULE des trois à ne pas passer par `choisir`, alors
+  // qu'elle décrit la même page. Le 245 avait ajouté la forme par plateforme
+  // pour `url`, le 253 l'a rattrapée pour `title` dans le journal, et personne
+  // n'est revenu pour la troisième : un projet à deux pages ne pouvait pas leur
+  // donner deux icônes, et s'il l'écrivait quand même le journal annonçait
+  // « icône [object Object] ». Trois clés du même bloc, deux vagues de
+  // correctifs, la même oubliée à chaque fois.
+  return { url: choisir(a.url), title: choisir(a.title), icon: choisir(a.icon) };
 }
 
 /**

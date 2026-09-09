@@ -5340,12 +5340,18 @@ test('une page PAR PLATEFORME, et la forme mono continue de marcher (245)', () =
   // qui disparaissait — « je constate que le rapport des runs android a été
   // effacé pour celui de l'ios ». Rien ne le signalait : la page était valide.
   const deux = { artifact: { url: { ios: 'https://a/ios', android: 'https://a/dro' },
-    title: { ios: 'T iOS', android: 'T Android' } } };
+    title: { ios: 'T iOS', android: 'T Android' },
+    icon: { ios: '👁', android: '🧪' } } };
   assert.equal(artifactFor(deux, 'ios').url, 'https://a/ios');
   assert.equal(artifactFor(deux, 'android').url, 'https://a/dro');
   assert.notEqual(artifactFor(deux, 'ios').url, artifactFor(deux, 'android').url,
     'les deux plateformes doivent avoir des pages DIFFÉRENTES — sinon l\'une écrase l\'autre');
   assert.equal(artifactFor(deux, 'ios').title, 'T iOS', 'le titre suit la plateforme, comme l\'URL');
+  // 441 — la TROISIÈME clé du bloc. Elle a été ajoutée deux vagues après les
+  // deux autres, et rien ici ne réclamait qu'elle les suive.
+  assert.equal(artifactFor(deux, 'ios').icon, '👁', 'l\'icône suit la plateforme, comme le titre');
+  assert.equal(artifactFor(deux, 'android').icon, '🧪',
+    'les deux pages d\'un projet portent chacune la leur — une valeur unique en renommerait une');
 
   // ⚠️ L'AUTRE MOITIÉ : un projet mono-plateforme écrit une chaîne, et rien ne
   // doit l'obliger à la transformer en objet. Casser ça casserait tous les
@@ -10765,7 +10771,7 @@ test('le journal n\'annonce jamais une icône que personne n\'a déclarée (416)
   // est dérivé — « aucune icône » —, il ne cite pas le défaut du gabarit, qui
   // se périmerait le jour où le gabarit en changerait.
   for (const url of ['https://exemple/page', '']) {
-    const lignes = identitePubliee({ artifact: { icon: '' } }, titre, url);
+    const lignes = identitePubliee('', titre, url);
     assert.ok(lignes.length >= 2, 'le journal ne dit plus rien de l\'identité de la page');
     const rendu = lignes.join(' | ');
     assert.doesNotMatch(rendu, PICTO,
@@ -10778,7 +10784,7 @@ test('le journal n\'annonce jamais une icône que personne n\'a déclarée (416)
 
   // 2. L'autre moitié : déclarée, elle doit être annoncée telle quelle — un
   // journal qui se tait toujours ne vaut pas mieux qu'un journal qui invente.
-  const declaree = identitePubliee({ artifact: { icon: '🧪' } }, titre, 'https://exemple/page').join(' | ');
+  const declaree = identitePubliee('🧪', titre, 'https://exemple/page').join(' | ');
   assert.match(declaree, /🧪/,
     'l\'icône déclarée n\'est plus annoncée : c\'est elle qu\'on doit repasser à l\'identique');
 
@@ -10786,6 +10792,43 @@ test('le journal n\'annonce jamais une icône que personne n\'a déclarée (416)
   // relit (`titre « … »`) : le corriger côté icône ne doit pas le rompre.
   assert.match(declaree, /titre « Sonde — Android — rapport QA »/,
     'le journal n\'annonce plus le titre dans la forme que le garde de bout en bout relit');
+
+  // 4. 441 — LA FORME PAR PLATEFORME, la moitié qui manquait à ce garde.
+  // `icon` était la seule des trois clés d'`artifact` à ne pas passer par
+  // `artifactFor` : un projet à deux pages ne pouvait pas leur donner deux
+  // icônes, et s'il l'écrivait quand même le journal annonçait « [object
+  // Object] » — la valeur qu'on demande à l'utilisateur de repasser à
+  // l'identique. Le 245 avait ajouté la forme pour `url`, le 253 l'a rattrapée
+  // pour `title` DANS CE JOURNAL, et la troisième est restée derrière.
+  const deuxPages = {
+    artifact: {
+      url: { ios: 'https://exemple/ios', android: 'https://exemple/dro' },
+      title: { ios: 'T iOS', android: 'T Android' },
+      icon: { ios: '👁', android: '🧪' },
+    },
+  };
+  for (const [plateforme, attendue, autre] of [['ios', '👁', '🧪'], ['android', '🧪', '👁']]) {
+    const ident = artifactFor(deuxPages, plateforme);
+    const rendu = identitePubliee(ident.icon, ident.title, ident.url).join(' | ');
+    assert.match(rendu, new RegExp(attendue),
+      `l'icône de ${plateforme} n'est pas annoncée : les deux pages d'un projet ont chacune `
+      + 'la leur, et une icône qui change se lit comme une seconde page (441)');
+    assert.doesNotMatch(rendu, new RegExp(autre),
+      `le journal annonce l'icône de l'AUTRE plateforme sur ${plateforme} — c'est la valeur `
+      + 'que l\'utilisateur va repasser telle quelle');
+  }
+
+  // 5. Le critère TOTAL et négatif, qui ne nomme aucune clé : quelle que soit
+  // la clé lue à plat — celle-ci ou la prochaine qu'on ajoutera —, le symptôme
+  // est le même. Un garde qui énumère `url`/`title`/`icon` raterait la
+  // quatrième, exactement comme les deux vagues précédentes.
+  for (const plateforme of ['ios', 'android']) {
+    const ident = artifactFor(deuxPages, plateforme);
+    const rendu = identitePubliee(ident.icon, ident.title, ident.url).join(' | ');
+    assert.doesNotMatch(rendu, /\[object Object\]/,
+      'une valeur par plateforme est rendue SANS être résolue : le journal affiche un objet '
+      + 'là où il doit afficher ce qu\'on republiera (441)');
+  }
 });
 
 // ── 417 · UN CHEMIN DE BUILD SE DONNE ENTIER, JAMAIS EN SEGMENT NU ────────
