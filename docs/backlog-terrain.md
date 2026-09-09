@@ -5081,10 +5081,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 439, ouvert le 09/09/2026**, et il vient encore de
-l'outillage de suivi (`tools/`, non livré) : il ne ferme donc pas la sortie. Le
-contrôle d'ordre du registre rendait « aucune rupture » **sans rien lire**, trois
-republications de suite. Trouvé par Germinator, en regardant la page.
+✅ **439 FERMÉ le 09/09/2026 — backlog VIDE (61e vidage).** Il venait de
+l'outillage de suivi (`tools/`, non livré), donc il n'a jamais fermé la sortie.
+Le contrôle d'ordre du registre rendait « aucune rupture » **sans rien lire**,
+trois republications de suite — **trouvé par Germinator, en regardant la page**.
+📌 **Septième fois que la lecture d'un livrable trouve ce que l'exécution ne voit
+pas**, et la deuxième fois de suite que l'instrument va bien pendant que l'usage
+qu'on en fait ne va pas.
 
 ✅ **438 FERMÉ le 09/09/2026 — backlog VIDE (60e vidage).** Il venait de
 l'outillage de suivi, pas du skill livré. Le **run 65** (iOS) n'a rendu **aucun
@@ -6908,7 +6911,14 @@ va bien ; c'est la source qui ne recevait rien.** Corriger l'instrument aurait
 
 ### 439. Le contrôle d'ordre du registre rendait « aucune rupture » sans rien lire
 
-**Ouvert le 09/09/2026.** `rupturesDOrdreDu` lit le HTML de la page — elle
+**Fermé le 09/09/2026.** Les **trois** sorties du lecteur refusent désormais de
+se taire — titre introuvable, `</table>` absent, zéro `<td class="id">` — parce
+que les trois veulent dire « je n'ai rien mesuré », jamais « rien à signaler ».
+Le désordre est corrigé dans la page : `422–427` a retrouvé sa place entre
+`415–421` et `428–433`, et le contrôle rejoué **sur le HTML** rend zéro rupture,
+cette fois en ayant lu.
+
+`rupturesDOrdreDu` lit le HTML de la page — elle
 cherche `<td class="id">` entre le titre du registre et son `</table>`. Passée le
 texte **dépouillé** que rend `texteDeLaPage`, elle ne trouve ni l'un ni l'autre,
 sort par un `return []`, et l'appelant lit **« ✅ aucune rupture »**.

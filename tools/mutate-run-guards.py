@@ -1636,6 +1636,13 @@ MUTATIONS = [
     # qu'on vise ici — retirer le recollage, pas le commentaire qui l'explique.
     # 436 — le DÉCÂBLAGE, seul mode de panne que Node puisse voir. La
     # mécanique reste juste et complète ; plus personne ne l'appelle, et la
+    # 439 — la sortie MUETTE remise : sur du texte dépouillé, `</table>` est
+    # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
+    # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
+    # refus), et c'est le défaut que trois republications ont porté.
+    ("artefact", "439 · le contrôle d'ordre se retait sur zéro id",
+     "  const fin = texte.indexOf('</table>', debut);\n  if (fin === -1) {\n    throw new Error(\n      'rupturesDOrdreDu : aucun `</table>` après le titre du registre. Ce lecteur attend le HTML '\n      + 'de la page, pas le texte rendu par `texteDeLaPage`.',\n    );\n  }\n",
+     "  const fin = texte.indexOf('</table>', debut);\n  if (fin === -1) return [];\n"),
     # 438 — la section retirée : un run sans constat n'a plus d'endroit où
     # être écrit, et le compteur de la page retombe au dernier run À
     # CONSTAT. C'est le défaut d'origine, et c'est ce que le garde asserte —
