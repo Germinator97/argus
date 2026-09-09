@@ -161,8 +161,28 @@ jobs:
       - name: Rien de ce qu'il pose n'est à reformater
         run: cd /tmp/accueil && dart format --output=none --set-exit-if-changed test/argus scripts
 
+      # 440 — CETTE ÉTAPE-CI EST L'AVEUGLE, et c'est assumé : elle mesure ce que
+      # voit un hôte resté aux lints par défaut. `flutter create` pose
+      # `flutter_lints`, qui n'active pas `prefer_single_quotes` — donc elle rend
+      # 0 sur du code qui fera rougir la CI de quelqu'un d'autre. C'est l'étape
+      # suivante qui ferme ce trou, et il a fallu qu'un run le paie pour qu'elle
+      # existe : `tools/bench.sh` portait déjà la mesure juste, sans être lancé
+      # par personne.
       - name: Il analyse sans un mot
         run: cd /tmp/accueil && flutter analyze test/argus
+
+      # Le critère est le même que celui du format, deux étapes plus haut, et
+      # pour la même raison : ces fichiers sont du CADRE, donc `--update` les
+      # repose. Un correctif appliqué chez l'utilisateur est effacé au passage
+      # suivant — le rouge revient indéfiniment tant qu'il n'est pas fermé ICI.
+      # La liste des règles vit dans `tools/scaffold-lints.yaml` et se LIT :
+      # la recopier ici la ferait diverger de celle de `bench.sh`.
+      - name: Il analyse aussi sous les lints COURANTS
+        run: |
+          cd /tmp/accueil
+          printf '\n' >> analysis_options.yaml
+          cat "$GITHUB_WORKSPACE/tools/scaffold-lints.yaml" >> analysis_options.yaml
+          flutter analyze test/argus
 
       - name: Il tourne, et dit qu'il n'est pas branché
         run: |

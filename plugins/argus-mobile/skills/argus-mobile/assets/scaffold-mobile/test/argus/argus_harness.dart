@@ -236,7 +236,7 @@ String? argusFontMismatch({
         'mesure faux. Une famille que le thème demande sans qu\'elle soit '
         'chargée retombe sur la police de `flutter_test` — un carré d\'un '
         'cadratin par glyphe, environ deux fois plus large.'
-        "\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, "
+        '\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, '
         'préfixe de paquet compris, et fais-en argusFontFamily.';
   }
 

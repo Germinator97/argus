@@ -1,0 +1,31 @@
+# Les lints que le scaffold doit passer chez l'hôte — SOURCE UNIQUE.
+#
+# ⚠️ POURQUOI CE FICHIER EXISTE, ET POURQUOI IL N'EST PAS INLINE.
+# `flutter create` pose `flutter_lints`, qui n'active PAS `prefer_single_quotes`.
+# Un fichier du CADRE peut donc violer un lint parfaitement courant sans qu'aucune
+# analyse « par défaut » ne le voie — et faire sortir `flutter analyze` en 1 chez
+# celui qui l'active, pour du code qu'il n'a pas écrit. Comme ces fichiers sont
+# remplaçables par `--update`, le correctif qu'il applique chez lui est effacé au
+# passage suivant : le rouge revient, indéfiniment.
+#
+# Vécu DEUX fois. La première, un run l'a signalé, son agent l'a corrigé dans le
+# terrain, le terrain a été effacé, et le défaut est revenu intact. La seconde
+# (point 440, run 66 du 09/09/2026), `tools/bench.sh` portait déjà cette liste et
+# la mesurait juste — il n'était simplement lancé par personne, pendant que la CI
+# faisait le bon geste avec les lints par défaut, donc en aveugle. Le garde
+# existait, il visait juste, et il ne gardait rien.
+#
+# D'où la règle qu'encode ce fichier : la liste vit à UN endroit, et les deux
+# sites qui l'exercent la LISENT au lieu de la recopier. Deux copies d'un même
+# critère divergent une par une, et c'est celle qu'on oublie qui compte.
+#
+# Les cinq règles sont un choix : les plus répandues hors du paquet par défaut.
+# En ajouter est sans risque ; en retirer une demande de dire pourquoi.
+
+linter:
+  rules:
+    - prefer_single_quotes
+    - unnecessary_string_escapes
+    - directives_ordering
+    - always_declare_return_types
+    - prefer_final_locals

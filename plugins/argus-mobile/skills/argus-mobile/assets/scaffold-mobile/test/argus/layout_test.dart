@@ -58,7 +58,7 @@ void main() {
       );
     });
 
-    test("le HARNAIS charge un autre nom que celui que le thème demande", () {
+    test('le HARNAIS charge un autre nom que celui que le thème demande', () {
       final String? defaut = argusFontMismatch(
         demandeesParLeTheme: <String>{demandee},
         chargeesParLeHarnais: <String>{'MaPolice'}, // le nom NU
@@ -75,7 +75,7 @@ void main() {
       expect(defaut, contains('ne charge PAS'));
     });
 
-    test("sans manifeste, le défaut de HARNAIS se voit quand même", () {
+    test('sans manifeste, le défaut de HARNAIS se voit quand même', () {
       // Le second contrôle ne dépend d'aucun manifeste : le sauter quand le
       // fichier manque le rendrait vacant sur une machine qui n'a pas encore
       // lancé `flutter test`.

@@ -82,20 +82,14 @@ r=$?; echo "  flutter analyze exit $r"; [ $r -ne 0 ] && { code=1; grep -E '•' 
 # terrain a été effacé, et le défaut est revenu intact — un défaut remonté d'un
 # run ne remonte pas tout seul jusqu'ici.
 #
-# Ces cinq règles sont un choix : les plus répandues hors du paquet par défaut.
-# En ajouter est sans risque ; en retirer une demande de dire pourquoi.
+# 440 — LA LISTE NE VIT PLUS ICI. Elle est dans `tools/scaffold-lints.yaml`,
+# que la CI lit AUSSI : ce fichier portait la bonne liste et la mesurait juste,
+# mais rien ne le lançait, pendant que la CI analysait avec les lints par défaut.
+# Recopier la liste dans les deux sites les ferait diverger une règle à la fois.
 cp "$A/analysis_options.yaml" "$A/.analysis_options.argus.bak"
 trap 'mv -f "$A/.analysis_options.argus.bak" "$A/analysis_options.yaml" 2>/dev/null' EXIT
-cat >> "$A/analysis_options.yaml" <<'LINTS'
-
-linter:
-  rules:
-    - prefer_single_quotes
-    - unnecessary_string_escapes
-    - directives_ordering
-    - always_declare_return_types
-    - prefer_final_locals
-LINTS
+printf '\n' >> "$A/analysis_options.yaml"
+cat "$R/tools/scaffold-lints.yaml" >> "$A/analysis_options.yaml"
 "$FL" analyze test/argus > /tmp/bench-lint.txt 2>&1
 r=$?; echo "  lints courants  exit $r"; [ $r -ne 0 ] && { code=1; grep -E '•' /tmp/bench-lint.txt | head -4; }
 mv -f "$A/.analysis_options.argus.bak" "$A/analysis_options.yaml"
