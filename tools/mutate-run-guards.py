@@ -1644,13 +1644,6 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
-    # 450 — le défaut HISTORIQUE, remis tel quel : le mode check cesse
-    # d'imprimer l'inventaire et ne rend plus que son compte agrégé. Sa jumelle
-    # (la liste de fin d'installation) continue de sortir, donc rien d'autre ne
-    # rougit — c'est toute la question de la parité.
-    ("installeur", "450 · --check reperd l'inventaire et ne rend qu'un compte",
-     "    inventaire_owned\n    if [ \"$outdated\" -gt 0 ]; then",
-     "    if [ \"$outdated\" -gt 0 ]; then"),
     # 449 — la note disparaît de la séquence. Le Makefile continue de
     # l'expliquer pour `argus-run` : le lecteur du SKILL, lui, ne l'a plus.
     ("skill", "449 · la séquence reperd le sens du code de sortie d'une dimension",

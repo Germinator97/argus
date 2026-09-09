@@ -5081,9 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 450** : constat démenti, mais la moitié `--check` d'une
-promesse du §2b n'avait pas de garde. Il se ferme quand sa mutation aura fait
-tomber le garde neuf.
+✅ **450 DÉMENTI le 09/09/2026** — la promesse du §2b est vraie ET gardée depuis
+le point 278. Mon « correctif » dupliquait ce garde et sa mutation, motif pour
+motif ; c'est le harnais qui l'a dit, en nommant un test qui n'était pas le mien.
 
 ✅ **449 FERMÉ le 09/09/2026** — `make: *** [argus-perf] Error 1` est un verdict,
 pas une panne : `exitCodeFor` rend 2 sur blocker/critical, 1 sur major. Le
@@ -7316,31 +7316,35 @@ repasser sous le seuil (48, 41, 40 lignes), et le seul remède honnête était d
 condenser : **relever le seuil aurait affaibli un garde existant pour faire de la
 place à ma prose.** Un texte de référence a une économie, et elle se mesure.
 
-### 450. ✅ DÉMENTI pour l'essentiel — mais la moitié `--check` n'avait pas de garde
+### 450. ✅ DÉMENTI EN ENTIER — et mon remède l'était aussi
 
-**Ouvert le 09/09/2026.** Le run 68 proposait de lever la réserve du §2b : selon
-lui, `install-mobile.sh --check` imprime bien l'inventaire nommément, donc la
-mise en garde serait périmée.
+**Fermé le 09/09/2026.** Le run 68 proposait de lever la réserve du §2b :
+`install-mobile.sh --check` imprime bien l'inventaire nommément, donc la mise en
+garde serait périmée.
 
-🔴 **Mesuré, et le constat tombe** : la commande a été exécutée sur un vrai
-terrain, l'inventaire sort, `argus_fakes.dart` y figure, exit 0. Mais **la
-réserve est au PASSÉ** — « cette seconde moitié A ÉTÉ fausse pendant plusieurs
-runs » — et elle raconte en outre un piège de mesure (un terrain en retard fait
-voir une AUTRE liste). Rien à lever : les deux phrases sont vraies. *Une réserve
-écrite au passé se lit comme active ; c'est ce qui a trompé le run.*
+🔴 **Exécuté sur un vrai terrain** : l'inventaire sort, `argus_fakes.dart` y
+figure, exit 0. La phrase est donc vraie — mais **la réserve est au PASSÉ**
+(« cette seconde moitié A ÉTÉ fausse pendant plusieurs runs ») et elle raconte en
+outre un piège de mesure : sur un terrain EN RETARD, `--check` imprime une autre
+liste, celle des fichiers en retard. Rien à lever, les deux phrases sont justes.
+*Une réserve écrite au passé se lit comme active ; c'est ce qui a trompé le run.*
 
-✅ **Et c'est en la vérifiant qu'on trouve le vrai défaut : une PARITÉ.** Le §2b
-promet deux choses — le fichier marqué apparaît « dans la liste que l'installeur
-imprime en sortant, ET dans son `--check` ». La première moitié a son garde
-depuis le jour où elle s'est révélée fausse. **La seconde n'en avait aucun** —
-alors que c'est celle qui est tombée. Classe exacte des runs 66-67 : deux moitiés
-d'une même phrase, une seule mesurée.
+🔴 **ET J'AI FAIT PIRE QUE LUI.** J'ai cru trouver derrière ce démenti une parité
+manquante — « la moitié `--check` n'a pas de garde » —, écrit ce garde, écrit sa
+mutation, commité les deux. **Les deux existaient depuis le point 278**, et ma
+mutation reprenait *le motif exact* de la mutation 175, à la ligne près. J'ai
+ajouté un filet que le dépôt portait déjà, dans une passe dont c'était justement
+le sujet.
 
-📌 **Le geste juste avait pourtant été fait** : `inventaire_owned()` a été
-extraite en fonction *pour que `--check` l'appelle*, et le commentaire le dit.
-C'est le troisième barreau qui manquait — garde qui lit du texte < garde qui
-appelle < **exécution de bout en bout**. Le nouveau garde lance l'installeur puis
-`--check` sur le même dossier, et exige le fichier marqué dans l'inventaire.
+📌 **Ce n'est pas une relecture qui l'a dit, c'est la MUTATION** : le harnais a
+rendu `TOMBE` en nommant « `--check` imprime la liste des fichiers À TOI (278) »,
+c'est-à-dire **un test qui n'était pas le mien**. Sans lire ce nom, j'aurais lu
+le vert comme la preuve de mon propre garde et publié le doublon.
+⚠️ *Le harnais affiche le test qui tombe ; c'est la seule chose qui distingue
+« mon garde marche » de « un autre garde faisait déjà le travail ».*
+📌 Et le geste qui l'aurait évité coûte dix secondes : **chercher le garde
+existant avant d'en écrire un** (`grep` du nom de la commande dans la suite), au
+lieu de déduire son absence du fait qu'on ne l'a pas croisé.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
