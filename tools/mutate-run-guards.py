@@ -1644,6 +1644,11 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 449 — la note disparaît de la séquence. Le Makefile continue de
+    # l'expliquer pour `argus-run` : le lecteur du SKILL, lui, ne l'a plus.
+    ("skill", "449 · la séquence reperd le sens du code de sortie d'une dimension",
+     "\n⚠️ **`make: *** [argus-perf] Error 1` n'est pas une panne, c'est le verdict** (449) : la sortie\nd'une dimension vient de ses findings (`exitCodeFor`) — **2** sur `blocker`/`critical`, **1** sur `major`, **0** sinon.\n",
+     "\n"),
     # 448 — la précision de commande disparaît de chacun des deux textes. Le
     # paragraphe reste juste (le croisement EST dans argus-anchors) : c'est
     # exactement ce qui rend le défaut invisible à la relecture.
