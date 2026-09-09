@@ -5081,8 +5081,8 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 453** : deux recettes du §2c se contredisent sur
-`container: true`, et l'exemple ne le disait pas. Se ferme à sa mutation.
+✅ **453 FERMÉ le 09/09/2026** — l'information existait, dans un paragraphe qui
+décrivait un autre symptôme. La mise en garde est désormais DANS l'exemple.
 
 ✅ **452 FERMÉ le 09/09/2026** — le compteur d'ancres comptait le code mis en
 commentaire ordinaire (3 pour 1, mesuré). Le filtre juste vivait DÉJÀ deux cents
@@ -7431,8 +7431,8 @@ tranche en deux lignes, et il est désormais dans le fichier.
 
 ### 453. ⚠️ VRAI À MOITIÉ — l'information existait, pas là où on la lit
 
-**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme quand la mutation
-aura fait tomber le garde 427 étendu.
+**Fermé le 09/09/2026**, rapporté par le run 69. La mutation fait tomber le
+garde 427 étendu.
 
 Le run dit que le §2c prescrit « ancre sur l'ENFANT » sans jamais dire d'omettre
 `container: true`, et qu'il a posé les deux — la recette voisine, celle de la
