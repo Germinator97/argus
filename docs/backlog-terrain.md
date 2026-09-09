@@ -5081,6 +5081,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 449** : un code de sortie qui est un verdict se lisait
+comme une panne d'outillage. Correctif et garde écrits ; il se ferme quand sa
+mutation aura fait tomber le garde.
+
 ✅ **448 FERMÉ le 09/09/2026** — la règle et la commande qui la vérifie
 n'étaient pas dans la même suite : `argus-anchors` ne lance qu'`anchors_test.dart`,
 le garde de position vit dans `layout_test.dart`. Un run a muté, relancé la
@@ -7280,6 +7284,31 @@ la même suite**, mais pipe sa sortie pour en extraire les clés de dette — le
 de sortie du test n'y décide plus de rien. La cible à nommer est celle qui laisse
 ce code parler, donc celle qui ne pipe pas. Le garde a refusé de conclure devant
 les deux, ce qui est exactement ce qu'on lui demande.
+
+### 449. Un code de sortie qui est un VERDICT se lisait comme une panne
+
+**Ouvert le 09/09/2026**, rapporté par le run 68 et dérivé du code. Correctif et
+garde écrits ; il se ferme quand la mutation aura fait tomber le garde.
+
+`make: *** [argus-perf] Error 1` ressemble à un outil cassé. C'est le contraire :
+`exitCodeFor` rend **2** sur un `blocker`/`critical` retenu par le gate, **1** sur
+un `major`, **0** sinon — la dimension a trouvé ce qu'on lui demandait de
+chercher. Le Makefile l'explique, mais **pour `argus-run` et pour la cible
+`argus`**, pas pour les dimensions ; le SKILL ne le disait nulle part, et c'est
+le SKILL qu'on lit d'abord.
+
+📌 **Le garde DÉRIVE la liste des dimensions** : il relève les scripts dont le
+code de sortie dépend de `exitCodeFor`, exige que le SKILL prévienne là où il
+énumère la séquence, et vérifie que les deux codes annoncés sont ceux que la
+fonction rend. Une dimension ajoutée demain entre dans le compte toute seule.
+
+⚠️ **Et le dépôt m'a corrigé en écrivant ce correctif.** Ma note faisait quatorze
+lignes ; elle a fait tomber un garde de PROXIMITÉ (294) qui exige que le renvoi
+vers le diagnostic reste à moins de quarante lignes de la séquence — « c'est là
+qu'on lance `argus-run`, donc là qu'il faut savoir ». Trois tentatives pour
+repasser sous le seuil (48, 41, 40 lignes), et le seul remède honnête était de
+condenser : **relever le seuil aurait affaibli un garde existant pour faire de la
+place à ma prose.** Un texte de référence a une économie, et elle se mesure.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

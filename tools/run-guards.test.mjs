@@ -12113,3 +12113,49 @@ test('la doc nomme la commande qui lance VRAIMENT le garde de position (448)', (
       + 'mauvaise suite, et elle est verte (448)');
   }
 });
+
+// ── Un code de sortie non nul qui est un VERDICT doit être annoncé ──────────
+//
+// Point 449. Chaque dimension dérive son code de sortie de ses findings
+// (`exitCodeFor` : 2 sur blocker/critical, 1 sur major). Le Makefile l'explique
+// — mais pour `argus-run` et pour la cible `argus`, pas pour les dimensions —,
+// et le SKILL ne le disait nulle part. Un run en aveugle a lu
+// `make: *** [argus-perf] Error 1` comme une panne d'outillage.
+//
+// 🔴 DÉRIVÉ, PAS CITÉ : le garde relève les scripts qui font dépendre leur code
+// de sortie de `exitCodeFor`, et exige que le SKILL prévienne là où il énumère
+// la séquence. Une dimension ajoutée demain entre dans le compte toute seule.
+
+test('le SKILL annonce que le code de sortie d\'une dimension est son verdict (449)', () => {
+  const scripts = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const dimensions = readdirSync(scripts)
+    .filter((f) => f.endsWith('.mjs'))
+    .filter((f) => {
+      const src = readFileSync(join(scripts, f), 'utf8');
+      // Importer la fonction ne suffit pas : il faut que le code de sortie en dépende.
+      return /\bexitCodeFor\s*\(/.test(src) && /process\.exitCode\s*=|process\.exit\(/.test(src);
+    });
+  assert.ok(dimensions.length >= 3,
+    `${dimensions.length} script(s) font dépendre leur sortie de exitCodeFor — le motif a changé, ce garde est vacant`);
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  // La fenêtre : le bloc de séquence du premier run, et ce qui le suit immédiatement.
+  const i = skill.indexOf('make argus-report      # rapport HTML');
+  assert.ok(i > 0, 'le bloc de séquence du premier run a changé de forme — mets ce garde à jour');
+  const fenetre = skill.slice(i, i + 1400);
+
+  assert.match(fenetre, /exitCodeFor/,
+    'la séquence énumère les dimensions sans dire d\'où vient leur code de sortie : '
+    + '`make: *** [argus-perf] Error 1` se lit alors comme une panne d\'outillage (449)');
+  assert.match(fenetre, /\bn'est pas une panne\b/i,
+    'la note ne dit plus que l\'échec n\'est PAS une panne — c\'est la phrase qui évite '
+    + 'qu\'un run parte réparer un outil qui marche');
+  // Les deux codes, parce que confondre 1 et 2 fait croire à deux mécanismes.
+  assert.match(fenetre, /\*\*2\*\*/, 'la note ne distingue plus le code 2 (blocker/critical)');
+  assert.match(fenetre, /\*\*1\*\*/, 'la note ne distingue plus le code 1 (major)');
+
+  // L'autre moitié : le mécanisme annoncé doit être celui du code.
+  const config = readFileSync(join(scripts, 'config.mjs'), 'utf8');
+  assert.match(config, /export function exitCodeFor[\s\S]{0,400}return 2;[\s\S]{0,200}return 1;/,
+    'exitCodeFor ne rend plus 2 puis 1 : la note du SKILL décrit désormais autre chose que le code');
+});

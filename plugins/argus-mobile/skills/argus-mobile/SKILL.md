@@ -1537,6 +1537,9 @@ make argus-sca         # CVE des dépendances — sans device ; saute si `osv-sc
 make argus-report      # rapport HTML
 ```
 
+⚠️ **`make: *** [argus-perf] Error 1` n'est pas une panne, c'est le verdict** (449) : la sortie
+d'une dimension vient de ses findings (`exitCodeFor`) — **2** sur `blocker`/`critical`, **1** sur `major`, **0** sinon.
+
 🚨 **LA RELEASE MANQUAIT À CETTE LISTE, ET DEUX DIMENSIONS EN DÉPENDENT.** Deux
 runs indépendants, sur deux terrains sans rapport, l'ont construite **hors
 séquence** parce qu'ils n'avaient pas le choix — c'est le signal le plus fort
