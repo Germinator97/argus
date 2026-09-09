@@ -11962,3 +11962,84 @@ test('le gabarit de cadrage renvoie à la règle de l\'ancre d\'état (433)', ()
     + 'racine est PARTAGÉE — la règle est écrite cent soixante-dix lignes plus haut, et rien ne '
     + 'la relie à l\'endroit où l\'on cadre (433)');
 });
+
+// ── Le harnais DÉCLARE les insets, il ne les APPLIQUE pas ───────────────────
+//
+// Point 447. Le dartdoc de `build:` promettait que « le harnais pose lui-même la
+// surface, la police et les marges système ». Il pose les deux premières et
+// DÉCLARE la troisième (`view.padding` + `view.viewPadding`) sans jamais la
+// consommer : aucun `SafeArea` dans `pumpArgus`. Un écran monté nu commence donc
+// à 0,0 dp — et un run en aveugle s'est retrouvé devant deux consignes
+// impossibles à suivre ensemble, `cropRoot` exigeant la racine SOUS l'inset.
+//
+// 🔴 Ce garde tient les deux moitiés, et c'est la seconde qui compte : poser un
+// `SafeArea` dans `pumpArgus` « corrigerait » le symptôme en rendant le garde de
+// position VACANT — toutes les racines passeraient sous l'inset, y compris celles
+// posées au-dessus du `SafeArea` de leur propre écran, c'est-à-dire le défaut que
+// `cropRoot` existe pour voir.
+//
+// ⚠️ Le corps est dépouillé de ses commentaires avant d'être scanné : `pumpArgus`
+// PARLE de `SafeArea` juste au-dessus de `view.padding`, donc un motif nu serait
+// rouge sur un fichier sain. C'est le piège du garde qui matche sa propre mention.
+
+test('le harnais d\'étage 1 déclare les insets sans les appliquer (447)', () => {
+  const argus = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  const harnais = readFileSync(join(argus, 'argus_harness.dart'), 'utf8');
+
+  // La fenêtre : le corps de pumpArgus, borné par la première accolade en colonne 0.
+  const debut = harnais.indexOf('Future<void> pumpArgus(');
+  assert.ok(debut > 0, 'pumpArgus est introuvable dans argus_harness.dart — ce garde ne mesure rien');
+  const reste = harnais.slice(debut);
+  // ⚠️ Borner par `\n}` matcherait la SIGNATURE (`}) async {` ferme les paramètres
+  // nommés), et la fenêtre s'arrêterait avant le corps — vécu en écrivant ce garde.
+  // On ouvre sur l'accolade du corps, puis on compte.
+  const ouvre = reste.indexOf('async {');
+  assert.ok(ouvre > 0, 'le corps de pumpArgus ne s\'ouvre plus sur `async {` — la fenêtre serait fausse');
+  let profondeur = 0;
+  let fin = -1;
+  for (let i = reste.indexOf('{', ouvre); i < reste.length; i += 1) {
+    if (reste[i] === '{') profondeur += 1;
+    else if (reste[i] === '}') {
+      profondeur -= 1;
+      if (profondeur === 0) { fin = i; break; }
+    }
+  }
+  assert.ok(fin > 0, 'la fin du corps de pumpArgus est introuvable — la fenêtre vaudrait tout le fichier');
+  const corps = reste.slice(0, fin);
+
+  // Dépouiller les commentaires en préservant les positions (espace pour espace).
+  const nu = corps.split('\n')
+    .map((l) => l.replace(/\/\/.*$/, (m) => ' '.repeat(m.length)))
+    .join('\n');
+  assert.ok(nu.length === corps.length, 'le dépouillement a changé la longueur : les positions ne sont plus justes');
+  assert.match(corps, /SafeArea/,
+    'le commentaire qui explique pourquoi les DEUX paddings sont renseignés a disparu — '
+    + 'sans lui, ce garde ne prouve plus que le dépouillement sert à quelque chose');
+
+  // 1. Les insets sont DÉCLARÉS — les deux clés, sinon la moitié du décor sort de la mesure.
+  assert.match(nu, /tester\.view\.padding\s*=/, 'pumpArgus ne renseigne plus view.padding : SafeArea ne verra plus l\'inset');
+  assert.match(nu, /tester\.view\.viewPadding\s*=/, 'pumpArgus ne renseigne plus view.viewPadding : un padding bas manuel ne verra plus rien');
+
+  // 2. Et ils ne sont PAS appliqués — c'est ce qui rend le garde de position possible.
+  assert.equal((nu.match(/SafeArea/g) ?? []).length, 0,
+    'pumpArgus pose un SafeArea : toute racine passerait alors sous l\'inset, y compris celle '
+    + 'posée au-dessus du SafeArea de son écran. Le garde `cropRoot` de layout_test.dart devient '
+    + 'VACANT sans un mot. Si le but était d\'aider les écrans hébergés par une coquille, la '
+    + 'réponse est dans le dartdoc de `build:` — reproduire la coquille DANS build (447).');
+
+  // 3. La moitié qui en dépend existe toujours : le garde compare bien rect.top à l'inset.
+  const layout = readFileSync(join(argus, 'layout_test.dart'), 'utf8');
+  assert.match(layout, /screen\.cropRoot && screen\.anchor != null/,
+    'le garde de position ne s\'arme plus sur cropRoot — la moitié 2 de ce test ne protège plus rien');
+  assert.match(layout, /rect\.top,\s*\n?\s*greaterThanOrEqualTo\(insetHaut\)/,
+    'le garde ne compare plus la position de la racine à l\'inset : c\'est LUI que le point 2 protège');
+
+  // 4. Et le dartdoc dit désormais ce que le harnais fait vraiment, plus ce qu'il faut faire.
+  const types = readFileSync(join(argus, 'argus_types.dart'), 'utf8');
+  assert.doesNotMatch(types, /pose lui-même la surface, la police et les marges système/,
+    'le dartdoc de `build:` promet de nouveau d\'appliquer les marges système — c\'est faux, et '
+    + 'c\'est ce qui a envoyé un run monter son écran nu contre un garde qui exige l\'inverse (447)');
+  assert.match(types, /reproduis-la ici/,
+    'le dartdoc ne dit plus quoi faire d\'un écran hébergé par une coquille : il ne reste que '
+    + 'l\'interdiction, donc les deux consignes redeviennent inconciliables');
+});

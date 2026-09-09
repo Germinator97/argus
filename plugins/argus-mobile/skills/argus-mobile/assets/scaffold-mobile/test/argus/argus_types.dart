@@ -203,7 +203,32 @@ class ArgusScreen {
   final List<String> displaysAfterScroll;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
-  /// pose lui-même la surface, la police et les marges système.
+  /// pose lui-même la surface (un `Material` transparent), la police et le
+  /// thème.
+  ///
+  /// ⚠️ IL DÉCLARE LES MARGES SYSTÈME, IL NE LES APPLIQUE PAS — et cette
+  /// phrase promettait le contraire (point 447). `pumpArgus` renseigne
+  /// `view.padding` ET `view.viewPadding`, de sorte qu'un `SafeArea` présent
+  /// dans l'arbre les consomme ; il n'en pose **aucun** lui-même. Un écran
+  /// monté nu commence donc à **0,0 dp**, ce qui est correct pour un écran qui
+  /// occupe l'écran entier — et faux pour un écran que l'app héberge dans la
+  /// `SafeArea` d'une coquille.
+  ///
+  /// La conséquence est visible avec [cropRoot] : un run en aveugle a lu ici
+  /// que « le harnais pose les marges système », a monté son écran nu, et le
+  /// garde de position a mesuré 0,0 dp contre un inset de 24,0 — deux consignes
+  /// impossibles à suivre ensemble, faute de savoir laquelle décrit le montage.
+  ///
+  /// 📌 Donc : quand l'écran vit dans la `SafeArea` d'une coquille (barre
+  /// d'onglets, `AppBar`, conteneur d'application), **reproduis-la ici** —
+  /// `Scaffold(body: SafeArea(child: …))` — pour que l'étage 1 mesure la
+  /// disposition que l'app rend vraiment. Ce n'est pas contourner la règle
+  /// « sans Scaffold », c'est décrire la coquille que le harnais ne connaît pas.
+  ///
+  /// 🚫 Et ne « corrige » pas cela en posant un `SafeArea` dans `pumpArgus` :
+  /// il mettrait TOUTES les racines sous l'inset, y compris celles posées
+  /// au-dessus du `SafeArea` de leur écran — c'est-à-dire exactement le défaut
+  /// que [cropRoot] existe pour voir. Le garde deviendrait vacant sans un mot.
   final Widget Function() build;
 
   final String priority;

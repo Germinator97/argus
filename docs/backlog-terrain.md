@@ -7202,6 +7202,40 @@ rapporte autre chose comme un fait.* Ce sont les DEUX refus de l'outil (plancher
 de lisibilité, témoin `/argus/i`) qui l'ont dit — ils sont justes, et ce sont eux
 qui rendent le montage vérifiable.
 
+### 447. Le dartdoc promettait des marges système que le harnais n'applique pas
+
+**Fermé le 09/09/2026**, rapporté par le run 68 (Android, terrain sans API) et
+reproduit en lisant `pumpArgus`.
+
+Le dartdoc de `build:` disait : « Fournis-le SANS Scaffold ni MaterialApp : le
+harnais pose lui-même la surface, la police et **les marges système**. » Les deux
+premières, oui. La troisième, non : `pumpArgus` renseigne `view.padding` ET
+`view.viewPadding` — il **déclare** les insets — et ne pose **aucun** `SafeArea`
+qui les consomme. Un écran monté nu commence donc à **0,0 dp**.
+
+Le run l'a découvert par l'autre bout : `cropRoot: true` exige que la racine ne
+commence pas plus haut que l'inset, mesuré à **24,0 dp**. Deux consignes
+inconciliables — *monte nu* et *sois sous l'inset* — dont aucune ne dit laquelle
+décrit le montage. Il a tranché seul, correctement, en reproduisant la coquille
+(`Scaffold(body: SafeArea(…))`), et a écrit que le skill devrait le dire.
+
+🔴 **Et le remède évident est le mauvais.** Poser un `SafeArea` dans `pumpArgus`
+ferait passer le garde partout — y compris sur une racine posée AU-DESSUS du
+`SafeArea` de son propre écran, c'est-à-dire **exactement le défaut que
+`cropRoot` existe pour voir**. Le garde deviendrait vacant sans un mot, et la
+méthodologie raconte qu'il a déjà fallu trois racines à 0 dp pour s'en apercevoir
+une première fois. Le correctif est donc **documentaire**, et le garde tient les
+DEUX moitiés : les insets restent déclarés, et rien ne doit les appliquer.
+
+⚠️ **Le garde a failli naître faux, et c'est son propre refus qui l'a dit.** Deux
+fois : (1) `pumpArgus` **parle** de `SafeArea` dans le commentaire qui explique
+pourquoi les deux paddings sont renseignés — un motif nu aurait été rouge sur un
+fichier sain, d'où le dépouillement des commentaires ; (2) borner la fenêtre sur
+`\n}` matchait la **signature** (`}) async {` ferme les paramètres nommés), si
+bien que le corps scanné s'arrêtait avant la première ligne utile. C'est
+l'assertion « le commentaire doit être là » qui a fait tomber le test, sur un
+code pourtant correct. *Une fenêtre calculée par index se prouve avant de servir.*
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
