@@ -5081,6 +5081,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 447**, rapporté par le run 68 (Android, terrain sans
+API) : le dartdoc de `build:` promettait des marges système que `pumpArgus`
+n'applique pas. Correctif et garde écrits ; il se ferme quand sa mutation aura
+fait tomber le garde.
+
 ✅ **440 à 446 FERMÉS le 09/09/2026 — backlog vidé DEUX fois dans la journée
 (62e et 63e).** Le second vidage est le 446, né de la passe elle-même :
 l'outil de republication a crashé pendant qu'on s'en servait pour publier. Quatre
@@ -7204,8 +7209,9 @@ qui rendent le montage vérifiable.
 
 ### 447. Le dartdoc promettait des marges système que le harnais n'applique pas
 
-**Fermé le 09/09/2026**, rapporté par le run 68 (Android, terrain sans API) et
-reproduit en lisant `pumpArgus`.
+**Ouvert le 09/09/2026**, rapporté par le run 68 (Android, terrain sans API) et
+reproduit en lisant `pumpArgus`. Le correctif et son garde sont écrits ; il reste
+ouvert tant que la mutation n'a pas fait tomber le garde.
 
 Le dartdoc de `build:` disait : « Fournis-le SANS Scaffold ni MaterialApp : le
 harnais pose lui-même la surface, la police et **les marges système**. » Les deux

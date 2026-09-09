@@ -1644,6 +1644,17 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 447 — LES DEUX MOITIÉS, une mutation chacune. La première est le remède
+    # qui PARAÎT juste : poser le SafeArea dans le harnais. Il ferait passer
+    # toute racine sous l'inset, y compris celle posée au-dessus du SafeArea de
+    # son écran — le garde `cropRoot` deviendrait vacant sans un mot.
+    ("harness", "447 · le harnais applique les insets, et vide le garde cropRoot",
+     "          child: Material(type: MaterialType.transparency, child: child),",
+     "          child: SafeArea(\n            child: Material(type: MaterialType.transparency, child: child),\n          ),"),
+    # La seconde remet la promesse fausse, mot pour mot telle qu'elle était.
+    ("types", "447 · le dartdoc repromet des marges système jamais appliquées",
+     "  /// pose lui-même la surface (un `Material` transparent), la police et le\n  /// thème.",
+     "  /// pose lui-même la surface, la police et les marges système."),
     # 446 — l'appelant reperd le HTML : il repasse le texte dépouillé au lecteur
     # d'ordre, qui LÈVE depuis le 439. L'outil redevient inutilisable — et c'est
     # bien une panne, pas un faux vert : le garde doit voir la différence.
