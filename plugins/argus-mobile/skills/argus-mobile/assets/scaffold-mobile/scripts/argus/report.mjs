@@ -980,7 +980,14 @@ function main() {
   // un relevé absent fait passer ses acquittements pour périmés. On se tait
   // quand une source manque, plutôt que d'accuser sur un inventaire incomplet.
   const toutesLues = parts.every((p) => p.state === 'ok' || p.state === 'skipped');
-  const { perimes } = acquitter(findings, config);
+  const { perimes, malFormees } = acquitter(findings, config);
+  // 442 — HORS du `toutesLues` : une entrée mal formée l'est quelles que soient
+  // les dimensions qui ont tourné. La taire tant que l'inventaire est incomplet
+  // reviendrait à rejouer le défaut qu'on ferme.
+  for (const quoi of malFormees) {
+    warn(`acquittement IGNORÉ, forme invalide — ${quoi}. Attendu : « - {id: QAM-…, why: pourquoi} ».`);
+    warn('  Tel quel il ne compte pas : le finding reste ouvert alors que tu le crois acquitté.');
+  }
   if (toutesLues) {
     for (const id of perimes) {
       warn(`acquittement PÉRIMÉ : « ${id} » ne correspond à aucun finding de ce run — retire-le de security.acknowledged.`);

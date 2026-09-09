@@ -1502,8 +1502,28 @@ export function nomTechniqueEnTitre(root, config) {
  * @returns {{findings:any[], perimes:string[]}}
  */
 export function acquitter(findings, config) {
+  // ⚠️ 442 — CE FILTRE ÉCARTAIT EN SILENCE, et c'est ce qui le rendait pire
+  // que le cas voisin. Écrite en chaîne nue (`- QAM-SEC-CLEAR` au lieu de
+  // `{id, why}`), une entrée a un `id` `undefined` : elle tombe ici, le finding
+  // reste `open`, et rien ne dit que la forme était mauvaise — l'utilisateur
+  // croit avoir acquitté. Trois lignes plus bas, le cas « id correct, why vide »
+  // est traité avec soin ET annoncé ; une case avait son message, sa voisine
+  // n'avait rien. L'entrée ne tombait même pas dans `perimes`, le canal pourtant
+  // prévu pour signaler un acquittement inutile : elle est filtrée AVANT d'y
+  // arriver, donc doublement invisible.
+  // 📌 La malformation est SYNTAXIQUE : elle ne dépend d'aucun finding, donc
+  // elle se dit toujours — contrairement à `perimes`, qui exige que toutes les
+  // dimensions aient tourné pour ne pas accuser sur un inventaire incomplet.
+  const declarees = config?.security?.acknowledged ?? [];
+  const malFormees = declarees
+    .map((a, i) => {
+      if (a && String(a.id ?? '').trim() !== '') return null;
+      const vue = typeof a === 'string' ? `« ${a} »` : JSON.stringify(a);
+      return `entrée ${i + 1} : ${vue}`;
+    })
+    .filter((x) => x !== null);
   const table = new Map(
-    (config?.security?.acknowledged ?? [])
+    declarees
       .filter((a) => a && String(a.id ?? '').trim() !== '')
       .map((a) => [String(a.id).trim(), String(a.why ?? '').trim()]),
   );
@@ -1521,7 +1541,7 @@ export function acquitter(findings, config) {
       ...(why === '' ? { suggestedFix: `${f.suggestedFix ?? ''}\n⚠️ acquittement SANS raison : il ne compte pas. Écris pourquoi.`.trim() } : {}),
     };
   });
-  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)) };
+  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)), malFormees };
 }
 
 export const CONFIG_FILES = [

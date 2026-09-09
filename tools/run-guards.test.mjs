@@ -9238,6 +9238,40 @@ test('un finding de sécurité peut être ACQUITTÉ, et l\'acquittement expire (
   assert.deepEqual(acquitter(f, {}).findings, f, 'une config sans acquittement modifie les findings');
 });
 
+test('un acquittement MAL FORMÉ est signalé, jamais écarté en silence (442)', () => {
+  // ⚠️ GARDE QUI APPELLE. Le filtre écartait toute entrée sans `id` exploitable
+  // et n'en disait rien : écrit `- QAM-SEC-CLEAR` (chaîne nue) au lieu de
+  // `{id, why}`, l'utilisateur croit avoir acquitté, le finding reste `open`, et
+  // rien ne relie les deux. Pire, l'entrée ne tombait pas non plus dans
+  // `perimes` — le canal pourtant fait pour dire qu'un acquittement ne sert à
+  // rien — puisqu'elle est filtrée AVANT. Doublement invisible.
+  // 📌 Ce qui condamne le code n'est pas le filtre, c'est l'ASYMÉTRIE : le cas
+  // voisin (`{id: 'A'}` sans `why`) était traité avec soin ET annoncé, trois
+  // lignes plus bas. Une case avait son message, sa voisine n'avait rien.
+  const f = [{ id: 'QAM-SEC-CLEAR', severity: 'critical', status: 'open' }];
+
+  const nue = acquitter(f, { security: { acknowledged: ['QAM-SEC-CLEAR'] } });
+  assert.equal(nue.malFormees.length, 1,
+    'une entrée en chaîne nue est écartée SANS être signalée : c\'est le défaut du 442');
+  assert.match(nue.malFormees[0], /QAM-SEC-CLEAR/,
+    'le signalement ne cite pas l\'entrée fautive — on ne saurait pas laquelle corriger');
+  assert.equal(nue.findings[0].status, 'open',
+    'et elle ne doit surtout PAS acquitter au passage : une forme invalide ne fait rien taire');
+
+  // L'autre moitié, sans laquelle le remède serait un composant qui crie sur
+  // tout : la forme correcte passe, et ne se fait pas signaler.
+  const juste = acquitter(f, { security: { acknowledged: [{ id: 'QAM-SEC-CLEAR', why: 'inerte en release' }] } });
+  assert.deepEqual(juste.malFormees, [],
+    'une entrée BIEN formée est signalée comme invalide — le garde crierait sur le cas nominal');
+  assert.equal(juste.findings[0].status, 'acknowledged',
+    'et elle doit toujours acquitter : corriger le silence ne doit pas casser le mécanisme');
+
+  // Aucune clé du tout : rien à signaler, et surtout pas une liste vide qui
+  // déclencherait un avertissement sur les projets qui n'acquittent rien.
+  assert.deepEqual(acquitter(f, {}).malFormees, [],
+    'un projet sans acquittement reçoit un avertissement : il n\'a rien écrit');
+});
+
 test('le contrôle des fichiers de config honore platforms, comme ses voisins (372)', () => {
   // ⚠️ UNE PARITÉ MANQUÉE, pas un oubli isolé : deux contrôles voisins de
   // sec.mjs se suspendent proprement quand leur plateforme n'est pas déclarée
