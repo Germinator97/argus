@@ -106,6 +106,15 @@ class ArgusScreen {
   /// `visualCropOn` dans `argus.mobile.yaml` le déclare bien ici. Sans ce
   /// croisement, oublier le drapeau retirerait le garde en silence — un
   /// paramètre optionnel non passé est légal.
+  ///
+  /// 📌 DEUX COMMANDES, ET CE PARAGRAPHE N'EN NOMMAIT QU'UNE (point 448). Le
+  /// croisement ci-dessus tourne dans `make argus-anchors` ; **la mesure de
+  /// position, elle, vit dans `layout_test.dart`, donc dans
+  /// `make argus-guards`** — `argus-anchors` ne lance que `anchors_test.dart`.
+  /// Un run en aveugle a muté le montage pour prouver ce garde, relancé
+  /// `argus-anchors`, l'a vu VERT, et en a conclu que le garde était vacant : le
+  /// faux vert lui a coûté deux verdicts. *Nommer un outil à côté d'une règle,
+  /// c'est dire où la vérifier — donc autant que ce soit le bon.*
   final bool cropRoot;
 
   final void Function()? setUp;

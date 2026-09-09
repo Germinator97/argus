@@ -258,6 +258,13 @@ compare alors sa position à l'inset système. `--check-anchors` refuse de concl
 si un `visualCropOn` désigne un écran qui ne porte pas le drapeau — l'oublier
 retirerait le garde en silence.
 
+⚠️ **LES DEUX CONTRÔLES NE SONT PAS DANS LA MÊME COMMANDE** (point 448). Le
+croisement `--check-anchors` tourne dans `make argus-anchors` ; la **mesure de
+position** vit dans `layout_test.dart`, donc dans **`make argus-guards`** —
+`argus-anchors` ne lance que `anchors_test.dart`. Les nommer côte à côte sans le
+dire a envoyé un run vérifier son garde dans la mauvaise suite : elle est restée
+verte sous la mutation, et il a conclu que le garde ne gardait rien.
+
 ⚠️ **Changer `visualCropOn` invalide les références déjà produites.** La doc de
 Maestro est explicite — « the comparison screenshot must also have been cropped » —
 et rien n'échoue proprement quand les deux cadrages divergent : Maestro compare

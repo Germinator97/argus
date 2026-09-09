@@ -12043,3 +12043,73 @@ test('le harnais d\'étage 1 déclare les insets sans les appliquer (447)', () =
     'le dartdoc ne dit plus quoi faire d\'un écran hébergé par une coquille : il ne reste que '
     + 'l\'interdiction, donc les deux consignes redeviennent inconciliables');
 });
+
+// ── La commande nommée à côté d'une règle doit être celle qui la vérifie ────
+//
+// Point 448. Le dartdoc de `cropRoot` et la méthodologie décrivaient la mesure
+// de position puis nommaient `--check-anchors` à la ligne suivante. Les deux
+// phrases sont justes séparément — le croisement EST dans `argus-anchors` —
+// mais accolées elles disent qu'on vérifie la position là. Un run en aveugle a
+// muté son montage, relancé `make argus-anchors`, l'a vu VERT et en a conclu que
+// le garde était vacant. Le faux vert lui a coûté deux verdicts de mutation.
+//
+// 🔴 Le garde DÉRIVE la bonne cible du Makefile au lieu de la citer : si demain
+// `layout_test.dart` change de suite, c'est ce test qui le dira, pas un lecteur.
+
+test('la doc nomme la commande qui lance VRAIMENT le garde de position (448)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const makefile = readFileSync(join(scaffold, 'Makefile'), 'utf8');
+
+  // Découper le Makefile en cibles : « nom: » en colonne 0, puis sa recette.
+  const cibles = new Map();
+  let courante = null;
+  for (const ligne of makefile.split('\n')) {
+    const m = ligne.match(/^([a-zA-Z0-9_-]+):/);
+    if (m) { courante = m[1]; cibles.set(courante, []); continue; }
+    if (courante && /^\t/.test(ligne)) cibles.get(courante).push(ligne);
+    else if (courante && ligne.trim() !== '' && !/^#/.test(ligne)) courante = null;
+  }
+  assert.ok(cibles.size > 5, `seulement ${cibles.size} cible(s) lue(s) dans le Makefile — ce garde ne mesure rien`);
+
+  // Qui lance layout_test.dart ? Le dossier entier le couvre, un fichier nommé non.
+  // ⚠️ Et lancer la suite ne suffit pas à en RENDRE le verdict : `argus-debts`
+  // la lance aussi, mais pipe sa sortie pour en extraire les clés de dette, si
+  // bien que le code de sortie du test ne décide plus de rien. La cible que la
+  // doc doit nommer est celle qui laisse ce code parler — donc celle qui ne
+  // pipe pas. Le discriminant se dérive, il ne se cite pas.
+  const lancentLaPosition = [...cibles].filter(([, recette]) => {
+    const txt = recette.join('\n');
+    if (!/\btest\b/.test(txt)) return false;
+    const couvre = /test\/argus(?![\w/.-])/.test(txt) || txt.includes('test/argus/layout_test.dart');
+    return couvre && !txt.includes('|');
+  }).map(([nom]) => nom);
+  assert.equal(lancentLaPosition.length, 1,
+    `${lancentLaPosition.length} cible(s) lancent layout_test.dart (${lancentLaPosition.join(', ') || 'aucune'}) : `
+    + 'le garde ne peut pas dire laquelle la doc doit nommer');
+  const [cibleMesure] = lancentLaPosition;
+
+  // Et qui porte le croisement ? Ce n'est pas la même, c'est tout l'objet du point.
+  const lancentLeCroisement = [...cibles]
+    .filter(([, r]) => r.join('\n').includes('--check-anchors')).map(([nom]) => nom);
+  assert.equal(lancentLeCroisement.length, 1, 'le croisement --check-anchors n\'a plus une cible unique');
+  assert.notEqual(lancentLeCroisement[0], cibleMesure,
+    'croisement et mesure de position sont retombés dans la même cible : ce point n\'a plus lieu d\'être, '
+    + 'retire ce garde plutôt que de le laisser garder une distinction qui n\'existe plus');
+
+  // La doc doit nommer la cible DÉRIVÉE, là où elle parle de la position.
+  for (const [fichier, chemin] of [
+    ['argus_types.dart', join(scaffold, 'test/argus/argus_types.dart')],
+    ['methodology-mobile.md', join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md')],
+  ]) {
+    const src = readFileSync(chemin, 'utf8');
+    const i = src.indexOf('--check-anchors');
+    assert.ok(i > 0, `${fichier} ne mentionne plus --check-anchors : la confusion que ce garde ferme a disparu, vérifie-le avant de le retirer`);
+    // La fenêtre : ce qui SUIT la mention, jusqu'à 1200 caractères — c'est là que
+    // vit la précision. Bornée par construction, jamais le fichier entier.
+    const fenetre = src.slice(i, i + 1200);
+    assert.match(fenetre, new RegExp(`make ${cibleMesure}\\b`),
+      `${fichier} nomme --check-anchors sans dire que la mesure de position vit dans `
+      + `« make ${cibleMesure} » : accolées, les deux phrases envoient vérifier le garde dans la `
+      + 'mauvaise suite, et elle est verte (448)');
+  }
+});

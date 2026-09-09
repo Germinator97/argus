@@ -5081,6 +5081,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 448**, rapporté par le run 68 : la règle et la commande
+qui la vérifie n'étaient pas dans la même suite, d'où un faux vert. Correctif et
+garde écrits ; il se ferme quand sa mutation aura fait tomber le garde.
+
 ✅ **447 FERMÉ le 09/09/2026**, premier point du run 68 (Android, terrain sans
 API) : le dartdoc de `build:` promettait que le harnais « pose les marges
 système ». Il les DÉCLARE (`view.padding` + `viewPadding`) et n'en applique
@@ -7245,6 +7249,36 @@ fichier sain, d'où le dépouillement des commentaires ; (2) borner la fenêtre 
 bien que le corps scanné s'arrêtait avant la première ligne utile. C'est
 l'assertion « le commentaire doit être là » qui a fait tomber le test, sur un
 code pourtant correct. *Une fenêtre calculée par index se prouve avant de servir.*
+
+### 448. La règle et l'outil qui la vérifie n'étaient pas dans la même commande
+
+**Ouvert le 09/09/2026**, rapporté par le run 68 et mesuré dans le Makefile. Le
+correctif et son garde sont écrits ; il reste ouvert tant que la mutation n'a pas
+fait tomber le garde.
+
+Le dartdoc de `cropRoot` décrit la mesure de position, puis nomme
+`--check-anchors` à la ligne suivante. La méthodologie fait pareil. **Les deux
+phrases sont justes séparément** — le croisement EST dans `make argus-anchors` —
+mais accolées, elles disent qu'on vérifie la position là.
+
+Mesuré dans le Makefile : `argus-anchors` lance `config.mjs --check-anchors` et
+**`test/argus/anchors_test.dart` seulement** ; le garde de position vit dans
+`layout_test.dart`, que seul `argus-guards` lance (`flutter test test/argus`).
+
+🔴 **Le coût est un FAUX VERT, le pire des verdicts.** Le run a muté son montage
+pour prouver le garde, relancé `argus-anchors`, l'a vu passer — et en a conclu
+que le garde était vacant. Deux verdicts de mutation perdus, dont un qui
+affirmait le contraire de la vérité. *Une information juste au mauvais endroit ne
+sert personne ; nommée à côté d'une règle, elle dit où la vérifier.*
+
+📌 **Le garde DÉRIVE la cible du Makefile au lieu de la citer** : il découpe les
+recettes, cherche laquelle couvre `layout_test.dart`, et exige que les deux
+textes nomment celle-là. Si la suite déménage, c'est lui qui le dira.
+⚠️ Et il a fallu un discriminant que je n'avais pas prévu : **`argus-debts` lance
+la même suite**, mais pipe sa sortie pour en extraire les clés de dette — le code
+de sortie du test n'y décide plus de rien. La cible à nommer est celle qui laisse
+ce code parler, donc celle qui ne pipe pas. Le garde a refusé de conclure devant
+les deux, ce qui est exactement ce qu'on lui demande.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
