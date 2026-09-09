@@ -309,19 +309,27 @@ n'existent nulle part.
 ```bash
 # SITES d'instrumentation dans le code (le filtre `///` est indispensable).
 # ⚠️ On RECOLLE la valeur à sa clé AVANT de compter : voir juste en dessous.
-find lib -name '*.dart' -exec cat {} + | grep -v "^\s*///" \
+find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' | grep -c "identifier: *'"
 
 # ⚠️ Un gabarit INTERPOLÉ vaut une famille, pas une ancre : compte-les à part.
 #    La forme -F évite d'avoir à échapper `${` correctement pour ton shell.
-find lib -name '*.dart' -exec cat {} + | grep -vF '///' \
+find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' \
   | grep -F 'identifier: ' | grep -cF '${'
 
 # Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
-grep -v '^\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('
-grep -v '^\s*///' test/argus/harness.dart | grep -c 'anchor:'
+grep -v '^\s*//' test/argus/harness.dart | grep -c 'ArgusScreen('
+grep -v '^\s*//' test/argus/harness.dart | grep -c 'anchor:'
 ```
+
+⚠️ **LE FILTRE EST `//`, PAS `///` — deux barres, point 452.** `///` ne retire
+que le dartdoc, et laisse compter tout code mis en commentaire ORDINAIRE
+(`// Semantics(identifier: 'x')`), ce qui arrive à chaque refonte d'écran.
+Mesuré sur une fixture à **une** vraie ancre : la commande en `///` rendait
+**3**. Le §2a portait déjà `'^\s*//'` deux cents lignes plus haut — c'est ici
+qu'il manquait. ⚠️ Sa limite, à dire : un filtre par LIGNE ne voit pas un
+commentaire en fin de ligne (`x; // identifier: 'y'`).
 
 ⚠️ **UN MOTIF QUI EXIGE LA VALEUR SUR LA MÊME LIGNE QUE LA CLÉ COMPTE FAUX.**
 `dart format` **replie** l'argument sur la ligne suivante dès que l'imbrication

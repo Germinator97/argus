@@ -1644,6 +1644,12 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 452 — le filtre reperd sa seconde barre : `///` ne retire que le dartdoc,
+    # et le code mis en commentaire ordinaire redevient compté. Le garde 435
+    # exécute la commande, donc c'est le CHIFFRE qui bouge, pas le motif.
+    ("skill", "452 · le compteur reperd les commentaires ordinaires",
+     "| grep -v '^\\s*//' \\\n  | perl -0777 -pe 's/identifier:\\s*\\n\\s*/identifier: /g' | grep -c \"identifier: *'\"",
+     "| grep -v \"^\\s*///\" \\\n  | perl -0777 -pe 's/identifier:\\s*\\n\\s*/identifier: /g' | grep -c \"identifier: *'\""),
     # 451 — LA PARITÉ, une mutation par côté. Retirer la forme d'un seul des
     # deux textes laisse l'autre juste : c'est ce qui rend l'écart invisible.
     ("run", "451 · le runner reperd la troisième forme au moment de l'échec",

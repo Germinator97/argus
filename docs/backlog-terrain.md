@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 452** : le compteur d'ancres comptait le code mis en
+commentaire. Se ferme quand sa mutation aura fait tomber le garde 435 étendu.
+
 ✅ **447 à 451 FERMÉS le 09/09/2026 — backlog vidé une 64e fois**, sur les cinq
 points du **run 68** (Android, terrain sans API). Trois correctifs vrais (447,
 448, 449), un démenti double (450), une parité runner/SKILL (451).
@@ -7389,6 +7392,38 @@ endroits — le message que le runner imprime à l'instant de l'échec, et le SK
 qu'on lit avant — et il exige les trois formes **des deux côtés**, plus le geste
 qui tranche. Ajouter une forme à un seul texte est exactement le défaut que ce
 dépôt traque : deux textes justes séparément, dont l'écart ne casse rien.
+
+### 452. Le compteur d'ancres comptait le code mis en COMMENTAIRE
+
+**Ouvert le 09/09/2026**, rapporté par le run 69 (iOS, terrain avec API) et
+reproduit par exécution. Se ferme quand la mutation aura fait tomber le garde.
+
+Les comptages du §2b filtraient `grep -v "^\s*///"` : le dartdoc, et **rien
+d'autre**. Tout code mis en commentaire ORDINAIRE restait compté —
+`// Semantics(identifier: 'x')`, ce que produit chaque refonte d'écran.
+
+Le run l'a mesuré sur sa propre fixture (attendu 1, obtenu **2**). Reproduit
+ici sur une fixture à **une** vraie ancre, avec les trois formes de commentaire :
+la commande rendait **3**. Le filtre en `//` — qui couvre `///` par construction
+— rend **1**.
+
+📌 **Et le SKILL portait DÉJÀ la bonne forme, deux cents lignes plus haut** : le
+§2a inventorie les canaux sortants avec `grep -v '^\s*//'`. Une parité manquée
+**à l'intérieur du même document**, entre deux commandes qui font le même geste
+— la classe des runs 66-67, appliquée à un texte au lieu d'un code.
+
+⚠️ **La limite est dite plutôt que taise** : un filtre par LIGNE ne voit pas un
+commentaire en fin de ligne (`x; // identifier: 'y'`). Mieux vaut l'écrire que
+laisser croire à une étanchéité.
+
+📌 **Pas de garde neuf : le garde 435 exécutait déjà cette commande** sur une
+fixture, il lui manquait cette forme. L'étendre valait mieux qu'un jumeau —
+leçon du 450, appliquée le jour même.
+⚠️ **Et je l'ai d'abord étendu à l'ENVERS** : ma fixture était écrite APRÈS le
+`spawnSync` qui mesure, donc jamais lue — le garde passait au vert sans voir la
+forme qu'on venait d'ajouter. C'est le défaut du 449 (« la mesure prise avant
+l'action qu'elle juge »), commis dans l'autre sens. Un contrôle de POSITION le
+tranche en deux lignes, et il est désormais dans le fichier.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

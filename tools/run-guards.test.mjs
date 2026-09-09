@@ -11744,6 +11744,20 @@ test('la commande de comptage du skill survit au repli du formateur (435)', () =
       "",
     ].join('\n'));
 
+    // 3. LE COMMENTAIRE ORDINAIRE (452). `///` ne retire que le dartdoc : du code
+    //    mis en commentaire avec `//` — ce que produit chaque refonte d'écran —
+    //    restait compté. Mesuré sur une fixture à UNE ancre : la commande rendait
+    //    3. Cette forme-ci est donc dans le corpus, et le compte attendu la tient
+    //    pour nulle.
+    writeFileSync(join(dir, 'lib', 'commente.dart'), [
+      "// Ancien écran laissé en commentaire ORDINAIRE — aucune de ces lignes n'est un site :",
+      "// Semantics(identifier: 'commentaire_ne_compte_pas', child: x);",
+      "//   identifier: 'ni_celle_ci',",
+      "// /// et la forme mixte, relevée par un run en aveugle :",
+      "// /// identifier: 'ni_la_mixte',",
+      "",
+    ].join('\n'));
+
     const r = spawnSync('bash', ['-c', commande], { cwd: dir, encoding: 'utf8' });
     const compte = Number((r.stdout || '').trim());
 
