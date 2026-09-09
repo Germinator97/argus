@@ -5081,6 +5081,34 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+✅ **440 à 445 FERMÉS le 09/09/2026 — backlog VIDE (62e vidage).** Quatre
+correctifs et deux démentis, rendus par la **paire de confirmation** (runs 66 et
+67) que Germinator a demandée plutôt que d'assumer le relevé unique du run 65.
+
+🔴 **CETTE PAIRE A ROUVERT LA SORTIE, et c'est tout son intérêt.** Le run 65
+seul rendait « aucun constat » ; deux runs sur deux plateformes et deux terrains
+en ont rendu **quatre**, tous dans ce qui est LIVRÉ — donc tous coûtant à qui
+applique le skill. La confirmation par plateforme n'était pas une précaution de
+principe : c'est elle qui a mesuré.
+
+📌 **Trois des quatre étaient des PARITÉS manquées**, et c'est la classe à
+retenir : `icon` laissée derrière `url` et `title` par deux vagues de correctifs
+successives (441) ; une entrée mal formée sans message quand sa voisine en avait
+un (442) ; un statut lu par le JSON et jamais par le rendu (443). Aucune ne
+produit d'erreur — chaque moitié est correcte prise à part.
+
+⚠️ **Et le quatrième dit autre chose, de pire** : le garde du 440 EXISTAIT,
+visait juste, et son propre commentaire racontait l'histoire du défaut qu'il
+devait empêcher. **Personne ne le lançait.** Pendant ce temps la CI faisait le
+bon geste avec les lints par défaut, donc en aveugle. *Un garde qui n'est jamais
+exécuté n'est pas un garde* — et son commentaire donne l'illusion que le cas est
+traité, au point que j'ai failli conclure « c'est couvert » en le lisant.
+
+📌 **Deux constats sur six ont été DÉMENTIS par reproduction** (444, 445), tous
+deux parce que le skill avait déjà traité le cas — mieux que ce que l'agent
+supposait pour la locale. Les garder écrits évite qu'un troisième run les
+rouvre.
+
 ✅ **439 FERMÉ le 09/09/2026 — backlog VIDE (61e vidage).** Il venait de
 l'outillage de suivi (`tools/`, non livré), donc il n'a jamais fermé la sortie.
 Le contrôle d'ordre du registre rendait « aucune rupture » **sans rien lire**,
@@ -6972,7 +7000,12 @@ plateforme — il a trouvé la bonne page seul et n'a rien écrasé.
 
 ### 440. Le Dart LIVRÉ ne passe pas l'analyse statique, et rien ne l'analyse
 
-**Ouvert le 09/09/2026** — rendu par le run 66, reproduit par diff.
+**Fermé le 09/09/2026.** Les trois quotes sont corrigées, et surtout la mesure
+qui les voit est désormais JOUÉE : la liste de lints vit dans
+`tools/scaffold-lints.yaml`, que `bench.sh` **et** la CI LISENT — la recopier
+dans les deux les aurait fait diverger une règle à la fois. Prouvé dans cet
+ordre : banc rouge sur les trois sites exacts, **toujours rouge après le
+recâblage** (donc il n'a pas été vidé), vert après correction.
 
 Trois chaînes à double quote dans le scaffold — `argus_harness.dart:239`,
 `layout_test.dart:61` et `:78` — font rougir `flutter analyze` sur tout projet
@@ -7003,7 +7036,14 @@ discriminé correctement les trois vraies des une fausse.
 
 ### 441. `artifactFor` résout deux clés sur trois par plateforme
 
-**Ouvert le 09/09/2026** — rendu par le run 66, reproduit dans le code.
+**Fermé le 09/09/2026.** `artifactFor` résout les trois clés, et
+`identitePubliee` reçoit l'icône **déjà résolue**, comme le titre et l'url :
+le correctif supprime l'endroit où la lecture à plat pouvait vivre, au lieu de
+la relire attentivement. Le garde gagne la moitié qui manquait — les deux
+icônes suivent leur plateforme et aucune ne fuit sur l'autre — plus un critère
+**total et négatif qui ne nomme aucune clé** : aucune ligne rendue ne contient
+`[object Object]`. Un garde qui énumérerait `url`/`title`/`icon` raterait la
+quatrième, exactement comme les deux vagues précédentes.
 
 ```js
 return { url: choisir(a.url), title: choisir(a.title) };
@@ -7026,7 +7066,13 @@ prise à part.
 
 ### 442. Un acquittement MAL FORMÉ est écarté sans un mot
 
-**Ouvert le 09/09/2026** — rendu par le run 67, reproduit dans `config.mjs`.
+**Fermé le 09/09/2026.** `acquitter` rend `malFormees`, et `report.mjs`
+l'annonce **hors** du garde `toutesLues` : une entrée mal formée l'est quelles
+que soient les dimensions qui ont tourné, et la taire tant que l'inventaire est
+incomplet aurait rejoué le défaut qu'on ferme. Le garde couvre les deux
+moitiés — la chaîne nue est nommée et n'acquitte toujours rien, la forme
+correcte reste silencieuse et acquitte — plus le cas vide, pour qu'un projet
+qui n'acquitte rien ne reçoive pas d'avertissement.
 
 ```js
 .filter((a) => a && String(a.id ?? '').trim() !== '')
@@ -7050,7 +7096,16 @@ et une absence ressemble à « il ne s'est rien passé ».
 
 ### 443. Un acquittement HONORÉ n'atteint pas la page publiée — et le compteur contredit la liste
 
-**Ouvert le 09/09/2026** — rendu par le run 67, reproduit dans `report.mjs`.
+**Fermé le 09/09/2026.** La carte porte sa marque et sa raison, et le titre
+de groupe distingue les assumés sans rien retirer du total.
+
+🔴 **ET MON DIAGNOSTIC ÉTAIT FAUX SUR UN POINT — corrigé dans le code plutôt que
+laissé debout.** J'avais écrit que le compteur contredisait la liste. Non :
+`counts` compte TOUS les findings, exprès et documenté (« un signal qu'on assume
+ne se supprime pas, il change de statut »), et seul `bloquants` — qui ne nourrit
+que le gate — les exclut. Les deux étaient d'accord. Ce qui manquait était le
+statut à l'écran, rien d'autre. *Un commentaire faux vaut un garde faux* : il a
+été réécrit avant d'être commité.
 
 `acquitter()` pose bien `status: 'acknowledged'` et `acknowledgedWhy` dans
 `sec.json`. Le rapport HTML en lit **une moitié** :
