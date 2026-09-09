@@ -5081,11 +5081,18 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 438, ouvert le 09/09/2026.** Il ne vient pas du skill
-livré mais de **l'outillage de suivi** (`tools/`, non livré), donc **il ne ferme
-pas la sortie** : il ne coûte rien à qui applique le skill. Le **run 65** (iOS)
-n'a rendu **aucun constat**, et c'est précisément ce qui l'a révélé — le run qui
-peut ouvrir la sortie est celui que le compteur ne voit pas.
+✅ **438 FERMÉ le 09/09/2026 — backlog VIDE (60e vidage).** Il venait de
+l'outillage de suivi, pas du skill livré. Le **run 65** (iOS) n'a rendu **aucun
+constat**, et c'est précisément ce qui l'a révélé : le run qui peut ouvrir la
+sortie est celui que le compteur ne voyait pas.
+
+🔴 **LE CRITÈRE DE SORTIE EST REMPLI SUR LE RUN 65.** Gate `pass`, 7/7 flows,
+41/41 ancres, 416/416 gardes d'étage 1, 693 tests du projet — et chaque élément
+de son compte rendu passé au critère : aucun ne coûte à qui applique le skill
+sans le connaître. ⚠️ **Réserve posée** : le 07/09 demandait une confirmation
+**par plateforme** pour que ce verdict ne repose pas sur un relevé unique. Le run
+64 (Android) avait rendu le 437, fermé et éprouvé par le 65 — mais aucune
+confirmation Android n'a tourné sur le plugin actuel.
 
 ✅ **437 FERMÉ le 08/09/2026 — backlog VIDE (59e vidage).** Un garde, une
 mutation. Le **run 64** (confirmation Android) a rendu 8 flows, `scope: complet`,
@@ -6864,7 +6871,20 @@ correction déplace un mode de panne plus souvent qu'elle ne le ferme.*
 
 ### 438. Un run qui ne rend AUCUN constat est invisible au compteur de la page
 
-**Ouvert le 09/09/2026.** Le numéro de run affiché par la page publiée dérive du
+**Fermé le 09/09/2026.** Un run sans constat a désormais **un endroit où être
+écrit** — la section ci-dessous —, et elle porte sa propre raison pour que
+personne ne la retire comme une liste vide de contenu. Le garde tient les deux
+moitiés : le **fichier réel** (la section existe, elle dit pourquoi, son tableau
+nomme ses runs) et un **corpus fabriqué** où le dernier run n'apparaît QUE là.
+
+🔴 **Et ce garde a trouvé un défaut dans mon propre remède, le jour même.** Le
+tableau écrivait `| **65** |` sans le mot « run » : le compteur lisait le numéro
+**par accident**, dans le paragraphe au-dessus. Mettre à jour une ligne sans
+toucher la prose aurait laissé le chiffre en arrière, en silence — exactement le
+défaut qu'on venait de fermer, reproduit dans sa correction. Le tableau nomme
+ses runs, et le garde exige cette forme **dans le tableau**.
+
+Le numéro de run affiché par la page publiée dérivait du
 **backlog** — le plus grand run qu'il cite. Or un run sans constat n'a rien à y
 inscrire : il n'apparaît nulle part, et le compteur reste au précédent. Mesuré
 après le run 65 : `runs: 64`, alors que `check-etalons` en contrôlait 64 de run2
