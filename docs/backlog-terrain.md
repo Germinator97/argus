@@ -5081,7 +5081,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **440 à 445 FERMÉS le 09/09/2026 — backlog VIDE (62e vidage).** Quatre
+✅ **440 à 446 FERMÉS le 09/09/2026 — backlog VIDE (62e vidage).** Quatre
 correctifs et deux démentis, rendus par la **paire de confirmation** (runs 66 et
 67) que Germinator a demandée plutôt que d'assumer le relevé unique du run 65.
 
@@ -7159,6 +7159,36 @@ dans la liste de ce que le sous-ensemble ne supporte pas — « ancres/alias (&,
 ⚠️ **Ce qui reste vrai, et vaut moins qu'un point** : une autre clé du fichier
 porte un rappel **local** (« ⚠️ SUR UNE SEULE LIGNE »), celle où l'agent est tombé
 n'en a pas. C'est la même parité entre voisins que le 441, à un degré mineur.
+
+### 446. Le correctif du 439 a rendu son propre outil inutilisable, une journée durant
+
+**Fermé le 09/09/2026**, trouvé en relançant `check-artefact.mjs` pour republier
+la page de cette passe.
+
+Le **439** a rendu `rupturesDOrdreDu` BRUYANTE : elle lève désormais au lieu de
+rendre `[]` quand elle n'a rien lu. C'est le bon correctif. Mais **son appelant
+est resté sur le texte dépouillé** — `check-artefact.mjs:123` passait `texte` là
+où il faut `html`. Le faux vert est donc devenu un **CRASH** : l'outil ne peut
+plus rendre aucun verdict, et il est resté ainsi **une journée entière** sans que
+personne le voie, faute d'avoir été relancé.
+
+📌 **Fermer le silence d'un instrument ne suffit pas : il faut rejouer ses
+appelants.** Sinon on remplace un faux vert par une panne — et la panne est plus
+honnête, mais elle ne se voit pas davantage tant que rien ne lance l'outil.
+
+⚠️ **C'est le 440, une seconde fois, le même jour et dans le même dépôt** :
+aucun garde ne couvrait `check-artefact.mjs`, aucune CI ne le lance. Le garde
+écrit ici l'EXÉCUTE sur une page fabriquée, et couvre les deux sens — registre en
+ordre reconnu comme tel, registre en désordre nommé (`11 vient après 12`).
+
+⚠️ **Et mon premier montage était AVEUGLE, ce qui accusait le code à tort.**
+`'…' + '…'.repeat(60)` n'applique `repeat` qu'à la SECONDE chaîne : le bourrage
+retombait sous le plancher de 5 000 caractères lisibles, l'outil sortait en
+« instrument aveugle », et le garde échouait en désignant le défaut 446 — qui
+était pourtant déjà corrigé. *Un montage qui n'arme pas ne se tait pas, il
+rapporte autre chose comme un fait.* Ce sont les DEUX refus de l'outil (plancher
+de lisibilité, témoin `/argus/i`) qui l'ont dit — ils sont justes, et ce sont eux
+qui rendent le montage vérifiable.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

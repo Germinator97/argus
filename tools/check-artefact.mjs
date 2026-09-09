@@ -120,7 +120,15 @@ for (const { valeur, pourquoi } of mortes) {
 // on suppose qu'il croît. Deux fois une ligne a été insérée au mauvais endroit,
 // et les deux fois c'est un lecteur qui l'a vu — la page est valide, chaque
 // ligne est juste, les compteurs restent exacts. Rien d'autre ne peut le dire.
-const ruptures = rupturesDOrdreDu(texte);
+// ⚠️ 446 — LE HTML, PAS LE TEXTE DÉPOUILLÉ. C'est la seconde moitié du 439,
+// et elle n'avait pas été faite : ce correctif-là a rendu le lecteur BRUYANT
+// — il lève au lieu de rendre `[]` quand il n'a rien à lire — mais l'appel est
+// resté sur `texte`, où il n'y a ni `</table>` ni `<td class="id">`. Le silence
+// est donc devenu un CRASH, et `check-artefact.mjs` est resté inutilisable une
+// journée entière sans que personne le voie, faute d'avoir été relancé.
+// 📌 Fermer le silence d'un instrument ne suffit pas : il faut rejouer ses
+// appelants, sinon on remplace un faux vert par une panne.
+const ruptures = rupturesDOrdreDu(html);
 process.stdout.write(`  ${ruptures.length === 0 ? '✔' : '✖'} ordre du registre                   `
   + `${ruptures.length === 0 ? 'les numéros croissent' : `${ruptures.length} rupture(s)`}\n`);
 for (const { avant, apres } of ruptures) {

@@ -9238,6 +9238,64 @@ test('un finding de sécurité peut être ACQUITTÉ, et l\'acquittement expire (
   assert.deepEqual(acquitter(f, {}).findings, f, 'une config sans acquittement modifie les findings');
 });
 
+test('le contrôle de la page S\'EXÉCUTE, et voit un registre en désordre (446)', () => {
+  // ⚠️ GARDE QUI LANCE L'OUTIL, parce que c'est la seule panne qu'aucune lecture
+  // n'attrape. Le 439 a rendu `rupturesDOrdreDu` BRUYANTE — elle lève au lieu de
+  // rendre `[]` quand elle n'a rien lu — mais l'APPEL de `check-artefact.mjs`
+  // est resté sur le texte dépouillé. Le faux vert est donc devenu un CRASH, et
+  // l'outil est resté inutilisable une journée entière : personne ne l'avait
+  // relancé. Aucune CI ne le lance, aucun garde ne le couvrait.
+  // 📌 Fermer le silence d'un instrument ne suffit pas — il faut rejouer ses
+  // appelants, sinon on remplace un faux vert par une panne.
+  // ⚠️ LA PAGE DOIT FRANCHIR LES DEUX REFUS DE L'OUTIL, sinon le garde mesure
+  // son propre montage : il sort en 2 sous 5 000 caractères lisibles
+  // (« instrument aveugle »), et en 2 encore si le témoin `/argus/i` manque.
+  // Ces refus sont justes — une page tronquée rendrait « aucun écart », soit le
+  // verdict qu'on espère. Le remplissage est donc une CONDITION du montage.
+  // ⚠️ LES PARENTHÈSES COMPTENT : sans elles `.repeat` ne s'applique qu'à la
+  // SECONDE chaîne, le bourrage retombe à ~4 400 caractères, et l'outil sort en
+  // « instrument aveugle » avant d'atteindre ce qu'on teste. Vécu en écrivant ce
+  // garde : il accusait le code alors que c'était le montage qui ne mesurait rien.
+  const bourrage = ('Journal du chantier Argus, paragraphe de remplissage sans nom de projet ni '
+    + 'identifiant, présent pour que la page dépasse le plancher de lisibilité. ').repeat(60);
+  const page = (ids) => `<html><body>
+    <h1>Argus Mobile</h1>
+    <p>${bourrage}</p>
+    <h2>Le backlog terrain, entièrement</h2>
+    <table><tbody>${ids.map((i) => `<tr><td class="id">${i}</td><td>x</td></tr>`).join('')}</tbody></table>
+    </body></html>`;
+  const lancer = (html) => {
+    const f = join(tmpdir(), `argus-page-${Date.now()}-${Math.random().toString(36).slice(2)}.html`);
+    writeFileSync(f, html);
+    try {
+      // Le script sort en 1 quand les compteurs de la page ne collent pas au
+      // dépôt — c'est normal ici, la page est fictive. Ce qu'on mesure est
+      // qu'il ARRIVE AU BOUT de son rapport : un crash s'arrête avant.
+      const r = spawnSync(process.execPath, [join(RACINE, 'tools/check-artefact.mjs'), f],
+        { encoding: 'utf8' });
+      return `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    } finally { rmSync(f, { force: true }); }
+  };
+
+  const enOrdre = lancer(page(['10', '11', '12']));
+  assert.match(enOrdre, /ordre du registre/,
+    'le contrôle n\'atteint plus la ligne d\'ordre du registre : il s\'arrête avant, donc il ne '
+    + 'contrôle plus rien — c\'est le défaut 446, un instrument devenu inutilisable en silence');
+  assert.doesNotMatch(enOrdre, /rupturesDOrdreDu :/,
+    'le lecteur d\'ordre LÈVE sur une page valide : son appelant ne lui passe pas le HTML');
+  assert.match(enOrdre, /les numéros croissent/,
+    'un registre en ordre n\'est plus reconnu comme tel');
+
+  // L'autre moitié, sans laquelle « il s'exécute » ne prouverait rien : sur un
+  // registre en désordre, il doit le DIRE. Un outil qui tourne en approuvant
+  // tout est pire qu'un outil qui plante.
+  const enDesordre = lancer(page(['10', '12', '11']));
+  assert.match(enDesordre, /rupture\(s\)/,
+    'le désordre n\'est plus détecté : le contrôle tourne mais approuve tout');
+  assert.match(enDesordre, /11 vient après 12/,
+    'la rupture n\'est plus nommée — on saurait qu\'il y en a une, pas laquelle');
+});
+
 test('un acquittement HONORÉ se voit sur la PAGE, avec sa raison (443)', () => {
   // ⚠️ GARDE QUI APPELLE, et qui lit le HTML rendu. `acquitter()` posait
   // `status` et `acknowledgedWhy` dans le JSON ; le rendu ne lisait ni l'un ni
