@@ -1644,6 +1644,12 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 456 — le paragraphe reperd l'erreur jumelle. La première moitié, celle
+    # que le garde 425 mesure sur les flows, reste écrite : le texte a l'air
+    # complet, et c'est exactement ce qui a fait écrire la condition à moitié.
+    ("skill", "456 · le §2c-ter reperd l'erreur jumelle de l'aiguillage",
+     "⚠️ **ET L'ERREUR JUMELLE COÛTE AUTANT : SE CONNECTER ALORS QUE L'ÉCRAN DEMANDÉ\nEST L'ÉCRAN DE CONNEXION** (point 456).",
+     "⚠️ **Remarque** (point 456)."),
     # 455 — le paragraphe reperd le cas « en ligne ». Le cas volumineux, qui
     # est juste, reste écrit : rien ne signale que l'autre moitié a disparu.
     ("skill", "455 · le §3g-bis reperd le cas de la page rendue en ligne",

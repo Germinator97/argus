@@ -12332,3 +12332,47 @@ test('le §3g-bis dit quoi faire quand la page revient EN LIGNE (455)', () => {
     'historiqueDe ne rend plus [] sur une page étrangère : le contrôle que le SKILL prescrit '
     + 'désormais ne discriminerait plus rien');
 });
+
+// ── Les DEUX erreurs d'aiguillage d'une app authentifiée ────────────────────
+//
+// Point 456. Le §2c-ter dit qu'une app authentifiée a deux racines, et qu'une
+// branche `goto` qui les confond ramène à l'écran de connexion en croyant
+// rejoindre l'accueil. L'erreur JUMELLE n'y était pas : une connexion
+// conditionnelle se déclenche aussi quand l'écran demandé EST l'écran de
+// départ — le flow s'authentifie, quitte l'écran qu'il devait capturer, et la
+// référence est prise ailleurs. Aucune erreur levée, cinq minutes d'appareil.
+//
+// 🔴 Le garde porte sur la PRESCRIPTION, pas sur les flows : la condition
+// fautive s'écrit dans le `goto.yaml` du projet, que l'agent possède, donc rien
+// de livré ne peut la porter. Le garde 425 couvre déjà la moitié livrée.
+
+test('le §2c-ter nomme les DEUX erreurs d\'aiguillage authentifié (456)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('UNE APP AUTHENTIFIÉE A DEUX RACINES');
+  assert.ok(i > 0, 'le paragraphe des deux racines a disparu — ce garde en dérive la fenêtre');
+  const suite = skill.slice(i);
+  const fin = suite.indexOf('`screens[]` se remplit');
+  assert.ok(fin > 0, 'le paragraphe ne mène plus à `screens[]` : la fenêtre vaudrait tout le reste');
+  // Espaces normalisés — la prose est repliée à 80 colonnes (454).
+  const bloc = suite.slice(0, fin).replace(/\s+/g, ' ');
+
+  // Moitié 1, celle qui existait : revenir à la connexion en croyant aller à l'accueil.
+  assert.match(bloc, /ram[èe]nent à l'écran de connexion/i,
+    'la première erreur d\'aiguillage n\'est plus décrite : c\'est celle qu\'un run a payée et '
+    + 'que le garde 425 mesure sur les flows livrés');
+  // Moitié 2, celle qui manquait : se connecter alors qu'on visait la connexion.
+  assert.match(bloc, /SCREEN_ID\s*!==\s*ARGUS_START_SCREEN/,
+    'la seconde moitié de la condition de connexion n\'est plus écrite : sans elle, une '
+    + 'connexion conditionnelle se déclenche sur l\'écran de départ lui-même, quitte l\'écran à '
+    + 'capturer, et la référence est prise ailleurs — sans qu\'aucune erreur soit levée (456)');
+  assert.match(bloc, /deux moitiés/i,
+    'le texte donne la condition sans dire qu\'elle EST une conjonction : c\'est la forme du '
+    + 'défaut, une moitié écrite qui a l\'air complète');
+
+  // ⚠️ Et les deux doivent rester DISTINCTES : si un jour une seule phrase les
+  // couvrait, ce garde passerait sur un texte qui a perdu la moitié du sens.
+  const jumelle = bloc.indexOf('ERREUR JUMELLE');
+  assert.ok(jumelle > 0,
+    'les deux erreurs ne sont plus présentées comme jumelles : elles se lisent alors comme un '
+    + 'seul conseil, et c\'est en n\'en voyant qu\'une qu\'un run a écrit la condition à moitié');
+});

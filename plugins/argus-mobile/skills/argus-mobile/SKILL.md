@@ -1450,6 +1450,16 @@ connexion en croyant revenir à l'accueil — l'étape suivante échoue alors su
 ancre parfaitement correcte, trois pas plus loin. Un run l'a appris par la
 pratique et l'a écrit dans SON `goto.yaml`, donc après l'avoir payé.
 
+⚠️ **ET L'ERREUR JUMELLE COÛTE AUTANT : SE CONNECTER ALORS QUE L'ÉCRAN DEMANDÉ
+EST L'ÉCRAN DE CONNEXION** (point 456). Une connexion conditionnelle écrite
+« si l'authentification est prête, connecte-toi » se déclenche **aussi** quand
+`SCREEN_ID` désigne l'écran de départ lui-même : le flow s'authentifie, quitte
+l'écran qu'il devait capturer, et la référence est prise ailleurs. La condition a
+donc deux moitiés — l'authentification est prête **ET**
+`SCREEN_ID !== ARGUS_START_SCREEN`. Un run a payé cela d'une génération de
+références complète, cinq minutes d'appareil, sans qu'aucune erreur ne soit levée
+— la capture était simplement celle d'un autre écran.
+
 ⚠️ **`screens[]` se remplit avec la table d'ancres de §2c-bis, pas en relisant le
 code.** Si tu reprends un chantier commencé ailleurs et que cette table n'existe
 nulle part, c'est un livrable manquant : réclame-la, ou reconstitue-la et rends-la,

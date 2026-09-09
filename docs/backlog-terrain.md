@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 456** : la connexion conditionnelle n'avait qu'une
+moitié de condition. Se ferme à sa mutation.
+
 ✅ **455 FERMÉ le 09/09/2026** — constat mal formulé (le seuil ÉTAIT écrit), geste
 réellement manquant. Le symptôme observé était juste, son diagnostic à côté.
 
@@ -7514,6 +7517,36 @@ un fichier est exactement le genre d'opération qu'on croit réussie.
 📌 **La leçon de formulation** : le constat aurait été rejeté si je m'étais arrêté
 à « c'est faux, le seuil est écrit ». Le symptôme observé était juste ; c'est son
 diagnostic qui portait à côté. *Un rapport contient deux choses de valeur inégale.*
+
+### 456. La connexion conditionnelle n'avait qu'une moitié de condition
+
+**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme à sa mutation.
+
+Le §2c-ter dit qu'une app authentifiée a **deux racines**, et décrit l'erreur qui
+en découle : une branche `goto` qui ramène à l'écran de connexion en croyant
+rejoindre l'accueil. Le garde 425 la mesure sur les flows livrés.
+
+🔴 **L'erreur JUMELLE n'y était pas.** Une connexion conditionnelle écrite « si
+l'authentification est prête, connecte-toi » se déclenche **aussi** quand
+`SCREEN_ID` désigne l'écran de départ lui-même : le flow s'authentifie, quitte
+l'écran qu'il devait capturer, et la référence est prise **ailleurs**. La
+condition a donc deux moitiés — prête **ET**
+`SCREEN_ID !== ARGUS_START_SCREEN`.
+
+⚠️ **Rien ne lève.** La capture est valide, le flow est vert, et c'est simplement
+un autre écran. Le run l'a payé d'une génération de références complète, cinq
+minutes d'appareil, et ne l'a vu qu'en regardant l'image.
+
+📌 **Le garde porte sur la PRESCRIPTION**, et c'est délibéré : la condition
+fautive s'écrit dans le `goto.yaml` du projet, que l'agent possède — rien de
+livré ne peut la porter, donc rien de livré ne peut la garder. Il exige que les
+deux erreurs soient nommées, qu'elles restent **jumelles** (une phrase unique les
+ferait lire comme un seul conseil, ce qui est exactement comment on n'en voit
+qu'une), et que le texte dise que la condition EST une conjonction.
+
+📌 **Troisième parité de ce lot**, après 452 (deux commandes du même document) et
+453 (deux recettes qui se contredisent). Les runs 66-67 en avaient rendu trois
+sur quatre ; le motif ne s'épuise pas.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
