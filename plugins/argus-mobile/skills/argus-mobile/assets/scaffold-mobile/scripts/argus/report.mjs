@@ -310,13 +310,29 @@ export function findingCards(findings, shots = new Map()) {
   return SEVERITIES.map((severity) => {
     const group = findings.filter((f) => f.severity === severity);
     if (group.length === 0) return '';
+    // 443 — UN ACQUITTEMENT HONORÉ NE SE VOYAIT PAS SUR LA PAGE. `acquitter()`
+    // pose `status: 'acknowledged'` et `acknowledgedWhy` dans le JSON ; ce rendu
+    // ne lisait NI l'un NI l'autre. La carte sortait donc identique à un finding
+    // ouvert, et la RAISON — tout l'intérêt du mécanisme, ce qu'on relit dans six
+    // mois pour décider si l'acquittement tient encore — restait dans le JSON.
+    // ⚠️ CE N'EST PAS une contradiction entre le total et la liste, et l'avoir
+    // d'abord cru était une erreur de lecture : `counts` compte TOUS les findings
+    // (c'est voulu et documenté deux cents lignes plus bas — « un signal qu'on
+    // assume ne se supprime pas, il change de statut »), et seul `bloquants`, qui
+    // ne sert qu'au gate, les exclut. Les deux étaient d'accord ; ce qui manquait
+    // était le statut à l'écran.
+    // Le titre de groupe gagne quand même la distinction : « 2 critical » sans
+    // préciser que l'un est assumé fait chercher deux défauts là où il y en a un.
+    const acquittes = group.filter((f) => f.status === 'acknowledged').length;
     const cards = group.map((f) => {
+      const ack = f.status === 'acknowledged';
       // Rendu SEULEMENT s'il y a des images : avec `evidence: none` le rapport
       // ne porte que des chemins, et une rangée vide laisserait une gouttière
       // morte sous chaque finding.
       const vignettes = (f.evidence ?? []).filter((/** @type {string} */ e) => shots.has(e));
-      return `<div class="card ${severity}">
+      return `<div class="card ${severity}${ack ? ' acquitte' : ''}">
       <div class="card-h"><span class="badge ${severity}">${severity}</span> <strong>${esc(f.title)}</strong> <span class="muted">${esc(f.id)}</span></div>
+      ${ack ? `<div class="ack">✔ acquitté — ${esc(f.acknowledgedWhy || 'sans raison déclarée')}</div>` : ''}
       <div class="meta">${esc(f.dimension ?? '')}${f.screen ? ` · écran ${esc(f.screen)}` : ''}${f.selector ? ` · ${esc(f.selector)}` : ''}${f.device ? ` · ${esc(f.device)}` : ''}${f.platform ? ` · ${esc(f.platform)}` : ''}</div>
       <table class="kv"><tr><th>attendu</th><td>${esc(f.expected)}</td></tr><tr><th>constaté</th><td>${esc(f.actual)}</td></tr></table>
       ${f.suggestedFix ? `<div class="fix">${esc(f.suggestedFix)}</div>` : ''}
@@ -325,7 +341,11 @@ export function findingCards(findings, shots = new Map()) {
       ${f.wcag ? `<div class="meta">${esc(f.wcag)}</div>` : ''}
     </div>`;
     }).join('');
-    return `<h3>${severity} (${group.length})</h3>${cards}`;
+    // Le total reste le même (1 + 1 = 2, comme `counts`) : on ne retire rien, on
+    // dit seulement ce qui est assumé.
+    const ouverts = group.length - acquittes;
+    const compte = acquittes ? `${ouverts} + ${acquittes} acquitté${acquittes > 1 ? 's' : ''}` : `${group.length}`;
+    return `<h3>${severity} (${compte})</h3>${cards}`;
   }).join('');
 }
 
@@ -443,6 +463,12 @@ export const STYLE = `<style>
   .badge.major,.badge.warn{background:rgba(241,196,15,.18);color:var(--warn)}
   .badge.minor,.badge.info{background:rgba(139,147,167,.18);color:var(--muted)}
   .badge.good{background:rgba(46,204,113,.18);color:var(--ok)}
+  /* 443 — une carte ACQUITTÉE ne peut pas se lire comme un finding ouvert : le
+     compteur de sévérité l'exclut déjà, donc une carte rouge vif sans marque
+     faisait dire à la page deux choses contradictoires sur le même objet. */
+  .card.acquitte{border-left-color:var(--ok);opacity:.72}
+  .card.acquitte .badge{text-decoration:line-through}
+  .ack{color:var(--ok);font-size:12px;margin:6px 0 2px}
   pre{background:#0b0d11;border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font-size:12px;white-space:pre-wrap;margin:8px 0 0}
   /* ⚠️ UNE HAUTEUR, sinon la page cesse d'être parcourable. Une preuve est une
      capture de téléphone — 1080×2400, ratio 1:2,22 — donc rendue à pleine

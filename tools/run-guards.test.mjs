@@ -9238,6 +9238,53 @@ test('un finding de sécurité peut être ACQUITTÉ, et l\'acquittement expire (
   assert.deepEqual(acquitter(f, {}).findings, f, 'une config sans acquittement modifie les findings');
 });
 
+test('un acquittement HONORÉ se voit sur la PAGE, avec sa raison (443)', () => {
+  // ⚠️ GARDE QUI APPELLE, et qui lit le HTML rendu. `acquitter()` posait
+  // `status` et `acknowledgedWhy` dans le JSON ; le rendu ne lisait ni l'un ni
+  // l'autre, donc la carte sortait identique à un finding ouvert et la RAISON
+  // ne quittait jamais le JSON — or c'est elle qu'on relit dans six mois pour
+  // décider si l'acquittement tient encore. Un run l'a signalé après avoir
+  // acquitté un finding et ne pas l'avoir retrouvé sur sa page publiée.
+  const groupe = [
+    { id: 'A', severity: 'critical', status: 'acknowledged', acknowledgedWhy: 'inerte en release',
+      title: 'T-ack', expected: 'x', actual: 'y' },
+    { id: 'B', severity: 'critical', status: 'open', title: 'T-open', expected: 'x', actual: 'y' },
+  ];
+  const html = findingCards(groupe);
+
+  assert.match(html, /inerte en release/,
+    'la RAISON de l\'acquittement ne sort pas du JSON : la page affiche un finding sans dire '
+    + 'qu\'il est assumé ni pourquoi (443)');
+  assert.match(html, /acquitté/,
+    'rien ne marque la carte comme acquittée — elle se lit comme un défaut ouvert');
+
+  // L'autre moitié, et c'est elle qui empêche le remède de couper trop : un
+  // finding OUVERT ne doit rien gagner, et surtout pas disparaître.
+  assert.match(html, />T-open</,
+    'le finding ouvert n\'est plus rendu : marquer les acquittés ne doit pas masquer les autres');
+  const cartes = html.match(/<div class="card critical/g) ?? [];
+  assert.equal(cartes.length, 2, 'les deux cartes doivent être rendues, acquittée comprise');
+  const marquees = html.match(/<div class="card critical acquitte/g) ?? [];
+  assert.equal(marquees.length, 1,
+    'exactement une carte doit porter la marque : zéro voudrait dire que le statut est perdu, '
+    + 'deux qu\'un finding ouvert passe pour assumé');
+
+  // ⚠️ LE TOTAL NE DOIT RIEN PERDRE — critère DÉRIVÉ, pas un libellé figé. Un
+  // acquittement change un statut, il ne supprime pas un signal : le titre de
+  // groupe doit toujours totaliser autant de findings que le groupe en porte.
+  const titre = (html.match(/<h3>critical \(([^)]*)\)<\/h3>/) ?? [])[1];
+  assert.ok(titre, 'le titre de groupe n\'est plus rendu sous la forme que ce garde relit');
+  const total = [...titre.matchAll(/\d+/g)].reduce((s, m) => s + Number(m[0]), 0);
+  assert.equal(total, groupe.length,
+    `le titre annonce ${total} finding(s) pour un groupe qui en porte ${groupe.length} : `
+    + 'un acquittement ne retire rien, il change un statut (443)');
+
+  // Et sans aucun acquitté, le titre reste le compte nu — pas « 2 + 0 acquitté ».
+  const sansAck = findingCards([groupe[1]]);
+  assert.match(sansAck, /<h3>critical \(1\)<\/h3>/,
+    'le titre s\'encombre de la mention même quand rien n\'est acquitté');
+});
+
 test('un acquittement MAL FORMÉ est signalé, jamais écarté en silence (442)', () => {
   // ⚠️ GARDE QUI APPELLE. Le filtre écartait toute entrée sans `id` exploitable
   // et n'en disait rien : écrit `- QAM-SEC-CLEAR` (chaîne nue) au lieu de
