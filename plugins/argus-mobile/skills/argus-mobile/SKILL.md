@@ -2218,6 +2218,17 @@ telle quelle. **Le nom porte la plateforme depuis le 275** — voir le point 6.
    sous forme de **fichier local**, dont `read` donne le chemin — c'est celui
    qu'attend `--previous`.
 
+   ⚠️ **ET SI ELLE REVIENT EN LIGNE, IL N'Y A AUCUN CHEMIN À PASSER** (point
+   455). Une page sans captures est petite (52 Ko mesurés) : son HTML arrive
+   dans la réponse, pas sur le disque, et `--previous` attend un fichier. Ne
+   republie surtout pas sans lui — tu perdrais tout l'historique. **Écris ce que
+   `read` t'a rendu dans un fichier temporaire, et passe CE chemin.** Un run en
+   aveugle l'a fait de lui-même et a sauvé onze onglets ; le geste n'était écrit
+   nulle part.
+   📌 Puis **vérifie-le plutôt que de l'annoncer** : `historiqueDe(html)` de
+   `report.mjs` rend les runs qu'un HTML porte — il doit en rendre autant que la
+   page en affichait, et `[]` sur un fichier qui n'a pas le bloc d'historique.
+
    🔴 **TROISIÈME CAS : L'URL EST DÉCLARÉE ET LA PAGE N'EXISTE PLUS.** Ce
    paragraphe ne connaissait que « une URL » et « pas d'URL » ; il manquait
    celui-là, et deux runs l'ont rencontré le même jour — `read` rend

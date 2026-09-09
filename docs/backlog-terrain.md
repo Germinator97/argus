@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 455** : `--previous` attend un fichier, et la page ne
+revient pas toujours ainsi. Se ferme à sa mutation.
+
 ✅ **454 FERMÉ le 09/09/2026** — le junit lu pendant le run rend le verdict de la
 passe précédente, et un run en a tiré la conclusion inverse du vrai. Le garde est
 né vacant sur un motif non replié : c'est son échec qui l'a dit.
@@ -7484,6 +7487,33 @@ repliée à 80 colonnes, donc il ne matchait rien. Le garde a échoué en accusa
 texte que je venais d'écrire — c'est ce qui l'a dit. Les espaces sont désormais
 normalisés avant la recherche, comme les autres gardes de prose de ce dépôt le
 font déjà. *Un motif de plus de trois mots ne se cherche pas dans du texte brut.*
+
+### 455. ⚠️ MAL FORMULÉ, MAIS LE GESTE MANQUAIT VRAIMENT
+
+**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme à sa mutation.
+
+Le run écrit que le §3g-bis est **faux** : « une page volumineuse revient sous
+forme de fichier local, dont `read` donne le chemin » — alors que sa page est
+revenue EN LIGNE.
+
+🔴 **Le texte n'est pas faux** : il dit « volumineuse (**≈ 650 Ko** dès qu'elle
+embarque ses captures) », et sa page en faisait **52**. Une page sans captures
+n'est pas volumineuse ; le SKILL ne promettait donc rien sur son cas.
+
+✅ **Mais son problème était réel, et le geste manquait** : quand le HTML arrive
+dans la réponse, il n'y a **aucun chemin** à passer, et `--previous` attend un
+fichier. Republier sans lui perd tout l'historique. Il a reconstruit le fichier
+depuis le `<script id="argus-runs">` de sa propre initiative, **et l'a vérifié**
+par `historiqueDe()` — onze onglets sauvés, sur un geste écrit nulle part.
+
+📌 Le §3g-bis porte désormais les DEUX cas, avec le contrôle : `historiqueDe`
+rend le compte réel d'un HTML, et `[]` sur une page qui n'a pas le bloc. Le garde
+exige le geste **et** son contrôle, puis exerce la fonction citée — reconstruire
+un fichier est exactement le genre d'opération qu'on croit réussie.
+
+📌 **La leçon de formulation** : le constat aurait été rejeté si je m'étais arrêté
+à « c'est faux, le seuil est écrit ». Le symptôme observé était juste ; c'est son
+diagnostic qui portait à côté. *Un rapport contient deux choses de valeur inégale.*
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

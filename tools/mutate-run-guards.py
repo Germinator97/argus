@@ -1644,6 +1644,11 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 455 — le paragraphe reperd le cas « en ligne ». Le cas volumineux, qui
+    # est juste, reste écrit : rien ne signale que l'autre moitié a disparu.
+    ("skill", "455 · le §3g-bis reperd le cas de la page rendue en ligne",
+     "\n   ⚠️ **ET SI ELLE REVIENT EN LIGNE, IL N'Y A AUCUN CHEMIN À PASSER** (point",
+     "\n   ⚠️ **Note complémentaire** (point"),
     # 454 — la section reperd la mise en garde sur le junit réécrit. Le reste de
     # la contre-épreuve tient toujours : rien d'autre ne rougit, et c'est ainsi
     # qu'un run a tiré du fichier un verdict qui n'était pas le sien.

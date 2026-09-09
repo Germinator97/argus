@@ -12292,3 +12292,43 @@ test('le SKILL prévient que le junit est réécrit à chaque invocation (454)',
     'la mise en garde ne nomme pas le fichier concerné : sans son nom, le lecteur ne sait pas '
     + 'de quel verdict on parle');
 });
+
+// ── `--previous` attend un FICHIER, et la page ne revient pas toujours ainsi ─
+//
+// Point 455. Le §3g-bis décrivait le cas d'une page volumineuse (≈ 650 Ko avec
+// ses captures), qui revient en fichier local dont on passe le chemin. Il ne
+// disait rien du cas inverse : une page sans captures est petite — 52 Ko
+// mesurés — et son HTML arrive DANS la réponse. Il n'y a alors aucun chemin à
+// passer, et republier sans `--previous` perd tout l'historique.
+//
+// Un run en aveugle a reconstruit le fichier de lui-même et sauvé onze onglets.
+// Le garde exige que le geste soit écrit, ET qu'il renvoie au moyen de le
+// vérifier — `historiqueDe`, que ce dépôt exporte et garde déjà.
+
+test('le §3g-bis dit quoi faire quand la page revient EN LIGNE (455)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('qu\'attend `--previous`');
+  assert.ok(i > 0, 'le paragraphe sur `--previous` a changé de forme — ce garde en dérive la fenêtre');
+  // Fenêtre bornée par la mise en garde de rang suivant, structurelle.
+  const suite = skill.slice(i);
+  const fin = suite.indexOf('TROISIÈME CAS');
+  assert.ok(fin > 0, 'le paragraphe ne mène plus au troisième cas : la fenêtre vaudrait tout le reste');
+  // Espaces normalisés : la prose est repliée à 80 colonnes (leçon du 454).
+  const bloc = suite.slice(0, fin).replace(/\s+/g, ' ');
+
+  assert.match(bloc, /revient en ligne/i,
+    'le §3g-bis ne traite que la page volumineuse : rien ne dit quoi faire quand le HTML arrive '
+    + 'DANS la réponse, sans chemin, et `--previous` attend un fichier (455)');
+  assert.match(bloc, /fichier temporaire/i,
+    'le geste manque : sans lui, un run republie sans `--previous` et perd l\'historique entier');
+
+  // Et le moyen de VÉRIFIER doit être nommé — il existe, et il est déjà gardé.
+  assert.match(bloc, /historiqueDe/,
+    'le geste est écrit sans son contrôle : reconstruire un fichier est exactement le genre '
+    + 'd\'opération qu\'on croit réussie, et `historiqueDe` rend le compte réel');
+
+  // L'autre moitié : la fonction citée doit exister et discriminer.
+  assert.deepEqual(historiqueDe('<h1>une page sans bloc d\'historique</h1>'), [],
+    'historiqueDe ne rend plus [] sur une page étrangère : le contrôle que le SKILL prescrit '
+    + 'désormais ne discriminerait plus rien');
+});
