@@ -5081,8 +5081,8 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 455** : `--previous` attend un fichier, et la page ne
-revient pas toujours ainsi. Se ferme à sa mutation.
+✅ **455 FERMÉ le 09/09/2026** — constat mal formulé (le seuil ÉTAIT écrit), geste
+réellement manquant. Le symptôme observé était juste, son diagnostic à côté.
 
 ✅ **454 FERMÉ le 09/09/2026** — le junit lu pendant le run rend le verdict de la
 passe précédente, et un run en a tiré la conclusion inverse du vrai. Le garde est
@@ -7490,7 +7490,7 @@ font déjà. *Un motif de plus de trois mots ne se cherche pas dans du texte bru
 
 ### 455. ⚠️ MAL FORMULÉ, MAIS LE GESTE MANQUAIT VRAIMENT
 
-**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme à sa mutation.
+**Fermé le 09/09/2026**, rapporté par le run 69. La mutation fait tomber le garde.
 
 Le run écrit que le §3g-bis est **faux** : « une page volumineuse revient sous
 forme de fichier local, dont `read` donne le chemin » — alors que sa page est
