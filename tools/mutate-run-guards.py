@@ -1644,6 +1644,12 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 454 — la section reperd la mise en garde sur le junit réécrit. Le reste de
+    # la contre-épreuve tient toujours : rien d'autre ne rougit, et c'est ainsi
+    # qu'un run a tiré du fichier un verdict qui n'était pas le sien.
+    ("skill", "454 · la contre-épreuve reperd l'avertissement sur le junit",
+     "⚠️ **ET LIS LE VERDICT APRÈS, JAMAIS PENDANT — le junit est RÉÉCRIT à chaque\ninvocation** (point 454).",
+     "⚠️ **Note.**"),
     # 453 — l'exemple reperd sa mise en garde. La prose voisine continue de dire
     # que les deux remèdes s'excluent : rien d'autre ne rougit, et c'est
     # exactement ce qui a fait poser les deux à un run.

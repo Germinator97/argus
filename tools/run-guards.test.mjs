@@ -12243,3 +12243,52 @@ test('les causes d\'échec au démarrage disent la même chose des deux côtés 
       + 'un run a mis trois flows rouges à la trouver seul (451)');
   }
 });
+
+// ── Un verdict lu PENDANT le run est celui de la passe précédente ───────────
+//
+// Point 454. Les junit vivent à des chemins FIXES (`report.junit.xml`,
+// `report.visual-<id>.junit.xml`) : chaque invocation les réécrit. Un run en
+// aveugle en a ouvert un pendant qu'un run tournait, y a lu un vert, et a
+// conclu « la comparaison visuelle ne mesure pas » — l'inverse du vrai, que la
+// relecture a démenti treize secondes plus tard.
+//
+// 🔴 Le garde DÉRIVE la condition : il vérifie dans `run.mjs` que ces chemins
+// n'ont PAS d'horodatage, et n'exige la mise en garde que dans ce cas. Le jour
+// où ils seraient horodatés, la mise en garde n'aurait plus lieu d'être et
+// c'est ce test qui le dirait.
+
+test('le SKILL prévient que le junit est réécrit à chaque invocation (454)', () => {
+  const runner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const chemins = [...runner.matchAll(/junitPath:\s*join\(([^)]*)\)/g)].map((m) => m[1]);
+  assert.ok(chemins.length >= 2,
+    `${chemins.length} chemin(s) junit lus dans run.mjs — le motif a changé, ce garde est vacant`);
+
+  // La condition : aucun ne porte d'horodatage. C'est ce qui rend la mise en garde nécessaire.
+  const horodates = chemins.filter((c) => /horodat|timestamp|Date\.now|toISOString|stamp/i.test(c));
+  if (horodates.length === chemins.length) {
+    // Les junit ne s'écrasent plus : la mise en garde est devenue fausse, retire-la.
+    assert.fail('les chemins junit sont désormais horodatés : la mise en garde du §3g '
+      + 'décrit un mécanisme qui n\'existe plus, retire-la plutôt que de la garder (454)');
+  }
+  assert.equal(horodates.length, 0,
+    `${horodates.length} chemin(s) junit sur ${chemins.length} sont horodatés : la mise en garde `
+    + 'ne vaut plus que pour une partie, et le SKILL ne le dit pas');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('### La contre-épreuve visuelle');
+  assert.ok(i > 0, 'la section de la contre-épreuve visuelle a disparu — ce garde en dérive la fenêtre');
+  const fin = skill.indexOf('\n## ', i);
+  // ⚠️ ESPACES NORMALISÉS. La prose du SKILL est repliée à 80 colonnes : un motif
+  // de plus de trois mots ne matche jamais le texte brut, et le garde naît vacant
+  // pour une raison de mise en forme. C'est ce qui vient d'arriver à celui-ci.
+  const section = skill.slice(i, fin > i ? fin : i + 4000).replace(/\s+/g, ' ');
+
+  assert.match(section, /réécrit à chaque invocation/i,
+    'la section où l\'on LIT le verdict ne dit pas que le junit est réécrit à chaque '
+    + 'invocation : lu pendant le run, il rend celui de la passe précédente, et un run en a '
+    + 'tiré la conclusion inverse du vrai (454)');
+  assert.match(section, /report\.junit\.xml/,
+    'la mise en garde ne nomme pas le fichier concerné : sans son nom, le lecteur ne sait pas '
+    + 'de quel verdict on parle');
+});

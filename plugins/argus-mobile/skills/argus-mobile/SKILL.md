@@ -1901,6 +1901,15 @@ l'avoir trouvé :
 node scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six
 ```
 
+⚠️ **ET LIS LE VERDICT APRÈS, JAMAIS PENDANT — le junit est RÉÉCRIT à chaque
+invocation** (point 454). `report.junit.xml` et `report.visual-<écran>.junit.xml`
+sont des chemins FIXES : le fichier que tu ouvres pendant qu'un run tourne porte
+encore le verdict de la passe précédente. Un run en aveugle y a lu un vert, en a
+conclu « la comparaison ne mesure pas », et n'a été démenti que par une relecture
+treize secondes plus tard — `failures="1"` y était. *Une mesure prise avant
+l'action qu'elle juge ne dit rien de cette action*, et ici elle affirme le
+contraire du vrai. Attends la fin de l'invocation, puis lis.
+
 ⚠️ **Les dimensions ne sont pas un détail : elles décident de ce que tu prouves.**
 Un aplat de taille quelconque fait échouer Maestro sur
 `Screenshot size mismatch: expected 8x8, actual 1080x1980` — un refus qui tombe

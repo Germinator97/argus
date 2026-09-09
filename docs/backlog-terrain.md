@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 454** : le junit lu pendant le run rend le verdict
+précédent. Se ferme à sa mutation.
+
 ✅ **453 FERMÉ le 09/09/2026** — l'information existait, dans un paragraphe qui
 décrivait un autre symptôme. La mise en garde est désormais DANS l'exemple.
 
@@ -7453,6 +7456,33 @@ quinze lignes l'une de l'autre, sans que la seconde le dise.
 dans ce dépôt depuis le point 294, appliquée ici à un cas qu'elle n'avait pas vu.
 Le remède est **une mise en garde DANS l'exemple**, et le garde 427 — qui bornait
 déjà cette section — l'exige désormais. Pas de garde neuf : leçon du 450.
+
+### 454. Le verdict lu PENDANT le run est celui de la passe précédente
+
+**Ouvert le 09/09/2026**, rapporté par le run 69 et vérifié dans `run.mjs`.
+Se ferme quand la mutation aura fait tomber le garde.
+
+`report.junit.xml` et `report.visual-<écran>.junit.xml` sont des chemins
+**FIXES** (`junitPath: join(reportDir, …)`) : chaque invocation les réécrit. Le
+run en a ouvert un pendant qu'un run tournait, y a lu un vert, et a conclu **« la
+comparaison visuelle ne mesure pas »** — l'inverse du vrai. Sa relecture, treize
+secondes plus tard, disait `failures="1"`.
+
+📌 C'est le défaut du **449** dans l'autre sens : *une mesure prise avant l'action
+qu'elle juge ne dit rien de cette action* — et ici elle affirme le contraire.
+Le §3g le prévient désormais, à l'endroit où l'on lit le verdict.
+
+📌 **Le garde DÉRIVE la condition** : il relève les chemins junit dans `run.mjs`
+et n'exige la mise en garde que s'ils sont dépourvus d'horodatage. Le jour où ils
+en porteraient, la mise en garde décrirait un mécanisme mort — et c'est ce test
+qui le dirait, par un `assert.fail` explicite.
+
+⚠️ **Et il est né VACANT, pour une raison de mise en forme.** Mon motif exigeait
+« réécrit à chaque invocation » sur une seule ligne ; la prose du SKILL est
+repliée à 80 colonnes, donc il ne matchait rien. Le garde a échoué en accusant un
+texte que je venais d'écrire — c'est ce qui l'a dit. Les espaces sont désormais
+normalisés avant la recherche, comme les autres gardes de prose de ce dépôt le
+font déjà. *Un motif de plus de trois mots ne se cherche pas dans du texte brut.*
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
