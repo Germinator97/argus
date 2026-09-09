@@ -5081,8 +5081,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 457** : deux canaux de fuite manquaient au §5, dont
-celui que Maestro ouvre par défaut. Se ferme à ses mutations.
+✅ **452 à 457 FERMÉS le 09/09/2026 — backlog vidé une 65e fois**, sur les six
+points du **run 69** (iOS, terrain avec API). Quatre correctifs, deux constats
+mal formulés dont le fond était juste (453, 455), **trois parités** (452, 453,
+456).
+🔴 **Ce que la passe a payé** : en écrivant le point 457 — celui qui traite des
+fuites de secrets — j'ai cité le nom d'un projet sous contrat dans ce fichier
+public. C'est le garde de confidentialité qui l'a vu, pas moi.
 
 ✅ **456 FERMÉ le 09/09/2026** — la connexion conditionnelle n'avait qu'une moitié
 de condition, et rien ne levait : la capture était valide, simplement d'un autre
@@ -7554,8 +7559,8 @@ sur quatre ; le motif ne s'épuise pas.
 
 ### 457. Deux canaux de fuite manquaient, dont celui qui s'ouvre par défaut
 
-**Ouvert le 09/09/2026**, rapporté par le run 69 pour moitié, mesuré par moi pour
-l'autre. Se ferme à ses mutations. Les deux sont inscrits ensemble parce que
+**Fermé le 09/09/2026**, rapporté par le run 69 pour moitié, mesuré par moi pour
+l'autre. Les trois mutations font tomber le garde. Les deux sont inscrits ensemble parce que
 **c'est la paire qui est le constat** : le §5 énumérait ses canaux, et il en
 manquait aux deux bouts de la chaîne.
 
@@ -7585,6 +7590,19 @@ forme « protège N canaux ».
 contenant une espace (un nom de dossier à deux mots) dans un `for f in $(find …)` — le zshisme
 que ce dépôt documente. Son zéro se lisait comme « rien ne fuit », c'est-à-dire
 la réponse qu'on espère. Refait en `-print0`, il a rendu 88.
+
+🔴 **ET EN ÉCRIVANT CE POINT, J'AI MOI-MÊME FAIT FUITER LE NOM DU CLIENT.** Pour
+expliquer le zshisme ci-dessus, j'ai cité le nom du dossier — c'est-à-dire le nom
+d'un projet sous contrat — **dans ce fichier, qui vit dans un dépôt PUBLIC**. Ce
+n'est pas une relecture qui l'a vu : c'est le garde de confidentialité, à la
+première exécution de la suite après le commit. Retiré, puis prouvé sur **tous
+les objets du dépôt** (`cat-file --batch-all-objects`, 1396 blobs, 0 occurrence,
+contre-épreuve à 63 225) après `reflog expire` et `gc --prune=now`. Le nom n'est
+jamais sorti de la machine : `feat/argus-mobile` n'a aucun upstream, et seul un
+commit initial existe en distant.
+📌 *Le paragraphe qui explique une fuite est exactement celui où l'on cite ce qui
+fuit.* Un garde qui balaie tout le fichier vaut mieux que l'attention de qui
+l'écrit — surtout quand ce qu'il écrit est une leçon sur les fuites.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
