@@ -5081,8 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 456** : la connexion conditionnelle n'avait qu'une
-moitié de condition. Se ferme à sa mutation.
+✅ **456 FERMÉ le 09/09/2026** — la connexion conditionnelle n'avait qu'une moitié
+de condition, et rien ne levait : la capture était valide, simplement d'un autre
+écran. Troisième parité du lot.
 
 ✅ **455 FERMÉ le 09/09/2026** — constat mal formulé (le seuil ÉTAIT écrit), geste
 réellement manquant. Le symptôme observé était juste, son diagnostic à côté.
@@ -7520,7 +7521,7 @@ diagnostic qui portait à côté. *Un rapport contient deux choses de valeur in�
 
 ### 456. La connexion conditionnelle n'avait qu'une moitié de condition
 
-**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme à sa mutation.
+**Fermé le 09/09/2026**, rapporté par le run 69. La mutation fait tomber le garde.
 
 Le §2c-ter dit qu'une app authentifiée a **deux racines**, et décrit l'erreur qui
 en découle : une branche `goto` qui ramène à l'écran de connexion en croyant
