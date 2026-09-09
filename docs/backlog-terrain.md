@@ -5081,9 +5081,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 449** : un code de sortie qui est un verdict se lisait
-comme une panne d'outillage. Correctif et garde écrits ; il se ferme quand sa
-mutation aura fait tomber le garde.
+✅ **449 FERMÉ le 09/09/2026** — `make: *** [argus-perf] Error 1` est un verdict,
+pas une panne : `exitCodeFor` rend 2 sur blocker/critical, 1 sur major. Le
+Makefile le disait pour `argus-run`, le SKILL pour personne. 📌 Et le dépôt m'a
+corrigé en chemin : ma note a fait tomber un garde de PROXIMITÉ, qu'il fallait
+respecter en condensant plutôt qu'en relevant son seuil.
 
 ✅ **448 FERMÉ le 09/09/2026** — la règle et la commande qui la vérifie
 n'étaient pas dans la même suite : `argus-anchors` ne lance qu'`anchors_test.dart`,
@@ -7287,8 +7289,8 @@ les deux, ce qui est exactement ce qu'on lui demande.
 
 ### 449. Un code de sortie qui est un VERDICT se lisait comme une panne
 
-**Ouvert le 09/09/2026**, rapporté par le run 68 et dérivé du code. Correctif et
-garde écrits ; il se ferme quand la mutation aura fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 68 et dérivé du code. La mutation
+fait tomber le garde.
 
 `make: *** [argus-perf] Error 1` ressemble à un outil cassé. C'est le contraire :
 `exitCodeFor` rend **2** sur un `blocker`/`critical` retenu par le gate, **1** sur
