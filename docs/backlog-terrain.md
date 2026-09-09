@@ -5097,6 +5097,16 @@ successives (441) ; une entrée mal formée sans message quand sa voisine en ava
 un (442) ; un statut lu par le JSON et jamais par le rendu (443). Aucune ne
 produit d'erreur — chaque moitié est correcte prise à part.
 
+🔴 **ET LE MOTIF S'EST REJOUÉ DANS LA MÊME PASSE, DEUX HEURES PLUS TARD (446).**
+En relançant `check-artefact.mjs` pour republier la page de cette passe, il a
+**crashé** : le correctif du 439, la veille, avait rendu son lecteur d'ordre
+bruyant sans mettre l'appelant d'accord. L'outil était inutilisable depuis vingt-
+quatre heures, et personne ne l'avait vu — *parce que personne ne l'avait
+relancé*. Même dépôt, même journée, même cause : aucun garde, aucune CI.
+📌 **Fermer le silence d'un instrument ne suffit pas : il faut rejouer ses
+appelants.** On remplace sinon un faux vert par une panne, qui se cache aussi
+bien tant que rien ne lance l'outil.
+
 ⚠️ **Et le quatrième dit autre chose, de pire** : le garde du 440 EXISTAIT,
 visait juste, et son propre commentaire racontait l'histoire du défaut qu'il
 devait empêcher. **Personne ne le lançait.** Pendant ce temps la CI faisait le
