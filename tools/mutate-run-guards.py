@@ -1644,6 +1644,14 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 451 — LA PARITÉ, une mutation par côté. Retirer la forme d'un seul des
+    # deux textes laisse l'autre juste : c'est ce qui rend l'écart invisible.
+    ("run", "451 · le runner reperd la troisième forme au moment de l'échec",
+     "    + ` ou UNE AUTRE APP au premier plan, posée sur le même appareil par un`\n",
+     ""),
+    ("skill", "451 · le SKILL reperd la troisième forme, le runner la garde",
+     " **Troisième forme, et elle ne vient pas de ton\n   projet** : une AUTRE APPLICATION au premier plan, installée sur le même\n   appareil par un travail voisin — `adb shell pm list packages -3` croisé avec\n   le `lastUpdateTime` de `dumpsys package` la nomme en une commande, et un run\n   l'a rencontrée parce qu'un émulateur avait été libéré pour la mémoire sans\n   que l'autre session sache qu'elle n'avait plus d'appareil à elle. Dans les\n   trois cas",
+     " Dans les deux cas"),
     # 449 — la note disparaît de la séquence. Le Makefile continue de
     # l'expliquer pour `argus-run` : le lecteur du SKILL, lui, ne l'a plus.
     ("skill", "449 · la séquence reperd le sens du code de sortie d'une dimension",

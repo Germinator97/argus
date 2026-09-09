@@ -1088,8 +1088,11 @@ function startupHint(selector, startupAnchor, config, commandKey = '') {
     + ` plafond n'y changera rien. (2) CE N'EST PAS L'ÉCRAN QU'ON CROIT : sur la`
     + ` MÊME capture, une modale SYSTÈME par-dessus (permissions.all: allow ne`
     + ` couvre pas celle que l'OS présente lui-même), ou un écran d'APRÈS-connexion`
-    + ` (sur iOS le trousseau survit à clearState — mets clearKeychain avec lui).`
-    + ` L'ancre est correcte dans les deux cas, et l'attente consomme TOUT le`
+    + ` (sur iOS le trousseau survit à clearState — mets clearKeychain avec lui),`
+    + ` ou UNE AUTRE APP au premier plan, posée sur le même appareil par un`
+    + ` travail voisin : \`adb shell pm list packages -3\` croisé avec le`
+    + ` lastUpdateTime de dumpsys le dit en une commande.`
+    + ` L'ancre est correcte dans les trois cas, et l'attente consomme TOUT le`
     + ` plafond : si la pire attente est collée au plafond à quelques dizaines de`
     + ` ms, c'est ce cas-ci et jamais une lenteur. (3) L'écran de départ est LENT :`
     + ` relève thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`

@@ -1745,8 +1745,13 @@ de `auth_identification_root` — le compteur rendait « 2 » et rassurait.
    premier `requestAuthorization` : la capture montrait l'accueil ENTIÈREMENT
    rendu derrière elle) ; ou un **écran d'après-connexion**, parce que sur iOS le
    trousseau survit à `clearState` et qu'une session ouverte par le flow
-   précédent est encore là. Dans les deux cas l'ancre est **correcte** et
-   l'attente consomme tout le plafond. Le geste qui ferme la modale vit dans
+   précédent est encore là. **Troisième forme, et elle ne vient pas de ton
+   projet** : une AUTRE APPLICATION au premier plan, installée sur le même
+   appareil par un travail voisin — `adb shell pm list packages -3` croisé avec
+   le `lastUpdateTime` de `dumpsys package` la nomme en une commande, et un run
+   l'a rencontrée parce qu'un émulateur avait été libéré pour la mémoire sans
+   que l'autre session sache qu'elle n'avait plus d'appareil à elle. Dans les
+   trois cas l'ancre est **correcte** et l'attente consomme tout le plafond. Le geste qui ferme la modale vit dans
    `_subflows/goto.yaml`, qui t'appartient ; le trousseau est couvert par
    `clearKeychain`, à poser **avec** `clearState` et non une fois par run.
 3. **L'écran de départ est LENT.** Relève alors `startTimeoutMs`, **avant** de

@@ -12159,3 +12159,56 @@ test('le SKILL annonce que le code de sortie d\'une dimension est son verdict (4
   assert.match(config, /export function exitCodeFor[\s\S]{0,400}return 2;[\s\S]{0,200}return 1;/,
     'exitCodeFor ne rend plus 2 puis 1 : la note du SKILL décrit désormais autre chose que le code');
 });
+
+// ── Le runner et le SKILL énumèrent les MÊMES causes, ou l'un des deux ment ──
+//
+// Point 451. Le tell « la pire attente est-elle collée au plafond ? » aiguille
+// vers la cause 2, « ce n'est pas l'écran qu'on croit ». Elle nommait deux
+// formes — modale système, écran d'après-connexion — et un run en a rencontré
+// une troisième : UNE AUTRE APPLICATION au premier plan, posée sur l'appareil
+// par un travail voisin. Il a trouvé seul le geste qui tranche (`pm list
+// packages -3` croisé avec `lastUpdateTime`), après trois flows rouges.
+//
+// 🔴 La liste vit à DEUX endroits — le message que le runner imprime à l'instant
+// de l'échec, et le SKILL qu'on lit avant. Ajouter une forme à l'un sans
+// l'autre, c'est le défaut que ce dépôt traque depuis le début : deux textes
+// justes séparément, dont l'écart n'a aucun comportement à casser.
+
+test('les causes d\'échec au démarrage disent la même chose des deux côtés (451)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const runner = readFileSync(join(scaffold, 'scripts/argus/run.mjs'), 'utf8');
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // La fenêtre du runner : la cause (2) de l'indice de démarrage, bornée par la (3).
+  const d = runner.indexOf("CE N'EST PAS L'ÉCRAN QU'ON CROIT");
+  assert.ok(d > 0, 'la cause (2) a disparu du message du runner — ce garde ne mesure rien');
+  const f = runner.indexOf("L'écran de départ est LENT", d);
+  assert.ok(f > d, 'la cause (3) ne suit plus la (2) dans le runner : la fenêtre vaudrait tout le fichier');
+  const causeRunner = runner.slice(d, f).replace(/\s+/g, ' ');
+
+  // Celle du SKILL : même cause, bornée de la même façon.
+  const ds = skill.indexOf("CE N'EST PAS L'ÉCRAN QU'ON CROIT");
+  assert.ok(ds > 0, 'la cause 2 a disparu du SKILL');
+  const fs = skill.indexOf("L'écran de départ est LENT", ds);
+  assert.ok(fs > ds, 'la cause 3 ne suit plus la 2 dans le SKILL');
+  const causeSkill = skill.slice(ds, fs).replace(/\s+/g, ' ');
+
+  // Les trois formes, des deux côtés. Chacune a coûté un run.
+  for (const [quoi, motif] of [
+    ['la modale système', /modale SYST[ÈE]ME|modale syst[èe]me/],
+    ['l\'écran d\'après-connexion', /apr[èe]s-connexion/i],
+    ['une AUTRE application au premier plan', /autre app/i],
+  ]) {
+    assert.match(causeRunner, motif,
+      `le message du runner ne nomme plus ${quoi} : c'est pourtant lui qu'on lit à l'instant de l'échec`);
+    assert.match(causeSkill, motif,
+      `le SKILL ne nomme plus ${quoi} — et le runner, si : l'un des deux textes ment sur ce qu'il faut chercher`);
+  }
+
+  // Et le geste, sans quoi la forme est un diagnostic sans instrument.
+  for (const [ou, texte] of [['le runner', causeRunner], ['le SKILL', causeSkill]]) {
+    assert.match(texte, /pm list packages -3/,
+      `${ou} nomme la troisième forme sans donner le geste qui la tranche : `
+      + 'un run a mis trois flows rouges à la trouver seul (451)');
+  }
+});

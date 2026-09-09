@@ -5081,6 +5081,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 451** : le tell de démarrage nommait deux formes, un run
+en a rencontré une troisième (une autre app au premier plan). Il se ferme quand
+ses mutations auront fait tomber le garde de parité.
+
 ✅ **450 DÉMENTI le 09/09/2026** — la promesse du §2b est vraie ET gardée depuis
 le point 278. Mon « correctif » dupliquait ce garde et sa mutation, motif pour
 motif ; c'est le harnais qui l'a dit, en nommant un test qui n'était pas le mien.
@@ -7345,6 +7349,38 @@ le vert comme la preuve de mon propre garde et publié le doublon.
 📌 Et le geste qui l'aurait évité coûte dix secondes : **chercher le garde
 existant avant d'en écrire un** (`grep` du nom de la commande dans la suite), au
 lieu de déduire son absence du fait qu'on ne l'a pas croisé.
+
+### 451. Le tell aiguillait vers deux formes, le run en a rencontré une troisième
+
+**Ouvert le 09/09/2026**, rapporté par le run 68. Correctif et garde écrits ; il
+se ferme quand les mutations auront fait tomber le garde.
+
+Le tell « la pire attente est-elle COLLÉE au plafond ? » est le meilleur outil de
+diagnostic du skill — le run l'a suivi et dit qu'il lui a épargné deux passes
+device. Il aiguille vers la cause 2, « ce n'est pas l'écran qu'on croit », qui
+nommait **deux** formes : la modale système et l'écran d'après-connexion.
+
+Il en a rencontré une troisième, que rien ne nomme : **une AUTRE APPLICATION au
+premier plan**, installée sur le même appareil par un travail voisin. Trois flows
+sur huit morts, pire attente **20 725 ms contre un plafond de 20 000** — collée à
+725 ms. Sa capture montrait l'écran de connexion d'une app sans rapport.
+
+📌 Il a trouvé seul le geste qui tranche : `adb shell pm list packages -3` croisé
+avec le `lastUpdateTime` de `dumpsys package`. Une commande, et le nom du
+coupable avec son horodatage.
+
+🔴 **Et la cause est de NOUS, pas du skill.** L'émulateur du second terrain avait
+été éteint pour libérer la mémoire ; la session qui y travaillait s'est donc
+rabattue sur **le seul appareil listé** — celui du run. C'est le piège du run 17
+(« prendre le premier appareil sans lire l'AVD déclaré »), retourné contre notre
+propre protocole. *Éteindre un émulateur ne suffit pas : il faut que l'autre
+travail sache qu'il n'a plus d'appareil à lui.*
+
+📌 **Le garde porte la PARITÉ, pas la phrase.** La liste des causes vit à deux
+endroits — le message que le runner imprime à l'instant de l'échec, et le SKILL
+qu'on lit avant — et il exige les trois formes **des deux côtés**, plus le geste
+qui tranche. Ajouter une forme à un seul texte est exactement le défaut que ce
+dépôt traque : deux textes justes séparément, dont l'écart ne casse rien.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
