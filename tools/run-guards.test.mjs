@@ -9679,8 +9679,18 @@ test('le registre de la page doit CROÎTRE, et seulement lui (380)', () => {
     'le contrôle déborde sur un tableau qui décroît volontairement : il n\'est plus borné '
     + 'au registre, et il rougira sur du contenu juste');
 
-  // Et il ne conclut pas sur une page qui n'a pas de registre du tout.
-  assert.deepEqual(rupturesDOrdreDu('<p>rien ici</p>'), []);
+  // ⚠️ ET UNE PAGE SANS REGISTRE DOIT LEVER, PAS RENDRE `[]` (439). Ce cas
+  //    assertait `[]` — « il ne conclut pas » —, or rendre une liste vide EST
+  //    une conclusion : elle se lit « aucune rupture ». Vécu : trois
+  //    republications annonçant un ordre vérifié pendant qu'une entrée était
+  //    rangée deux cents lignes trop haut, parce que l'appelant passait le
+  //    texte DÉPOUILLÉ où ni `</table>` ni `<td>` n'existent. « Je n'ai rien
+  //    lu » et « tout est en ordre » ne peuvent pas rendre la même valeur.
+  assert.throws(() => rupturesDOrdreDu('<p>rien ici</p>'), /introuvable|rien n'a été mesuré/,
+    'une page sans registre rend une liste vide, indiscernable d\'un registre en ordre');
+  assert.throws(() => rupturesDOrdreDu('Le backlog terrain, entièrement — mais en texte dépouillé'),
+    /`<\/table>`|HTML/,
+    'le texte dépouillé passe pour un registre en ordre : c\'est l\'appel qui a mordu trois fois');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

@@ -202,11 +202,39 @@ export function compteursDeLaPage(texte) {
  * @returns {{avant:string, apres:string}[]} les couples en rupture, vide si tout croît
  */
 export function rupturesDOrdreDu(texte) {
+  // ⚠️ TROIS SORTIES, ET AUCUNE NE PEUT ÊTRE MUETTE (439). Ce lecteur exige le
+  // HTML de la page. Passé le texte DÉPOUILLÉ que rend `texteDeLaPage`, il ne
+  // trouve ni `</table>` ni `<td>`, sort par un `return []` — « aucune
+  // rupture » — et l'appelant lit un ✅. Vécu : trois republications de suite
+  // annonçant un ordre vérifié pendant qu'une entrée était rangée deux cents
+  // lignes trop haut. « Je n'ai rien lu » et « tout est en ordre » ne peuvent
+  // pas rendre la même valeur.
   const debut = texte.indexOf('Le backlog terrain, entièrement');
-  if (debut === -1) return [];
+  if (debut === -1) {
+    throw new Error('rupturesDOrdreDu : titre du registre introuvable — rien n\'a été mesuré.');
+  }
   const fin = texte.indexOf('</table>', debut);
-  if (fin === -1) return [];
+  if (fin === -1) {
+    throw new Error(
+      'rupturesDOrdreDu : aucun `</table>` après le titre du registre. Ce lecteur attend le HTML '
+      + 'de la page, pas le texte rendu par `texteDeLaPage`.',
+    );
+  }
   const ids = [...texte.slice(debut, fin).matchAll(/<td class="id">([^<]+)<\/td>/g)].map((m) => m[1]);
+  // ⚠️ REFUSER DE CONCLURE SUR ZÉRO ID (439). Ce lecteur exige du HTML : passé
+  // le texte DÉPOUILLÉ que rend `texteDeLaPage`, il ne trouve aucun `<td>`, la
+  // boucle ne tourne pas, et il rend `[]` — « aucune rupture ». Vécu : trois
+  // republications de suite annonçant un ordre vérifié pendant qu'une entrée
+  // était rangée deux cents lignes trop haut. Un tableau qui porte un titre de
+  // registre et pas une seule entrée n'est pas un registre en ordre : c'est un
+  // appel qui ne mesure rien, et il doit le DIRE.
+  if (ids.length === 0) {
+    throw new Error(
+      'rupturesDOrdreDu : aucun `<td class="id">` entre le titre du registre et son `</table>`. '
+      + 'Ce lecteur attend le HTML de la page, pas le texte rendu par `texteDeLaPage` — '
+      + 'sur du texte dépouillé il rendrait « aucune rupture » sans avoir rien lu.',
+    );
+  }
   // La BORNE HAUTE d'une plage : « 374–379 » se compare par 379, sinon une plage
   // paraîtrait rompre l'ordre avec la ligne suivante.
   const borne = (/** @type {string} */ t) => {

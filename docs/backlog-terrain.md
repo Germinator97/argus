@@ -5081,6 +5081,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **1 POINT OUVERT — le 439, ouvert le 09/09/2026**, et il vient encore de
+l'outillage de suivi (`tools/`, non livré) : il ne ferme donc pas la sortie. Le
+contrôle d'ordre du registre rendait « aucune rupture » **sans rien lire**, trois
+republications de suite. Trouvé par Germinator, en regardant la page.
+
 ✅ **438 FERMÉ le 09/09/2026 — backlog VIDE (60e vidage).** Il venait de
 l'outillage de suivi, pas du skill livré. Le **run 65** (iOS) n'a rendu **aucun
 constat**, et c'est précisément ce qui l'a révélé : le run qui peut ouvrir la
@@ -6900,6 +6905,30 @@ il lit un numéro en prose (`65`), dans un titre de lot (`62`), dans une
 énumération de campagne (`44`) et dans une section dédiée (`65`). **L'instrument
 va bien ; c'est la source qui ne recevait rien.** Corriger l'instrument aurait
 été le remède d'à côté.
+
+### 439. Le contrôle d'ordre du registre rendait « aucune rupture » sans rien lire
+
+**Ouvert le 09/09/2026.** `rupturesDOrdreDu` lit le HTML de la page — elle
+cherche `<td class="id">` entre le titre du registre et son `</table>`. Passée le
+texte **dépouillé** que rend `texteDeLaPage`, elle ne trouve ni l'un ni l'autre,
+sort par un `return []`, et l'appelant lit **« ✅ aucune rupture »**.
+
+🔴 **Trois republications de suite l'ont annoncé** — runs 63, 64, 65 — pendant
+qu'une entrée du registre était rangée **deux cents lignes trop haut** :
+`422–427` coincé entre `213–217` et `218–224`. C'est Germinator qui l'a vu, en
+regardant la page : « je crois que certains numéros ont sauté ». Aucun n'avait
+sauté ; c'était un désordre, et le seul instrument qui pouvait le dire se taisait.
+
+📌 **Le garde n'était pas en cause, l'APPEL l'était** — vérifié en l'exécutant
+sur le HTML brut, où il rend la rupture exacte du premier coup. C'est la
+deuxième fois en deux points (438, 439) que l'instrument va bien et que la façon
+de s'en servir ne va pas.
+
+⚠️ **Et un garde en place figeait le comportement muet** : il assertait
+`rupturesDOrdreDu('<p>rien ici</p>') === []`, sous le commentaire « il ne conclut
+pas ». Or rendre une liste vide EST une conclusion — elle se lit « aucune
+rupture ». *« Je n'ai rien lu » et « tout est en ordre » ne peuvent pas rendre la
+même valeur.*
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
