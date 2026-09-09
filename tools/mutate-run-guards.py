@@ -30,6 +30,10 @@ CIBLES = {
     # vit hors dépôt, donc rien d'autre ne peut dire si l'instrument qui la
     # mesure garde encore — c'est le seul endroit d'où on le sait.
     "artefact": ROOT / "tools/artefact-compteurs.mjs",
+    # 446 — le CONSOMMATEUR du lecteur d'ordre. Le 439 a rendu ce lecteur
+    # bruyant sans que son appelant suive : la cible manquait, donc rien ne
+    # pouvait le dire.
+    "checkartefact": ROOT / "tools/check-artefact.mjs",
     "confid": ROOT / "tools/artefact-confidentialite.mjs",
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
@@ -1640,6 +1644,12 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 446 — l'appelant reperd le HTML : il repasse le texte dépouillé au lecteur
+    # d'ordre, qui LÈVE depuis le 439. L'outil redevient inutilisable — et c'est
+    # bien une panne, pas un faux vert : le garde doit voir la différence.
+    ("checkartefact", "446 · le contrôle de la page reperd le HTML",
+     "const ruptures = rupturesDOrdreDu(html);",
+     "const ruptures = rupturesDOrdreDu(texte);"),
     # 443 — la carte reperd le statut ET la raison : le rendu redevient
     # identique pour un finding assumé et un finding ouvert, et
     # `acknowledgedWhy` ne quitte plus le JSON.
