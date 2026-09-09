@@ -1636,6 +1636,13 @@ MUTATIONS = [
     # qu'on vise ici — retirer le recollage, pas le commentaire qui l'explique.
     # 436 — le DÉCÂBLAGE, seul mode de panne que Node puisse voir. La
     # mécanique reste juste et complète ; plus personne ne l'appelle, et la
+    # 438 — la section retirée : un run sans constat n'a plus d'endroit où
+    # être écrit, et le compteur de la page retombe au dernier run À
+    # CONSTAT. C'est le défaut d'origine, et c'est ce que le garde asserte —
+    # la section ET sa raison, sur le fichier réel.
+    ("backlog", "438 · un run sans constat reperd son endroit",
+     "## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI\n\nUn run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire\nplus haut**. Il ne laisse donc aucune trace dans ce fichier — alors que c'est\nexactement le run qui décide de la **sortie**.\n\n⚠️ **Ne supprime pas cette section parce qu'elle a l'air vide de contenu.** Le\ncompteur de la page publiée dérive le numéro du dernier run **de ce fichier**\n(`dernierRunDu`, `tools/artefact-compteurs.mjs`) : sans cette liste, la page\nannonce éternellement le dernier run *à constat*, et le seul run qui puisse\nouvrir la sortie est précisément celui que l'instrument ne voit pas. Mesuré le\n09/09 : `runs: 64` alors que le **run 65** était archivé et contrôlé.\n\n📌 L'instrument, lui, n'était pas en cause — vérifié en l'exécutant : il lit un\nnuméro cité en prose aussi bien que dans un titre de lot. C'est la **source** qui\nétait incomplète, et rien ne réclamait de la compléter.\n\n| le run | date | plateforme | ce qu'il a établi |\n|---|---|---|---|\n",
+     ''),
     # 437 — le TROISIÈME terme retiré : on revient au 436 tel qu'il était,
     # juste sur ce qu'il compare et aveugle au harnais qui charge un autre
     # nom. C'est ce que le garde ASSERTE (le verdict « ne charge PAS »), et
