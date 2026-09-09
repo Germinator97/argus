@@ -5081,9 +5081,17 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 451** : le tell de démarrage nommait deux formes, un run
-en a rencontré une troisième (une autre app au premier plan). Il se ferme quand
-ses mutations auront fait tomber le garde de parité.
+✅ **447 à 451 FERMÉS le 09/09/2026 — backlog vidé une 64e fois**, sur les cinq
+points du **run 68** (Android, terrain sans API). Trois correctifs vrais (447,
+448, 449), un démenti double (450), une parité runner/SKILL (451).
+📌 **Ce que la passe apprend, et ce n'est pas dans les correctifs** : le 450 m'a
+vu écrire un garde et une mutation qui existaient déjà depuis le point 278,
+motif pour motif. Ce n'est pas une relecture qui l'a dit — c'est le harnais,
+en rendant `TOMBE` sur **un test qui n'était pas le mien**. Lire le nom du test
+qui tombe est la seule chose qui distingue « mon garde marche » de « un autre
+faisait déjà le travail ».
+⚠️ Et le 449 m'a fait tomber un garde de PROXIMITÉ en écrivant sa propre note :
+le remède honnête était de condenser, jamais de relever le seuil.
 
 ✅ **450 DÉMENTI le 09/09/2026** — la promesse du §2b est vraie ET gardée depuis
 le point 278. Mon « correctif » dupliquait ce garde et sa mutation, motif pour
@@ -7352,8 +7360,8 @@ lieu de déduire son absence du fait qu'on ne l'a pas croisé.
 
 ### 451. Le tell aiguillait vers deux formes, le run en a rencontré une troisième
 
-**Ouvert le 09/09/2026**, rapporté par le run 68. Correctif et garde écrits ; il
-se ferme quand les mutations auront fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 68. Les deux mutations font tomber
+le garde — une par côté, puisque c'est la parité qu'il tient.
 
 Le tell « la pire attente est-elle COLLÉE au plafond ? » est le meilleur outil de
 diagnostic du skill — le run l'a suivi et dit qu'il lui a épargné deux passes
