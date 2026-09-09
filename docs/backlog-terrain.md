@@ -6940,6 +6940,171 @@ pas ». Or rendre une liste vide EST une conclusion — elle se lit « aucune
 rupture ». *« Je n'ai rien lu » et « tout est en ordre » ne peuvent pas rendre la
 même valeur.*
 
+## Runs 66 et 67 — la confirmation par plateforme, et elle ROUVRE la sortie
+
+Deux runs en aveugle joués le 09/09/2026 pour lever la réserve du 07/09 : le
+critère de sortie était rempli sur le **seul** run 65, et le verdict demandait
+une confirmation **par plateforme**. Germinator a tranché pour deux runs — un par
+terrain, un par plateforme — plutôt que d'assumer le relevé unique.
+
+Il a eu raison, et c'est la mesure qui le dit : **le run 65 seul rendait « aucun
+constat » ; ces deux-là en rendent quatre.** Aucune des deux combinaisons jouées
+n'avait été exercée récemment — c'est le seul choix de terrain qui pouvait les
+trouver.
+
+| le run | plateforme | terrain | ce qu'il a rendu |
+|---|---|---|---|
+| **run 66** | iOS | sans API | 0 ancre trouvée → **82 posées** · 41 + 417 tests d'étage 1 en 0 · **10 flows, 0 major** · 11/11 écrans · 21,8 min de device sur 60 · **2 constats** |
+| **run 67** | Android | avec API | 16 commandes déjà posées / 31 → **100 %** · 44/44 puis 604/604 · scope `complet`, 6/6 écrans · **2 constats** |
+
+⚠️ **Trois autres points remontés par les agents ont été DÉMENTIS** par
+reproduction (444, 445). Ils restent écrits : ce qui a de la valeur n'est pas
+qu'ils étaient faux, c'est que le skill avait déjà traité le cas — et mieux que
+ce que l'agent supposait.
+
+📌 **Ce que les deux runs ont prouvé du skill, sans qu'on le leur demande** : la
+police résolue (**174,3 dp** contre **202,5** avec une famille inexistante — le
+**437** paie une troisième fois), le DSN de télémétrie à **0 dans les trois
+encodages sur la RELEASE**, la contre-épreuve visuelle par aplat magenta **aux
+dimensions exactes** où un seul écran rougit, et le garde « une page par
+plateforme » qui a tenu alors que le cadrage donnait à l'agent l'URL de l'**autre**
+plateforme — il a trouvé la bonne page seul et n'a rien écrasé.
+
+### 440. Le Dart LIVRÉ ne passe pas l'analyse statique, et rien ne l'analyse
+
+**Ouvert le 09/09/2026** — rendu par le run 66, reproduit par diff.
+
+Trois chaînes à double quote dans le scaffold — `argus_harness.dart:239`,
+`layout_test.dart:61` et `:78` — font rougir `flutter analyze` sur tout projet
+qui active `prefer_single_quotes`. Le terrain du run 66 l'active.
+
+🔴 **Ces deux fichiers sont classés `ARGUS:CADRE`, donc « remplaçable par
+`--update` ».** Le correctif que l'agent a appliqué chez lui sera donc **effacé
+au prochain update**, et le rouge reviendra. Le défaut se rejoue indéfiniment ;
+il ne peut se fermer que dans le plugin.
+
+⚠️ **`git blame` : les quatre occurrences viennent du MÊME commit du 08/09**,
+celui du **437**. Un correctif de la veille a introduit un défaut d'un autre
+ordre dans le livrable — et aucune des relectures de ce correctif ne pouvait le
+voir, puisqu'elles portaient sur la police.
+
+📌 **Le point n'est pas les trois quotes, c'est qu'aucun garde ne lit le Dart
+livré.** `check-scaffold.sh` fige la *classification* des 34 fichiers, jamais
+leur validité : un fichier peut être parfaitement classé et refuser de compiler.
+Le scaffold porte **7 fichiers Dart** posés chez des tiers, et rien ne les
+soumet à l'analyse que ces tiers appliquent.
+
+⚠️ **Le remède ne doit PAS être un balayage textuel des doubles quotes** : le
+mien, écrit pour reproduire, a sous-compté — son motif excluait les `\`, donc il
+ratait la ligne 239 qui porte un `\n`. Et il aurait sur-compté dans l'autre
+sens : la quatrième occurrence (l. 215) est une chaîne imbriquée qui **contient**
+des apostrophes, où les doubles quotes sont obligatoires. L'agent, lui, a
+discriminé correctement les trois vraies des une fausse.
+
+### 441. `artifactFor` résout deux clés sur trois par plateforme
+
+**Ouvert le 09/09/2026** — rendu par le run 66, reproduit dans le code.
+
+```js
+return { url: choisir(a.url), title: choisir(a.title) };
+```
+
+`choisir` sait pourtant déjà lire les deux formes (chaîne, ou objet indexé par
+plateforme). Il n'est simplement pas appliqué à `icon` — la troisième clé qui
+décrit la même page.
+
+Conséquence mesurée : un projet à deux plateformes porte deux pages, chacune avec
+son icône. Une valeur unique en renommerait une des deux, et une icône qui change
+se lit comme une seconde page (le skill le dit lui-même : « c'est ainsi qu'on
+retrouve la page »). L'agent a donc laissé `artifact.icon` **vide**, faute de
+forme exprimable, et l'a écrit dans ses arbitrages.
+
+📌 C'est le motif de la **parité entre voisins**, appliqué à trois clés d'un même
+bloc : deux ont reçu le traitement par plateforme quand il a été ajouté, la
+troisième est restée derrière. Rien ne pouvait le voir — chaque clé est correcte
+prise à part.
+
+### 442. Un acquittement MAL FORMÉ est écarté sans un mot
+
+**Ouvert le 09/09/2026** — rendu par le run 67, reproduit dans `config.mjs`.
+
+```js
+.filter((a) => a && String(a.id ?? '').trim() !== '')
+```
+
+Écrite en chaîne nue (`- QAM-SEC-CLEAR` au lieu de `{id, why}`), l'entrée a un
+`a.id` `undefined` : elle est filtrée **en silence**. Le finding reste `open`, et
+rien n'indique que la forme était mauvaise — l'utilisateur croit avoir acquitté.
+
+⚠️ **L'asymétrie est ce qui condamne le code**, pas le filtre lui-même : le cas
+voisin — un `id` correct mais un `why` vide — est traité avec soin trois lignes
+plus bas (`status: 'open'` **et** un message « acquittement SANS raison : il ne
+compte pas. Écris pourquoi. »). Une case a son message, sa voisine n'a rien.
+
+⚠️ Et l'entrée mal formée ne tombe même pas dans `perimes`, qui est pourtant le
+canal déjà prévu pour signaler un acquittement inutile : elle est filtrée
+**avant** d'y arriver. Doublement invisible.
+
+📌 Motif connu : un composant dont le rôle est d'**écarter** produit une absence,
+et une absence ressemble à « il ne s'est rien passé ».
+
+### 443. Un acquittement HONORÉ n'atteint pas la page publiée — et le compteur contredit la liste
+
+**Ouvert le 09/09/2026** — rendu par le run 67, reproduit dans `report.mjs`.
+
+`acquitter()` pose bien `status: 'acknowledged'` et `acknowledgedWhy` dans
+`sec.json`. Le rapport HTML en lit **une moitié** :
+
+- le compte par sévérité **exclut** l'acquitté
+  (`f.severity === s && f.status !== 'acknowledged'`) ;
+- `findingCards` groupe par sévérité **sans regarder le statut**, et
+  `acknowledgedWhy` n'apparaît nulle part dans le rendu.
+
+🔴 **Donc la page affiche un `critical` nu qui n'est pas compté dans son propre
+total.** Deux mesures du même objet, sur la même page, qui ne peuvent pas être
+vraies ensemble — et la **raison** de l'acquittement, qui est tout l'intérêt du
+mécanisme, ne sort jamais du JSON.
+
+⚠️ Le run 67 a fait exactement ce que le §3d bis prescrit : *« correctif
+SÉMANTIQUE → on remonte, on ne diverge pas »*. Il n'a pas patché `report.mjs`.
+
+### 444. ✅ DÉMENTI — « le flow i18n serait vert quoi qu'on déclare »
+
+**Rendu par les DEUX runs (66 et 67), démenti par lecture du code le 09/09/2026.**
+
+Les deux agents ont observé, chacun sur sa plateforme, que la locale de
+l'appareil n'est pas celle déclarée et que le flow i18n mesure donc la première.
+C'est **exact** — et le skill l'avait déjà traité, plus finement que ce qu'ils
+supposaient :
+
+- `localeWarnings()` avertit que `locale.deviceLocale` « n'aura AUCUN effet » et
+  dit explicitement que « le flow i18n mesure la locale de L'APPAREIL » ;
+- `localeFindings()` émet `QAM-LOCALE-INERTE` **pour que l'avertissement survive
+  au terminal** — son dartdoc dit qu'il ne sortait qu'en console, « donc elle
+  mourait avec la [session] » ;
+- et l'avertissement a été **volontairement restreint** : il sortait « dès que la
+  clé était renseignée et `autoStart` faux — c'est-à-dire sur la disposition que
+  le skill RECOMMANDE », et ne sort désormais que si la locale effective diffère
+  de la demandée.
+
+📌 Les deux runs l'ont rapporté comme une limite ; c'est en réalité le mécanisme
+qui fonctionne, et qui les a informés. Le garder ici évite qu'un troisième run le
+rouvre.
+
+### 445. ✅ DÉMENTI pour l'essentiel — « la limite des blocs YAML n'est écrite nulle part »
+
+**Rendu par le run 67, démenti par lecture le 09/09/2026.**
+
+Le parseur refuse `|` et `>` (`bloc multi-lignes (| ou >) non supporté`) — c'est
+exact. Mais l'agent écrit que « la limite n'est écrite nulle part dans
+`argus.mobile.yaml` », et c'est **faux** : elle est en tête du fichier, ligne 27,
+dans la liste de ce que le sous-ensemble ne supporte pas — « ancres/alias (&, *)
+· blocs multi-lignes (|, >) · maps en flow ({a: 1}) ».
+
+⚠️ **Ce qui reste vrai, et vaut moins qu'un point** : une autre clé du fichier
+porte un rappel **local** (« ⚠️ SUR UNE SEULE LIGNE »), celle où l'agent est tombé
+n'en a pas. C'est la même parité entre voisins que le 441, à un degré mineur.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
