@@ -1640,6 +1640,24 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 443 — la carte reperd le statut ET la raison : le rendu redevient
+    # identique pour un finding assumé et un finding ouvert, et
+    # `acknowledgedWhy` ne quitte plus le JSON.
+    ("report", "443 · l'acquittement redevient invisible sur la page",
+     """      ${ack ? `<div class="ack">✔ acquitté — ${esc(f.acknowledgedWhy || 'sans raison déclarée')}</div>` : ''}\n""",
+     ""),
+    # 442 — le filtre reperd son relevé : une entrée mal formée est de nouveau
+    # écartée sans un mot. ⚠️ On mute la VALEUR RENDUE, pas la ligne d'appel :
+    # le motif reste en place, seul le contenu disparaît.
+    ("config", "442 · l'entrée mal formée se réécarte en silence",
+     """  const malFormees = declarees\n    .map((a, i) => {\n      if (a && String(a.id ?? '').trim() !== '') return null;\n      const vue = typeof a === 'string' ? `« ${a} »` : JSON.stringify(a);\n      return `entrée ${i + 1} : ${vue}`;\n    })\n    .filter((x) => x !== null);\n""",
+     "  const malFormees = [];\n"),
+    # 441 — la troisième clé reperd sa résolution : `icon` retombe derrière
+    # `url` et `title`, exactement là où deux vagues de correctifs l'avaient
+    # laissée. Le journal réannonce alors « [object Object] ».
+    ("config", "441 · l'icône reperd sa résolution par plateforme",
+     "  return { url: choisir(a.url), title: choisir(a.title), icon: choisir(a.icon) };",
+     "  return { url: choisir(a.url), title: choisir(a.title) };"),
     ("artefact", "439 · le contrôle d'ordre se retait sur zéro id",
      "  const fin = texte.indexOf('</table>', debut);\n  if (fin === -1) {\n    throw new Error(\n      'rupturesDOrdreDu : aucun `</table>` après le titre du registre. Ce lecteur attend le HTML '\n      + 'de la page, pas le texte rendu par `texteDeLaPage`.',\n    );\n  }\n",
      "  const fin = texte.indexOf('</table>', debut);\n  if (fin === -1) return [];\n"),
@@ -1655,7 +1673,7 @@ MUTATIONS = [
     # nom. C'est ce que le garde ASSERTE (le verdict « ne charge PAS »), et
     # le reste de la fonction continue de compiler — un `return null` suit.
     ("harness", "437 · la résolution de police reperd son troisième terme",
-     '  // 2. Le HARNAIS : ce que la suite charge réellement. Ne dépend d\'aucun\n  //    manifeste, donc se contrôle toujours.\n  final List<String> nonChargees =\n      demandeesParLeTheme\n          .where((String f) => !chargeesParLeHarnais.contains(f))\n          .toList()\n        ..sort();\n  if (nonChargees.isNotEmpty) {\n    return "Le thème de l\'app demande ${nonChargees.join(\', \')}, "\n        "qu\'argusFonts ne charge PAS. Familles chargées : "\n        \'${chargeesParLeHarnais.isEmpty ? \'(aucune)\' : chargeesParLeHarnais.join(\', \')}.\'\n        "\\n⚠️ L\'application, elle, va peut-être très bien : c\'est la SUITE qui "\n        \'mesure faux. Une famille que le thème demande sans qu\\\'elle soit \'\n        \'chargée retombe sur la police de `flutter_test` — un carré d\\\'un \'\n        \'cadratin par glyphe, environ deux fois plus large.\'\n        "\\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, "\n        \'préfixe de paquet compris, et fais-en argusFontFamily.\';\n  }\n',
+     '  // 2. Le HARNAIS : ce que la suite charge réellement. Ne dépend d\'aucun\n  //    manifeste, donc se contrôle toujours.\n  final List<String> nonChargees =\n      demandeesParLeTheme\n          .where((String f) => !chargeesParLeHarnais.contains(f))\n          .toList()\n        ..sort();\n  if (nonChargees.isNotEmpty) {\n    return "Le thème de l\'app demande ${nonChargees.join(\', \')}, "\n        "qu\'argusFonts ne charge PAS. Familles chargées : "\n        \'${chargeesParLeHarnais.isEmpty ? \'(aucune)\' : chargeesParLeHarnais.join(\', \')}.\'\n        "\\n⚠️ L\'application, elle, va peut-être très bien : c\'est la SUITE qui "\n        \'mesure faux. Une famille que le thème demande sans qu\\\'elle soit \'\n        \'chargée retombe sur la police de `flutter_test` — un carré d\\\'un \'\n        \'cadratin par glyphe, environ deux fois plus large.\'\n        \'\\n📌 Déclare dans argusFonts la famille TELLE QUE LE THÈME LA DEMANDE, \'\n        \'préfixe de paquet compris, et fais-en argusFontFamily.\';\n  }\n',
      ''),
     # suite de disposition redevient muette sur la police qu'elle mesure.
     # ⚠️ Les deux lignes ensemble : retirer l'appel seul ne compilerait pas,
