@@ -11363,6 +11363,58 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 //
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
+// ── 438 ────────────────────────────────────────────────────────────────────
+// Le numéro de run affiché par la page dérive du BACKLOG. Un run sans constat
+// n'a rien à y inscrire — il n'apparaît nulle part, et le compteur reste au
+// précédent. C'est le run qui compte le plus qui est invisible : celui qui
+// remplit le critère de sortie est, par définition, celui qui n'écrit rien.
+//
+// 📌 L'instrument n'était PAS en cause, et l'exécution l'a dit : il lit un
+// numéro en prose comme dans un titre de lot. C'est la SOURCE qui ne recevait
+// rien. D'où un garde sur la source, et pas un durcissement du lecteur.
+test('un run sans constat a un endroit où être écrit, et le compteur l\'y lit (438)', () => {
+  const backlog = readFileSync(join(RACINE, 'docs/backlog-terrain.md'), 'utf8');
+
+  // 1. Sur le fichier RÉEL : la section existe et porte sa RAISON. Sans elle,
+  //    la prochaine main la retire comme une liste vide de contenu.
+  const i = backlog.indexOf("LES RUNS QUI N'ONT RIEN RENDU");
+  assert.ok(i > 0,
+    'la section où s\'inscrit un run sans constat a disparu : le compteur de la page retombera au '
+    + 'dernier run À CONSTAT, et le seul run qui puisse ouvrir la sortie redeviendra invisible (438)');
+  const section = backlog.slice(i, i + 2000);
+  assert.match(section, /dernierRunDu|artefact-compteurs/,
+    'la section ne dit plus POURQUOI elle existe : une liste dont la raison est ailleurs se supprime');
+  // ⚠️ Et le RUN doit être lisible dans le TABLEAU, pas seulement dans la prose
+  //    qui l'entoure. Écrit « | **65** | » sans le mot « run », le compteur le
+  //    lisait par accident dans le paragraphe au-dessus : mettre à jour la ligne
+  //    sans toucher la prose aurait laissé le chiffre en arrière, en silence.
+  //    Trouvé par ce garde même, le jour de son écriture.
+  const tableau = section.slice(section.indexOf('| le run |'));
+  assert.match(tableau, /\|\s*\*\*runs?\s+\d+\*\*\s*\|/i,
+    'le tableau ne nomme pas ses runs sous une forme que `dernierRunDu` sait lire : mettre à jour '
+    + 'une ligne sans toucher la prose laisserait le compteur en arrière, sans un mot (438)');
+
+  // 2. Sur un corpus FABRIQUÉ : un run qui n'apparaît QUE dans cette forme
+  //    doit être lu. C'est ce qui rend la section utile plutôt que décorative.
+  const seulementLa = [
+    '### 400-405. Le run 60 — la confirmation',
+    '',
+    "## LES RUNS QUI N'ONT RIEN RENDU",
+    '| run | date | ce qu il a établi |',
+    '| **run 99** | 09/09 | aucun constat |',
+  ].join('\n');
+  assert.equal(dernierRunDu(seulementLa), 99,
+    'le compteur ne lit pas un run qui n\'apparaît que dans la section des runs sans constat : '
+    + 'la section serait alors décorative, et le trou du 438 resterait ouvert');
+
+  // 3. L'autre moitié — sans la section, il retombe. C'est ce que le défaut
+  //    faisait, et le garde ne prouve rien s'il ne sait pas le montrer.
+  const sansLaSection = seulementLa.split("## LES RUNS")[0];
+  assert.equal(dernierRunDu(sansLaSection), 60,
+    'le corpus témoin ne reproduit plus le défaut : sans la section, le compteur DOIT retomber au '
+    + 'dernier run à constat — si ce n\'est pas le cas, ce garde ne mesure pas ce qu\'il croit');
+});
+
 // ── 437 ────────────────────────────────────────────────────────────────────
 // Le 436 comparait DEUX termes — le thème de l'app et le manifeste — et il
 // avait raison sur les deux. Il restait pourtant vert sur le cas suivant, que

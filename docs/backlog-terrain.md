@@ -5081,6 +5081,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **1 POINT OUVERT — le 438, ouvert le 09/09/2026.** Il ne vient pas du skill
+livré mais de **l'outillage de suivi** (`tools/`, non livré), donc **il ne ferme
+pas la sortie** : il ne coûte rien à qui applique le skill. Le **run 65** (iOS)
+n'a rendu **aucun constat**, et c'est précisément ce qui l'a révélé — le run qui
+peut ouvrir la sortie est celui que le compteur ne voit pas.
+
 ✅ **437 FERMÉ le 08/09/2026 — backlog VIDE (59e vidage).** Un garde, une
 mutation. Le **run 64** (confirmation Android) a rendu 8 flows, `scope: complet`,
 **7/7 écrans visités**, et les correctifs d'application de Germinator ont porté —
@@ -6855,6 +6861,46 @@ terrain, restauration prouvée par hash à chaque essai.
 📌 C'est le motif du chantier appliqué à mon propre correctif, deux jours de
 suite : le **429** a ouvert le **436**, et le **436** ouvre celui-ci. *Une
 correction déplace un mode de panne plus souvent qu'elle ne le ferme.*
+
+### 438. Un run qui ne rend AUCUN constat est invisible au compteur de la page
+
+**Ouvert le 09/09/2026.** Le numéro de run affiché par la page publiée dérive du
+**backlog** — le plus grand run qu'il cite. Or un run sans constat n'a rien à y
+inscrire : il n'apparaît nulle part, et le compteur reste au précédent. Mesuré
+après le run 65 : `runs: 64`, alors que `check-etalons` en contrôlait 64 de run2
+à run65.
+
+🔴 **C'est le run qui compte le plus qui est invisible.** Le critère de sortie
+est « aucun constat ne coûterait quelque chose à quelqu'un qui applique le
+skill » : le run qui le remplit est, par définition, celui qui n'écrit rien.
+
+📌 **Le diagnostic évident était faux, et l'exécution l'a corrigé.** J'ai d'abord
+écrit que le compteur « ne pouvait pas voir » ce cas. Exercé sur quatre formes,
+il lit un numéro en prose (`65`), dans un titre de lot (`62`), dans une
+énumération de campagne (`44`) et dans une section dédiée (`65`). **L'instrument
+va bien ; c'est la source qui ne recevait rien.** Corriger l'instrument aurait
+été le remède d'à côté.
+
+## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
+
+Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
+plus haut**. Il ne laisse donc aucune trace dans ce fichier — alors que c'est
+exactement le run qui décide de la **sortie**.
+
+⚠️ **Ne supprime pas cette section parce qu'elle a l'air vide de contenu.** Le
+compteur de la page publiée dérive le numéro du dernier run **de ce fichier**
+(`dernierRunDu`, `tools/artefact-compteurs.mjs`) : sans cette liste, la page
+annonce éternellement le dernier run *à constat*, et le seul run qui puisse
+ouvrir la sortie est précisément celui que l'instrument ne voit pas. Mesuré le
+09/09 : `runs: 64` alors que le **run 65** était archivé et contrôlé.
+
+📌 L'instrument, lui, n'était pas en cause — vérifié en l'exécutant : il lit un
+numéro cité en prose aussi bien que dans un titre de lot. C'est la **source** qui
+était incomplète, et rien ne réclamait de la compléter.
+
+| le run | date | plateforme | ce qu'il a établi |
+|---|---|---|---|
+| **run 65** | 09/09/2026 | iOS | **Aucun constat contre le skill.** Gate `pass`, 7/7 flows, 41/41 ancres, 416/416 gardes d'étage 1, 693 tests du projet. Le **410** a payé sur ses quatre points, cités mot pour mot par un agent qui les ignorait neufs ; le **437** a payé deux fois — le garde passe, et l'agent s'en sert comme contre-épreuve de son propre montage. **Le critère de sortie est rempli sur ce run.** |
 
 ## 🎯 LE PLAN DU 19/08 EST CLOS — décidé par Germinator le 31/08/2026
 
