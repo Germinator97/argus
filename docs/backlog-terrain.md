@@ -5081,8 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 454** : le junit lu pendant le run rend le verdict
-précédent. Se ferme à sa mutation.
+✅ **454 FERMÉ le 09/09/2026** — le junit lu pendant le run rend le verdict de la
+passe précédente, et un run en a tiré la conclusion inverse du vrai. Le garde est
+né vacant sur un motif non replié : c'est son échec qui l'a dit.
 
 ✅ **453 FERMÉ le 09/09/2026** — l'information existait, dans un paragraphe qui
 décrivait un autre symptôme. La mise en garde est désormais DANS l'exemple.
@@ -7459,8 +7460,8 @@ déjà cette section — l'exige désormais. Pas de garde neuf : leçon du 450.
 
 ### 454. Le verdict lu PENDANT le run est celui de la passe précédente
 
-**Ouvert le 09/09/2026**, rapporté par le run 69 et vérifié dans `run.mjs`.
-Se ferme quand la mutation aura fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 69 et vérifié dans `run.mjs`.
+La mutation fait tomber le garde.
 
 `report.junit.xml` et `report.visual-<écran>.junit.xml` sont des chemins
 **FIXES** (`junitPath: join(reportDir, …)`) : chaque invocation les réécrit. Le
