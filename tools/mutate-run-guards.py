@@ -1644,6 +1644,18 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
+    # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
+    # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    ("skill", "457 · le §5 reperd le canal des artefacts par défaut",
+     "Maestro écrit dans `--test-output-dir` un `commands.json` par\n  flow, qui contient",
+     "Maestro écrit un journal par\n  flow, qui contient"),
+    ("skill", "457 · le §5 reperd le canal que l'agent s'ouvre lui-même",
+     "  🔴 **NI CONTRE TOI-MÊME.** Une commande de diagnostic (`ps aux`, `pgrep -fl`)\n  recopie ces valeurs dans **ton propre compte rendu**, qui est publié. Un run en\n  aveugle s'y est vu et l'a signalé lui-même : c'est le seul canal que le\n  masquage ne peut pas fermer, parce que c'est toi qui l'ouvres.\n",
+     ""),
+    ("skill", "457 · le compteur de canaux revient en toutes lettres",
+     "🔴 **NI DANS LES PIXELS.** `label:` ne protège que la console et les rapports :",
+     "🔴 **NI DANS LES PIXELS.** `label:` protège trois canaux et pas le quatrième :"),
     # 456 — le paragraphe reperd l'erreur jumelle. La première moitié, celle
     # que le garde 425 mesure sur les flows, reste écrite : le texte a l'air
     # complet, et c'est exactement ce qui a fait écrire la condition à moitié.

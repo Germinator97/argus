@@ -2506,7 +2506,20 @@ soit `ENV=staging` avec données jetables, soit une confirmation explicite.
   par `-e`, donc **visibles dans `ps`** le temps du run. Et `label:` les masque en
   console et dans les rapports **mais pas dans les journaux de debug bruts** :
   ne publie jamais `--debug-output` comme artefact CI ouvert.
-  🔴 **NI DANS LES PIXELS.** `label:` protège trois canaux et pas le quatrième :
+  🔴 **NI DANS LES ARTEFACTS PAR DÉFAUT, ET CE N'EST PAS `--debug-output`**
+  (point 457). Maestro écrit dans `--test-output-dir` un `commands.json` par
+  flow, qui contient le **bloc entier des variables d'environnement** — donc
+  chaque valeur passée par `-e`, en clair, quoi que fasse `label:`. Mesuré sur un
+  run réel : le numéro de test dans **88 fichiers** du dossier de rapport, zéro
+  dans les flows et **zéro dans le HTML publié**. La mise en garde ci-dessus
+  visait le mauvais fichier : `--debug-output` est une option, ceci est le
+  comportement par défaut. N'ouvre donc pas `argus-mobile-report/maestro/` en
+  artefact CI, et ne l'attache pas à un ticket.
+  🔴 **NI CONTRE TOI-MÊME.** Une commande de diagnostic (`ps aux`, `pgrep -fl`)
+  recopie ces valeurs dans **ton propre compte rendu**, qui est publié. Un run en
+  aveugle s'y est vu et l'a signalé lui-même : c'est le seul canal que le
+  masquage ne peut pas fermer, parce que c'est toi qui l'ouvres.
+  🔴 **NI DANS LES PIXELS.** `label:` ne protège que la console et les rapports :
   une capture de l'écran où le secret est SAISI le montre en clair, et
   `artifact.evidence: all` la publie avec le finding. Vécu sur un écran de code à
   usage unique — le code part dans la page, alors qu'il est masqué partout

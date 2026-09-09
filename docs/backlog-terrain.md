@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 457** : deux canaux de fuite manquaient au §5, dont
+celui que Maestro ouvre par défaut. Se ferme à ses mutations.
+
 ✅ **456 FERMÉ le 09/09/2026** — la connexion conditionnelle n'avait qu'une moitié
 de condition, et rien ne levait : la capture était valide, simplement d'un autre
 écran. Troisième parité du lot.
@@ -7548,6 +7551,40 @@ qu'une), et que le texte dise que la condition EST une conjonction.
 📌 **Troisième parité de ce lot**, après 452 (deux commandes du même document) et
 453 (deux recettes qui se contredisent). Les runs 66-67 en avaient rendu trois
 sur quatre ; le motif ne s'épuise pas.
+
+### 457. Deux canaux de fuite manquaient, dont celui qui s'ouvre par défaut
+
+**Ouvert le 09/09/2026**, rapporté par le run 69 pour moitié, mesuré par moi pour
+l'autre. Se ferme à ses mutations. Les deux sont inscrits ensemble parce que
+**c'est la paire qui est le constat** : le §5 énumérait ses canaux, et il en
+manquait aux deux bouts de la chaîne.
+
+🔴 **Le canal PAR DÉFAUT.** Maestro écrit un `commands.json` par flow dans
+`--test-output-dir`, contenant le **bloc entier des variables d'environnement** —
+donc chaque valeur passée par `-e`, en clair, quoi que fasse `label:`. Mesuré sur
+le run 69 : le numéro de test dans **88 fichiers** du rapport (10 chiffres, donc
+pas un faux positif), **0** dans les flows écrits par l'agent, **0** dans le HTML.
+⚠️ **La mise en garde existante visait le mauvais fichier** : « ne publie jamais
+`--debug-output` » — une OPTION, qu'on ne passe pas. Ceci est le comportement par
+défaut, à chaque run, sans rien demander.
+✅ Et `label:` fait bien son travail : la SAISIE est protégée. Ce qui fuit est
+l'environnement, que rien ne masque.
+
+🔴 **Le canal qu'on s'ouvre SOI-MÊME.** Une commande de diagnostic (`ps aux`,
+`pgrep -fl`) recopie ces valeurs dans le compte rendu de l'agent, qui est publié.
+Le run s'y est vu et l'a signalé — c'est le seul canal que le masquage ne peut
+pas fermer, puisque c'est le lecteur qui l'ouvre.
+
+📌 **Le compteur est RETIRÉ, pas incrémenté.** Le §5 disait « `label:` protège
+trois canaux et pas le quatrième » : un nombre qui décrit une liste se périme au
+prochain ajout, et rien ne le signale — le motif que le point 331 a fermé
+ailleurs, revenu dans une consigne de sécurité. Le garde interdit désormais toute
+forme « protège N canaux ».
+
+📌 **Et mon premier contrôle a rendu des comptes VIDES**, le chemin du terrain
+contenant une espace (un nom de dossier à deux mots) dans un `for f in $(find …)` — le zshisme
+que ce dépôt documente. Son zéro se lisait comme « rien ne fuit », c'est-à-dire
+la réponse qu'on espère. Refait en `-print0`, il a rendu 88.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

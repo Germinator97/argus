@@ -12376,3 +12376,53 @@ test('le §2c-ter nomme les DEUX erreurs d\'aiguillage authentifié (456)', () =
     'les deux erreurs ne sont plus présentées comme jumelles : elles se lisent alors comme un '
     + 'seul conseil, et c\'est en n\'en voyant qu\'une qu\'un run a écrit la condition à moitié');
 });
+
+// ── Les canaux par lesquels un secret sort, et celui qu'on ouvre soi-même ───
+//
+// Point 457. Le §5 énumérait quatre canaux et disait « `label:` en protège
+// trois ». Deux manquaient, et le premier est le plus courant :
+//
+//   · `commands.json`, que Maestro écrit dans `--test-output-dir` pour CHAQUE
+//     flow, et qui contient le bloc entier des variables d'environnement — donc
+//     toute valeur passée par `-e`, en clair. Mesuré : le numéro de test dans 88
+//     fichiers du rapport, zéro dans les flows, zéro dans le HTML publié. La
+//     mise en garde visait `--debug-output`, qui est une OPTION ; ceci est le
+//     comportement par défaut.
+//   · le compte rendu de l'agent lui-même, dès qu'il tape `ps aux` ou
+//     `pgrep -fl`. Un run en aveugle s'y est vu et l'a signalé.
+//
+// 🔴 Et le compteur « trois canaux » est retiré, pas incrémenté : un nombre qui
+// décrit une liste se périme à chaque ajout, et c'est le motif que ce dépôt
+// traque depuis le point 331.
+
+test('le §5 nomme le canal des artefacts par défaut, et celui qu\'on s\'ouvre (457)', () => {
+  const runner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  // Le canal se DÉRIVE du runner : c'est lui qui demande à Maestro d'écrire là.
+  assert.match(runner, /--test-output-dir/,
+    'le runner ne demande plus de dossier de sortie à Maestro : le canal décrit par le §5 '
+    + 'n\'existe peut-être plus — vérifie avant de retirer la mise en garde');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('- **Secrets** :');
+  assert.ok(i > 0, 'la puce des secrets a disparu du §5 — ce garde en dérive la fenêtre');
+  const suite = skill.slice(i);
+  const fin = suite.indexOf('- **Captures** :');
+  assert.ok(fin > 0, 'la puce des secrets ne mène plus à celle des captures : fenêtre fausse');
+  const bloc = suite.slice(0, fin).replace(/\s+/g, ' ');
+
+  assert.match(bloc, /commands\.json/,
+    'le §5 ne nomme pas `commands.json` : c\'est le canal par DÉFAUT, il porte le bloc entier '
+    + 'des variables d\'environnement, et la seule mise en garde visait `--debug-output` — '
+    + 'une option que l\'on ne passe pas (457)');
+  assert.match(bloc, /ton propre compte rendu|ton propre rapport/i,
+    'le §5 ne dit pas que l\'agent ouvre lui-même un canal en tapant `ps aux` : c\'est le seul '
+    + 'que le masquage ne peut pas fermer');
+
+  // ⚠️ L'autre moitié, et c'est elle qui vieillit : PAS de compteur en dur. Un
+  // « protège trois canaux » redevient faux au prochain canal trouvé, et rien
+  // ne le signale — la liste, elle, se relit.
+  assert.doesNotMatch(bloc, /prot[èe]ge (deux|trois|quatre|cinq|\d+) canaux/i,
+    'le §5 recompte ses canaux en toutes lettres : ce nombre se périme au prochain ajout, '
+    + 'exactement comme les compteurs de contenu que le point 331 a fermés. Énumère, ne compte pas');
+});
