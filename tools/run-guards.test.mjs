@@ -11449,6 +11449,23 @@ test('le §2c dit quoi garder quand les deux remèdes s\'excluent (427)', () => 
   assert.match(bloc, /aucun des trois ne donne les deux/i,
     'la table donne trois remèdes sans dire qu\'aucun ne suffit sur certains composants : deux '
     + 'runs y sont tombés, chacun a tranché seul (427)');
+  // ⚠️ 453 : L'EXEMPLE ✅ DOIT PORTER L'INTERDICTION, pas seulement la prose dix
+  // lignes plus bas. Le document contient DEUX recettes qui se contredisent sur
+  // `container: true` — la racine l'exige, l'enfant l'interdit — et un run en
+  // aveugle a lu les deux, posé les deux, perdu quatre ancres. L'information
+  // existait : elle vivait dans un paragraphe traitant d'un AUTRE symptôme (le
+  // nœud fusionné avec la rangée), où un lecteur sans ce symptôme ne se
+  // reconnaît pas. Une information juste au mauvais endroit ne sert personne.
+  const bonExemple = bloc.indexOf('// ✅');
+  assert.ok(bonExemple > 0, 'le bloc de code ✅ du §2c a disparu : ce garde en dérive la fenêtre');
+  const finExemple = bloc.indexOf('```', bonExemple);
+  assert.ok(finExemple > bonExemple, 'le bloc ✅ n\'est plus clos par une clôture de code');
+  const exemple = bloc.slice(bonExemple, finExemple);
+  assert.match(exemple, /container/i,
+    'l\'exemple ✅ ne dit plus rien de `container: true`, alors que la recette de la RACINE '
+    + 'l\'exige quelques lignes plus haut : combiner les deux rend l\'ancre inerte, et c\'est '
+    + 'dans l\'exemple qu\'on le lit, pas dans la prose voisine (453)');
+
   assert.match(bloc, /garde alors l'ancre active/i,
     'l\'issue ne dit pas LEQUEL garder — une ancre inerte n\'est tapable par rien, une ancre '
     + 'active mal cadrée l\'est encore');

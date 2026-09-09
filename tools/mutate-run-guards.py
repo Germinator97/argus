@@ -1644,6 +1644,12 @@ MUTATIONS = [
     # introuvable et le lecteur rend `[]` — « aucune rupture » — sans avoir lu
     # un seul id. C'est ce que le garde 380 asserte désormais (il exige le
     # refus), et c'est le défaut que trois republications ont porté.
+    # 453 — l'exemple reperd sa mise en garde. La prose voisine continue de dire
+    # que les deux remèdes s'excluent : rien d'autre ne rougit, et c'est
+    # exactement ce qui a fait poser les deux à un run.
+    ("skill", "453 · l'exemple ✅ reperd l'interdiction de container",
+     "// ⚠️ PAS de `container: true` ICI (point 453). La recette de la racine d'écran\n//    l'exige, celle-ci l'interdit — et les combiner rend l'ancre INERTE. Un run\n//    en aveugle a lu les deux recettes, posé les deux, et perdu QUATRE ancres.\n//    Sur l'enfant, l'ancre se greffe au nœud que le composant publie déjà ; lui\n//    en fabriquer un second la coupe de l'action.\n",
+     ""),
     # 452 — le filtre reperd sa seconde barre : `///` ne retire que le dartdoc,
     # et le code mis en commentaire ordinaire redevient compté. Le garde 435
     # exécute la commande, donc c'est le CHIFFRE qui bouge, pas le motif.

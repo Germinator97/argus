@@ -5081,6 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 453** : deux recettes du §2c se contredisent sur
+`container: true`, et l'exemple ne le disait pas. Se ferme à sa mutation.
+
 ✅ **452 FERMÉ le 09/09/2026** — le compteur d'ancres comptait le code mis en
 commentaire ordinaire (3 pour 1, mesuré). Le filtre juste vivait DÉJÀ deux cents
 lignes plus haut dans le même document.
@@ -7425,6 +7428,31 @@ leçon du 450, appliquée le jour même.
 forme qu'on venait d'ajouter. C'est le défaut du 449 (« la mesure prise avant
 l'action qu'elle juge »), commis dans l'autre sens. Un contrôle de POSITION le
 tranche en deux lignes, et il est désormais dans le fichier.
+
+### 453. ⚠️ VRAI À MOITIÉ — l'information existait, pas là où on la lit
+
+**Ouvert le 09/09/2026**, rapporté par le run 69. Se ferme quand la mutation
+aura fait tomber le garde 427 étendu.
+
+Le run dit que le §2c prescrit « ancre sur l'ENFANT » sans jamais dire d'omettre
+`container: true`, et qu'il a posé les deux — la recette voisine, celle de la
+racine d'écran, l'exigeant — pour obtenir **4 ancres inertes**.
+
+🔴 **Vérifié, et le SKILL le dit** : dix lignes sous l'exemple, « ajouter
+`container: true` colle la géométrie et rend l'ancre **inerte**. Les deux
+remèdes s'excluent. » L'information est là, elle est juste, et le point 427 lui a
+même donné un garde.
+
+⚠️ **Mais elle vit dans un paragraphe qui traite d'un AUTRE symptôme** — le nœud
+fusionné avec la rangée (324×48 dp pour un widget de 18×18). Un lecteur qui n'a
+pas ce symptôme ne s'y reconnaît pas, et rien dans l'exemple ✅ ne l'avertit. Le
+document porte donc deux recettes qui se contredisent sur `container: true`, à
+quinze lignes l'une de l'autre, sans que la seconde le dise.
+
+📌 *Une information juste au mauvais endroit ne sert personne* — la phrase est
+dans ce dépôt depuis le point 294, appliquée ici à un cas qu'elle n'avait pas vu.
+Le remède est **une mise en garde DANS l'exemple**, et le garde 427 — qui bornait
+déjà cette section — l'exige désormais. Pas de garde neuf : leçon du 450.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 

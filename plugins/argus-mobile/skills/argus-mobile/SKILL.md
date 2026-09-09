@@ -882,6 +882,11 @@ Semantics(identifier: 'panier_ajouter',
   child: IconButton(onPressed: _ajouter, icon: const Icon(Icons.add)))
 
 // ✅ un seul nœud : ancre + action + libellé
+// ⚠️ PAS de `container: true` ICI (point 453). La recette de la racine d'écran
+//    l'exige, celle-ci l'interdit — et les combiner rend l'ancre INERTE. Un run
+//    en aveugle a lu les deux recettes, posé les deux, et perdu QUATRE ancres.
+//    Sur l'enfant, l'ancre se greffe au nœud que le composant publie déjà ; lui
+//    en fabriquer un second la coupe de l'action.
 IconButton(
   onPressed: _ajouter,
   icon: Semantics(
