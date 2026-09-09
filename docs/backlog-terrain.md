@@ -5081,10 +5081,15 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 447**, rapporté par le run 68 (Android, terrain sans
-API) : le dartdoc de `build:` promettait des marges système que `pumpArgus`
-n'applique pas. Correctif et garde écrits ; il se ferme quand sa mutation aura
-fait tomber le garde.
+✅ **447 FERMÉ le 09/09/2026**, premier point du run 68 (Android, terrain sans
+API) : le dartdoc de `build:` promettait que le harnais « pose les marges
+système ». Il les DÉCLARE (`view.padding` + `viewPadding`) et n'en applique
+aucune — un écran monté nu commence à 0,0 dp, contre un inset de 24,0 exigé par
+`cropRoot`. Deux consignes inconciliables, qu'un run en aveugle a tranchées seul.
+📌 **Le remède qui paraît juste est le pire** : poser le `SafeArea` dans le
+harnais mettrait TOUTE racine sous l'inset — y compris celle posée au-dessus du
+`SafeArea` de son écran, c'est-à-dire le défaut que `cropRoot` existe pour voir.
+Le garde tient donc les deux moitiés, et ses deux mutations le prouvent.
 
 ✅ **440 à 446 FERMÉS le 09/09/2026 — backlog vidé DEUX fois dans la journée
 (62e et 63e).** Le second vidage est le 446, né de la passe elle-même :
@@ -7209,9 +7214,8 @@ qui rendent le montage vérifiable.
 
 ### 447. Le dartdoc promettait des marges système que le harnais n'applique pas
 
-**Ouvert le 09/09/2026**, rapporté par le run 68 (Android, terrain sans API) et
-reproduit en lisant `pumpArgus`. Le correctif et son garde sont écrits ; il reste
-ouvert tant que la mutation n'a pas fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 68 (Android, terrain sans API) et
+reproduit en lisant `pumpArgus`. Les deux mutations font tomber le garde.
 
 Le dartdoc de `build:` disait : « Fournis-le SANS Scaffold ni MaterialApp : le
 harnais pose lui-même la surface, la police et **les marges système**. » Les deux
