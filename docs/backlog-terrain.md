@@ -5081,8 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 452** : le compteur d'ancres comptait le code mis en
-commentaire. Se ferme quand sa mutation aura fait tomber le garde 435 étendu.
+✅ **452 FERMÉ le 09/09/2026** — le compteur d'ancres comptait le code mis en
+commentaire ordinaire (3 pour 1, mesuré). Le filtre juste vivait DÉJÀ deux cents
+lignes plus haut dans le même document.
 
 ✅ **447 à 451 FERMÉS le 09/09/2026 — backlog vidé une 64e fois**, sur les cinq
 points du **run 68** (Android, terrain sans API). Trois correctifs vrais (447,
@@ -7395,8 +7396,8 @@ dépôt traque : deux textes justes séparément, dont l'écart ne casse rien.
 
 ### 452. Le compteur d'ancres comptait le code mis en COMMENTAIRE
 
-**Ouvert le 09/09/2026**, rapporté par le run 69 (iOS, terrain avec API) et
-reproduit par exécution. Se ferme quand la mutation aura fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 69 (iOS, terrain avec API) et
+reproduit par exécution. La mutation fait tomber le garde 435 étendu.
 
 Les comptages du §2b filtraient `grep -v "^\s*///"` : le dartdoc, et **rien
 d'autre**. Tout code mis en commentaire ORDINAIRE restait compté —
