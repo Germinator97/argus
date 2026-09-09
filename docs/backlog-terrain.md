@@ -5081,9 +5081,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔵 **1 POINT OUVERT — le 448**, rapporté par le run 68 : la règle et la commande
-qui la vérifie n'étaient pas dans la même suite, d'où un faux vert. Correctif et
-garde écrits ; il se ferme quand sa mutation aura fait tomber le garde.
+✅ **448 FERMÉ le 09/09/2026** — la règle et la commande qui la vérifie
+n'étaient pas dans la même suite : `argus-anchors` ne lance qu'`anchors_test.dart`,
+le garde de position vit dans `layout_test.dart`. Un run a muté, relancé la
+mauvaise cible, vu VERT, et conclu que son garde était vacant. Le garde dérive
+désormais la cible du Makefile plutôt que de la citer.
 
 ✅ **447 FERMÉ le 09/09/2026**, premier point du run 68 (Android, terrain sans
 API) : le dartdoc de `build:` promettait que le harnais « pose les marges
@@ -7252,9 +7254,8 @@ code pourtant correct. *Une fenêtre calculée par index se prouve avant de serv
 
 ### 448. La règle et l'outil qui la vérifie n'étaient pas dans la même commande
 
-**Ouvert le 09/09/2026**, rapporté par le run 68 et mesuré dans le Makefile. Le
-correctif et son garde sont écrits ; il reste ouvert tant que la mutation n'a pas
-fait tomber le garde.
+**Fermé le 09/09/2026**, rapporté par le run 68 et mesuré dans le Makefile. Les
+deux mutations font tomber le garde.
 
 Le dartdoc de `cropRoot` décrit la mesure de position, puis nomme
 `--check-anchors` à la ligne suivante. La méthodologie fait pareil. **Les deux
