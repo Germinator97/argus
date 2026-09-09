@@ -5081,7 +5081,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **440 à 446 FERMÉS le 09/09/2026 — backlog VIDE (62e vidage).** Quatre
+✅ **440 à 446 FERMÉS le 09/09/2026 — backlog vidé DEUX fois dans la journée
+(62e et 63e).** Le second vidage est le 446, né de la passe elle-même :
+l'outil de republication a crashé pendant qu'on s'en servait pour publier. Quatre
 correctifs et deux démentis, rendus par la **paire de confirmation** (runs 66 et
 67) que Germinator a demandée plutôt que d'assumer le relevé unique du run 65.
 
