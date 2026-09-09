@@ -5081,6 +5081,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔵 **1 POINT OUVERT — le 450** : constat démenti, mais la moitié `--check` d'une
+promesse du §2b n'avait pas de garde. Il se ferme quand sa mutation aura fait
+tomber le garde neuf.
+
 ✅ **449 FERMÉ le 09/09/2026** — `make: *** [argus-perf] Error 1` est un verdict,
 pas une panne : `exitCodeFor` rend 2 sur blocker/critical, 1 sur major. Le
 Makefile le disait pour `argus-run`, le SKILL pour personne. 📌 Et le dépôt m'a
@@ -7311,6 +7315,32 @@ qu'on lance `argus-run`, donc là qu'il faut savoir ». Trois tentatives pour
 repasser sous le seuil (48, 41, 40 lignes), et le seul remède honnête était de
 condenser : **relever le seuil aurait affaibli un garde existant pour faire de la
 place à ma prose.** Un texte de référence a une économie, et elle se mesure.
+
+### 450. ✅ DÉMENTI pour l'essentiel — mais la moitié `--check` n'avait pas de garde
+
+**Ouvert le 09/09/2026.** Le run 68 proposait de lever la réserve du §2b : selon
+lui, `install-mobile.sh --check` imprime bien l'inventaire nommément, donc la
+mise en garde serait périmée.
+
+🔴 **Mesuré, et le constat tombe** : la commande a été exécutée sur un vrai
+terrain, l'inventaire sort, `argus_fakes.dart` y figure, exit 0. Mais **la
+réserve est au PASSÉ** — « cette seconde moitié A ÉTÉ fausse pendant plusieurs
+runs » — et elle raconte en outre un piège de mesure (un terrain en retard fait
+voir une AUTRE liste). Rien à lever : les deux phrases sont vraies. *Une réserve
+écrite au passé se lit comme active ; c'est ce qui a trompé le run.*
+
+✅ **Et c'est en la vérifiant qu'on trouve le vrai défaut : une PARITÉ.** Le §2b
+promet deux choses — le fichier marqué apparaît « dans la liste que l'installeur
+imprime en sortant, ET dans son `--check` ». La première moitié a son garde
+depuis le jour où elle s'est révélée fausse. **La seconde n'en avait aucun** —
+alors que c'est celle qui est tombée. Classe exacte des runs 66-67 : deux moitiés
+d'une même phrase, une seule mesurée.
+
+📌 **Le geste juste avait pourtant été fait** : `inventaire_owned()` a été
+extraite en fonction *pour que `--check` l'appelle*, et le commentaire le dit.
+C'est le troisième barreau qui manquait — garde qui lit du texte < garde qui
+appelle < **exécution de bout en bout**. Le nouveau garde lance l'installeur puis
+`--check` sur le même dossier, et exige le fichier marqué dans l'inventaire.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
