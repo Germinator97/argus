@@ -1704,6 +1704,16 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 472 — le PÉRIMÈTRE est la variable, pas le motif : le 458 avait déjà
+    # corrigé celui-ci. Retirer la racine du paquet voisin laisse la commande
+    # entière, lisible et juste — elle mesure simplement le mauvais dossier.
+    # C'est ce que le garde EXÉCUTE, donc c'est ce qu'on mute.
+    ("skill", "472 · la commande (a) reperd la racine du paquet voisin",
+     "find lib ../mon_design_system/lib -name '*.dart' -exec cat {} + | grep -v '^\\s*//' \\\n  | perl -0777 -pe 's/identifier:\\s*\\n\\s*/identifier: /g' \\\n  | grep -oE \"identifier: *[a-zA-Z_][a-zA-Z0-9_.]*\"",
+     "find lib -name '*.dart' -exec cat {} + | grep -v '^\\s*//' \\\n  | perl -0777 -pe 's/identifier:\\s*\\n\\s*/identifier: /g' \\\n  | grep -oE \"identifier: *[a-zA-Z_][a-zA-Z0-9_.]*\""),
+    ("skill", "472 · la découverte des voisins cesse de distinguer pub.dev d'un chemin",
+     "grep -E '^\\s+path:\\s*\\.' pubspec.yaml",
+     "grep -E '^\\s+path:' pubspec.yaml"),
     # 470 — l'avertissement retiré, et la commande qui le rend utile retirée.
     ("backlog", "470 · le lecteur n'est plus prévenu que ces annonces sont des traces",
      "⚠️ **« Prochain numéro libre : N » est une TRACE D'ÉPOQUE, pas un état.**",
