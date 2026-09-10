@@ -7905,6 +7905,36 @@ sont lues », `src/release/` compris. Les deux se tiennent — et la seconde
 mutation le prouve : un remède élargi en dispense laisse passer un flavor `dev`
 publiable, et c'est ce cas-là qui rougit.
 
+### 466. L'avertissement affirmait une conséquence qu'il ne peut pas connaître
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point e). Les deux mutations
+font tomber le garde.
+
+`localeWarnings` concluait : « le flow i18n mesure la locale de L'APPAREIL, pas
+celle que tu déclares : **il est vert quoi que tu déclares** ». C'est vrai d'une
+application qui **suit** la locale du système, et **faux** d'une application qui
+l'**épingle**. Le run l'a mesuré : appareil en `en-US`, assertions françaises
+vertes — parce que l'app force sa locale. Le flow y mesurait exactement ce qu'il
+prétend mesurer.
+
+📌 **Le fait dont tout dépend est hors de portée du script** : il lit la locale de
+l'appareil, jamais la façon dont l'app la traite. Affirmer là-dessus produit un
+avertissement **faux sur un projet sain** — et un avertissement faux se fait
+ignorer, en emmenant les vrais avec lui. Le remède n'est pas de le supprimer mais
+de **dire la condition** : les deux branches, et le **tell** qui les sépare (des
+assertions dans ta langue qui passent sur un appareil réglé sur une autre signent
+une app qui épingle).
+
+📌 **Le garde existant a été ÉTENDU, pas doublé.** Le 444 gardait *quand* il
+parle — silence sur la disposition recommandée, parole dès que l'écart est réel.
+Celui-ci garde *ce qu'il conclut*. Deux moitiés du même avertissement, dans le
+même test.
+
+📌 **Et c'est le troisième run à revenir sur cette clé** (66, 67, 71) : les deux
+premiers avaient rapporté le mécanisme comme une limite, et le 444 l'a démenti —
+à raison. Le 71 ne rouvre pas ce démenti : il vise la **phrase** que le démenti
+avait laissée en place.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire

@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 466 — la phrase d'avant, remise mot pour mot : elle affirme au lieu de
+    # conditionner, ce qui est exactement ce que le garde asserte.
+    ("run", "466 · l'avertissement de locale réaffirme au lieu de conditionner",
+     "    '  ⚠️ Ce que ça coûte DÉPEND de ton application, et ce script ne peut pas le savoir : '",
+     "    '  ⚠️ Tant que ce n\\'est pas réglé, le flow i18n est vert quoi que tu déclares : '"),
+    ("run", "466 · le lecteur n'a plus de quoi trancher entre les deux cas",
+     "    '  Le tell est dans ton propre verdict : des assertions dans TA langue qui passent sur '\n      + 'un appareil réglé sur une AUTRE signent une application qui épingle.',\n",
+     ""),
     # 465 — les deux bords : plus de filtre du tout, et un filtre qui dispense
     # tout le monde. Le second est le plus grave, donc il a sa mutation.
     ("sec", "465 · le débogage redevient jugé comme la production",
