@@ -1704,6 +1704,15 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 474 — les deux moitiés séparément : le verdict (à qui appartient
+    # l'exception) et l'itération (le second canal). Chacune laisse l'autre en
+    # place, donc chacune se cache derrière un paragraphe qui a l'air complet.
+    ("skill", "474 · l'exception de canal n'est plus attribuée au montage",
+     "⚠️ **UN CANAL DE PLATEFORME MANQUANT N'EST PAS DE LA DETTE — c'est ton MONTAGE\n(474).**",
+     "⚠️ **Les plugins natifs lèvent sous `flutter test`.**"),
+    ("skill", "474 · le second canal n'est plus annoncé",
+     "🔴 **Et fermer le premier canal en RÉVÈLE un second.**",
+     "🔴 **Pose un double sur le canal.**"),
     # 473 — trois bords, un par moitié du garde : la branche NEUTRALISÉE (elle
     # est encore là, elle ne décide plus — le motif de texte y survit), le
     # paramètre rendu optionnel (un site non câblé compilerait), et un site
