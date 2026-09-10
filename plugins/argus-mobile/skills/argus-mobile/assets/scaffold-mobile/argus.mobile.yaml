@@ -103,16 +103,28 @@ build:
   # Cherche la commande dans le dépôt (script de release, CI, doc de
   # déploiement) avant d'en inventer une, et note ici celle que tu as employée.
   #
-  # ⚠️ « NOTE ICI » VEUT DIRE : EN COMMENTAIRE, AVEC SA SOURCE — juste sous
-  # `androidScan`, sous la forme `# construit par : <commande>  (source : <fichier
-  # §>)`. Deux runs s'y sont arrêtés : l'un a trouvé la commande dans un
-  # `SENTRY.md §7` et n'a pas su où la reporter ; l'autre a créé une clé
-  # `iosScanBuildCmd` pour la porter, puis l'a RETIRÉE en mesurant qu'aucun
-  # script ne la lit. Il avait raison : une clé que rien ne lit se relit comme un
-  # geste outillé alors qu'il ne l'est pas — c'est le défaut que le point 11 a
-  # fermé, et le rouvrir coûterait plus que la prose qu'il remplace.
-  # La source compte autant que la commande : sans elle, le suivant la cherchera
-  # au même endroit que toi, et ce n'est jamais le même selon les projets.
+  # 🔴 ET IL Y A UNE CLÉ POUR LA PORTER (467) :
+  #   androidScanBuildCmd: flutter build apk --release --obfuscate --split-debug-info=build/sym
+  #   iosScanBuildCmd:     flutter build ipa --release --flavor prod
+  # Renseignée, elle est rendue TELLE QUELLE par `releaseBuildCmd`, donc c'est
+  # elle que le harnais conseille quand une dimension réclame la publication.
+  # Vide, il DÉRIVE la commande de debug ci-dessous en échangeant le mode — ce
+  # qui garde ton ABI, ton flavor et tes `--dart-define`, mais **ne peut pas
+  # inventer** `--obfuscate` ni `--split-debug-info`, qui ne figurent dans aucune
+  # commande de debug. D'où un `--release` nu, un binaire non obfusqué, et un
+  # `major` qui décrit LA COMMANDE et non l'application.
+  #
+  # ⚠️ Deux runs s'y sont arrêtés avant qu'elle existe : l'un a trouvé la commande
+  # dans un `SENTRY.md §7` et n'a pas su où la reporter ; l'autre a créé cette
+  # clé, mesuré qu'aucun script ne la lisait, et l'a RETIRÉE — il avait raison à
+  # l'époque, une clé que rien ne lit se relit comme un geste outillé alors qu'il
+  # ne l'est pas (point 11). Elle a désormais un lecteur.
+  #
+  # Note aussi sa SOURCE juste au-dessus, en commentaire, sous cette forme :
+  #     # construit par : <commande>  (source : <fichier §>)
+  # La clé porte la commande, elle ne porte pas d'où elle vient — et sans ça, le
+  # suivant la cherchera au même endroit que toi, qui n'est jamais le même selon
+  # les projets.
   # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.
   # ⇒ DEMANDE-LE AU DISQUE plutôt que de le deviner, c'est le seul geste sûr :
   #     find build/ios -name Runner.app -maxdepth 2

@@ -9975,15 +9975,33 @@ test('la commande de release a une PLACE où être notée, pas seulement une con
     + 'et c\'est exactement ce que deux runs ont fait');
   assert.match(bloc, /source/i,
     'la SOURCE n\'est plus demandée — sans elle le suivant cherchera au même endroit que toi');
-  // ⚠️ L'autre moitié : surtout PAS une clé. Un run l'a créée puis retirée en
-  // mesurant qu'aucun script ne la lit, et il avait raison.
+  // ⚠️ L'autre moitié : une clé est permise, une clé MORTE ne l'est pas. Un run
+  // l'avait créée puis retirée en mesurant qu'aucun script ne la lisait, et il
+  // avait raison à l'époque ; le 467 la rétablit AVEC son lecteur, ce qui est
+  // précisément ce qui manquait.
+  // ⚠️ Le motif d'origine ne voyait que `releaseBuildCmd`/`scanBuildCmd` nus : il
+  // était donc aveugle à `androidScanBuildCmd`, c'est-à-dire à la seule clé que
+  // ce dépôt ait jamais déclarée. Un préfixe de plateforme est admis désormais.
   const scripts = ['config.mjs', 'sec.mjs', 'perf.mjs'].map((f) => readFileSync(join(RACINE,
     `plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/${f}`), 'utf8')).join('\n');
-  const declaree = /^\s*(release|scan)BuildCmd\s*:/m.test(yaml);
-  const lue = /(release|scan)BuildCmd/.test(scripts.replace(/releaseBuildCmd\(/g, ''));
-  assert.ok(!declaree || lue,
-    'le gabarit déclare une clé de commande de release que rien ne lit : une clé morte se relit '
-    + 'comme un geste outillé alors qu\'il ne l\'est pas');
+  const cles = [...yaml.matchAll(/^[#\s]*(\w*(?:[Rr]elease|[Ss]can)BuildCmd)\s*:/gm)].map((m) => m[1]);
+  const mortes = [...new Set(cles)].filter((c) => !scripts.replace(/releaseBuildCmd\(/g, '').includes(c));
+  assert.deepEqual(mortes, [],
+    `le gabarit déclare ${mortes.join(', ')} et aucun script ne la lit : une clé morte se relit `
+    + "comme un geste outillé alors qu'il ne l'est pas (point 11)");
+  // Et l'autre bord : si la clé est là, elle doit PRIMER sur la dérivation,
+  // sinon elle est lue et sans effet — pire qu'absente.
+  if (cles.includes('androidScanBuildCmd')) {
+    assert.equal(
+      releaseBuildCmd({ build: {
+        androidBuildCmd: 'flutter build apk --debug',
+        androidScanBuildCmd: 'flutter build apk --release --obfuscate --split-debug-info=build/sym',
+      } }, false),
+      'flutter build apk --release --obfuscate --split-debug-info=build/sym',
+      'la commande de publication déclarée ne prime pas sur la dérivation : or la dérivation part '
+      + "d'un build de DEBUG, donc elle ne peut PAS inventer `--obfuscate` — d'où un `--release` nu, "
+      + 'un binaire non obfusqué, et un `major` qui décrit la commande et non l\'application (467)');
+  }
 });
 
 test('le skill dit quoi FAIRE d\'un parcours à usage unique, et pas seulement de le demander (373)', () => {

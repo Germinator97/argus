@@ -1899,6 +1899,21 @@ export function projectBuildCmd(config, platform) {
 export function releaseBuildCmd(config, pinned = usesFvm(), platform = '') {
   const cible = platform || platformFor(config);
   const repli = cible === 'ios' ? 'flutter build ios --release' : 'flutter build apk --release';
+
+  // 🔴 LA COMMANDE DÉCLARÉE PRIME, PARCE QUE LA DÉRIVATION NE PEUT PAS L'INVENTER
+  // (467). Ce qui suit dérive de la commande de DEBUG en échangeant le mode —
+  // or `--obfuscate` et `--split-debug-info` ne figurent dans aucune commande de
+  // debug. Le conseil rendu était donc un `--release` nu, qui produit un binaire
+  // non obfusqué, donc un `major` décrivant NOTRE commande et pas l'application.
+  // Vécu deux fois : un run a trouvé la vraie commande dans un `SENTRY.md §7`
+  // et n'avait aucun endroit où la mettre ; un autre a créé la clé, constaté que
+  // rien ne la lisait, et l'a retirée — il avait raison à l'époque. Elle a
+  // désormais un LECTEUR, ce qui est exactement ce qui manquait.
+  const declaree = String((cible === 'ios'
+    ? config?.build?.iosScanBuildCmd
+    : config?.build?.androidScanBuildCmd) ?? '').trim();
+  if (declaree) return flutterCommandIn(declaree, pinned);
+
   const derive = projectBuildCmd(config, cible)
     .replace(/--(debug|profile)\b/g, '--release')
     .replace(/\s--simulator\b/g, '');
