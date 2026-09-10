@@ -8459,3 +8459,38 @@ call-site chez le projet, le site qui transmet chez le voisin — et exige les
 deux sens : le nom trouvé quand le voisin est là, **rien** quand on le retire.
 Relire la prose n'aurait rien dit : le défaut n'est pas dans ce que le §2b
 affirme, il est dans les racines que sa ligne `find` énumère.
+
+### 473. L'indice « sous le pli » prescrivait un geste déjà fait
+
+**Fermé le 10/09/2026**, rapporté par le **run 72** (Android) — au SECOND passage
+d'`argus-anchors`, sur les deux mêmes ancres que le premier.
+
+Une ancre déclarée à la fois dans `commands` et dans `commandsAfterScroll` fait
+échouer le premier test : elle n'est pas au gabarit de référence. L'indice
+l'envoyait alors vers `commandsAfterScroll` — **où elle était déjà**. Le message
+est techniquement vrai (« elle existe, mais plus bas ») et sa prescription est
+inapplicable, ce qui est la pire des deux : le lecteur refait le geste, échoue,
+et n'a rien appris.
+
+📌 **La cause tient en une phrase : « déplacer » est DEUX gestes, et on n'en
+fait qu'un.** L'agent a ajouté à la seconde liste sans retirer de la première.
+Rien ne détectait l'intersection : le contrôle d'unicité du harnais ne porte que
+sur les ancres de **racine**, et son commentaire autorise explicitement la
+répétition des ancres de commande (« lignes de liste, bouton présent dans deux
+états ») — ce qui est juste pour deux écrans, et faux pour deux listes du même
+écran, qui s'excluent.
+
+Le diagnostic distingue désormais les deux cas et nomme le geste manquant :
+*RETIRE-la d'ici ; l'ajouter ne suffisait pas.*
+
+⚠️ **Le paramètre qui porte la liste cible est REQUIS, pas optionnel.** Un
+paramètre facultatif aurait laissé un site d'appel non câblé compiler et
+retomber en silence sur l'ancien message — exactement le mode de panne du 350.
+Requis, le compilateur nomme les deux sites.
+
+Le garde tient trois choses, et c'est la deuxième qu'on oublie : que la branche
+existe, qu'elle soit **atteinte avant** le message qu'elle remplace (placée
+après, elle est morte et un garde de texte reste vert — le défaut du 431), et
+que chaque site d'appel passe la liste **qui correspond à son champ** — un site
+qui annonce `displaysAfterScroll:` en passant `commandsAfterScroll` est câblé et
+faux, il chercherait le doublon dans la mauvaise liste.
