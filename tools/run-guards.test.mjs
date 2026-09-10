@@ -960,7 +960,12 @@ test('l\'indice « sous le pli » distingue une ancre déclarée DEUX FOIS (473)
   // ⚠️ LA POSITION, pas la présence. Placée APRÈS le `return` du message
   // ordinaire, la branche est morte et le garde de texte reste vert — c'est le
   // défaut du 431, appliqué à un diagnostic au lieu d'une mesure.
-  const iBranche = harnais.indexOf('listeCible.contains(ancre)');
+  // ⚠️ LA CONDITION ENTIÈRE, pas le nom qu'elle porte. `indexOf('listeCible
+  // .contains(ancre)')` reste vrai sur `if (false && listeCible.contains(ancre))`
+  // — la branche est là, elle ne décide plus, et le garde ne voit rien. La
+  // mutation l'a dit le jour même : elle faisait tomber un AUTRE garde, celui
+  // des motifs inertes, pendant que celui-ci restait vert sur son sujet.
+  const iBranche = harnais.search(/if \(listeCible\.contains\(ancre\)\)/);
   assert.ok(iBranche > 0,
     'plus aucune détection du doublon dans argusFoldHint — si la fonction a été '
     + 'réécrite, mets ce motif à jour ; sinon ce garde ne garde plus rien');
