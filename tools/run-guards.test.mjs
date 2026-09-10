@@ -933,6 +933,47 @@ test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', (
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── L'avertissement de locale écarte-t-il le faux remède ? ────────────────
+//
+// Il nomme le bon depuis le 466 : régler la langue de l'appareil. Ça n'a pas
+// suffi. Les DEUX runs d'une paire de confirmation ont buté ici, et l'un a fait
+// taire la ligne en DÉCLARANT la locale que l'appareil portait déjà — il l'a
+// écrit : « pour ne pas produire le finding ». Le geste est rationnel, plus
+// court que le bon, et il ne règle rien : il retire le signal en laissant la
+// mesure où elle était.
+//
+// ⚠️ Ce garde APPELLE la fonction et lit ce qu'elle rend. Un garde de texte
+// serait satisfait par le commentaire qui explique le piège, deux lignes plus
+// haut dans le même fichier — la première façon de naître vacant.
+test('l\'avertissement de locale écarte le faux remède, pas seulement l\'oubli (477)', () => {
+  // Le cas qui mord : locale demandée, device non démarré par nous, appareil sur
+  // une AUTRE locale — exactement la disposition des deux runs.
+  const lignes = localeWarnings('fr_FR', false, 'fr-CI');
+  assert.ok(lignes.length > 0,
+    'aucun avertissement sur une locale déclarée que rien n\'applique : si la condition a '
+    + 'changé, mets ce cas à jour ; sinon c\'est le mécanisme du 466 qui a disparu');
+
+  const texte = lignes.join('\n');
+  // 1. le BON remède, celui du 466 — sans lui, ce garde figerait un message amputé.
+  assert.match(texte, /règle la (locale|langue)/i,
+    'le bon remède a disparu du message : régler la langue de l\'appareil est ce qui '
+    + 'rend la déclaration vraie');
+  // 2. le FAUX remède, écarté NOMMÉMENT.
+  assert.match(texte, /ne fais PAS taire|ne règle rien/,
+    'le message nomme le bon remède sans écarter le mauvais — or le mauvais est plus '
+    + 'court, et deux runs indépendants l\'ont pris');
+  // 3. et la RAISON, sinon « ne fais pas ça » se discute.
+  assert.match(texte, /retire (seulement )?le signal|rend l'écart invisible/,
+    'l\'interdiction est posée sans dire ce qu\'elle coûte : un lecteur pressé la lit '
+    + 'comme une préférence de style');
+
+  // ⚠️ L'AUTRE SENS — le garde ne doit couper qu'un seul côté. Appareil déjà dans
+  // la locale demandée : aucun avertissement, donc rien à écarter.
+  assert.deepEqual(localeWarnings('fr_FR', false, 'fr-FR'), [],
+    'un appareil DÉJÀ dans la locale demandée ne doit rien recevoir — sinon la ligne '
+    + 'sort sur une configuration saine et s\'apprend à être ignorée');
+});
+
 // ── Le gabarit dit-il COMMENT sourcer, ou seulement de sourcer ? ──────────
 //
 // Le runner rattrape déjà : quand un secret déclaré arrive vide, il le nomme et

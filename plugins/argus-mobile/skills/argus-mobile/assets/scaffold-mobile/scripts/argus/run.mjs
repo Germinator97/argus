@@ -93,6 +93,16 @@ export function localeWarnings(demandee, autoStart, surDevice, platform = 'andro
       + 'la tienne et cet avertissement ne te coûte rien.',
     '  Le tell est dans ton propre verdict : des assertions dans TA langue qui passent sur '
       + 'un appareil réglé sur une AUTRE signent une application qui épingle.',
+    // 🔴 ÉCARTER LE FAUX REMÈDE, PARCE QU'IL EST LE PREMIER QU'ON TROUVE (477).
+    // Deux runs ont buté ici ; l'un a fait taire cet avertissement en DÉCLARANT
+    // la locale que l'appareil portait déjà, et l'a écrit noir sur blanc :
+    // « pour ne pas produire le finding ». Le geste est rationnel et il ne règle
+    // rien — il retire le signal en laissant la mesure exactement où elle était.
+    // Nommer le bon remède ne suffit pas quand le mauvais est plus court.
+    '  🔴 Et ne fais PAS taire cette ligne en déclarant la locale que l\'appareil porte '
+      + 'déjà : ça ne règle rien, ça retire seulement le signal. La clé dit ce que tu VEUX '
+      + 'mesurer, l\'appareil dit ce qui SERA mesuré — les rendre égaux ne les réconcilie '
+      + 'pas, ça rend l\'écart invisible.',
   ];
 }
 
