@@ -8526,3 +8526,34 @@ Le garde borne sa fenêtre par la **structure** (jusqu'au prochain titre) et non
 par un index calculé : un `indexOf` qui échoue rend `-1`, et le `slice` retombe
 alors sur le fichier entier — le motif se trouverait n'importe où. Ce piège-là a
 été payé deux fois dans ce dépôt.
+
+### 475. Le workflow posé sur un projet qui n'est pas sur GitHub
+
+**Fermé le 10/09/2026**, rapporté par le **run 72** (Android) — qui l'a tranché
+seul, et bien : il a laissé le fichier et l'a écrit dans son compte rendu.
+
+L'installeur pose `.github/workflows/argus-mobile.yml` **sans jamais regarder
+quel CI le projet utilise**. Mesuré : le skill dit « github » **27 fois** et
+« gitlab » **zéro**. Le terrain porte un `.gitlab-ci.yml` de 20 Ko, **suivi par
+git** — donc celui du projet, pas un résidu — et les 28 Ko de workflow posés à
+côté ne s'exécuteront nulle part.
+
+📌 **Le symptôme est une ABSENCE**, donc le plus silencieux qui soit : rien ne
+rougit, aucune erreur n'est levée, et la garde n'existe que sur le disque. C'est
+la famille de défauts que ce chantier traque, appliquée à sa propre livraison.
+
+**Ce n'est pas à l'installeur de décider** : un projet peut vouloir les deux, et
+retirer le fichier lui ôterait la référence de ce qu'il faut lancer. Il refuse
+seulement de laisser croire que la garde est en place — il nomme le fichier qui
+l'a déclenché, pour que le verdict soit vérifiable plutôt que cru.
+
+⚠️ **Et le relevé se prend AVANT la boucle de copie**, sinon le contrôle est
+vacant le jour de son écriture : c'est cette même boucle qui crée
+`.github/workflows/`, donc « ce projet avait-il des workflows ? » vaudrait
+« oui » à jamais. C'est exactement le défaut du 431, et aucune relecture ne le
+voit — seule l'exécution le dit.
+
+Le garde LANCE l'installeur sur trois fixtures plutôt que de relire son texte :
+GitLab seul (l'avertissement doit sortir **et nommer le fichier**), les deux CI
+qui coexistent (il doit se taire — un avertissement qui crie sur un choix
+délibéré s'apprend à ignorer), et aucun autre CI (rien à dire).
