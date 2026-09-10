@@ -1187,7 +1187,7 @@ un champ à un seul vocabulaire ; moi j'ai inscrit « le voisin du 92 : `os` n'a
 rien reçu » après avoir lu le commentaire du YAML — qui dit pourtant
 « `model`/`os` → DEUX consommateurs » — **sans ouvrir `ciEmulator`**. Reproduire
 n'est pas lire le fichier voisin : c'est exécuter la fonction. Le commit qui a
-inscrit ce point (`1a8d58b`) porte donc un résumé faux ; il reste tel quel, c'est
+inscrit ce point (`2312392`) porte donc un résumé faux ; il reste tel quel, c'est
 ici que la vérité vit.
 
 ### 103. ✅ Corrigé le 23/08/2026 — Deux identifiants qui tombent dans le même nœud fusionné : le second disparaît, en silence
@@ -1532,7 +1532,7 @@ contrôle — « perf.mjs tourne-t-il encore sans device ? » — a rendu « ✖
 device Android connecté » que j'ai lu comme une **sortie propre**. Le script
 mourait avant d'atteindre le code que je venais de supprimer.
 
-**Corrigé** : les deux fonctions restaurées à l'octet près depuis `1695fc5^`, et
+**Corrigé** : les deux fonctions restaurées à l'octet près depuis `e52e615^`, et
 le banc gagne une étape qui **déroule** `perf.mjs` et `a11y.mjs` sur leur chemin
 nominal derrière un faux `adb`, en échouant sur `ReferenceError`. Mutation
 vérifiée : le défaut réintroduit fait tomber le banc en nommant la fonction.
@@ -5303,7 +5303,7 @@ des informations exactes au mauvais endroit.
 🔴 **UN CONSTAT SUR SEPT ÉTAIT DÉMENTI, ET IL ACCUSAIT UN CORRECTIF DÉJÀ ÉCRIT.**
 Le **418** reprochait au §3g d'envoyer dériver `startTimeoutMs` de
 `firstLaunchMs` sans dire que la grandeur n'existe pas sur iOS. Mesuré sur le
-SKILL **tel que le run l'a lu** (`062812a`, deux heures avant lui) : la
+SKILL **tel que le run l'a lu** (`cca3076`, deux heures avant lui) : la
 prescription portait déjà « Sur Android », le bloc « SUR iOS, `firstLaunchMs`
 N'EXISTE PAS » était là depuis le 01/09 (279), et `startupMarginWarning` imprimait
 déjà la dérivation iOS — le tout gardé dans les deux sens. Le run a même repris
@@ -6450,7 +6450,7 @@ dossier** : deux lectures sont plausibles, une seule existe.
 ### 418. Le §3g fait dériver un seuil d'une mesure qui n'existe pas sur iOS
 
 🔴 **DÉMENTI le 08/09/2026 — le constat accusait un correctif déjà écrit.**
-Mesuré sur le SKILL tel que le run 59 l'a lu (`062812a`) : la prescription portait
+Mesuré sur le SKILL tel que le run 59 l'a lu (`cca3076`) : la prescription portait
 déjà « **Sur Android**, dérive-le de `firstLaunchMs` », le bloc « SUR iOS,
 `firstLaunchMs` N'EXISTE PAS » y était depuis le 01/09 (**279**), et
 `startupMarginWarning` imprimait déjà, sur iOS, « dérive-le de la pire attente
