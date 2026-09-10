@@ -7604,6 +7604,72 @@ commit initial existe en distant.
 fuit.* Un garde qui balaie tout le fichier vaut mieux que l'attention de qui
 l'écrit — surtout quand ce qu'il écrit est une leçon sur les fuites.
 
+## Runs 70 et 71 — la seconde paire de confirmation
+
+Deux runs en aveugle joués les 09 et 10/09/2026, un par plateforme et un par
+terrain, pour confirmer le skill après la passe 440-457. La sortie reste
+**fermée** : ils rendent quatorze points, dont un que **deux runs indépendants
+avaient déjà signalé sans qu'il soit jamais ouvert**.
+
+| le run | plateforme | terrain | ce qu'il a rendu |
+|---|---|---|---|
+| **run 70** | iOS | sans API | 0 ancre trouvée → **48 commandes posées** · 31/31 puis 364/364 · **6/6 flows, 4/4 comparaisons visuelles** · 9/9 écrans · gate `pass` · ~32 min de device sur 60 · **6 points** |
+| **run 71** | Android | avec API | 18/34 commandes déjà posées → **43/43 ancres** · 510/0 gardes · **793 tests** · 6/6 flows · release obfusquée 47,8 Mo · gate `fail` · ~12 min 30 · **7 points** |
+
+📌 **Ce que les deux ont fait de mieux que leurs prédécesseurs, et qui n'est pas
+un point à corriger** : le 70 a **refusé deux dettes** parce qu'elles venaient de
+son propre montage (relevé passé de 64 à 62, prouvé) ; le 71 a **refusé de
+corriger l'app** sur un échec de flow, le code montrant que le verrou après
+`killApp` était délibéré — il a corrigé l'assertion — et il a **démonté deux de
+ses propres findings**. `argus-reach` a par ailleurs prédit une contradiction
+**avant** qu'elle coûte une référence fausse : le seul garde du chantier à voir
+un défaut d'avance.
+
+### 458. Le compteur d'ancres était aveugle au CAS DOMINANT
+
+**Fermé le 10/09/2026**, rapporté par le run 71 — et déjà par le **run 67, quatre
+runs plus tôt**, sans jamais avoir été ouvert. Les trois mutations font tomber le
+garde.
+
+Les deux commandes du §2b ne comptaient que les ancres écrites **en clair**
+(`Semantics(identifier: 'x')`). Sur un projet mature, la plupart passent par un
+**paramètre de fabrique** (`MonBouton(semanticIdentifier: 'x')`) — ce que le §2c
+appelle lui-même, deux cents lignes plus bas, *« LE CAS DOMINANT SUR UN PROJET
+MATURE »*.
+
+📌 **Le skill RÉCLAMAIT déjà ce chiffre.** Le gabarit du rapport d'instrumentation
+porte la ligne « dont partagées : `<C>` composant(s) couvrant `<S>` call-sites,
+paramètre(s) `<NOMS>` » — un nombre qu'aucune de ses commandes n'a jamais su
+produire. Ce n'est donc pas un oubli de mesure, c'est une **demande sans
+instrument**, ce qui est pire : elle a l'air couverte.
+
+**Reproduit par exécution** sur un projet réel : la commande prescrite rend
+**42** là où il y en a **60** — 18 invisibles, soit **30 % du relevé qui ouvre le
+rapport**, et le §2b écrit lui-même que ce chiffre « donne le ton de tout le
+reste ».
+
+🔴 **ET LA MESURE A TROUVÉ DEUX FORMES QUE LES RUNS N'AVAIENT PAS ISOLÉES** — la
+raison pour laquelle le remède ne fige aucun motif de plus :
+- `identifier: cond ? 'a' : 'b'` porte **deux** ancres et n'en fait compter
+  **aucune** : la valeur recollée vaut `identifier: cond`, sans apostrophe ;
+- la commande des **gabarits** rendait `0` sur un projet qui en porte un, son
+  recollage ne franchissant qu'**UN** repli — or `dart format` en produit trois
+  sur une expression conditionnelle.
+
+Le remède ne cite donc aucun nom : **(a) découvre** quels identifiants alimentent
+un `identifier:` — conduits et expressions ensemble —, et sa sortie alimente le
+`<NOM>` de **(b)**, qui compte les call-sites. Un nom de paramètre gravé serait
+faux au projet suivant ; c'est la troisième mutation qui garde cette portabilité,
+et elle ne casse aucun compte — seulement la promesse.
+
+📌 **Et le compte qui fait foi est dit** : `make argus-anchors`, qui les exerce.
+Ces commandes servent à l'**état des lieux**, avant que le harnais existe.
+
+📌 **Dette du 452 payée au passage** : le commentaire annonçait encore « le
+filtre `///` est indispensable » alors que la commande était passée à `//` neuf
+runs plus tôt. Une ligne de commentaire qui contredit la commande qu'elle
+surmonte — le lecteur croit le commentaire.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire

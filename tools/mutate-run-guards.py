@@ -1647,6 +1647,20 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 458 — les deux commandes s'éprouvent SÉPARÉMENT, parce qu'elles se
+    # trompent différemment : (a) cesse de découvrir, (b) cesse de compter.
+    ("skill", "458 · (a) fige le nom du paramètre au lieu de le découvrir",
+     '  | grep -oE "identifier: *[a-zA-Z_][a-zA-Z0-9_.]*" | sort | uniq -c',
+     '  | grep -oE "identifier: *semanticIdentifier" | sort | uniq -c'),
+    ("skill", "458 · (b) reperd ce que le formateur replie",
+     '  | perl -0777 -pe \'s/<NOM>:\\s*\\n\\s*/<NOM>: /g\' | grep -c "<NOM>: *\'"',
+     '  | grep -c "<NOM>: *\'"'),
+    # ⚠️ Celle-ci ne casse aucun COMPTE : la commande figée rend encore 3 sur la
+    # fixture. Ce qu'elle casse est la portabilité — un nom de paramètre gravé
+    # est faux au projet suivant, et seul le gabarit `<NOM>` le dit.
+    ("skill", "458 · (b) grave un nom de paramètre dans la commande",
+     '\'s/<NOM>:\\s*\\n\\s*/<NOM>: /g\' | grep -c "<NOM>: *\'"',
+     '\'s/semanticIdentifier:\\s*\\n\\s*/semanticIdentifier: /g\' | grep -c "semanticIdentifier: *\'"'),
     ("skill", "457 · le §5 reperd le canal des artefacts par défaut",
      "Maestro écrit dans `--test-output-dir` un `commands.json` par\n  flow, qui contient",
      "Maestro écrit un journal par\n  flow, qui contient"),
