@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 462 — la phrase retirée, c'est-à-dire le skill d'avant. La RÈGLE, elle,
+    # est mutée par le 320 : la muter ici serait le doublon que ce point évite.
+    ("skill", "462 · le skill retait la règle devices[]/platforms[]",
+     "🚨 **ET `devices[]` DOIT SUIVRE `platforms[]` — l'outil le REFUSE, le skill ne le\ndisait pas** (462).",
+     "🚨 **Le périmètre est assumé.**"),
+    ("skill", "462 · le skill ne dit plus ce que fait un retrait partiel",
+     "item : elles **fusionnent silencieusement dans l'entrée suivante** au lieu de\nlever, et tu obtiens un `ios-sim` qui porte `model: pixel_6`.",
+     "item.",),
     # 461 — le second passage retiré, c'est-à-dire la séquence d'avant.
     ("skill", "461 · l'étage 1 n'est plus rafraîchi avant le rapport",
      "make argus-guards      # ⚠️ ET OUI, UNE SECONDE FOIS — voir plus bas dans ce §3g\n",

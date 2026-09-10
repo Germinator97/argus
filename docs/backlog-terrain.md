@@ -7785,6 +7785,37 @@ diagnostic du runner à moins de 40 lignes de la séquence. Il avait raison :
 c'est là qu'on lance `argus-run`, donc là qu'il faut savoir que le runner donne
 l'ordre de dépannage. L'encadré est passé après lui.
 
+### 462. L'outil avait raison, le skill ne le disait pas
+
+**Fermé le 10/09/2026**, rapporté par le run 70 (point 3). Les deux mutations
+font tomber le garde.
+
+`validateConfig` refuse une entrée `devices[]` dont la `platform` n'est pas
+déclarée dans `platforms[]` — à raison : c'est le reste d'un bloc d'exemple. Le
+gabarit livre en effet Android **actif** et iOS **en commentaire**, si bien que
+changer de plateforme demande de décommenter l'un *et de retirer l'autre en
+entier*. Le SKILL ne le disait **nulle part** : on écrit donc une configuration
+qu'il autorise, et toutes les commandes s'arrêtent.
+
+📌 **LA RÈGLE ÉTAIT DÉJÀ GARDÉE EN ENTIER** — point 320, les deux sens plus le cas
+toléré (une entrée sans `platform`, que les installations d'avant n'ont pas).
+J'ai commencé par écrire un garde qui la redoublait, et c'est **son exécution**
+qui a fait apparaître l'existant : le doublon complet du 450, évité de justesse.
+Le garde livré ne garde donc que la moitié neuve — la phrase — tout en vérifiant
+qu'elle reste **adossée à un contrôle qui existe**, faute de quoi elle
+décrirait un refus disparu.
+
+📌 **Et il dit ce qu'un retrait PARTIEL produit** : les clés laissées derrière
+(`avd`, `model: pixel_6`, `os: android-33`) sont à l'indentation d'un item, donc
+elles **fusionnent dans l'entrée suivante** au lieu de lever. On obtient un
+`ios-sim` qui porte `model: pixel_6`, et le rapport nomme un appareil qui
+n'existe pas.
+
+⚠️ **Reproduit en deux temps, et le premier a démenti la lecture évidente** : le
+bloc iOS du gabarit, décommenté *tel quel*, **parse sans erreur** — le refus ne
+vient pas du parseur (comme au 459) mais de la validation. Deux mécanismes
+voisins qu'un même symptôme aurait confondus.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
