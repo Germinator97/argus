@@ -933,6 +933,64 @@ test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', (
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── L'indice « sous le pli » nomme-t-il la BONNE cause ? ───────────────────
+//
+// Une ancre déclarée à la fois dans `commands` et dans `commandsAfterScroll`
+// fait échouer le premier test — elle n'est pas au gabarit de référence — et
+// l'indice l'envoyait alors vers la seconde liste, où elle était DÉJÀ. Le
+// message prescrivait donc un geste déjà fait, parce que « déplacer » est deux
+// gestes et qu'on n'en fait qu'un. Un run y est tombé au SECOND passage, sur
+// les deux mêmes ancres, sans rien qui le distingue du cas ordinaire.
+//
+// Trois choses à garder, et la deuxième est celle qu'on oublie : que la branche
+// existe, qu'elle soit ATTEINTE avant le message qu'elle remplace, et que les
+// deux sites d'appel lui passent la liste QUI CORRESPOND à leur champ.
+test('l\'indice « sous le pli » distingue une ancre déclarée DEUX FOIS (473)', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus');
+  const harnais = readFileSync(join(base, 'argus_harness.dart'), 'utf8');
+  const anchors = readFileSync(join(base, 'anchors_test.dart'), 'utf8');
+
+  // Le paramètre est REQUIS : optionnel, un site non câblé compilerait et
+  // retomberait en silence sur l'ancien message — le mode de panne que le
+  // point 350 décrit, et qu'aucun typecheck ne voit sur un paramètre facultatif.
+  assert.match(harnais, /required List<String> listeCible/,
+    'le paramètre est devenu optionnel : un appelant qui l\'oublie compile, et le '
+    + 'diagnostic redevient celui qui prescrit un geste déjà fait');
+
+  // ⚠️ LA POSITION, pas la présence. Placée APRÈS le `return` du message
+  // ordinaire, la branche est morte et le garde de texte reste vert — c'est le
+  // défaut du 431, appliqué à un diagnostic au lieu d'une mesure.
+  const iBranche = harnais.indexOf('listeCible.contains(ancre)');
+  assert.ok(iBranche > 0,
+    'plus aucune détection du doublon dans argusFoldHint — si la fonction a été '
+    + 'réécrite, mets ce motif à jour ; sinon ce garde ne garde plus rien');
+  const iOrdinaire = harnais.indexOf('ELLE EXISTE, mais plus bas');
+  assert.ok(iOrdinaire > 0, 'le message ordinaire a disparu : ce garde ne compare plus rien');
+  assert.ok(iBranche < iOrdinaire,
+    'la détection du doublon est placée APRÈS le message qu\'elle doit remplacer : '
+    + 'elle ne sera jamais atteinte, et rien ne le dira');
+
+  // ── Le CÂBLAGE, par ÉGALITÉ : autant de listes passées que d'appels.
+  const appels = (anchors.match(/argusFoldHint\(/g) ?? []).length;
+  assert.ok(appels > 0,
+    'aucun appel à argusFoldHint dans anchors_test.dart — motif à mettre à jour');
+  const cables = (anchors.match(/listeCible:/g) ?? []).length;
+  assert.equal(cables, appels,
+    `${cables} liste(s) passée(s) pour ${appels} appel(s) : un site d'appel ne reçoit pas la `
+    + 'liste cible, donc son diagnostic ne peut pas voir le doublon');
+
+  // ── Et la PARITÉ champ ↔ liste : un site qui annonce `displaysAfterScroll:`
+  // en passant `commandsAfterScroll` est câblé, et faux. Le doublon serait
+  // cherché dans la mauvaise liste, donc jamais trouvé.
+  const paires = [...anchors.matchAll(/champ:\s*'(\w+):',\s*\n\s*listeCible:\s*screen\.(\w+),/g)];
+  assert.equal(paires.length, appels,
+    `${paires.length} paire(s) champ/liste lisibles pour ${appels} appel(s) : si la forme `
+    + 'd\'appel a changé, mets ce motif à jour — sinon ce contrôle ne voit plus la parité');
+  const depareillees = paires.filter((m) => m[1] !== m[2]).map((m) => `${m[1]} ↔ ${m[2]}`);
+  assert.deepEqual(depareillees, [],
+    `un site cherche le doublon dans une autre liste que celle qu'il nomme : ${JSON.stringify(depareillees)}`);
+});
+
 // ── La taille pèse-t-elle ce dont elle parle ? ──────────────────────────────
 //
 // `build.android` est le binaire que le runner installe : un debug presque

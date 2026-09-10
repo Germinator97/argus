@@ -171,6 +171,7 @@ void main() {
                 screen,
                 commande,
                 champ: 'commandsAfterScroll:',
+                listeCible: screen.commandsAfterScroll,
               )
             : '';
 
@@ -299,6 +300,7 @@ void main() {
                   screen,
                   affichage,
                   champ: 'displaysAfterScroll:',
+                  listeCible: screen.displaysAfterScroll,
                 )
               : '';
 

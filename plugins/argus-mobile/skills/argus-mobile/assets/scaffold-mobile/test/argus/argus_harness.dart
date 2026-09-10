@@ -723,6 +723,7 @@ Future<String> argusFoldHint(
   ArgusScreen screen,
   String ancre, {
   required String champ,
+  required List<String> listeCible,
 }) async {
   if (argusViewports.length < 2) return '';
 
@@ -745,6 +746,23 @@ Future<String> argusFoldHint(
   argusDrainMountException(tester);
 
   if (!existeAilleurs) return '';
+
+  // 🔴 DÉCLARÉE DANS LES DEUX LISTES — point 473. Sans ce cas, le message qui
+  // suit prescrit un geste DÉJÀ FAIT : il dit « déplace-la » à qui vient de la
+  // déplacer, parce que « ajouter » et « retirer » sont deux gestes et qu'on
+  // n'en fait qu'un. Un run y est tombé au SECOND passage, sur les deux mêmes
+  // ancres, et rien ne l'a distingué du cas ordinaire : les deux listes se
+  // contredisent, le test de la première échoue, l'indice l'envoie vers la
+  // seconde où l'ancre est déjà. Un diagnostic qui nomme la mauvaise cause
+  // coûte un aller-retour à chaque projet, et il a l'air de fonctionner.
+  if (listeCible.contains(ancre)) {
+    return '\n\n🔴 ELLE EST DÉJÀ DÉCLARÉE DANS `$champ` — et elle est ENCORE '
+        'dans la liste qui échoue ici. Les deux s\'excluent : celle-ci exige '
+        'l\'ancre au gabarit de référence, l\'autre au plus grand. RETIRE-la '
+        'd\'ici ; l\'ajouter à `$champ` ne suffisait pas, et c\'est la moitié '
+        'du geste qu\'on oublie.';
+  }
+
   return '\n\n⚠️ ELLE EXISTE, mais plus bas que ce gabarit ne le montre : '
       'présente et construite sur ${argusViewports.last.name}, absente sur '
       '${argusViewports.first.name}. Ce n\'est PAS un défaut d\'instrumentation '
