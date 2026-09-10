@@ -7843,6 +7843,41 @@ effacerait des verdicts qu'elle ne rejoue pas — le défaut inverse, et il dét
 au lieu de mentir. La troisième mutation garde l'autre bord : un filtre élargi à
 `*.junit.xml` emporterait le verdict fonctionnel du run en cours.
 
+### 464. Une clé qu'on ne peut pas deviner n'existe pas pour l'utilisateur
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point b). Les deux mutations
+font tomber le garde.
+
+`configNonEmbarquee` lit une clé `motif:` que la doc utilisateur ne mentionnait
+**nulle part**. C'est pourtant la seule qui exprime « câblé par CONVENTION » : un
+fichier que **rien ne nomme**, et qu'un plugin trouve seul. Sans elle, la seule
+question posable est « le fichier est-il nommé dans la déclaration ? », dont la
+réponse est **NON sur un projet parfaitement correct** — donc un `major` que
+personne ne peut corriger.
+
+📌 Le skill s'en servait déjà : la règle `firebase-android` livrée porte
+`motif: 'google-services'`, le nom du plugin Gradle qui lit le fichier. Le
+mécanisme était juste ; seule sa documentation manquait.
+
+📌 **LE GARDE DÉRIVE LA LISTE DES CLÉS DU CODE**, il ne l'énumère pas — une clé
+ajoutée demain sera exigée dans la doc sans qu'on y pense. C'est ce qui a fait
+apparaître **`quoi.nom`** en plus de `motif` : la forme qui retrouve un fichier
+qu'un source set de flavor a déplacé, et que le run n'avait pas vue non plus.
+*La direction du raisonnement est tout : large moins les exceptions, jamais
+étroit plus ce qu'on a vu.*
+
+🔴 **ET LE GARDE A ÉTÉ VACANT DEUX FOIS, POUR DEUX RAISONS DIFFÉRENTES.** Sa
+première version cherchait la clé n'importe où dans le bloc : « le NOM du
+fichier » satisfaisait `nom`, et le paragraphe qui **explique** `motif:`
+satisfaisait `motif`. Il mesurait donc la **mention**, jamais l'exemple — et il
+avait raison sur le fond, ce qui rend le vert particulièrement trompeur. Le
+critère est devenu structurel (une ligne dont le contenu commence par `<clé>:`),
+puis il a fallu tolérer le tiret d'item, `- id:` étant une clé aussi.
+
+📌 **Et écrire les formes a fait rougir le garde 256** : mes exemples
+`{ sous: …, nom: … }` sont des **maps en flow**, que le parseur refuse — le
+cousin exact du 459, attrapé cette fois par un garde qui existait déjà.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire

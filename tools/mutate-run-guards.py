@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 464 — la clé retirée de la doc, c'est-à-dire le gabarit d'avant. Le garde
+    # dérive du CODE, donc il rougit sans qu'on ait touché au contrôle.
+    ("yamlconf", "464 · la doc reperd la clé du câblage par convention",
+     "#       motif: mon_plugin                   # FACULTATIF — voir juste en dessous\n",
+     ""),
+    ("yamlconf", "464 · la doc reperd la forme qui cherche un NOM sous un dossier",
+     "#       nom: service.json\n",
+     ""),
     # 463 — trois barreaux, trois mutations : la décision, le câblage, la place.
     ("run", "463 · le nettoyage des orphelins ne filtre plus rien",
      "    .filter((n) => !attendus.has(n));",
