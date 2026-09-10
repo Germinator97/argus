@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 469 — la POSITION est la variable : déplacer l'annonce après le lancement
+    # la rend inutile sans retirer une ligne, ce qu'un garde de texte ne voit pas.
+    ("run", "469 · le runner retait le silence qui suit",
+     "  if (!dryRun && !verbose) {\n    log('  ⏳ ce flow ne rendra plus une ligne avant sa fin (sortie capturée) — '\n      + 'compte quelques minutes. N\\'écris pas de boucle de sondage : ajoute '\n      + 'ARGS=\"--verbose\" pour suivre Maestro en direct.');\n  }\n",
+     ""),
+    ("skill", "469 · le skill reperd la consigne de ne pas sonder",
+     "🔴 **`argus-run` NE DIT RIEN PENDANT UN FLOW, ET C'EST NORMAL — n'écris pas de\nboucle de sondage** (469).",
+     "🔴 **`argus-run` prend du temps.**"),
     # 468 — deux bords : plus de commande du tout, et une commande qui reprend
     # la CLÉ (donc qui ne matche rien, donc qui rend 0 sur zéro test).
     ("harness", "468 · le message de dette reperd sa commande de rejeu",
