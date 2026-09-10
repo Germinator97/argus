@@ -8585,3 +8585,36 @@ l'un : deux endroits qui disent la même chose divergent toujours par celui qu'o
 ne mesure pas — et c'est le gabarit, puisque rien ne l'exécute. Sa contre-épreuve
 vient d'abord (le runner porte-t-il encore le remède ?), sans quoi il comparerait
 le gabarit à rien et passerait au vert.
+
+### 477. Nommer le bon remède ne suffit pas quand le mauvais est plus court
+
+**Fermé le 10/09/2026**, rapporté par les **DEUX runs** de la paire 74-75 —
+terrains différents, plateformes différentes, agents qui ne se connaissaient pas.
+*C'est le signal le plus fort qu'une paire sache donner.*
+
+Le **466** avait appris à l'avertissement de locale à dire sa condition et son
+tell, et il nomme le bon remède depuis : *« règle la langue de l'appareil avant
+le run »*. Les deux runs l'ont lu. L'un a quand même fait autre chose.
+
+🔴 **Il a fait taire la ligne en DÉCLARANT la locale que l'appareil portait
+déjà** — `fr_CI` au lieu de `fr_FR` — et il l'a écrit noir sur blanc : *« garder
+`fr_FR` décrit une intention jamais réalisée et produit le finding
+`QAM-LOCALE-INERTE` des 5 runs archivés »*. Le raisonnement est bon, le geste ne
+règle rien : **il retire le signal en laissant la mesure exactement où elle
+était**. La clé dit ce qu'on VEUT mesurer, l'appareil dit ce qui SERA mesuré ;
+les rendre égaux ne les réconcilie pas, ça rend l'écart invisible.
+
+**Mesuré avant d'écrire** : 0 occurrence d'un écart au faux remède dans le runner
+comme dans le SKILL, sur des fichiers où « locale » apparaît 56 et 2 fois —
+l'instrument mesurait.
+
+📌 **La leçon dépasse la locale** : un avertissement qui nomme le bon geste laisse
+intact tout geste plus court qui le fait taire. Et celui-là se trouve tout seul,
+parce qu'il est *rationnel* — on l'adopte en croyant nettoyer une configuration.
+Un message qui prescrit doit donc aussi **écarter**, et dire ce que le
+raccourci coûte, sinon « ne fais pas ça » se lit comme une préférence de style.
+
+Le garde **appelle** `localeWarnings` et lit ce qu'elle rend — un garde de texte
+serait satisfait par le commentaire qui explique le piège, deux lignes plus haut
+dans le même fichier. Il couvre les deux sens : la ligne sort sur l'écart, et
+**rien** ne sort quand l'appareil est déjà dans la locale demandée.
