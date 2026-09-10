@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 465 — les deux bords : plus de filtre du tout, et un filtre qui dispense
+    # tout le monde. Le second est le plus grave, donc il a sa mutation.
+    ("sec", "465 · le débogage redevient jugé comme la production",
+     "  const publiees = variantes.filter(([path]) => variantePubliee(basename(dirname(path))));\n  const findings = publiees.flatMap",
+     "  const findings = variantes.flatMap"),
+    ("sec", "465 · le filtre s'élargit et dispense les flavors publiables",
+     "  return !['debug', 'test', 'androidTest', 'testDebug', 'androidTestDebug'].includes(String(sourceSet));",
+     "  return sourceSet === 'main' || sourceSet === 'release';"),
     # 464 — la clé retirée de la doc, c'est-à-dire le gabarit d'avant. Le garde
     # dérive du CODE, donc il rougit sans qu'on ait touché au contrôle.
     ("yamlconf", "464 · la doc reperd la clé du câblage par convention",

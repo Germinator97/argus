@@ -7878,6 +7878,33 @@ puis il a fallu tolérer le tiret d'item, `- id:` étant une clé aussi.
 `{ sous: …, nom: … }` sont des **maps en flow**, que le parseur refuse — le
 cousin exact du 459, attrapé cette fois par un garde qui existait déjà.
 
+### 465. Le projet qui avait BIEN fait devait acquitter sa réussite
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point d) — qui l'a démonté
+lui-même, à l'aapt2, sur l'APK publié. Les deux mutations font tomber le garde.
+
+Confiner un `usesCleartextTraffic` au manifeste de **debug** est la bonne
+pratique : Gradle ne fusionne jamais `src/debug/` en release. Le scan le
+rapportait `critical` quand même — donc **tout projet qui a bien fait récolte un
+blocage à son premier run**, et doit acquitter ce qu'il a réussi.
+
+📌 Le coût réel n'est pas le finding, c'est ce qu'il fait faire : le run a passé
+une partie de sa passe à le réfuter (manifeste fusionné, `aapt2 dump badging`)
+pour conclure qu'il décrivait un comportement correct. *Un signal qu'on ne peut
+pas faire taire en ayant raison finit ignoré, et il emmène ses voisins* — la même
+phrase que le 461, sur une autre dimension.
+
+**Les source sets qui n'atteignent aucun binaire publié** (`debug`, `test`,
+`androidTest`) ne sont plus jugés pour les drapeaux. La liste est celle des noms
+**réservés d'Android**, jamais une devinette sur les noms du projet : tout ce
+qu'on ne connaît pas reste jugé. ⚠️ Se tromper dans ce sens coûte un faux positif
+acquittable ; dans l'autre, un trafic en clair **publié que personne ne voit**.
+
+📌 **Le garde M4 garde l'autre moitié et n'a pas bougé** : « toutes les variantes
+sont lues », `src/release/` compris. Les deux se tiennent — et la seconde
+mutation le prouve : un remède élargi en dispense laisse passer un flavor `dev`
+publiable, et c'est ce cas-là qui rougit.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
