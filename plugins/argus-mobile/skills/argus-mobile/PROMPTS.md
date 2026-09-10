@@ -161,7 +161,16 @@ AUTORISATIONS ET LIMITES
 - <les comptes de test, s'il en faut : identifiants dans $QA_USER et $QA_PASS —
   ne les écris nulle part. DIS D'OÙ ILS VIENNENT : un fichier hors dépôt à
   sourcer, un gestionnaire de secrets. Citer deux noms de variables ne suffit
-  pas — l'agent ne peut pas les inventer.>
+  pas — l'agent ne peut pas les inventer.
+  ⚠️ **Et dis COMMENT le sourcer, parce que « sourcer » ne suffit pas** (476) :
+  un fichier de lignes `CLE=valeur` nues donne des variables de SHELL, que le
+  processus fils ne voit jamais. Le runner le rattrape — il nomme les secrets
+  vides et donne le remède — mais seulement une fois la passe device lancée, et
+  celle-là est déjà payée : **98 s** sur un projet réel. Écris la forme qui
+  marche, pas le verbe :
+      set -a && source <ton fichier> && set +a
+  Sauf si ton fichier porte déjà des `export` — auquel cas dis-le, pour que
+  personne n'aille chercher pourquoi il en manquerait.>
 
 SI L'APPLICATION CONSOMME UNE API — cinq lignes, et aucune ne se déduit du dépôt
 - Vers quelle API elle doit pointer, et l'adresse EXACTE que le binaire doit

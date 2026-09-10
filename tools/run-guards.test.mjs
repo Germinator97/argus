@@ -933,6 +933,43 @@ test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', (
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Le gabarit dit-il COMMENT sourcer, ou seulement de sourcer ? ──────────
+//
+// Le runner rattrape déjà : quand un secret déclaré arrive vide, il le nomme et
+// donne la forme qui marche. Mais il ne parle qu'une fois la passe device
+// lancée, et celle-là est payée — 98 s mesurées sur un projet réel. Le gabarit,
+// lui, est lu AVANT : c'est le seul endroit où la phrase épargne le coût.
+//
+// ⚠️ Le garde porte sur l'ACCORD des deux textes, pas sur la présence dans l'un.
+// Deux endroits qui disent la même chose divergent toujours par celui qu'on ne
+// mesure pas — et c'est le gabarit, puisque rien ne l'exécute.
+test('le gabarit donne la forme qui EXPORTE, pas seulement « sourcer » (476)', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const prompts = readFileSync(join(base, 'PROMPTS.md'), 'utf8');
+  const runner = readFileSync(join(base, 'assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+
+  // ⚠️ CONTRE-ÉPREUVE D'ABORD : le runner porte-t-il encore le remède ? S'il a
+  // été réécrit, ce garde compare le gabarit à rien et passe au vert sans rien
+  // mesurer — le cas exact d'un garde dont l'attendu a disparu.
+  const formeRunner = runner.match(/set -a && source [^`'"]*&& set \+a/);
+  assert.ok(formeRunner,
+    'le runner ne donne plus la forme `set -a … set +a` : soit elle a été reformulée '
+    + '(mets ce motif à jour), soit le rattrapage a disparu et c\'est lui le défaut');
+
+  // Le gabarit doit porter la MÊME forme — pas un synonyme, pas une paraphrase.
+  assert.match(prompts, /set -a && source .*&& set \+a/,
+    'le gabarit prescrit de « sourcer » sans dire comment : un fichier de `CLE=valeur` '
+    + 'nues donne des variables de SHELL, invisibles au processus fils. Le runner le '
+    + 'rattrape, mais seulement une fois la passe device payée (98 s mesurées)');
+
+  // ⚠️ ET LA RAISON, pas seulement la recette : une commande sans son pourquoi se
+  // recopie mal dès que la disposition change (un fichier qui porte des `export`
+  // n'en a pas besoin, et le gabarit doit le dire plutôt que faire douter).
+  assert.match(prompts, /variables? de SHELL|processus fils/,
+    'le gabarit donne la commande sans dire ce qu\'elle répare : personne ne saura '
+    + 'quand elle est inutile, ni quoi faire d\'un fichier qui porte déjà des export');
+});
+
 // ── Le workflow posé s'exécutera-t-il quelque part ? ──────────────────────
 //
 // L'installeur pose `.github/workflows/argus-mobile.yml` sans jamais regarder
