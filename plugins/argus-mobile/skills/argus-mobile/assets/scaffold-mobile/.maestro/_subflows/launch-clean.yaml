@@ -89,14 +89,27 @@ appId: ${APP_ID}
 # déplace. Si ton app demande à un troisième moment, appelle-le là aussi.
 - runFlow: dismiss-system-alerts.yaml
 
-# Attend que l'UI se stabilise plutôt que de dormir un temps fixe. Un `sleep`
-# arbitraire est soit trop court (flake), soit trop long (suite lente) ; il n'est
-# jamais juste.
-- waitForAnimationToEnd:
-    timeout: 5000
-
-# ⚠️ ET CE N'EST PAS ASSEZ : `waitForAnimationToEnd` rend la main dès que RIEN NE
-# BOUGE, ce qui arrive aussi pendant un splash statique. Il plafonne à 5 s, alors
+# 🔴 L'ORDRE DE CES DEUX ATTENTES EST UNE MESURE, PAS UN STYLE (460).
+# `waitForAnimationToEnd` était placé AVANT l'attente d'ancre, et il ABSORBAIT le
+# sas de démarrage : le chronomètre de `startup.samples` est la durée de la
+# PREMIÈRE attente sur l'ancre, donc il ne relevait plus que le résidu. Mesuré
+# sur un projet réel dont le splash de marque tient 2 s : **86 à 130 ms** —
+# physiquement impossible si la mesure contenait le splash.
+#   Deux conséquences, et la seconde est la pire. Le relevé s'annonce « splash et
+#   init compris », ce qui est FAUX sur toute app à splash tenu ; et
+#   `thresholds.brandedSplashMs` est SOUSTRAIT de cette mesure, si bien qu'un
+#   plancher de 2000 ms retranché de 130 rend 0 — le seuil de démarrage ne peut
+#   alors plus jamais rougir. *Un budget qu'aucune valeur ne peut dépasser a
+#   toutes les apparences d'un budget tenu.*
+#   L'attente d'ancre passe donc EN PREMIER : elle part du lancement, donc elle
+#   mesure ce qu'elle prétend mesurer. Rien n'est perdu — son budget
+#   (`ARGUS_START_TIMEOUT_MS`) est largement au-dessus du seuil de performance,
+#   et il couvre désormais TOUT le sas au lieu de ce qui restait après cinq
+#   secondes d'animation.
+#
+# ⚠️ ET L'ATTENTE D'ANIMATION NE SUFFIRAIT PAS SEULE : `waitForAnimationToEnd`
+# rend la main dès que RIEN NE BOUGE, ce qui arrive aussi pendant un splash
+# statique. Il plafonne à 5 s, alors
 # qu'un démarrage à froid mesuré sur un projet réel va de 6,4 à 9,3 s — jusqu'à
 # 22 s sous charge. Tout ce qui suit ce sous-flow tapait donc dans le sas de
 # démarrage, et l'échec sortait en « Element not found » : on lit ça comme une
@@ -118,3 +131,10 @@ appId: ${APP_ID}
             id: ${ARGUS_ANCHOR_HOME}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: Écran de départ affiché — l'app est prête, pas seulement immobile
+
+# L'app est prête : on laisse retomber l'animation d'entrée avant de rendre la
+# main. Un `sleep` arbitraire serait soit trop court (flake), soit trop long
+# (suite lente) ; il n'est jamais juste. Ici il ne masque plus aucune mesure,
+# puisque le démarrage a déjà été chronométré au-dessus.
+- waitForAnimationToEnd:
+    timeout: 5000

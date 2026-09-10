@@ -12621,3 +12621,58 @@ test('une valeur REPLIÉE se distingue d\'un bloc indenté, et dit quoi faire (4
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── 460 ────────────────────────────────────────────────────────────────────
+// Le chronomètre de `startup.samples` est la durée de la PREMIÈRE attente sur
+// l'ancre. Tout ce qui attend AVANT elle lui est donc soustrait en silence —
+// et `waitForAnimationToEnd: 5000` attendait avant, absorbant le sas de
+// démarrage : 86 à 130 ms relevés sur une app dont le splash tient 2 s.
+// Ce garde porte sur la POSITION, parce que c'est elle qui décide : les deux
+// commandes étaient présentes, correctes, et documentées — dans le mauvais ordre.
+test('le démarrage est chronométré AVANT toute stabilisation (460)', () => {
+  const p = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml');
+  // ⚠️ Commentaires dépouillés : ce fichier EXPLIQUE le piège juste au-dessus
+  // des deux commandes, donc un garde qui lirait le texte brut se satisferait
+  // de sa propre explication — la façon de naître vacant la plus courante ici.
+  const conduite = readFileSync(p, 'utf8')
+    .split('\n').map((l) => (/^\s*#/.test(l) ? '' : l)).join('\n');
+
+  const iAncre = conduite.indexOf('extendedWaitUntil');
+  const iAnim = conduite.indexOf('waitForAnimationToEnd');
+  assert.ok(iAncre > 0,
+    "launch-clean n'attend plus l'écran de départ : ce garde ne mesure plus rien, et le relevé de "
+    + 'démarrage n\'a plus de chronomètre du tout (460)');
+  assert.ok(iAnim > 0,
+    "launch-clean ne stabilise plus l'animation : ce garde ne mesure plus rien (460)");
+
+  assert.ok(iAncre < iAnim,
+    "`waitForAnimationToEnd` s'exécute AVANT l'attente de l'écran de départ. Il absorbe alors le "
+    + "sas de démarrage, et `startup.samples` — qui chronomètre la PREMIÈRE attente sur l'ancre — "
+    + 'ne relève plus que le résidu : 86 à 130 ms mesurés sur une app à splash de 2 s. Le relevé '
+    + "s'annonce pourtant « splash et init compris », et `brandedSplashMs` est soustrait d'une "
+    + "mesure qui ne l'a jamais contenu : 2000 retranchés de 130 rendent 0, donc le seuil de "
+    + 'démarrage ne peut plus jamais rougir (460)');
+});
+
+// ── 460 bis ────────────────────────────────────────────────────────────────
+// L'autre bout de la chaîne : le rapport PROMET que la mesure contient le
+// splash. Cette promesse n'est vraie que grâce à l'ordre gardé ci-dessus — deux
+// fichiers que rien ne rapproche à la lecture. Si la promesse disparaît, l'ordre
+// n'a plus de raison d'être gardé ; si l'ordre saute, la promesse devient un
+// mensonge. Ils se tiennent, donc ils se gardent ensemble.
+test('la promesse « splash compris » a bien l\'ordre qui la rend vraie (460)', () => {
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(run, /splash et init compris/,
+    "le rapport ne promet plus que le relevé de démarrage contient le splash — si la promesse a été "
+    + "retirée parce qu'elle était fausse, c'est l'ORDRE de launch-clean qu'il fallait corriger, et "
+    + 'le garde 460 devient sans objet (460)');
+
+  const clean = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/launch-clean.yaml'),
+  'utf8').split('\n').map((l) => (/^\s*#/.test(l) ? '' : l)).join('\n');
+  assert.ok(clean.indexOf('extendedWaitUntil') < clean.indexOf('waitForAnimationToEnd'),
+    'le rapport promet « splash et init compris » pendant que le flow fait attendre autre chose '
+    + "avant de chronométrer : la promesse et ce qui la tient ont divergé (460)");
+});
