@@ -307,7 +307,7 @@ de vraies ancres. Un run a ainsi annoncé dix-sept écrans et deux ancres qui
 n'existent nulle part.
 
 ```bash
-# SITES d'instrumentation dans le code (le filtre `///` est indispensable).
+# SITES d'instrumentation dans le code (filtre `//`, DEUX barres — point 452).
 # ⚠️ On RECOLLE la valeur à sa clé AVANT de compter : voir juste en dessous.
 find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' | grep -c "identifier: *'"
@@ -318,10 +318,44 @@ find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' \
   | grep -F 'identifier: ' | grep -cF '${'
 
+# ⚠️ ANCRES PORTÉES PAR UN PARAMÈTRE — ce que les deux commandes ci-dessus ne
+#    voient PAS, et le cas dominant sur un projet mature (§2c). Le nom du
+#    paramètre appartient au projet : on le DÉCOUVRE, on ne le cite pas.
+#  a) quels noms alimentent un `identifier:` — les conduits ET les expressions
+find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
+  | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' \
+  | grep -oE "identifier: *[a-zA-Z_][a-zA-Z0-9_.]*" | sort | uniq -c
+#  b) puis, pour CHAQUE nom rendu par (a), ses call-sites — remplace <NOM> :
+find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
+  | perl -0777 -pe 's/<NOM>:\s*\n\s*/<NOM>: /g' | grep -c "<NOM>: *'"
+
 # Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc
 grep -v '^\s*//' test/argus/harness.dart | grep -c 'ArgusScreen('
 grep -v '^\s*//' test/argus/harness.dart | grep -c 'anchor:'
 ```
+
+⚠️ **CES COMMANDES NE VOIENT QUE LES ANCRES ÉCRITES EN CLAIR — point 458.** Sur
+un projet mature, la plupart passent par un **paramètre de fabrique**
+(`MonBouton(semanticIdentifier: 'x')`) : le §2c appelle ça *le cas dominant*, et
+le rapport ci-dessus RÉCLAME ce chiffre (« dont partagées … paramètre(s)
+`<NOMS>` ») sans qu'aucune commande n'ait jamais su le produire. Mesuré sur un
+projet réel : **42 comptées, 18 invisibles** — 30 % du relevé qui ouvre le
+rapport. Deux runs l'ont dit à quatre runs d'écart avant qu'il ne soit ouvert.
+
+⚠️ **ET UN SITE N'EST PAS UNE ANCRE.** Trois formes, trois comptes :
+· `identifier: 'x'` → **1** ancre ;
+· `identifier: '${p}_$x'` → une **famille**, comptée à part ci-dessus ;
+· `identifier: cond ? 'a' : 'b'` → **2 ancres, et aucune n'est comptée** : la
+  valeur recollée vaut `identifier: cond`, sans apostrophe. Mesuré sur un projet
+  réel — deux sites de cette forme portant trois ancres, dont un gabarit que la
+  commande des gabarits rendait à **0**, son recollage ne franchissant qu'**un**
+  repli. La commande (a) les fait apparaître : un nom qui n'est pas un paramètre
+  y désigne une expression, et il suffit d'ouvrir le site pour trancher.
+
+📌 **Le compte qui fait FOI n'est pas un grep, c'est `make argus-anchors`** — il
+les exerce, une par une, et rougit nommément sur une ancre inerte. Ces commandes
+servent à l'**état des lieux**, avant que le harnais existe ; dès qu'il existe,
+c'est lui qu'on lit.
 
 ⚠️ **LE FILTRE EST `//`, PAS `///` — deux barres, point 452.** `///` ne retire
 que le dartdoc, et laisse compter tout code mis en commentaire ORDINAIRE

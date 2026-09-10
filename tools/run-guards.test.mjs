@@ -12426,3 +12426,85 @@ test('le §5 nomme le canal des artefacts par défaut, et celui qu\'on s\'ouvre 
     'le §5 recompte ses canaux en toutes lettres : ce nombre se périme au prochain ajout, '
     + 'exactement comme les compteurs de contenu que le point 331 a fermés. Énumère, ne compte pas');
 });
+
+// ── 458 ────────────────────────────────────────────────────────────────────
+// Le §2b ne savait compter que les ancres écrites EN CLAIR. Sur un projet
+// mature la plupart passent par un paramètre de fabrique, et le rapport
+// réclamait déjà ce chiffre (« dont partagées … paramètre(s) `<NOMS>` ») sans
+// qu'aucune commande ne sache le produire — 42 comptées pour 18 invisibles,
+// mesuré. Ce garde EXÉCUTE la séquence comme un agent le ferait : (a) découvre
+// les noms, sa sortie alimente le `<NOM>` de (b). Lire leur texte ne dirait
+// rien ; la commande d'origine était parfaitement lisible et ratait 30 % du
+// relevé qui OUVRE le rapport.
+test('le comptage du skill voit les ancres portées par un PARAMÈTRE (458)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('# ⚠️ ANCRES PORTÉES PAR UN PARAMÈTRE');
+  assert.ok(i > 0,
+    'le bloc de comptage des ancres par paramètre a disparu du §2b : ce garde ne mesure plus rien (458)');
+  const apres = skill.slice(i);
+  const bloc = apres.slice(0, apres.indexOf('\n\n'));
+
+  // Deux commandes dans le même bloc : la ligne `#  b)` les sépare.
+  const lignes = bloc.split('\n');
+  const iB = lignes.findIndex((l) => l.startsWith('#  b)'));
+  assert.ok(iB > 0,
+    'la seconde commande (les call-sites du paramètre) a disparu du bloc : la découverte des noms '
+    + 'seule ne compte rien (458)');
+  const sansCommentaires = (ls) => ls.filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  const cmdA = sansCommentaires(lignes.slice(0, iB));
+  const cmdB = sansCommentaires(lignes.slice(iB));
+  assert.match(cmdA, /identifier/,
+    'la commande (a) lue ne cherche aucun identifiant : la fenêtre est fausse, pas le skill');
+  assert.match(cmdB, /<NOM>/,
+    'la commande (b) lue ne porte plus le gabarit `<NOM>` : elle a figé un nom de paramètre, '
+    + "ce qui la rend fausse sur tout projet qui en emploie un autre (458)");
+
+  const dir = mkdtempSync(join(tmpdir(), 'argus-458-'));
+  try {
+    mkdirSync(join(dir, 'lib'));
+    // LE CONDUIT : la fabrique relaie son paramètre dans son propre nœud. Ce
+    // n'est pas une ancre — c'est ce qui rend les call-sites comptables.
+    writeFileSync(join(dir, 'lib', 'fabrique.dart'), [
+      "Widget bouton({String? semanticIdentifier}) =>",
+      "    Semantics(identifier: semanticIdentifier, child: x);",
+      "",
+    ].join('\n'));
+    // LES CALL-SITES : trois, dont un REPLIÉ par le formateur. Plus une ancre
+    // par EXPRESSION, que la commande littérale du §2b ne voit pas non plus.
+    writeFileSync(join(dir, 'lib', 'ecran.dart'), [
+      "bouton(semanticIdentifier: 'cmd_un');",
+      "bouton(semanticIdentifier: 'cmd_deux');",
+      "                          bouton(",
+      "                            semanticIdentifier:",
+      "                                'cmd_trois_repliee',",
+      "                          );",
+      "Semantics(identifier: cond ? 'expr_a' : 'expr_b', child: x);",
+      "// bouton(semanticIdentifier: 'commente_ne_compte_pas');",
+      "",
+    ].join('\n'));
+
+    // (a) — elle doit RÉVÉLER le nom du paramètre sans qu'on le lui donne, et
+    // signaler l'expression, qui est l'autre forme invisible au compteur.
+    const rA = spawnSync('bash', ['-c', cmdA], { cwd: dir, encoding: 'utf8' });
+    const sortieA = (rA.stdout || '').trim();
+    assert.match(sortieA, /semanticIdentifier/,
+      `(a) rend « ${sortieA} » : elle ne découvre pas le nom du paramètre que la fabrique relaie, `
+      + "donc l'agent n'a rien à mettre dans le `<NOM>` de (b) — ni dans la ligne « paramètre(s) » "
+      + 'du rapport, que le §2b réclame (458)');
+    assert.match(sortieA, /\bcond\b/,
+      `(a) rend « ${sortieA} » : elle ne signale pas l'ancre construite par EXPRESSION `
+      + "(`identifier: cond ? 'a' : 'b'`), qui porte DEUX ancres et qu'aucun compteur littéral "
+      + 'ne voit — la valeur recollée vaut `identifier: cond`, sans apostrophe (458)');
+
+    // (b) — le compte des call-sites, replié compris, commentaire exclu.
+    const rB = spawnSync('bash', ['-c', cmdB.replaceAll('<NOM>', 'semanticIdentifier')],
+      { cwd: dir, encoding: 'utf8' });
+    const compte = Number((rB.stdout || '').trim());
+    assert.equal(compte, 3,
+      `(b) rend ${compte} pour 3 call-sites posés. Trois façons de se tromper, toutes vécues : `
+      + "l'argument REPLIÉ par `dart format` n'est pas recollé, le call-site mis en COMMENTAIRE "
+      + 'est compté, ou le motif accepte autre chose qu\'un littéral (458)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
