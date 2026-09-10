@@ -701,9 +701,41 @@ artifacts:
 #
 #   configFiles:
 #     - id: mon-service
-#       quoi: config/service.json           # chemin, ou { sous: assets, extensions: ['.json'] }
-#       cable: pubspec.yaml                 # le fichier qui doit le NOMMER
+#       quoi: config/service.json           # un chemin exact, ou l'une des formes ci-dessous
+#       cable: pubspec.yaml                 # le fichier où le câblage se déclare
 #       casse: le service ne démarre pas    # ce qui arrive si personne ne le câble
+#       motif: mon_plugin                   # FACULTATIF — voir juste en dessous
+#
+# `quoi:` accepte trois formes, parce qu'un fichier ne se range pas toujours au
+# même endroit :
+#     quoi: config/service.json     ← un chemin exact
+#
+#     quoi:                         ← une FAMILLE d'extensions sous un dossier
+#       sous: assets
+#       extensions: ['.json']
+#
+#     quoi:                         ← un NOM, rangé où que ce soit sous un dossier
+#       sous: android/app
+#       nom: service.json
+#
+#   ⚠️ En map IMBRIQUÉE, une clé par ligne — jamais `{ sous: …, nom: … }` : ce
+#   parseur refuse les maps en flow, et un exemple se recopie (256).
+#   La troisième existe pour les fichiers qu'un source set de flavor déplace :
+#   `android/app/src/dev/google-services.json` est la disposition standard dès
+#   qu'un projet a plusieurs environnements, et un chemin littéral l'aurait raté.
+#
+# 🔴 `motif:` EST LA CLÉ DU CAS « CÂBLÉ PAR CONVENTION » (464). Par défaut, le
+# contrôle cherche le NOM du fichier dans la déclaration — ce qui est juste
+# quand quelque chose le nomme (une police dans `pubspec.yaml`, un asset). Mais
+# beaucoup de fichiers ne sont **jamais nommés** : c'est un plugin qui les
+# trouve par convention, et c'est donc le PLUGIN qu'il faut chercher.
+#   `google-services.json` en est l'exemple livré : rien ne le nomme dans
+#   `build.gradle`, si bien qu'un contrôle par nom l'aurait déclaré orphelin sur
+#   tout projet correct. Sa règle porte `motif: 'google-services'`, le nom du
+#   plugin Gradle qui le lit.
+#   ⚠️ Sans cette clé, le seul contrôle possible est « le fichier est-il nommé ? »
+#   — et pour un fichier câblé par convention, la réponse est NON même quand tout
+#   va bien. Le contrôle rendrait alors un `major` que personne ne peut corriger.
 #
 # ⚠️ C'est la PRÉSENCE du fichier qui déclenche, jamais une supposition sur ce
 # que le projet utilise : s'il est là, quelqu'un l'a mis là exprès.

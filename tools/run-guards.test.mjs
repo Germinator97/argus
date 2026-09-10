@@ -12794,3 +12794,42 @@ test('le nettoyage des junit orphelins est bien CÂBLÉ dans la boucle (463)', (
     + 'appelé ailleurs, il effacerait les verdicts visuels sur une passe ciblée qui ne rejoue rien '
     + '(`--tags=perf`), ce qui est le défaut inverse (463)');
 });
+
+// ── 464 ────────────────────────────────────────────────────────────────────
+// `configNonEmbarquee` lit une clé `motif:` que la doc utilisateur ne mentionnait
+// nulle part — la seule qui permette d'exprimer « câblé par CONVENTION », c'est-
+// à-dire un fichier que rien ne nomme et qu'un plugin trouve tout seul. Sans
+// elle, la seule question posable est « le fichier est-il nommé ? », dont la
+// réponse est NON sur un projet parfaitement correct.
+// ⚠️ Le garde DÉRIVE la liste des clés lues du code, il ne l'énumère pas : une
+// clé ajoutée demain sera exigée dans la doc sans qu'on y pense. C'est ce qui l'a
+// fait trouver `quoi.nom` en plus de `motif`, que le run n'avait pas signalée.
+test('toute clé que configFiles LIT est documentée dans le gabarit (464)', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  const i = src.indexOf('export function configNonEmbarquee');
+  assert.ok(i > 0, '`configNonEmbarquee` a disparu : ce garde ne mesure plus rien (464)');
+  const corps = src.slice(i, src.indexOf('\nexport ', i + 10) > 0 ? src.indexOf('\nexport ', i + 10) : i + 4000)
+    .split('\n').filter((l) => !l.trimStart().startsWith('//') && !l.trimStart().startsWith('*')).join('\n');
+
+  const lues = new Set([...corps.matchAll(/\bregle\.(\w+)(?:\.(\w+))?/g)]
+    .map((m) => (m[2] ? `${m[1]}.${m[2]}` : m[1])));
+  assert.ok(lues.size >= 4,
+    `seulement ${lues.size} clé(s) relevée(s) dans le corps de configNonEmbarquee : le motif de `
+    + 'lecture a changé et ce garde ne mesure plus rien (464)');
+
+  const gabarit = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const j = gabarit.indexOf('# ── Fichiers de configuration');
+  assert.ok(j > 0, 'la section configFiles a disparu du gabarit : ce garde ne mesure plus rien (464)');
+  const bloc = gabarit.slice(j, gabarit.indexOf('\nconfigFiles:', j));
+
+  // `id` est le seul dont la doc n'a pas besoin de parler comme d'une option :
+  // il est dans l'exemple. On le vérifie comme les autres — il y est.
+  const manquantes = [...lues].filter((c) => !bloc.includes(c.split('.').pop() ?? c));
+  assert.deepEqual(manquantes, [],
+    `le contrôle lit ${manquantes.join(', ')} sans que le gabarit en parle. Une clé qu'on ne peut `
+    + "pas deviner n'existe pas pour l'utilisateur : sans `motif:`, un fichier câblé par CONVENTION "
+    + "— que rien ne nomme, qu'un plugin trouve seul — est déclaré orphelin sur un projet correct, "
+    + 'et rend un `major` que personne ne peut corriger (464)');
+});
