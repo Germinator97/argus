@@ -7670,6 +7670,55 @@ filtre `///` est indispensable » alors que la commande était passée à `//` n
 runs plus tôt. Une ligne de commentaire qui contredit la commande qu'elle
 surmonte — le lecteur croit le commentaire.
 
+### 459. Le gabarit MONTRAIT une forme que son propre parseur refuse
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point 8) et par le run 70
+(point 4). Les trois mutations font tomber les gardes.
+
+**Trois runs sont tombés sur ce mécanisme** — le 445, le point 4 du run 70, le
+point 8 du run 71 — et les deux premiers ont été traités comme un **rappel
+manquant**, clé par clé : le 445 a même été démenti « pour l'essentiel », en
+notant que la limite était bien écrite en tête du fichier et qu'il ne restait
+qu'une parité mineure entre voisines. Deux runs de plus ont montré que la parité
+n'était pas mineure.
+
+🔴 **ET LA MESURE A TROUVÉ PIRE QUE CE QU'ILS DISAIENT.** L'exemple que le
+gabarit montre sous `security.acknowledged` — deux lignes commentées, prêtes à
+décommenter — **est lui-même la forme interdite**. Décommenté *tel quel*, sans en
+changer un mot :
+
+    argus.mobile.yaml:538 — valeur sur la ligne ET bloc indenté en dessous
+
+Toutes les commandes s'arrêtent. Ce n'est donc pas un rappel qui manque : c'est
+un gabarit qui **enseigne le défaut**, et celui qui suit l'exemple croit avoir
+mal recopié.
+
+**Le remède ne recopie aucun rappel** — un rappel posé clé par clé se périme au
+prochain ajout, ce que trois runs viennent de démontrer :
+1. l'exemple tient sur une ligne, avec la contrainte dite là où on la lit ;
+2. le **parseur** distingue les deux causes — une phrase repliée n'est pas un
+   bloc indenté — et dit **quoi faire** (« raccourcis-la »). Il couvre ainsi les
+   clés qui n'existent pas encore ;
+3. un garde décommente **chaque** exemple du gabarit LIVRÉ et exige que le vrai
+   parseur l'accepte. Total et négatif : aucun exemple, présent ou futur, ne peut
+   être refusé.
+
+📌 Les deux sens sont mesurés : l'exemple corrigé parse, une raison repliée est
+refusée avec le nouveau message, et un **vrai** bloc indenté garde le sien —
+sans ce jumeau, un remède qui déclarerait tout « replié » passerait pour un
+correctif.
+
+🔴 **ET LE GARDE EST NÉ VACANT — c'est la mutation qui l'a dit, pas une
+relecture.** Sa première version bornait le bloc d'exemple par *« cette ligne
+ressemble-t-elle à du YAML ? »*. Or une continuation de chaîne repliée
+(`release — vérifié par…`) **ne ressemble jamais à du YAML** : le critère
+excluait par construction la forme qu'il cherchait. Il coupait l'exemple une
+ligne avant la faute et parsait un reste parfaitement valide, donc il était vert.
+📌 *Une borne de fenêtre doit être **structurelle** — ici l'indentation —, jamais
+sémantique : un critère qui décrit ce que la ligne RACONTE est aveugle à ce
+qu'elle est.* C'est une façon de naître vacant que le chantier n'avait pas encore
+répertoriée.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
