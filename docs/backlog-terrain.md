@@ -8038,6 +8038,43 @@ l'avertissement que s'il existe au moins une annonce ≤ au dernier point titré
 Le jour où elles seraient toutes à jour, il ne demanderait plus rien — un garde
 qui survit à ce qu'il décrit devient une consigne sans objet.
 
+### 471. Vingt-cinq mutations ne prouvaient rien, et seule une passe de 7 h le disait
+
+**Fermé le 10/09/2026**, trouvé **en instruisant les autres points** — pas
+rapporté par un run. Prouvé par une paire de gardes qui se gardent l'un l'autre.
+
+Une mutation dont le motif a disparu de sa cible ne prouve **rien** : le harnais
+rend honnêtement « HARNAIS — motif trouvé 0× »… mais ce verdict ne se lit qu'en
+**jouant la passe**, laquelle coûte des heures. Personne ne la joue pour cette
+question-là. Mesuré : **25 mutations sur 404** étaient dans ce cas, et rien dans
+le dépôt ne le disait.
+
+📌 **Elles ont été trouvées en contrôlant autre chose** — je vérifiais que mes
+propres correctifs n'avaient pas débranché de mutation existante. Ils en avaient
+débranché **trois** (355, 386, 420, dont les messages ont été réécrits par les
+points 466 et 467), et les vingt-cinq autres étaient là depuis plus longtemps.
+
+⚠️ **La comparaison devait se faire par NOM, pas par index.** Ma première mesure
+opposait des numéros de `--list` entre l'avant et l'après — or insérer des
+mutations décale tous les suivants : l'écart obtenu aurait accusé des mutations
+intactes et blanchi les vraies. *Un identifiant qui bouge ne compare rien.*
+
+`--check-motifs` répond désormais **en une seconde**, sans toucher un fichier, et
+fige l'écart connu **par égalité** : une réparation le fait rougir autant qu'une
+régression. Ce n'est pas une liste d'exceptions, c'est l'état d'un chantier —
+chaque ligne affirme qu'une mutation est morte et attend d'être ré-ancrée.
+
+🔴 **AUCUNE MUTATION NE VISE LE HARNAIS LUI-MÊME, ET C'EST DÉLIBÉRÉ** : muter le
+fichier qui restaure l'arbre est le seul endroit où une restauration ratée n'a
+pas de filet. La **paire de gardes** la remplace — l'un exige `exit 0` sur le
+dépôt réel, son jumeau fabrique une copie sabotée portant un motif impossible et
+exige qu'elle soit dénoncée. *Un contrôle qui ne sait pas rendre son verdict
+négatif approuve tout, et un outil qui approuve tout ressemble à un dépôt sain.*
+
+📌 **Les 25 restent à ré-ancrer** — c'est un chantier à part, désormais mesurable
+et visible (`make` n'a pas de cible : `python3 tools/mutate-run-guards.py
+--check-motifs`).
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
