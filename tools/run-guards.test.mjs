@@ -933,6 +933,64 @@ test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', (
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Le workflow posé s'exécutera-t-il quelque part ? ──────────────────────
+//
+// L'installeur pose `.github/workflows/argus-mobile.yml` sans jamais regarder
+// quel CI le projet utilise. Sur un projet en GitLab — mesuré au run 72 : un
+// `.gitlab-ci.yml` de 20 Ko, SUIVI par git, donc bien celui du projet — le
+// workflow ne s'exécute nulle part. Le symptôme est une ABSENCE : rien ne
+// rougit, aucune erreur, et la garde n'existe que sur le disque.
+//
+// ⚠️ Ce garde LANCE l'installeur au lieu de relire son texte, et c'est ce qui
+// prouve la seule chose difficile : que le relevé « ce projet avait-il des
+// workflows ? » soit pris AVANT la boucle qui en pose un. Pris après, il
+// répondrait « oui » à jamais et l'avertissement serait mort le jour de son
+// écriture — le défaut du 431, et aucune relecture ne le voit.
+test('l\'installeur dit qu\'un workflow posé hors GitHub ne tournera pas (475)', () => {
+  const installeur = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  const racine = mkdtempSync(join(tmpdir(), 'argus-ci-'));
+
+  const poser = (/** @type {string} */ nom, /** @type {Record<string,string>} */ fichiers) => {
+    const cible = join(racine, nom);
+    for (const [rel, contenu] of Object.entries(fichiers)) {
+      mkdirSync(join(cible, dirname(rel)), { recursive: true });
+      writeFileSync(join(cible, rel), contenu);
+    }
+    return execFileSync('bash', [installeur, cible], { encoding: 'utf8' });
+  };
+
+  // 1. GitLab seul : l'avertissement DOIT sortir.
+  const gitlab = poser('gitlab', {
+    'pubspec.yaml': 'name: demo\n',
+    '.gitlab-ci.yml': 'stages: [test]\n',
+  });
+  assert.match(gitlab, /ne\s*\n?\s*s'exécutera NULLE PART|NULLE PART/,
+    'un projet en GitLab CI reçoit un workflow GitHub sans que rien ne le dise : la garde '
+    + 'n\'existera que sur le disque, et une CI qui ne tourne pas ne se voit pas');
+  assert.match(gitlab, /\.gitlab-ci\.yml/,
+    'l\'avertissement ne NOMME pas le fichier qui l\'a déclenché : le lecteur ne peut pas '
+    + 'vérifier le verdict, donc il ne peut que le croire');
+
+  // 2. L'AUTRE SENS — les deux CI coexistent : c'est un choix du projet, pas un
+  //    oubli. Un avertissement qui crie là aussi s'apprend à ignorer.
+  const deux = poser('deux', {
+    'pubspec.yaml': 'name: demo\n',
+    '.gitlab-ci.yml': 'stages: [test]\n',
+    '.github/workflows/deja.yml': 'on: [push]\n',
+  });
+  assert.doesNotMatch(deux, /NULLE PART/,
+    'le projet a DÉJÀ des workflows GitHub : les deux CI coexistent par choix, et '
+    + 'avertir ici apprend à ignorer l\'avertissement');
+
+  // 3. Aucun autre CI : rien à dire.
+  const seul = poser('seul', { 'pubspec.yaml': 'name: demo\n' });
+  assert.doesNotMatch(seul, /NULLE PART/,
+    'un projet sans autre CI reçoit un avertissement qui ne le concerne pas');
+
+  rmSync(racine, { recursive: true, force: true });
+});
+
 // ── Un canal de plateforme manquant se lit-il comme de la dette ? ─────────
 //
 // Un plugin natif n'a aucune implémentation sous `flutter test`. L'écran qui

@@ -108,6 +108,13 @@ merge_gitignore() {
   return 0
 }
 
+# ⚠️ RELEVÉ AVANT LA BOUCLE, et c'est tout l'intérêt (475). Elle POSE
+# `.github/workflows/argus-mobile.yml` : demandé après, « ce projet a-t-il des
+# workflows GitHub ? » vaut « oui » à jamais, et le contrôle serait vacant le
+# jour de son écriture — le défaut exact du point 431.
+avait_github_actions=0
+[ -d "$TARGET/.github/workflows" ] && avait_github_actions=1
+
 copied=0
 skipped=0
 merged=0
@@ -397,7 +404,31 @@ if [ "$foreign" -gt 0 ]; then
   echo
 fi
 
+# Un workflow posé sur un projet qui n'est pas sur GitHub Actions ne s'exécute
+# nulle part, et une CI qui ne tourne pas ne se voit pas : c'est une absence,
+# donc le plus silencieux des défauts. On ne décide pas à la place du projet —
+# on refuse seulement de laisser croire que la garde est en place.
+avertir_ci_etrangere() {
+  ci_autres=''
+  for f in .gitlab-ci.yml bitbucket-pipelines.yml .circleci/config.yml \
+           azure-pipelines.yml Jenkinsfile .drone.yml; do
+    [ -e "$TARGET/$f" ] && ci_autres="$ci_autres $f"
+  done
+  [ -z "$ci_autres" ] && return 0
+  # Les deux coexistent déjà : c'est un choix du projet, pas un oubli.
+  [ "$avait_github_actions" -eq 1 ] && return 0
+  echo
+  echo "  ⚠️  CE PROJET N'AVAIT AUCUN WORKFLOW GITHUB, et il porte :$ci_autres"
+  echo "     .github/workflows/argus-mobile.yml vient d'être posé et ne"
+  echo "     s'exécutera NULLE PART. Un job qui ne tourne pas ne se voit pas :"
+  echo "     rien ne rougira, et la garde n'existera que sur le disque."
+  echo "     Porte ses étapes dans ta CI, ou retire le fichier — il reste la"
+  echo "     référence de ce qu'il faut lancer, et dans quel ordre."
+  echo
+}
+
 inventaire_owned
+avertir_ci_etrangere
 
 echo "Prochaines étapes :"
 echo "  1. Édite argus.mobile.yaml (identifiants d'app, devices, écrans, seuils)."
