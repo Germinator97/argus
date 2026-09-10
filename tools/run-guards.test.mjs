@@ -12993,3 +12993,35 @@ test('le runner annonce son silence, et le skill interdit la sonde (469)', () =>
     "le skill ne dit pas de s'abstenir de sonder l'avancement : le geste est naturel devant une "
     + 'commande muette, et le tas de sondes a coûté un simulateur (469)');
 });
+
+// ── 470 ────────────────────────────────────────────────────────────────────
+// « Prochain numéro libre : N » se lit comme un état et n'est qu'une trace : la
+// dernière du fichier annonce 180, périmée depuis le run 22. On ne les supprime
+// pas — `dernierPointDu` les lit, un lot pouvant être clos sans titre — donc
+// elles sont de la donnée pour l'instrument et du bruit pour le lecteur.
+// ⚠️ Le garde est DÉRIVÉ : il n'exige l'avertissement que s'il existe une
+// annonce réellement périmée. Le jour où elles seraient toutes à jour, il ne
+// réclamerait plus rien — un garde qui survit à ce qu'il décrit devient une
+// consigne sans objet.
+test('une annonce de numéro libre périmée est signalée comme telle (470)', () => {
+  const chemin = join(RACINE, 'docs/backlog-terrain.md');
+  const backlog = readFileSync(chemin, 'utf8');
+
+  const titres = [...backlog.matchAll(/^### (\d+)(?:-(\d+))?\.\s/gm)].map((m) => Number(m[2] ?? m[1]));
+  assert.ok(titres.length > 0, 'aucun point titré dans le backlog : ce garde ne mesure plus rien (470)');
+  const dernier = Math.max(...titres);
+
+  const annonces = [...backlog.matchAll(/Prochain numéro libre\s*:\s*(\d+)/g)].map((m) => Number(m[1]));
+  const perimees = annonces.filter((n) => n <= dernier);
+  if (perimees.length === 0) return; // rien à signaler, rien à exiger
+
+  const enTete = backlog.slice(0, backlog.indexOf('## '));
+  assert.match(enTete, /TRACE D'ÉPOQUE|trace d'époque/i,
+    `${perimees.length} annonce(s) « Prochain numéro libre » sont périmées (${perimees.join(', ')} `
+    + `pour un dernier point à ${dernier}) et rien en tête du fichier ne dit qu'elles sont des `
+    + "traces. Elles se lisent comme un état — la plus basse est la DERNIÈRE du fichier, donc la "
+    + 'première qu\'un lecteur qui déroule rencontre (470)');
+  assert.match(enTete, /grep/,
+    "l'avertissement dit que le numéro se dérive sans donner la commande qui le dérive : le lecteur "
+    + 'recopiera donc la valeur qu\'il a sous les yeux (470)');
+});

@@ -15,6 +15,21 @@ par des messages de commit et par la page publiée du chantier ; renuméroter ap
 une clôture ferait pointer ces renvois sur autre chose. Un point qui sort laisse
 son numéro vide.
 
+⚠️ **« Prochain numéro libre : N » est une TRACE D'ÉPOQUE, pas un état.** Ce
+fichier en porte plusieurs, chacune vraie le jour de sa passe et fausse le
+lendemain — la dernière du fichier annonce **180**, périmée depuis le run 22, et
+elle se lit comme actuelle parce que rien ne dit qu'elle ne l'est pas. Le numéro
+courant se **dérive**, il ne se recopie pas :
+
+    grep -c '^### [0-9]' docs/backlog-terrain.md    # combien de points
+    grep -o '^### [0-9]*' docs/backlog-terrain.md | tail -1   # le dernier
+
+📌 Ces phrases ne sont pas supprimées pour autant : `dernierPointDu`
+(`tools/artefact-compteurs.mjs`) les LIT, parce qu'un lot de points peut être
+clos sans qu'aucun d'eux ait jamais eu de titre — c'est arrivé aux 347-365. Elles
+sont donc de la donnée pour l'instrument et du bruit pour le lecteur : d'où cet
+avertissement plutôt qu'une purge.
+
 📌 **Un point qui reste OUVERT l'annonce**, en début de ligne, en gras et daté :
 `**Ouvert le JJ/MM/AAAA…**`. Ce n'est pas décoratif. Le contrôleur des compteurs
 s'en sert pour ne PAS réclamer un commit de clôture qui n'existe pas — il a
@@ -7992,6 +8007,36 @@ clé est plus forte que la commande qu'on propose.
 
 📌 Le skill ne prescrivait `--plain-name` **nulle part** : le run l'a employé de
 lui-même. Un piège n'a pas besoin d'être prescrit pour être payé.
+
+### 470. Une trace d'époque qui se lit comme un état
+
+**Fermé le 10/09/2026**, rapporté par le run 70 (point hors run). Les deux
+mutations font tomber le garde.
+
+Le fichier porte six annonces « **Prochain numéro libre : N** » — 400, 366, 218,
+187, 184, 180 — chacune vraie le jour de sa passe. La plus basse est la
+**dernière du fichier**, donc la première qu'un lecteur qui déroule rencontre :
+elle annonce **180**, périmée depuis le run 22.
+
+📌 **On ne les supprime pas, et c'est le point intéressant.** `dernierPointDu`
+(`tools/artefact-compteurs.mjs`) les **lit** : un lot de points peut être clos
+sans qu'aucun d'eux ait jamais eu de titre — c'est arrivé aux 347-365, et
+l'instrument annonçait alors « prochain libre 347 » quand le fichier disait 366.
+Ces phrases sont donc **de la donnée pour l'instrument et du bruit pour le
+lecteur**. D'où un avertissement en tête plutôt qu'une purge, avec la commande
+qui **dérive** le numéro courant.
+
+⚠️ **J'ai failli les DATER, et la dérivation était fausse.** Prendre « la date la
+plus proche avant » donnait 26/08/2026 pour l'annonce 218, qui date en réalité du
+31/08 — la section qui la porte se termine par des paragraphes plus anciens.
+*Une date devinée aurait remplacé un nombre périmé par une affirmation fausse*,
+c'est-à-dire le pire des deux. Quand la valeur n'est pas dérivable, on dit quoi
+faire au lieu d'affirmer.
+
+📌 **Le garde est DÉRIVÉ et se désarme tout seul** : il ne réclame
+l'avertissement que s'il existe au moins une annonce ≤ au dernier point titré.
+Le jour où elles seraient toutes à jour, il ne demanderait plus rien — un garde
+qui survit à ce qu'il décrit devient une consigne sans objet.
 
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
