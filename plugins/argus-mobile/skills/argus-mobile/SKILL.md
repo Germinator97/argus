@@ -334,11 +334,16 @@ find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
 # ⚠️ ANCRES PORTÉES PAR UN PARAMÈTRE — ce que les deux commandes ci-dessus ne
 #    voient PAS, et le cas dominant sur un projet mature (§2c). Le nom du
 #    paramètre appartient au projet : on le DÉCOUVRE, on ne le cite pas.
-#  a) quels noms alimentent un `identifier:` — les conduits ET les expressions
-find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
+#  a0) OÙ CHERCHER — le site qui TRANSMET l'ancre peut vivre hors de `lib`,
+#      dans un paquet voisin (point 472). Découvre-les d'abord :
+grep -E '^\s+path:\s*\.' pubspec.yaml        # → `path: ../mon_design_system`
+#  a) quels noms alimentent un `identifier:` — les conduits ET les expressions.
+#     Ajoute le `lib/` de CHAQUE paquet rendu par (a0) aux racines balayées.
+find lib ../mon_design_system/lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/identifier:\s*\n\s*/identifier: /g' \
   | grep -oE "identifier: *[a-zA-Z_][a-zA-Z0-9_.]*" | sort | uniq -c
-#  b) puis, pour CHAQUE nom rendu par (a), ses call-sites — remplace <NOM> :
+#  b) puis, pour CHAQUE nom rendu par (a), ses call-sites DANS TON `lib` — c'est
+#     ton projet qu'on instrumente, pas le paquet. Remplace <NOM> :
 find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
   | perl -0777 -pe 's/<NOM>:\s*\n\s*/<NOM>: /g' | grep -c "<NOM>: *'"
 
@@ -354,6 +359,20 @@ le rapport ci-dessus RÉCLAME ce chiffre (« dont partagées … paramètre(s)
 `<NOMS>` ») sans qu'aucune commande n'ait jamais su le produire. Mesuré sur un
 projet réel : **42 comptées, 18 invisibles** — 30 % du relevé qui ouvre le
 rapport. Deux runs l'ont dit à quatre runs d'écart avant qu'il ne soit ouvert.
+
+⚠️ **ET (a) NE PEUT PAS TROUVER LE NOM SI LE COMPOSANT VIT AILLEURS — point
+472.** Le 458 a corrigé le MOTIF de ces commandes en leur laissant le mauvais
+**périmètre**. `identifier: <nom>` n'apparaît qu'à **un** endroit, celui qui
+transmet — et sur un projet à design system partagé, cet endroit est le paquet
+voisin, pas ton `lib`. Mesuré sur un projet réel : (a) rend **zéro nom** sur
+`lib`, **trois** sur le paquet voisin, pour **21** call-sites bien réels. Un
+agent qui lit ce zéro conclut « aucune ancre » sur un projet qui en porte
+vingt et une, et repart de la mauvaise ligne de départ — c'est arrivé.
+📌 **Le tell est gratuit : (a) qui rend zéro sur un projet dont les boutons sont
+partagés mesure un périmètre trop étroit, pas un projet vierge.** (a0) tranche
+en une ligne, et son ancrage sur le point initial de la valeur est ce qui
+distingue une dépendance LOCALE (`path: ../x`) du paquet `path` de pub.dev
+(`path: ^1.9.1`), qui vit dans le même fichier sous la même clé.
 
 ⚠️ **ET UN SITE N'EST PAS UNE ANCRE.** Trois formes, trois comptes :
 · `identifier: 'x'` → **1** ancre ;

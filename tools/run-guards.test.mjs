@@ -850,6 +850,89 @@ test('la commande prescrite VOIT un gabarit interpolé', () => {
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Le comptage cherche-t-il le paramètre là où il est TRANSMIS ? ──────────
+//
+// Le 458 avait corrigé le MOTIF de ces commandes en leur laissant le mauvais
+// PÉRIMÈTRE. `identifier: <nom>` n'est écrit qu'à un endroit — celui qui
+// transmet —, et sur un projet à design system partagé cet endroit vit dans le
+// paquet voisin, hors du `lib` que la commande balaie. Mesuré sur un projet
+// réel au run 73 : la commande rendait ZÉRO nom sur `lib`, trois sur le paquet
+// voisin, pour vingt et un call-sites bien réels. L'agent en a conclu « aucune
+// ancre » sur un projet qui en portait vingt et une.
+//
+// ⚠️ Ce garde EXÉCUTE les deux commandes du SKILL sur une fixture qui reproduit
+// la disposition. Relire la prose ne dirait rien : le défaut n'est pas dans ce
+// que le §2b affirme, il est dans les racines que sa ligne `find` énumère.
+test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // Le bloc découpé en COMMANDES : commentaires de tête écartés, continuations
+  // recollées. Une ligne, ici, n'est pas une unité — le 435 l'avait déjà appris.
+  /** @type {string[]} */ const commandes = [];
+  let courante = '';
+  for (const l of skill.split('\n')) {
+    if (!courante && /^\s*#/.test(l)) continue;
+    if (courante) courante += '\n' + l;
+    else if (/^(find|grep)\b/.test(l)) courante = l;
+    else continue;
+    if (!/\\$/.test(l)) { commandes.push(courante); courante = ''; }
+  }
+  assert.ok(commandes.length > 0,
+    'aucune commande shell lue dans le SKILL — si le bloc a été réécrit, mets ce '
+    + 'découpage à jour ; sinon ce garde ne garde plus rien');
+
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-voisin-'));
+  const projet = join(dossier, 'projet');
+  const voisin = join(dossier, 'mon_design_system');
+  mkdirSync(join(projet, 'lib'), { recursive: true });
+  mkdirSync(join(voisin, 'lib'), { recursive: true });
+  // Le call-site vit chez le projet, le site qui TRANSMET chez le voisin.
+  writeFileSync(join(projet, 'lib', 'page.dart'), "      MonBouton(semanticIdentifier: 'home_scan'),\n");
+  writeFileSync(join(voisin, 'lib', 'bouton.dart'), "      child: Semantics(identifier: semanticIdentifier, child: c),\n");
+
+  const lancer = (/** @type {string} */ cmd, /** @type {string} */ cwd) => {
+    try {
+      return execFileSync('bash', ['-c', cmd], { cwd, encoding: 'utf8' }).trim();
+    } catch (e) {
+      return String(/** @type {any} */ (e).stdout ?? '').trim();
+    }
+  };
+
+  // ── (a0) : découvrir les paquets voisins, et NE PAS prendre `path` de pub.dev
+  const a0 = commandes.filter((c) => /pubspec\.yaml/.test(c) && /path:/.test(c));
+  assert.equal(a0.length, 1,
+    `${a0.length} commande(s) de découverte des paquets voisins dans le §2b — il en faut `
+    + 'exactement une, sinon le lecteur ne sait pas laquelle passer');
+  writeFileSync(join(projet, 'pubspec.yaml'),
+    'dependencies:\n  path: ^1.9.1\n  mon_design_system:\n    path: ../mon_design_system\n');
+  assert.match(lancer(a0[0], projet), /\.\.\/mon_design_system/,
+    'la commande de découverte ne voit pas une dépendance déclarée par chemin');
+  // ⚠️ L'AUTRE SENS, et c'est lui qui coûte : `path: ^1.9.1` est le paquet `path`
+  // de pub.dev, sous la MÊME clé dans le MÊME fichier. Un motif non ancré sur le
+  // point initial le rend comme un paquet voisin, et on part balayer `^1.9.1/lib`.
+  writeFileSync(join(projet, 'pubspec.yaml'), 'dependencies:\n  path: ^1.9.1\n');
+  assert.equal(lancer(a0[0], projet), '',
+    'la commande de découverte prend le paquet `path` de pub.dev pour une dépendance locale');
+
+  // ── (a) : le nom du paramètre se trouve-t-il, alors qu'il vit chez le voisin ?
+  const a = commandes.filter((c) => /identifier: \*\[a-zA-Z_\]/.test(c));
+  assert.equal(a.length, 1,
+    `${a.length} commande(s) (a) dans le §2b — si elle a été réécrite, mets ce motif à jour`);
+  assert.match(lancer(a[0], projet), /semanticIdentifier/,
+    'la commande (a) ne balaie que `lib` : le site qui TRANSMET l\'ancre vit dans le paquet '
+    + 'voisin, elle rend donc zéro nom sur un projet qui en porte — et l\'agent conclut '
+    + '« aucune ancre » sur un projet instrumenté (472)');
+
+  // Et la contre-épreuve de l'instrument : sans le voisin, elle DOIT rendre vide.
+  // Sans elle, un `match` vert ne distingue pas un périmètre juste d'un grep qui
+  // ratisse tout le disque.
+  rmSync(voisin, { recursive: true, force: true });
+  assert.equal(lancer(a[0], projet), '',
+    'le paquet voisin retiré, la commande (a) rend encore un nom : elle ne mesure pas ce qu\'on croit');
+
+  rmSync(dossier, { recursive: true, force: true });
+});
+
 // ── La taille pèse-t-elle ce dont elle parle ? ──────────────────────────────
 //
 // `build.android` est le binaire que le runner installe : un debug presque
