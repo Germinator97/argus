@@ -12705,3 +12705,38 @@ test('la séquence du §3g rafraîchit l\'étage 1 avant le rapport (461)', () =
     + '`argus-report` : ce qui rafraîchit doit être adjacent à ce qui lit, sinon la séquence '
     + 'refabrique le relevé périmé au prochain ajout de dimension (461)');
 });
+
+// ── 462 ────────────────────────────────────────────────────────────────────
+// `validateConfig` refuse un `devices[].platform` absent de `platforms[]`, et
+// cette RÈGLE est déjà gardée en entier au point 320 — les deux sens et le cas
+// toléré. Ce qui manquait est ailleurs : le skill ne la disait NULLE PART, si
+// bien qu'on écrit une configuration qu'il autorise et que l'outil rejette.
+// Ce garde ne redouble donc pas la règle (le 450 a coûté un doublon complet,
+// garde et mutation, motif pour motif) : il garde la seule moitié neuve, la
+// phrase — et il vérifie qu'elle reste ADOSSÉE à un contrôle qui existe.
+test('le skill annonce la règle devices[]/platforms[] que l\'outil applique (462)', () => {
+  // La règle existe-t-elle encore ? Sans cette question, la phrase deviendrait
+  // une promesse sans objet le jour où le contrôle serait retiré — et le garde
+  // resterait vert en gardant une consigne qui ne correspond plus à rien.
+  const erreurs = validateConfig({
+    app: { id: 'com.x' }, thresholds: { visualMatchPercentage: 95 }, screens: [],
+    platforms: ['android'],
+    devices: [{ id: 'android-emu', platform: 'android' }, { id: 'ios-sim', platform: 'ios' }],
+  }) ?? [];
+  assert.ok(erreurs.some((/** @type {any} */ p) => /devices\[\]\.platform/.test(p.message ?? '')),
+    "`validateConfig` ne refuse plus un device d'une plateforme non déclarée : la consigne ajoutée "
+    + 'au skill décrit alors un contrôle qui n\'existe plus (462)');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('### Ce que chaque plateforme reçoit VRAIMENT');
+  assert.ok(i > 0, 'la section des plateformes a disparu : ce garde ne mesure plus rien (462)');
+  const section = skill.slice(i, i + 4000);
+  assert.match(section, /devices\[\].{0,2}DOIT SUIVRE.{0,2}platforms/i,
+    "le skill ne dit pas que `devices[]` doit suivre `platforms[]`, alors que `validateConfig` le "
+    + 'refuse comme une ERREUR. On écrit donc une configuration que le skill autorise et que '
+    + "l'outil rejette — et on l'apprend quand toutes les commandes s'arrêtent (462)");
+  assert.match(section, /fusionnent/,
+    "le skill dit de retirer l'entrée sans dire ce qui arrive si on n'en retire qu'une ligne : les "
+    + 'clés orphelines fusionnent dans l\'entrée suivante, en silence — et le rapport nomme alors '
+    + 'un appareil qui n\'existe pas (462)');
+});

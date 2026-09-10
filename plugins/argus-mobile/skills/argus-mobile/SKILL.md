@@ -134,6 +134,19 @@ Chaque dimension non couverte se rapporte `skipped` **avec sa raison**, jamais
 verte : un run iOS annonce donc honnêtement ce qu'il n'a pas mesuré. Le vérifier
 plutôt que le supposer — c'est ce que fait la ligne `coverage` du rapport.
 
+🚨 **ET `devices[]` DOIT SUIVRE `platforms[]` — l'outil le REFUSE, le skill ne le
+disait pas** (462). Le gabarit livre le bloc Android **actif** et le bloc iOS
+**en commentaire** : passer à iOS demande donc de décommenter l'un *et de retirer
+l'autre entièrement*. Une entrée dont la `platform` n'est pas déclarée est une
+**erreur** de `validateConfig`, pas un avertissement — donc toutes les commandes
+s'arrêtent.
+
+⚠️ **Retire l'entrée ENTIÈRE, jamais sa seule ligne `platform:`.** Les clés qui
+restent (`avd`, `model: pixel_6`, `os: android-33`…) sont à l'indentation d'un
+item : elles **fusionnent silencieusement dans l'entrée suivante** au lieu de
+lever, et tu obtiens un `ios-sim` qui porte `model: pixel_6`. Rien ne le signale,
+et le rapport nommera un appareil qui n'existe pas.
+
 ⚠️ **QUAND LA MISSION A DÉJÀ TRANCHÉ, CE DIALOGUE N'A PAS LIEU — et c'est là
 qu'il manque le plus.** Une consigne du type « installe le harness sur ce
 projet » fixe le MODE et rien d'autre : restent `ENV`, les plateformes, le
