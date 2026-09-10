@@ -959,11 +959,15 @@ test('l\'avertissement de locale écarte le faux remède, pas seulement l\'oubli
     'le bon remède a disparu du message : régler la langue de l\'appareil est ce qui '
     + 'rend la déclaration vraie');
   // 2. le FAUX remède, écarté NOMMÉMENT.
-  assert.match(texte, /ne fais PAS taire|ne règle rien/,
+  // ⚠️ UN SEUL MOTIF PAR FAIT, JAMAIS D'ALTERNATIVE. Écrit `A|B`, ce garde
+  // restait vert quand la mutation retirait A : B vivait dans la phrase
+  // suivante. C'est la deuxième fois dans la même passe — un garde qui accepte
+  // des synonymes ne mesure que celui qui survit.
+  assert.match(texte, /ne fais PAS taire/,
     'le message nomme le bon remède sans écarter le mauvais — or le mauvais est plus '
     + 'court, et deux runs indépendants l\'ont pris');
   // 3. et la RAISON, sinon « ne fais pas ça » se discute.
-  assert.match(texte, /retire (seulement )?le signal|rend l'écart invisible/,
+  assert.match(texte, /ça retire seulement le signal/,
     'l\'interdiction est posée sans dire ce qu\'elle coûte : un lecteur pressé la lit '
     + 'comme une préférence de style');
 
