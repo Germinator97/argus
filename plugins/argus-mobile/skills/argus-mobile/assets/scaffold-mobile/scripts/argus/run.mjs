@@ -24,7 +24,7 @@
  *       manquant, ou harness non configuré
  */
 
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { basename, join, resolve } from 'node:path';
 import process from 'node:process';
@@ -1142,6 +1142,27 @@ function vanishedHint(steps, index, selector, commandKey = '') {
 }
 
 /**
+ * Les junit visuels que ce run ne réécrira PAS, donc qui mentiraient.
+ *
+ * Le chemin d'un junit est fixe et réécrit à chaque invocation (454) — mais
+ * seulement pour les écrans encore joués. Un écran passé à `visual: false` sort
+ * de la boucle, et son fichier reste avec le `failures="1"` de la fois d'avant.
+ * Aucun script d'ici ne le lit, ce qui le rend plus dangereux et non moins : la
+ * CI publie `argus-mobile-report/*.xml` en bloc, donc tout agrégateur de junit
+ * compte un échec sur un écran que plus personne ne teste.
+ *
+ * @param {string[]} fichiers ce que contient le dossier de rapport
+ * @param {Array<{id:string}>} visualScreens les écrans que ce run va rejouer
+ * @returns {string[]} les noms à retirer
+ */
+export function junitsVisuelsOrphelins(fichiers, visualScreens) {
+  const attendus = new Set((visualScreens ?? []).map((s) => `report.visual-${s?.id}.junit.xml`));
+  return (fichiers ?? [])
+    .filter((n) => /^report\.visual-.+\.junit\.xml$/.test(n))
+    .filter((n) => !attendus.has(n));
+}
+
+/**
  * Temps que l'écran de départ met à APPARAÎTRE, relevé par flow.
  *
  * La suite chronométrait déjà ce temps sans le savoir, et le jetait : la
@@ -2091,6 +2112,20 @@ async function main() {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
     warn('  Génère-les : node scripts/argus/run.mjs --update-baselines');
   } else {
+    // 🔴 UN JUNIT ORPHELIN GARDE SON ANCIEN VERDICT. Le chemin est fixe et
+    // réécrit à chaque invocation (454) — mais SEULEMENT pour les écrans encore
+    // joués. Un écran passé à `visual: false` sort de la boucle et son fichier
+    // reste, avec le `failures="1"` de la fois d'avant. Vécu sur un run réel.
+    // Il n'est lu par aucun script d'ici, ce qui le rend d'autant plus
+    // dangereux : la CI publie `argus-mobile-report/*.xml` en bloc, donc
+    // n'importe quel agrégateur de junit compte un échec sur un écran que plus
+    // personne ne teste. *Ce qui produit doit nettoyer ce qu'il ne produit plus.*
+    // ⚠️ Uniquement ICI, dans la branche où la boucle visuelle s'exécute : sur
+    // une passe ciblée (`--tags=perf`) elle ne tourne pas, et effacer les
+    // verdicts d'une passe visuelle antérieure serait le défaut inverse.
+    for (const f of junitsVisuelsOrphelins(readdirSync(reportDir), visualScreens)) {
+      rmSync(join(reportDir, f), { force: true });
+    }
     for (const screen of visualScreens) {
       runs.push(runMaestro({
         udid: resolved.udid, target: '.maestro/visual.yaml',

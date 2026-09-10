@@ -36,6 +36,7 @@ import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureB
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { junitsVisuelsOrphelins } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -12739,4 +12740,57 @@ test('le skill annonce la règle devices[]/platforms[] que l\'outil applique (46
     "le skill dit de retirer l'entrée sans dire ce qui arrive si on n'en retire qu'une ligne : les "
     + 'clés orphelines fusionnent dans l\'entrée suivante, en silence — et le rapport nomme alors '
     + 'un appareil qui n\'existe pas (462)');
+});
+
+// ── 463 ────────────────────────────────────────────────────────────────────
+// Le 454 dit que les junit sont réécrits à chaque invocation. Vrai — pour les
+// écrans encore joués. Un écran passé à `visual: false` sort de la boucle et son
+// fichier survit avec le `failures="1"` de la fois d'avant. Personne ne le lit
+// ici, ce qui le rend plus dangereux : la CI publie `*.xml` en bloc, donc tout
+// agrégateur compte un échec sur un écran que plus rien ne teste.
+test('un junit visuel que ce run ne rejoue pas est retiré (463)', () => {
+  const presents = [
+    'report.junit.xml',
+    'report.visual-home-filled.junit.xml',
+    'report.visual-orders.junit.xml',
+    'report.visual-settings.junit.xml',
+    'perf.json',
+  ];
+  const orphelins = junitsVisuelsOrphelins(presents, [{ id: 'orders' }, { id: 'settings' }]);
+
+  assert.deepEqual(orphelins, ['report.visual-home-filled.junit.xml'],
+    "l'écran retiré de la boucle visuelle garde son junit, donc son ancien verdict : la CI publie "
+    + '`argus-mobile-report/*.xml` en bloc et tout agrégateur y comptera un échec sur un écran que '
+    + 'plus personne ne teste (463)');
+
+  // ⚠️ LES DEUX AUTRES SENS, sans lesquels un nettoyage trop large passerait
+  // pour un correctif — et il détruirait les verdicts du run en cours.
+  assert.deepEqual(junitsVisuelsOrphelins(presents, [
+    { id: 'home-filled' }, { id: 'orders' }, { id: 'settings' },
+  ]), [], 'aucun écran retiré : rien ne doit être supprimé');
+  assert.ok(!junitsVisuelsOrphelins(presents, []).includes('report.junit.xml'),
+    "le junit des flows n'est pas un junit visuel : le retirer effacerait le verdict fonctionnel "
+    + 'du run en cours (463)');
+});
+
+// ── 463 bis ────────────────────────────────────────────────────────────────
+// L'autre barreau : la décision peut être juste et n'être appelée nulle part.
+// Un garde qui lit du texte ne verrait pas la différence — et le chantier a déjà
+// payé une prescription posée hors du chemin.
+test('le nettoyage des junit orphelins est bien CÂBLÉ dans la boucle (463)', () => {
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const appels = run.split('\n')
+    .filter((l) => !l.trimStart().startsWith('*') && !l.trimStart().startsWith('//'))
+    .filter((l) => l.includes('junitsVisuelsOrphelins('));
+  // Une déclaration + un appel : la déclaration seule signerait une fonction morte.
+  assert.ok(appels.some((l) => !l.includes('export function')),
+    '`junitsVisuelsOrphelins` est déclarée et jamais appelée : les orphelins restent, et le garde '
+    + 'ci-dessus mesure fidèlement une décision que rien n\'exerce (463)');
+  const i = run.indexOf('junitsVisuelsOrphelins(readdirSync');
+  const boucle = run.indexOf('for (const screen of visualScreens)');
+  assert.ok(i > 0 && boucle > 0 && i < boucle,
+    "le nettoyage doit précéder la boucle visuelle, et vivre DANS la branche qui l'exécute : "
+    + 'appelé ailleurs, il effacerait les verdicts visuels sur une passe ciblée qui ne rejoue rien '
+    + '(`--tags=perf`), ce qui est le défaut inverse (463)');
 });
