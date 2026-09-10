@@ -8418,3 +8418,44 @@ d'essai, et `osv-scanner` reste une affaire de machine.
 **Prochain numéro libre : 180.** La condition de sortie n'est pas remplie — le
 run 22 a exigé trois correctifs de `plugins/argus-mobile/`, donc c'est une
 **vérification** qui vient, sur le même terrain.
+
+### 472. Le comptage d'ancres cherchait le paramètre là où il n'est jamais écrit
+
+**Fermé le 10/09/2026**, rapporté par le **run 73** (iOS, projet à design system
+partagé) — et c'est la **quatrième fois** qu'un run bute sur ce relevé, après les
+runs 67, 71 et le 458 qui les avait fermés.
+
+Le 458 avait corrigé le **motif** des commandes du §2b ; il leur laissait le
+mauvais **périmètre**. `identifier: <nom>` n'est écrit qu'à **un** endroit — le
+composant qui TRANSMET l'ancre — et sur un projet à design system partagé, cet
+endroit vit dans le **paquet voisin**, hors du `lib` que la commande balaie. La
+commande (a) rend donc zéro, et le zéro se lit exactement comme « ce projet n'est
+pas instrumenté ».
+
+**Reproduit par exécution**, dans les deux sens, sur le projet du run 73 :
+
+| mesure | valeur |
+|---|---|
+| noms rendus par (a) sur `lib/` du projet | **0** |
+| noms rendus par (a) sur le `lib/` du paquet voisin | **3** |
+| call-sites réels dans `lib/` du projet | **21** |
+
+L'agent a écrit son propre compteur, l'a vu rendre 0, l'a corrigé et
+contre-éprouvé lui-même — c'est-à-dire qu'il a refait à la main ce que le §2b
+prescrit, parce que ce que le §2b prescrit ne pouvait pas marcher chez lui.
+
+📌 **Le remède est une commande (a0) qui DÉCOUVRE les paquets voisins** avant de
+balayer, plutôt qu'un chemin cité. Son ancrage compte autant que son existence :
+la valeur d'un `path:` local commence par un point (`../mon_design_system`),
+là où le paquet `path` de pub.dev s'écrit `path: ^1.9.1` — **même clé, même
+fichier**. Un motif non ancré rend le second comme un paquet voisin et envoie
+balayer `^1.9.1/lib`.
+
+⚠️ **Le tell, et il est gratuit** : *(a) qui rend zéro sur un projet dont les
+boutons sont partagés mesure un périmètre trop étroit, pas un projet vierge.*
+
+Le garde EXÉCUTE les deux commandes sur une fixture à deux paquets — le
+call-site chez le projet, le site qui transmet chez le voisin — et exige les
+deux sens : le nom trouvé quand le voisin est là, **rien** quand on le retire.
+Relire la prose n'aurait rien dit : le défaut n'est pas dans ce que le §2b
+affirme, il est dans les racines que sa ligne `find` énumère.
