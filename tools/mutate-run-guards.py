@@ -1647,6 +1647,16 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 463 — trois barreaux, trois mutations : la décision, le câblage, la place.
+    ("run", "463 · le nettoyage des orphelins ne filtre plus rien",
+     "    .filter((n) => !attendus.has(n));",
+     "    .filter(() => false);"),
+    ("run", "463 · la décision est déclarée mais plus appelée",
+     "    for (const f of junitsVisuelsOrphelins(readdirSync(reportDir), visualScreens)) {\n      rmSync(join(reportDir, f), { force: true });\n    }\n",
+     ""),
+    ("run", "463 · le nettoyage emporte AUSSI le junit des flows",
+     "    .filter((n) => /^report\\.visual-.+\\.junit\\.xml$/.test(n))\n",
+     "    .filter((n) => /\\.junit\\.xml$/.test(n))\n"),
     # 462 — la phrase retirée, c'est-à-dire le skill d'avant. La RÈGLE, elle,
     # est mutée par le 320 : la muter ici serait le doublon que ce point évite.
     ("skill", "462 · le skill retait la règle devices[]/platforms[]",

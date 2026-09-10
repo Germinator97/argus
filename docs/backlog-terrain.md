@@ -7816,6 +7816,33 @@ bloc iOS du gabarit, décommenté *tel quel*, **parse sans erreur** — le refus
 vient pas du parseur (comme au 459) mais de la validation. Deux mécanismes
 voisins qu'un même symptôme aurait confondus.
 
+### 463. Un junit ORPHELIN garde son ancien verdict
+
+**Fermé le 10/09/2026**, rapporté par le run 70 (point 5). Les trois mutations
+font tomber les deux gardes.
+
+Le **454** dit que les junit sont réécrits à chaque invocation. C'est vrai — *des
+écrans encore joués*. Un écran passé à `visual: false` sort de la boucle, et son
+`report.visual-<écran>.junit.xml` **survit** avec le `failures="1"` de la fois
+d'avant. Le run l'a vu sur `home-filled`.
+
+🔴 **Personne ne le lit ICI, et c'est ce qui le rend dangereux, pas inoffensif.**
+Aucun script du scaffold ne relit ces fichiers — mais le workflow publie
+`argus-mobile-report/*.xml` **en bloc**, donc n'importe quel agrégateur de junit
+(GitHub, Jenkins, Allure) compte un échec sur un écran que plus rien ne teste.
+*Ce qui produit doit nettoyer ce qu'il ne produit plus.*
+
+📌 **La décision est EXTRAITE pour que le garde l'APPELLE** au lieu de lire une
+ligne d'appel : un motif peut rester en place pendant que sa valeur est
+neutralisée. Et un second garde couvre le **câblage** et la **place** — le
+troisième barreau, celui qu'on croit acquis quand on a extrait.
+
+⚠️ **La place est une décision, pas un détail** : le nettoyage vit DANS la branche
+qui exécute la boucle visuelle. Ailleurs, une passe ciblée (`--tags=perf`)
+effacerait des verdicts qu'elle ne rejoue pas — le défaut inverse, et il détruit
+au lieu de mentir. La troisième mutation garde l'autre bord : un filtre élargi à
+`*.junit.xml` emporterait le verdict fonctionnel du run en cours.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
