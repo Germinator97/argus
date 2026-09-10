@@ -1647,6 +1647,15 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 461 — le second passage retiré, c'est-à-dire la séquence d'avant.
+    ("skill", "461 · l'étage 1 n'est plus rafraîchi avant le rapport",
+     "make argus-guards      # ⚠️ ET OUI, UNE SECONDE FOIS — voir plus bas dans ce §3g\n",
+     ""),
+    # ⚠️ Et l'autre moitié : rafraîchir LOIN de ce qui lit ne vaut rien. Le
+    # garde exige l'adjacence, donc on l'éloigne de deux commandes.
+    ("skill", "461 · le rafraîchissement s'éloigne de ce qui le lit",
+     "make argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes\nmake argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque\nmake argus-guards      # ⚠️ ET OUI, UNE SECONDE FOIS — voir plus bas dans ce §3g\n",
+     "make argus-guards      # ⚠️ ET OUI, UNE SECONDE FOIS — voir plus bas dans ce §3g\nmake argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes\nmake argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque\n"),
     # 460 — l'ordre est la variable, donc c'est lui qu'on remet à l'envers. Il
     # suffit d'ajouter une attente d'animation AVANT : `indexOf` prend la
     # première, et le sas redevient absorbé exactement comme il l'était.

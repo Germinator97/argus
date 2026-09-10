@@ -7757,6 +7757,34 @@ l'apostrophe est échappée dans le source JS et pas dans mon motif. Il a rendu
 HARNAIS et non VACANT — c'est exactement la distinction qui évite de partir
 chercher un garde manquant qui existe.
 
+### 461. La séquence périmait son propre relevé, et c'est elle qui le disait
+
+**Fermé le 10/09/2026**, rapporté par le run 70 (point 2). Les deux mutations
+font tomber le garde.
+
+`argus-guards` était en **deuxième** position du §3g, `argus-report` en
+**dernière** — avec deux passes device, une boucle visuelle et un build de
+release entre les deux. Au-delà de `budget.maxMinutes` (25 par défaut), le
+rapport avertit que `stage1.jsonl` est périmé. **À chaque run.**
+
+📌 **L'avertissement était juste ; c'est la séquence qui le fabriquait.** Un
+signal qu'on ne peut pas faire taire en ayant raison finit ignoré, et il emmène
+ses voisins — le motif que `security.acknowledged` avait déjà fermé ailleurs.
+
+📌 **Et l'enjeu n'est pas la fraîcheur affichée** : si `lib/` a bougé pendant la
+passe — une ancre corrigée, une dette payée —, le premier relevé décrit un code
+qui n'existe plus, et c'est **lui** qui part dans le rapport publié.
+
+📌 **Le garde exige l'ADJACENCE, pas la présence.** Un second passage placé trois
+commandes plus haut redeviendrait périmé au prochain ajout de dimension : ce qui
+rafraîchit doit toucher ce qui lit. La seconde mutation ne fait que l'éloigner de
+deux lignes, et elle tombe.
+
+📌 **Poser cet encadré a fait rougir le garde 293**, qui tient le renvoi vers le
+diagnostic du runner à moins de 40 lignes de la séquence. Il avait raison :
+c'est là qu'on lance `argus-run`, donc là qu'il faut savoir que le runner donne
+l'ordre de dépannage. L'encadré est passé après lui.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
