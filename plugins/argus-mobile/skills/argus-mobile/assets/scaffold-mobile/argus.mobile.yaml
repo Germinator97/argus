@@ -535,8 +535,11 @@ security:
   # se relit dans six mois comme un oubli que personne n'ose retirer.
   acknowledged: []
   #   - id: QAM-SEC-CLEAR
-  #     why: le drapeau vit dans src/debug/AndroidManifest.xml, jamais fusionné en
-  #          release — vérifié par aapt2 dump badging sur l'APK publié
+  #     why: vit dans src/debug/AndroidManifest.xml, jamais fusionné en release
+  # ⚠️ La raison tient sur UNE ligne — ce parseur n'accepte ni bloc `|`/`>` ni
+  # chaîne repliée, et l'exemple ci-dessus était lui-même replié : décommenté
+  # tel quel, il faisait échouer TOUTES les commandes (459). Raccourcis plutôt
+  # que de replier : cette phrase est faite pour être relue dans six mois.
 
   # Permissions attendues. Toute permission présente hors de cette liste est un
   # finding (permission excessive).

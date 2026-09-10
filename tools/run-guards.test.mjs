@@ -12508,3 +12508,104 @@ test('le comptage du skill voit les ancres portées par un PARAMÈTRE (458)', ()
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── 459 ────────────────────────────────────────────────────────────────────
+// Le gabarit MONTRAIT une forme que son propre parseur refuse : l'exemple de
+// `acknowledged`, décommenté tel quel, faisait échouer TOUTES les commandes
+// (« argus.mobile.yaml:538 — valeur sur la ligne ET bloc indenté en dessous »).
+// Trois runs sont tombés sur ce mécanisme — 445, le point 4 du run 70, le
+// point 8 du run 71 — et les deux premiers ont été traités comme des rappels
+// manquants, clé par clé. Un rappel recopié se périme ; un exemple faux
+// enseigne le défaut. Ce garde exerce donc le VRAI parseur sur le gabarit
+// LIVRÉ, et il est total : aucun exemple, présent ou futur, ne peut être refusé.
+test('aucun exemple du gabarit n\'est refusé par son propre parseur (459)', () => {
+  const gabarit = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml');
+  const lignes = readFileSync(gabarit, 'utf8').split('\n');
+
+  // Une ligne d'EXEMPLE, une fois décommentée, ressemble à du YAML : un item
+  // de liste ou une paire clé/valeur. La prose qui l'entoure, non — c'est ce
+  // qui borne le bloc sans avoir à compter des lignes.
+  const decommente = (l) => l.replace(/^(\s*)#/, '$1 ');
+  const estYaml = (l) => /^\s*(-\s|[\w.-]+\s*:)/.test(l);
+
+  const exemples = [];
+  for (let i = 0; i < lignes.length; i += 1) {
+    const m = /^(\s*)([\w.-]+): \[\]\s*$/.exec(lignes[i]);
+    if (!m) continue;
+    const bloc = [];
+    for (let j = i + 1; j < lignes.length; j += 1) {
+      if (!/^\s*#/.test(lignes[j])) break;
+      const nu = decommente(lignes[j]);
+      if (!estYaml(nu)) break;
+      bloc.push(nu);
+    }
+    if (bloc.length) exemples.push({ ligne: i, cle: m[2], bloc });
+  }
+
+  // ⚠️ Sans ceci le garde serait vert le jour où la forme des exemples change,
+  // et il ne garderait plus rien — la boucle ne tournerait simplement pas.
+  assert.ok(exemples.length > 0,
+    "aucun exemple commenté n'a été trouvé sous une clé `: []` du gabarit : soit ils ont disparu, "
+    + 'soit leur forme a changé et ce garde ne mesure plus rien (459)');
+
+  const dir = mkdtempSync(join(tmpdir(), 'argus-459-'));
+  try {
+    for (const ex of exemples) {
+      const copie = lignes.slice();
+      copie[ex.ligne] = copie[ex.ligne].replace(/: \[\]\s*$/, ':');
+      // Le bloc remplace ses propres lignes commentées, donc rien ne bouge autour.
+      for (let k = 0; k < ex.bloc.length; k += 1) copie[ex.ligne + 1 + k] = ex.bloc[k];
+      const f = join(dir, `argus.${ex.cle}.yaml`);
+      writeFileSync(f, copie.join('\n'));
+      assert.doesNotThrow(() => loadConfig(f),
+        `l'exemple de « ${ex.cle} » (ligne ${ex.ligne + 2}), décommenté TEL QUEL, est refusé par le `
+        + "parseur du scaffold. Un gabarit qui montre une forme illégale enseigne le défaut : celui "
+        + "qui suit l'exemple voit TOUTES les commandes s'arrêter, et il croit avoir mal recopié (459)");
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ── 459 bis ────────────────────────────────────────────────────────────────
+// L'autre moitié : le message. Il nommait « un bloc indenté » dans les DEUX
+// cas, alors que celui qui arrive en vrai est une phrase repliée — d'où un
+// lecteur qui cherche une faute de structure là où il n'a qu'une valeur trop
+// longue. Le remède vit dans le PARSEUR, donc il couvre les clés qui n'existent
+// pas encore ; un rappel posé clé par clé, lui, se périme au prochain ajout.
+test('une valeur REPLIÉE se distingue d\'un bloc indenté, et dit quoi faire (459)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-459b-'));
+  try {
+    const base = readFileSync(join(RACINE,
+      'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+
+    // 1. la phrase repliée — le cas courant.
+    const repliee = join(dir, 'repliee.yaml');
+    writeFileSync(repliee, base.replace(/^security:$/m,
+      "security:\n  raisonTropLongue: une phrase qui commence ici\n    et se poursuit sur la ligne suivante"));
+    assert.throws(() => loadConfig(repliee), (e) => {
+      assert.match(e.message, /REPLI[ÉE]{1,2}/,
+        `le parseur rend « ${e.message.split('\n')[0]} » : il nomme encore un bloc indenté là où il `
+        + "n'y a qu'une phrase trop longue (459)");
+      assert.match(e.message, /raccourcis/i,
+        'le message dit ce qu\'il voit, jamais quoi faire : c\'est ce qui a fait chercher une faute '
+        + 'de structure à trois runs (459)');
+      return true;
+    });
+
+    // 2. LE JUMEAU, sans lequel on ne saurait pas si le parseur sait encore
+    //    distinguer : un vrai bloc indenté doit garder SON message à lui.
+    const structure = join(dir, 'structure.yaml');
+    writeFileSync(structure, base.replace(/^security:$/m,
+      'security:\n  vraiBloc: une valeur\n    sousCle: et une map en dessous'));
+    assert.throws(() => loadConfig(structure), (e) => {
+      assert.match(e.message, /bloc indenté/,
+        `le parseur rend « ${e.message.split('\n')[0]} » sur un VRAI bloc indenté : le remède a `
+        + 'élargi le cas de la phrase repliée à tout, donc il ne distingue plus rien (459)');
+      return true;
+    });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

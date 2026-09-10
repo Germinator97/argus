@@ -277,7 +277,20 @@ function parseMapping(L, i, indent, file) {
       throw new YamlSubsetError(file, item.line, item.raw, 'bloc multi-lignes (| ou >) non supporté');
     }
     if (inline !== '' && deeper) {
-      throw new YamlSubsetError(file, item.line, item.raw, 'valeur sur la ligne ET bloc indenté en dessous');
+      // ⚠️ DEUX CAUSES, QUI NE SE CORRIGENT PAS PAREIL — et c'est la seconde qui
+      // arrive en vrai. Un bloc indenté sous une valeur est une faute de
+      // STRUCTURE ; une phrase repliée sur la ligne suivante est une valeur trop
+      // longue, et trois runs y sont tombés — dont un sur l'exemple que le
+      // gabarit montrait lui-même. Le message ci-dessous nommait la première
+      // dans les deux cas, ce qui envoyait chercher un bloc là où il n'y avait
+      // qu'une phrase. Ce remède vaut pour TOUTE clé, y compris celles qui
+      // n'existent pas encore : un rappel recopié clé par clé, lui, se périme.
+      const suite = L[i + 1].text.trim();
+      const structure = /^-\s/.test(suite) || /^[^\s:#]+\s*:/.test(suite);
+      throw new YamlSubsetError(file, item.line, item.raw, structure
+        ? 'valeur sur la ligne ET bloc indenté en dessous'
+        : 'valeur REPLIÉE sur la ligne suivante — ici une valeur tient sur UNE ligne : '
+          + 'raccourcis-la plutôt que de la replier, elle est faite pour être relue');
     }
     if (inline === '' && deeper) {
       const [value, next] = parseNode(L, i + 1, L[i + 1].indent, file);
