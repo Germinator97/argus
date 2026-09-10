@@ -12930,3 +12930,30 @@ test('un drapeau confiné au manifeste de DEBUG n\'est pas un finding (465)', ()
     'un nom de flavor inconnu doit être JUGÉ : la liste est celle des noms réservés d\'Android, '
     + 'pas une devinette sur les noms du projet (465)');
 });
+
+// ── 468 ────────────────────────────────────────────────────────────────────
+// Le geste naturel pour rejouer un garde de dette est de coller sa clé dans
+// `--plain-name`. Elle ne matche RIEN — elle porte des « · » et des mots que le
+// nom du test n'a pas —, et `flutter test` sort alors en **0** sur « No tests
+// ran ». Mesuré : exit 0. Un zéro rendu par une commande qui n'a rien mesuré se
+// lit comme un vert, au moment précis où l'on vérifie qu'une dette est payée.
+test('le message de dette donne un motif de rejeu qui MATCHE (468)', () => {
+  const harness = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart'), 'utf8');
+  const i = harness.indexOf('Défaut PRÉEXISTANT ?');
+  assert.ok(i > 0, 'le message de dette a disparu du harnais : ce garde ne mesure plus rien (468)');
+  const bloc = harness.slice(i, i + 2500);
+
+  assert.match(bloc, /--plain-name/,
+    'le message ne dit pas comment rejouer ce garde seul : le geste naturel est de coller la clé, '
+    + "qui ne matche rien et rend un `exit 0` sur « No tests ran » (468)");
+  // Le motif proposé doit être dérivé de la clé, pas la clé : c'est
+  // l'identifiant d'écran, seul morceau commun à la clé et au nom du test.
+  assert.match(bloc, /key\.split\(' · '\)\.first/,
+    "le motif proposé ne dérive pas de la clé par son identifiant d'écran. La clé entière ne "
+    + "matche rien (le nom du test ne porte ni les « · » ni les mêmes mots — mesuré : « cibles "
+    + 'tactiles à 200 % » côté clé contre « cibles tactiles TENUES à 200 % » côté test) (468)');
+  assert.match(bloc, /No tests ran|n'a rien mesuré/,
+    "le message ne prévient pas que `flutter test` sort en 0 quand le motif ne matche rien : c'est "
+    + "ce zéro-là qu'on lit comme un vert, en vérifiant qu'une dette est payée (468)");
+});

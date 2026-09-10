@@ -661,7 +661,15 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
         "      '$key',\n\n"
         'La suite repassera au vert — et rougira à nouveau le jour où il sera '
         'corrigé, pour te demander de retirer la ligne. Ce n\'est pas une '
-        'exception, c\'est un relevé.',
+        'exception, c\'est un relevé.\n\n'
+        '── Pour rejouer ces gardes-là seuls ────────────────────────────────\n'
+        "      flutter test test/argus/ --plain-name '${key.split(' · ').first}'\n\n"
+        '⚠️ NE COLLE PAS LA CLÉ CI-DESSUS DANS `--plain-name`. Elle porte des '
+        '« · » et des mots que le nom du test n\'a pas : le motif ne matche alors '
+        'RIEN, et `flutter test` sort en **0** sur « No tests ran ». Un zéro rendu '
+        'par une commande qui n\'a rien mesuré se lit exactement comme un vert — '
+        'et c\'est ce qu\'on lit au moment précis où on vérifie qu\'une dette est '
+        'payée. L\'identifiant d\'écran ci-dessus, lui, vient du groupe : il matche.',
       );
     }
     return;
