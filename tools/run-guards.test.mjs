@@ -12824,9 +12824,18 @@ test('toute clé que configFiles LIT est documentée dans le gabarit (464)', () 
   assert.ok(j > 0, 'la section configFiles a disparu du gabarit : ce garde ne mesure plus rien (464)');
   const bloc = gabarit.slice(j, gabarit.indexOf('\nconfigFiles:', j));
 
-  // `id` est le seul dont la doc n'a pas besoin de parler comme d'une option :
-  // il est dans l'exemple. On le vérifie comme les autres — il y est.
-  const manquantes = [...lues].filter((c) => !bloc.includes(c.split('.').pop() ?? c));
+  // ⚠️ LA CLÉ DOIT APPARAÎTRE EN POSITION DE CLÉ, pas quelque part dans la prose.
+  // Première version : `bloc.includes('nom')`, satisfait par « le NOM du fichier »
+  // et par le paragraphe qui EXPLIQUE `motif:`. Les deux mutations rendaient
+  // VACANT sur un garde qui avait pourtant raison sur le fond — il mesurait la
+  // mention, jamais l'exemple. Le critère est donc structurel : une ligne de
+  // commentaire dont le contenu commence par `<clé>:`, c'est-à-dire ce qu'on
+  // recopie.
+  const enPositionDeCle = (cle) => bloc.split('\n')
+    .map((l) => l.replace(/^\s*#/, ''))
+    // `- id: …` ouvre un item : la clé y est en position de clé aussi.
+    .some((l) => new RegExp(`^\\s*(?:-\\s+)?${cle}:`).test(l));
+  const manquantes = [...lues].filter((c) => !enPositionDeCle(c.split('.').pop() ?? c));
   assert.deepEqual(manquantes, [],
     `le contrôle lit ${manquantes.join(', ')} sans que le gabarit en parle. Une clé qu'on ne peut `
     + "pas deviner n'existe pas pour l'utilisateur : sans `motif:`, un fichier câblé par CONVENTION "
