@@ -29,7 +29,7 @@
  */
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { extname, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -132,7 +132,15 @@ export function auditAndroidManifest(root, config) {
 
   // Les DRAPEAUX se lisent par variante : c'est leur emplacement qui décide de
   // ce qui est publié, et le finding doit nommer le fichier fautif.
-  const findings = variantes.flatMap(([path, xml]) => drapeauxFindings(xml, relative(root, path), sec));
+  // 🔴 ET « PAR VARIANTE » VEUT DIRE QUE CERTAINES NE SONT JAMAIS PUBLIÉES (465).
+  // Confiner un `usesCleartextTraffic` au manifeste de DEBUG est la bonne
+  // pratique — Gradle ne le fusionne jamais en release. Le rapporter `critical`
+  // fait donc récolter un blocage à tout projet qui a bien fait, dès son premier
+  // run, et l'oblige à acquitter ce qu'il a réussi. Vécu : un run a passé sa
+  // passe à démonter ce finding à l'aapt2 sur l'APK publié, pour conclure qu'il
+  // décrivait la bonne pratique.
+  const publiees = variantes.filter(([path]) => variantePubliee(basename(dirname(path))));
+  const findings = publiees.flatMap(([path, xml]) => drapeauxFindings(xml, relative(root, path), sec));
 
   // ⚠️ LES PERMISSIONS, ELLES, SE LISENT SUR L'UNION — une seule fois. Gradle
   // les FUSIONNE, donc les compter par variante produirait deux findings de
@@ -146,6 +154,24 @@ export function auditAndroidManifest(root, config) {
   // Un composant déclaré dans deux manifestes ne vaut qu'un finding.
   const vus = new Set();
   return findings.filter((f) => !vus.has(f.id) && vus.add(f.id));
+}
+
+/**
+ * Un source set dont le manifeste peut atteindre un binaire PUBLIÉ.
+ *
+ * Gradle fusionne `main` avec la variante construite. `debug` ne l'est jamais en
+ * release, et `test`/`androidTest` ne le sont dans aucun binaire — un drapeau
+ * qu'on y confine est donc la BONNE pratique, pas un défaut. Un flavor (`dev`,
+ * `prod`…), lui, se publie : `devRelease` est un build légitime, donc on juge.
+ *
+ * ⚠️ La liste est celle des noms RÉSERVÉS d'Android, pas une devinette sur les
+ * noms que le projet emploie : tout ce qu'on ne connaît pas est jugé. Se tromper
+ * dans ce sens-là fait un faux positif qu'on peut acquitter ; dans l'autre, un
+ * trafic en clair publié que personne ne voit.
+ * @param {string} sourceSet @returns {boolean}
+ */
+export function variantePubliee(sourceSet) {
+  return !['debug', 'test', 'androidTest', 'testDebug', 'androidTestDebug'].includes(String(sourceSet));
 }
 
 /**

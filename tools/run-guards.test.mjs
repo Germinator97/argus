@@ -37,6 +37,7 @@ import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureB
 import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { junitsVisuelsOrphelins } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { variantePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -12841,4 +12842,56 @@ test('toute clé que configFiles LIT est documentée dans le gabarit (464)', () 
     + "pas deviner n'existe pas pour l'utilisateur : sans `motif:`, un fichier câblé par CONVENTION "
     + "— que rien ne nomme, qu'un plugin trouve seul — est déclaré orphelin sur un projet correct, "
     + 'et rend un `major` que personne ne peut corriger (464)');
+});
+
+// ── 465 ────────────────────────────────────────────────────────────────────
+// Confiner un `usesCleartextTraffic` au manifeste de DEBUG est la bonne
+// pratique : Gradle ne le fusionne jamais en release. Le scan le rapportait
+// `critical` quand même, si bien que tout projet ayant bien fait récoltait un
+// blocage à son premier run — et devait ACQUITTER sa propre réussite. Un run
+// entier a servi à le démonter à l'aapt2 sur l'APK publié.
+// Ce garde exerce le scan sur une arborescence réelle, dans les DEUX sens : le
+// débogage ne se juge pas, la release et les flavors se jugent toujours.
+test('un drapeau confiné au manifeste de DEBUG n\'est pas un finding (465)', () => {
+  const manifeste = (attr) => '<?xml version="1.0"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n'
+    + `  <application ${attr}></application>\n</manifest>\n`;
+  const config = { platforms: ['android'], security: { requireCleartextDisabled: true, requireDebuggableOff: true } };
+
+  const dir = mkdtempSync(join(tmpdir(), 'argus-465-'));
+  try {
+    const src = join(dir, 'android/app/src');
+    for (const v of ['main', 'debug', 'dev']) mkdirSync(join(src, v), { recursive: true });
+    writeFileSync(join(src, 'main/AndroidManifest.xml'), manifeste(''));
+    writeFileSync(join(src, 'debug/AndroidManifest.xml'), manifeste('android:usesCleartextTraffic="true"'));
+
+    const cleartext = (/** @type {any[]} */ f) => f.filter((x) => x.id === 'QAM-SEC-CLEAR');
+    assert.deepEqual(cleartext(auditAndroidManifest(dir, config)), [],
+      "le trafic en clair confiné au source set de DEBUG est rapporté comme un finding. C'est la "
+      + "BONNE pratique — Gradle ne fusionne jamais `src/debug/` en release —, donc le projet qui a "
+      + 'bien fait récolte un `critical` à son premier run et doit acquitter sa réussite (465)');
+
+    // ⚠️ L'AUTRE SENS, et c'est lui qui empêche le remède d'être une dispense :
+    // un flavor SE PUBLIE (`devRelease` est un build légitime), donc il se juge.
+    writeFileSync(join(src, 'dev/AndroidManifest.xml'), manifeste('android:usesCleartextTraffic="true"'));
+    assert.equal(cleartext(auditAndroidManifest(dir, config)).length, 1,
+      'un flavor `dev` publiable porte du trafic en clair et personne ne le dit : le remède du 465 '
+      + "a été élargi en dispense, et c'est le défaut le plus grave des deux — un trafic en clair "
+      + 'publié que rien ne signale (465)');
+
+    // Et `main` aussi, évidemment : sans ce cas le garde serait vert sur un
+    // scan qui ne juge plus rien du tout.
+    writeFileSync(join(src, 'main/AndroidManifest.xml'), manifeste('android:usesCleartextTraffic="true"'));
+    assert.equal(cleartext(auditAndroidManifest(dir, config)).length, 1,
+      '`main` porte du trafic en clair et le scan se tait : il ne juge plus rien (465)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+
+  // La décision elle-même, appelée : ce que le projet nomme librement est JUGÉ.
+  // Se tromper dans ce sens fait un faux positif acquittable ; dans l'autre, un
+  // trafic en clair publié que personne ne voit.
+  assert.equal(variantePubliee('debug'), false, 'le source set `debug` n\'atteint aucun binaire publié');
+  assert.equal(variantePubliee('staging'), true,
+    'un nom de flavor inconnu doit être JUGÉ : la liste est celle des noms réservés d\'Android, '
+    + 'pas une devinette sur les noms du projet (465)');
 });
