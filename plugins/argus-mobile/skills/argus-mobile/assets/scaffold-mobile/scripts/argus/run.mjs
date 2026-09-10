@@ -75,12 +75,24 @@ export function localeWarnings(demandee, autoStart, surDevice, platform = 'andro
       ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'
       : '  Avec un `avd` que tu lances toi-même, règle la locale sur l\'émulateur avant le run.',
     // ⚠️ CE QUE ÇA COÛTE, et c'est la phrase qui manquait. Dire « la clé est
-    // sans effet » laisse croire à un réglage inopérant ; le vrai prix est que
-    // la dimension i18n MESURE ALORS LA LOCALE DE L'APPAREIL. Vécu : un flow
+    // sans effet » laisse croire à un réglage inopérant ; le prix possible est
+    // que la dimension i18n MESURE ALORS LA LOCALE DE L'APPAREIL. Vécu : un flow
     // i18n qui assertait un libellé français est passé vert sur un appareil en
-    // « fr_CI » — français lui aussi. Il aurait été vert quoi qu'on déclare.
-    '  ⚠️ Tant que ce n\'est pas réglé, le flow i18n mesure la locale de L\'APPAREIL, '
-      + 'pas celle que tu déclares : il est vert quoi que tu déclares.',
+    // « fr_CI » — français lui aussi.
+    // 🔴 MAIS « POSSIBLE » N'EST PAS « CERTAIN », ET LA PHRASE CONCLUAIT TROP
+    // FORT (466). Elle affirmait « il est vert quoi que tu déclares » — ce qui
+    // dépend d'un fait que ce script ne peut pas connaître : l'application
+    // SUIT-ELLE la locale du système, ou l'ÉPINGLE-T-ELLE ? Mesuré sur un projet
+    // réel : appareil en « en-US », assertions françaises vertes, parce que
+    // l'app force sa locale — le flow y mesurait donc bien ce qu'il prétend.
+    // Un avertissement qui affirme faux sur un projet sain se fait ignorer, et
+    // il emmène les vrais avec lui. On dit donc la condition, et le tell.
+    '  ⚠️ Ce que ça coûte DÉPEND de ton application, et ce script ne peut pas le savoir : '
+      + 'si elle SUIT la locale du système, le flow i18n mesure alors celle de l\'APPAREIL, '
+      + 'donc il est vert quoi que tu déclares ; si elle ÉPINGLE sa locale, il mesure bien '
+      + 'la tienne et cet avertissement ne te coûte rien.',
+    '  Le tell est dans ton propre verdict : des assertions dans TA langue qui passent sur '
+      + 'un appareil réglé sur une AUTRE signent une application qui épingle.',
   ];
 }
 

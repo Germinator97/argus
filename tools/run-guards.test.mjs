@@ -2896,6 +2896,23 @@ test('locale : il parle quand l\'écart est réel — le garde ne coupe qu\'un s
   const illisible = localeWarnings('fr_FR', false, null);
   assert.ok(illisible.length >= 1, 'locale illisible : on ne peut pas conclure au silence');
   assert.match(illisible[0], /pas pu être lue/);
+
+  // ── 466 : ce qu'il CONCLUT, et pas seulement quand il parle ───────────────
+  // Il affirmait « le flow i18n est vert quoi que tu déclares ». C'est vrai
+  // d'une app qui SUIT la locale du système, et faux d'une app qui l'ÉPINGLE —
+  // mesuré sur un projet réel : appareil en « en-US », assertions françaises
+  // vertes, parce que l'app force sa locale. Un avertissement qui affirme faux
+  // sur un projet sain se fait ignorer, et il emmène les vrais avec lui.
+  const texte = differe.join(' ');
+  assert.match(texte, /DÉPEND|dépend/,
+    "l'avertissement affirme la conséquence au lieu de la conditionner : elle dépend d'un fait que "
+    + "ce script ne connaît pas — l'app suit-elle la locale du système, ou l'épingle-t-elle ? (466)");
+  assert.match(texte, /ÉPINGLE|épingle/,
+    "l'avertissement ne mentionne pas le cas de l'application qui ÉPINGLE sa locale, où le flow i18n "
+    + 'mesure bien ce qu\'il prétend et où cet avertissement ne coûte rien (466)');
+  assert.match(texte, /tell|signent|signe/i,
+    "l'avertissement laisse le lecteur sans moyen de trancher entre les deux cas : le verdict de son "
+    + 'propre flow le lui dit, encore faut-il le dire (466)');
 });
 
 // ───────────────────────────────────────────────────────────────────────────
