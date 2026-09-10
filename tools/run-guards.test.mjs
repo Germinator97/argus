@@ -12957,3 +12957,39 @@ test('le message de dette donne un motif de rejeu qui MATCHE (468)', () => {
     "le message ne prévient pas que `flutter test` sort en 0 quand le motif ne matche rien : c'est "
     + "ce zéro-là qu'on lit comme un vert, en vérifiant qu'une dette est payée (468)");
 });
+
+// ── 469 ────────────────────────────────────────────────────────────────────
+// Hors `--verbose`, la sortie de Maestro est capturée : entre l'annonce d'un
+// flow et sa dernière ligne il n'y a RIEN, pendant plusieurs minutes. Un run en
+// aveugle a lancé une dizaine de boucles d'attente pour suivre l'avancement ;
+// le système a tué le tas, en emportant le simulateur. Un outil qui ne donne
+// aucun signe de vie fabrique lui-même les sondes qui le tuent.
+test('le runner annonce son silence, et le skill interdit la sonde (469)', () => {
+  const run = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  const i = run.indexOf('function runMaestro');
+  assert.ok(i > 0, '`runMaestro` a disparu : ce garde ne mesure plus rien (469)');
+  // La fenêtre s'arrête au lancement : ce qui vient après ne prévient plus rien.
+  const j = run.indexOf("sh('maestro'", i);
+  assert.ok(j > i, "le lancement de Maestro a disparu de runMaestro : fenêtre fausse (469)");
+  const avantLancement = run.slice(i, j)
+    .split('\n').filter((l) => !l.trimStart().startsWith('//')).join('\n');
+
+  assert.match(avantLancement, /ne rendra plus une ligne|sortie capturée/,
+    "le runner ne prévient pas que ce flow va se taire pendant des minutes. C'est ce silence qui "
+    + "fait écrire des boucles de sondage, et c'est le tas de sondes que le système tue (469)");
+  assert.match(avantLancement, /verbose/,
+    'le runner annonce le silence sans dire comment le lever : `--verbose` existe, encore faut-il '
+    + "que celui qui attend l'apprenne à ce moment-là (469)");
+  // ⚠️ La position compte : annoncé APRÈS le lancement, le message arrive quand
+  // le flow est fini — c'est-à-dire quand plus personne n'en a besoin.
+  assert.ok(run.indexOf('ne rendra plus une ligne') < j,
+    "l'annonce du silence est imprimée APRÈS le lancement du flow : elle arrive donc à la fin de "
+    + "l'attente qu'elle sert à expliquer (469)");
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const bloc = skill.replace(/\s+/g, ' ');
+  assert.match(bloc, /n'écris pas de\s*boucle de sondage|boucle de sondage/i,
+    "le skill ne dit pas de s'abstenir de sonder l'avancement : le geste est naturel devant une "
+    + 'commande muette, et le tas de sondes a coûté un simulateur (469)');
+});

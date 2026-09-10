@@ -1696,6 +1696,18 @@ publiée décrit un run sans performance, sans accessibilité device, sans MASVS
 sans CVE. Deux runs indépendants ont suivi cette séquence à la lettre et publié
 ce rapport-là ; elles coûtent **moins d'une minute** à elles quatre.
 
+🔴 **`argus-run` NE DIT RIEN PENDANT UN FLOW, ET C'EST NORMAL — n'écris pas de
+boucle de sondage** (469). Hors `--verbose`, la sortie de Maestro est capturée :
+entre l'annonce d'un flow et sa dernière ligne, il n'y a **rien**, pendant
+plusieurs minutes. Un run en aveugle en a conclu que la commande était pendue et
+a lancé **une dizaine de boucles d'attente** en arrière-plan pour suivre
+l'avancement sur le disque ; elles se sont accumulées, le système les a tuées, et
+**le simulateur est parti avec elles** — après la passe device, donc sans fausser
+aucune mesure, mais il a fallu tout rallumer.
+*Un outil qui ne donne aucun signe de vie fabrique lui-même les sondes qui le
+tuent.* Le runner annonce désormais ce silence à chaque flow. Si tu veux voir
+Maestro en direct : `make argus-run ARGS="--verbose"`.
+
 ⚠️ **Et si une commande de l'étage 1 ne rend JAMAIS la main — `argus-guards`,
 `argus-anchors`, n'importe laquelle —, ne cherche pas un test lent : cherche une
 boucle de micro-tâches.** Le tell est une **absence**, et c'est elle qui décide :

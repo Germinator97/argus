@@ -837,6 +837,19 @@ function runMaestro({ udid, target, junitPath, outputDir, env, includeTags, excl
     console.warn('    processus fils. Utilise `set -a && source <fichier> && set +a`.');
   }
   log(shown);
+  // 🔴 DIRE QUE LE SILENCE EST NORMAL, ET COMBIEN IL DURE (469). Hors
+  // `--verbose`, la sortie de Maestro est CAPTURÉE : ce flow ne dira plus rien
+  // jusqu'à sa dernière ligne, et il dure des minutes. Un run en aveugle en a
+  // conclu que la commande était pendue, a lancé **une dizaine de boucles
+  // d'attente** en arrière-plan pour suivre l'avancement sur le disque, et le
+  // système a fini par tuer ce tas — en emportant le simulateur avec lui.
+  // *Un outil qui ne donne aucun signe de vie fabrique lui-même les sondes qui
+  // le tuent.* Une ligne coûte moins cher que le tas.
+  if (!dryRun && !verbose) {
+    log('  ⏳ ce flow ne rendra plus une ligne avant sa fin (sortie capturée) — '
+      + 'compte quelques minutes. N\'écris pas de boucle de sondage : ajoute '
+      + 'ARGS="--verbose" pour suivre Maestro en direct.');
+  }
   if (dryRun) return { ok: true, status: 0, command: shown };
   const res = sh('maestro', args, verbose ? { stdio: 'inherit' } : {});
   if (!verbose && !res.ok) console.error(res.stdout || res.stderr);
