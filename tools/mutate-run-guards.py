@@ -1647,6 +1647,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 468 — deux bords : plus de commande du tout, et une commande qui reprend
+    # la CLÉ (donc qui ne matche rien, donc qui rend 0 sur zéro test).
+    ("harness", "468 · le message de dette reperd sa commande de rejeu",
+     "        \"      flutter test test/argus/ --plain-name '${key.split(' · ').first}'\\n\\n\"\n",
+     ""),
+    ("harness", "468 · la commande de rejeu reprend la clé, donc ne matche rien",
+     "--plain-name '${key.split(' · ').first}'",
+     "--plain-name '$key'"),
     # 467 — la clé lue mais sans effet : le cas « pire qu'absente ».
     ("config", "467 · la commande déclarée ne prime plus sur la dérivation",
      "  if (declaree) return flutterCommandIn(declaree, pinned);\n",

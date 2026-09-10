@@ -7964,6 +7964,35 @@ points — son motif ne voyait qu'un `scanBuildCmd` **nu**, donc il était aveug
 jamais déclarée ; et il vérifie maintenant que la clé **prime** sur la
 dérivation, une clé lue et sans effet étant pire qu'absente.
 
+### 468. Le zéro d'une commande qui n'a rien mesuré se lit comme un vert
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point g) — **comme mineur, et il
+ne l'est pas**. Les deux mutations font tomber le garde.
+
+Le geste naturel pour rejouer un garde de dette est de coller sa clé dans
+`--plain-name`. Elle ne matche **rien** : la clé porte des « · » et des mots que
+le nom du test n'a pas. Mesuré — clé `cibles tactiles à 200 % de taille de
+texte`, nom du test `cibles tactiles **TENUES** à 200 % de taille de texte` : ce
+ne sont pas deux formats, ce sont **deux chaînes écrites séparément**.
+
+🔴 **CE QUI LE REND GRAVE EST LE CODE DE SORTIE.** Mesuré sur le terrain :
+
+    No tests ran.
+    No tests match "home-empty · contraste du texte (WCAG AA)".
+    code de sortie : 0
+
+Un `0` rendu par une commande qui n'a **rien exécuté** est indiscernable d'un
+succès — et on le lit au moment précis où l'on vérifie qu'une dette est payée.
+Un `&&` enchaîne, un script conclut, personne ne voit la ligne du milieu.
+
+**Le message d'échec DÉRIVE désormais un motif qui matche** : l'identifiant
+d'écran, seul morceau commun à la clé et au nom du test (le nom tient son segment
+d'écran du `group()`). Et il dit le piège, parce que la tentation de coller la
+clé est plus forte que la commande qu'on propose.
+
+📌 Le skill ne prescrivait `--plain-name` **nulle part** : le run l'a employé de
+lui-même. Un piège n'a pas besoin d'être prescrit pour être payé.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
