@@ -933,6 +933,49 @@ test('le comptage d\'ancres balaie le paquet VOISIN, pas seulement lib (472)', (
   rmSync(dossier, { recursive: true, force: true });
 });
 
+// ── Un canal de plateforme manquant se lit-il comme de la dette ? ─────────
+//
+// Un plugin natif n'a aucune implémentation sous `flutter test`. L'écran qui
+// l'interroge au montage lève `MissingPluginException`, le garde rougit, et la
+// ligne ressemble à un défaut de l'application — un run a failli l'inscrire
+// dans `known_issues.dart`, où elle aurait figé un échec qui décrit l'outillage
+// et non le projet.
+//
+// ⚠️ Les DEUX moitiés comptent, et c'est la seconde qui manque toujours : fermer
+// le premier canal en révèle un second (mesuré : permissions → geolocator).
+// Un avertissement qui ne dit que la première laisse conclure sur un vert
+// obtenu à mi-chemin, et il aura l'air complet.
+test('un canal de plateforme manquant est nommé comme un défaut de MONTAGE (474)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const lignes = skill.split('\n');
+
+  // La fenêtre se borne par la STRUCTURE, jamais par un index calculé : un
+  // `indexOf` qui échoue rend -1, et `slice` retombe alors sur le fichier
+  // entier — le garde trouverait son motif n'importe où (payé deux fois).
+  const iTete = lignes.findIndex((l) => /MissingPluginException/.test(l));
+  assert.ok(iTete > 0,
+    'le SKILL ne parle plus de MissingPluginException : un run inscrira cette exception '
+    + 'dans known_issues.dart comme si elle décrivait l\'application');
+  let iFin = iTete;
+  while (iFin + 1 < lignes.length && !/^#{2,3} /.test(lignes[iFin + 1])) iFin++;
+  const bloc = lignes.slice(iTete, iFin + 1).join('\n');
+
+  // 1. le VERDICT : ce n'est pas de la dette.
+  assert.match(bloc, /MONTAGE|n'appartient \*\*pas\*\* au\s*\n?projet|pas de la dette/i,
+    'le SKILL nomme l\'exception sans dire à QUI elle appartient — or c\'est la seule '
+    + 'chose qui empêche de l\'inscrire comme une dette de l\'application');
+
+  // 2. l'ITÉRATION : le premier canal fermé en révèle un second.
+  assert.match(bloc, /reparaître|réapparaît|un second|RÉVÈLE/i,
+    'le SKILL ne dit pas que fermer le premier canal en révèle un second : on conclut '
+    + 'alors sur un vert obtenu à mi-chemin, et l\'avertissement a l\'air complet');
+
+  // 3. le TELL, qui doit être dérivable par le lecteur sans rien deviner.
+  assert.match(bloc, /on channel/,
+    'le SKILL ne donne plus le tell (`on channel`) qui distingue en une seconde un canal '
+    + 'absent d\'une dette d\'application');
+});
+
 // ── L'indice « sous le pli » nomme-t-il la BONNE cause ? ───────────────────
 //
 // Une ancre déclarée à la fois dans `commands` et dans `commandsAfterScroll`

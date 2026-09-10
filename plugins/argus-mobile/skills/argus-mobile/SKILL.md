@@ -1804,6 +1804,27 @@ Trois gestes, dans cet ordre :
 en production — c'est le seul cas connu où une consigne de ce skill produit un
 faux vert, et il est là parce qu'un run l'a payé.
 
+⚠️ **UN CANAL DE PLATEFORME MANQUANT N'EST PAS DE LA DETTE — c'est ton MONTAGE
+(474).** Un plugin natif — `permission_handler`, `geolocator`, tout ce qui parle
+à l'OS — n'a **aucune implémentation** sous `flutter test` : l'écran qui
+l'interroge au montage lève `MissingPluginException(No implementation found for
+method <m> on channel <c>)`. Le garde rougit, et la ligne ressemble à s'y
+méprendre à un défaut de l'application. Un run a failli l'inscrire dans
+`known_issues.dart`, où elle aurait figé un échec qui n'appartient **pas** au
+projet — et une dette qui n'est pas la sienne est pire qu'une dette de plus :
+elle décrit l'outillage à qui lit le rapport.
+
+🔴 **Et fermer le premier canal en RÉVÈLE un second.** Le même run a posé un
+double sur `flutter.baseflow.com/permissions/methods` et vu l'exception
+reparaître aussitôt sur `flutter.baseflow.com/geolocator` : deux plugins, deux
+canaux, **une seule exception à la fois**. Ne conclus donc pas sur le premier
+vert — relance jusqu'à ce qu'il n'en reste aucun. Le nom du canal est dans le
+message, tu n'as rien à deviner.
+
+📌 **Le tell tranche en une seconde : le message nomme un CANAL** (`on channel
+…`). Une dette d'application, elle, nomme un widget, une contrainte, un ratio ou
+une taille — jamais un canal.
+
 ⚠️ **L'ordre est délibéré, et il coûte un run de plus — dis-le plutôt que de le
 laisser passer pour une erreur.** Un premier `argus-run` sans références ne
 compare rien : la dimension visuelle s'y annonce non exécutée, ce qui est honnête
