@@ -1591,6 +1591,7 @@ make argus-perf        # démarrage, mémoire, taille — sur device, ~30 s
 make argus-a11y        # cibles tactiles et libellés — sur device, ~30 s
 make argus-sec         # MASVS statique sur le binaire — sans device, quelques secondes
 make argus-sca         # CVE des dépendances — sans device ; saute si `osv-scanner` manque
+make argus-guards      # ⚠️ ET OUI, UNE SECONDE FOIS — voir plus bas dans ce §3g
 make argus-report      # rapport HTML
 ```
 
@@ -1634,6 +1635,19 @@ DONNE L'ORDRE.** Il imprime les trois causes possibles, de la plus probable à l
 plus chère, au moment où l'échec tombe — un run l'a suivi et a économisé deux
 passes device. Le détail de chacune est plus bas dans ce §3g ; **c'est la sortie
 console qui commande**, pas ta lecture de ce document.
+
+⚠️ **LA SÉQUENCE PÉRIMAIT SON PROPRE RELEVÉ, ET C'EST ELLE QUI LE DISAIT** (461).
+`argus-guards` est en deuxième position, `argus-report` en dernière : entre les
+deux il y a deux passes device, une boucle visuelle et un build de release.
+Au-delà de `budget.maxMinutes` (25 par défaut), le rapport avertit — « 1 relevé
+plus vieux que 25 min : `stage1.jsonl` » — parce que deux parts si éloignées ne
+peuvent pas venir du même run. **L'avertissement est juste ; c'est la séquence
+qui le fabriquait.** Le second passage coûte quelques secondes et n'a besoin
+d'aucun appareil.
+
+📌 Et ce n'est pas qu'une question de fraîcheur affichée : si `lib/` a bougé
+pendant la passe — un correctif d'ancre, une dette payée —, le premier relevé
+décrit un code qui n'existe plus, et c'est **lui** qui part dans le rapport.
 
 ⚠️ **NE CONSTRUIS PAS TANT QUE `lib/` BOUGE.** La séquence place `argus-build`
 au bon endroit, mais rien ne disait de ne pas paralléliser pour gagner du temps.

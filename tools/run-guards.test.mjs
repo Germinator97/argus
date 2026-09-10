@@ -12676,3 +12676,32 @@ test('la promesse « splash compris » a bien l\'ordre qui la rend vraie (460)',
     'le rapport promet « splash et init compris » pendant que le flow fait attendre autre chose '
     + "avant de chronométrer : la promesse et ce qui la tient ont divergé (460)");
 });
+
+// ── 461 ────────────────────────────────────────────────────────────────────
+// La séquence du §3g plaçait `argus-guards` en deuxième position et
+// `argus-report` en dernière, avec deux passes device entre les deux. Le
+// rapport avertissait donc à chaque run que `stage1.jsonl` était périmé — un
+// avertissement juste, fabriqué par la séquence elle-même. Garde de POSITION :
+// la présence des deux commandes n'a jamais été en cause.
+test('la séquence du §3g rafraîchit l\'étage 1 avant le rapport (461)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('**g. Premier run.**');
+  assert.ok(i > 0, 'la séquence du premier run a disparu du §3g : ce garde ne mesure plus rien (461)');
+  const bloc = skill.slice(i, skill.indexOf('```', skill.indexOf('```bash', i) + 7));
+
+  const lignes = bloc.split('\n');
+  const iReport = lignes.findIndex((l) => l.startsWith('make argus-report'));
+  assert.ok(iReport > 0, '`make argus-report` a disparu de la séquence : ce garde ne mesure plus rien (461)');
+
+  const gardes = lignes.map((l, n) => (l.startsWith('make argus-guards') ? n : -1)).filter((n) => n >= 0);
+  assert.ok(gardes.length >= 2,
+    "`make argus-guards` n'apparaît qu'une fois dans la séquence, en tête. Entre lui et "
+    + '`argus-report` il y a deux passes device, une boucle visuelle et un build de release : '
+    + 'le rapport avertit alors que `stage1.jsonl` est plus vieux que `budget.maxMinutes`, à '
+    + "CHAQUE run. Et si `lib/` a bougé pendant la passe, c'est un relevé décrivant du code "
+    + 'disparu qui part dans le rapport (461)');
+  assert.ok(gardes.some((n) => n < iReport && iReport - n <= 2),
+    "`make argus-guards` est bien joué deux fois, mais aucun de ses passages n'est JUSTE avant "
+    + '`argus-report` : ce qui rafraîchit doit être adjacent à ce qui lit, sinon la séquence '
+    + 'refabrique le relevé périmé au prochain ajout de dimension (461)');
+});
