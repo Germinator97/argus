@@ -8557,3 +8557,31 @@ Le garde LANCE l'installeur sur trois fixtures plutôt que de relire son texte :
 GitLab seul (l'avertissement doit sortir **et nommer le fichier**), les deux CI
 qui coexistent (il doit se taire — un avertissement qui crie sur un choix
 délibéré s'apprend à ignorer), et aucun autre CI (rien à dire).
+
+### 476. « Sourcer » n'était pas le geste, et le rattrapage coûte une passe device
+
+**Fermé le 10/09/2026**, rapporté par le **run 75** (Android) — et le constat
+brut était **démenti** : le skill le dit déjà. Ce qui restait est plus étroit, et
+c'est lui qui coûte.
+
+Le gabarit prescrit, pour les comptes de test, « un fichier hors dépôt à
+**sourcer** ». Or un fichier de lignes `CLE=valeur` nues donne des variables de
+**shell**, que le processus fils ne voit jamais : Maestro reçoit
+`-e QA_PHONE=<VIDE>`, le flow authentifié est sauté, et rien d'autre ne le dit.
+
+📌 **Le runner rattrape, et parfaitement** : il nomme les secrets vides, nomme la
+frontière de processus, nomme celle de l'export, et donne la forme exacte —
+`set -a && source <fichier> && set +a`. Ce mécanisme est un correctif de ce
+chantier (337, puis son extension), et il a fonctionné : le run l'a lu et s'est
+corrigé seul.
+
+🔴 **Mais il ne parle qu'une fois la passe device LANCÉE.** Le gabarit, lui, est
+lu avant — c'est le seul endroit où la phrase épargne le coût. Mesuré sur ce
+run : **98 s de device** pour une passe qui ne pouvait rien mesurer.
+**0 occurrence** de `set -a` ou `export` dans tout `PROMPTS.md` avant ce point.
+
+Le garde porte sur l'**accord des deux textes**, jamais sur la présence dans
+l'un : deux endroits qui disent la même chose divergent toujours par celui qu'on
+ne mesure pas — et c'est le gabarit, puisque rien ne l'exécute. Sa contre-épreuve
+vient d'abord (le runner porte-t-il encore le remède ?), sans quoi il comparerait
+le gabarit à rien et passerait au vert.
