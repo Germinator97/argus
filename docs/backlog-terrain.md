@@ -7935,6 +7935,35 @@ premiers avaient rapporté le mécanisme comme une limite, et le 444 l'a dément
 à raison. Le 71 ne rouvre pas ce démenti : il vise la **phrase** que le démenti
 avait laissée en place.
 
+### 467. La dérivation ne peut pas inventer un flag qui n'existe pas en debug
+
+**Fermé le 10/09/2026**, rapporté par le run 71 (point f). Les deux mutations
+font tomber le garde 386 étendu.
+
+`releaseBuildCmd` **dérivait** la commande de publication de la commande de
+**debug** du projet, en échangeant le mode. Ça garde l'ABI, le flavor et les
+`--dart-define` — mais `--obfuscate` et `--split-debug-info` ne figurent dans
+**aucune** commande de debug, jamais. Le conseil rendu était donc un `--release`
+nu, qui produit un binaire non obfusqué, donc un `major` décrivant **notre
+commande** et non l'application. Le run l'a payé exactement ainsi.
+
+`build.androidScanBuildCmd` / `iosScanBuildCmd` la portent désormais et sont
+rendues **telles quelles** ; la dérivation reste le repli.
+
+⚠️ **CETTE CLÉ AVAIT DÉJÀ ÉTÉ CRÉÉE PUIS RETIRÉE**, par un run qui avait mesuré
+qu'aucun script ne la lisait — et il avait **raison à l'époque** : une clé morte
+se relit comme un geste outillé alors qu'il ne l'est pas (point 11). Ce qui
+change n'est pas l'avis, c'est le fait : *elle a un lecteur*. La note en
+commentaire reste, parce que la clé porte la commande et jamais **d'où elle
+vient**.
+
+📌 **LE GARDE 386 AVAIT RAISON DE ROUGIR** : mon correctif avait emporté la forme
+`# construit par : …` qu'il exige. Il a été **étendu**, pas doublé, sur deux
+points — son motif ne voyait qu'un `scanBuildCmd` **nu**, donc il était aveugle à
+`androidScanBuildCmd`, c'est-à-dire à la seule clé de ce genre que ce dépôt ait
+jamais déclarée ; et il vérifie maintenant que la clé **prime** sur la
+dérivation, une clé lue et sans effet étant pire qu'absente.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire

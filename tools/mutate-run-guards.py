@@ -1647,6 +1647,13 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 467 — la clé lue mais sans effet : le cas « pire qu'absente ».
+    ("config", "467 · la commande déclarée ne prime plus sur la dérivation",
+     "  if (declaree) return flutterCommandIn(declaree, pinned);\n",
+     ""),
+    ("yamlconf", "467 · le gabarit reperd la forme de la note et sa source",
+     "  #     # construit par : <commande>  (source : <fichier §>)\n",
+     ""),
     # 466 — la phrase d'avant, remise mot pour mot : elle affirme au lieu de
     # conditionner, ce qui est exactement ce que le garde asserte.
     ("run", "466 · l'avertissement de locale réaffirme au lieu de conditionner",
