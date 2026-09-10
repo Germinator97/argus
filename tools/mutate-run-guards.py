@@ -1647,6 +1647,24 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 459 — deux moitiés, deux cibles : ce que le gabarit MONTRE, et ce que le
+    # parseur DIT. La première remet exactement la forme qui a coûté trois runs.
+    ("yamlconf", "459 · l'exemple d'acquittement redevient replié",
+     "  #     why: vit dans src/debug/AndroidManifest.xml, jamais fusionné en release",
+     "  #     why: vit dans src/debug/AndroidManifest.xml, jamais fusionné en\n  #          release — vérifié par aapt2 dump badging sur l'APK publié"),
+    ("config", "459 · le parseur reperd la distinction des deux causes",
+     """      const suite = L[i + 1].text.trim();
+      const structure = /^-\\s/.test(suite) || /^[^\\s:#]+\\s*:/.test(suite);
+      throw new YamlSubsetError(file, item.line, item.raw, structure
+        ? 'valeur sur la ligne ET bloc indenté en dessous'
+        : 'valeur REPLIÉE sur la ligne suivante — ici une valeur tient sur UNE ligne : '
+          + 'raccourcis-la plutôt que de la replier, elle est faite pour être relue');""",
+     "      throw new YamlSubsetError(file, item.line, item.raw, 'valeur sur la ligne ET bloc indenté en dessous');"),
+    # ⚠️ L'autre sens : un remède qui rendrait TOUT « replié » ne distinguerait
+    # plus rien, et c'est le jumeau du garde qui le voit.
+    ("config", "459 · tout devient une valeur repliée, plus rien ne distingue",
+     "      const structure = /^-\\s/.test(suite) || /^[^\\s:#]+\\s*:/.test(suite);",
+     "      const structure = false;"),
     # 458 — les deux commandes s'éprouvent SÉPARÉMENT, parce qu'elles se
     # trompent différemment : (a) cesse de découvrir, (b) cesse de compter.
     ("skill", "458 · (a) fige le nom du paramètre au lieu de le découvrir",

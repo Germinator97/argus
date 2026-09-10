@@ -12523,10 +12523,15 @@ test('aucun exemple du gabarit n\'est refusé par son propre parseur (459)', () 
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml');
   const lignes = readFileSync(gabarit, 'utf8').split('\n');
 
-  // Une ligne d'EXEMPLE, une fois décommentée, ressemble à du YAML : un item
-  // de liste ou une paire clé/valeur. La prose qui l'entoure, non — c'est ce
-  // qui borne le bloc sans avoir à compter des lignes.
+  // ⚠️ CE GARDE EST NÉ VACANT, et c'est la mutation qui l'a dit. Sa première
+  // version bornait le bloc par « cette ligne ressemble-t-elle à du YAML ? » —
+  // un critère qui EXCLUT par construction la forme cherchée, puisqu'une
+  // continuation de chaîne repliée (« release — vérifié par… ») ne ressemble
+  // jamais à du YAML. Il coupait donc l'exemple juste avant la ligne fautive et
+  // parsait un reste parfaitement valide. La borne est désormais
+  // l'INDENTATION : structurelle, donc aveugle à ce que la ligne raconte.
   const decommente = (l) => l.replace(/^(\s*)#/, '$1 ');
+  const creux = (l) => l.length - l.trimStart().length;
   const estYaml = (l) => /^\s*(-\s|[\w.-]+\s*:)/.test(l);
 
   const exemples = [];
@@ -12534,10 +12539,17 @@ test('aucun exemple du gabarit n\'est refusé par son propre parseur (459)', () 
     const m = /^(\s*)([\w.-]+): \[\]\s*$/.exec(lignes[i]);
     if (!m) continue;
     const bloc = [];
+    let base = null;
     for (let j = i + 1; j < lignes.length; j += 1) {
       if (!/^\s*#/.test(lignes[j])) break;
       const nu = decommente(lignes[j]);
-      if (!estYaml(nu)) break;
+      if (base === null) {
+        // La PREMIÈRE ligne ouvre le bloc : elle, on exige qu'elle soit du YAML.
+        if (!estYaml(nu)) break;
+        base = creux(nu);
+      } else if (creux(nu) < base) {
+        break; // la prose qui suit l'exemple est moins indentée que lui.
+      }
       bloc.push(nu);
     }
     if (bloc.length) exemples.push({ ligne: i, cle: m[2], bloc });
