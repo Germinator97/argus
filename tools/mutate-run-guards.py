@@ -1704,6 +1704,19 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 473 — trois bords, un par moitié du garde : la branche NEUTRALISÉE (elle
+    # est encore là, elle ne décide plus — le motif de texte y survit), le
+    # paramètre rendu optionnel (un site non câblé compilerait), et un site
+    # d'appel dépareillé qui cherche le doublon dans l'autre liste.
+    ("harness", "473 · le paramètre redevient optionnel, donc oubliable",
+     "  required List<String> listeCible,",
+     "  List<String> listeCible = const <String>[],"),
+    ("harness", "473 · le doublon des deux listes n'est plus distingué",
+     "  if (listeCible.contains(ancre)) {",
+     "  if (false && listeCible.contains(ancre)) {"),
+    ("anchorsdart", "473 · un site cherche le doublon dans l'autre liste",
+     "                  listeCible: screen.displaysAfterScroll,",
+     "                  listeCible: screen.commandsAfterScroll,"),
     # 472 — le PÉRIMÈTRE est la variable, pas le motif : le 458 avait déjà
     # corrigé celui-ci. Retirer la racine du paquet voisin laisse la commande
     # entière, lisible et juste — elle mesure simplement le mauvais dossier.
