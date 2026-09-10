@@ -1704,6 +1704,14 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 476 — les deux moitiés du gabarit : la forme qui exporte, et la RAISON
+    # sans laquelle personne ne sait quand la commande est inutile.
+    ("prompts", "476 · le gabarit reperd la forme qui exporte",
+     "      set -a && source <ton fichier> && set +a",
+     "      source <ton fichier>"),
+    ("prompts", "476 · la commande reste, sa raison disparaît",
+     "un fichier de lignes `CLE=valeur` nues donne des variables de SHELL, que le\n  processus fils ne voit jamais.",
+     "il faut la bonne forme."),
     # 475 — la POSITION est la variable, et c'est la seule mutation qui la
     # mesure : déplacer le relevé APRÈS la boucle laisse tout le texte en place
     # et le rend vacant. La seconde retire l'avertissement lui-même ; la
