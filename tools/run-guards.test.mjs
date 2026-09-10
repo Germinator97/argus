@@ -952,23 +952,42 @@ test('un canal de plateforme manquant est nommé comme un défaut de MONTAGE (47
   // La fenêtre se borne par la STRUCTURE, jamais par un index calculé : un
   // `indexOf` qui échoue rend -1, et `slice` retombe alors sur le fichier
   // entier — le garde trouverait son motif n'importe où (payé deux fois).
-  const iTete = lignes.findIndex((l) => /MissingPluginException/.test(l));
-  assert.ok(iTete > 0,
+  const iMotif = lignes.findIndex((l) => /MissingPluginException/.test(l));
+  assert.ok(iMotif > 0,
     'le SKILL ne parle plus de MissingPluginException : un run inscrira cette exception '
     + 'dans known_issues.dart comme si elle décrivait l\'application');
-  let iFin = iTete;
+  // ⚠️ REMONTER AU DÉBUT DU PARAGRAPHE. Le motif vit dans le CORPS ; la ligne
+  // qui porte le verdict est le titre, deux lignes plus haut. Démarrer la
+  // fenêtre au motif la faisait commencer APRÈS ce qu'elle devait lire — le
+  // garde accusait alors le SKILL de ne pas dire ce qu'il disait juste au-dessus.
+  let iTete = iMotif;
+  while (iTete > 0 && lignes[iTete - 1].trim() !== '') iTete--;
+  let iFin = iMotif;
   while (iFin + 1 < lignes.length && !/^#{2,3} /.test(lignes[iFin + 1])) iFin++;
   const bloc = lignes.slice(iTete, iFin + 1).join('\n');
 
-  // 1. le VERDICT : ce n'est pas de la dette.
-  assert.match(bloc, /MONTAGE|n'appartient \*\*pas\*\* au\s*\n?projet|pas de la dette/i,
-    'le SKILL nomme l\'exception sans dire à QUI elle appartient — or c\'est la seule '
-    + 'chose qui empêche de l\'inscrire comme une dette de l\'application');
+  // ⚠️ LES DEUX ASSERTIONS PORTENT SUR LA LIGNE D'ANNONCE, PAS SUR LE BLOC.
+  // Écrites en alternatives sur le paragraphe entier, elles restaient vraies
+  // quand on retirait le titre : le corps répète les mêmes mots en les
+  // expliquant. La mutation l'a dit le jour même — les deux la traversaient.
+  // Ce qu'un lecteur pressé voit est la ligne en gras ; c'est donc elle qui
+  // doit porter le verdict, et non un membre de phrase trois lignes plus bas.
+  const annonces = bloc.split('\n').filter((l) => /^(⚠️|🔴|📌) \*\*/.test(l));
+  assert.ok(annonces.length >= 2,
+    `${annonces.length} ligne(s) d'annonce dans ce bloc — si la mise en forme a changé, `
+    + 'mets ce motif à jour ; sinon ce garde ne lit plus ce qu\'il croit lire');
+  const annonce = annonces.join('\n');
 
-  // 2. l'ITÉRATION : le premier canal fermé en révèle un second.
-  assert.match(bloc, /reparaître|réapparaît|un second|RÉVÈLE/i,
-    'le SKILL ne dit pas que fermer le premier canal en révèle un second : on conclut '
-    + 'alors sur un vert obtenu à mi-chemin, et l\'avertissement a l\'air complet');
+  // 1. le VERDICT, annoncé : ce n'est pas de la dette, c'est le montage.
+  assert.match(annonce, /MONTAGE|PAS DE LA DETTE/,
+    'aucune ligne d\'annonce ne dit à QUI appartient l\'exception — expliquée plus bas '
+    + 'mais pas annoncée, elle se lit comme une dette de l\'application, qui est '
+    + 'exactement l\'erreur qu\'un run a failli commettre');
+
+  // 2. l'ITÉRATION, annoncée : le premier canal fermé en révèle un second.
+  assert.match(annonce, /RÉVÈLE un second|un second canal/i,
+    'aucune ligne d\'annonce ne dit que fermer le premier canal en révèle un second : '
+    + 'on conclut alors sur un vert obtenu à mi-chemin, et le paragraphe a l\'air complet');
 
   // 3. le TELL, qui doit être dérivable par le lecteur sans rien deviner.
   assert.match(bloc, /on channel/,
