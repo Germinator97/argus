@@ -1647,6 +1647,15 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 460 — l'ordre est la variable, donc c'est lui qu'on remet à l'envers. Il
+    # suffit d'ajouter une attente d'animation AVANT : `indexOf` prend la
+    # première, et le sas redevient absorbé exactement comme il l'était.
+    ("launchclean", "460 · la stabilisation repasse devant le chronomètre",
+     "\n- runFlow:\n    when:\n      true:",
+     "\n- waitForAnimationToEnd:\n    timeout: 5000\n\n- runFlow:\n    when:\n      true:"),
+    ("run", "460 · le rapport ne promet plus que le splash est compris",
+     "attente de l\\'écran de départ exploitable (splash et init compris)",
+     "attente de l\\'écran de départ exploitable"),
     # 459 — deux moitiés, deux cibles : ce que le gabarit MONTRE, et ce que le
     # parseur DIT. La première remet exactement la forme qui a coûté trois runs.
     ("yamlconf", "459 · l'exemple d'acquittement redevient replié",

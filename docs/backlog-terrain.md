@@ -7719,6 +7719,44 @@ sémantique : un critère qui décrit ce que la ligne RACONTE est aveugle à ce
 qu'elle est.* C'est une façon de naître vacant que le chantier n'avait pas encore
 répertoriée.
 
+### 460. Un budget qu'aucune valeur ne peut dépasser a l'air d'un budget tenu
+
+**Fermé le 10/09/2026**, rapporté par le run 70 (point 1). Les deux mutations
+font tomber les deux gardes.
+
+`startup.samples` chronomètre la **première attente sur l'ancre**. Tout ce qui
+attend AVANT elle lui est donc soustrait, en silence — et
+`waitForAnimationToEnd: 5000` attendait avant, absorbant le sas de démarrage.
+Mesuré par le run sur une app dont le splash de marque tient **2 s** :
+**86 à 130 ms**, ce qui est physiquement impossible si la mesure contenait le
+splash. C'est ce désaccord qui l'a démasqué, pas une relecture.
+
+🔴 **ET LA SECONDE MOITIÉ EST PIRE QUE LE LABEL FAUX.** Le relevé s'annonce
+« splash et init compris » — faux sur toute app à splash tenu. Mais surtout,
+`thresholds.brandedSplashMs` est **soustrait** de cette mesure : un plancher de
+2000 ms retranché de 130 rend **0**, donc `QAM-START` ne peut **plus jamais**
+sortir. Le seuil de démarrage était mort, et rien ne pouvait le dire — un budget
+que rien ne peut dépasser se lit exactement comme un budget tenu.
+
+**Le remède est un ordre, pas un texte** : l'attente d'ancre passe en premier,
+donc elle part du lancement et mesure ce qu'elle prétend mesurer. Rien n'est
+perdu — son budget (`ARGUS_START_TIMEOUT_MS`) était déjà largement au-dessus du
+seuil de performance, et il couvre désormais **tout** le sas au lieu de ce qui
+restait après cinq secondes d'animation.
+
+📌 **Les deux gardes portent sur la POSITION**, parce que c'est elle la variable :
+les deux commandes étaient présentes, correctes, et chacune documentée par un
+paragraphe qui la justifie. Un garde qui aurait lu leur texte les aurait trouvées
+irréprochables. Le second relie la **promesse** du rapport (« splash et init
+compris ») à l'**ordre** qui la rend vraie — deux fichiers que rien ne rapproche
+à la lecture : si la promesse tombe, l'ordre n'a plus de raison d'être gardé ; si
+l'ordre saute, la promesse devient un mensonge.
+
+📌 **Et le harnais a repris ma mutation** : « motif trouvé 0× », parce que
+l'apostrophe est échappée dans le source JS et pas dans mon motif. Il a rendu
+HARNAIS et non VACANT — c'est exactement la distinction qui évite de partir
+chercher un garde manquant qui existe.
+
 ## 🔴 LES RUNS QUI N'ONT RIEN RENDU — et pourquoi ils s'écrivent ICI
 
 Un run qui ne rend aucun constat n'a, par construction, **aucun point à inscrire
