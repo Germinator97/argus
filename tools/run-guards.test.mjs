@@ -13025,3 +13025,63 @@ test('une annonce de numéro libre périmée est signalée comme telle (470)', (
     "l'avertissement dit que le numéro se dérive sans donner la commande qui le dérive : le lecteur "
     + 'recopiera donc la valeur qu\'il a sous les yeux (470)');
 });
+
+// ── 471 ────────────────────────────────────────────────────────────────────
+// Une mutation dont le motif a disparu de sa cible ne prouve RIEN : le harnais
+// rend « HARNAIS — motif trouvé 0× », ce qui est honnête et ne se lit qu'en
+// jouant la passe — laquelle coûte des heures. Personne ne la joue pour cette
+// question-là, et 25 mutations sur 404 étaient dans ce cas sans que rien ne le
+// dise. Elles ont été découvertes en contrôlant autre chose.
+// Ce garde lance le contrôle qui répond en une seconde, et exige qu'il conclue.
+test('aucune mutation n\'est inerte sans être déclarée (471)', () => {
+  const r = spawnSync('python3', [join(RACINE, 'tools/mutate-run-guards.py'), '--check-motifs'],
+    { cwd: RACINE, encoding: 'utf8' });
+  const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+
+  // ⚠️ Prouver que l'instrument a MESURÉ avant de lire son verdict : un exit 0
+  // rendu par un script qui n'a rien fait est le zéro qu'on lit comme un vert.
+  assert.match(sortie, /\d+ mutations · \d+ inerte\(s\)/,
+    `\`--check-motifs\` n'a pas rendu son relevé : ${sortie.slice(0, 300)} — son exit 0 ne mesure `
+    + 'alors rien du tout (471)');
+
+  assert.equal(r.status, 0,
+    'des mutations ne mutent plus rien sans être déclarées, ou le relevé cite des mutations '
+    + `réparées. Une mutation dont le motif a disparu rend HARNAIS, donc elle ne prouve RIEN — et `
+    + `ça ne se voit qu'en jouant la passe entière.\n${sortie}`);
+});
+
+// ── 471 bis ────────────────────────────────────────────────────────────────
+// L'autre moitié : un contrôle qui ne sait pas rendre son verdict NÉGATIF
+// approuve tout, et un outil qui approuve tout ressemble à un dépôt sain. On lui
+// donne donc une mutation dont le motif ne peut pas exister, et on exige qu'il
+// la dénonce — sans toucher au fichier du dépôt.
+test('le contrôle des motifs sait rendre son verdict NÉGATIF (471)', () => {
+  const src = readFileSync(join(RACINE, 'tools/mutate-run-guards.py'), 'utf8');
+  const i = src.indexOf('MUTATIONS = [');
+  assert.ok(i > 0, 'la liste des mutations a disparu : ce garde ne mesure plus rien (471)');
+  const sabote = `${src.slice(0, i)}MUTATIONS = [\n`
+    + '    ("skill", "SONDE — motif impossible", "\\u0000motif-qui-ne-peut-pas-exister\\u0000", ""),\n'
+    + src.slice(i + 'MUTATIONS = ['.length);
+
+  const dir = mkdtempSync(join(tmpdir(), 'argus-471-'));
+  try {
+    // ⚠️ Le script DÉRIVE sa racine de son propre chemin (`parent.parent`) : la
+    // copie doit donc vivre dans un `tools/` sous la vraie racine pour viser les
+    // mêmes cibles. On écrit dans le dossier temporaire et on corrige la racine.
+    const copie = join(dir, 'sonde.py');
+    writeFileSync(copie, sabote.replace(
+      'ROOT = pathlib.Path(__file__).resolve().parent.parent',
+      `ROOT = pathlib.Path(${JSON.stringify(RACINE)})`,
+    ));
+    const r = spawnSync('python3', [copie, '--check-motifs'], { cwd: RACINE, encoding: 'utf8' });
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    assert.match(sortie, /SONDE — motif impossible/,
+      `le contrôle ne dénonce pas une mutation dont le motif ne peut pas exister : il approuve tout, `
+      + `et un outil qui approuve tout ressemble à un dépôt sain.\n${sortie.slice(0, 300)}`);
+    assert.notEqual(r.status, 0,
+      'le contrôle NOMME le défaut et sort quand même en 0 : un code de sortie qui ne distingue rien '
+      + 'ne peut être câblé nulle part (471)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -133,6 +133,52 @@ MAESTRO = shutil.which("maestro")
 # seul moment où le compte est à la fois connu et digne de foi.
 NB_TESTS = None
 
+# ═══════════════════════════════════════════════════════════════════════════
+# Les mutations dont le motif ne matche PLUS — relevé, pas dispense (471)
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Une mutation dont le motif a disparu de sa cible ne prouve RIEN : le harnais
+# rend « HARNAIS — motif trouvé 0× », ce qui est honnête mais ne se lit qu'en
+# jouant la passe. Or la passe complète coûte des heures, donc personne ne la
+# joue pour cette question-là — et 25 mutations sur 404 étaient dans ce cas sans
+# que rien ne le dise, découvertes en contrôlant autre chose.
+#
+# `--check-motifs` répond en une seconde. Ce relevé fige l'écart connu, PAR
+# ÉGALITÉ : une réparation le fait rougir autant qu'une régression. Ce n'est pas
+# une liste d'exceptions, c'est l'état d'un chantier — chaque ligne affirme
+# qu'une mutation est morte et attend qu'on la ré-ancre.
+#
+# ⚠️ Une mutation qui suit un REFACTOR change de sujet sans prévenir : elle peut
+# rester verte en tombant sur un AUTRE garde que le sien, ce qui se lit comme un
+# succès. Le motif inerte, lui, se voit ici.
+MOTIFS_INERTES_CONNUS = {
+    '226 · le motif reperd les paramètres nommés',
+    '367 bis · un run interrompu peut de nouveau rendre gate pass',
+    "371 bis · un acquittement périmé n'est plus signalé",
+    "373 bis · les points ouverts cessent d'être retirés du compte",
+    "373 quater · la tête du backlog n'annonce plus ses points ouverts",
+    '374 · les acquittements périmés se jugent sur une MOITIÉ',
+    '388 bis · le lien avec le trousseau disparaît',
+    "388 · le geste de l'invite n'est plus conditionnel",
+    "416 · le journal réaffirme l'icône du gabarit",
+    '422 · le contrôle du flavor perd une plateforme',
+    "argus-anchors cesse d'appeler le croisement posé → déclaré",
+    "l'icône de la page n'est plus lue, la mention RESTE",
+    "l'indice renomme le levier que la doc interdit de toucher",
+    "la commande d'itération cite un drapeau inexistant",
+    'la commande de comptage reperd son filtre de commentaires',
+    'le SKILL cesse de décrire le titre par défaut que le code produit',
+    'le SKILL réaffirme un diagnostic unique',
+    'le compteur de flows reperd un fichier',
+    'le dernier point du backlog devient le premier',
+    'le journal reprend son propre calcul du titre',
+    "le plancher de splash cesse d'être déduit",
+    'le titre cesse de se lire avant une republication',
+    "les gabarits d'ancres retombent dans les opaques",
+    'un finding même sous le seuil',
+    'un projet ne peut plus déclarer ses propres fichiers',
+}
+
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
      "  const found = listed.find((d) => d.avd === spec.avd);",
@@ -1254,9 +1300,15 @@ MUTATIONS = [
     ("yamlconf", "363 · le gabarit repré-remplit des secrets d'office",
      "  secretsFromEnv: []\n  #   - QA_USER\n  #   - QA_PASS",
      "  secretsFromEnv:\n    - QA_USER\n    - QA_PASS"),
+    # ⚠️ RÉ-ANCRÉE PAR LE 466, qui a réécrit ce message. La mutation vise le même
+    # EFFET — retirer ce que l'avertissement COÛTE — sur le texte du jour ; une
+    # mutation laissée sur l'ancienne formulation aurait rendu HARNAIS, et un
+    # HARNAIS non lu se confond avec un garde qui tient.
     ("run", "355 · l'avertissement de locale ne dit plus ce qu'il coûte",
-     "    '  ⚠️ Tant que ce n\\'est pas réglé, le flow i18n mesure la locale de L\\'APPAREIL, '\n"
-     "      + 'pas celle que tu déclares : il est vert quoi que tu déclares.',\n",
+     "    '  ⚠️ Ce que ça coûte DÉPEND de ton application, et ce script ne peut pas le savoir : '\n"
+     "      + 'si elle SUIT la locale du système, le flow i18n mesure alors celle de l\\'APPAREIL, '\n"
+     "      + 'donc il est vert quoi que tu déclares ; si elle ÉPINGLE sa locale, il mesure bien '\n"
+     "      + 'la tienne et cet avertissement ne te coûte rien.',\n",
      ""),
     # ⚠️ LE CÂBLAGE, pas la fonction : `localeFindings` reste parfaite, elle
     # n'atteint simplement plus le rapport. C'est l'état d'avant le correctif,
@@ -1296,9 +1348,11 @@ MUTATIONS = [
     # ⚠️ Elle vise la FORME, pas le titre du paragraphe : muter l'en-tête laissait
     # la ligne `construit par : …` en place, donc le garde restait vert à raison —
     # la forme était toujours dite. Le harnais l'a rendu VACANT, et il avait raison.
+    # ⚠️ RÉ-ANCRÉE PAR LE 467, qui a réécrit ce bloc. Même effet : la FORME de la
+    # note disparaît, et « note ici » redevient une consigne sans endroit.
     ("yamlconf", "386 · « note ici » redevient une consigne sans endroit",
-     "`# construit par : <commande>  (source : <fichier\n  # §>)`",
-     "quelque part dans ce fichier`"),
+     "  #     # construit par : <commande>  (source : <fichier §>)",
+     "  #     (note-la quelque part dans ce fichier)"),
     # 381 — le vidage du trousseau iOS cesse d'être tenté : la règle anti-flake
     # redevient muette sur toute la plateforme.
     ("run", "381 · le trousseau iOS n'est plus vidé",
@@ -1554,9 +1608,12 @@ MUTATIONS = [
     # qui cesse de nommer le flow, et le croisement doit refuser de conclure.
     # ⚠️ Motif ancré sur la ligne 82 : la même phrase vit aussi dans le titre du
     # finding, et un motif court y matcherait deux fois.
+    # ⚠️ RÉ-ANCRÉE PAR LE 466. Le message ne dit plus « tant que ce n'est pas
+    # réglé » mais nomme toujours le flow : c'est ce nom-là que la mutation
+    # efface, puisque c'est lui que le garde asserte.
     ("run", "420 · l'avertissement ne nomme plus le flow qu'il rend vacant",
-     "Tant que ce n\\'est pas réglé, le flow i18n mesure",
-     "Tant que ce n\\'est pas réglé, la dimension mesure"),
+     "si elle SUIT la locale du système, le flow i18n mesure alors celle de l\\'APPAREIL",
+     "si elle SUIT la locale du système, la dimension mesure alors celle de l\\'APPAREIL"),
     # 421 a — le §2 represcrit la preuve SANS le geste : c'est l'état d'avant,
     # celui où le run devait aller chercher la commande deux cents lignes plus
     # loin, avec la table qui va avec.
@@ -1961,8 +2018,27 @@ def main():
         print("                    — c'est le raccourci SÛR : il garde le refus de")
         print("                      démarrer sur un arbre sale et la preuve de")
         print("                      restauration. Une copie jetable ne les a pas.")
+        print("  --check-motifs    dit quelles mutations ne mutent plus rien —")
+        print("                    aucun fichier touché, une seconde au lieu d'heures")
         print("  --help, -h        ceci")
         return 0
+    if args == ["--check-motifs"]:
+        # Ne mute rien, n'écrit rien : compte, compare, conclut.
+        morts = sorted({nom for (cle, nom, motif, _) in MUTATIONS
+                        if CIBLES[cle].read_text(encoding="utf-8").count(motif) != 1})
+        neuves = [n for n in morts if n not in MOTIFS_INERTES_CONNUS]
+        guaries = [n for n in MOTIFS_INERTES_CONNUS if n not in morts]
+        for n in neuves:
+            print(f"🔴 INERTE ET NON DÉCLARÉE : {n}")
+        for n in guaries:
+            print(f"✔ RÉPARÉE, retire-la de MOTIFS_INERTES_CONNUS : {n}")
+        print(f"\n{len(MUTATIONS)} mutations · {len(morts)} inerte(s) · "
+              f"{len(neuves)} non déclarée(s) · {len(guaries)} à retirer du relevé")
+        if neuves:
+            print("\n⚠️ Une mutation dont le motif a disparu ne prouve RIEN. Ré-ancre-la sur le")
+            print("   texte du jour — c'est presque toujours un refactor qui a déplacé sa cible.")
+        return 1 if (neuves or guaries) else 0
+
     if args == ["--list"]:
         for i, (cle, nom, *_reste) in enumerate(MUTATIONS, 1):
             print(f"{i:3}. {cle:9} {nom}")
