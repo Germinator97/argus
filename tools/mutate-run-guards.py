@@ -1704,6 +1704,19 @@ MUTATIONS = [
     # 457 — TROIS mutations, une par moitié du garde. Le canal par défaut, le
     # canal qu'on s'ouvre, et le compteur qui revient : chacune laisse les deux
     # autres en place, donc chacune se cache derrière un texte qui a l'air complet.
+    # 475 — la POSITION est la variable, et c'est la seule mutation qui la
+    # mesure : déplacer le relevé APRÈS la boucle laisse tout le texte en place
+    # et le rend vacant. La seconde retire l'avertissement lui-même ; la
+    # troisième le fait crier là où les deux CI coexistent par choix.
+    ("installeur", "475 · le relevé passe APRÈS la boucle qui pose le workflow",
+     "avait_github_actions=0\n[ -d \"$TARGET/.github/workflows\" ] && avait_github_actions=1\n\ncopied=0",
+     "avait_github_actions=0\n\ncopied=0"),
+    ("installeur", "475 · plus rien ne dit que le workflow ne tournera pas",
+     "  echo \"     .github/workflows/argus-mobile.yml vient d'être posé et ne\"\n  echo \"     s'exécutera NULLE PART. Un job qui ne tourne pas ne se voit pas :\"",
+     "  echo \"     .github/workflows/argus-mobile.yml a été posé.\""),
+    ("installeur", "475 · l'avertissement crie aussi quand les deux CI coexistent",
+     "  [ \"$avait_github_actions\" -eq 1 ] && return 0",
+     "  [ \"$avait_github_actions\" -eq 2 ] && return 0"),
     # 474 — les deux moitiés séparément : le verdict (à qui appartient
     # l'exception) et l'itération (le second canal). Chacune laisse l'autre en
     # place, donc chacune se cache derrière un paragraphe qui a l'air complet.
