@@ -8494,3 +8494,35 @@ après, elle est morte et un garde de texte reste vert — le défaut du 431), e
 que chaque site d'appel passe la liste **qui correspond à son champ** — un site
 qui annonce `displaysAfterScroll:` en passant `commandsAfterScroll` est câblé et
 faux, il chercherait le doublon dans la mauvaise liste.
+
+### 474. Une exception de CANAL se lisait comme une dette de l'application
+
+**Fermé le 10/09/2026**, rapporté par le **run 73** (iOS) — qui a eu la bonne
+réaction, mais seul et après coup.
+
+Un plugin natif — `permission_handler`, `geolocator`, tout ce qui parle à l'OS —
+n'a **aucune implémentation** sous `flutter test`. L'écran qui l'interroge au
+montage lève `MissingPluginException(No implementation found for method <m> on
+channel <c>)`, le garde d'étage 1 rougit, et la ligne ressemble à s'y méprendre
+à un défaut de l'application. Le run a failli l'inscrire dans
+`known_issues.dart` : elle y aurait figé un échec qui **décrit l'outillage**, pas
+le projet — une dette qui n'est pas la sienne est pire qu'une dette de plus.
+
+**Mesuré : 0 occurrence de `MissingPluginException` dans tout le skill**, alors
+que le montage de l'étage 1 est précisément ce qu'il prescrit.
+
+🔴 **Et c'est la SECONDE moitié qui manque toujours : fermer le premier canal en
+révèle un second.** Le run a posé un double sur
+`flutter.baseflow.com/permissions/methods` et vu l'exception reparaître aussitôt
+sur `flutter.baseflow.com/geolocator` — deux plugins, deux canaux, **une seule
+exception à la fois**. Un avertissement qui ne dirait que la première moitié
+laisserait conclure sur un vert obtenu à mi-chemin, et il aurait l'air complet.
+
+📌 **Le tell est gratuit et se lit en une seconde : le message nomme un CANAL**
+(`on channel …`). Une dette d'application nomme un widget, une contrainte, un
+ratio ou une taille — jamais un canal.
+
+Le garde borne sa fenêtre par la **structure** (jusqu'au prochain titre) et non
+par un index calculé : un `indexOf` qui échoue rend `-1`, et le `slice` retombe
+alors sur le fichier entier — le motif se trouverait n'importe où. Ce piège-là a
+été payé deux fois dans ce dépôt.
