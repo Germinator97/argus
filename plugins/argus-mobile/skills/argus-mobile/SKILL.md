@@ -443,6 +443,23 @@ disent « je ne mesure rien ». C'est la règle des sondes que ce skill applique
 marqueur dans le kernel et au chemin inexistant — elle manquait précisément là
 où il demande de vérifier son propre instrument.
 
+
+⚠️ **ET LA CONTRE-ÉPREUVE A UN COUPLE, PAS SEULEMENT UN MOTIF (482).** Elle se
+joue sur `ArgusScreen(` **dans `harness.dart`** — mesuré sur le fichier livré :
+`0` avec le filtre, `2` sans lui. Jouée sur un autre motif du même fichier elle
+peut rendre **`0` des deux côtés**, et ce zéro-là ne prouve rien du tout : c'est
+l'absence qu'elle existe pour écarter, revenue par la porte du motif. Mesuré :
+`identifier:` rend **0 / 0** sur `harness.dart`, parce que son dartdoc écrit
+`anchor:` — un run a joué la contre-épreuve là-dessus et n'a rien pu en conclure.
+
+    grep -c 'ArgusScreen(' test/argus/harness.dart   # doit être > 0 : c'est SON couple
+    grep -c 'identifier:'  test/argus/harness.dart   # doit être 0 ici — autre couple,
+                                                    #   donc 0/0, donc rien de prouvé
+
+**Avant de contre-éprouver, vérifie que le motif EXISTE dans le fichier visé** :
+un compteur de `lib/` se contre-éprouve sur `lib/`, jamais sur `harness.dart`.
+Sinon les deux zéros se ressemblent, et c'est celui qui ne mesure rien qui gagne.
+
 ⚠️ **LE COMPTE DE `lib/` EST UN PLANCHER, pas le chiffre du rapport.** Une ancre
 écrite `identifier: 'nav_${spec.id}'` est **un** site et **N** ancres — une par
 onglet, par preset, par ligne de liste. Mesuré sur un projet réel : 31 sites

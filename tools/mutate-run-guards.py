@@ -2025,6 +2025,13 @@ MUTATIONS = [
     ("report", "434 · la page sans capture se retait, et c'est le run vert",
      "  if (evidence !== 'none' && !shot.embedded && !shot.tooBig && !shot.missing && !shot.filtered) {\n    notes.push(\n      `aucune capture malgré artifact.evidence: ${evidence} — une preuve `\n      + \"s'attache à un finding, et aucun finding n'en portait\",\n    );\n  }\n",
      ""),
+    # ── 482 — la contre-épreuve a un couple, pas seulement un motif ──────────
+    ("skill", "482 · la contre-épreuve reperd le FICHIER de son couple",
+     "joue sur `ArgusScreen(` **dans `harness.dart`**",
+     "joue sur `ArgusScreen(`"),
+    ("skill", "482 · la contre-épreuve reperd le MOTIF de son couple",
+     "⚠️ **ET LA CONTRE-ÉPREUVE A UN COUPLE, PAS SEULEMENT UN MOTIF (482).** Elle se\njoue sur `ArgusScreen(` **dans `harness.dart`**",
+     "⚠️ **ET LA CONTRE-ÉPREUVE A UN COUPLE, PAS SEULEMENT UN MOTIF (482).** Elle se\njoue sur le motif prescrit **dans `harness.dart`**"),
     # ── 480 — l'avertissement injoignable depuis l'état qu'il condamne ───────
     ("run", "480 · la note de locale ne parle plus dans l'état aligné",
      "  const note = aligned",

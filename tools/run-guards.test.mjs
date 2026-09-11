@@ -1888,6 +1888,29 @@ test("le préfixe FVM suit la commande, même quand elle n'est pas le premier mo
   );
 });
 
+test("la contre-épreuve du skill nomme son COUPLE, et le couple tient (482)", () => {
+  // ⚠️ Ce garde a deux moitiés, et la seconde est celle qui compte : la
+  // prescription peut être parfaite et la MESURE fausse. Un run a joué la
+  // contre-épreuve sur `identifier:` — 0 des deux côtés, donc rien de
+  // concluant — parce que le dartdoc de `harness.dart` écrit `anchor:`.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('CONTRE-ÉPREUVE A UN COUPLE');
+  assert.notEqual(i, -1,
+    'la mise en garde du 482 a disparu du skill — reformulée ? le garde est vacant');
+  const fenetre = skill.slice(i, skill.indexOf('\n\n', skill.indexOf('\n\n', i) + 2));
+  assert.ok(/harness\.dart/.test(fenetre), 'le FICHIER du couple doit être nommé');
+  assert.ok(/ArgusScreen\(/.test(fenetre), 'le MOTIF du couple doit être nommé');
+
+  // 🔴 Et le couple prescrit doit RESTER vrai du fichier livré : sans ça le
+  // skill enseignerait une contre-épreuve vacante, ce qui est pire que rien.
+  const harness = readFileSync(join(SCAFFOLD_DIR_TEST, 'harness.dart'), 'utf8');
+  const sansFiltre = (harness.match(/ArgusScreen\(/g) ?? []).length;
+  const avecFiltre = harness.split('\n').filter((l) => !l.trimStart().startsWith('///'))
+    .join('\n').match(/ArgusScreen\(/g)?.length ?? 0;
+  assert.ok(sansFiltre > 0, 'le motif prescrit doit EXISTER dans le fichier visé, sinon 0/0');
+  assert.equal(avecFiltre, 0, 'et le filtre doit le faire disparaître, sinon la contre-épreuve ne sépare rien');
+});
+
 test('l\'épinglage se lit sur le disque, et les deux marqueurs comptent', () => {
   // Le CÂBLAGE, pas la décision : sans lui, `usesFvm` pourrait rendre `false`
   // partout et les tests ci-dessus resteraient verts.
