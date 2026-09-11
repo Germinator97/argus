@@ -1070,6 +1070,29 @@ test('l\'installeur dit qu\'un workflow posé hors GitHub ne tournera pas (475)'
   assert.doesNotMatch(seul, /NULLE PART/,
     'un projet sans autre CI reçoit un avertissement qui ne le concerne pas');
 
+  // ── 4. LE SECOND PASSAGE, et c'est le cas COURANT (478).
+  // Le relevé comptait tout workflow présent, donc celui que la boucle venait de
+  // poser suffisait à faire croire que le projet en avait : l'avertissement
+  // sortait une fois, puis plus jamais. Or `--update` est le geste ordinaire, et
+  // c'est là que la ligne compte le plus. Trouvé en instruisant, pas par un run —
+  // personne ne relance un installeur pour relire un message.
+  const cible = join(racine, 'gitlab');   // déjà installé au cas 1
+  const relance = execFileSync('bash', [installeur, cible], { encoding: 'utf8' });
+  assert.match(relance, /NULLE PART/,
+    'l\'avertissement se tait au second passage : le workflow que l\'installeur vient '
+    + 'de poser compte comme « ce projet a des workflows GitHub », et `--update` est '
+    + 'le cas courant');
+  const maj = execFileSync('bash', [installeur, '--update', cible], { encoding: 'utf8' });
+  assert.match(maj, /NULLE PART/,
+    'idem en --update, qui est précisément le mode où l\'on repose le fichier');
+
+  // Et l'autre sens tient toujours : un workflow qui n'est PAS le nôtre fait taire.
+  mkdirSync(join(cible, '.github', 'workflows'), { recursive: true });
+  writeFileSync(join(cible, '.github', 'workflows', 'a-eux.yml'), 'on: [push]\n');
+  assert.doesNotMatch(execFileSync('bash', [installeur, cible], { encoding: 'utf8' }), /NULLE PART/,
+    'un workflow appartenant au projet doit toujours faire taire l\'avertissement — '
+    + 'sinon on crie sur une coexistence délibérée');
+
   rmSync(racine, { recursive: true, force: true });
 });
 

@@ -1724,9 +1724,18 @@ MUTATIONS = [
     # mesure : déplacer le relevé APRÈS la boucle laisse tout le texte en place
     # et le rend vacant. La seconde retire l'avertissement lui-même ; la
     # troisième le fait crier là où les deux CI coexistent par choix.
+    # ⚠️ RÉ-ANCRÉE le 11/09 : le correctif du 478 a réécrit ce bloc, et la
+    # mutation d'hier ne trouvait plus son motif — elle rendait HARNAIS, donc
+    # elle ne prouvait plus rien. Elle vise toujours la POSITION du relevé, qui
+    # reste la seule variable qu'un garde de texte ne peut pas voir.
     ("installeur", "475 · le relevé passe APRÈS la boucle qui pose le workflow",
-     "avait_github_actions=0\n[ -d \"$TARGET/.github/workflows\" ] && avait_github_actions=1\n\ncopied=0",
+     "avait_github_actions=0\nif [ -d \"$TARGET/.github/workflows\" ]; then\n  autres=$(find \"$TARGET/.github/workflows\" -type f ! -name 'argus-mobile.yml' 2>/dev/null | head -1)\n  [ -n \"$autres\" ] && avait_github_actions=1\nfi\n\ncopied=0",
      "avait_github_actions=0\n\ncopied=0"),
+    # 478 — le NÔTRE compté comme un workflow du projet : l'avertissement
+    # sortait une fois, puis jamais. Le motif retiré est l'exclusion elle-même.
+    ("installeur", "478 · notre propre workflow recompte, et fait taire dès le 2e passage",
+     "-type f ! -name 'argus-mobile.yml'",
+     "-type f"),
     ("installeur", "475 · plus rien ne dit que le workflow ne tournera pas",
      "  echo \"     .github/workflows/argus-mobile.yml vient d'être posé et ne\"\n  echo \"     s'exécutera NULLE PART. Un job qui ne tourne pas ne se voit pas :\"",
      "  echo \"     .github/workflows/argus-mobile.yml a été posé.\""),

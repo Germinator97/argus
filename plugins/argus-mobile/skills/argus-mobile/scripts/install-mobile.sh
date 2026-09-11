@@ -112,8 +112,17 @@ merge_gitignore() {
 # `.github/workflows/argus-mobile.yml` : demandé après, « ce projet a-t-il des
 # workflows GitHub ? » vaut « oui » à jamais, et le contrôle serait vacant le
 # jour de son écriture — le défaut exact du point 431.
+# ⚠️ ET LE NÔTRE NE COMPTE PAS (478). Compter tout workflow présent faisait
+# taire l'avertissement dès le SECOND passage : celui que la boucle vient de
+# poser suffisait à faire croire que le projet en avait. Or `--update` est le cas
+# courant, et c'est là que la ligne compte le plus — elle rappelle qu'une garde
+# n'existe que sur le disque. Trouvé en instruisant, pas par un run : le premier
+# passage marchait, et personne ne relance un installeur pour lire un message.
 avait_github_actions=0
-[ -d "$TARGET/.github/workflows" ] && avait_github_actions=1
+if [ -d "$TARGET/.github/workflows" ]; then
+  autres=$(find "$TARGET/.github/workflows" -type f ! -name 'argus-mobile.yml' 2>/dev/null | head -1)
+  [ -n "$autres" ] && avait_github_actions=1
+fi
 
 copied=0
 skipped=0
