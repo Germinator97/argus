@@ -846,8 +846,20 @@ export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || exi
  */
 export function flutterCommandIn(command, pinned) {
   const text = String(command ?? '').trim();
-  if (!pinned || !text.startsWith('flutter ')) return text;
-  return `fvm ${text}`;
+  if (!pinned) return text;
+  // ⚠️ CE N'EST PAS TOUJOURS LE PREMIER MOT (481). La version précédente ne
+  // préfixait que ce qui COMMENCE par `flutter ` — juste pour les deux cas
+  // qu'elle visait, et muette sur celui qu'un projet réel impose : sa doc de
+  // release demandait un nettoyage AVANT le build, d'où une commande composée
+  // (`rm -rf build/… && flutter build …`). Elle ressortait intacte, donc sans
+  // `fvm`, et le conseil imprimé était INJOUABLE — mesuré sur un terrain dont
+  // le PATH porte 3.32.0 quand le pubspec exige 3.41.9.
+  //
+  // On préfixe donc chaque `flutter` en POSITION DE COMMANDE : début de
+  // chaîne, ou après un enchaînement (`&&`, `||`, `;`, `|`). Ce qui n'est pas
+  // en position de commande reste intact — un `./scripts/flutter-release.sh`
+  // n'est pas un appel à Flutter, et un `fvm flutter …` est déjà préfixé.
+  return text.replace(/(^|&&|\|\||;|\|)(\s*)flutter\s/g, '$1$2fvm flutter ');
 }
 
 /**

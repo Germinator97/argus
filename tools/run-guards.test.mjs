@@ -1857,6 +1857,37 @@ test('une commande flutter n\'est préfixée que si le projet épingle son SDK',
   }
 });
 
+test("le préfixe FVM suit la commande, même quand elle n'est pas le premier mot (481)", () => {
+  // Le cas qu'un projet réel impose : sa doc de release demande un nettoyage
+  // AVANT le build. La commande devient composée, l'ancienne version la rendait
+  // INTACTE — donc sans `fvm` — et le conseil imprimé était injouable sur un
+  // poste dont le PATH porte une autre version que celle du pubspec.
+  assert.equal(
+    flutterCommandIn('rm -rf build/native_assets && flutter build apk --release', true),
+    'rm -rf build/native_assets && fvm flutter build apk --release',
+  );
+  // Chaque `flutter` en position de commande, pas seulement le premier.
+  assert.equal(
+    flutterCommandIn('flutter clean; flutter build ios --release', true),
+    'fvm flutter clean; fvm flutter build ios --release',
+  );
+
+  // 🔴 L'AUTRE MOITIÉ — ce qui n'est PAS en position de commande reste intact.
+  // Préfixer `flutter` partout dans la chaîne casserait ces deux-là, et le
+  // second ressemble assez à un appel Flutter pour qu'on s'y trompe.
+  for (const pinned of [true, false]) {
+    assert.equal(flutterCommandIn('./tools/flutter-wrapper.sh build', pinned),
+      './tools/flutter-wrapper.sh build', 'un script dont le NOM contient flutter n\'est pas flutter');
+    assert.equal(flutterCommandIn('echo flutter && make argus-build', pinned),
+      'echo flutter && make argus-build', 'un argument nommé flutter n\'est pas la commande');
+  }
+  // Et jamais de double préfixe sur ce qui en porte déjà un.
+  assert.equal(
+    flutterCommandIn('rm -rf build && fvm flutter build apk --release', true),
+    'rm -rf build && fvm flutter build apk --release',
+  );
+});
+
 test('l\'épinglage se lit sur le disque, et les deux marqueurs comptent', () => {
   // Le CÂBLAGE, pas la décision : sans lui, `usesFvm` pourrait rendre `false`
   // partout et les tests ci-dessus resteraient verts.
