@@ -8655,7 +8655,7 @@ appartient au projet (là, il doit toujours se taire).
 
 ### 479. Un correctif juste a rendu injoignable le garde d'un autre correctif juste
 
-**Rapporté par le run 76** (Android, terrain 1) — symptôme exact, **diagnostic
+**Fermé le 11/09/2026**, rapporté par le run 76 (Android, terrain 1) — symptôme exact, **diagnostic
 démenti**, et la cause est pire que ce qu'il croyait.
 
 Le rapport annonce, pour `startup`, « attente de l'écran de départ exploitable
@@ -8700,7 +8700,7 @@ correctif du même genre la re-videra sans que rien ne le dise.
 
 ### 480. L'avertissement qui écarte un raccourci ne s'adresse qu'à ceux qui ne l'ont pas pris
 
-**Rapporté par le run 77** (iOS, terrain 2) — et c'est le **477 rejoué un jour
+**Fermé le 11/09/2026**, rapporté par le run 77 (iOS, terrain 2) — et c'est le **477 rejoué un jour
 après son correctif**, par un agent qui ne pouvait pas savoir qu'il était neuf.
 
 Le run a écrit `deviceLocale: fr_CI`, avec une justification meilleure que celle
@@ -8741,7 +8741,7 @@ et un `deviceLocale` égal à l'appareil ne doivent produire **aucun** message.
 
 ### 481. Le préfixe FVM se perd dès que la commande ne commence pas par `flutter`
 
-**Rapporté par le run 76**, confirmé **par exécution** de la fonction :
+**Fermé le 11/09/2026**, rapporté par le run 76, confirmé **par exécution** de la fonction :
 
     PRÉFIXÉ  "flutter build apk --release"
     INTACT   "rm -rf build/native_assets && flutter build apk --release …"   ← le cas
@@ -8756,7 +8756,7 @@ de celle qu'exige le `pubspec` (mesuré : 3.32.0 contre 3.41.9).
 
 ### 482. Une contre-épreuve qui ne dit pas sur quel couple elle se joue
 
-**Rapporté par le run 76.** Le skill prescrit, pour prouver qu'un compteur n'est
+**Fermé le 11/09/2026**, rapporté par le run 76. Le skill prescrit, pour prouver qu'un compteur n'est
 pas mort : *« le **même motif** SANS le filtre `///` doit rendre `> 0` »*.
 Mesuré sur le `harness.dart` LIVRÉ, avec filtre / sans filtre :
 
