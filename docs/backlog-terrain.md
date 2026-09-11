@@ -8709,8 +8709,10 @@ mesure quand même, parce que l'app ÉPINGLE sa langue »*.
 
 🔴 **La mesure dit qu'il se trompe sur le fait** :
 
-    common_core_app/.../constants.dart:30   static const Locale locale = Locale('fr', 'FR');
-    delivery_app/lib/main.dart:304          supportedLocales: const [AppConstants.locale]
+    <paquet partagé>/lib/.../constants.dart:30
+        static const Locale locale = Locale('fr', 'FR');
+    <app>/lib/main.dart:304
+        supportedLocales: const [AppConstants.locale]
 
 L'app épingle **`fr_FR`**. La clé aurait dû dire `fr_FR` — ce que le harnais
 DOIT mesurer. En écrivant `fr_CI`, il l'a rendue égale à l'appareil.

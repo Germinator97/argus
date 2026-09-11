@@ -159,6 +159,104 @@ test('seule la PREMIÈRE attente est retenue : les suivantes portent une app cha
   assert.equal(samples[0].ms, 16645, 'retenir 79 ms ferait passer un démarrage de 16 s pour instantané');
 });
 
+/**
+ * Un flow tel que Maestro l'écrit VRAIMENT : un `launchApp`, ce qui s'intercale,
+ * puis l'attente d'ancre. Les trois durées viennent du run 76, mesurées dans ses
+ * `commands.json` — un montage inventé n'aurait jamais rencontré la forme qui
+ * casse, et c'est précisément ce qui a laissé passer le 479.
+ *
+ * `timestamp` est le DÉBUT d'une étape : vérifié sur les artefacts, un
+ * `launchApp` à ts+441 est suivi d'une étape à ts+442.
+ */
+const bundleLance = (flow, { lancementMs, avantMs, mesureMs, status = 'COMPLETED' }) => {
+  const T0 = 1789122186906;
+  return {
+    flow,
+    steps: [
+      {
+        command: { launchAppCommand: { appId: 'x' } },
+        metadata: { status: 'COMPLETED', duration: lancementMs, timestamp: T0 },
+      },
+      {
+        // Ce qui s'intercale : un `tapOn` optionnel qui attend sa borne faute
+        // d'alerte système à écarter. C'est le geste que le 405 a mis là.
+        command: { tapOnElement: { optional: true } },
+        metadata: { status: 'COMPLETED', duration: avantMs, timestamp: T0 + lancementMs },
+      },
+      {
+        command: { assertConditionCommand: { condition: { visible: { idRegex: 'home_root' } } } },
+        metadata: {
+          status,
+          duration: mesureMs,
+          timestamp: T0 + lancementMs + avantMs,
+          evaluatedCommand: { c: { condition: { visible: { idRegex: 'home_root' } } } },
+        },
+      },
+    ],
+  };
+};
+
+const CFG_SPLASH = { thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } };
+
+test("une attente longue AVANT la mesure la marque absorbée — et le témoin ne l'est pas (479)", () => {
+  // Les deux cas du run 76, aux valeurs mesurées : neuf flows passaient par le
+  // geste d'invite système (7355 ms avant une mesure de 58), un seul lançait
+  // lui-même (1752 avant 2697). Le critère n'emploie que `brandedSplashMs`,
+  // déjà déclaré — aucun nombre deviné.
+  const absorbe = startupSamples(
+    [bundleLance('smoke', { lancementMs: 441, avantMs: 7355, mesureMs: 58 })], 'home_root', 2000);
+  assert.equal(absorbe.length, 1);
+  assert.equal(absorbe[0].precedeMs, 7355, 'le relevé doit dire ce qui a attendu avant lui');
+  assert.equal(absorbe[0].absorbed, true, '58 ms ne peuvent pas contenir un splash de 2 s');
+
+  const temoin = startupSamples(
+    [bundleLance('resilience', { lancementMs: 590, avantMs: 1752, mesureMs: 2697 })], 'home_root', 2000);
+  assert.equal(temoin[0].absorbed, false,
+    'un flow qui lance lui-même mesure encore le sas : le marquer absorbé viderait le relevé entier');
+  assert.equal(temoin[0].ms, 2697);
+});
+
+test('sans plancher de splash déclaré, on RELÈVE sans conclure (479)', () => {
+  // Le critère a besoin d'une grandeur de référence. Sans elle, on ne devine
+  // pas : `precedeMs` est rendu quand même, et le lecteur tranche.
+  const sans = startupSamples(
+    [bundleLance('smoke', { lancementMs: 441, avantMs: 7355, mesureMs: 58 })], 'home_root', 0);
+  assert.equal(sans[0].absorbed, false, 'sans référence, aucun verdict inventé');
+  assert.equal(sans[0].precedeMs, 7355, 'mais la donnée brute reste lisible');
+});
+
+test('un budget absorbé se DIT au lieu de passer pour tenu (479)', () => {
+  const absorbe = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7355, absorbed: true };
+  const mesure = { flow: 'resilience', ms: 2697, status: 'COMPLETED', precedeMs: 1752, absorbed: false };
+
+  const seul = startupFindings([absorbe], DEVICE, 'android', CFG_SPLASH);
+  assert.equal(seul.length, 1, "se taire ici, c'est le « vert sur du néant » du 367");
+  assert.equal(seul[0].id, 'QAM-START-ABSORBE');
+  assert.equal(seul[0].severity, 'info', 'il informe, il ne fait pas échouer le gate');
+
+  // 🔴 Le cas du run 76 : trois mesures valides sur quarante suffisaient à faire
+  // passer le budget pour jugé. Il sort dès QU'UN échantillon est absorbé.
+  const melange = startupFindings([absorbe, mesure], DEVICE, 'android', CFG_SPLASH);
+  assert.ok(melange.some((f) => f.id === 'QAM-START-ABSORBE'),
+    'une seule mesure rescapée ne rend pas le relevé concluant');
+
+  // L'autre sens : rien d'absorbé, rien à dire — sinon on rallume du bruit.
+  assert.deepEqual(startupFindings([mesure], DEVICE, 'android', CFG_SPLASH), []);
+});
+
+test('une mesure absorbée ne compte pas dans le budget, une vraie mesure si (479)', () => {
+  // Absorbée ET au-dessus du seuil : elle ne doit PAS produire QAM-START, parce
+  // que sa valeur ne mesure pas le sas. C'est la moitié qui coupe trop si on
+  // l'oublie — et celle qui fait un faux major si on la garde.
+  const lourde = { flow: 'smoke', ms: 9000, status: 'COMPLETED', precedeMs: 7355, absorbed: true };
+  const ids = startupFindings([lourde], DEVICE, 'android', CFG_SPLASH).map((f) => f.id);
+  assert.deepEqual(ids, ['QAM-START-ABSORBE'], 'une non-mesure ne devient pas un finding de lenteur');
+
+  const vraie = { flow: 'smoke', ms: 9000, status: 'COMPLETED', precedeMs: 12, absorbed: false };
+  assert.ok(startupFindings([vraie], DEVICE, 'android', CFG_SPLASH).some((f) => f.id === 'QAM-START'),
+    "le budget doit toujours pouvoir rougir : c'est ce que le 460 avait rendu et que le 479 a repris");
+});
+
 test('sans ancre de départ, aucun échantillon inventé', () => {
   assert.deepEqual(startupSamples([bundle('smoke', [[16645, 'COMPLETED']])], ''), []);
 });

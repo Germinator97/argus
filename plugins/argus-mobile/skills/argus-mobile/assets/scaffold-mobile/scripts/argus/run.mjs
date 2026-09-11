@@ -1211,17 +1211,57 @@ export function junitsVisuelsOrphelins(fichiers, visualScreens) {
  * @param {Array<{flow:string, steps:any[]}>} bundles @param {string} anchor
  * @returns {Array<{flow:string, ms:number, status:string}>}
  */
-function startupSamples(bundles, anchor) {
-  /** @type {Array<{flow:string, ms:number, status:string}>} */
+function startupSamples(bundles, anchor, floorMs = 0) {
+  /** @type {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>} */
   const samples = [];
   if (!anchor) return samples;
   for (const bundle of bundles) {
+    const steps = bundle.steps ?? [];
     // La PREMIÈRE seulement : les suivantes portent une app déjà chaude.
-    const step = (bundle.steps ?? []).find((s) => WAIT_COMMANDS.has(Object.keys(s?.command ?? {})[0] ?? '')
+    const step = steps.find((s) => WAIT_COMMANDS.has(Object.keys(s?.command ?? {})[0] ?? '')
       && selectorOf(s) === `id=${anchor}`);
     const ms = Number(step?.metadata?.duration ?? NaN);
     if (!Number.isFinite(ms) || ms <= 0) continue;
-    samples.push({ flow: bundle.flow, ms, status: String(step.metadata?.status ?? '') });
+    // ⚠️ CE QUI ATTEND AVANT LA MESURE LUI EST SOUSTRAIT, ET LE 460 N'EN A FERMÉ
+    // QU'UNE FORME. Son remède était un ORDRE — l'attente d'ancre en premier,
+    // pour qu'elle parte du lancement. Le 405 a ensuite porté le geste d'invite
+    // système DANS `launch-clean.yaml`, pour qu'il soit atteint par tous les
+    // flows : correctif juste, et il s'insère AVANT elle. Mesuré au run 76 sur
+    // une app à splash de 2 s : son `tapOn` optionnel attend sa borne — 7017 à
+    // 7144 ms sur 40 exécutions, une CONSTANTE, donc un timeout et non un geste
+    // — et l'app démarre pendant ce temps. La mesure retenue tombait alors à
+    // 52-104 ms sur neuf flows sur dix, `brandedSplashMs` en était soustrait, et
+    // `QAM-START` ne pouvait PLUS JAMAIS sortir.
+    //
+    // On ne peut pas le corriger par l'ordre — l'alerte système doit être
+    // écartée avant qu'on cherche l'ancre, sinon elle couvre l'écran (405).
+    // Donc on MESURE ce qui s'est intercalé, et on le dit : `timestamp` est le
+    // DÉBUT d'une étape (vérifié sur les artefacts : launchApp à ts+441 est
+    // suivi de l'étape ts+442), d'où l'écart entre la FIN du lancement et le
+    // DÉBUT de la mesure.
+    const lancement = steps.find((s) => Object.keys(s?.command ?? {})[0] === 'launchAppCommand');
+    const debutMesure = Number(step?.metadata?.timestamp ?? NaN);
+    const finLancement = Number(lancement?.metadata?.timestamp ?? NaN)
+      + Number(lancement?.metadata?.duration ?? 0);
+    const precedeMs = Number.isFinite(debutMesure) && Number.isFinite(finLancement)
+      ? Math.max(0, Math.round(debutMesure - finLancement))
+      : 0;
+    // Le critère est DÉRIVÉ, jamais deviné : il n'emploie que le plancher de
+    // splash DÉJÀ déclaré. Quelque chose a attendu au moins aussi longtemps que
+    // le splash assumé, et la mesure retenue est plus courte que lui : elle ne
+    // peut donc pas le contenir. Sur le run 76 ça sépare exactement les deux
+    // cas — 7355 ms avant une mesure de 58 pour les neuf flows qui passent par
+    // `launch-clean`, 1750 avant 2697 pour celui qui lance lui-même, et ce
+    // dernier reste une mesure. Sans `brandedSplashMs`, on ne conclut pas : le
+    // relevé porte quand même `precedeMs`, et le lecteur tranche.
+    const absorbed = floorMs > 0 && precedeMs >= floorMs && ms < floorMs;
+    samples.push({
+      flow: bundle.flow,
+      ms,
+      status: String(step.metadata?.status ?? ''),
+      precedeMs,
+      absorbed,
+    });
   }
   return samples;
 }
@@ -1307,16 +1347,62 @@ function startupFindings(samples, device, platform, config, variante = '') {
   // d'erreur a produit « l'écran de départ met 20 s » pendant que les six autres
   // étaient entre 947 et 2646 ms. Le code connaissait déjà le statut — il le
   // comptait dans `timedOut` — et ne s'en servait pas pour choisir le pire.
-  const mesures = samples.filter((s) => String(s.status ?? '').toUpperCase() !== 'FAILED');
-  const timedOut = samples.length - mesures.length;
+  const vivantes = samples.filter((s) => String(s.status ?? '').toUpperCase() !== 'FAILED');
+  const timedOut = samples.length - vivantes.length;
+  // ⚠️ UNE MESURE ABSORBÉE EST CENSURÉE COMME UN FLOW MORT, DANS L'AUTRE SENS.
+  // Un flow `FAILED` dit « au moins tant » ; un échantillon absorbé dit « au
+  // plus tant », parce que le sas s'est déroulé pendant ce qui l'a précédé. Les
+  // deux sont des non-mesures, et les garder fait rendre un verdict sur du
+  // néant — ici un budget TENU, ce qui est le pire des deux sens (479).
+  const absorbees = vivantes.filter((s) => s.absorbed);
+  const mesures = vivantes.filter((s) => !s.absorbed);
   const over = mesures.filter((s) => net(s) > budget);
   // ⚠️ Et si TOUT est censuré, on ne conclut pas : rendre un finding de lenteur
   // sur zéro mesure serait exactement le « vert sur du néant » que le 367 a fermé,
   // dans l'autre sens. Les flows morts se rapportent par leur propre échec.
-  if (over.length === 0) return [];
+  // 🔴 UNE ABSORPTION N'A AUCUN AUTRE CANAL POUR SE DIRE. Un flow mort se
+  // rapporte tout seul — il est rouge. Un échantillon absorbé, lui, laisse une
+  // suite VERTE et un budget qui n'a pas été jugé : c'est le défaut que le 460
+  // avait fermé et que le 405 a rouvert sans le savoir. Se taire serait le
+  // reproduire une troisième fois.
+  //
+  // ⚠️ Il sort dès QU'UN SEUL échantillon est absorbé, pas « quand la majorité
+  // l'est » : un seuil de proportion serait un nombre deviné, et sur le run 76
+  // il restait trois mesures valides sur quarante — assez pour que le budget
+  // ait l'air jugé, alors que 37 flows n'avaient rien mesuré. La sévérité est
+  // `info` : il informe, il ne fait pas échouer le gate.
+  /** @type {any[]} */
+  const findings = [];
+  if (absorbees.length > 0) {
+    const pire = absorbees.reduce((a, b) => (b.precedeMs > a.precedeMs ? b : a));
+    findings.push({
+        id: 'QAM-START-ABSORBE',
+        title: `le budget de démarrage n'a pas pu être jugé : ${absorbees.length}/${samples.length} `
+          + 'flows ont attendu autre chose avant de mesurer l\'écran de départ',
+        suggestedFix: 'Ce qui précède l\'attente d\'ancre dans `launch-clean.yaml` doit être BORNÉ '
+          + '(donne un `timeout:` court au geste optionnel) : sans ça le sas de démarrage se '
+          + 'déroule pendant cette attente, et la mesure qui suit ne le contient plus.',
+        severity: 'info',
+        dimension: 'performance',
+        screen: 'démarrage',
+        step: 0,
+        selector: '',
+        device: device.id,
+        platform,
+        osVersion: device.os ?? '',
+        expected: `une mesure qui contienne le sas, donc au moins le plancher de marque (${floor} ms)`,
+        actual: `${pire.precedeMs} ms attendus avant la mesure sur « ${pire.flow} », `
+          + `pour une mesure retenue de ${Math.round(pire.ms)} ms — `
+          + absorbees.map((x) => `${x.flow} ${Math.round(x.ms)} ms après ${x.precedeMs}`).join(', '),
+      evidence: [],
+      repro: [],
+      status: 'open',
+    });
+  }
+  if (over.length === 0) return findings;
   const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
   const dont = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
-  return [{
+  findings.push({
     id: 'QAM-START',
     title: `l'écran de départ met ${Math.round(worst.ms / 1000)} s à apparaître${dont} (seuil ${budget} ms)`
       + (variante === 'debug' ? ' (mesuré sur un debug)' : ''),
@@ -1347,7 +1433,8 @@ function startupFindings(samples, device, platform, config, variante = '') {
     evidence: [],
     repro: [`maestro --device=${device.udid} test .maestro/${worst.flow}.yaml`],
     status: 'open',
-  }];
+  });
+  return findings;
 }
 
 /**
@@ -2209,7 +2296,8 @@ async function main() {
   const reportDevice = { ...spec, udid: resolved.udid, os: resolved.os || spec.os };
   const start = startScreen(config);
   const home = start.screen;
-  const startup = startupSamples(bundles, home?.anchor ?? '');
+  const startup = startupSamples(bundles, home?.anchor ?? '',
+    Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0)));
   const findings = [
     ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
     // Le variant est LU sur l'appareil, pas déduit de la commande de build :
