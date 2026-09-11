@@ -280,6 +280,13 @@ test('la note ne parle QUE sur un alignement réel, jamais sur du vide (480)', (
   // L'autre moitié : un garde qui rendrait une note dans tous les cas
   // rallumerait le bruit que le 466 a éteint, et on cesserait de le lire.
   assert.equal(localeAlignment('', 'fr_CI').note, '', 'rien de déclaré, rien à relever');
+  // ⚠️ LE CAS QUI CASSE EST « LES DEUX VIDES » — et il manquait. Sans les deux
+  // `Boolean(...)`, `'' === ''` rend aligné, donc une note sur un run où l'on
+  // n'a NI déclaré NI pu lire. C'est la mutation qui l'a dit : elle ne mutait
+  // rien de gardé tant que ce cas n'était pas ici.
+  assert.equal(localeAlignment('', '').note, '',
+    'deux valeurs vides ne sont pas un accord — elles sont deux absences');
+  assert.equal(localeAlignment('', '').aligned, false);
   assert.equal(localeAlignment('fr_FR', null).note, '', 'appareil illisible : on ne conclut pas');
   assert.equal(localeAlignment('fr_FR', '').note, '');
   // La normalisation est celle de localeWarnings : `fr_FR` et `fr-FR` sont le
