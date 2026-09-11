@@ -306,6 +306,14 @@ test('le relevé de locale entre dans le RAPPORT, pas seulement dans la console 
     'la fonction doit être APPELÉE par le runner, pas seulement exportée');
   assert.ok(/locale:\s*\{[\s\S]{0,200}?aligned:\s*alignementLocale\.aligned/.test(code),
     'et son relevé doit entrer dans report.json, sinon il meurt avec le terminal');
+  // 🔴 ET LE TROISIÈME BARREAU, celui où je m'étais arrêté. Les deux assertions
+  // ci-dessus tiennent l'affectation et le rapport ; retirer la ligne qui DIT
+  // la note les laissait vertes — or c'est tout l'objet du 480 : atteindre
+  // celui qui vient de prendre le raccourci, au moment où il le prend. La
+  // mutation l'a dit. Rien ici n'a de valeur à exercer (c'est une impression),
+  // donc ce garde lit la source, et il l'écrit.
+  assert.ok(/avertissementsLocale\.length === 0 && alignementLocale\.note\)\s*log\(/.test(code),
+    'la note doit être DITE quand l\'avertissement se tait, sinon elle n\'atteint personne');
 });
 
 test('sans ancre de départ, aucun échantillon inventé', () => {
