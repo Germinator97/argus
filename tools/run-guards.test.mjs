@@ -24,6 +24,7 @@ const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
+  localeAlignment,
   resetKeychain, startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -255,6 +256,49 @@ test('une mesure absorbée ne compte pas dans le budget, une vraie mesure si (47
   const vraie = { flow: 'smoke', ms: 9000, status: 'COMPLETED', precedeMs: 12, absorbed: false };
   assert.ok(startupFindings([vraie], DEVICE, 'android', CFG_SPLASH).some((f) => f.id === 'QAM-START'),
     "le budget doit toujours pouvoir rougir : c'est ce que le 460 avait rendu et que le 479 a repris");
+});
+
+test("la note de locale atteint l'état que l'avertissement laisse muet (480)", () => {
+  // Les deux mécanismes sont EXCLUSIFS, et c'est tout l'objet du point : quand
+  // `localeWarnings` parle, la note se tait ; quand il sort par `return []`
+  // parce que la déclaration égale l'appareil — l'état que produit le raccourci
+  // du 477 — c'est la note qui parle. Sans elle, cet état n'a AUCUN message.
+  const ecart = localeAlignment('fr_FR', 'fr_CI');
+  assert.equal(ecart.aligned, false);
+  assert.equal(ecart.note, '', 'sur un écart, c\'est localeWarnings qui parle, pas la note');
+  assert.ok(localeWarnings('fr_FR', false, 'fr_CI', 'ios').length > 0);
+
+  const aligne = localeAlignment('fr_CI', 'fr_CI');
+  assert.equal(aligne.aligned, true);
+  assert.ok(aligne.note.includes('ton APPLICATION rend'),
+    'la note doit poser la vérification que le harnais ne peut pas faire lui-même');
+  assert.deepEqual(localeWarnings('fr_CI', false, 'fr_CI', 'ios'), [],
+    'le silence de l\'avertissement est délibéré (466) — c\'est la note qui couvre cet état');
+});
+
+test('la note ne parle QUE sur un alignement réel, jamais sur du vide (480)', () => {
+  // L'autre moitié : un garde qui rendrait une note dans tous les cas
+  // rallumerait le bruit que le 466 a éteint, et on cesserait de le lire.
+  assert.equal(localeAlignment('', 'fr_CI').note, '', 'rien de déclaré, rien à relever');
+  assert.equal(localeAlignment('fr_FR', null).note, '', 'appareil illisible : on ne conclut pas');
+  assert.equal(localeAlignment('fr_FR', '').note, '');
+  // La normalisation est celle de localeWarnings : `fr_FR` et `fr-FR` sont le
+  // même réglage, et les traiter autrement ferait parler sur un projet sain.
+  assert.equal(localeAlignment('fr_FR', 'fr-FR').aligned, true);
+});
+
+test('le relevé de locale entre dans le RAPPORT, pas seulement dans la console (480)', () => {
+  // ⚠️ Une note de console meurt avec la session (355) : c'est précisément ce
+  // qui avait fait vivre le défaut. Le garde porte donc sur le CÂBLAGE, sur un
+  // corpus dépouillé de ses commentaires — sinon le paragraphe qui explique le
+  // point le satisferait à lui seul.
+  const code = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+    .replace(/\/\/[^\n]*/g, (m) => m.replace(/[^\n]/g, ' '));
+  assert.ok(/alignementLocale\s*=\s*localeAlignment\(/.test(code),
+    'la fonction doit être APPELÉE par le runner, pas seulement exportée');
+  assert.ok(/locale:\s*\{[\s\S]{0,200}?aligned:\s*alignementLocale\.aligned/.test(code),
+    'et son relevé doit entrer dans report.json, sinon il meurt avec le terminal');
 });
 
 test('sans ancre de départ, aucun échantillon inventé', () => {

@@ -107,6 +107,52 @@ export function localeWarnings(demandee, autoStart, surDevice, platform = 'andro
 }
 
 /**
+ * Ce que la locale déclarée et celle de l'appareil disent ENSEMBLE.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (480). [localeWarnings] sort par
+ * `return []` dès que la déclaration égale l'appareil — silence délibéré, et
+ * juste : sur un projet sain il n'y a rien à dire, et le 466 avait éteint ce
+ * bruit exprès. Mais c'est aussi l'état qu'on atteint en prenant le raccourci
+ * que le 477 condamne : faire taire la ligne en DÉCLARANT la locale que
+ * l'appareil porte déjà. La phrase qui l'écarte vit dans [localeWarnings],
+ * donc elle est INJOIGNABLE depuis l'état qu'elle condamne — un panneau posé
+ * avant le virage, que celui qui a tourné ne lira plus jamais.
+ *
+ * Mesuré : le run 77 a écrit `fr_CI` sur un appareil en `fr_CI` alors que
+ * l'application épingle `fr_FR`. `report.json` porte **0 occurrence** de
+ * `QAM-LOCALE`, et aucun fichier du rapport ne contient « AUCUN effet ».
+ *
+ * ⚠️ CE QUE LE HARNAIS NE PEUT PAS SAVOIR, et pourquoi il ne l'invente pas.
+ * Le remède évident serait de lire la locale que l'app ÉPINGLE et de la
+ * comparer. Mesuré sur les deux terrains du chantier : elle n'est un littéral
+ * NI dans l'un (`supportedLocales: const [AppConstants.locale]`, une constante
+ * d'un paquet voisin) NI dans l'autre (`Locale(Language.FR.name.toLowerCase())`,
+ * une expression). Un lecteur de source rendrait donc « rien trouvé » dans les
+ * deux cas, c'est-à-dire un instrument qui ne mesure jamais.
+ *
+ * Alors on ne conclut pas, on RELÈVE : les deux valeurs, leur égalité, et la
+ * vérification que seul l'auteur peut faire. C'est une note, pas un
+ * avertissement — elle ne crée aucun finding, donc aucun bruit sur un projet
+ * sain, et elle atteint le seul état d'où le raccourci est visible.
+ * @param {string} demandee @param {string|null} surDevice
+ * @returns {{declared:string, onDevice:string, aligned:boolean, note:string}}
+ */
+export function localeAlignment(demandee, surDevice) {
+  const declared = String(demandee ?? '').trim();
+  const onDevice = String(surDevice ?? '').trim();
+  const normaliser = (/** @type {string} */ v) => v.trim().toLowerCase().replace(/_/g, '-').split(',')[0];
+  const aligned = Boolean(declared) && Boolean(onDevice)
+    && normaliser(onDevice) === normaliser(declared);
+  const note = aligned
+    ? `locale : « ${declared} » déclarée, « ${onDevice} » sur l'appareil — les deux sont d'accord, `
+      + 'donc rien à signaler. Vérifie quand même que c\'est la locale que ton APPLICATION rend : '
+      + 'si elle en épingle une autre, les rendre égales n\'a pas réconcilié la mesure, ça a rendu '
+      + 'l\'écart invisible.'
+    : '';
+  return { declared, onDevice, aligned, note };
+}
+
+/**
  * Le finding qui fait SURVIVRE l'avertissement de locale au terminal.
  *
  * ⚠️ [localeWarnings] ne sortait qu'en console, donc elle mourait avec la
@@ -2033,6 +2079,8 @@ export function runScope(include, excludeCli, excludeConfig) {
 async function main() {
   /** @type {string[]} Les avertissements de locale, à faire survivre au terminal. */
   let avertissementsLocale = [];
+  /** @type {{declared:string, onDevice:string, aligned:boolean, note:string}} */
+  let alignementLocale = { declared: '', onDevice: '', aligned: false, note: '' };
   // Pris ICI, pas au moment d'écrire le rapport : `startedAt` y était rempli
   // après le dernier flow, donc il datait la FIN du run en disant « début ».
   const startedAt = new Date();
@@ -2110,6 +2158,12 @@ async function main() {
       String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null, platform,
     );
     for (const ligne of avertissementsLocale) warn(ligne);
+    // 🔴 ET L'AUTRE MOITIÉ (480) : quand il n'y a PAS d'avertissement, c'est
+    // soit un projet sain, soit quelqu'un qui vient d'aligner sa déclaration
+    // sur l'appareil pour faire taire la ligne. `localeWarnings` ne peut pas
+    // les distinguer — elle est déjà sortie. La note, elle, atteint cet état.
+    alignementLocale = localeAlignment(String(config.locale?.deviceLocale ?? ''), lue || null);
+    if (avertissementsLocale.length === 0 && alignementLocale.note) log(alignementLocale.note);
   }
 
   const reportDir = artifactsDir(config);
@@ -2390,6 +2444,16 @@ async function main() {
       brandedSplashMs: Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0)),
       timeoutMs: startTimeoutMs(config),
       samples: startup,
+    },
+    // ⚠️ Une note de console meurt avec la session (355). Celle-ci dit ce que
+    // la dimension i18n a RÉELLEMENT sous les yeux : les deux locales et leur
+    // accord. Ce n'est pas un finding — rien n'est cassé sur un projet sain —
+    // mais la donnée reste lisible six mois plus tard, et depuis l'état que le
+    // raccourci du 477 produit (480).
+    locale: {
+      declared: alignementLocale.declared,
+      onDevice: alignementLocale.onDevice,
+      aligned: alignementLocale.aligned,
     },
   };
   writeJson(join(reportDir, 'report.json'), report);

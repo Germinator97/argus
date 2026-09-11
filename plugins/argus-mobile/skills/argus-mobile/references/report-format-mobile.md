@@ -109,7 +109,14 @@ trouvera absentes, sans erreur d'aucune sorte — c'est ce que ce paragraphe dis
 avant d'être corrigé.
 
 Les clés de premier niveau de `report.json` sont : `run`, `summary`, `findings`,
-`coverage`, `startup`. Un garde les fige par égalité contre cette liste.
+`coverage`, `startup`, `locale`. Un garde les fige par égalité contre cette liste.
+
+**`locale`** porte ce que la dimension i18n a réellement sous les yeux :
+`declared` (ce que `locale.deviceLocale` demande), `onDevice` (ce que l'appareil
+porte, LU et non déduit) et `aligned`. Ce n'est pas un finding — sur un projet
+sain il n'y a rien à signaler — mais une note de console meurt avec la session,
+et cet état-là est précisément celui qu'on atteint en faisant taire
+l'avertissement de locale au lieu de le traiter (480).
 
 **`metrics.perf`**, dans `perf.json` :
 ```jsonc
