@@ -2025,6 +2025,21 @@ MUTATIONS = [
     ("report", "434 · la page sans capture se retait, et c'est le run vert",
      "  if (evidence !== 'none' && !shot.embedded && !shot.tooBig && !shot.missing && !shot.filtered) {\n    notes.push(\n      `aucune capture malgré artifact.evidence: ${evidence} — une preuve `\n      + \"s'attache à un finding, et aucun finding n'en portait\",\n    );\n  }\n",
      ""),
+    # ── 479 — une mesure traversée par une attente n'est pas une mesure ──────
+    # Un motif par FAIT, jamais une alternative : le 477 a coûté deux gardes
+    # nés avec un `A|B` dont chaque mutation ne retirait qu'un côté.
+    ("run", "479 · le marquage d'absorption ne marque plus rien",
+     "    const absorbed = floorMs > 0 && precedeMs >= floorMs && ms < floorMs;",
+     "    const absorbed = false;"),
+    ("run", "479 · ce qui a attendu avant la mesure n'est plus relevé",
+     "    const precedeMs = Number.isFinite(debutMesure) && Number.isFinite(finLancement)\n      ? Math.max(0, Math.round(debutMesure - finLancement))\n      : 0;",
+     "    const precedeMs = 0;"),
+    ("run", "479 · le budget absorbé ne se dit que si TOUT l'est",
+     "  if (absorbees.length > 0) {",
+     "  if (absorbees.length > 0 && mesures.length === 0) {"),
+    ("run", "479 · une mesure absorbée recompte dans le budget",
+     "  const mesures = vivantes.filter((s) => !s.absorbed);",
+     "  const mesures = vivantes.slice();"),
     ("skill", "433 · le cadrage reperd son renvoi à la règle de l'ancre d'état",
      "    #   ⚠️ Donc si la racine PHYSIQUE est partagée entre plusieurs états, ce\n    #   n'est pas elle qu'on cadre : c'est l'ancre d'ÉTAT qui sert d'`anchor:`\n    #   (et la racine commune passe en `displays:`) — la règle est plus haut,\n    #   au cinquième écart d'ancrage. Le plein écran, lui, embarquerait\n    #   l'horloge.\n",
      ""),
