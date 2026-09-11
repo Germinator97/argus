@@ -2025,6 +2025,19 @@ MUTATIONS = [
     ("report", "434 · la page sans capture se retait, et c'est le run vert",
      "  if (evidence !== 'none' && !shot.embedded && !shot.tooBig && !shot.missing && !shot.filtered) {\n    notes.push(\n      `aucune capture malgré artifact.evidence: ${evidence} — une preuve `\n      + \"s'attache à un finding, et aucun finding n'en portait\",\n    );\n  }\n",
      ""),
+    # ── 480 — l'avertissement injoignable depuis l'état qu'il condamne ───────
+    ("run", "480 · la note de locale ne parle plus dans l'état aligné",
+     "  const note = aligned",
+     "  const note = false"),
+    ("run", "480 · la note parle aussi quand rien n'est déclaré",
+     "  const aligned = Boolean(declared) && Boolean(onDevice)\n    && normaliser(onDevice) === normaliser(declared);",
+     "  const aligned = normaliser(onDevice) === normaliser(declared);"),
+    ("run", "480 · le relevé de locale n'entre plus dans le rapport",
+     "    locale: {\n      declared: alignementLocale.declared,\n      onDevice: alignementLocale.onDevice,\n      aligned: alignementLocale.aligned,\n    },",
+     ""),
+    ("run", "480 · la note n'est plus appelée par le runner",
+     "    if (avertissementsLocale.length === 0 && alignementLocale.note) log(alignementLocale.note);",
+     ""),
     # ── 479 — une mesure traversée par une attente n'est pas une mesure ──────
     # Un motif par FAIT, jamais une alternative : le 477 a coûté deux gardes
     # nés avec un `A|B` dont chaque mutation ne retirait qu'un côté.
