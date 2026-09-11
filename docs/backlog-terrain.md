@@ -8618,3 +8618,37 @@ Le garde **appelle** `localeWarnings` et lit ce qu'elle rend — un garde de tex
 serait satisfait par le commentaire qui explique le piège, deux lignes plus haut
 dans le même fichier. Il couvre les deux sens : la ligne sort sur l'écart, et
 **rien** ne sort quand l'appareil est déjà dans la locale demandée.
+
+### 478. Mon correctif de la veille avertissait une fois, puis plus jamais
+
+**Fermé le 11/09/2026**, **trouvé en instruisant la paire 74-75** — pas rapporté
+par un run, et aucun n'aurait pu le voir.
+
+Le **475** fait dire à l'installeur qu'un workflow GitHub posé sur un projet qui
+n'est pas sur GitHub Actions ne s'exécutera nulle part. Il relève, avant la
+boucle de copie, si le projet portait déjà des workflows — et se tait s'il en a,
+parce que deux CI qui coexistent sont un choix, pas un oubli.
+
+🔴 **Le relevé comptait TOUT workflow présent, y compris le nôtre.** Au second
+passage, `.github/workflows/argus-mobile.yml` — que la boucle venait de poser —
+suffisait donc à faire croire que le projet en avait. Mesuré :
+
+| passage | avertissement |
+|---|---|
+| 1er (projet neuf) | **1** |
+| 2e | **0** |
+| `--update` | **0** |
+
+Or `--update` est le **geste ordinaire**, et c'est là que la ligne compte le
+plus : elle rappelle qu'une garde n'existe que sur le disque. Le correctif
+n'avertissait donc qu'une fois dans la vie d'un projet — à l'installation, quand
+on a mille autres choses à lire.
+
+📌 **Aucun run ne pouvait le rapporter** : le run 75 a fait un premier passage, a
+vu la ligne, et l'a relayée correctement dans son compte rendu. *Personne ne
+relance un installeur pour relire un message.* Il a fallu poser la question à
+l'outil — quatre passages sur une fixture — pour que le second réponde.
+
+Le relevé ignore désormais `argus-mobile.yml`, et le garde du 475 couvre les
+**quatre** cas : premier passage, second, `--update`, et un workflow qui
+appartient au projet (là, il doit toujours se taire).
