@@ -8652,3 +8652,138 @@ l'outil — quatre passages sur une fixture — pour que le second réponde.
 Le relevé ignore désormais `argus-mobile.yml`, et le garde du 475 couvre les
 **quatre** cas : premier passage, second, `--update`, et un workflow qui
 appartient au projet (là, il doit toujours se taire).
+
+### 479. Un correctif juste a rendu injoignable le garde d'un autre correctif juste
+
+**Rapporté par le run 76** (Android, terrain 1) — symptôme exact, **diagnostic
+démenti**, et la cause est pire que ce qu'il croyait.
+
+Le rapport annonce, pour `startup`, « attente de l'écran de départ exploitable
+(**splash et init compris**) ». Mesuré sur ce run :
+
+| flow | mesure |
+|---|---|
+| a11y · lifecycle · i18n · smoke · visual ×4 · journey-critical | **52 à 104 ms** |
+| resilience | **2 697 ms** |
+
+L'app tient un splash de marque de **2 000 ms** et `am start -W` la chronomètre
+à **1 160 ms** : 52 ms ne peut pas contenir le sas. Et comme `brandedSplashMs`
+en est **soustrait**, `QAM-START` ne peut plus jamais sortir — *un budget
+qu'aucune valeur ne peut dépasser*, c'est-à-dire exactement le **460**, rouvert.
+
+🔴 **Le run accusait le `launchApp` de Maestro. Faux** : mesuré dans les
+`commands.json`, il dure **441 à 690 ms**. La séquence réelle, identique sur les
+neuf flows :
+
+    runFlowCommand   ~7300 ms   ← dismiss-system-alerts.yaml
+      tapOnElement   ~7090 ms   ← le tapOn `optional: true` qui ATTEND sa borne
+    runFlowCommand     ~60 ms
+      assertCondition  ~55 ms   ← ce que `startupSamples` retient
+
+**7 017 à 7 144 ms sur 40 exécutions** : une constante, donc un **timeout**, pas
+un geste. Aucune alerte système n'apparaît sur ce terrain, le tap optionnel
+attend sa borne — et l'app démarre pendant ce temps. `resilience` ne passe pas
+par `launch-clean.yaml`, donc sa mesure contient encore le sas : **c'est le flow
+témoin, et il prouve que le mécanisme sait mesurer.**
+
+📌 **La cause est une composition de deux correctifs justes.** Le 460 avait pour
+remède un ORDRE — « l'attente d'ancre passe en premier, donc elle part du
+lancement ». Le **405** a ensuite porté le geste d'invite système DANS
+`launch-clean.yaml`, pour qu'il soit atteint par tous les flows : geste juste,
+et il s'insère avant elle.
+
+⚠️ **Le remède évident casserait le 405** : si l'alerte système couvre l'écran,
+l'attente d'ancre échoue — c'est littéralement le couple *atteinte / moment* que
+ce point-là avait fermé. Le remède doit donc porter sur **ce qui peut attendre
+avant la mesure**, jamais sur l'ordre de deux lignes ; sinon un troisième
+correctif du même genre la re-videra sans que rien ne le dise.
+
+### 480. L'avertissement qui écarte un raccourci ne s'adresse qu'à ceux qui ne l'ont pas pris
+
+**Rapporté par le run 77** (iOS, terrain 2) — et c'est le **477 rejoué un jour
+après son correctif**, par un agent qui ne pouvait pas savoir qu'il était neuf.
+
+Le run a écrit `deviceLocale: fr_CI`, avec une justification meilleure que celle
+du run 75 : *« relevé sur l'appareil, c'est le marché de l'app ; le flow i18n
+mesure quand même, parce que l'app ÉPINGLE sa langue »*.
+
+🔴 **La mesure dit qu'il se trompe sur le fait** :
+
+    common_core_app/.../constants.dart:30   static const Locale locale = Locale('fr', 'FR');
+    delivery_app/lib/main.dart:304          supportedLocales: const [AppConstants.locale]
+
+L'app épingle **`fr_FR`**. La clé aurait dû dire `fr_FR` — ce que le harnais
+DOIT mesurer. En écrivant `fr_CI`, il l'a rendue égale à l'appareil.
+
+🔴 **Et le correctif du 477 ne pouvait pas l'arrêter**, parce qu'il sort avant
+d'avoir parlé :
+
+    localeWarnings(demandee, autoStart, surDevice, platform) {
+      if (!demandee || autoStart) return [];
+      if (surDevice && normaliser(surDevice) === normaliser(demandee)) return [];
+
+Dès que la déclaration égale l'appareil, la fonction rend `[]`. Mesuré :
+`report.json` du run 77 porte **0 occurrence** de `QAM-LOCALE`, et aucun fichier
+du rapport ne contient « AUCUN effet ». La phrase qui écarte le raccourci est
+bien là — elle est simplement **injoignable depuis l'état qu'elle condamne**.
+
+📌 *Un avertissement qui dissuade d'un raccourci doit pouvoir parler APRÈS que le
+raccourci a été pris.* Sinon ce n'est pas un garde, c'est un panneau posé avant
+le virage : celui qui a tourné ne le lira plus jamais.
+
+⚠️ Le remède ne peut pas être « parler toujours » : ce silence est ce qui évite
+de crier sur un projet sain, et le **466** l'avait précisément éteint. Ce qui
+sépare les deux cas est mesurable et vit dans l'app — épingle-t-elle sa locale,
+ou suit-elle le système ? Contre-épreuve obligatoire du garde : une app qui SUIT
+et un `deviceLocale` égal à l'appareil ne doivent produire **aucun** message.
+
+### 481. Le préfixe FVM se perd dès que la commande ne commence pas par `flutter`
+
+**Rapporté par le run 76**, confirmé **par exécution** de la fonction :
+
+    PRÉFIXÉ  "flutter build apk --release"
+    INTACT   "rm -rf build/native_assets && flutter build apk --release …"   ← le cas
+    INTACT   "fvm flutter build apk --release"     (légitime : déjà préfixé)
+    INTACT   "./scripts/release.sh"                (légitime : script maison)
+
+`flutterCommandIn` ne préfixe que ce qui **commence** par `flutter ` — et son
+dartdoc le dit, donc la décision est délibérée. Le prix ne l'était pas : la doc
+du projet imposait un nettoyage avant le build, la commande devient composée, et
+le conseil imprimé est **injouable** quand le PATH porte une version différente
+de celle qu'exige le `pubspec` (mesuré : 3.32.0 contre 3.41.9).
+
+### 482. Une contre-épreuve qui ne dit pas sur quel couple elle se joue
+
+**Rapporté par le run 76.** Le skill prescrit, pour prouver qu'un compteur n'est
+pas mort : *« le **même motif** SANS le filtre `///` doit rendre `> 0` »*.
+Mesuré sur le `harness.dart` LIVRÉ, avec filtre / sans filtre :
+
+    ArgusScreen(     0 / 2     ← la contre-épreuve fonctionne pour CE motif
+    identifier:      0 / 0     ← 🔴 vacante : même zéro des deux côtés
+    anchor:          0 / 1     ← ce que le dartdoc porte réellement
+
+La règle est écrite en général et illustrée sur un seul couple. Jouée sur
+`identifier:` — le motif du comptage de `lib/` — elle rend `0/0` et ne distingue
+plus « le filtre marche » de « je ne mesure rien », soit exactement ce qu'elle
+existe pour écarter.
+
+### 483. ❌ DÉMENTI — le garde `cropRoot` serait « muet »
+
+Le run 76 rapporte que le garde de position ne s'exécute pas si `screens[]` est
+vide, « et son absence est muette ». **Faux** : le câblage vit dans
+`config.mjs:2529-2546`, au seul endroit qui voie les deux fichiers, et couvre
+les deux cas — `warn` quand aucun `ArgusScreen` ne porte l'ancre de
+`visualCropOn`, `err` quand elle est portée sans `cropRoot: true`. Le message
+porte mot pour mot la phrase « le garde qui mesure sa position ne s'exécute donc
+PAS — et son absence est muette ». C'est ce message que l'agent cite comme
+l'ayant repris : **le mécanisme a fonctionné.**
+
+### 484. ❌ DÉMENTI — le piège `GetIt.reset()` ne serait pas couvert
+
+Le run 77 a payé une passe (45 gardes rouges) sur un conteneur d'injection vidé
+de façon asynchrone. Le harnais porte pourtant le remède à l'endroit où on le
+lit : `anchors_test.dart:534-556` énumère **quatre causes par ordre de
+fréquence**, met le conteneur d'injection en tête, cite `GetIt.reset()`, renvoie
+au montage qui marche — et dit même qu'« un run a lu ce message comme un défaut
+d'instrumentation ». `argusDrainMountException` draine l'exception du montage
+pour que ce `reason` s'affiche au lieu de l'erreur brute. Rien à ajouter.
