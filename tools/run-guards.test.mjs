@@ -1897,9 +1897,16 @@ test("la contre-épreuve du skill nomme son COUPLE, et le couple tient (482)", (
   const i = skill.indexOf('CONTRE-ÉPREUVE A UN COUPLE');
   assert.notEqual(i, -1,
     'la mise en garde du 482 a disparu du skill — reformulée ? le garde est vacant');
-  const fenetre = skill.slice(i, skill.indexOf('\n\n', skill.indexOf('\n\n', i) + 2));
-  assert.ok(/harness\.dart/.test(fenetre), 'le FICHIER du couple doit être nommé');
-  assert.ok(/ArgusScreen\(/.test(fenetre), 'le MOTIF du couple doit être nommé');
+  // ⚠️ LA PHRASE, PAS LA FENÊTRE. Première version : elle cherchait le fichier
+  // n'importe où dans le paragraphe — or `harness.dart` y apparaît aussi dans
+  // les lignes de commande, si bien que le retirer de la PHRASE laissait le
+  // garde vert. La mutation l'a dit ; c'est le défaut du 477, reproduit ici par
+  // celui qui venait de le fermer.
+  const phrase = skill.slice(i, i + 200).split('\n').slice(0, 2).join(' ');
+  assert.ok(/harness\.dart/.test(phrase),
+    'le FICHIER du couple doit être nommé dans la phrase qui prescrit, pas ailleurs');
+  assert.ok(/ArgusScreen\(/.test(phrase),
+    'le MOTIF du couple doit être nommé dans la même phrase');
 
   // 🔴 Et le couple prescrit doit RESTER vrai du fichier livré : sans ça le
   // skill enseignerait une contre-épreuve vacante, ce qui est pire que rien.
