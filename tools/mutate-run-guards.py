@@ -2129,6 +2129,12 @@ MUTATIONS = [
     # Le harnais l'exige unique, donc il l'aurait rendue INERTE, c'est-à-dire
     # une mutation qui ne prouve rien. Un vrai saut de ligne ne peut pas se
     # trouver dans cette déclaration-ci, où il s'écrit échappé.
+    # ⚠️ Retirer l'architecture explicite ne casse RIEN sur un vrai runner : le
+    # défaut y vaut la même chose. Ça ne casse QUE la capacité à jouer le job
+    # ailleurs — exactement le genre de perte qu'aucun test ne rapporte.
+    ("ciplugin", "493 · le job Flutter redevient injouable hors d'un vrai runner",
+     "          channel: stable\n          architecture: x64\n",
+     "          channel: stable\n"),
     # ── 492 · les fences des documents livrés ──────────────────────────────
     # ⚠️ Elle reproduit le défaut EXACT qui a été trouvé : une fence de fermeture
     # à qui on donne une info-string. Elle a l'air d'une fermeture, elle n'en est

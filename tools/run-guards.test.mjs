@@ -14090,6 +14090,40 @@ test('le contrôle des motifs est joué sur le dépôt COMMITÉ, pas sur l\'arbr
     + 'compris celles dont le garde est vacant. C\'est un instrument qui approuve tout (491)');
 });
 
+// ── 493 ────────────────────────────────────────────────────────────────────
+// Un workflow qu'on ne peut pas JOUER dérive en silence — c'est ce que le job
+// de matrice a coûté : écrit, gardé, muté, relu, et faux trois fois de suite.
+// Le job qui monte Flutter avait le même défaut, pour une autre raison : le
+// défaut de son `architecture` est `runner.arch`, que les exécuteurs locaux
+// renseignent depuis la machine HÔTE. Sur un poste ARM, l'action réclame donc
+// un SDK Linux arm64 qui n'existe pas et s'arrête avant d'avoir rien fait.
+//
+// La valeur explicite est celle que le runner rend de toute façon : on n'ajoute
+// aucun comportement, on retire une dépendance à un contexte qu'on ne peut pas
+// exercer. Et elle doit SUIVRE `runs-on` — un runner ARM demanderait `arm64`.
+test('le job Flutter reste JOUABLE, et son architecture suit le runner (493)', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const sansCommentaires = ci.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+
+  // Asserter la présence AVANT la valeur : renommer le job rendrait le reste vacant.
+  const action = sansCommentaires.match(/uses:\s*subosito\/flutter-action@[^\n]*\n([\s\S]*?)(?=\n {6}- |\n {2}\w)/);
+  assert.ok(action, 'le job qui monte Flutter a disparu, ou son action a changé de nom : '
+    + 'ce garde ne mesure plus rien — mets ce motif à jour');
+  assert.match(action[1], /architecture:\s*(x64|arm64)/,
+    'l\'action Flutter ne reçoit pas d\'architecture explicite : son défaut est `runner.arch`, '
+    + 'que les exécuteurs locaux lisent sur la machine HÔTE. Le job devient alors injouable '
+    + 'ailleurs que sur un vrai runner — donc du code que personne n\'exécute avant la première '
+    + 'pull request (493)');
+
+  // Et elle suit le runner : une image ARM avec un SDK x64 ne s'installerait pas.
+  const arch = action[1].match(/architecture:\s*(\S+)/)[1];
+  const runsOn = sansCommentaires.match(/harness:[\s\S]*?runs-on:\s*(\S+)/)[1];
+  const attendu = /arm/i.test(runsOn) ? 'arm64' : 'x64';
+  assert.equal(arch, attendu,
+    `le job tourne sur \`${runsOn}\` et demande un SDK \`${arch}\` : l'architecture doit suivre `
+    + `le runner (\`${attendu}\` ici), sinon le SDK téléchargé ne s'exécute pas`);
+});
+
 // ── 492 ────────────────────────────────────────────────────────────────────
 // Deux gabarits du §2b avaient perdu une fence — l'un son ouverture, l'autre sa
 // fermeture. En CommonMark une fence de fermeture ne porte PAS d'info-string,

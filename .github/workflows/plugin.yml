@@ -190,9 +190,18 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # ⚠️ `architecture` EST EXPLICITE POUR QUE CE JOB SOIT JOUABLE, et c'est sa
+      # seule raison d'être : son défaut est `${{ runner.arch }}`, que `act`
+      # renseigne depuis la machine HÔTE. Sur un Mac, l'action réclame donc un
+      # SDK Flutter Linux arm64 — qui n'existe pas — et s'arrête avant d'avoir
+      # rien fait. La valeur écrite ici est celle que `ubuntu-latest` rend de
+      # toute façon : on n'ajoute pas un comportement, on retire une dépendance
+      # à un contexte qu'on ne peut pas exercer. ⚠️ Elle SUIT `runs-on` : un
+      # runner ARM demanderait `arm64`.
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          architecture: x64
 
       - name: Un projet d'accueil, neuf
         run: |
