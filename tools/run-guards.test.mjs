@@ -14,7 +14,7 @@
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -8439,11 +8439,24 @@ test('un paquet plus VIEUX que lib/ est déclaré périmé, pas « intact » (34
   const verdict = () => execFileSync('node', ['scripts/argus/sec.mjs', '--print-freshness'],
     { cwd: hote, encoding: 'utf8' }).trim();
 
+  // ⚠️ L'ÉCART DE DATE EST FORCÉ, il ne s'espère pas. Écrire les deux fichiers
+  // l'un après l'autre suffit sur APFS, qui horodate à la nanoseconde — et pas
+  // sur overlayfs, dont la résolution est la SECONDE : les deux partagent alors
+  // leur mtime, le verdict rend « frais », et le test devient vacant. Trouvé à
+  // la première exécution de la CI, qui tourne sous Linux ; en local il était
+  // vert depuis toujours. Un test qui dépend de la résolution du système de
+  // fichiers ne mesure pas ce qu'il croit.
+  const secondes = Math.floor(Date.now() / 1000);
+  const dater = (/** @type {string} */ f, /** @type {number} */ t) => utimesSync(f, t, t);
+
   writeFileSync(apk, 'x');
-  writeFileSync(join(hote, 'lib', 'main.dart'), 'void main() {}\n');   // source PLUS RÉCENTE
+  writeFileSync(join(hote, 'lib', 'main.dart'), 'void main() {}\n');
+  dater(apk, secondes - 10);
+  dater(join(hote, 'lib', 'main.dart'), secondes);                    // source PLUS RÉCENTE
   assert.equal(verdict(), 'perime', 'lib/ plus récent que le paquet ⇒ périmé — c\'est le cas du run 45');
 
   writeFileSync(apk, 'y');                                            // paquet reconstruit
+  dater(apk, secondes + 10);
   assert.equal(verdict(), 'frais', 'paquet plus récent ⇒ frais, sinon le garde crierait toujours');
 
   // La troisième issue compte autant : sans binaire, il se TAIT plutôt que de
