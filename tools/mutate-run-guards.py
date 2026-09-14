@@ -142,6 +142,15 @@ SUITE = ROOT / "tools/run-guards.test.mjs"
 # mutation qui casse le YAML ferait rougir la suite pour une raison sans rapport
 # avec le garde, ce qui se lit comme un succès.
 MAESTRO = shutil.which("maestro")
+# ⚠️ LE VÉRIFICATEUR PEUT MANQUER, ET SON ABSENCE NE DOIT PAS ACCUSER LA MUTATION.
+# Les deux workflows se vérifient avec PyYAML — présent sur ce poste, ABSENT de
+# l'image des runners GitHub. Sans cette détection, `import yaml` lève, la
+# vérification rend un code non nul, et le harnais conclut « la mutation ne parse
+# pas » : il confond « je n'ai PAS PU mesurer » et « le sujet est fautif », et il
+# accuse un dépôt sain. Mesuré le 14/09 dans le conteneur — cinq mutations en
+# HARNAIS, donc un job rouge sur rien.
+PYYAML = subprocess.run([sys.executable, "-c", "import yaml"],
+                        capture_output=True).returncode == 0
 # ⚠️ DÉRIVÉ, jamais figé. Ce nombre sert à distinguer « le garde n'a pas bougé »
 # de « aucun test n'a tourné » — deux verdicts opposés que la même sortie vide
 # produirait. Écrit à la main, il se périmait au premier test ajouté et TOUTES
@@ -2096,6 +2105,12 @@ MUTATIONS = [
     # ── 490 · le découpage de la passe de mutation ──────────────────────────
     # Trois façons de vider le garde, une par assertion, et toutes les trois
     # laissent une CI qui passe au vert.
+    # ⚠️ Retirer l'installation ne casse RIEN de visible : le harnais cesse
+    # simplement de vérifier les workflows mutés, et une mutation qui casserait
+    # le fichier se lirait ensuite comme un garde qui tombe. Du câblage pur.
+    ("ciplugin", "490 · le job cesse de fournir de quoi vérifier les workflows",
+     "        run: python3 -m pip install --quiet --break-system-packages pyyaml\n",
+     "        run: true  # rien à installer\n"),
     ("ciplugin", "490 · l'argument de tranche cesse de venir ENTIER de la matrice",
      "        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}\n",
      "        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}/10\n"),
@@ -2388,6 +2403,13 @@ def main():
             print("  (git checkout restaure depuis HEAD — il DÉTRUIRAIT ce travail.)")
             return 1
 
+    if not PYYAML:
+        workflows = sum(1 for c, *_ in MUTATIONS
+                        if CIBLES[c].name in ("argus-mobile.yml", "plugin.yml"))
+        print(f"⚠  PyYAML absent — les {workflows} mutations de workflow ne seront pas vérifiées")
+        print("   syntaxiquement. Elles ne seront pas ACCUSÉES pour autant : un vérificateur")
+        print("   qui manque n'est pas une mutation fautive.  (pip install pyyaml)")
+
     if not MAESTRO:
         flows = sum(1 for c, *_ in MUTATIONS if CIBLES[c].suffix in (".yaml", ".yml"))
         print(f"⚠  maestro absent du PATH — les {flows} mutations de flow ne seront pas vérifiées")
@@ -2459,7 +2481,7 @@ def main():
                        "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
                        + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
                        + "')).catch(e => { console.error(e.message); process.exit(1); })"]
-          elif cible.name in ("argus-mobile.yml", "plugin.yml"):
+          elif cible.name in ("argus-mobile.yml", "plugin.yml") and PYYAML:
               # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
               # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
               # `check-syntax` le rejette toujours et TOUTE mutation rendait

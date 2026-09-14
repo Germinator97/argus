@@ -161,6 +161,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # ⚠️ LE VÉRIFICATEUR DES WORKFLOWS, et il n'est pas facultatif. Le harnais
+      # contrôle qu'une mutation de workflow produit toujours un YAML valide,
+      # avec PyYAML — présent sur un poste de développement, ABSENT de l'image
+      # des runners. Sans cette ligne il ne vérifie plus rien, et une mutation
+      # qui casserait le fichier se lirait comme un garde qui tombe. Mesuré le
+      # 14/09 : l'absence rendait cinq mutations en « HARNAIS », donc ce job
+      # rouge sur un dépôt parfaitement sain.
+      - name: De quoi vérifier les workflows mutés
+        run: python3 -m pip install --quiet --break-system-packages pyyaml
+
       - name: Tranche ${{ matrix.tranche }} — chaque défaut réintroduit doit tomber
         run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}
 

@@ -14042,6 +14042,16 @@ test('les tranches de la CI couvrent TOUTES les mutations, et N se dérive (490)
   //    un attendu recalculé par le garde dériverait de la même idée que la
   //    partition qu'il juge, donc il suivrait la même erreur. Le harnais, lui,
   //    compare sa partition à `1..total` — une séquence qui ne dérive pas d'elle.
+  // 4 bis. Le job FOURNIT de quoi vérifier les workflows mutés. Le harnais
+  //    contrôle qu'une mutation de workflow rend toujours un YAML valide, avec
+  //    PyYAML — présent sur un poste, ABSENT de l'image des runners. Sans cette
+  //    ligne il ne se plaint pas : il cesse de vérifier, et une mutation qui
+  //    casserait le fichier se lirait alors comme un garde qui tombe. C'est du
+  //    CÂBLAGE, donc le perdre ne casse rien de visible — d'où ce garde.
+  assert.match(executable, /pip install[^\n]*pyyaml/i,
+    'le job de mutation n\'installe plus PyYAML : le harnais cessera de vérifier que les '
+    + 'mutations de workflow produisent un YAML valide, et il le fera en silence (490)');
+
   const preuve = spawnSync('python3',
     [join(RACINE, 'tools/mutate-run-guards.py'), `--check-shards=${valeurs.length}`],
     { encoding: 'utf8' });
