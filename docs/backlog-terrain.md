@@ -5096,6 +5096,22 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **1 POINT OUVERT — le 488**, ouvert le 14/09/2026 : *porter un correctif à ses
+VOISINS*. Ce n'est pas un constat de terrain mais ce que trois paires
+consécutives ont établi — `477 → 480` puis `481 → 485`, deux fois le même motif,
+un remède juste dont le voisin portait la même faute sous une autre forme.
+
+✅ **485 à 488 INSCRITS le 14/09/2026, sur la paire 78-79** — deux constats neufs
+(485, 486), tous deux rendus par le **run 78** ; **quatre démentis** groupés en
+487, tous du run 79 et tous du même motif : *le skill avait déjà répondu, et
+l'agent a relayé son texte*. Le run 79 n'a rendu **aucun constat neuf**.
+📌 **Le palier** : pour la première fois depuis la paire 74-75, aucun mécanisme
+cassé, aucun faux vert, aucune passe device perdue — et l'un des deux runs est
+entièrement muet. Le 485 ne se déclenche même que sur une **divergence** entre la
+version épinglée par le projet et celle du PATH : sur la plupart des postes, il
+dort.
+
+
 ✅ **452 à 457 FERMÉS le 09/09/2026 — backlog vidé une 65e fois**, sur les six
 points du **run 69** (iOS, terrain avec API). Quatre correctifs, deux constats
 mal formulés dont le fond était juste (453, 455), **trois parités** (452, 453,
@@ -8789,3 +8805,90 @@ fréquence**, met le conteneur d'injection en tête, cite `GetIt.reset()`, renvo
 au montage qui marche — et dit même qu'« un run a lu ce message comme un défaut
 d'instrumentation ». `argusDrainMountException` draine l'exception du montage
 pour que ce `reason` s'affiche au lieu de l'erreur brute. Rien à ajouter.
+
+### 485. Le préfixe FVM manque là où le runner est CHOISI, pas composé
+
+**Rapporté par le run 78**, reproduit avant inscription. `sca.mjs:163` :
+
+    const runner = detectTools(['flutter']).flutter.present ? 'flutter' : 'dart';
+
+Il DÉTECTE correctement, puis invoque le **nom nu**. Symptôme mesuré :
+`JSON pub outdated illisible : Unexpected token '┌'` — `fvm` sans argument
+imprime son aide. La sous-dimension « fraîcheur » tombe alors en
+`scanned: false` **avec sa raison** : honnête, pas un faux vert, et le scan CVE
+lui-même a bien tourné (0 finding).
+
+🔴 **C'est le 481 chez son voisin.** Le 481 a appris à `flutterCommandIn` à
+préfixer tout `flutter` en *position de commande* dans une chaîne composée.
+`sca.mjs` ne compose pas de chaîne — il choisit un runner. Le correctif ne
+pouvait pas l'atteindre, et rien ne pouvait le signaler.
+
+Périmètre **mesuré, pas supposé** : un seul site. `config.mjs:2070` porte le
+préfixe (`name === 'flutter' && usesFvm() ? sh('fvm', ['flutter', …])`), `sec.mjs`
+l'importe aussi, et les quatre autres scripts n'invoquent ni `flutter` ni `dart`.
+⚠️ Le run rapportait que `run.mjs` dérive déjà le préfixe : **faux** — il
+n'appelle jamais `usesFvm`. *Symptôme juste, diagnostic faux.*
+
+🔴 **Confirmé PAR L'ABSENCE au run 79.** Le second terrain épingle exactement la
+version que porte le PATH, donc le défaut y est **invisible** et `pub outdated`
+rend ses 87 dépendances. Il ne se déclenche que sur une **divergence** entre la
+version épinglée et celle du PATH — c'est-à-dire qu'il dort sur la plupart des
+postes, où `flutter` du PATH *est* celui de FVM. Il fallait deux terrains
+épinglant des versions différentes pour le voir.
+
+### 486. Un pas dont la condition est INATTEIGNABLE sur une plateforme attend sa borne à chaque flow
+
+**Rapporté par le run 78.** `disable-animations.yaml` ne contient qu'un pas :
+
+    - assertTrue:
+        condition: "${typeof ARGUS_ANIMATIONS_DISABLED !== 'undefined' && …=== 'true'}"
+        optional: true
+
+Or le fichier documente lui-même que Maestro n'a **pas accès à `adb`** : sur un
+simulateur iOS, la variable ne peut jamais valoir `'true'`. La condition est donc
+fausse **par construction**, et Maestro attend son timeout plutôt que d'échouer
+vite : **1 898 ms mesurés, × 6 flows ≈ 11 s par passe**, pour un geste que la
+plateforme ne peut pas exécuter.
+
+C'est la forme du 479 — un pas `optional` qui attend sa borne — mais le coût est
+ici **structurel** et non accidentel : il se produit à chaque exécution iOS, sur
+tous les projets. Le 479 a rendu la mesure honnête (`QAM-START-ABSORBE` l'a bien
+signalé sur 7 flows/9) ; il n'a pas supprimé l'attente, et ce n'était pas son
+objet.
+
+### 487. ❌ DÉMENTIS — les quatre constats du run 79 disent tous la même chose
+
+Le run 79 n'a rendu **aucun constat neuf**. Ses quatre points partagent un motif
+unique, et c'est lui qui vaut d'être gardé : **le skill avait déjà répondu, et
+l'agent a relayé son texte sans savoir qu'il répondait déjà.**
+
+| rapporté | ce que la reproduction dit |
+|---|---|
+| « les blocs post-auth gardent sur la DÉCLARATION d'une variable, jamais sur l'existence d'une session » | écrit **mot pour mot** dans `lifecycle.yaml` livré, avec son remède (point 390). L'agent l'écrit lui-même : « le fichier livré porte l'avertissement ; je l'ai payé quand même » |
+| « `evidence: all` publierait une capture de l'écran de code à usage unique » | `SKILL.md:2654` le documente et donne le remède (`evidence: major`), en disant que c'est du vécu |
+| « le workflow GitHub ne s'exécutera nulle part » | c'est le correctif du **475** qui parle. Déjà démenti à la paire 74-75, sur l'autre terrain |
+| `maxRuns` refusé par `check-syntax` · un double de service SMS | **aucun des deux n'existe dans le skill** — son propre montage |
+
+📌 Le premier a failli être inscrit comme le meilleur constat du run. Ce qui l'a
+arrêté est la règle ordinaire : **reproduire avant d'inscrire**. Un rapport
+d'agent qui cite une phrase du document ressemble exactement à un rapport qui
+décrit un défaut.
+
+### 488. Porter un correctif à ses VOISINS — la classe, et non le cas
+
+**Ouvert le 14/09/2026.** Ce n'est pas un constat de terrain mais ce que trois
+paires consécutives ont fini par établir. Le motif, à l'identique :
+
+    477  →  480      un remède juste, son voisin non couvert
+    481  →  485      un remède juste, son voisin non couvert
+
+Dans les deux cas le remède était exact, il fermait ce qu'il visait, et il
+laissait à côté de lui une **autre forme du même défaut** que son motif ne
+pouvait pas atteindre — le 480 parce que la phrase vivait derrière un
+`return []`, le 485 parce que le voisin choisit un runner au lieu de composer une
+chaîne. Aucun test ne peut voir ça : chaque correctif est juste pris à part.
+
+Ce que ce point demande n'est donc pas un troisième correctif ponctuel, mais le
+geste qui empêche la quatrième occurrence : quand on ferme un défaut, **chercher
+les autres formes du même geste** — les autres sites qui font la même chose
+autrement — et le prouver, plutôt que de le promettre.
