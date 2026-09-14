@@ -2122,6 +2122,24 @@ def restaure_tout(propres):
             print(f"  · {cible.name} : {etat}")
 
 
+def numeros_de_tranche(total, k, n):
+    """Les numéros de mutation (1-based) de la tranche `k` sur `n`.
+
+    ⚠️ C'EST UNE PARTITION, et c'est tout ce qui la sépare d'une sélection. Les
+    `n` tranches doivent couvrir exactement 1..total — sans trou ni
+    recouvrement —, sinon la matrice de la CI rend `n` jobs verts pendant que
+    des mutations ne sont jouées par personne : une CI verte ne rapporte pas ce
+    mode de panne-là, puisque chaque job, pris à part, a bien fait son travail.
+    Le reste est distribué sur les PREMIÈRES tranches plutôt qu'allongé sur la
+    dernière — 435 en 10 rend cinq tranches de 44 puis cinq de 43, jamais neuf
+    de 44 et une de 39, qui ferait attendre un job pour rien.
+    """
+    base, reste = divmod(total, n)
+    debut = (k - 1) * base + min(k - 1, reste)
+    taille = base + (1 if k <= reste else 0)
+    return list(range(debut + 1, debut + taille + 1))
+
+
 def main():
     global NB_TESTS
 
@@ -2140,6 +2158,10 @@ def main():
         print("                    — c'est le raccourci SÛR : il garde le refus de")
         print("                      démarrer sur un arbre sale et la preuve de")
         print("                      restauration. Une copie jetable ne les a pas.")
+        print("  --shard=K/N       la tranche K d'une PARTITION en N — les N tranches")
+        print("                    couvrent tout, donc celle-ci rend 0 si elle est")
+        print("                    entière ; c'est l'assembleur (matrice de CI) qui")
+        print("                    exige les N verts. Ajoute --list pour la voir.")
         print("  --check-motifs    dit quelles mutations ne mutent plus rien —")
         print("                    aucun fichier touché, une seconde au lieu d'heures")
         print("  --help, -h        ceci")
@@ -2188,6 +2210,36 @@ def main():
             return 2
         choisies = nums
         args = []
+
+    # ⚠️ `--shard=K/N` DIFFÈRE DE `--only` PAR SA NATURE, pas par son périmètre,
+    # et c'est cela seul qui l'autorise à rendre 0. `--only` est une SÉLECTION :
+    # rien ne garantit que le reste sera joué un jour, donc elle sort en 1 —
+    # sinon un « 45/435 » se lirait comme un dépôt sain, ce qui est exactement
+    # le relevé tronqué qui se prend pour une mesure. `--shard` est une
+    # PARTITION annoncée : les N tranches couvrent 1..total sans trou, et c'est
+    # l'assembleur — la matrice de la CI — qui exige les N verts. Sa tranche
+    # entière vaut donc 0, et le bandeau écrit qu'elle ne prouve qu'elle-même.
+    tranche = None
+    if choisies is None and args and args[0].startswith("--shard="):
+        brut = args[0][len("--shard="):].strip()
+        forme = re.fullmatch(r"(\d+)/(\d+)", brut)
+        if not forme:
+            print(f"✖ --shard attend K/N (ex. --shard=3/10), reçu : {brut}")
+            return 2
+        k, nb = int(forme.group(1)), int(forme.group(2))
+        if not 1 <= k <= nb or not 1 <= nb <= len(MUTATIONS):
+            print(f"✖ --shard={brut} : K doit tenir dans 1..N, et N dans 1..{len(MUTATIONS)}")
+            return 2
+        tranche = (k, nb)
+        choisies = numeros_de_tranche(len(MUTATIONS), k, nb)
+        args = args[1:]
+        if args == ["--list"]:
+            print(f"tranche {k}/{nb} : {len(choisies)} mutations "
+                  f"({choisies[0]}-{choisies[-1]}) sur {len(MUTATIONS)} — aucun fichier touché")
+            for i in choisies:
+                cle, nom, *_reste = MUTATIONS[i - 1]
+                print(f"{i:3}. {cle:9} {nom}")
+            return 0
     if args:
         print(f"✖ argument inconnu : {' '.join(args)}")
         print("  Ce script MUTE des fichiers suivis — il ne démarre pas sur un doute.")
@@ -2224,7 +2276,11 @@ def main():
     # lit comme une passe complète — le relevé tronqué qui se prend pour une
     # mesure. Le bilan final le redit, pour qu'on ne le lise pas hors contexte.
     jouees = MUTATIONS if choisies is None else [MUTATIONS[n - 1] for n in choisies]
-    if choisies is not None:
+    if tranche is not None:
+        print(f"⚠  TRANCHE {tranche[0]}/{tranche[1]} : {len(jouees)}/{len(MUTATIONS)} mutations"
+              f" ({choisies[0]}-{choisies[-1]}) — elle ne prouve QU'ELLE-MÊME."
+              f" Le dépôt n'est gardé que si les {tranche[1]} tranches passent.\n")
+    elif choisies is not None:
         print(f"⚠  PASSE PARTIELLE : {len(jouees)}/{len(MUTATIONS)} mutations"
               f" (--only={','.join(map(str, choisies))}) — ce n'est PAS une passe complète.\n")
 
@@ -2330,9 +2386,14 @@ def main():
         print(f"{icone}  {nom:52} {etat:8} {detail[:34]}")
 
     tombes = sum(1 for e, _, _ in bilan if e == "TOMBE")
-    hashs = " ".join(f"{k}={digest(v)}" for k, v in CIBLES.items())
-    print(f"\n{tombes}/{len(MUTATIONS)} défauts détectés · hashs restaurés : {hashs}")
-    return 0 if tombes == len(MUTATIONS) else 1
+    hashs = " ".join(f"{cle}={digest(v)}" for cle, v in CIBLES.items())
+    # ⚠️ L'ATTENDU D'UNE TRANCHE EST SA PROPRE TAILLE, celui de tout le reste est
+    # le cardinal ENTIER. C'est la seule ligne qui sépare « la CI assemble N
+    # tranches » de « quelqu'un a joué 45 mutations et lu un vert ».
+    attendu = len(jouees) if tranche is not None else len(MUTATIONS)
+    ou = f" · tranche {tranche[0]}/{tranche[1]}" if tranche is not None else ""
+    print(f"\n{tombes}/{attendu} défauts détectés{ou} · hashs restaurés : {hashs}")
+    return 0 if tombes == attendu else 1
 
 
 if __name__ == "__main__":
