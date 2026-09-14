@@ -13645,7 +13645,16 @@ test('une annonce de numéro libre périmée est signalée comme telle (470)', (
 // dise. Elles ont été découvertes en contrôlant autre chose.
 // Ce garde lance le contrôle qui répond en une seconde, et exige qu'il conclue.
 test('aucune mutation n\'est inerte sans être déclarée (471)', () => {
-  const r = spawnSync('python3', [join(RACINE, 'tools/mutate-run-guards.py'), '--check-motifs'],
+  // ⚠️ `--from-head` EST LA MOITIÉ QUI COMPTE, et son absence ne se voyait pas.
+  // Ce test est rejoué sous CHAQUE mutation. En lisant l'arbre, il voyait le
+  // motif que le harnais venait de remplacer, se déclarait inerte, et rougissait
+  // à chaque fois — or le harnais décide TOMBE/VACANT sur le seul code de retour
+  // de la suite. Il y avait donc toujours un rouge, et il rendait TOMBE quel que
+  // soit l'état du garde qu'on croyait éprouver : un harnais qui approuve tout.
+  // Mesuré le 14/09 sur deux cibles : deux tests rouges sous une mutation
+  // ordinaire, le garde visé ET celui-ci. Voir le garde de câblage juste après.
+  const r = spawnSync('python3',
+    [join(RACINE, 'tools/mutate-run-guards.py'), '--check-motifs', '--from-head'],
     { cwd: RACINE, encoding: 'utf8' });
   const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
 
@@ -13983,4 +13992,33 @@ test('les tranches de la CI couvrent TOUTES les mutations, et N se dérive (490)
     `le harnais refuse la partition en ${valeurs.length} tranches — des mutations ne seraient `
     + `jouées par personne, et les ${valeurs.length} jobs passeraient au vert :\n`
     + `${preuve.stdout}${preuve.stderr}`);
+});
+
+// ── 491 ────────────────────────────────────────────────────────────────────
+// Le CÂBLAGE de `--from-head`, et non son effet — parce que son effet ne se voit
+// que pendant une mutation, c'est-à-dire précisément là où aucun test ne
+// regarde. Retirer ce drapeau ne casse rien, ne lève rien, ne fait rougir
+// personne : la suite reste verte sur un arbre propre, où HEAD et l'arbre disent
+// la même chose. Ce n'est qu'au tour suivant du harnais que le prix se paie, et
+// il se paie en silence — chaque mutation rend alors TOMBE, y compris celles
+// dont le garde ne garde plus rien.
+test('le contrôle des motifs est joué sur le dépôt COMMITÉ, pas sur l\'arbre (491)', () => {
+  const suite = readFileSync(join(RACINE, 'tools/run-guards.test.mjs'), 'utf8');
+
+  // Asserter d'abord que l'appel EXISTE : sans ça, renommer l'option rendrait
+  // ce garde vacant, et il resterait vert sur un dépôt qui ne l'appelle plus.
+  // ⚠️ ANCRÉ SUR LE VRAI HARNAIS. La suite l'appelle TROIS fois : ici, dans le
+  // message d'échec du 471, et sur une COPIE sabotée que le 471 bis fabrique
+  // dans un dossier temporaire. Cette copie-là ne doit surtout pas lire HEAD —
+  // sa sonde n'y est pas commitée, elle y deviendrait vacante. Le drapeau ne
+  // vaut donc que pour l'invocation qui porte le chemin du harnais du dépôt.
+  const appels = [...suite.matchAll(/tools\/mutate-run-guards\.py'\),\s*'--check-motifs'([^\]]*)\]/g)];
+  assert.equal(appels.length, 1,
+    `${appels.length} invocation(s) du harnais du dépôt avec ce contrôle, ce garde en attend une : `
+    + 'si la forme de l\'appel a changé, mets ce motif à jour — sinon ce garde ne garde plus rien');
+  assert.match(appels[0][1], /'--from-head'/,
+    'le contrôle des motifs lit l\'ARBRE et non HEAD : sous chaque mutation il verra le motif '
+    + 'que le harnais vient de remplacer, se déclarera inerte, et rougira. Le harnais décidant '
+    + 'sur le seul code de retour de la suite, il rendra alors TOMBE pour TOUTE mutation — y '
+    + 'compris celles dont le garde est vacant. C\'est un instrument qui approuve tout (491)');
 });

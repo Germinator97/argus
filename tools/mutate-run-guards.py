@@ -2156,6 +2156,47 @@ def restaure_tout(propres):
             print(f"  · {cible.name} : {etat}")
 
 
+def textes_depuis_head():
+    """Le contenu COMMITÉ de chaque cible, en un seul appel git.
+
+    ⚠️ POURQUOI HEAD ET NON L'ARBRE, et pourquoi ce n'est pas une commodité.
+    Ce contrôle est joué par un garde de la suite, et la suite est rejouée sous
+    CHAQUE mutation. En lisant l'arbre, il voit le motif que le harnais vient de
+    remplacer, se déclare donc inerte, et rougit — à chaque fois. Or le harnais
+    décide TOMBE/VACANT sur le seul code de retour de la suite : il y avait
+    toujours un rouge, donc il rendait TOMBE quel que soit l'état du garde qu'on
+    croyait éprouver. Un harnais qui approuve tout ressemble à un dépôt sain.
+    Mesuré le 14/09 sur deux cibles distinctes : deux tests rouges sous une
+    mutation ordinaire, le garde visé ET celui-ci.
+
+    Lire HEAD est par ailleurs la sémantique du harnais lui-même, qui restaure
+    par `git checkout` : le contrôle et la restauration parlent du même état.
+    Un seul `git cat-file --batch` pour les 37 cibles — 14 ms contre 160 en
+    appels séparés, soit six secondes sur une passe entière au lieu d'une minute.
+    """
+    entree = "".join(f"HEAD:{c.relative_to(ROOT).as_posix()}\n" for c in CIBLES.values())
+    r = subprocess.run(["git", "cat-file", "--batch"], cwd=str(ROOT),
+                       input=entree.encode(), capture_output=True)
+    if r.returncode != 0:
+        return None
+    flux, textes, pos = r.stdout, {}, 0
+    for cle in CIBLES:
+        fin = flux.find(b"\n", pos)
+        if fin < 0:
+            return None
+        entete = flux[pos:fin].decode(errors="replace")
+        if " blob " not in entete:
+            return None
+        try:
+            taille = int(entete.rsplit(" ", 1)[1])
+        except ValueError:
+            return None
+        debut = fin + 1
+        textes[cle] = flux[debut:debut + taille].decode("utf-8")
+        pos = debut + taille + 1
+    return textes
+
+
 def numeros_de_tranche(total, k, n):
     """Les numéros de mutation (1-based) de la tranche `k` sur `n`.
 
@@ -2197,13 +2238,24 @@ def main():
         print("                    entière ; c'est l'assembleur (matrice de CI) qui")
         print("                    exige les N verts. Ajoute --list pour la voir.")
         print("  --check-motifs    dit quelles mutations ne mutent plus rien —")
+        print("                    ajoute --from-head pour lire le dépôt COMMITÉ,")
+        print("                    seule façon de le jouer PENDANT une mutation")
         print("                    aucun fichier touché, une seconde au lieu d'heures")
         print("  --help, -h        ceci")
         return 0
-    if args == ["--check-motifs"]:
+    if args and args[0] == "--check-motifs" and set(args[1:]) <= {"--from-head"}:
         # Ne mute rien, n'écrit rien : compte, compare, conclut.
+        # ⚠️ `--from-head` n'est pas une option de confort — voir textes_depuis_head.
+        if "--from-head" in args[1:]:
+            textes = textes_depuis_head()
+            if textes is None:
+                print("✖ impossible de lire les cibles depuis HEAD : le contrôle n'a RIEN mesuré,")
+                print("  et son silence se lirait comme « aucune mutation inerte ».")
+                return 2
+        else:
+            textes = {cle: c.read_text(encoding="utf-8") for cle, c in CIBLES.items()}
         morts = sorted({nom for (cle, nom, motif, _) in MUTATIONS
-                        if CIBLES[cle].read_text(encoding="utf-8").count(motif) != 1})
+                        if textes[cle].count(motif) != 1})
         neuves = [n for n in morts if n not in MOTIFS_INERTES_CONNUS]
         guaries = [n for n in MOTIFS_INERTES_CONNUS if n not in morts]
         for n in neuves:
