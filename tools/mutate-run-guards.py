@@ -1488,9 +1488,17 @@ MUTATIONS = [
      ""),
     # 405 — la connexion cesse de refermer l'invite qu'elle fait naître : le
     # geste ne se joue plus qu'au lancement, donc trop tôt pour ces apps-là.
+    # ⚠️ L'INDENTATION FAIT PARTIE DU MOTIF, et l'oublier ne rend pas la mutation
+    # inerte — ce qui se verrait — mais INVALIDE, ce qui ne se voit qu'en la
+    # jouant. Ce `runFlow` vit dans un `retry:`, donc à DOUZE espaces ; le motif
+    # n'en portait que six, il matchait quand même (une sous-chaîne de la ligne
+    # plus indentée), et le remplacement multi-ligne posait alors `condition:`
+    # moins indenté que son `- assertTrue:`. Verdict « la mutation ne parse pas »,
+    # rendu par le harnais sur lui-même : ni un garde vacant, ni un garde qui
+    # tombe. `--check-motifs` ne pouvait pas le dire — le motif EST trouvé.
     ("login", "405 · la connexion ne referme plus l'invite qu'elle fait naître",
-     "      - runFlow: dismiss-system-alerts.yaml",
-     "      - assertTrue:\n          condition: \"${true}\""),
+     "            - runFlow: dismiss-system-alerts.yaml",
+     "            - assertTrue:\n                condition: \"${true}\""),
     # ── Runs 57 et 58 · 406-414 ──────────────────────────────────────────
     # 406 — le runner cesse de refuser un run sans flow : le faux vert revient,
     # et il revient exactement comme deux runs l'ont produit.
