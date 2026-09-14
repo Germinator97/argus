@@ -1,0 +1,4 @@
+# Artefacts de compilation Python — regénérés à chaque import, donc ils
+# salissent l' arbre et le harnais de mutation REFUSE de démarrer dessus.
+__pycache__/
+*.py[cod]
