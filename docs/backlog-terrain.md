@@ -5096,6 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+✅ **492 FERMÉ le 14/09/2026 — la première passe de mutation dont le verdict
+veuille dire quelque chose.** 436/438 : deux gardes creux, que les passes
+précédentes rapportaient comme « tombés ». Et l'un des deux, en résistant à sa
+correction, a révélé deux fences manquantes dans le skill — soit 117 lignes de
+prose rendues comme du code, dans un fichier que personne n'avait affiché.
+
 ✅ **490 et 491 FERMÉS le 14/09/2026 — la CI, jouée pour la première fois en 79
 runs, et ce qu'elle a fait tomber.** Le 490 découpe la passe de mutation en dix
 tranches, parce que son produit « durée × cardinal » n'avait jamais été mesuré.
@@ -9075,3 +9081,61 @@ main, et c'est ce qui a été fait le 14/09 — `flutter create` + installeur +
 (`+5 ~4`, les deux greps satisfaits). ⚠️ Sur macOS et Flutter 3.32.0, quand la CI
 prendrait la `stable` du jour sous Linux : c'est précisément l'écart qui a
 produit le 489, donc cette réserve n'est pas de style.
+
+### 492. Ce que la première passe HONNÊTE a trouvé — deux gardes creux, deux fences
+
+**Fermé le 14/09/2026.** La passe de 438 mutations rejouée après la réparation
+du 491 — la première dont le verdict veuille dire quelque chose depuis le 10/09.
+Bilan : **436/438**, donc **deux gardes vacants** que les passes précédentes
+avaient tous deux rapportés comme « tombés ».
+
+**Le premier** gardait la contre-épreuve que le skill prescrit au §2b. Le skill
+écrit cette commande **deux fois** : une fois comme *prescription*, dans un bloc
+clôturé que le lecteur copie, et une fois plus bas comme *exemple* d'un couple
+qui ne prouve rien — même forme exacte. Le garde collectait toutes les lignes de
+comptage de la page et exigeait « au moins une, quelque part » : l'exemple
+excusait donc le retrait de la prescription. Son propre commentaire annonçait
+déjà « la deuxième fois que ce garde passe à côté de son sujet ». C'était la
+troisième. Il porte désormais sur le **bloc exécutable**.
+
+**Le second** gardait l'ancrage du marqueur d'ouverture. Son cas lisait *« on se
+souvient qu'il fut **Ouvert le …** »* et attendait zéro. Il obtenait bien zéro —
+mais **parce qu'aucun titre `### N.` ne précède la mention**, donc la fonction
+mappe sur `null` et filtre, jamais parce que l'ancre `^` l'avait écartée. Vert
+avec ou sans l'ancre : il mesurait l'absence de titre en croyant mesurer la
+borne. Le cas porte maintenant un titre — ce qui fait de l'ancre la seule
+variable — et un jumeau qui exige qu'un vrai marqueur, lui, COMPTE.
+
+⚠️ **Et le premier a révélé autre chose en résistant.** En corrigeant son garde,
+l'extracteur de blocs exécutables classait l'exemple comme prescription et
+ratait la prescription. L'instrument n'était pas faux : **le fichier l'était.**
+Deux gabarits du skill avaient perdu une fence — l'un son ouverture, l'autre sa
+fermeture :
+
+    ligne 305   ```        ouvre le gabarit du rapport … et rien ne le ferme
+    ligne 322   ```bash    ne le ferme PAS : en CommonMark une fermeture ne
+                           porte jamais d'info-string
+    ligne 353   ```        le ferme enfin — 48 lignes plus bas
+
+    ligne 511   ```        FERME un gabarit que rien n'avait ouvert
+                           → 69 lignes de prose avalées dans un bloc
+
+Entre les deux, quatre avertissements en gras s'affichaient en monospace,
+astérisques compris, et la ligne ` ```bash ` s'imprimait littéralement. **Rien ne
+pouvait le voir** : le fichier est un Markdown valide, il rend simplement autre
+chose que ce qu'il dit. C'est un livrable que personne n'avait affiché pour le
+regarder — et il a fallu qu'un garde sans rapport bute dessus.
+
+**Ce qui le ferme** : un garde sur le **phénomène** et non sur le fichier où on
+l'a trouvé — les treize documents markdown livrés, un critère total et négatif,
+et la preuve qu'il a VU avant de dire qu'il n'a rien vu (dix documents au
+minimum, plus de cinquante fences lues) ; plus sa mutation, qui donne une
+info-string à une fence de fermeture, exactement la forme du défaut.
+
+📌 **Et le dispositif de la passe a changé** : douze tranches jouées dans des
+`git worktree` détachés, jusqu'à six en parallèle. Un arbre par tranche est ce
+qui le rend possible — sinon la suite de l'une voit la mutation de l'autre et
+rend un rouge parasite, soit le 491 revenu par la porte du parallélisme. Un
+**témoin** de résultat connu (37/37 en séquentiel) a voyagé dans chaque lot et
+rendu 37/37 aux deux charges : c'est ce qui autorise à lire les autres tranches.
+Mesuré : 13 min 21 s pour six tranches contre ~42 en séquentiel.
