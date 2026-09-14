@@ -10673,8 +10673,17 @@ test('le geste de l\'invite système est écrit là où TOUS les flows passent (
     + 'un fichier du CADRE serait écrasé au prochain --update');
   assert.match(geste, /^\s*text: '\(\?s\)\.\*.*Refuser/m,
     'le sélecteur de l\'invite a disparu ou n\'est plus encadré — un sélecteur porte sur le nœud ENTIER');
-  assert.match(geste, /optional:\s*true/,
-    'sans `optional:`, le geste échoue dès le SECOND run : l\'alerte n\'apparaît qu\'une fois par installation');
+  // ⚠️ DÉPOUILLÉ, et c'est la seule des trois assertions qui en a besoin. Ce
+  // fichier EXPLIQUE `optional: true` dans deux commentaires — « GARDE
+  // `optional: true` », « `optional: true` rend chaque passage inoffensif ».
+  // Le motif les matchait, donc le garde restait VERT sur un `optional: false`
+  // dans le pas exécutable : il mesurait sa propre mention. Trouvé en ré-ancrant
+  // la mutation 388, qui ne tombait que sur le contrôle des motifs.
+  // (Le marqueur ARGUS:OWNED, lui, EST un commentaire : il se cherche sur le brut.)
+  const pas = geste.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.match(pas, /optional:\s*true/,
+    'sans `optional: true` sur le PAS lui-même, le geste échoue dès le SECOND run : l\'alerte '
+    + 'n\'apparaît qu\'une fois par installation (et un `optional: false` passe le motif nu)');
 
   // ⚠️ LA MOITIÉ QUI MANQUAIT, ET DÉRIVÉE : le geste doit être ATTEIGNABLE.
   const clean = readFileSync(join(dir, 'launch-clean.yaml'), 'utf8');
