@@ -2137,9 +2137,20 @@ MUTATIONS = [
     ("skill", "492 · une fence de fermeture se met à porter un langage",
      "  Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)\n```\n",
      "  Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)\n```text\n"),
+    # ⚠️ ELLE CASSE INCONDITIONNELLEMENT, et ce n'est pas du style. La version
+    # d'avant retirait le `min(k - 1, reste)` — un défaut réel, mais qui ne
+    # change RIEN quand le cardinal des mutations est divisible par le nombre de
+    # tranches : `reste` vaut alors zéro, et `min(k - 1, 0)` aussi. Elle prouvait
+    # donc le garde à 439 mutations et plus rien à 440, au gré des ajouts et sans
+    # que rien ne le signale — une fois sur dix. C'est le CONTENEUR qui l'a dit,
+    # en la rendant VACANT le jour où la 440e est arrivée : aucune relecture ne
+    # voit qu'une mutation a cessé de muter selon la parité d'un compte.
+    # Retirer un élément de chaque tranche troue la partition quel que soit le
+    # reste — le pouvoir de preuve d'une mutation ne doit pas dépendre d'une
+    # valeur qui bouge.
     ("mutateur", "490 · la partition laisse un trou que le workflow ne montre pas",
-     "    debut = (k - 1) * base + min(k - 1, reste)\n    taille = base + (1 if k <= reste else 0)",
-     "    debut = (k - 1) * base\n    taille = base + (1 if k <= reste else 0)"),
+     "    taille = base + (1 if k <= reste else 0)\n    return list(range(debut + 1, debut + taille + 1))",
+     "    taille = base + (1 if k <= reste else 0)\n    return list(range(debut + 1, debut + taille))"),
 ]
 
 
