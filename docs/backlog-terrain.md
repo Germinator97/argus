@@ -5096,6 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
+Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
+le reste passant : le scaffold est compatible, l'écart est stylistique. Style à
+version fixe, compatibilité sur stable — deux jobs, deux buts. **Les quatre jobs
+de la CI passent désormais dans un conteneur Linux.**
+
 ✅ **493 FERMÉ le 14/09/2026 — le job de CI qu'on avait écrit, gardé, muté, et
 jamais fait TOURNER.** Trois défauts, dont un contexte supposé sur lequel un
 garde avait été écrit, et une mutation qui cessait de prouver quand le cardinal
@@ -9193,3 +9199,47 @@ qui les a trouvés n'est ni un test, ni un garde, ni une relecture — c'est de
 **l'avoir exécuté**. Un livrable que la CI n'exécute pas dérive en silence ; un
 job de CI que rien n'exécute est le cas dégénéré de cette règle, et il aura fallu
 cinquante minutes de conteneur par tentative pour le voir.
+
+### 494. Le format dépend de la VERSION du formateur, pas du dépôt
+
+**Fermé le 14/09/2026.** Le job qui monte Flutter a enfin tourné sous Linux avec
+la **stable du jour** — 3.47.4, quinze versions mineures au-delà de ce que la
+vérification manuelle couvrait — et il a échoué. Sur le format, et rien d'autre :
+
+    dart format                        ✖  3 fichiers du CADRE reformatés
+    flutter analyze (défaut)           ✔
+    flutter analyze (lints courants)   ✔
+    flutter test + les deux greps      ✔
+
+**Le scaffold est donc COMPATIBLE** ; l'écart est purement stylistique —
+`MediaQuery.of(context).copyWith(…)` remis en chaîne, les arguments de
+`testWidgets` repliés autrement. Le formateur de Dart change d'avis entre
+versions : ce qui est formaté sous 3.8 ne l'est plus sous 3.13, et réciproquement.
+
+⚠️ **Tant que ce contrôle vivait dans un job sur `channel: stable`, il était une
+bombe à retardement** : rouge à la prochaine évolution du formateur, sans qu'une
+ligne du dépôt ait bougé — et ce rouge-là n'aurait signalé **aucun défaut**,
+contrairement à celui d'une incompatibilité réelle. Les deux se ressemblent
+pourtant à s'y méprendre dans un journal de CI.
+
+**Ce qui le ferme** : deux jobs, deux buts. Le **style** sur une version FIXE, où
+il est déterministe ; la **compatibilité** sur la stable, où elle est censée
+bouger. Monter l'épinglage devient une décision délibérée, prise avec le
+reformatage du cadre dans le même commit.
+
+⚠️ **Le garde tient la séparation DANS LES DEUX SENS** : exactement un job
+formate et il doit être épinglé, **et** au moins un job doit continuer à suivre
+`stable` sans formater. Sans cette seconde moitié, tout épingler passerait la
+première tout en supprimant la seule chose qui détecte une rupture réelle — or
+c'est précisément en jouant la stable du jour qu'on a appris que le scaffold la
+suit.
+
+📌 **Mesuré aussi, et ça change l'enjeu** : le workflow que l'installeur pose
+CHEZ L'HÔTE ne lance pas `dart format` — il fait `analyze` et `test`. Le
+commentaire qui justifiait cette étape décrivait donc un risque qu'il ne crée pas
+lui-même. Il reste réel (beaucoup de projets formatent en CI), mais aucun format
+ne peut satisfaire toutes les versions à la fois : c'est une limite, pas un bug.
+
+📌 **Les quatre jobs de la CI tournent et passent maintenant dans un conteneur
+Linux** — `scaffold`, `mutation` (44/44), `format`, `harness`. C'est la première
+fois depuis que ce dépôt existe.
