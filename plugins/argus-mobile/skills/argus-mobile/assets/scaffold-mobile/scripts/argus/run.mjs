@@ -1279,7 +1279,7 @@ export function junitsVisuelsOrphelins(fichiers, visualScreens) {
  *
  * D'où ce relevé : il rend visible ce que le harnais payait déjà.
  * @param {Array<{flow:string, steps:any[]}>} bundles @param {string} anchor
- * @returns {Array<{flow:string, ms:number, status:string}>}
+ * @returns {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>}
  */
 function startupSamples(bundles, anchor, floorMs = 0) {
   /** @type {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>} */
@@ -1392,7 +1392,7 @@ function anchorAfterAuth(anchors, home) {
  * `installedVariant`. Ces flows s'exécutent sur le paquet qu'`argus-build` a
  * installé — donc un debug par défaut, où Flutter tourne en JIT. Le finding
  * partait sans le dire pendant que ses deux jumeaux de `perf.mjs` le disaient.
- * @param {Array<{flow:string, ms:number, status:string}>} samples
+ * @param {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>} samples
  * @param {any} device @param {string} platform @param {any} config
  * @param {'debug'|'release'|''} [variante]
  * @returns {any[]}

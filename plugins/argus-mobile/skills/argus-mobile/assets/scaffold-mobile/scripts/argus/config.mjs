@@ -1524,7 +1524,7 @@ export function nomTechniqueEnTitre(root, config) {
  * permission permanente.
  *
  * @param {any[]} findings @param {any} config
- * @returns {{findings:any[], perimes:string[]}}
+ * @returns {{findings:any[], perimes:string[], malFormees:string[]}}
  */
 export function acquitter(findings, config) {
   // ⚠️ 442 — CE FILTRE ÉCARTAIT EN SILENCE, et c'est ce qui le rendait pire
@@ -1849,7 +1849,7 @@ export function measureBinary(chemin) {
  *     url:
  *       ios: 'https://…'
  *       android: '…'
- * @param {any} config @param {string} platform @returns {{url:string, title:string}}
+ * @param {any} config @param {string} platform @returns {{url:string, title:string, icon:string}}
  */
 export function artifactFor(config, platform) {
   const a = config?.artifact ?? {};
