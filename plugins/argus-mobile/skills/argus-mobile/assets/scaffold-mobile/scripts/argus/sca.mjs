@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
-  acquitter, missingToolMessage, sh, warn, writeJson,
+  acquitter, missingToolMessage, sh, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /** Bandes CVSS v3, du plus grave au moins grave. */
@@ -159,10 +159,48 @@ export function findingsFromOsv(results, root, failOn) {
  * dette qui la précède, donc `info`, jamais bloquant.
  * @returns {{ok:boolean, outdated:any[], why:string}}
  */
+/**
+ * La commande `pub outdated` à lancer, préfixe FVM compris.
+ *
+ * ⚠️ EXTRAITE POUR ÊTRE EXERÇABLE (485). `detectTools` sonde DÉJÀ le bon binaire
+ * — son commentaire le dit : « le SDK du PROJET, pas celui du PATH » — et
+ * `pubOutdated` jetait cette information pour invoquer le nom NU. Sur un projet
+ * dont le PATH porte une autre version que celle du pubspec, `fvm` reçoit alors
+ * `pub` comme première commande, imprime son AIDE, et le JSON est illisible : la
+ * fraîcheur tombe en `scanned: false` avec sa raison. Honnête, mais mesurée
+ * nulle part.
+ *
+ * C'est le 481 chez son voisin. Ce correctif-là a appris à `flutterCommandIn` à
+ * préfixer tout `flutter` en POSITION DE COMMANDE dans une chaîne composée ; il
+ * ne pouvait pas atteindre un site qui CHOISIT un runner au lieu de composer une
+ * chaîne, et rien ne pouvait le signaler.
+ *
+ * ⚠️ Le défaut ne se déclenche que sur une DIVERGENCE entre la version épinglée
+ * et celle du PATH : là où les deux coïncident — la plupart des postes — il dort.
+ * Il a fallu deux terrains épinglant des versions différentes pour le voir.
+ *
+ * 📌 Repli assumé : FVM déclaré mais `flutter` introuvable veut dire que FVM
+ * lui-même ne répond pas. On retombe alors sur le comportement d'avant plutôt
+ * que d'inventer un `fvm dart` qui échouerait pour la même raison.
+ *
+ * ⚠️ Cette fonction est extraite pour qu'un garde l'APPELLE : un garde qui lirait
+ * la source resterait vert sur une valeur neutralisée.
+ * @param {boolean} flutterPresent
+ * @param {boolean} fvm
+ * @returns {{bin:string, args:string[], label:string}}
+ */
+export function pubOutdatedCommand(flutterPresent, fvm) {
+  const sous = ['pub', 'outdated', '--json'];
+  const runner = flutterPresent ? 'flutter' : 'dart';
+  return fvm && flutterPresent
+    ? { bin: 'fvm', args: ['flutter', ...sous], label: 'fvm flutter' }
+    : { bin: runner, args: sous, label: runner };
+}
+
 function pubOutdated() {
-  const runner = detectTools(['flutter']).flutter.present ? 'flutter' : 'dart';
-  const res = sh(runner, ['pub', 'outdated', '--json'], { maxBuffer: 32 * 1024 * 1024 });
-  if (!res.stdout.trim()) return { ok: false, outdated: [], why: res.stderr.trim() || `${runner} pub outdated n'a rien rendu` };
+  const { bin, args, label } = pubOutdatedCommand(detectTools(['flutter']).flutter.present, usesFvm());
+  const res = sh(bin, args, { maxBuffer: 32 * 1024 * 1024 });
+  if (!res.stdout.trim()) return { ok: false, outdated: [], why: res.stderr.trim() || `${label} pub outdated n'a rien rendu` };
   try {
     const parsed = JSON.parse(res.stdout);
     const outdated = (parsed.packages ?? [])

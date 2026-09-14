@@ -73,7 +73,7 @@ import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecar
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { bandOf, cvssOf, findingsFromOsv } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sca.mjs';
+import { bandOf, cvssOf, findingsFromOsv, pubOutdatedCommand } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sca.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -13673,4 +13673,65 @@ test('le contrôle des motifs sait rendre son verdict NÉGATIF (471)', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 485 — Le préfixe FVM manque là où le runner est CHOISI, pas composé.
+// Le 481 a appris à `flutterCommandIn` à préfixer tout `flutter` en position de
+// commande DANS UNE CHAÎNE composée. `sca.mjs` ne compose pas de chaîne : il
+// choisit un runner, donc ce correctif ne pouvait pas l'atteindre, et rien ne
+// pouvait le signaler. `fvm` recevait alors `pub` comme première commande,
+// imprimait son AIDE, et le JSON devenait illisible.
+//
+// ⚠️ Ce garde APPELLE la fonction et lit ce qu'elle rend. Un garde qui lirait la
+// source resterait vert sur une valeur neutralisée.
+// ⚠️ Et il tient les DEUX sens : préfixer ce qui doit l'être, et NE PAS préfixer
+// ce qui ne le doit pas — resserrer un matcher pour corriger un sur-matching
+// crée un sous-matching, et c'est le nouveau défaut qu'on ne teste jamais.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le préfixe FVM suit le runner CHOISI, dans les DEUX sens (485)', () => {
+  const avecFvm = pubOutdatedCommand(true, true);
+  assert.equal(avecFvm.bin, 'fvm',
+    `un projet qui épingle son SDK doit passer par fvm, reçu « ${avecFvm.bin} » : `
+    + 'le PATH peut porter une autre version que le pubspec, et fvm imprime alors son aide');
+  assert.deepEqual(avecFvm.args, ['flutter', 'pub', 'outdated', '--json'],
+    'le sous-commandement doit suivre `flutter`, sinon fvm reçoit `pub` comme première commande');
+
+  const sansFvm = pubOutdatedCommand(true, false);
+  assert.equal(sansFvm.bin, 'flutter',
+    'un projet SANS fvm ne doit pas se voir imposer fvm — l\'autre sens du même défaut');
+  assert.deepEqual(sansFvm.args, ['pub', 'outdated', '--json'], 'pas de préfixe à insérer ici');
+
+  assert.equal(pubOutdatedCommand(false, false).bin, 'dart',
+    'sans flutter, le repli reste dart — c\'était déjà le comportement');
+
+  // Repli ASSUMÉ, et il est écrit dans le dartdoc : fvm déclaré mais flutter
+  // introuvable veut dire que fvm lui-même ne répond pas. Inventer `fvm dart`
+  // échouerait pour la même raison.
+  assert.equal(pubOutdatedCommand(false, true).bin, 'dart',
+    'fvm déclaré mais flutter absent : on retombe sur le comportement d\'avant, pas sur un fvm dart');
+});
+
+test('le CÂBLAGE passe usesFvm(), et pas un littéral (485)', () => {
+  const src = readFileSync(join(SCRIPTS_DIR, 'sca.mjs'), 'utf8');
+  // ⚠️ DÉPOUILLÉ. Le dartdoc au-dessus de la fonction PARLE de `usesFvm` : sans
+  // ce filtre, il satisferait le motif à lui seul, et le garde naîtrait vacant
+  // le jour de son écriture — deux fois vécu sur ce chantier.
+  const code = src.split('\n')
+    .filter((l) => { const s = l.trimStart(); return !s.startsWith('//') && !s.startsWith('*') && !s.startsWith('/*'); })
+    .join('\n');
+  // ⚠️ La LIGNE entière, pas `[^)]*` : les arguments portent eux-mêmes des
+  // parenthèses (`detectTools(['flutter']).flutter.present`), et une classe
+  // négative s'arrête à la PREMIÈRE fermante — elle capturait donc un argument
+  // tronqué où `usesFvm()` ne pouvait jamais apparaître. Le garde échouait sur un
+  // câblage correct : un instrument qui crie au loup est pire que pas d'instrument.
+  const appel = code.split('\n').find((l) => l.includes('= pubOutdatedCommand('));
+  assert.ok(appel, 'aucun SITE D\'APPEL de pubOutdatedCommand hors commentaires : la fonction a été '
+    + 'extraite puis débranchée, ou renommée — mets ce motif à jour (485)');
+  assert.match(appel, /usesFvm\(\)/,
+    `le site d'appel ne lit pas usesFvm() mais « ${appel.trim()} » : la décision serait figée, `
+    + 'et la suite resterait verte en mesurant un littéral (485)');
+  assert.match(appel, /detectTools\(/,
+    'le site d\'appel n\'interroge plus detectTools : la présence de flutter serait devinée (485)');
 });

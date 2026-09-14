@@ -2063,6 +2063,16 @@ MUTATIONS = [
     ("skill", "433 · le cadrage reperd son renvoi à la règle de l'ancre d'état",
      "    #   ⚠️ Donc si la racine PHYSIQUE est partagée entre plusieurs états, ce\n    #   n'est pas elle qu'on cadre : c'est l'ancre d'ÉTAT qui sert d'`anchor:`\n    #   (et la racine commune passe en `displays:`) — la règle est plus haut,\n    #   au cinquième écart d'ancrage. Le plein écran, lui, embarquerait\n    #   l'horloge.\n",
      ""),
+    # 485 — DEUX barreaux, et il les faut tous les deux : la VALEUR que la
+    # construction rend, et le CÂBLAGE qui l'alimente. Muter la seule ligne
+    # d'appel laisserait le garde de valeur vert, et muter la seule valeur
+    # laisserait le garde de câblage vert : chacun ne voit que sa moitié.
+    ("sca", "485 · le préfixe FVM disparaît de la valeur rendue",
+     "    ? { bin: 'fvm', args: ['flutter', ...sous], label: 'fvm flutter' }",
+     "    ? { bin: runner, args: sous, label: runner }"),
+    ("sca", "485 · le câblage fige la décision au lieu de lire usesFvm()",
+     "  const { bin, args, label } = pubOutdatedCommand(detectTools(['flutter']).flutter.present, usesFvm());",
+     "  const { bin, args, label } = pubOutdatedCommand(detectTools(['flutter']).flutter.present, false);"),
 ]
 
 
