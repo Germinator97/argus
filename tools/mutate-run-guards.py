@@ -94,6 +94,19 @@ CIBLES = {
     # fichiers que le PROJET lit, et qu'aucune mutation ne visait.
     "readme": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/ARGUS-MOBILE.md",
     "ci": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml",
+    # Depuis le 14/09 : la CI DU PLUGIN est une cible, parce que le découpage de
+    # la passe de mutation en tranches y vit — et que son mode de panne est
+    # muet. Une matrice qui ne couvre pas tout rend N jobs VERTS pendant que des
+    # mutations ne sont jouées par personne : chaque job a bien fait son
+    # travail, et rien dans une CI verte ne peut le dire. ⚠️ Ne pas confondre
+    # avec `ci`, qui est le workflow posé CHEZ L'HÔTE.
+    "ciplugin": ROOT / ".github/workflows/plugin.yml",
+    # Et le harnais LUI-MÊME, pour la même raison : sa fonction de partition
+    # décide de ce que la CI joue, donc un trou dedans est invisible partout
+    # ailleurs. Muter le mutateur est sans danger — Python a chargé le module
+    # en mémoire au démarrage, la mutation n'atteint que le sous-processus que
+    # le garde lance, c'est-à-dire précisément ce qu'on veut éprouver.
+    "mutateur": ROOT / "tools/mutate-run-guards.py",
     # Depuis le run 34 : l'installeur cherchait un pilote de plateforme sans
     # l'autre, et rien ne mutait ce fichier.
     # Depuis le run 46 : son dartdoc porte une PRESCRIPTION (ouvrir un
@@ -2080,6 +2093,27 @@ MUTATIONS = [
     ("sca", "488 · une invocation NUE de flutter réapparaît quelque part",
      "  const res = sh(bin, args, { maxBuffer: 32 * 1024 * 1024 });",
      "  const res = sh('flutter', args, { maxBuffer: 32 * 1024 * 1024 });"),
+    # ── 490 · le découpage de la passe de mutation ──────────────────────────
+    # Trois façons de vider le garde, une par assertion, et toutes les trois
+    # laissent une CI qui passe au vert.
+    ("ciplugin", "490 · le nombre de tranches est RECOPIÉ au lieu d'être dérivé",
+     "--shard=${{ matrix.tranche }}/${{ strategy.job-total }}",
+     "--shard=${{ matrix.tranche }}/10"),
+    ("ciplugin", "490 · la matrice saute une tranche, qui n'est jouée par personne",
+     "        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
+     "        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 11]"),
+    # ⚠️ Celle-ci ne touche NI le workflow NI le garde : elle casse la partition
+    # dans le harnais, là où aucune relecture du YAML ne peut la voir. C'est le
+    # quatrième barreau du garde — celui qui DEMANDE au lieu de recalculer.
+    # ⚠️ ET SON MOTIF TIENT SUR DEUX LIGNES, ce qui n'est pas du confort : depuis
+    # que ce fichier est sa PROPRE cible, un motif d'une seule ligne apparaît
+    # deux fois — dans la fonction visée, et dans la déclaration qu'on lit ici.
+    # Le harnais l'exige unique, donc il l'aurait rendue INERTE, c'est-à-dire
+    # une mutation qui ne prouve rien. Un vrai saut de ligne ne peut pas se
+    # trouver dans cette déclaration-ci, où il s'écrit échappé.
+    ("mutateur", "490 · la partition laisse un trou que le workflow ne montre pas",
+     "    debut = (k - 1) * base + min(k - 1, reste)\n    taille = base + (1 if k <= reste else 0)",
+     "    debut = (k - 1) * base\n    taille = base + (1 if k <= reste else 0)"),
 ]
 
 
@@ -2182,6 +2216,34 @@ def main():
             print("\n⚠️ Une mutation dont le motif a disparu ne prouve RIEN. Ré-ancre-la sur le")
             print("   texte du jour — c'est presque toujours un refactor qui a déplacé sa cible.")
         return 1 if (neuves or guaries) else 0
+
+    # ⚠️ CE MODE EXISTE POUR QU'UN GARDE PUISSE DEMANDER PLUTÔT QUE RECALCULER.
+    # La couverture est la seule chose qui rende une matrice de CI honnête : si
+    # les N tranches laissent un trou, N jobs passent au vert sur des mutations
+    # que personne n'a jouées — et chaque job, pris à part, a bien fait son
+    # travail, donc rien ne peut le dire. L'attendu (`1..total`) ne dérive PAS
+    # de la partition qu'il juge : c'est ce qui l'empêche d'être circulaire.
+    if args and args[0].startswith("--check-shards="):
+        brut = args[0][len("--check-shards="):].strip()
+        if not brut.isdigit() or not 1 <= int(brut) <= len(MUTATIONS):
+            print(f"✖ --check-shards attend un N dans 1..{len(MUTATIONS)}, reçu : {brut}")
+            return 2
+        nb = int(brut)
+        union = []
+        for k in range(1, nb + 1):
+            union += numeros_de_tranche(len(MUTATIONS), k, nb)
+        attendu = list(range(1, len(MUTATIONS) + 1))
+        if union != attendu:
+            manquants = sorted(set(attendu) - set(union))
+            doubles = sorted({i for i in union if union.count(i) > 1})
+            print(f"✖ {nb} tranches NE couvrent PAS 1..{len(MUTATIONS)} :"
+                  f" {len(manquants)} jamais joué(s), {len(doubles)} joué(s) deux fois")
+            if manquants:
+                print(f"  jamais joués : {manquants[:12]}{' …' if len(manquants) > 12 else ''}")
+            return 1
+        tailles = sorted({len(numeros_de_tranche(len(MUTATIONS), k, nb)) for k in range(1, nb + 1)})
+        print(f"✔ {nb} tranches couvrent exactement 1..{len(MUTATIONS)} · tailles {tailles}")
+        return 0
 
     if args == ["--list"]:
         for i, (cle, nom, *_reste) in enumerate(MUTATIONS, 1):
@@ -2334,7 +2396,7 @@ def main():
                        "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
                        + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
                        + "')).catch(e => { console.error(e.message); process.exit(1); })"]
-          elif cible.name == "argus-mobile.yml":
+          elif cible.name in ("argus-mobile.yml", "plugin.yml"):
               # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
               # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
               # `check-syntax` le rejette toujours et TOUTE mutation rendait
@@ -2342,6 +2404,11 @@ def main():
               # puisse aboutir. C'est un YAML : on le parse comme tel.
               verif = ["python3", "-c",
                        "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
+          elif cible.suffix == ".py":
+              # ⚠️ Même exigence que `node --check` pour le JS : une mutation qui
+              # casse la syntaxe fait rougir la suite pour une raison sans
+              # rapport avec le garde, et ce rouge se lit comme un succès.
+              verif = ["python3", "-m", "py_compile", str(cible)]
           elif cible.suffix in (".yaml", ".yml") and MAESTRO:
               verif = [MAESTRO, "check-syntax", str(cible)]
           if verif is not None:

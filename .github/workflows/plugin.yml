@@ -113,12 +113,49 @@ jobs:
       - name: Les décisions du runner
         run: node --test tools/run-guards.test.mjs
 
-      # Et l'étage au-dessus : un garde vert ne prouve rien tant qu'on ne l'a
-      # pas vu rougir. Celui-ci réintroduit chaque défaut et exige que le garde
-      # correspondant tombe — sinon les quinze au-dessus pourraient se vider en
-      # silence, ce qui est le seul mode de panne qu'une suite verte ne dit pas.
-      - name: Les gardes du runner gardent encore
-        run: python3 tools/mutate-run-guards.py
+
+  # ── Les gardes gardent-ils encore ? ─────────────────────────────────────
+  # Un garde vert ne prouve rien tant qu'on ne l'a pas vu rougir : ce job
+  # réintroduit chaque défaut et exige que le garde correspondant tombe —
+  # sinon toutes les étapes de `scaffold` pourraient se vider en silence, ce
+  # qui est le seul mode de panne qu'une suite verte ne rapporte pas.
+  #
+  # ⚠️ POURQUOI UNE MATRICE, et non une étape de plus dans `scaffold` : chaque
+  # mutation rejoue la suite ENTIÈRE. Mesuré le 14/09 — 12,3 s par suite en
+  # local, 65,9 s dans un conteneur —, ce qui met la passe complète entre
+  # 1 h 30 et 8 h, pour une limite de job de 6 h. Le produit « durée unitaire ×
+  # cardinal » n'avait jamais été mesuré, et il grandit d'une mutation à la
+  # fois : rien ne s'en plaint, puisque chaque moitié reste raisonnable.
+  #
+  # ⚠️ ET LE CARDINAL N'EST ÉCRIT NULLE PART ICI. Le workflow dit « tranche K
+  # sur N » ; c'est le harnais qui calcule ses bornes, parce qu'un nombre
+  # recopié se périme à la mutation suivante sans que rien ne le signale. N
+  # lui-même se DÉRIVE de la matrice (`strategy.job-total`) plutôt que de se
+  # recopier à côté d'elle : ajouter une tranche à la liste suffit.
+  #
+  # ⚠️ `--shard` n'est pas `--only`. C'est une PARTITION : les tranches
+  # couvrent tout, donc chacune a le droit de rendre 0 sur sa part, et c'est
+  # CETTE matrice qui exige les dix vertes. `fail-fast: false` pour qu'une
+  # tranche rouge n'efface pas ce que les neuf autres avaient à dire.
+  mutation:
+    name: Les gardes du runner gardent encore
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    steps:
+      # ⚠️ Même raison que dans `scaffold`, et elle est fatale ici : le harnais
+      # REFUSE de démarrer sur une suite déjà rouge, et le garde 333 dérive ses
+      # compteurs de l'historique. Sous le clone superficiel par défaut, la
+      # suite est rouge, le harnais refuse, et les dix tranches échouent d'un
+      # coup — ce qui ressemble à dix gardes vidés plutôt qu'à un checkout.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Tranche ${{ matrix.tranche }} — chaque défaut réintroduit doit tomber
+        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}/${{ strategy.job-total }}
 
   # ── L'étage 1 compile-t-il seulement ? ──────────────────────────────────
   # Rien ici ne compilait le Dart, et ça s'est vu : la séparation du harnais en

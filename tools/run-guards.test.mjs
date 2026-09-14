@@ -13927,3 +13927,60 @@ test('le site d\'appel LIT l\'identité résolue, jamais un littéral (416 bis)'
   assert.doesNotMatch(appel, /identitePubliee\(\s*['"`]/,
     'le site d\'appel passe un LITTÉRAL comme icône : la valeur est figée, la décision inerte (416 bis)');
 });
+
+// ── 490 ────────────────────────────────────────────────────────────────────
+// La passe de mutation ne tenait pas dans un seul job : 435 mutations qui
+// rejouent CHACUNE la suite entière, mesurées à 12,3 s en local et 65,9 s en
+// conteneur, soit entre 1 h 30 et 8 h pour une limite de job de six heures. Le
+// produit « durée unitaire × cardinal » n'avait jamais été mesuré, et il
+// grandit d'une mutation à la fois.
+//
+// Elle est donc découpée par une MATRICE, et c'est le découpage qu'il faut
+// garder : il a un mode de panne parfaitement muet. Si les tranches ne
+// couvrent pas tout, la CI rend N jobs VERTS pendant que des mutations ne sont
+// jouées par personne — chaque job, pris à part, a fait exactement son travail,
+// et rien dans une CI verte ne peut dire ce qui manque.
+test('les tranches de la CI couvrent TOUTES les mutations, et N se dérive (490)', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+
+  // 1. Le harnais est bien invoqué, et une seule fois. Asserter la PRÉSENCE
+  //    avant la forme : sans ça, renommer le job rendrait tout ce qui suit
+  //    vacant, et le garde resterait vert sur un workflow qui ne mute plus rien.
+  const shards = [...ci.matchAll(/--shard=(.*)$/gm)];
+  assert.equal(shards.length, 1,
+    `le workflow porte ${shards.length} invocation(s) de --shard, ce garde en attend une : `
+    + 'si la passe de mutation a été déplacée ou retirée de la CI, plus rien ne prouve que '
+    + 'les gardes gardent — et c\'est le seul mode de panne qu\'une suite verte ne rapporte pas');
+
+  // 2. N se DÉRIVE de la matrice. Un N recopié à côté d'elle est juste le jour
+  //    où on l'écrit et faux dès qu'on ajoute ou retire une tranche : les jobs
+  //    restants passent au vert sur leur propre part, et la part orpheline
+  //    n'apparaît nulle part. C'est un nombre qui décrit le contenu sans être
+  //    dérivé de lui, exactement comme un compteur d'écran d'accueil.
+  assert.match(shards[0][1], /^\$\{\{\s*matrix\.tranche\s*\}\}\/\$\{\{\s*strategy\.job-total\s*\}\}$/,
+    `la CI passe --shard=${shards[0][1]} : le K vient de la matrice et le N doit se dériver `
+    + 'd\'elle (strategy.job-total), jamais être recopié à côté');
+
+  // 3. La matrice énumère exactement 1..N — par ÉGALITÉ, pas par inclusion, pour
+  //    qu'un trou (une tranche jamais jouée) et un doublon (jouée deux fois)
+  //    tombent tous les deux.
+  const liste = ci.match(/^\s*tranche:\s*\[([^\]]*)\]/m);
+  assert.ok(liste, 'la matrice `tranche` a disparu du job : le découpage ne se lit plus, '
+    + 'et ce garde ne peut plus dire ce que la CI joue');
+  const valeurs = liste[1].split(',').map((x) => Number(x.trim()));
+  assert.deepEqual(valeurs, valeurs.map((_, k) => k + 1),
+    `la matrice énumère [${liste[1].trim()}] : elle doit être exactement 1..N, sans trou ni `
+    + 'doublon, sinon une tranche est jouée deux fois pendant qu\'une autre ne l\'est jamais');
+
+  // 4. Et la COUVERTURE se demande au harnais plutôt que de se recalculer ici :
+  //    un attendu recalculé par le garde dériverait de la même idée que la
+  //    partition qu'il juge, donc il suivrait la même erreur. Le harnais, lui,
+  //    compare sa partition à `1..total` — une séquence qui ne dérive pas d'elle.
+  const preuve = spawnSync('python3',
+    [join(RACINE, 'tools/mutate-run-guards.py'), `--check-shards=${valeurs.length}`],
+    { encoding: 'utf8' });
+  assert.equal(preuve.status, 0,
+    `le harnais refuse la partition en ${valeurs.length} tranches — des mutations ne seraient `
+    + `jouées par personne, et les ${valeurs.length} jobs passeraient au vert :\n`
+    + `${preuve.stdout}${preuve.stderr}`);
+});
