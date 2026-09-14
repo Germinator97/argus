@@ -2089,6 +2089,13 @@ MUTATIONS = [
     ("anims", "486 · le sous-flow reperd sa condition de plateforme",
      "    when:\n      true: \"${typeof ARGUS_ANIMATIONS_APPLICABLE === 'undefined' || ARGUS_ANIMATIONS_APPLICABLE === 'true'}\"\n",
      "    when:\n      true: \"${true}\"\n"),
+    # 488 — la CLASSE. Cette mutation ne vise pas un site mais le PHÉNOMÈNE :
+    # elle réintroduit une invocation NUE, celle que le garde total doit
+    # dénoncer où qu'elle apparaisse. C'est la forme qu'aurait eue le 485 le
+    # jour du 481, et qu'aucun garde écrit sur `flutterCommandIn` ne voyait.
+    ("sca", "488 · une invocation NUE de flutter réapparaît quelque part",
+     "  const res = sh(bin, args, { maxBuffer: 32 * 1024 * 1024 });",
+     "  const res = sh('flutter', args, { maxBuffer: 32 * 1024 * 1024 });"),
 ]
 
 

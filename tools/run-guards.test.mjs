@@ -13805,3 +13805,71 @@ test('le CÂBLAGE dérive la décision, et le flow porte la condition (486)', ()
     'sans le repli `undefined`, un flow lancé à la main cesse de vérifier les animations : '
     + 'le correctif couperait alors plus que le défaut (486)');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 488 — Porter un correctif à ses VOISINS : la classe, et non le cas.
+//
+// Deux fois le même motif, à un mois d'intervalle : 477 → 480, puis 481 → 485.
+// Un remède exact, qui ferme ce qu'il vise, et qui laisse à côté de lui une
+// AUTRE FORME du même défaut que son motif ne peut pas atteindre. Aucun test ne
+// voit ça : chaque correctif est juste pris à part, et le voisin n'a jamais eu
+// de garde puisqu'on ne savait pas qu'il en fallait un.
+//
+// Le geste qui l'empêche n'est pas un troisième correctif ponctuel : c'est de
+// faire porter le garde sur le PHÉNOMÈNE plutôt que sur le site. « Zéro
+// invocation nue, où que ce soit » aurait attrapé le 485 le jour du 481 — alors
+// qu'un garde écrit sur `flutterCommandIn` ne pouvait pas le voir.
+//
+// ⚠️ La direction du raisonnement est tout : LARGE moins les exceptions, jamais
+// étroit plus ce qu'on a rencontré. Une énumération des formes déjà vues rend
+// « 0 » et laisse passer toutes celles qu'on n'a pas imaginées.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('AUCUN script n\'invoque flutter ou dart en littéral — le phénomène, pas le site (488)', () => {
+  const fichiers = readdirSync(SCRIPTS_DIR).filter((n) => n.endsWith('.mjs'));
+  // ⚠️ LE BALAYAGE PROUVE QU'IL VOIT avant de dire qu'il n'a rien vu : un dossier
+  // déplacé rendrait zéro fichier, donc zéro faute, donc un vert qui ne mesure rien.
+  assert.ok(fichiers.length >= 5,
+    `le balayage n'a lu que ${fichiers.length} script(s) : le dossier a bougé, et un zéro `
+    + 'sur zéro fichier se lit comme un dépôt sain (488)');
+
+  const fautifs = [];
+  for (const nom of fichiers) {
+    const brut = readFileSync(join(SCRIPTS_DIR, nom), 'utf8');
+    // Dépouillé : un commentaire qui EXPLIQUE le piège — celui-ci en porte
+    // plusieurs — satisferait le motif à lui seul.
+    brut.split('\n').forEach((l, i) => {
+      const s = l.trimStart();
+      if (s.startsWith('//') || s.startsWith('*') || s.startsWith('/*')) return;
+      if (/\bsh\(\s*['\"](flutter|dart)['\"]/.test(l)) fautifs.push(`${nom}:${i + 1}  ${l.trim()}`);
+    });
+  }
+  assert.deepEqual(fautifs, [],
+    'un script invoque `flutter` ou `dart` par son nom NU. Sur un projet qui épingle son SDK, '
+    + 'le binaire du PATH n\'est pas celui du pubspec : la commande part sur une autre version, '
+    + 'ou fvm imprime son aide. Passe par une construction qui DÉCIDE (voir pubOutdatedCommand, '
+    + `485) plutôt que par le littéral :\n  ${fautifs.join('\n  ')}`);
+});
+
+test('...et ce balayage sait dire NON (488)', () => {
+  // Contre-épreuve : le garde ci-dessus s'exerce sur les fichiers LIVRÉS et rend
+  // zéro. Zéro ne prouve rien tant qu'on n'a pas montré qu'il sait compter — un
+  // motif qui ne matche plus rendrait exactement le même vert.
+  const source = [
+    "import { sh } from './config.mjs';",
+    "// sh('flutter', ['pub']) — cette ligne est un COMMENTAIRE et ne doit pas compter",
+    "const res = sh('flutter', ['pub', 'outdated']);",
+    "const autre = sh('dart', ['pub', 'get']);",
+    "const legitime = sh('fvm', ['flutter', 'pub', 'outdated']);",
+  ].join('\n');
+  const vus = [];
+  source.split('\n').forEach((l, i) => {
+    const s = l.trimStart();
+    if (s.startsWith('//') || s.startsWith('*') || s.startsWith('/*')) return;
+    if (/\bsh\(\s*['\"](flutter|dart)['\"]/.test(l)) vus.push(i + 1);
+  });
+  assert.deepEqual(vus, [3, 4],
+    `le balayage devrait dénoncer les lignes 3 et 4 et ÉPARGNER le commentaire (2) et le `
+    + `passage par fvm (5), il a rendu [${vus}] — s'il ne sait pas dire non, son zéro sur `
+    + 'les fichiers livrés ne vaut rien (488)');
+});
