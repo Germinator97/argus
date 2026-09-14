@@ -626,6 +626,28 @@ function installIos(udid, appPath, bundleId) {
 const ANIMATION_SCALES = ['window_animation_scale', 'transition_animation_scale', 'animator_duration_scale'];
 
 /**
+ * Le geste de coupure des animations a-t-il un SENS sur cette plateforme ?
+ *
+ * ⚠️ POURQUOI CETTE FONCTION EXISTE (486). `disableAnimations` rend
+ * `{ok: false}` dès que la plateforme n'est pas Android — c'est juste, il n'y a
+ * pas d'équivalent local à `settings put`. Mais le sous-flow recevait alors
+ * `ARGUS_ANIMATIONS_DISABLED='false'` et son `assertTrue … optional: true`
+ * attendait sa BORNE avant d'abandonner : 1898 ms mesurés, à chaque flow, pour
+ * une condition que la plateforme ne peut pas satisfaire. Six flows, ~11 s par
+ * passe, et rien ne le disait.
+ *
+ * C'est la confusion entre « j'ai mesuré, et c'est NON » — sur Android, où un
+ * `settings put` peut échouer et où le signal compte — et « il n'y a RIEN À
+ * CONCLURE ici ». Le premier mérite son assertion ; le second doit être sauté,
+ * parce qu'un `when:` s'évalue quand une assertion optionnelle ATTEND.
+ * @param {string} platform
+ * @returns {boolean}
+ */
+function animationsApplicables(platform) {
+  return platform === 'android';
+}
+
+/**
  * Coupe les animations système et RELIT la valeur pour le prouver. Un
  * `settings put` peut échouer silencieusement selon l'image de l'émulateur.
  * @param {string} platform @param {string} udid @param {boolean} dryRun
@@ -790,6 +812,8 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_BASELINE_DIR: '',
     ARGUS_VISUAL_MODE: 'assert',
     ARGUS_ANIMATIONS_DISABLED: 'false',
+    // Repli SÛR : en l'absence d'injection, le pas joue comme avant le 486.
+    ARGUS_ANIMATIONS_APPLICABLE: 'true',
     ...extra,
   };
   // Secrets : uniquement depuis l'environnement, jamais depuis le fichier.
@@ -2227,7 +2251,10 @@ async function main() {
 
   const excludeTags = [...new Set([...configExcludeTags(), ...opts.excludeTags.split(',').filter(Boolean)])];
   const includeTags = opts.tags.split(',').filter(Boolean);
-  const baseEnv = buildEnv(config, appId, { ARGUS_ANIMATIONS_DISABLED: String(animations.ok) });
+  const baseEnv = buildEnv(config, appId, {
+    ARGUS_ANIMATIONS_DISABLED: String(animations.ok),
+    ARGUS_ANIMATIONS_APPLICABLE: String(animationsApplicables(platform)),
+  });
 
   const before = new Set(subdirs(outputDir));
   const runs = [];
@@ -2308,6 +2335,7 @@ async function main() {
         junitPath: join(reportDir, `report.visual-${screen.id}.junit.xml`), outputDir,
         env: buildEnv(config, appId, {
           ARGUS_ANIMATIONS_DISABLED: String(animations.ok),
+          ARGUS_ANIMATIONS_APPLICABLE: String(animationsApplicables(platform)),
           ARGUS_SCREEN_ID: screen.id, ARGUS_SCREEN_ANCHOR: screen.anchor,
           ARGUS_BASELINE_DIR: baselineDir, ARGUS_VISUAL_MODE: visualMode,
           ARGUS_VISUAL_CROP: cropFor(screen, config),
@@ -2574,6 +2602,6 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
-  anchorAfterAuth,
+  anchorAfterAuth, animationsApplicables,
   resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

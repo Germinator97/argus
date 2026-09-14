@@ -61,7 +61,7 @@ import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceSta
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { anchorAfterAuth } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { anchorAfterAuth, animationsApplicables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -13734,4 +13734,62 @@ test('le CÂBLAGE passe usesFvm(), et pas un littéral (485)', () => {
     + 'et la suite resterait verte en mesurant un littéral (485)');
   assert.match(appel, /detectTools\(/,
     'le site d\'appel n\'interroge plus detectTools : la présence de flutter serait devinée (485)');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 486 — Un pas dont la condition est INATTEIGNABLE sur une plateforme attend sa
+// borne à chaque flow. `disableAnimations` rend `ok: false` dès que la
+// plateforme n'est pas Android — c'est juste —, donc le sous-flow recevait
+// `false` et son `assertTrue … optional: true` n'échouait pas vite : il ATTENDAIT.
+// 1898 ms mesurés sur simulateur, six flows, ~11 s par passe.
+//
+// C'est la confusion entre « j'ai mesuré, et c'est NON » (Android, où un
+// `settings put` peut échouer et où le signal compte) et « il n'y a RIEN À
+// CONCLURE ici ». Un `when:` s'évalue ; une assertion optionnelle attend.
+//
+// ⚠️ L'effet — le temps gagné — n'est pas observable sans appareil. Le garde
+// porte donc sur ce qui le DÉTERMINE : la décision rendue, son câblage, et la
+// présence de la condition dans le flow livré. C'est écrit, pas sous-entendu.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('la coupure des animations n\'est exigée que là où elle est POSSIBLE (486)', () => {
+  assert.equal(animationsApplicables('android'), true,
+    'sur Android le geste existe : un `settings put` peut échouer en silence, et c\'est '
+    + 'exactement là que l\'assertion doit parler');
+  assert.equal(animationsApplicables('ios'), false,
+    'sur iOS il n\'y a pas d\'équivalent local à `settings put` — exiger le résultat d\'un '
+    + 'geste impossible fait attendre une borne à chaque flow (486)');
+  // Une plateforme inconnue se comporte comme iOS : on ne suppose pas un geste
+  // qu'on ne sait pas faire.
+  assert.equal(animationsApplicables(''), false, 'plateforme inconnue : rien à conclure, donc rien à exiger');
+});
+
+test('le CÂBLAGE dérive la décision, et le flow porte la condition (486)', () => {
+  const src = readFileSync(join(SCRIPTS_DIR, 'run.mjs'), 'utf8');
+  // ⚠️ DÉPOUILLÉ : le dartdoc de la fonction NOMME la variable, et satisferait
+  // le motif à lui seul — c'est la façon dont ce garde naîtrait vacant.
+  const code = src.split('\n')
+    .filter((l) => { const s = l.trimStart(); return !s.startsWith('//') && !s.startsWith('*') && !s.startsWith('/*'); })
+    .join('\n');
+  const injections = code.split('\n').filter((l) => l.includes('ARGUS_ANIMATIONS_APPLICABLE:'));
+  assert.ok(injections.length >= 2,
+    `le runner n'injecte ARGUS_ANIMATIONS_APPLICABLE qu'à ${injections.length} endroit(s) hors `
+    + 'commentaires : il en faut le défaut ET les sites qui portent la vraie valeur, sinon la passe '
+    + 'visuelle retombe sur le repli sans que rien ne le dise (486)');
+  const derivees = injections.filter((l) => /animationsApplicables\(/.test(l));
+  assert.ok(derivees.length >= 1,
+    'aucun site n\'injecte la valeur DÉRIVÉE : elle serait figée, et le garde ci-dessus '
+    + 'mesurerait une décision que personne n\'exerce (486)');
+
+  const flow = readFileSync(join(FLOWS_DIR, '_subflows', 'disable-animations.yaml'), 'utf8');
+  const utile = flow.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  assert.match(utile, /when:/,
+    'le sous-flow livré ne porte plus de condition : son assertion optionnelle attendra '
+    + 'de nouveau sa borne sur toute plateforme où le geste est impossible (486)');
+  assert.match(utile, /ARGUS_ANIMATIONS_APPLICABLE/,
+    'la condition du sous-flow ne lit pas ARGUS_ANIMATIONS_APPLICABLE : elle garde sur autre chose (486)');
+  // L'autre moitié : le pas doit RESTER pour un flow lancé à la main.
+  assert.match(utile, /typeof ARGUS_ANIMATIONS_APPLICABLE === 'undefined' \|\|/,
+    'sans le repli `undefined`, un flow lancé à la main cesse de vérifier les animations : '
+    + 'le correctif couperait alors plus que le défaut (486)');
 });

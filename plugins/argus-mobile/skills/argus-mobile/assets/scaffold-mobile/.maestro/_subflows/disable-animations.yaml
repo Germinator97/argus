@@ -24,7 +24,24 @@ appId: ${APP_ID}
 # Ce garde affiche ⚠️ quand ça n'a pas été fait, plutôt que de porter un nom qui
 # ment. `optional: true` pour qu'un run direct (`maestro test .maestro`) reste
 # possible : il sera simplement non déterministe, et le dira.
-- assertTrue:
-    condition: "${typeof ARGUS_ANIMATIONS_DISABLED !== 'undefined' && ARGUS_ANIMATIONS_DISABLED === 'true'}"
-    optional: true
-    label: Animations coupées par le runner (sinon captures et timings instables)
+# ⚠️ ET IL NE SE JOUE QUE LÀ OÙ LE GESTE A UN SENS (486). Sur une plateforme
+# sans équivalent local à `settings put`, `disableAnimations` rend `ok: false` —
+# à raison —, la condition ci-dessous est donc fausse PAR CONSTRUCTION, et un
+# `assertTrue … optional: true` n'échoue pas vite : il attend sa BORNE. Mesuré
+# sur un simulateur iOS : 1898 ms, à chaque flow, six flows, ~11 s par passe pour
+# un geste que la plateforme ne peut pas exécuter.
+#
+# La distinction est celle entre « j'ai mesuré, et c'est NON » — sur Android, où
+# un `settings put` peut échouer en silence et où le signal compte — et « il n'y
+# a RIEN À CONCLURE ici ». Un `when:` s'ÉVALUE ; une assertion optionnelle ATTEND.
+#
+# Le `typeof … === 'undefined'` garde le comportement d'avant quand la variable
+# n'est pas injectée : un flow lancé à la main continue de vérifier.
+- runFlow:
+    when:
+      true: "${typeof ARGUS_ANIMATIONS_APPLICABLE === 'undefined' || ARGUS_ANIMATIONS_APPLICABLE === 'true'}"
+    commands:
+      - assertTrue:
+          condition: "${typeof ARGUS_ANIMATIONS_DISABLED !== 'undefined' && ARGUS_ANIMATIONS_DISABLED === 'true'}"
+          optional: true
+          label: Animations coupées par le runner (sinon captures et timings instables)

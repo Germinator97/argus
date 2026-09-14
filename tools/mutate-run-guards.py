@@ -81,6 +81,10 @@ CIBLES = {
     # système. De la prose dans un flow : rien à casser sans mutation.
     "launchclean": FLOWS / "_subflows/launch-clean.yaml",
     "dismiss": FLOWS / "_subflows/dismiss-system-alerts.yaml",
+    # 486 — le sous-flow qui VÉRIFIE la coupure des animations. Il n'avait
+    # aucune cible : rien ne pouvait dire que sa condition de plateforme avait
+    # disparu, et son assertion optionnelle se serait remise à attendre sa borne.
+    "anims": FLOWS / "_subflows/disable-animations.yaml",
     "anchorsdart": FLOWS.parent / "test/argus/anchors_test.dart",
     "lifecycle": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/lifecycle.yaml",
     "yamlconf": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml",
@@ -2073,6 +2077,18 @@ MUTATIONS = [
     ("sca", "485 · le câblage fige la décision au lieu de lire usesFvm()",
      "  const { bin, args, label } = pubOutdatedCommand(detectTools(['flutter']).flutter.present, usesFvm());",
      "  const { bin, args, label } = pubOutdatedCommand(detectTools(['flutter']).flutter.present, false);"),
+    # 486 — TROIS barreaux : la décision, son câblage, et le flow livré. Chacun
+    # ne voit que sa moitié — muter la seule décision laisse le garde de câblage
+    # vert, et retirer la condition du YAML ne touche ni l'une ni l'autre.
+    ("run", "486 · la coupure des animations redevient exigée partout",
+     "  return platform === 'android';",
+     "  return true;"),
+    ("run", "486 · le câblage fige l'applicabilité au lieu de la dériver",
+     "    ARGUS_ANIMATIONS_APPLICABLE: String(animationsApplicables(platform)),\n  });",
+     "    ARGUS_ANIMATIONS_APPLICABLE: 'true',\n  });"),
+    ("anims", "486 · le sous-flow reperd sa condition de plateforme",
+     "    when:\n      true: \"${typeof ARGUS_ANIMATIONS_APPLICABLE === 'undefined' || ARGUS_ANIMATIONS_APPLICABLE === 'true'}\"\n",
+     "    when:\n      true: \"${true}\"\n"),
 ]
 
 
