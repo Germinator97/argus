@@ -5096,6 +5096,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🟡 **1 POINT OUVERT — le 490, qui n'est pas un correctif mais un arbitrage.**
+La passe de mutation est la dernière étape du job `scaffold`, et chacune de ses
+435 mutations rejoue la suite entière : mesuré 12,3 s en local, 65,9 s dans le
+conteneur, soit entre une heure et demie et huit heures par pull request, pour
+une limite de job de six heures. Le retirer n'est pas la réponse — c'est le seul
+contrôle qui prouve que les gardes gardent. Trois options sont écrites au point,
+avec ce que chacune coûte ; aucune ne se tranche seule.
+
 ✅ **488 FERMÉ le 14/09/2026 — la classe, et non le cas.** Ce qui le ferme n'est
 pas un troisième correctif ponctuel mais un garde qui porte sur le **phénomène**
 plutôt que sur le site : « zéro invocation nue, où que ce soit ». Écrit le jour du
@@ -8913,3 +8921,100 @@ précisément la forme qu'avait le 485. Mesuré : il nomme le site fautif
 *étroit plus ce qu'on a rencontré*. Une énumération des formes déjà vues rend
 « 0 » et laisse passer toutes celles qu'on n'a pas imaginées — c'est ce qui a
 laissé le 485 vivre un mois après le 481.
+
+### 489. Un test qui ESPÉRAIT un écart de date, sur un disque qui ne le doit pas
+
+**Fermé le 14/09/2026** (`cbe0ab7`). Trouvé par la **première exécution de la
+CI du plugin**, qui n'avait jamais tourné en 79 runs.
+
+Le test 343 écrivait le paquet, écrivait ensuite `lib/main.dart`, et attendait
+que la source soit **plus récente**. C'est vrai sur APFS, qui horodate à la
+nanoseconde. Ce ne l'est pas sur l'overlayfs d'un conteneur, dont la résolution
+est la **seconde** : les deux fichiers partagent leur mtime, `binaryFreshness`
+rend `frais`, et l'assertion qui devait prouver le garde échoue.
+
+    ✖ un paquet plus VIEUX que lib/ est déclaré périmé, pas « intact » (343)
+      'frais' !== 'perime'
+
+Vert sur cette machine depuis le jour de son écriture, rouge la première fois
+qu'une autre plateforme l'a joué. L'écart est désormais **forcé** (`utimesSync`,
+−10 s pour le paquet, +10 s après reconstruction) au lieu d'être espéré.
+
+**La classe** — et c'est elle qui vaut : *tout test dont le verdict dépend d'une
+propriété NON DÉCLARÉE de son système de fichiers*. La résolution d'horodatage
+en est une ; l'ordre de `readdirSync` et la sensibilité à la casse en sont deux
+autres, et elles diffèrent entre APFS et ext4/overlayfs de la même façon.
+
+**Le balayage des voisins** (le geste du 488, appliqué le jour même) — mesuré,
+pas promis. Trois familles dans la suite, une seule était malade :
+
+| famille | verdict | pourquoi |
+|---|---|---|
+| écart de date entre deux écritures | 🔴 **343** | espérait au lieu de forcer |
+| budgets en temps réel (`sh`, plafonds) | ✅ sain | marge large et dérivée — 3 000 ms pour un plafond de 400 ; verts dans le conteneur |
+| ordre de `readdirSync` (17 sites livrés) | ✅ sain | aucun ne décide sur « le premier » : tous parcourent l'ensemble, ou trient (`rankBuildTools`, `sec.mjs:190`, `config.mjs:1813`) |
+
+⚠️ **Ce que ce point ne dit pas** : `binaryFreshness` accepte déjà un lecteur de
+date injectable (`mtime = (f) => statSync(f).mtimeMs`), et le test aurait pu
+s'en servir pour ne jamais toucher le disque. Il ne le fait pas, **et c'est
+voulu** : injecter aurait rendu le test indépendant de la plateforme en cessant
+d'exercer le vrai `statSync` — le barreau du dessous. Forcer les dates garde les
+deux.
+
+### 490. La passe de mutation ne tient pas dans un job de CI — OUVERT, à arbitrer
+
+**Ouvert le 14/09/2026.** Mesuré au premier passage de la CI. Dernière étape du job
+`scaffold` : `python3 tools/mutate-run-guards.py`, soit **435 mutations**, dont
+chacune rejoue la suite entière.
+
+    suite complète, en local (Apple Silicon)      12,3 s   → × 435 = 1 h 29
+    suite complète, conteneur act (amd64 émulé)   65,9 s   → × 435 = 7 h 58
+
+Les deux chiffres sont des mesures ; celui d'un runner GitHub `ubuntu-latest`
+(2 vCPU, x86 natif) n'en est pas un — il se situe **entre** les deux, donc entre
+1 h 30 et 8 h, pour une limite de job de 6 h. Autrement dit : au mieux, chaque
+pull request bloque un runner une heure et demie ; au pire, le job ne finit
+jamais.
+
+C'est exactement le produit que personne ne mesure — durée unitaire × cardinal —
+et il a grandi d'une mutation à la fois. Rien ne s'en est jamais plaint, puisque
+chaque moitié reste raisonnable.
+
+⚠️ **Le remède n'est PAS de retirer l'étape.** Elle est le seul contrôle qui
+prouve que les 497 gardes gardent encore, et une suite verte ne dit rien de ça.
+Trois options, à trancher avec Germinator :
+
+1. **Matrice** — dix tranches `--only=` en parallèle, ~10 min chacune. Garde le
+   contrôle sur chaque PR, coûte dix runners.
+2. **Déclencheur dédié** — nocturne, ou sur label. Coûte peu, mais une PR peut
+   alors vider un garde sans que rien ne le dise avant le lendemain.
+3. **Tranche dérivée du diff** — ne muter que ce que la PR touche. Le moins
+   cher, et le plus exposé : c'est une énumération *étroite plus ce qu'on a vu*,
+   la direction que le 488 vient précisément de condamner.
+
+📌 Le job `scaffold` a été joué dans un conteneur Linux le 14/09 : **ses dix
+premières étapes sont vertes**, la onzième est celle-ci et n'a pas été jouée là.
+
+**Comment rejouer cette CI en local** — écrit ici parce que rien d'autre ne le
+porte, et que la prochaine reprise le cherchera :
+
+    brew install act                     # 0.2.89 le 14/09 ; Docker ou OrbStack requis
+    act push -j scaffold --container-architecture linux/amd64 \
+        -P ubuntu-latest=catthehacker/ubuntu:act-latest
+
+⚠️ **Le job `harness` ne s'exécute PAS sous `act`**, et ce n'est pas un défaut du
+dépôt : `subosito/flutter-action` lit `$RUNNER_ARCH`, qu'`act` renseigne depuis
+la machine HÔTE (`arm64`) et non depuis le conteneur (`amd64`). Le SDK Flutter
+n'existant pas en Linux arm64, l'action s'arrête à `Set action inputs` :
+
+    Unable to determine Flutter version for channel: stable ... architecture: arm64
+
+Le discriminant vaut d'être retenu : échec au stade du **provisionnement**, log
+de 46 lignes, rien du dépôt n'a tourné. `--env RUNNER_ARCH=X64` corrige un step
+`run:` (mesuré : le conteneur voit alors `X64` / `x86_64`) mais **pas** une
+action composite, qu'`act` ré-environne. Le contenu du job se prouve donc à la
+main, et c'est ce qui a été fait le 14/09 — `flutter create` + installeur +
+`dart format` + `flutter analyze` ×2 + `flutter test`, les six étapes vertes
+(`+5 ~4`, les deux greps satisfaits). ⚠️ Sur macOS et Flutter 3.32.0, quand la CI
+prendrait la `stable` du jour sous Linux : c'est précisément l'écart qui a
+produit le 489, donc cette réserve n'est pas de style.
