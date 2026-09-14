@@ -174,6 +174,47 @@ jobs:
       - name: Tranche ${{ matrix.tranche }} — chaque défaut réintroduit doit tomber
         run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}
 
+  # ── Le cadre est-il formaté ? ───────────────────────────────────────────
+  # ⚠️ ÉPINGLÉ, ET C'EST TOUT SON OBJET. Le format d'un fichier Dart dépend de
+  # la VERSION du formateur : mesuré le 14/09, trois fichiers du cadre formatés
+  # sous Dart 3.8 sont reformatés par Dart 3.13, pour des raisons purement
+  # stylistiques — `MediaQuery.of(context).copyWith(…)` remis en chaîne, les
+  # arguments de `testWidgets` repliés autrement. Aucune sémantique.
+  #
+  # Tant que cette étape vivait dans un job sur `channel: stable`, elle était
+  # donc une bombe à retardement : rouge à la prochaine évolution du formateur,
+  # sans qu'une ligne du dépôt ait bougé — et ce rouge-là n'aurait signalé
+  # AUCUN défaut, contrairement à celui d'une incompatibilité réelle.
+  #
+  # D'où la séparation : ICI le style, déterministe, sur une version fixe ; dans
+  # `harness`, la compatibilité, sur la stable du jour. Deux buts, deux jobs.
+  # ⚠️ La version épinglée est celle qui laisse le cadre INTACT (vérifié : zéro
+  # fichier reformaté). La monter est une décision délibérée, qui s'accompagne
+  # de reformater le cadre dans le même commit.
+  format:
+    name: Le cadre est formaté, à version FIXE
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.32.0
+          architecture: x64
+
+      - name: Un projet d'accueil, neuf
+        run: |
+          flutter create -e /tmp/fmt
+          cd /tmp/fmt && flutter pub add dev:flutter_test --sdk=flutter
+
+      - name: Le scaffold, tel que l'installeur le pose
+        run: bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/fmt
+
+      # Le critère est total et négatif — « aucun fichier posé n'est à
+      # reformater » —, jamais la liste de ceux qu'on a déjà vus.
+      - name: Rien de ce qu'il pose n'est à reformater
+        run: cd /tmp/fmt && dart format --output=none --set-exit-if-changed test/argus scripts
+
   # ── L'étage 1 compile-t-il seulement ? ──────────────────────────────────
   # Rien ici ne compilait le Dart, et ça s'est vu : la séparation du harnais en
   # trois fichiers a d'abord produit un CYCLE d'imports que Dart résout mal —
@@ -214,16 +255,6 @@ jobs:
       # Le scaffold est livré NON BRANCHÉ (`argusScreens` vide) : les suites s'y
       # marquent skippées avec leur raison. C'est donc la compilation qu'on
       # mesure ici, pas un verdict — et c'est précisément ce qui manquait.
-      # Le format est un garde à part entière : le workflow que l'installeur pose
-      # chez l'utilisateur lance `flutter analyze`, donc un fichier du CADRE non
-      # formaté rend SA CI rouge à la minute où elle atterrit — pour du code
-      # qu'il n'a pas écrit. Mesuré le 22/08 : trois fichiers livrés ainsi, et
-      # ce job ne les voyait pas puisqu'il ne formatait rien.
-      # Le critère est total et négatif — « aucun fichier posé n'est à
-      # reformater » —, jamais la liste de ceux qu'on a déjà vus.
-      - name: Rien de ce qu'il pose n'est à reformater
-        run: cd /tmp/accueil && dart format --output=none --set-exit-if-changed test/argus scripts
-
       # 440 — CETTE ÉTAPE-CI EST L'AVEUGLE, et c'est assumé : elle mesure ce que
       # voit un hôte resté aux lints par défaut. `flutter create` pose
       # `flutter_lints`, qui n'active pas `prefer_single_quotes` — donc elle rend

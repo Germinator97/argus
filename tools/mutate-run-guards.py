@@ -2129,6 +2129,14 @@ MUTATIONS = [
     # Le harnais l'exige unique, donc il l'aurait rendue INERTE, c'est-à-dire
     # une mutation qui ne prouve rien. Un vrai saut de ligne ne peut pas se
     # trouver dans cette déclaration-ci, où il s'écrit échappé.
+    # ── 494 · la séparation style / compatibilité ──────────────────────────
+    # ⚠️ Elle REMET le format sur une version qui bouge. Ça ne casse rien le jour
+    # où on le fait — le formateur du jour est content — et ça rougit à sa
+    # prochaine évolution, pour un défaut qui n'existe pas. Exactement le genre
+    # de perte qu'aucune exécution d'aujourd'hui ne rapporte.
+    ("ciplugin", "494 · le format redevient tributaire de la stable du jour",
+     "          flutter-version: 3.32.0\n          architecture: x64\n",
+     "          channel: stable\n          architecture: x64\n"),
     # ⚠️ Retirer l'architecture explicite ne casse RIEN sur un vrai runner : le
     # défaut y vaut la même chose. Ça ne casse QUE la capacité à jouer le job
     # ailleurs — exactement le genre de perte qu'aucun test ne rapporte.

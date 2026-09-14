@@ -14181,3 +14181,56 @@ test('aucun document livré ne laisse un bloc de code mal fermé (492)', () => {
     'des documents livrés rendent de la prose comme du code, ou laissent un bloc ouvert :\n  '
     + anomalies.join('\n  '));
 });
+
+// ── 494 ────────────────────────────────────────────────────────────────────
+// Le format d'un fichier Dart dépend de la VERSION du formateur : trois fichiers
+// du cadre formatés sous Dart 3.8 sont reformatés par Dart 3.13, pour des
+// raisons purement stylistiques. Tant que ce contrôle vivait dans un job sur
+// `channel: stable`, il était donc rouge à la prochaine évolution du formateur,
+// sans qu'une ligne du dépôt ait bougé — et ce rouge-là n'aurait signalé aucun
+// défaut, contrairement à celui d'une incompatibilité réelle.
+//
+// D'où la séparation, et c'est ELLE qu'il faut garder : le style sur une version
+// FIXE, la compatibilité sur la stable du jour. Les remettre ensemble ne casse
+// rien le jour où on le fait — c'est plus tard que ça coûte, et pour rien.
+test('le format se juge à version FIXE, la compatibilité sur la stable (494)', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+
+  // Découpage par job : une clé à deux espaces, hors commentaire.
+  /** @type {Record<string, string>} */
+  const jobs = {};
+  let courant = null;
+  for (const l of ci.split('\n')) {
+    if (/^\s*#/.test(l)) continue;
+    const m = /^ {2}([a-z][\w-]*):\s*$/.exec(l);
+    if (m) { courant = m[1]; jobs[courant] = ''; continue; }
+    if (courant) jobs[courant] += `${l}\n`;
+  }
+  assert.ok(Object.keys(jobs).length >= 3,
+    `${Object.keys(jobs).length} job(s) lus dans le workflow — le découpage ne mesure plus rien`);
+
+  // 1. Un seul job formate, et il est ÉPINGLÉ.
+  const formateurs = Object.entries(jobs).filter(([, j]) => /dart format/.test(j));
+  assert.equal(formateurs.length, 1,
+    `${formateurs.length} job(s) lancent \`dart format\` : il en faut exactement un, et épinglé `
+    + '— sinon le style se juge sur une version qui bouge');
+  const [nomFormat, jobFormat] = formateurs[0];
+  assert.match(jobFormat, /flutter-version:\s*\d+\.\d+\.\d+/,
+    `le job \`${nomFormat}\` formate sur une version non épinglée : le formateur Dart change de `
+    + 'style entre versions, donc ce contrôle rougira un jour sans qu\'une ligne ait bougé, et '
+    + 'ce rouge ne signalera aucun défaut (494)');
+  assert.doesNotMatch(jobFormat, /channel:\s*stable/,
+    `le job \`${nomFormat}\` suit \`channel: stable\` : c'est exactement ce que la séparation `
+    + 'existe pour empêcher');
+
+  // 2. Et l'autre moitié — sans elle, épingler partout passerait ce garde tout
+  //    en supprimant la seule chose qui détecte une rupture réelle.
+  const surStable = Object.entries(jobs).filter(([, j]) => /channel:\s*stable/.test(j));
+  assert.ok(surStable.length >= 1,
+    'plus aucun job ne tourne sur `channel: stable` : le dépôt ne saurait plus si le scaffold '
+    + 'suit les nouvelles versions de Flutter — c\'est en jouant la stable du jour qu\'on a '
+    + 'appris qu\'il tient quinze versions mineures au-delà de ce qui avait été vérifié à la main');
+  assert.ok(surStable.every(([, j]) => !/dart format/.test(j)),
+    'un job sur `channel: stable` lance `dart format` : le style redevient tributaire d\'une '
+    + 'version qui bouge');
+});
