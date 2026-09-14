@@ -506,3 +506,124 @@ wc -c build/app/outputs/flutter-apk/app-debug.apk
 # ⚠️ Le `flutter clean` n'est PAS une précaution : sans lui les deux chiffres sont
 # égaux, et la conclusion s'inverse.
 ```
+
+═══════════════════════════════════════════════════════════════════════════════
+## F. Une installation GLOBALE, configurée par projet
+═══════════════════════════════════════════════════════════════════════════════
+
+Ouvert le 14/09/2026, sur une **question posée** — aucun run ne l'a rendue :
+« installer le skill globalement, comme `flutter` ou `git`, ou dans le projet au
+choix ; l'installation globale sert alors tous les projets, chacun se
+configurant à l'exécution. Avec une désinstallation. »
+
+### Ce qui a été mesuré
+
+La frontière que la question suppose **existe déjà** dans le dépôt : ce sont les
+marqueurs que l'installeur dérive. La question n'est donc pas de l'inventer,
+mais de savoir si le DISQUE peut la porter.
+
+| relevé du 14/09/2026 | valeur |
+|---|---|
+| `ARGUS:CADRE` | 20 fichiers, 12 649 lignes |
+| `ARGUS:OWNED` | 12 fichiers, 1 929 lignes |
+| `ARGUS:MERGE` | 2 fichiers, 56 lignes |
+| dont le moteur (`scripts/argus/*.mjs`) | 9 082 lignes, **62 %** du scaffold |
+
+**Le moteur est déjà prêt à vivre ailleurs, et personne ne l'avait remarqué.**
+Les sept scripts résolvent tout depuis `process.cwd()`, jamais depuis leur propre
+emplacement ; `loadConfig` lit déjà `ARGUS_MOBILE_CONFIG` avec
+`argus.mobile.yaml` en défaut ; et le garde `invokedDirectly` compare deux
+`realpathSync`, ce qui le rend insensible à un lancement par **lien symbolique**
+— il a été écrit pour ça, après un défaut où le script ne se reconnaissait pas,
+ne faisait rien, et sortait en 0.
+
+### Ce qui retient : la résolution par chemin RELATIF, dans les deux sens
+
+⚠️ **Le premier relevé disait « cinq suites Dart et quatre flows » : il était
+faux, et c'est le motif non ancré qui l'avait produit** — `harness.dart` matche
+`argus_harness.dart`, donc six fichiers au lieu d'un. Mesuré en ancrant, le
+couplage CADRE → OWNED tient en **deux points** :
+
+- `argus_harness.dart` (CADRE) importe `harness.dart` et `known_issues.dart`
+  (OWNED) — deux imports relatifs, un seul fichier ;
+- `visual.yaml` (CADRE) appelle `_subflows/mask-dynamic.yaml` (OWNED).
+
+Le sens **dominant** est l'inverse : cinq flows OWNED appellent des subflows
+CADRE (`launch-clean`, `disable-animations`). C'est le sens naturel — le projet
+appelle le cadre — et il casse tout autant si le cadre déménage, parce que
+Maestro résout `runFlow:` depuis le fichier appelant et Dart depuis le dossier.
+
+S'y ajoutent deux contraintes qui ne dépendent d'aucun couplage :
+`flutter test` ne voit que le `test/` du projet, et GitHub ne lit que le
+`.github/workflows` du dépôt.
+
+### Le coût est ailleurs qu'où on le cherche
+
+`node scripts/argus/…` apparaît **81 fois**, dont **41 dans les trois fichiers
+qui EXÉCUTENT** — Makefile 19, workflow CI 12, snippet npm 10. Les 40 autres
+sont des mentions : dartdoc, commentaires, et surtout des messages que le
+programme **imprime à l'utilisateur** (`warn('  Régénère : node
+scripts/argus/run.mjs --update-baselines')`).
+
+Un second mode d'installation **double** chaque site au lieu d'en fermer un. Et
+les messages affichés comptent autant que les recettes : les oublier produit
+exactement l'anti-pattern du geste documenté qui diverge du geste outillé — la
+doc dirait `argus-mobile run` pendant qu'un conseil à l'écran renverrait au
+chemin en dur.
+
+### Décidé pour l'instant : ne rien coder, et poser la frontière ailleurs
+
+Le partage n'est pas « global vs projet » mais **moteur vs données** :
+
+| | ce qui y vivrait |
+|---|---|
+| global | les 7 scripts, derrière UNE commande |
+| projet | les 12 OWNED + 2 MERGE, plus le workflow CI |
+| copié, mais GÉRÉ par la commande | le cadre imbriqué (`sync` = l'actuel `--update`) |
+
+📌 **Le gain ne dépend pas de la décision** : faire de la commande la source
+unique d'invocation ferme les 41 sites même si le mode global ne se fait jamais.
+⚠️ Mais il touche le Makefile et le workflow CI, donc il périme la comparabilité
+d'une paire de runs en cours — ce n'est pas un geste gratuit côté calendrier.
+
+### La condition qui rouvre, et ce qu'il faudra prouver
+
+Rouvrir quand un run en aveugle signalera le poids de la copie, ou quand un
+projet tiers installera le scaffold. Trois épreuves, dans cet ordre :
+
+1. **La désinstallation est le seul geste qui SUPPRIME**, donc le seul
+   irrattrapable : retirer le scaffold en bloc efface le harnais rempli, les
+   parcours écrits et la config — le travail du projet, jamais le cadre. Elle ne
+   retire que du CADRE portant la signature, énumère ce qu'elle garde, et refuse
+   de démarrer sur un argument inconnu.
+2. **Vérifier les DEUX sens du classement** : l'homonyme du projet reste intact,
+   ET notre copie continue de recevoir les mises à jour. Le piège par défaut est
+   de corriger le premier en cassant le second.
+3. **Figer la classification effective par ÉGALITÉ** dans un garde, AVANT tout
+   déplacement : un fichier qui change de camp ne casse rien, ne lève rien, et ne
+   se voit nulle part ailleurs.
+
+```sh
+# re-mesurer avant de rouvrir — relevés du 14/09/2026 en commentaire
+S=plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile
+
+# ce que le moteur pèse (9082 sur 14634, soit 62 %)
+cat $S/scripts/argus/*.mjs | wc -l
+find $S -type f -exec cat {} + | wc -l
+
+# les invocations à fermer — TROIS fichiers nommés, jamais un balayage (41)
+grep -c "node .*scripts/argus/" $S/Makefile \
+  $S/.github/workflows/argus-mobile.yml $S/package.snippet.json
+# et le total, dont les messages affichés à l'utilisateur (81 = 41 + 40)
+grep -rn "node .*scripts/argus/" plugins/argus-mobile/ | wc -l
+
+# les DEUX seuls points où le CADRE dépend du POSSÉDÉ (2 imports, 1 runFlow)
+grep -HnE "^import '(harness|known_issues)\.dart'" $S/test/argus/*.dart
+grep -rn "runFlow: _subflows/mask-dynamic" $S/.maestro/*.yaml
+# ⚠️ CONTRE-ÉPREUVE, et elle mesure l'ERREUR plutôt que le fait : sans ancrage,
+# `harness.dart` matche `argus_harness.dart` et rend SIX fichiers au lieu d'un.
+# C'est ce compte-là qui avait fait écrire « cinq suites Dart » dans le premier
+# relevé. S'il cesse de rendre 6, le nommage a changé et les deux lignes
+# ci-dessus sont à relire avant d'être crues.
+grep -l "harness.dart" $S/test/argus/*.dart | wc -l   # 6, et c'est FAUX
+```
