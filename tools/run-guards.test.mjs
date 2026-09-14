@@ -13705,8 +13705,17 @@ test('aucune mutation n\'est inerte sans être déclarée (471)', () => {
 
   assert.equal(r.status, 0,
     'des mutations ne mutent plus rien sans être déclarées, ou le relevé cite des mutations '
-    + `réparées. Une mutation dont le motif a disparu rend HARNAIS, donc elle ne prouve RIEN — et `
-    + `ça ne se voit qu'en jouant la passe entière.\n${sortie}`);
+    + 'réparées. Une mutation dont le motif a disparu rend HARNAIS, donc elle ne prouve RIEN — et '
+    + 'ça ne se voit qu\'en jouant la passe entière.\n'
+    // ⚠️ ET LA PREMIÈRE HYPOTHÈSE À ÉCARTER N'EST PAS UN DÉFAUT. Ce contrôle lit
+    // HEAD (voir plus haut), donc il rougit aussi pendant la fenêtre NORMALE où
+    // l'on vient de ré-ancrer une mutation sans l'avoir commitée. Sans cette
+    // phrase, le message envoie chercher un motif périmé qui est déjà réparé
+    // dans l'arbre — le garde 333 porte le même avertissement, pour la même
+    // raison, et c'est ce qui lui évite de faire perdre dix minutes.
+    + '⚠️ Si tu viens de ré-ancrer ces mutations sans commiter, c\'est ATTENDU : ce contrôle lit '
+    + 'le dépôt COMMITÉ. Commite, le garde redevient vert.\n'
+    + `${sortie}`);
 });
 
 // ── 471 bis ────────────────────────────────────────────────────────────────
@@ -13994,31 +14003,40 @@ test('les tranches de la CI couvrent TOUTES les mutations, et N se dérive (490)
   // 1. Le harnais est bien invoqué, et une seule fois. Asserter la PRÉSENCE
   //    avant la forme : sans ça, renommer le job rendrait tout ce qui suit
   //    vacant, et le garde resterait vert sur un workflow qui ne mute plus rien.
-  const shards = [...ci.matchAll(/--shard=(.*)$/gm)];
+  // ⚠️ COMMENTAIRES DÉPOUILLÉS D'ABORD. Le workflow EXPLIQUE pourquoi l'argument
+  // a cette forme, et son explication cite un `--shard=` — que ce garde comptait
+  // comme une seconde invocation. Le motif matchait sa propre mention, le jour
+  // même où on l'écrivait. En YAML le commentaire est une ligne à `#`.
+  const executable = ci.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const shards = [...executable.matchAll(/--shard=(.*)$/gm)];
   assert.equal(shards.length, 1,
     `le workflow porte ${shards.length} invocation(s) de --shard, ce garde en attend une : `
     + 'si la passe de mutation a été déplacée ou retirée de la CI, plus rien ne prouve que '
     + 'les gardes gardent — et c\'est le seul mode de panne qu\'une suite verte ne rapporte pas');
 
-  // 2. N se DÉRIVE de la matrice. Un N recopié à côté d'elle est juste le jour
-  //    où on l'écrit et faux dès qu'on ajoute ou retire une tranche : les jobs
-  //    restants passent au vert sur leur propre part, et la part orpheline
-  //    n'apparaît nulle part. C'est un nombre qui décrit le contenu sans être
-  //    dérivé de lui, exactement comme un compteur d'écran d'accueil.
-  assert.match(shards[0][1], /^\$\{\{\s*matrix\.tranche\s*\}\}\/\$\{\{\s*strategy\.job-total\s*\}\}$/,
-    `la CI passe --shard=${shards[0][1]} : le K vient de la matrice et le N doit se dériver `
-    + 'd\'elle (strategy.job-total), jamais être recopié à côté');
+  // 2. L'argument vient ENTIÈREMENT de la matrice, sans rien y ajouter.
+  //    ⚠️ La première version dérivait N de `strategy.job-total` — un contexte que
+  //    RIEN dans ce dépôt ne peut exercer. Mesuré : `act` le rend vide, donc le
+  //    job serait parti avec `--shard=3/` et le harnais aurait refusé, à la
+  //    première pull request et pas avant. Un workflow qu'on ne peut pas jouer
+  //    est un exemple que la CI n'exécute pas : il dérive en silence.
+  assert.match(shards[0][1], /^\$\{\{\s*matrix\.tranche\s*\}\}$/,
+    `la CI passe --shard=${shards[0][1]} : l'argument doit venir ENTIER de la matrice, sans `
+    + 'rien y concaténer — sinon il dépend d\'une valeur que ce dépôt ne sait pas éprouver');
 
-  // 3. La matrice énumère exactement 1..N — par ÉGALITÉ, pas par inclusion, pour
-  //    qu'un trou (une tranche jamais jouée) et un doublon (jouée deux fois)
-  //    tombent tous les deux.
-  const liste = ci.match(/^\s*tranche:\s*\[([^\]]*)\]/m);
+  // 3. La matrice énumère exactement 1/N … N/N — par ÉGALITÉ contre ce qu'elle
+  //    DEVRAIT être pour sa propre longueur. C'est ce qui remplace le N dérivé
+  //    d'ailleurs, et c'est plus fort : un trou, un doublon ou un dénominateur
+  //    qui ne suit pas la liste tombent tous les trois.
+  const liste = ci.match(/tranche:\s*\[([\s\S]*?)\]/);
   assert.ok(liste, 'la matrice `tranche` a disparu du job : le découpage ne se lit plus, '
     + 'et ce garde ne peut plus dire ce que la CI joue');
-  const valeurs = liste[1].split(',').map((x) => Number(x.trim()));
-  assert.deepEqual(valeurs, valeurs.map((_, k) => k + 1),
-    `la matrice énumère [${liste[1].trim()}] : elle doit être exactement 1..N, sans trou ni `
-    + 'doublon, sinon une tranche est jouée deux fois pendant qu\'une autre ne l\'est jamais');
+  const valeurs = liste[1].split(',').map((x) => x.trim().replace(/^['"]|['"]$/g, ''));
+  const attendu = valeurs.map((_, k) => `${k + 1}/${valeurs.length}`);
+  assert.deepEqual(valeurs, attendu,
+    `la matrice énumère [${valeurs.join(', ')}] alors que ses ${valeurs.length} entrées `
+    + `devraient valoir [${attendu.join(', ')}] : un dénominateur qui ne suit pas la liste laisse `
+    + 'une part jouée par personne, et les jobs restants passent au vert sur la leur');
 
   // 4. Et la COUVERTURE se demande au harnais plutôt que de se recalculer ici :
   //    un attendu recalculé par le garde dériverait de la même idée que la

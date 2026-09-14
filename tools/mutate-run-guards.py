@@ -2096,12 +2096,15 @@ MUTATIONS = [
     # ── 490 · le découpage de la passe de mutation ──────────────────────────
     # Trois façons de vider le garde, une par assertion, et toutes les trois
     # laissent une CI qui passe au vert.
-    ("ciplugin", "490 · le nombre de tranches est RECOPIÉ au lieu d'être dérivé",
-     "--shard=${{ matrix.tranche }}/${{ strategy.job-total }}",
-     "--shard=${{ matrix.tranche }}/10"),
-    ("ciplugin", "490 · la matrice saute une tranche, qui n'est jouée par personne",
-     "        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]",
-     "        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 11]"),
+    ("ciplugin", "490 · l'argument de tranche cesse de venir ENTIER de la matrice",
+     "        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}\n",
+     "        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}/10\n"),
+    # ⚠️ Le dénominateur qui ne suit plus la liste : neuf tranches sur dix, donc
+    # une part que personne ne joue pendant que les neuf autres passent au vert
+    # sur la leur. C'est le mode de panne muet du découpage.
+    ("ciplugin", "490 · un dénominateur cesse de suivre la longueur de la matrice",
+     "        tranche: ['1/10', '2/10', '3/10', '4/10', '5/10',\n                  '6/10', '7/10', '8/10', '9/10', '10/10']",
+     "        tranche: ['1/9', '2/9', '3/9', '4/9', '5/9',\n                  '6/9', '7/9', '8/9', '9/9', '10/9']"),
     # ⚠️ Celle-ci ne touche NI le workflow NI le garde : elle casse la partition
     # dans le harnais, là où aucune relecture du YAML ne peut la voir. C'est le
     # quatrième barreau du garde — celui qui DEMANDE au lieu de recalculer.

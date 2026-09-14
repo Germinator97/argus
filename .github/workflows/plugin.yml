@@ -127,11 +127,17 @@ jobs:
   # cardinal » n'avait jamais été mesuré, et il grandit d'une mutation à la
   # fois : rien ne s'en plaint, puisque chaque moitié reste raisonnable.
   #
-  # ⚠️ ET LE CARDINAL N'EST ÉCRIT NULLE PART ICI. Le workflow dit « tranche K
-  # sur N » ; c'est le harnais qui calcule ses bornes, parce qu'un nombre
-  # recopié se périme à la mutation suivante sans que rien ne le signale. N
-  # lui-même se DÉRIVE de la matrice (`strategy.job-total`) plutôt que de se
-  # recopier à côté d'elle : ajouter une tranche à la liste suffit.
+  # ⚠️ ET LE CARDINAL DES MUTATIONS N'EST ÉCRIT NULLE PART ICI. Le workflow dit
+  # « tranche K sur N » ; c'est le harnais qui calcule ses bornes, parce qu'un
+  # nombre de mutations recopié se périme à la suivante sans que rien ne le dise.
+  #
+  # ⚠️ CHAQUE ENTRÉE PORTE `K/N` EN ENTIER, et ce n'est pas de la redondance : la
+  # première version dérivait N de `strategy.job-total`, un contexte que rien ici
+  # ne peut EXERCER — `act` le rend vide, et le job serait donc parti avec
+  # `--shard=3/` jusqu'à la première pull request, c'est-à-dire du code que
+  # personne n'aurait jamais joué. Une liste de `K/N` s'éprouve en local, et sa
+  # cohérence se vérifie par ÉGALITÉ (elle doit valoir exactement 1/N … N/N pour
+  # N = sa propre longueur), ce qui est plus fort qu'un nombre dérivé ailleurs.
   #
   # ⚠️ `--shard` n'est pas `--only`. C'est une PARTITION : les tranches
   # couvrent tout, donc chacune a le droit de rendre 0 sur sa part, et c'est
@@ -143,7 +149,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        tranche: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+        tranche: ['1/10', '2/10', '3/10', '4/10', '5/10',
+                  '6/10', '7/10', '8/10', '9/10', '10/10']
     steps:
       # ⚠️ Même raison que dans `scaffold`, et elle est fatale ici : le harnais
       # REFUSE de démarrer sur une suite déjà rouge, et le garde 333 dérive ses
@@ -155,7 +162,7 @@ jobs:
           fetch-depth: 0
 
       - name: Tranche ${{ matrix.tranche }} — chaque défaut réintroduit doit tomber
-        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}/${{ strategy.job-total }}
+        run: python3 tools/mutate-run-guards.py --shard=${{ matrix.tranche }}
 
   # ── L'étage 1 compile-t-il seulement ? ──────────────────────────────────
   # Rien ici ne compilait le Dart, et ça s'est vu : la séparation du harnais en
