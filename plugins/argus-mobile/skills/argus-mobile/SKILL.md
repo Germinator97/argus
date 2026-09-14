@@ -310,6 +310,7 @@ Instrumentation Semantics — parcours critiques
   Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
   Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
+```
 
 ⚠️ **COMPTE-LE AVEC UNE COMMANDE QUI EXCLUT LES COMMENTAIRES**, et jamais à
 l'œil. Ces chiffres ouvrent le rapport, donc ils donnent le ton de tout le
@@ -499,6 +500,7 @@ unique est alors soit périmé, soit trompeur : « 53 posées / 0 à poser (100 
 cache que tout était à faire. En EXPLORE et en DEMO, une seule fois suffit :
 rien n'est posé.
 
+```
 À instrumenter, par fichier :
   lib/…/panier_page.dart:88    racine d'état « panier vide »   → panier_empty_root
   lib/…/panier_page.dart:142   ElevatedButton « Valider »      → panier_valider
