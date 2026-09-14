@@ -5096,10 +5096,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 488**, ouvert le 14/09/2026 : *porter un correctif à ses
-VOISINS*. Ce n'est pas un constat de terrain mais ce que trois paires
-consécutives ont établi — `477 → 480` puis `481 → 485`, deux fois le même motif,
-un remède juste dont le voisin portait la même faute sous une autre forme.
+✅ **488 FERMÉ le 14/09/2026 — la classe, et non le cas.** Ce qui le ferme n'est
+pas un troisième correctif ponctuel mais un garde qui porte sur le **phénomène**
+plutôt que sur le site : « zéro invocation nue, où que ce soit ». Écrit le jour du
+481, il aurait attrapé le 485 — qu'un garde posé sur `flutterCommandIn` ne
+pouvait structurellement pas voir. Il prouve qu'il sait VOIR avant de dire qu'il
+n'a rien vu, dépouille les commentaires, et porte une contre-épreuve sur une
+source dont la réponse est connue.
 
 ✅ **485 à 487 FERMÉS le 14/09/2026 — backlog vidé une 96e fois**, sur la paire
 78-79. Le 485 rendait la fraîcheur des dépendances muette sur tout projet dont le
@@ -8884,7 +8887,7 @@ décrit un défaut.
 
 ### 488. Porter un correctif à ses VOISINS — la classe, et non le cas
 
-**Ouvert le 14/09/2026.** Ce n'est pas un constat de terrain mais ce que trois
+**Fermé le 14/09/2026.** Ce n'est pas un constat de terrain mais ce que trois
 paires consécutives ont fini par établir. Le motif, à l'identique :
 
     477  →  480      un remède juste, son voisin non couvert
@@ -8900,3 +8903,13 @@ Ce que ce point demande n'est donc pas un troisième correctif ponctuel, mais le
 geste qui empêche la quatrième occurrence : quand on ferme un défaut, **chercher
 les autres formes du même geste** — les autres sites qui font la même chose
 autrement — et le prouver, plutôt que de le promettre.
+
+**Ce qui l'a fermé** : un garde qui balaie TOUS les scripts et exige zéro
+invocation nue de `flutter` ou `dart`, plus sa mutation, qui réintroduit
+précisément la forme qu'avait le 485. Mesuré : il nomme le site fautif
+(`sca.mjs:202`) au lieu de se contenter d'un compte.
+
+⚠️ **La direction du raisonnement est tout** : LARGE moins les exceptions, jamais
+*étroit plus ce qu'on a rencontré*. Une énumération des formes déjà vues rend
+« 0 » et laisse passer toutes celles qu'on n'a pas imaginées — c'est ce qui a
+laissé le 485 vivre un mois après le 481.
