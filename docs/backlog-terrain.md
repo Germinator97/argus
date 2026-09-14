@@ -5096,13 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🟡 **1 POINT OUVERT — le 490, qui n'est pas un correctif mais un arbitrage.**
-La passe de mutation est la dernière étape du job `scaffold`, et chacune de ses
-435 mutations rejoue la suite entière : mesuré 12,3 s en local, 65,9 s dans le
-conteneur, soit entre une heure et demie et huit heures par pull request, pour
-une limite de job de six heures. Le retirer n'est pas la réponse — c'est le seul
-contrôle qui prouve que les gardes gardent. Trois options sont écrites au point,
-avec ce que chacune coûte ; aucune ne se tranche seule.
+✅ **490 et 491 FERMÉS le 14/09/2026 — la CI, jouée pour la première fois en 79
+runs, et ce qu'elle a fait tomber.** Le 490 découpe la passe de mutation en dix
+tranches, parce que son produit « durée × cardinal » n'avait jamais été mesuré.
+Le 491 est ce que le garde du 490 a révélé en chemin : le verdict du harnais
+était rendu par un garde qui tombait sous chaque mutation, donc il approuvait
+tout depuis quatre jours.
 
 ✅ **488 FERMÉ le 14/09/2026 — la classe, et non le cas.** Ce qui le ferme n'est
 pas un troisième correctif ponctuel mais un garde qui porte sur le **phénomène**
@@ -8961,9 +8960,9 @@ voulu** : injecter aurait rendu le test indépendant de la plateforme en cessant
 d'exercer le vrai `statSync` — le barreau du dessous. Forcer les dates garde les
 deux.
 
-### 490. La passe de mutation ne tient pas dans un job de CI — OUVERT, à arbitrer
+### 490. La passe de mutation ne tenait pas dans un job de CI
 
-**Ouvert le 14/09/2026.** Mesuré au premier passage de la CI. Dernière étape du job
+**Fermé le 14/09/2026.** Mesuré au premier passage de la CI. Dernière étape du job
 `scaffold` : `python3 tools/mutate-run-guards.py`, soit **435 mutations**, dont
 chacune rejoue la suite entière.
 
@@ -8994,6 +8993,64 @@ Trois options, à trancher avec Germinator :
 
 📌 Le job `scaffold` a été joué dans un conteneur Linux le 14/09 : **ses dix
 premières étapes sont vertes**, la onzième est celle-ci et n'a pas été jouée là.
+
+**Ce qui l'a fermé** — l'option 1, une matrice de dix tranches. Mais la mesure a
+d'abord démenti la prémisse des trois options ci-dessus : elles supposaient toutes
+que les 12,3 s d'une suite étaient incompressibles, alors que **dix tests sur 497
+en portent 8,2 s** (73 %), et vingt en portent 92 % — tous des tests qui lancent
+un sous-processus. Et le dépôt étant public, les minutes d'Actions sont gratuites :
+l'arbitrage ne portait pas sur de l'argent mais sur du délai.
+
+Le harnais a reçu `--shard=K/N`, qui **diffère d'`--only` par sa NATURE et non par
+son périmètre** — et c'est cela seul qui l'autorise à rendre 0. `--only` est une
+sélection : rien ne garantit que le reste sera joué, donc elle sort en 1, sinon un
+« 45/435 » se lirait comme un dépôt sain. `--shard` est une partition annoncée,
+prouvée par égalité pour N = 1, 2, 3, 7, 10, 13, 100 et *total*.
+
+⚠️ **Et le cardinal n'est écrit nulle part dans le workflow** : N se dérive de la
+matrice (`strategy.job-total`). Un nombre recopié à côté d'une liste est juste le
+jour où on l'écrit et faux dès qu'on ajoute une tranche — et le trou ne se voit
+nulle part, puisque les jobs restants passent au vert sur leur propre part.
+
+### 491. Le verdict du harnais était rendu par un garde qui tombait toujours
+
+**Fermé le 14/09/2026.** Trouvé en écrivant le garde du 490, et par le seul geste
+qui l'attrape : **lire le NOM du test qui tombe**, au lieu du verdict.
+
+Un garde écrit le 10/09 rejoue le contrôle des motifs *à l'intérieur de la suite*
+— et la suite est rejouée sous **chaque** mutation. En lisant l'arbre de travail,
+il y voyait le motif que le harnais venait de remplacer, se déclarait donc inerte,
+et rougissait. À chaque fois.
+
+Or le harnais tranche `TOMBE` / `VACANT` sur le **seul code de retour** de la
+suite. Il y avait donc toujours un rouge, et il rendait `TOMBE` quel que soit
+l'état du garde qu'on croyait éprouver. *Un instrument qui approuve tout ressemble
+exactement à un dépôt sain*, et il y ressemblait depuis quatre jours.
+
+    sous une mutation ordinaire, AVANT :  2 tests rouges — le garde visé ET celui-ci
+    sous une mutation ordinaire, APRÈS :  1 test rouge  — le garde visé
+    sous une sonde INOFFENSIVE, APRÈS  :  VACANT — il sait de nouveau dire non
+
+Mesuré sur **deux cibles distinctes** avant de conclure, puis contre-éprouvé dans
+les deux sens : c'est la seconde ligne qui prouve le correctif, et la troisième qui
+prouve l'instrument.
+
+**Le remède** : le contrôle lit désormais le dépôt **commité** (`--from-head`,
+un seul `git cat-file --batch` pour les 37 cibles — 14 ms contre 160). Ce n'est
+pas une commodité : c'est la sémantique du harnais lui-même, qui restaure par
+`git checkout`. Le contrôle et la restauration parlent enfin du même état.
+
+⚠️ **Son câblage porte son propre garde**, parce que perdre le drapeau ne casse
+rien de visible : sur un arbre propre, HEAD et l'arbre disent la même chose et la
+suite reste verte. Le prix se paie à la passe suivante, en silence. Le garde est
+ancré sur le harnais **du dépôt** — la suite invoque aussi ce contrôle sur une
+copie *sabotée*, qui doit continuer de lire l'arbre, faute de quoi sa sonde,
+jamais commitée, deviendrait invisible.
+
+📌 **Ce que ça coûte au passé** : toute passe jouée entre le 10/09 et le 14/09 —
+y compris celle de 438 mutations jouée le matin même — rendait `TOMBE` sans que
+ce verdict distingue un garde qui tombe d'un garde vacant. Les correctifs qu'elles
+ont accompagnés restent valables ; c'est leur *preuve* qui était vide.
 
 **Comment rejouer cette CI en local** — écrit ici parce que rien d'autre ne le
 porte, et que la prochaine reprise le cherchera :
