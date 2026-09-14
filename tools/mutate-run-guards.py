@@ -157,15 +157,11 @@ NB_TESTS = None
 # succès. Le motif inerte, lui, se voit ici.
 MOTIFS_INERTES_CONNUS = {
     '226 · le motif reperd les paramètres nommés',
-    '367 bis · un run interrompu peut de nouveau rendre gate pass',
     "371 bis · un acquittement périmé n'est plus signalé",
-    "373 bis · les points ouverts cessent d'être retirés du compte",
     "373 quater · la tête du backlog n'annonce plus ses points ouverts",
-    '374 · les acquittements périmés se jugent sur une MOITIÉ',
     '388 bis · le lien avec le trousseau disparaît',
     "388 · le geste de l'invite n'est plus conditionnel",
     "416 · le journal réaffirme l'icône du gabarit",
-    '422 · le contrôle du flavor perd une plateforme',
     "argus-anchors cesse d'appeler le croisement posé → déclaré",
     "l'icône de la page n'est plus lue, la mention RESTE",
     "l'indice renomme le levier que la doc interdit de toucher",
@@ -176,10 +172,7 @@ MOTIFS_INERTES_CONNUS = {
     'le compteur de flows reperd un fichier',
     'le dernier point du backlog devient le premier',
     'le journal reprend son propre calcul du titre',
-    "le plancher de splash cesse d'être déduit",
     'le titre cesse de se lire avant une republication',
-    "les gabarits d'ancres retombent dans les opaques",
-    'un finding même sous le seuil',
     'un projet ne peut plus déclarer ses propres fichiers',
 }
 
@@ -207,8 +200,8 @@ MUTATIONS = [
      "  if (over.length === 0) return findings;",
      "  if (over.length === 0) return findings;\n  if (over.length > 1) return over.flatMap((s) => startupFindings([s], device, platform, config));"),
     ("run", "un finding même sous le seuil",
-     "  const over = samples.filter((s) => net(s) > budget);",
-     "  const over = samples.filter((s) => net(s) >= 0);"),
+     '  const over = mesures.filter((s) => net(s) > budget);',
+     '  const over = mesures.filter((s) => net(s) >= 0);'),
     ("run", "le budget d'attente colle au seuil de perf",
      "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);",
      "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000));"),
@@ -274,8 +267,8 @@ MUTATIONS = [
      "    && String(s?.metadata?.status ?? '').toUpperCase() === 'COMPLETED');",
      "    && String(s?.metadata?.status ?? '').toUpperCase() !== '@@jamais@@');"),
     ("run", "le plancher de splash cesse d'être déduit",
-     "  const over = samples.filter((s) => net(s) > budget);",
-     "  const over = samples.filter((s) => s.ms > budget);"),
+     '  const over = mesures.filter((s) => net(s) > budget);',
+     '  const over = mesures.filter((s) => s.ms > budget);'),
     ("run", "le plancher devient un seuil relevé, donc il efface la dérive",
      "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0));",
      "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0) * 10);"),
@@ -1049,8 +1042,8 @@ MUTATIONS = [
      "        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()",
      "        : ''"),
     ("config", "les gabarits d'ancres retombent dans les opaques",
-     "          const gabarit = /'[^']*\\$\\{[^']*'/.test(nu);",
-     "          const gabarit = false;"),
+     "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu) || parametreDAncre.test(nu);",
+     "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu);"),
     ("report", "la plateforme du titre reperd sa casse",
      "  if (v.toLowerCase() === 'ios') return 'iOS';",
      "  if (v.toLowerCase() === 'ios') return 'ios';"),
@@ -1264,8 +1257,8 @@ MUTATIONS = [
     # verdict rester « pass ». Ce sont deux moitiés, et la seconde est celle
     # qu'on lit en premier.
     ("report", "367 bis · un run interrompu peut de nouveau rendre gate pass",
-     "  const gate = interrompues.length > 0\n    || SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';",
-     "  const gate = SEVERITIES.some((s) => failOn.has(s) && counts[s] > 0) ? 'fail' : 'pass';"),
+     "  const gate = interrompues.length > 0\n    || SEVERITIES.some((s) => failOn.has(s) && bloquants[s] > 0) ? 'fail' : 'pass';",
+     "  const gate = SEVERITIES.some((s) => failOn.has(s) && bloquants[s] > 0) ? 'fail' : 'pass';"),
     ("artefact", "366 · le numéro libre redevient aveugle aux points clos sans titre",
      "  const annonces = [...backlog.matchAll(/Prochain numéro libre\\s*:\\s*(\\d+)/g)]\n"
      "    .map((m) => Number(m[1]) - 1);\n"
@@ -1441,8 +1434,8 @@ MUTATIONS = [
     # 374 — le verdict des acquittements périmés retourne dans un producteur,
     # qui ne voit que la moitié des findings et accuse donc ceux de son voisin.
     ("report", "374 · les acquittements périmés se jugent sur une MOITIÉ",
-     "  const { perimes } = acquitter(findings, config);",
-     "  const { perimes } = acquitter(findings.filter((f) => String(f.id ?? '').startsWith('QAM-SEC')), config);"),
+     '  const { perimes, malFormees } = acquitter(findings, config);',
+     '  const { perimes, malFormees } = acquitter(findings, {});'),
     # 375 — le flow mort redevient éligible au pire temps de démarrage.
     ("run", "375 · un flow MORT peut redevenir le pire temps de démarrage",
      "  const vivantes = samples.filter((s) => String(s.status ?? '').toUpperCase() !== 'FAILED');",
@@ -1476,8 +1469,8 @@ MUTATIONS = [
     # 373 bis — le contrôleur des compteurs redevient aveugle aux points OUVERTS,
     # c'est-à-dire qu'il retrouve exactement l'angle mort qu'on vient de fermer.
     ("artefact", "373 bis · les points ouverts cessent d'être retirés du compte",
-     "  const closSelonLeBacklog = depot.numeroLibre - (depot.pointsOuverts ?? 0);",
-     "  const closSelonLeBacklog = depot.numeroLibre;"),
+     '  const closSelonLeBacklog = depot.numeroLibre - enAvance;',
+     '  const closSelonLeBacklog = depot.numeroLibre;'),
     # 373 ter — la BORNE du marqueur saute : une ouverture racontée en cours de
     # phrase serait comptée comme une ouverture, et le contrôle deviendrait
     # tolérant sans que personne l'ait décidé.
@@ -1634,8 +1627,8 @@ MUTATIONS = [
     # 422 — le contrôle ne regarde plus que l'une des deux plateformes : la
     # parité tombe, et le défaut ne se montre jamais sur les deux à la fois.
     ("config", "422 · le contrôle du flavor perd une plateforme",
-     "for (const [plateforme, chemin] of [['ios', config.build?.ios], ['android', config.build?.android]]) {",
-     "for (const [plateforme, chemin] of [['ios', config.build?.ios]]) {"),
+     "    const declarees = [['ios', config.build?.ios], ['android', config.build?.android]]",
+     "    const declarees = [['ios', config.build?.ios]]"),
     # 423 — les deux moitiés repartagent une variable : la cible reste rouge,
     # mais plus rien ne peut dire LAQUELLE a échoué, et la dernière ligne
     # affichée redevient celle de la moitié qui passe.
