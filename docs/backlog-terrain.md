@@ -5096,6 +5096,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+✅ **493 FERMÉ le 14/09/2026 — le job de CI qu'on avait écrit, gardé, muté, et
+jamais fait TOURNER.** Trois défauts, dont un contexte supposé sur lequel un
+garde avait été écrit, et une mutation qui cessait de prouver quand le cardinal
+divisait juste. Aucun n'était visible autrement qu'en l'exécutant.
+
 ✅ **492 FERMÉ le 14/09/2026 — la première passe de mutation dont le verdict
 veuille dire quelque chose.** 436/438 : deux gardes creux, que les passes
 précédentes rapportaient comme « tombés ». Et l'un des deux, en résistant à sa
@@ -9139,3 +9144,52 @@ rend un rouge parasite, soit le 491 revenu par la porte du parallélisme. Un
 **témoin** de résultat connu (37/37 en séquentiel) a voyagé dans chaque lot et
 rendu 37/37 aux deux charges : c'est ce qui autorise à lire les autres tranches.
 Mesuré : 13 min 21 s pour six tranches contre ~42 en séquentiel.
+
+### 493. Le job de CI qu'on avait écrit, gardé, muté — et jamais fait TOURNER
+
+**Fermé le 14/09/2026.** Trois défauts, tous dans le job de matrice du 490, et
+aucun n'était visible autrement qu'en l'exécutant. Il avait pourtant été écrit,
+gardé, muté et relu le matin même.
+
+**1 — Un contexte SUPPOSÉ.** Le nombre de tranches se dérivait de
+`strategy.job-total`, que j'avais présumé sans le mesurer. Il rend **vide** :
+chaque tranche serait partie avec `--shard=3/`, le harnais aurait refusé, et
+personne ne l'aurait su avant la première pull request. ⚠️ Le plus gênant n'est
+pas l'erreur mais qu'**un garde avait été écrit dessus** : correct, fidèle, et
+gardant une chose qui n'existe pas. *Un garde retient une mesure, il n'en fait
+pas une.* Chaque entrée porte désormais `K/N` en entier — apparence de
+redondance, et le garde vérifie la liste **par égalité** contre ce qu'elle
+devrait valoir pour sa propre longueur. Un trou, un doublon et un dénominateur
+qui décroche tombent tous les trois, et cette forme-là s'éprouve ici.
+
+**2 — Un vérificateur absent, rapporté comme un sujet fautif.** Les deux
+workflows se contrôlent avec **PyYAML**, présent sur ce poste et **absent de
+l'image des runners**. L'import lève, le contrôle rend un code non nul, et le
+harnais conclut « la mutation ne parse pas » : il confond *« je n'ai PAS PU
+mesurer »* et *« le sujet est fautif »*, et il condamne cinq mutations sur un
+dépôt sain. Il sait pourtant le faire pour maestro — il avertit au démarrage et
+cesse de vérifier. Il ne l'avait jamais appris pour son autre vérificateur.
+⚠️ Et ne pas vérifier n'est pas gratuit non plus : sans PyYAML, une mutation qui
+casserait vraiment un workflow se lirait comme un garde qui tombe. La CI
+l'installe donc, et cette ligne — du câblage pur, dont la perte ne casse rien de
+visible — porte son garde et sa mutation.
+
+**3 — Une mutation dont le pouvoir de preuve dépendait d'un nombre qui bouge.**
+
+    439 mutations, 10 tranches → reste 9 · la mutation change quelque chose
+    440 mutations, 10 tranches → reste 0 · elle ne change RIEN
+    441 mutations, 10 tranches → reste 1 · elle change quelque chose
+
+Elle retirait le terme de reste de la partition — un défaut réel, mais nul quand
+le cardinal divise exactement par le nombre de tranches. Elle prouvait donc le
+garde à 439 et plus rien à 440, **une fois sur dix**, au gré des ajouts. C'est le
+conteneur qui l'a dit en la rendant VACANT le jour où la 440ᵉ est arrivée :
+aucune relecture ne voit qu'une mutation a cessé de muter selon la parité d'un
+compte. Elle retire maintenant un élément de chaque tranche, ce qui troue la
+partition quel que soit le reste.
+
+📌 **Ce que les trois ont en commun** : le job était *correct à la lecture*. Ce
+qui les a trouvés n'est ni un test, ni un garde, ni une relecture — c'est de
+**l'avoir exécuté**. Un livrable que la CI n'exécute pas dérive en silence ; un
+job de CI que rien n'exécute est le cas dégénéré de cette règle, et il aura fallu
+cinquante minutes de conteneur par tentative pour le voir.
