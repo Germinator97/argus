@@ -14061,3 +14061,61 @@ test('le contrôle des motifs est joué sur le dépôt COMMITÉ, pas sur l\'arbr
     + 'sur le seul code de retour de la suite, il rendra alors TOMBE pour TOUTE mutation — y '
     + 'compris celles dont le garde est vacant. C\'est un instrument qui approuve tout (491)');
 });
+
+// ── 492 ────────────────────────────────────────────────────────────────────
+// Deux gabarits du §2b avaient perdu une fence — l'un son ouverture, l'autre sa
+// fermeture. En CommonMark une fence de fermeture ne porte PAS d'info-string,
+// donc un ```bash rencontré en chemin ne referme rien : le bloc court jusqu'à la
+// prochaine fence nue, et la prose entre les deux est rendue comme du code,
+// astérisques de gras compris. Soixante-neuf lignes dans un cas, quarante-huit
+// dans l'autre.
+//
+// Rien ne pouvait le voir : le fichier est un Markdown valide, il rend
+// simplement autre chose que ce qu'il dit. C'est un livrable que personne
+// n'avait affiché — et il a fallu qu'un garde sans rapport bute dessus.
+//
+// ⚠️ Le garde porte sur TOUS les documents livrés, pas sur celui où on l'a
+// trouvé : le défaut est une façon d'écrire, pas un endroit.
+test('aucun document livré ne laisse un bloc de code mal fermé (492)', () => {
+  const docs = execFileSync('find', ['plugins', '-name', '*.md'], { cwd: RACINE, encoding: 'utf8' })
+    .split('\n').filter(Boolean).sort();
+
+  // ⚠️ Prouver que le balayage a VU quelque chose avant de dire qu'il n'a rien
+  // vu : un `find` qui rend zéro fichier rendrait aussi zéro anomalie.
+  assert.ok(docs.length >= 10,
+    `${docs.length} document(s) markdown trouvé(s) sous plugins/ — le balayage ne mesure plus `
+    + 'ce qu\'il croit : si l\'arborescence a bougé, mets ce chemin à jour');
+
+  const anomalies = [];
+  let fencesVues = 0;
+  for (const doc of docs) {
+    const lignes = readFileSync(join(RACINE, doc), 'utf8').split('\n');
+    /** @type {{n:number, info:string}|null} */
+    let ouvert = null;
+    lignes.forEach((l, i) => {
+      const m = /^\s*```(.*)$/.exec(l);
+      if (!m) return;
+      fencesVues += 1;
+      const info = m[1].trim();
+      if (ouvert === null) { ouvert = { n: i + 1, info }; return; }
+      // Seule une fence NUE ferme. Une fence à info-string rencontrée pendant
+      // qu'un bloc est ouvert est donc le tell : quelqu'un a cru fermer.
+      if (info === '') ouvert = null;
+      else {
+        anomalies.push(`${doc}:${ouvert.n} — bloc ouvert, et \`\`\`${info} ligne ${i + 1} ne le ferme pas`);
+        ouvert = null;
+      }
+    });
+    if (ouvert !== null) anomalies.push(`${doc}:${ouvert.n} — bloc de code JAMAIS fermé`);
+  }
+
+  // Contre-épreuve : le balayage sait-il seulement lire une fence ?
+  assert.ok(fencesVues > 50,
+    `${fencesVues} fence(s) lue(s) dans ${docs.length} documents — le motif ne reconnaît plus un `
+    + 'bloc de code, donc son « aucune anomalie » ne vaut rien');
+
+  // Total et négatif : zéro anomalie, où que ce soit — jamais une liste de cas.
+  assert.deepEqual(anomalies, [],
+    'des documents livrés rendent de la prose comme du code, ou laissent un bloc ouvert :\n  '
+    + anomalies.join('\n  '));
+});

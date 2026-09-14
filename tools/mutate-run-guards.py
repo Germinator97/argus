@@ -2111,6 +2111,14 @@ MUTATIONS = [
     # Le harnais l'exige unique, donc il l'aurait rendue INERTE, c'est-à-dire
     # une mutation qui ne prouve rien. Un vrai saut de ligne ne peut pas se
     # trouver dans cette déclaration-ci, où il s'écrit échappé.
+    # ── 492 · les fences des documents livrés ──────────────────────────────
+    # ⚠️ Elle reproduit le défaut EXACT qui a été trouvé : une fence de fermeture
+    # à qui on donne une info-string. Elle a l'air d'une fermeture, elle n'en est
+    # pas une en CommonMark, et le bloc court alors jusqu'à la suivante en
+    # avalant la prose. Le fichier reste un Markdown parfaitement valide.
+    ("skill", "492 · une fence de fermeture se met à porter un langage",
+     "  Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)\n```\n",
+     "  Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)\n```text\n"),
     ("mutateur", "490 · la partition laisse un trou que le workflow ne montre pas",
      "    debut = (k - 1) * base + min(k - 1, reste)\n    taille = base + (1 if k <= reste else 0)",
      "    debut = (k - 1) * base\n    taille = base + (1 if k <= reste else 0)"),
