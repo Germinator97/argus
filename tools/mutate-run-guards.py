@@ -155,14 +155,11 @@ NB_TESTS = None
 # ⚠️ Une mutation qui suit un REFACTOR change de sujet sans prévenir : elle peut
 # rester verte en tombant sur un AUTRE garde que le sien, ce qui se lit comme un
 # succès. Le motif inerte, lui, se voit ici.
-MOTIFS_INERTES_CONNUS = {
-    "373 quater · la tête du backlog n'annonce plus ses points ouverts",
-    '388 bis · le lien avec le trousseau disparaît',
-    "388 · le geste de l'invite n'est plus conditionnel",
-    'le compteur de flows reperd un fichier',
-    'le dernier point du backlog devient le premier',
-    'le journal reprend son propre calcul du titre',
-}
+MOTIFS_INERTES_CONNUS = set()  # ⚠️ VIDE, et c'est un ÉTAT, pas une absence de
+# contrôle : les 25 mutations que ce relevé portait ont été ré-ancrées le
+# 14/09/2026 sur ce que le code fait maintenant, chacune vérifiée en la voyant
+# tomber sur SON garde. `set()` et non `{}`, qui serait un dict vide — la
+# différence est muette jusqu'au premier `in`.
 
 MUTATIONS = [
     ("run", "l'AVD absent retombe sur un autre émulateur",
@@ -802,8 +799,8 @@ MUTATIONS = [
     # au journal que plus rien ne tenait. Seul le garde qui LANCE report.mjs la
     # voit — garde qui lit du texte < garde qui appelle < exécution.
     ("report", "le journal reprend son propre calcul du titre",
-     "log(`  titre « ${titre} »",
-     "log(`  titre « ${config.artifact.title || 'Rapport Argus Mobile'} »"),
+     '    const titre = titrePublie(config, context.run);',
+     "    const titre = config.artifact.title || 'Rapport Argus Mobile';"),
     ("report", "le titre publié ignore la forme par plateforme",
      "  const ident = artifactFor(config ?? {}, String(run?.platform ?? ''));\n  return ident.title ||",
      "  return config?.artifact?.title ||"),
@@ -915,8 +912,8 @@ MUTATIONS = [
      "    for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);",
      "    err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);"),
     ("skill", "le compteur de flows reperd un fichier",
-     "les parcours métier — huit fichiers",
-     "les parcours métier — sept fichiers"),
+     'les parcours métier — neuf fichiers',
+     'les parcours métier — huit fichiers'),
     # ── La vague iOS (283-295) ───────────────────────────────────────────
     ("skill", "la consigne de demander reperd son repli",
      "- **Personne ne répond** (agent non interactif, run en aveugle) → **instrumente,",
@@ -1074,8 +1071,8 @@ MUTATIONS = [
      "  const parLesCommits = numerosClos.length > 0 ? Math.max(...numerosClos) + 1 : null;",
      "  const parLesCommits = parLeBacklog;"),
     ("artefact", "le dernier point du backlog devient le premier",
-     "aucun titre de point trouv\u00e9 dans le backlog');\n  return Math.max(...numeros);",
-     "aucun titre de point trouv\u00e9 dans le backlog');\n  return numeros[0];"),
+     '  return Math.max(...tous);',
+     '  return tous[0];'),
     ("artefact", "un compteur ancre n'est plus compare",
      "        if (valeur !== attendu) {",
      "        if (valeur !== attendu && false) {"),
@@ -1351,13 +1348,13 @@ MUTATIONS = [
      "# Rien de particulier à signaler sur les permissions."),
     # 388 — le geste de l'invite système perd sa forme conditionnelle : un tap
     # inconditionnel échoue dès le second run, l'alerte n'apparaissant qu'une fois.
-    ("goto", "388 · le geste de l'invite n'est plus conditionnel",
-     "#       optional: true                          # sauté si l'alerte n'est pas là",
-     "#                                               # (toujours joué)"),
+    ('dismiss', "388 · le geste de l'invite n'est plus conditionnel",
+     '    optional: true',
+     '    optional: false'),
     # 388 bis — la moitié que le 382 avait manquée : fermer l'alerte ne suffit pas.
-    ("goto", "388 bis · le lien avec le trousseau disparaît",
-     "# ⚠️ ET FERMER L'ALERTE NE SUFFIT PAS SEUL. Sur iOS le TROUSSEAU survit lui aussi",
-     "# ⚠️ Et voilà, c'est tout ce qu'il y a à savoir sur cette alerte."),
+    ('launchclean', "388 bis · le lien avec le trousseau disparaît",
+     '    clearKeychain: true',
+     '    clearKeychain: false'),
     # 389 — le message du runner retombe à trois causes pendant que le SKILL en
     # annonce quatre : c'est l'ACCORD des trois sources que le garde dérive.
     ("run", "389 · le runner reperd la cause de l'écran couvert",
@@ -1447,8 +1444,8 @@ MUTATIONS = [
     # 373 quater — la tête du backlog cesse d'annoncer ses points ouverts, et
     # laisse donc la phrase de vacuité de la passe du matin décrire le présent.
     ("backlog", "373 quater · la tête du backlog n'annonce plus ses points ouverts",
-     "🔴 **1 POINT OUVERT : le 373.**",
-     "📌 Rien de particulier à signaler ici."),
+     '## Ce qui reste\n',
+     '## Ce qui reste\n\n🔴 **3 POINTS OUVERTS.**\n'),
     ("methodoweb", "373 · le web cesse d'énoncer ses conditions d'écriture",
      "**ENV=staging** — écritures autorisées SI :",
      "**ENV=staging** — écritures autorisées sous conditions."),
