@@ -5101,6 +5101,12 @@ VOISINS*. Ce n'est pas un constat de terrain mais ce que trois paires
 consécutives ont établi — `477 → 480` puis `481 → 485`, deux fois le même motif,
 un remède juste dont le voisin portait la même faute sous une autre forme.
 
+✅ **485 à 487 FERMÉS le 14/09/2026 — backlog vidé une 96e fois**, sur la paire
+78-79. Le 485 rendait la fraîcheur des dépendances muette sur tout projet dont le
+PATH porte une autre version que le pubspec ; le 486 faisait attendre 11 s par
+passe pour un geste que la plateforme ne peut pas exécuter. Les deux correctifs
+portent leur garde **et** leurs mutations dans le même commit.
+
 ✅ **485 à 488 INSCRITS le 14/09/2026, sur la paire 78-79** — deux constats neufs
 (485, 486), tous deux rendus par le **run 78** ; **quatre démentis** groupés en
 487, tous du run 79 et tous du même motif : *le skill avait déjà répondu, et
@@ -8808,7 +8814,8 @@ pour que ce `reason` s'affiche au lieu de l'erreur brute. Rien à ajouter.
 
 ### 485. Le préfixe FVM manque là où le runner est CHOISI, pas composé
 
-**Rapporté par le run 78**, reproduit avant inscription. `sca.mjs:163` :
+**Fermé le 14/09/2026**, rapporté par le run 78 et reproduit avant inscription.
+`sca.mjs:163` portait :
 
     const runner = detectTools(['flutter']).flutter.present ? 'flutter' : 'dart';
 
@@ -8838,7 +8845,8 @@ postes, où `flutter` du PATH *est* celui de FVM. Il fallait deux terrains
 
 ### 486. Un pas dont la condition est INATTEIGNABLE sur une plateforme attend sa borne à chaque flow
 
-**Rapporté par le run 78.** `disable-animations.yaml` ne contient qu'un pas :
+**Fermé le 14/09/2026**, rapporté par le run 78. `disable-animations.yaml` ne
+contenait qu'un pas :
 
     - assertTrue:
         condition: "${typeof ARGUS_ANIMATIONS_DISABLED !== 'undefined' && …=== 'true'}"
