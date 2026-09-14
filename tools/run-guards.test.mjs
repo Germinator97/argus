@@ -13776,10 +13776,22 @@ test('le CÂBLAGE dérive la décision, et le flow porte la condition (486)', ()
     `le runner n'injecte ARGUS_ANIMATIONS_APPLICABLE qu'à ${injections.length} endroit(s) hors `
     + 'commentaires : il en faut le défaut ET les sites qui portent la vraie valeur, sinon la passe '
     + 'visuelle retombe sur le repli sans que rien ne le dise (486)');
+  // ⚠️ TOUS LES SITES, pas « au moins un ». Écrit `>= 1`, ce garde acceptait une
+  // ALTERNATIVE : muter un seul des deux sites le laissait vert grâce à l'autre,
+  // et aucune mutation d'un seul côté ne pouvait donc le faire tomber. Trouvé par
+  // la mutation, qui a rendu VACANT sur un garde qui avait l'air bon.
+  // Le critère est DÉRIVÉ : un seul littéral est légitime — le repli de buildEnv,
+  // qui vaut 'true' pour garder le comportement d'avant. Tous les autres sites
+  // portent la vraie valeur, donc l'expression qui la calcule.
   const derivees = injections.filter((l) => /animationsApplicables\(/.test(l));
-  assert.ok(derivees.length >= 1,
-    'aucun site n\'injecte la valeur DÉRIVÉE : elle serait figée, et le garde ci-dessus '
-    + 'mesurerait une décision que personne n\'exerce (486)');
+  const litteraux = injections.filter((l) => !/animationsApplicables\(/.test(l));
+  assert.equal(litteraux.length, 1,
+    `${litteraux.length} site(s) injectent un LITTÉRAL au lieu de la valeur dérivée, alors qu'un `
+    + 'seul est légitime (le repli de buildEnv). Un site figé rend la décision inerte là où il '
+    + `vit, sans que rien ne le dise :\n  ${litteraux.map((l) => l.trim()).join('\n  ')}`);
+  assert.equal(derivees.length, injections.length - 1,
+    `${derivees.length} site(s) dérivent la valeur sur ${injections.length - 1} attendus — `
+    + 'tout site qui n\'est pas le repli doit appeler animationsApplicables (486)');
 
   const flow = readFileSync(join(FLOWS_DIR, '_subflows', 'disable-animations.yaml'), 'utf8');
   const utile = flow.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
