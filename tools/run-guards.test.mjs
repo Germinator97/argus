@@ -919,7 +919,20 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
   // le portait encore. C'est la mutation qui l'a dit, pas la relecture — la
   // deuxième fois qu'un garde trop littéral passe à côté de son sujet.
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
-  const comptages = skill.split('\n').filter((l) => /grep -c .*harness\.dart|harness\.dart.*grep -c/.test(l));
+  const estUnComptage = (/** @type {string} */ l) => /grep -c .*harness\.dart|harness\.dart.*grep -c/.test(l);
+  const comptages = skill.split('\n').filter(estUnComptage);
+  // ⚠️ Un bloc CLÔTURÉ par ``` est ce que le lecteur copie ; un bloc simplement
+  // indenté illustre. Le §2b porte les deux, avec la MÊME commande — d'où ce
+  // second corpus, sans lequel l'exemple excuse le retrait de la prescription.
+  const blocsExecutables = (() => {
+    const gardees = [];
+    let dedans = false;
+    for (const l of skill.split('\n')) {
+      if (/^\s*```/.test(l)) { dedans = !dedans; continue; }
+      if (dedans) gardees.push(l);
+    }
+    return gardees;
+  })();
   assert.ok(comptages.length >= 2,
     `${comptages.length} commande(s) de comptage sur harness.dart dans le SKILL — si le bloc a été `
     + 'réécrit, mets ce motif à jour ; sinon ce garde ne garde plus rien');
@@ -946,8 +959,21 @@ test('le comptage prescrit rend zéro sur le harnais livré — et le naïf, non
 
   // ⚠️ ET LA CONTRE-ÉPREUVE DOIT EXISTER : sans elle, « ces compteurs rendent 0 »
   // ne distingue pas un filtre qui marche d'un instrument mort.
-  assert.ok(comptages.some((l) => !l.includes('grep -v') && declareSonAttendu(l)),
-    'le §2b ne prescrit plus aucune contre-épreuve : son « doit rendre 0 » redevient '
+  // ⚠️ ET DANS LE BLOC QU'ON EXÉCUTE, pas n'importe où dans la page. Le skill
+  // écrit cette commande DEUX FOIS : une fois comme PRESCRIPTION, dans un bloc
+  // clôturé que le lecteur copie, et une fois plus bas comme EXEMPLE indenté,
+  // qui montre justement un couple ne prouvant rien. Les deux ont la même forme,
+  // donc chercher « au moins une, quelque part » laissait l'exemple excuser le
+  // retrait de la prescription : le garde restait vert sur un §2b qui ne
+  // prescrivait plus rien. Dit par la mutation — la TROISIÈME fois que ce
+  // garde-ci passe à côté de son sujet en étant trop littéral.
+  const prescrits = blocsExecutables.filter(estUnComptage);
+  assert.ok(prescrits.length >= 2,
+    `${prescrits.length} comptage(s) sur harness.dart dans les blocs EXÉCUTABLES — il en faut `
+    + 'deux : le comptage filtré et sa contre-épreuve. Si le bloc a été réécrit, mets ce motif '
+    + 'à jour ; sinon la prescription elle-même a disparu');
+  assert.ok(prescrits.some((l) => !l.includes('grep -v') && declareSonAttendu(l)),
+    'le §2b ne PRESCRIT plus aucune contre-épreuve : son « doit rendre 0 » redevient '
     + 'indistinguable d\'un grep cassé, d\'un chemin faux ou d\'un filtre trop large');
 });
 
@@ -10141,8 +10167,21 @@ test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
   // ⚠️ Et le marqueur est BORNÉ : un récit qui parle d'une ouverture n'en est
   // pas une. Sans cette borne, toute prose citant une date d'ouverture décalerait
   // le compte — et le contrôle deviendrait tolérant sans que personne le décide.
-  assert.equal(pointsOuvertsDu('on se souvient qu\'il fut **Ouvert le 01/01/2026** ce jour-là.\n'), 0,
+  // ⚠️ LE CAS DOIT PORTER UN TITRE, et c'est tout ce qui le rend mesurable. Sans
+  // un `### N.` AVANT la mention, la fonction rend 0 parce qu'aucun point ne la
+  // précède — jamais parce que la borne l'a écartée : elle mappe sur `null` et
+  // filtre. Le garde était donc vert avec OU SANS l'ancre `^`, c'est-à-dire qu'il
+  // mesurait l'absence de titre en croyant mesurer la borne. Dit par la mutation
+  // (373 ter), pas par la relecture — le commentaire ci-dessus était juste et le
+  // montage ne l'exerçait pas.
+  const recit = '### 7. Un point\n\non se souvient qu\'il fut **Ouvert le 01/01/2026** ce jour-là.\n';
+  assert.equal(pointsOuvertsDu(recit), 0,
     'une mention en cours de ligne est comptée comme une ouverture');
+  // Et l'autre moitié : sans elle, on ne saurait pas si ce montage sait compter
+  // quoi que ce soit — un zéro rendu par un instrument mort a la même tête.
+  assert.equal(pointsOuvertsDu('### 7. Un point\n\n**Ouvert le 01/01/2026.** vraiment ouvert.\n'), 1,
+    'un marqueur en DÉBUT de ligne, après un titre, doit compter — sans ce jumeau, '
+    + 'le cas ci-dessus ne prouve rien');
 });
 
 test('un backlog qui porte des points OUVERTS ne peut pas s\'annoncer vide (373)', () => {
