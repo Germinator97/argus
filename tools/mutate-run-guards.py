@@ -156,24 +156,12 @@ NB_TESTS = None
 # rester verte en tombant sur un AUTRE garde que le sien, ce qui se lit comme un
 # succès. Le motif inerte, lui, se voit ici.
 MOTIFS_INERTES_CONNUS = {
-    '226 · le motif reperd les paramètres nommés',
-    "371 bis · un acquittement périmé n'est plus signalé",
     "373 quater · la tête du backlog n'annonce plus ses points ouverts",
     '388 bis · le lien avec le trousseau disparaît',
     "388 · le geste de l'invite n'est plus conditionnel",
-    "416 · le journal réaffirme l'icône du gabarit",
-    "argus-anchors cesse d'appeler le croisement posé → déclaré",
-    "l'icône de la page n'est plus lue, la mention RESTE",
-    "l'indice renomme le levier que la doc interdit de toucher",
-    "la commande d'itération cite un drapeau inexistant",
-    'la commande de comptage reperd son filtre de commentaires',
-    'le SKILL cesse de décrire le titre par défaut que le code produit',
-    'le SKILL réaffirme un diagnostic unique',
     'le compteur de flows reperd un fichier',
     'le dernier point du backlog devient le premier',
     'le journal reprend son propre calcul du titre',
-    'le titre cesse de se lire avant une republication',
-    'un projet ne peut plus déclarer ses propres fichiers',
 }
 
 MUTATIONS = [
@@ -320,8 +308,8 @@ MUTATIONS = [
     # donc HARNAIS et non VACANT. Troisième fois de la journée que la
     # distinction évite de chercher un garde manquant qui existe.
     ("run", "l'indice renomme le levier que la doc interdit de toucher",
-     "    + ` thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`",
-     "    + ` thresholds.coldStartMs (plafond effectif ${plafond} ms), dérivé du`"),
+     '    + ` relève thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`',
+     '    + ` relève thresholds.coldStartMs (plafond effectif ${plafond} ms), dérivé du`'),
     ("report", "la couverture reperd son compte visuel",
      "    + ` \u00b7 compar\u00e9s visuellement : ${esc(visuels)}`\n",
      ""),
@@ -361,10 +349,8 @@ MUTATIONS = [
     # cf. 310). Le harnais a rendu « motif trouvé 2× », pas « VACANT » : c'est
     # cette distinction qui évite d'aller chercher un garde qui existe.
     ("skill", "la commande de comptage reperd son filtre de commentaires",
-     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\n"
-     "grep -v '^\\s*///' test/argus/harness.dart | grep -c 'ArgusScreen('",
-     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\n"
-     "grep -c 'ArgusScreen(' test/argus/harness.dart"),
+     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\ngrep -v '^\\s*//' test/argus/harness.dart | grep -c 'ArgusScreen('",
+     "# Écrans et ancres DÉCLARÉS, sans l'exemple en dartdoc\ngrep -c 'ArgusScreen(' test/argus/harness.dart"),
     # ── Vingt-deuxième run ──────────────────────────────────────────────────
     # Le plafond d'attente. Deux mutations sur la MÊME ligne, parce que deux
     # défauts distincts y vivent : ne pas borner du tout, et borner avec un
@@ -489,8 +475,8 @@ MUTATIONS = [
     # `identitePubliee`, et son `|| '👁'` a disparu avec elle. L'intention ne
     # change pas — la valeur DÉCLARÉE n'est plus lue, la mention reste.
     ("report", "l'icône de la page n'est plus lue, la mention RESTE",
-     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim();",
-     "  const icone = '';"),
+     '    for (const ligne of identitePubliee(ident.icon, titre, ident.url)) log(`  ${ligne}`);',
+     "    for (const ligne of identitePubliee('👁', titre, ident.url)) log(`  ${ligne}`);"),
     # ── Vingt-sixième run ───────────────────────────────────────────────────
     # ⚠️ Les trois premières visent la VALEUR RENDUE, jamais la ligne d'appel :
     # les gardes correspondants BÂTISSENT le finding et regardent dedans, donc
@@ -685,8 +671,8 @@ MUTATIONS = [
      "  const src = dartSansCommentaires(brut);\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;",
      "  const src = dartSansCommentaires(brut).split('\\n')[0];\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;"),
     ("config", "226 · le motif reperd les paramètres nommés",
-     "['[a-zA-Z]*[Ii]dentifier', ...sur]",
-     "['identifier', ...sur]"),
+     "const CONVENTION_IDENTIFIANT = '[a-zA-Z]*[Ii]dentifier';",
+     "const CONVENTION_IDENTIFIANT = 'identifier';"),
     ("config", "227 · le balayage cesse de voir les commentaires",
      "    if (c === '/' && d === '/') { while (i < n && src[i] !== '\\n') i += 1; continue; }",
      "    if (false) { while (i < n && src[i] !== '\\n') i += 1; continue; }"),
@@ -727,12 +713,12 @@ MUTATIONS = [
      "  const src = dartSansCommentaires(brut);\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;",
      "  const src = brut;\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;"),
     ("makefile", "argus-anchors cesse d'appeler le croisement posé → déclaré",
-     "\tnode scripts/argus/config.mjs --check-anchors || rc=$$?; \\",
-     "\ttrue; \\"),
+     '\tnode scripts/argus/config.mjs --check-anchors || croise=$$?; \\',
+     '\ttrue || croise=$$?; \\'),
     # 220 : la commande prescrite doit citer des drapeaux qui EXISTENT.
     ("skill", "la commande d'itération cite un drapeau inexistant",
-     "node scripts/argus/run.mjs --tags=journey --no-install",
-     "node scripts/argus/run.mjs --flow=journey --no-install"),
+     'node scripts/argus/run.mjs --tags=visual --no-install',
+     'node scripts/argus/run.mjs --tags=visual --no-cache'),
     # 221-224 : quatre promesses de doc, chacune gardée.
     ("goto", "goto reperd le cas de l'écran qu'aucune branche n'atteint",
      "# ⚠️ ET CERTAINS ÉCRANS N'ADMETTENT PAS DE BRANCHE",
@@ -741,8 +727,8 @@ MUTATIONS = [
      "⚠️ **CHERCHE AUSSI UNE DURÉE DE SPLASH IMPOSÉE, dans `main()` ou le premier",
      "⚠️ **Note sans objet, dans `main()` ou le premier"),
     ("skill", "le titre cesse de se lire avant une republication",
-     "   ⚠️ **ET SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD.** Le",
-     "   ⚠️ **Note sans objet.** Le"),
+     "   🔴 **SUR UNE PAGE QUI EXISTE DÉJÀ, LIS SON TITRE ACTUEL D'ABORD — ET SON",
+     '   🔴 **Note sans objet — ET SON'),
     # ⚠️ Motif réécrit par le 262, qui a mis la case au PLURIEL : le §2c prescrit
     # deux noms de paramètre distincts, et la case n'en tenait qu'un. Le harnais
     # l'a dit lui-même — « motif trouvé 0× », verdict HARNAIS et non VACANT.
@@ -825,8 +811,8 @@ MUTATIONS = [
      "return ident.title || titreDuRapport(run);",
      "return ident.title || 'Rapport Argus Mobile';"),
     ("skill", "le SKILL cesse de décrire le titre par défaut que le code produit",
-     "ou, s'il est vide, `<nom du projet> — <plateforme> — rapport QA`",
-     "ou un titre par défaut"),
+     '   `<nom du projet> — <plateforme> — rapport QA` (`app.name`, et son identifiant',
+     '   un titre par défaut (`app.name`, et son identifiant'),
 
     # ── 254 · le nom du projet, et la plateforme qui ne se répète plus ────────
     ("report", "le titre reperd le nom du projet au profit de l'identifiant",
@@ -868,8 +854,8 @@ MUTATIONS = [
      "⚠️ **Sur Android, dérive-le de `firstLaunchMs`**",
      "Dérive-le du maximum que tu as observé"),
     ("skill", "le SKILL réaffirme un diagnostic unique",
-     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a\nTROIS causes",
-     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, ce\nn'est pas l'instrumentation, c'est le plafond d'attente. Il y a TROIS causes"),
+     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, il y a\nQUATRE causes, et la plus chère n'est pas celle qu'on cherche.** Le runner les",
+     "⚠️ **Devant un `Assertion is false: id: <ancre de départ> is visible`, la cause\nest unique, et c'est l'instrumentation.** Le runner les"),
     ("installeur", "le compteur de TODO recompte ceux qui sont SANS OBJET",
      "grep 'TODO(argus):' | grep -cvE 'TODO\\(argus\\): *(SANS OBJET|FAIT|TRAITÉ)'",
      "grep -c 'TODO(argus):'"),
@@ -970,8 +956,8 @@ MUTATIONS = [
     # Et celle-ci coupe l'extensibilité — la moitié qui répond à « et les autres
     # fichiers de config ? ».
     ("config", "un projet ne peut plus déclarer ses propres fichiers",
-     "  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])];",
-     "  const regles = [...CONFIG_FILES];"),
+     '  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])]',
+     '  const regles = [...CONFIG_FILES]'),
     # Le câblage vers le rapport.
     ("sec", "les findings de configuration n'atteignent plus le rapport",
      "...auditSecrets(root, config), ...auditConfigFiles(root, config)]",
@@ -1244,8 +1230,8 @@ MUTATIONS = [
      "      status: why === '' ? 'open' : 'acknowledged',",
      "      status: 'acknowledged',"),
     ("config", "371 bis · un acquittement périmé n'est plus signalé",
-     "  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)) };",
-     "  return { findings: sortie, perimes: [] };"),
+     '  return { findings: sortie, perimes: [...table.keys()].filter((id) => !vus.has(id)), malFormees };',
+     '  return { findings: sortie, perimes: [], malFormees };'),
     ("config", "372 · le contrôle de config rejuge hors de sa plateforme",
      "  const regles = [...CONFIG_FILES, ...(config?.configFiles ?? [])]\n"
      "    .filter((r) => !r.plateforme || plateformes.includes(String(r.plateforme)));",
@@ -1565,8 +1551,8 @@ MUTATIONS = [
     # déclaré : la valeur plausible revient, et avec elle la page qui change
     # d'identité.
     ("report", "416 · le journal réaffirme l'icône du gabarit",
-     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim();",
-     "  const icone = String((config?.artifact ?? {}).icon ?? '').trim() || '👁';"),
+     "  icone = String(icone ?? '').trim();",
+     "  icone = String(icone ?? '').trim() || '👁';"),
     # 417 — le chemin du .app redevient un segment nu : le lecteur ne peut plus
     # savoir s'il remplace `iphonesimulator/` ou s'y ajoute, et c'est la lecture
     # qu'un run a suivie jusqu'à « AUCUN PAQUET ici ».

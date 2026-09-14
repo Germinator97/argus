@@ -13873,3 +13873,35 @@ test('...et ce balayage sait dire NON (488)', () => {
     + `passage par fvm (5), il a rendu [${vus}] — s'il ne sait pas dire non, son zéro sur `
     + 'les fichiers livrés ne vaut rien (488)');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 416 bis — Le CÂBLAGE de l'identité publiée, que rien ne tenait.
+//
+// `identitePubliee` est gardée sur trois cas, et elle est juste. Mais son SITE
+// D'APPEL pouvait être rebranché sur un littéral — `identitePubliee('👁', …)` —
+// et la suite ENTIÈRE restait verte : le journal se remettait à annoncer une
+// icône que personne n'a déclarée, ce que le 416 avait précisément fermé.
+// Mesuré en mutant le câblage : fail=0 sur 496 gardes.
+//
+// C'est le troisième barreau : garde qui lit du TEXTE < garde qui APPELLE et
+// lit ce qui revient < garde qui tient le CÂBLAGE. Deux sur trois étaient là,
+// et c'est le manquant qui laissait le défaut revenir.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le site d\'appel LIT l\'identité résolue, jamais un littéral (416 bis)', () => {
+  const src = readFileSync(join(SCRIPTS_DIR, 'report.mjs'), 'utf8');
+  // ⚠️ DÉPOUILLÉ : le dartdoc de la fonction NOMME `artifact.icon` et le
+  // pictogramme du gabarit — sans ce filtre il satisferait le motif à lui seul.
+  const code = src.split('\n')
+    .filter((l) => { const s = l.trimStart(); return !s.startsWith('//') && !s.startsWith('*') && !s.startsWith('/*'); })
+    .join('\n');
+  const appel = code.split('\n').find((l) => l.includes('identitePubliee(') && !l.includes('export function'));
+  assert.ok(appel, 'aucun SITE D\'APPEL de identitePubliee hors commentaires : la fonction a été '
+    + 'débranchée ou renommée — mets ce motif à jour (416 bis)');
+  assert.match(appel, /identitePubliee\(\s*ident\.icon\s*,/,
+    `le site d'appel ne passe pas l'icône RÉSOLUE mais « ${appel.trim()} » : un littéral y ferait `
+    + 'annoncer un pictogramme que le projet n\'a jamais déclaré, et les gardes de la fonction '
+    + 'resteraient tous verts — c\'est exactement le 416, revenu par le câblage');
+  assert.doesNotMatch(appel, /identitePubliee\(\s*['"`]/,
+    'le site d\'appel passe un LITTÉRAL comme icône : la valeur est figée, la décision inerte (416 bis)');
+});
