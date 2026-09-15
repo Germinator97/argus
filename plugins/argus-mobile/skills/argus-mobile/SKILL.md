@@ -1453,6 +1453,19 @@ signale-le avant.
 **b. Copier le scaffold** (idempotent, n'écrase JAMAIS un fichier existant) :
 `bash <SKILL_DIR>/scripts/install-mobile.sh <TARGET_PROJECT_DIR>`
 
+**b bis. Ou poser la commande une fois pour toutes.**
+`bash <SKILL_DIR>/scripts/install-mobile.sh --global` installe `argus-mobile`
+dans le PATH (maison sous `~/.argus-mobile`). Elle relaie ensuite le moteur
+depuis n'importe quel projet installé — `argus-mobile run --tags=smoke`,
+`argus-mobile config` — et c'est la même commande qui pose le scaffold ailleurs.
+⚠️ Le scaffold continue d'être copié **projet par projet**, moteur compris, et
+c'est délibéré : un runner de CI n'a aucune installation globale, donc un projet
+dont le moteur vivrait dans la maison n'aurait plus rien à appeler en
+intégration — et le dev exécuterait une autre version que son intégration.
+Pour retirer : `install-mobile.sh <TARGET> --uninstall` ne reprend que le cadre
+qui porte encore la signature et **énumère ce qu'il garde** ;
+`--uninstall-global` retire la maison et la commande, et rien d'autre.
+
 **c. Paramétrer.** Il n'y a pas UN fichier à éditer, il y en a une dizaine, et
 prétendre le contraire fait chercher ailleurs ce qu'on ne trouve pas. Ils portent
 tous le marqueur `ARGUS:OWNED` et **l'installeur te les liste en sortant**, avec
@@ -2676,7 +2689,9 @@ Matrice complète par environnement : `references/methodology-mobile.md` §3.
 - **`references/report-format-mobile.md`** — le contrat de sortie, entier et
   autonome : `report.json`, preuves, rapport HTML, exit codes. À lire au moment
   de produire un rapport.
-- **`scripts/install-mobile.sh`** — copie idempotente du scaffold dans un projet Flutter.
+- **`scripts/install-mobile.sh`** — copie idempotente du scaffold dans un projet Flutter ;
+  pose aussi la commande globale (`--global`) et sait retirer ce qu'elle a posé
+  (`--uninstall`, `--uninstall-global`), sans jamais toucher à ce qui est au projet.
 - **`assets/scaffold-mobile/`** — le harness réel : flows Maestro, scripts de mesure,
   gardes `flutter_test`, CI. Son `ARGUS-MOBILE.md` documente l'usage côté projet
   (nommé ainsi pour ne pas écraser le README du projet d'accueil).

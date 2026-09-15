@@ -14811,4 +14811,18 @@ test('tout drapeau que l\'installeur accepte est documenté par son aide (498)',
   assert.deepStrictEqual(absents, [],
     'des drapeaux sont acceptés sans être documentés : celui qui lit l\'aide ne saura pas '
     + 'qu\'ils existent, et celui qui les a écrits croira que si (498)');
+
+  // L'AUTRE SENS, et c'est le plus coûteux : le SKILL prescrit un geste, le
+  // lecteur le tape, et l'installeur n'en a jamais entendu parler. Les drapeaux
+  // cités dans le skill sont dérivés de son texte, jamais listés ici.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'),
+    'utf8');
+  const cites = [...new Set([...skill.matchAll(/install-mobile\.sh[^\n`]*?(--[a-z-]+)/g)]
+    .map((m) => m[1]))].filter((f) => f !== '--help');
+  assert.ok(cites.length >= 3,
+    `${cites.length} drapeau(x) cité(s) par le SKILL — le motif ne mesure plus rien`);
+  const inventes = cites.filter((f) => !acceptes.includes(f));
+  assert.deepStrictEqual(inventes, [],
+    'le SKILL prescrit des drapeaux que l\'installeur n\'accepte pas : le lecteur les tapera, '
+    + 'et la commande s\'arrêtera sur un geste que la doc lui a donné (498)');
 });
