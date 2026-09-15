@@ -5096,6 +5096,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **3 POINTS OUVERTS — 502, 503, 504**, rapportés par la paire de runs 80-81 du
+15/09/2026, la première à exercer l'installation GLOBALE sur des projets réels.
+Un remède que le plugin prescrit et que Maestro rejette ; une dimension d'analyse
+qui n'existe que d'un côté des deux plateformes ; et un avertissement écrit deux
+fois qui a échoué quatre fois. Aucun des trois n'était visible autrement qu'en
+jouant un run : ce sont de la PROSE que rien n'exécute, une ABSENCE de mesure, et
+un texte que personne ne lit au moment où il servirait.
+
 ✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
 Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
 le reste passant : le scaffold est compatible, l'écart est stylistique. Style à
@@ -9595,3 +9603,92 @@ dit quoi corriger. Le montage d'abord, le sujet ensuite, l'instrument en dernier
 dans l'export), jamais du relevé figé — qui rendrait le contrôle circulaire — ni
 d'un plancher deviné. C'est le seul critère qui voie aussi une **troncature** de
 l'instrument.
+
+### 502. Le remède que `QAM-START-ABSORBE` prescrit n'existe pas dans Maestro
+
+**Ouvert le 15/09/2026**, rapporté par le run 80 (Android, terrain 1) et
+reproduit avec sa contre-épreuve avant inscription.
+
+Le finding du **479** est juste, sa mesure est juste, et il censure correctement
+les échantillons absorbés au lieu de rendre un budget tenu sur du néant. C'est ce
+qu'il CONSEILLE qui ne tient pas :
+
+> `suggestedFix` : « donne un `timeout:` court au geste optionnel »
+
+    maestro --version                            → 2.8.0
+    check-syntax, tapOn AVEC timeout:            → exit 1
+       Unknown Property: timeout at /syntax-checker:-1:-1
+    check-syntax, LE MÊME flow SANS timeout:     → exit 0, OK
+
+Les deux fichiers ne diffèrent que par cette ligne : l'instrument discrimine, et
+la propriété que le plugin conseille est **rejetée par l'outil qu'il pilote**.
+
+⚠️ **Et l'alternative coûte la même chose.** L'agent a mesuré un garde
+`runFlow: when: visible:` à la place : **7 088 ms** contre 7 190–7 490. Il ne
+reste donc que *retirer* le geste — ce que ce terrain permettait (manifeste à
+**0** `uses-permission`, `lib/` sans `requestPermission`) et qu'un projet à
+permissions ne permettrait pas sans rouvrir le **405**.
+
+🔴 **Aucun garde ne pouvait le voir, et c'est le cœur du point.** Un
+`suggestedFix` est de la PROSE dans un objet de finding : ni le typecheck, ni les
+517 gardes, ni la CI ne l'exécutent. Il est vrai le jour où on l'écrit et faux
+quand l'outil change, sans que rien ne bouge. C'est la classe « promesse de
+comportement technique non couverte par un test », et le remède devra donc porter
+sur le fait que la prescription soit EXERCÉE — un flow d'exemple que
+`check-syntax` valide en CI —, pas sur la reformulation de la phrase.
+
+### 503. L'analyse binaire iOS n'est pas couverte, et un défaut de parité y a vécu
+
+**Ouvert le 15/09/2026**, rapporté par le run 81 (iOS, terrain 2).
+
+    80 chemins `package:<le paquet de l'app>` LISIBLES dans l'AOT iOS release
+    contre-épreuve : 60 sur un motif témoin — l'instrument discrimine
+
+`docs/FLAVORS.md` du terrain porte `--obfuscate --split-debug-info` sur les
+**deux** lignes Android et sur **aucune** ligne iOS. Le défaut appartient au
+projet ; ce qui appartient au plugin, c'est qu'**aucun finding ne pouvait le
+dire** : `sec.mjs` analyse l'APK (chaînes, permissions, manifeste fusionné) et
+n'a pas d'équivalent pour un `.app`. C'est l'agent qui est allé mesurer de
+lui-même, hors harnais.
+
+📌 C'est l'anti-pattern de **parité entre plateformes** au mot près : la bonne
+décision existait dans le projet, écrite et commentée du côté Android, et elle
+n'avait simplement pas traversé. Le harnais reproduit la même asymétrie.
+
+⚠️ **Le remède ne doit pas être un balayage de chaînes de plus.** Ce qui manque
+est une dimension : *ce que la release iOS publie d'elle-même*. La mesure existe
+déjà côté Android et elle a son vocabulaire — à porter, pas à réinventer. Et le
+garde devra prouver qu'il sait VOIR avant de dire qu'il n'a rien vu, sinon un
+`.app` obfusqué et un `.app` que le scanner n'ouvre pas rendront le même zéro.
+
+### 504. Un avertissement écrit DEUX FOIS a échoué QUATRE fois
+
+**Ouvert le 15/09/2026**, rapporté par les runs 80 **et** 81 — deux terrains,
+deux plateformes, deux agents qui ne se connaissent pas.
+
+`evidenceAcknowledged` a reçu un bloc YAML replié dans les deux runs
+(`argus.mobile.yaml:919` au 80, `:1058` au 81), et le parseur a refusé :
+
+    bloc multi-lignes (| ou >) non supporté
+
+Le refus est **délibéré et bien fait** : le parseur est un sous-ensemble YAML
+assumé, il nomme la ligne au lieu de mal interpréter, et toutes les commandes
+s'arrêtent tant que ce n'est pas corrigé. Rien à reprocher au mécanisme.
+
+🔴 **Ce qui est en cause est le remède du 393.** Le fichier livré prévient
+**deux fois** — en tête (« chaînes QUOTÉES repliées … un run l'a rencontrée sur
+`evidenceAcknowledged`, dont le commentaire invite à écrire une phrase ») et à la
+clé elle-même (« une invitation à *écrire une phrase* y a déjà conduit deux
+fois »). Les deux textes sont justes, précis, et placés au bon endroit.
+
+**Quatre occurrences, et le quatrième lecteur n'a pas plus vu l'avertissement que
+le premier.** Le constat n'est donc plus sur le parseur ni sur l'attention du
+lecteur : *une clé qui appelle une phrase, dans un format qui n'accepte qu'une
+ligne, est un écart de CONCEPTION que nul avertissement ne comble.* Deux remèdes
+possibles, et il faut choisir plutôt qu'avertir une troisième fois : le parseur
+accepte `>` pour les clés de prose, ou la clé cesse d'inviter à écrire une phrase
+(un champ court, une énumération, un booléen plus un motif borné).
+
+📌 À rapprocher du **480** — « l'avertissement qui écarte un raccourci ne
+s'adresse qu'à ceux qui ne l'ont pas pris ». Même famille : le texte est lu par
+ceux qui n'en avaient pas besoin.
