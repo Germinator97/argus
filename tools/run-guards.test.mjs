@@ -14120,27 +14120,63 @@ test('le contrôle des motifs est joué sur le dépôt COMMITÉ, pas sur l\'arbr
 // La valeur explicite est celle que le runner rend de toute façon : on n'ajoute
 // aucun comportement, on retire une dépendance à un contexte qu'on ne peut pas
 // exercer. Et elle doit SUIVRE `runs-on` — un runner ARM demanderait `arm64`.
+// ⚠️ IL PORTE SUR TOUTES LES ACTIONS, et c'est une réparation : sa première
+// version n'en lisait qu'UNE — `match` sans `g` rend la première — et comparait
+// son architecture au `runs-on` du job `harness`, écrit en dur, alors que
+// l'action lue appartenait à un AUTRE job. Le jour où le 494 a créé un second
+// job Flutter, la moitié du phénomène a cessé d'être gardée sans qu'une ligne
+// bouge : la mutation qui retire l'architecture du job `harness` est devenue
+// VACANTE, et seule la passe complète l'a dit. Un garde qui porte sur un SITE
+// se périme dès qu'un second site apparaît ; celui-ci porte sur le phénomène,
+// et prouve d'abord qu'il les a toutes vues.
 test('le job Flutter reste JOUABLE, et son architecture suit le runner (493)', () => {
   const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
   const sansCommentaires = ci.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
 
-  // Asserter la présence AVANT la valeur : renommer le job rendrait le reste vacant.
-  const action = sansCommentaires.match(/uses:\s*subosito\/flutter-action@[^\n]*\n([\s\S]*?)(?=\n {6}- |\n {2}\w)/);
-  assert.ok(action, 'le job qui monte Flutter a disparu, ou son action a changé de nom : '
-    + 'ce garde ne mesure plus rien — mets ce motif à jour');
-  assert.match(action[1], /architecture:\s*(x64|arm64)/,
-    'l\'action Flutter ne reçoit pas d\'architecture explicite : son défaut est `runner.arch`, '
-    + 'que les exécuteurs locaux lisent sur la machine HÔTE. Le job devient alors injouable '
-    + 'ailleurs que sur un vrai runner — donc du code que personne n\'exécute avant la première '
-    + 'pull request (493)');
+  /** @type {Record<string, string>} */
+  const jobs = {};
+  let courant = null;
+  for (const l of sansCommentaires.split('\n')) {
+    const m = /^ {2}([a-z][\w-]*):\s*$/.exec(l);
+    if (m) { courant = m[1]; jobs[courant] = ''; continue; }
+    if (courant) jobs[courant] += `${l}\n`;
+  }
 
-  // Et elle suit le runner : une image ARM avec un SDK x64 ne s'installerait pas.
-  const arch = action[1].match(/architecture:\s*(\S+)/)[1];
-  const runsOn = sansCommentaires.match(/harness:[\s\S]*?runs-on:\s*(\S+)/)[1];
-  const attendu = /arm/i.test(runsOn) ? 'arm64' : 'x64';
-  assert.equal(arch, attendu,
-    `le job tourne sur \`${runsOn}\` et demande un SDK \`${arch}\` : l'architecture doit suivre `
-    + `le runner (\`${attendu}\` ici), sinon le SDK téléchargé ne s'exécute pas`);
+  const MONTE = /uses:\s*subosito\/flutter-action@/g;
+  const total = [...sansCommentaires.matchAll(MONTE)].length;
+  assert.ok(total > 0, 'plus aucun job ne monte Flutter, ou l\'action a changé de nom : '
+    + 'ce garde ne mesure plus rien — mets ce motif à jour');
+
+  let vues = 0;
+  for (const [nom, job] of Object.entries(jobs)) {
+    const actions = [...job.matchAll(
+      /uses:\s*subosito\/flutter-action@[^\n]*\n([\s\S]*?)(?=\n {6}- |\n {4}\w|$)/g)];
+    if (actions.length === 0) continue;
+    const runsOn = (job.match(/runs-on:\s*(\S+)/) ?? [])[1];
+    assert.ok(runsOn, `le job \`${nom}\` monte Flutter sans \`runs-on\` lisible`);
+    const attendu = /arm/i.test(runsOn) ? 'arm64' : 'x64';
+    for (const a of actions) {
+      vues += 1;
+      assert.match(a[1], /architecture:\s*(x64|arm64)/,
+        `le job \`${nom}\` monte Flutter sans architecture explicite : son défaut est `
+        + '`runner.arch`, que les exécuteurs locaux lisent sur la machine HÔTE. Le job devient '
+        + 'injouable ailleurs que sur un vrai runner — donc du code que personne n\'exécute '
+        + 'avant la première pull request (493)');
+      const arch = a[1].match(/architecture:\s*(\S+)/)[1];
+      assert.equal(arch, attendu,
+        `le job \`${nom}\` tourne sur \`${runsOn}\` et demande un SDK \`${arch}\` : `
+        + `l'architecture doit suivre le runner de SON job (\`${attendu}\` ici), sinon le SDK `
+        + 'téléchargé ne s\'exécute pas');
+    }
+  }
+
+  // ⚠️ La preuve qu'il a tout vu, et c'est elle qui manquait : sans ce compte,
+  // une action hors du découpage échapperait au garde en silence — exactement
+  // la panne qu'on répare ici.
+  assert.equal(vues, total,
+    `${vues} action(s) Flutter inspectée(s) sur ${total} présentes dans le workflow : des `
+    + 'actions échappent au découpage par job, donc le garde en couvre une partie seulement '
+    + '(493)');
 });
 
 // ── 492 ────────────────────────────────────────────────────────────────────
