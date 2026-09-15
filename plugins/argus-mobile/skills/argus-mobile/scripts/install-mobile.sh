@@ -1,13 +1,31 @@
 #!/usr/bin/env bash
 # Argus Mobile — copie idempotente du scaffold Maestro dans un projet Flutter.
 #
-# Usage: bash install-mobile.sh [TARGET_DIR] [--check|--update]
+# Usage: bash install-mobile.sh [TARGET_DIR] [OPTION]
 #
 #   (défaut)   installe ce qui manque, ne touche à RIEN d'existant.
 #   --check    ne écrit rien ; signale les fichiers de CADRE en retard sur le
 #              plugin, et sort en 1 s'il y en a. À câbler en CI.
 #   --update   met à jour les fichiers de CADRE, sans jamais toucher aux
 #              fichiers que tu édites.
+#   --uninstall
+#              retire les fichiers de CADRE que ce plugin a posés et qui
+#              portent encore sa signature. Ce qui est à toi reste, et la
+#              commande énumère ce qu'elle garde.
+#
+# Et deux gestes qui ne concernent pas un projet mais la machine :
+#
+#   --global   installe la commande `argus-mobile` une fois pour toutes
+#              (~/.argus-mobile, plus un lien dans ~/.local/bin). Le scaffold,
+#              lui, continue d'être posé projet par projet : un runner de CI
+#              n'a aucune installation globale, donc un projet dont le moteur
+#              vivrait ailleurs n'aurait plus rien à appeler en intégration.
+#   --uninstall-global
+#              retire cette installation et le lien — et seulement eux : un
+#              `argus-mobile` qui n'est pas le nôtre reste où il est.
+#
+# Les dossiers se changent par ARGUS_MOBILE_HOME et ARGUS_MOBILE_BIN.
+# Un drapeau inconnu arrête la commande : rien n'est touché.
 #
 # LA FRONTIÈRE EST DÉRIVÉE DE LA SOURCE, pas d'une liste tenue à la main —
 # chaque fichier du scaffold se déclare, dans ses 20 premières lignes :

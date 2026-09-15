@@ -14792,3 +14792,23 @@ test('la désinstallation globale ne retire que ce qu\'elle reconnaît (498)', (
     rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+test('tout drapeau que l\'installeur accepte est documenté par son aide (498)', () => {
+  // ⚠️ DÉRIVÉ DU PARSEUR, jamais listé ici : une liste écrite à la main se
+  // périme au premier drapeau ajouté, et en silence — c'est le drapeau neuf,
+  // celui que personne ne connaît encore, qui manquerait à l'aide. Et l'aide,
+  // elle, est déjà dérivée de l'en-tête du script : les deux bouts se tiennent.
+  // 📌 `-h|--help` échappe au motif parce qu'il ne commence pas par `--`, et
+  // c'est voulu : il ne se documente pas lui-même.
+  const src = readFileSync(INSTALLEUR, 'utf8');
+  const acceptes = [...src.matchAll(/^ {4}(--[a-z-]+)\)/gm)].map((m) => m[1]);
+  assert.ok(acceptes.length >= 4,
+    `${acceptes.length} drapeau(x) lus dans le parseur — le motif ne mesure plus rien`);
+
+  const aide = spawnSync('bash', [INSTALLEUR, '--help'], { encoding: 'utf8' });
+  assert.equal(aide.status, 0, '`--help` échoue : c\'est pourtant ce qu\'on tape en premier');
+  const absents = acceptes.filter((f) => !aide.stdout.includes(f));
+  assert.deepStrictEqual(absents, [],
+    'des drapeaux sont acceptés sans être documentés : celui qui lit l\'aide ne saura pas '
+    + 'qu\'ils existent, et celui qui les a écrits croira que si (498)');
+});
