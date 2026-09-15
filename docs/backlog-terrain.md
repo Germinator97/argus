@@ -9295,3 +9295,56 @@ chantier consultera pour dire ce qui déménage et ce qui reste : le moteur pès
 **9 148 lignes sur 14 717**, soit 62 % du scaffold ; les invocations à fermer sont
 toujours 41, dans trois fichiers (Makefile 19, CI 12, snippet npm 10) ; et le
 couplage du cadre vers le possédé tient toujours en deux points.
+
+### 496. Quarante et un sites savaient où vit le moteur
+
+**Fermé le 15/09/2026**, deuxième temps du chantier **F**. Le chemin
+`scripts/argus/<x>.mjs` était écrit **81 fois** : 41 dans les trois fichiers qui
+EXÉCUTENT (Makefile 19, workflow 12, snippet npm 10) et 40 en mentions. Chacune
+est une copie de la même décision, et une copie dérive — le jour où le moteur
+déménage, il faut toutes les retrouver, y compris celles que rien ne fait rougir.
+
+**Ce qui le ferme** : un lanceur, `scripts/argus/argus-mobile.mjs`, qui **cherche**
+le moteur au lieu de le savoir — `$ARGUS_MOBILE_ENGINE`, puis son propre dossier,
+puis l'installation globale. Un dossier ne compte que s'il porte vraiment le
+moteur, et l'échec nomme les endroits regardés, dans l'ordre. Il EXÉCUTE les
+scripts au lieu de les importer : chacun ne travaille que s'il est invoqué
+directement, donc les importer les rendrait muets — rien à l'écran, exit 0.
+
+Les 41 sites passent par lui, avec **une seule définition par fichier**, dans
+l'idiome de ce fichier : `ARGUS :=` dans le Makefile, à côté du `FLUTTER :=`
+qu'il dérivait déjà ; une clé `env:` dans le workflow ; le chemin dans le snippet
+npm, où aucune variable n'existe.
+
+🔴 **Un défaut trouvé AVANT de livrer, et seulement par la contre-épreuve.** La
+première version du lanceur **repliait** : `ARGUS_MOBILE_ENGINE` pointé sur un
+dossier vide, elle rendait tranquillement la réponse du moteur du **projet**. On
+croit épingler un moteur et on exécute l'autre ; en CI, une variable mal
+renseignée ferait mesurer le mauvais **tout en affichant un succès**. Imposé veut
+dire imposé : c'est une erreur, jamais un repli.
+
+⚠️ **Sept mentions sur quarante ne devaient PAS être réécrites**, et un balayage
+générique en aurait fait sept phrases fausses. C'est le même récit de mesure,
+recopié dans chaque fichier du moteur, qui explique le `realpathSync` des deux
+côtés : il oppose `node scripts/argus/perf.mjs` au **même fichier atteint par un
+chemin traversant un lien symbolique**. Réécrit, il aurait comparé le lanceur à
+lui-même. Protégées nommément, le reste balayé ensuite.
+
+⚠️ **Six gardes sont tombés ensemble** sur la nouvelle forme — chacun portait sa
+copie du motif. Ils sont ré-ancrés sur **un** reconnaisseur, qui accepte les trois
+formes que portent les fichiers livrés : six copies, c'est six occasions de
+dériver, et celle qu'on oublie ne rougit pas, elle devient **vacante**. Les six
+ont été remis à l'épreuve un par un, et deux fois la mutation a dû être refaite
+avant de conclure : commenter `make argus-sec` laisse la chaîne que le garde
+cherche, donc la mutation était inerte et le garde paraissait mort.
+
+⚠️ **Dix mutations du harnais sont devenues inertes** pour la même raison, et
+elles sont ré-ancrées **dans le même commit** — chacune suivant l'idiome de sa
+cible. Une mutation dont le motif a disparu ne prouve rien, et ça ne se voit
+qu'en jouant la passe entière.
+
+📌 **Ce que l'écriture apprend au dossier F** : en mode global, le moteur ne vit
+plus dans le projet — or le **runner de CI n'a aucune installation globale**. Le
+workflow que l'installeur pose chez l'hôte n'a donc plus de moteur à appeler, et
+le dossier ne l'avait pas vu. C'est l'arbitrage du troisième temps, pas un détail
+d'implémentation.
