@@ -474,7 +474,7 @@ MUTATIONS = [
      "    ...[...utile.matchAll(/runFlow:[\\s\\S]{0,120}?file:\\s*([^\\s#]+\\.ya?ml)/g)].map((m) => m[1]),",
      "    ...[],"),
     ("makefile", "argus-lint cesse de contrôler le graphe d'appels",
-     "\t@node scripts/argus/config.mjs --check-flows",
+     "\t@$(ARGUS) config --check-flows",
      "\t@true # contrôle du graphe retiré"),
     # ── Vingt-cinquième run ─────────────────────────────────────────────────
     ("a11y", "les findings d'accessibilité repartent sans preuve visuelle",
@@ -641,7 +641,7 @@ MUTATIONS = [
      "  if (!chemin || !existsSync(chemin)) return { kind: 'absent', bytes: 0, digest: '', files: 0 };",
      "  if (!chemin || !existsSync(chemin)) return { kind: 'absent', bytes: 0, digest: 'e3b0c442', files: 0 };"),
     ("makefile", "la recette refait sa propre mesure au lieu de l'interroger",
-     "\tM=\"$$(node scripts/argus/config.mjs --measure-binary)\"; \\\n"
+     "\tM=\"$$($(ARGUS) config --measure-binary)\"; \\\n"
      "\tBKIND=$$(printf '%s' \"$$M\" | cut -f1); BEFORE=$$(printf '%s' \"$$M\" | cut -f2); \\",
      "\tM=\"$$(wc -c < \"$$APK\" 2>/dev/null || echo 0)\"; \\\n"
      "\tBKIND=file; BEFORE=$$M; \\"),
@@ -715,8 +715,8 @@ MUTATIONS = [
      "    if: needs.cadre.outputs.ios == 'true' && vars.ARGUS_IOS_CI == 'true'",
      "    if: false"),
     ("makefile", "234 · le croisement rebloque le test Dart",
-     "\tnode scripts/argus/config.mjs --check-anchors || croise=$$?; \\",
-     "\tnode scripts/argus/config.mjs --check-anchors; \\"),
+     "\t$(ARGUS) config --check-anchors || croise=$$?; \\",
+     "\t$(ARGUS) config --check-anchors; \\"),
     ("run", "235 · le conseil de locale reparle d'émulateur sur iOS",
      "      ? '  Sur un simulateur que tu lances toi-même, règle la langue dans Réglages avant le run.'",
      "      ? '  Regle la locale sur l emulateur avant le run.'"),
@@ -733,12 +733,12 @@ MUTATIONS = [
      "  const src = dartSansCommentaires(brut);\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;",
      "  const src = brut;\n  const CLES = /\\b(anchor|commands|displays|commandsAfterScroll|displaysAfterScroll)\\s*:\\s*/g;"),
     ("makefile", "argus-anchors cesse d'appeler le croisement posé → déclaré",
-     '\tnode scripts/argus/config.mjs --check-anchors || croise=$$?; \\',
+     '\t$(ARGUS) config --check-anchors || croise=$$?; \\',
      '\ttrue || croise=$$?; \\'),
     # 220 : la commande prescrite doit citer des drapeaux qui EXISTENT.
     ("skill", "la commande d'itération cite un drapeau inexistant",
-     'node scripts/argus/run.mjs --tags=visual --no-install',
-     'node scripts/argus/run.mjs --tags=visual --no-cache'),
+     'node scripts/argus/argus-mobile.mjs run --tags=visual --no-install',
+     'node scripts/argus/argus-mobile.mjs run --tags=visual --no-cache'),
     # 221-224 : quatre promesses de doc, chacune gardée.
     ("goto", "goto reperd le cas de l'écran qu'aucune branche n'atteint",
      "# ⚠️ ET CERTAINS ÉCRANS N'ADMETTENT PAS DE BRANCHE",
@@ -786,8 +786,8 @@ MUTATIONS = [
      "  if (prevPath) return null;   // l'historique est repris : rien à perdre",
      "  if (!prevPath) return null;   // l'historique est repris : rien à perdre"),
     ("makefile", "argus-report cesse de transmettre ARGS",
-     "\t@node scripts/argus/report.mjs $(ARGS)",
-     "\t@node scripts/argus/report.mjs"),
+     "\t@$(ARGUS) report $(ARGS)",
+     "\t@$(ARGUS) report"),
 
     # ── 251-253 · le troisième barreau, et deux titres qui mentaient ──────────
     # Le 251 fige ce qu'une EXÉCUTION a établi : la page revenue d'un `read`
@@ -905,7 +905,7 @@ MUTATIONS = [
     # Et celle-ci renvoie le geste au loin, c'est-à-dire l'état que l'annotation
     # du 264 laissait intact.
     ("skill", "le geste du troisième temps repart au loin",
-     "```bash\nnode scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six\n```",
+     "```bash\nnode scripts/argus/argus-mobile.mjs run --tags=visual --no-install   # 2 min 17 au lieu de six\n```",
      "Le raccourci est décrit plus bas, dans le paragraphe sur la mise au point\nd'un flow isolé."),
     # ⚠️ Celle-ci remet --check dans l'état où il ne rendait qu'un compte : la
     # branche sort avant d'appeler l'inventaire. C'est le 270 exact, celui que
@@ -957,7 +957,7 @@ MUTATIONS = [
      "- **Étage 1 : pas de règle d'arrêt.** Il ne coûte pas de device, quelques",
      "- **Étage 1 : à toi de voir.** Il ne coûte pas de device, quelques"),
     ("skill", "le geste d'exclusion des baselines disparaît",
-     "node scripts/argus/run.mjs --tags=visual --exclude-tags=functional,lifecycle",
+     "node scripts/argus/argus-mobile.mjs run --tags=visual --exclude-tags=functional,lifecycle",
      "# débrouille-toi pour ne pas rejouer le flow gelé"),
     ("config", "l'avertissement sur les captures redevient inacquittable",
      "&& !acquitte) {",
@@ -1536,8 +1536,8 @@ MUTATIONS = [
     # 407 bis — le skill recite le tag mort. Le garde dérive les deux côtés :
     # il doit tomber sans qu'on touche au code.
     ("skill", "407 bis · le skill recite un tag qu'aucun flow ne porte",
-     "node scripts/argus/run.mjs --tags=smoke --no-install",
-     "node scripts/argus/run.mjs --tags=journey --no-install"),
+     "node scripts/argus/argus-mobile.mjs run --tags=smoke --no-install",
+     "node scripts/argus/argus-mobile.mjs run --tags=journey --no-install"),
     # 408 — le gabarit repose visualCropOn sans dire que cropRoot va avec.
     ("skill", "408 · le gabarit ne dit plus que cropRoot accompagne visualCropOn",
      "# 🔴 ET L'ArgusScreen DE CET ÉCRAN DOIT DÉCLARER `cropRoot: true` (408).",
@@ -1693,7 +1693,7 @@ MUTATIONS = [
     # 431 — le relevé repasse APRÈS le build : la garde redevient vacante par
     # construction, et « PAQUET INTACT » se remet à mentir.
     ("makefile", "431 · la fraîcheur se relève de nouveau après le build",
-     "\tFRESHBEFORE=\"$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)\"; \\\n\tSTART=",
+     "\tFRESHBEFORE=\"$$($(ARGUS) sec --print-freshness 2>/dev/null || echo inconnu)\"; \\\n\tSTART=",
      "\tSTART="),
     # 432 — la condition disparaît : la dispense redevient une suggestion nue,
     # qu'on recopie d'un projet à l'autre sans qu'elle dispense rien.

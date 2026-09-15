@@ -14,8 +14,8 @@
  * c'est précisément pour ça qu'il faut les distinguer explicitement.
  *
  * Usage :
- *   node scripts/argus/sca.mjs
- *   node scripts/argus/sca.mjs --require-tools   # en CI
+ *   node scripts/argus/argus-mobile.mjs sca
+ *   node scripts/argus/argus-mobile.mjs sca --require-tools   # en CI
  *
  * `--require-tools` fait ÉCHOUER quand osv-scanner est absent. Sans lui, une CI
  * sur laquelle le scanner n'a pas été installé rendrait vert en n'ayant rien

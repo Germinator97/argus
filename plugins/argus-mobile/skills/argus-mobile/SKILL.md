@@ -105,7 +105,7 @@ donc dans la seule chose qui distingue ton rapport des autres. Vu sur une page
 en ligne : un titre qui disait « Colis » pour une app nommée « Acme Colis ». Le nom affiché se lit dans `ios/Runner/Info.plist`
 (`CFBundleDisplayName`), dans un `resValue("string", "app_name", …)` du
 `build.gradle`, dans un `<string name="app_name">`, ou dans un `android:label`
-littéral. `node scripts/argus/config.mjs` te le signale — mais seulement tant
+littéral. `node scripts/argus/argus-mobile.mjs config` te le signale — mais seulement tant
 que `app.name` porte encore le défaut : dès que tu as choisi, il se tait.
 
 ### Ce que chaque plateforme reçoit VRAIMENT
@@ -1552,7 +1552,7 @@ plutôt que de peupler `screens[]` de mémoire. Une ancre oubliée ici ne casse 
 l'écran est simplement absent du rapport, et `coverage.notConfigured` le liste sans
 que personne ne sache que la ligne devait y être.
 
-**d. Vérifier avant de lancer** : `node scripts/argus/config.mjs` (config
+**d. Vérifier avant de lancer** : `node scripts/argus/argus-mobile.mjs config` (config
 résolue + outillage + **fichiers de config non embarqués**) puis `make argus-lint`
 (syntaxe des flows, sans device).
 
@@ -2003,7 +2003,7 @@ passes, et la contre-épreuve visuelle devient la première chose qu'on sacrifie
 Le §3g l'autorisait « en esprit » sans jamais donner la commande :
 
 ```bash
-node scripts/argus/run.mjs --tags=visual --exclude-tags=functional,lifecycle
+node scripts/argus/argus-mobile.mjs run --tags=visual --exclude-tags=functional,lifecycle
 ```
 
 ⚠️ **Deux conditions, et elles ne sont pas facultatives** : le flow exclu doit
@@ -2040,7 +2040,7 @@ centaine de lignes de là, l'autre a failli sacrifier la contre-épreuve faute d
 l'avoir trouvé :
 
 ```bash
-node scripts/argus/run.mjs --tags=visual --no-install   # 2 min 17 au lieu de six
+node scripts/argus/argus-mobile.mjs run --tags=visual --no-install   # 2 min 17 au lieu de six
 ```
 
 ⚠️ **ET LIS LE VERDICT APRÈS, JAMAIS PENDANT — le junit est RÉÉCRIT à chaque
@@ -2288,7 +2288,7 @@ facteur 3,6, à chaque itération. Le runner n'a pas de `--flow` (il refuse
 proprement et imprime son aide), mais il a de quoi faire :
 
 ```bash
-node scripts/argus/run.mjs --tags=smoke --no-install   # le flow seul, app déjà posée
+node scripts/argus/argus-mobile.mjs run --tags=smoke --no-install   # le flow seul, app déjà posée
 ```
 
 `--tags` / `--include-tags` / `--exclude-tags` filtrent, `--no-install` saute la

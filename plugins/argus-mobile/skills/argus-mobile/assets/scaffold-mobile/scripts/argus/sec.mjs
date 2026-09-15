@@ -19,9 +19,9 @@
  *      Demande `unzip` ; à défaut, le niveau B est SKIPPÉ avec mention.
  *
  * Usage :
- *   node scripts/argus/sec.mjs
- *   node scripts/argus/sec.mjs --platform=ios
- *   node scripts/argus/sec.mjs --require-tools   # en CI
+ *   node scripts/argus/argus-mobile.mjs sec
+ *   node scripts/argus/argus-mobile.mjs sec --platform=ios
+ *   node scripts/argus/argus-mobile.mjs sec --require-tools   # en CI
  *
  * `--require-tools` fait ÉCHOUER quand le niveau B (binaire livré) n'a pas pu
  * s'exécuter : en CI, un `unzip` absent ou un APK non construit rendrait vert

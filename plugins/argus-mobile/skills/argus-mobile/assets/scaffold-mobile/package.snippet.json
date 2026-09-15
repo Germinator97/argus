@@ -1,17 +1,17 @@
 {
   "_comment": "ARGUS:MERGE — à fusionner dans le fichier homonyme du projet, à la main. Fusionner ces scripts dans le package.json du projet SI il en a un. Un projet Flutter n'en a généralement pas : utilise alors le Makefile fourni, qui expose les mêmes cibles. Aucune devDependency : les scripts Argus Mobile n'utilisent que Node >= 18 et ses modules natifs.",
   "scripts": {
-    "argus:doctor": "node scripts/argus/config.mjs",
+    "argus:doctor": "node scripts/argus/argus-mobile.mjs config",
     "argus:lint": "for f in .maestro/*.yaml .maestro/_subflows/*.yaml; do [ \"$(basename $f)\" = config.yaml ] || maestro check-syntax \"$f\"; done",
     "argus:guards": "if [ -f .fvmrc ] || [ -d .fvm ]; then fvm flutter test test/argus; else flutter test test/argus; fi",
-    "argus:run": "node scripts/argus/run.mjs",
-    "argus:smoke": "node scripts/argus/run.mjs --tags=smoke",
-    "argus:visual": "node scripts/argus/run.mjs --tags=visual",
-    "argus:baselines": "node scripts/argus/run.mjs --update-baselines",
-    "argus:perf": "node scripts/argus/perf.mjs",
-    "argus:a11y": "node scripts/argus/a11y.mjs",
-    "argus:sec": "node scripts/argus/sec.mjs",
-    "argus:sca": "node scripts/argus/sca.mjs",
-    "argus:report": "node scripts/argus/report.mjs"
+    "argus:run": "node scripts/argus/argus-mobile.mjs run",
+    "argus:smoke": "node scripts/argus/argus-mobile.mjs run --tags=smoke",
+    "argus:visual": "node scripts/argus/argus-mobile.mjs run --tags=visual",
+    "argus:baselines": "node scripts/argus/argus-mobile.mjs run --update-baselines",
+    "argus:perf": "node scripts/argus/argus-mobile.mjs perf",
+    "argus:a11y": "node scripts/argus/argus-mobile.mjs a11y",
+    "argus:sec": "node scripts/argus/argus-mobile.mjs sec",
+    "argus:sca": "node scripts/argus/argus-mobile.mjs sca",
+    "argus:report": "node scripts/argus/argus-mobile.mjs report"
   }
 }

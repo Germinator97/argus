@@ -445,7 +445,7 @@ echo "  2. Instrumente l'app : Semantics(identifier: 'home_root', child: …) su
 echo "     chaque écran clé. ⚠️ Les Key Flutter ne sont PAS visibles par Maestro."
 echo "  3. Installe Maestro si besoin :"
 echo "       curl -fsSL \"https://get.maestro.mobile.dev\" | bash    # Java 17+ requis"
-echo "  4. Vérifie la configuration :   node scripts/argus/config.mjs"
+echo "  4. Vérifie la configuration :   node scripts/argus/argus-mobile.mjs config"
 echo "  5. Construis le binaire :       make argus-build   # fvm si .fvmrc"
 echo "  6. Étage 1, sans device :       make argus-guards"
 echo "  7. Étage 2, sur device :        make argus-run"

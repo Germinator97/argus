@@ -24,6 +24,13 @@ concurrency:
   group: argus-mobile-${{ github.ref }}
   cancel-in-progress: true
 
+# ⚠️ UN SEUL SITE CONNAÎT LE CHEMIN DU MOTEUR, ici comme dans le Makefile. Le
+# lanceur le CHERCHE — dans le projet, ou là où une installation globale l'a posé
+# — donc aucune étape ci-dessous ne change le jour où il déménage. Non défini, il
+# ferait échouer l'étape bruyamment : jamais un faux vert.
+env:
+  ARGUS: node scripts/argus/argus-mobile.mjs
+
 jobs:
   # ⚠️ LES JOBS SUIVENT `platforms:`, ils ne le supposent plus (point 230).
   # Deux d'entre eux n'ont de sens que sur Android — build APK, émulateur — et
@@ -47,7 +54,7 @@ jobs:
           node-version: '20'
       - id: p
         run: |
-          PLATS="$(node scripts/argus/config.mjs --print-platforms)"
+          PLATS="$($ARGUS config --print-platforms)"
           echo "plateformes déclarées : $PLATS"
           case " $PLATS " in
             *" android "*) echo "android=true"  >> "$GITHUB_OUTPUT" ;;
@@ -171,15 +178,15 @@ jobs:
       # de configuration non embarqués. Le niveau B (binaire livré) n'a pas sa
       # place ici — il exige la release, pas le paquet de test.
       - name: MASVS statique (sources)
-        run: node scripts/argus/sec.mjs
+        run: $ARGUS sec
       # `--require-tools` reste ICI, et il y garde tout son sens : sans
       # osv-scanner, la dimension CVE rendrait vert en n'ayant rien scanné —
       # le faux vert le plus coûteux du lot, puisqu'il porte sur la sécurité.
       - name: CVE des dépendances
-        run: node scripts/argus/sca.mjs --require-tools
+        run: $ARGUS sca --require-tools
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus/report.mjs
+        run: $ARGUS report
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -329,11 +336,11 @@ jobs:
           emulator-options: >-
             -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
             -change-locale fr-FR
-          script: node scripts/argus/run.mjs --platform=android
+          script: $ARGUS run --platform=android
 
       - name: Mesures de performance
         if: ${{ !cancelled() }}
-        run: node scripts/argus/perf.mjs || true
+        run: $ARGUS perf || true
 
       # ⚠️ APRÈS `perf`, et ce n'est pas indifférent : `argus-perf` laisse l'app
       # arrêtée, et `a11y.mjs` sait s'en rattraper (il relance et relit). C'est
@@ -342,11 +349,11 @@ jobs:
       # et lancée par AUCUN job : la seule du lot dans ce cas.
       - name: Accessibilité sur device
         if: ${{ !cancelled() }}
-        run: node scripts/argus/a11y.mjs || true
+        run: $ARGUS a11y || true
 
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus/report.mjs
+        run: $ARGUS report
 
       # ⚠️ NE PAS publier `--debug-output` en artefact ouvert : `label:` masque
       # les secrets en console et dans les rapports, mais la doc Maestro précise
@@ -436,10 +443,10 @@ jobs:
         env:
           QA_USER: ${{ secrets.QA_USER }}
           QA_PASS: ${{ secrets.QA_PASS }}
-        run: node scripts/argus/run.mjs --platform=ios
+        run: $ARGUS run --platform=ios
       - name: Rapport
         if: ${{ !cancelled() }}
-        run: node scripts/argus/report.mjs
+        run: $ARGUS report
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
@@ -459,7 +466,7 @@ jobs:
 # générer sur l'appareil que le projet déclare suffit à ce que les deux
 # correspondent — il n'y a plus de couple à recopier de part et d'autre :
 #
-#   node scripts/argus/run.mjs --update-baselines
+#   node scripts/argus/argus-mobile.mjs run --update-baselines
 #
 # puis commite `.maestro/_baselines/<device-id>/`. Ne lance JAMAIS
 # `--update-baselines` dans ce workflow : une baseline régénérée en CI accepte
@@ -498,7 +505,7 @@ jobs:
 #           node-version: '20'
 #       - run: flutter pub get
 #       - run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
-#       - run: node scripts/argus/sec.mjs --binary=build/app/outputs/flutter-apk/app-release.apk --require-tools
+#       - run: $ARGUS sec --binary=build/app/outputs/flutter-apk/app-release.apk --require-tools
 #
 # ⚠️ `--require-tools` a ici son sens plein : sur une release, un scan qui ne
 # conclut pas est un défaut d'environnement (unzip ou aapt2 absent), jamais une

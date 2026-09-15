@@ -13,11 +13,11 @@
  * ne l'installe jamais. (Seul `maestro cloud` prend un `--app-file`.)
  *
  * Usage :
- *   node scripts/argus/run.mjs
- *   node scripts/argus/run.mjs --platform=ios
- *   node scripts/argus/run.mjs --update-baselines
- *   node scripts/argus/run.mjs --dry-run
- *   node scripts/argus/run.mjs --tags=smoke,p0
+ *   node scripts/argus/argus-mobile.mjs run
+ *   node scripts/argus/argus-mobile.mjs run --platform=ios
+ *   node scripts/argus/argus-mobile.mjs run --update-baselines
+ *   node scripts/argus/argus-mobile.mjs run --dry-run
+ *   node scripts/argus/argus-mobile.mjs run --tags=smoke,p0
  *
  * Codes de sortie (identiques au skill web) :
  *   0 = vert · 1 = major dans le gate · 2 = blocker/critical, ou outillage
@@ -2290,7 +2290,7 @@ async function main() {
       warn(`le cadrage a changé depuis la génération des références sur ${bouge.length} écran(s) : `
         + `${exemples.join(', ')}${bouge.length > 3 ? '…' : ''}`);
       warn('  Les comparaisons vont échouer sur le CADRAGE, pas sur une régression.');
-      warn('  Régénère : node scripts/argus/run.mjs --update-baselines');
+      warn('  Régénère : node scripts/argus/argus-mobile.mjs run --update-baselines');
     }
 
     const derive = baselineDeviceDrift(baselineDevice(baselineDir),
@@ -2313,7 +2313,7 @@ async function main() {
   }
   if (dimensions.visual && visualMode === 'assert' && !existsSync(baselineDir)) {
     warn(`aucune référence visuelle dans ${baselineDir} → dimension VISUAL non exécutée.`);
-    warn('  Génère-les : node scripts/argus/run.mjs --update-baselines');
+    warn('  Génère-les : node scripts/argus/argus-mobile.mjs run --update-baselines');
   } else {
     // 🔴 UN JUNIT ORPHELIN GARDE SON ANCIEN VERDICT. Le chemin est fixe et
     // réécrit à chaque invocation (454) — mais SEULEMENT pour les écrans encore

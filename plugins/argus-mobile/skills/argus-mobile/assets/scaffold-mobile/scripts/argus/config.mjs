@@ -14,7 +14,7 @@
  * Un parseur permissif qui se trompe en silence serait pire que pas de parseur.
  *
  * Lancé directement, ce fichier imprime la config résolue et l'outillage détecté :
- *   node scripts/argus/config.mjs
+ *   node scripts/argus/argus-mobile.mjs config
  *
  * Node >= 18, ESM, zéro dépendance.
  */

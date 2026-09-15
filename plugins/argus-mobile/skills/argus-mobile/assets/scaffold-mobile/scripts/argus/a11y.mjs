@@ -23,8 +23,8 @@
  * outil externe. Le volet iOS est rapporté `skipped`, jamais vert.
  *
  * Usage :
- *   node scripts/argus/a11y.mjs
- *   node scripts/argus/a11y.mjs --screen=home --device=<udid>
+ *   node scripts/argus/argus-mobile.mjs a11y
+ *   node scripts/argus/argus-mobile.mjs a11y --screen=home --device=<udid>
  */
 
 import { existsSync, readFileSync, realpathSync } from 'node:fs';

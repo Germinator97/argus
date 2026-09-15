@@ -15,7 +15,7 @@
  * Sans cette distinction, un rapport où rien n'a tourné se lit comme un rapport
  * où rien n'a cassé.
  *
- * Usage : node scripts/argus/report.mjs
+ * Usage : node scripts/argus/argus-mobile.mjs report
  */
 
 import { existsSync, readFileSync, realpathSync, statSync, writeFileSync } from 'node:fs';
@@ -37,11 +37,11 @@ const SOURCES = [
   // la page annonçait un run vert sur deux findings info. C'est la seconde fois
   // que ce chantier publie un faux vert, après le 367 (391).
   { file: 'stage1.jsonl', label: 'Gardes d\'étage 1 (sans device)', dimensions: 'a11y · disposition · ancres', how: 'make argus-guards' },
-  { file: 'report.json', label: 'Parcours Maestro', dimensions: 'functional · visual · a11y · resilience · stability · i18n', how: 'node scripts/argus/run.mjs' },
-  { file: 'perf.json', label: 'Performance', dimensions: 'performance', how: 'node scripts/argus/perf.mjs' },
-  { file: 'a11y.json', label: 'Accessibilité (device)', dimensions: 'a11y', how: 'node scripts/argus/a11y.mjs' },
-  { file: 'sec.json', label: 'Sécurité MASVS', dimensions: 'security', how: 'node scripts/argus/sec.mjs' },
-  { file: 'sca.json', label: 'Dépendances (CVE)', dimensions: 'security', how: 'node scripts/argus/sca.mjs' },
+  { file: 'report.json', label: 'Parcours Maestro', dimensions: 'functional · visual · a11y · resilience · stability · i18n', how: 'node scripts/argus/argus-mobile.mjs run' },
+  { file: 'perf.json', label: 'Performance', dimensions: 'performance', how: 'node scripts/argus/argus-mobile.mjs perf' },
+  { file: 'a11y.json', label: 'Accessibilité (device)', dimensions: 'a11y', how: 'node scripts/argus/argus-mobile.mjs a11y' },
+  { file: 'sec.json', label: 'Sécurité MASVS', dimensions: 'security', how: 'node scripts/argus/argus-mobile.mjs sec' },
+  { file: 'sca.json', label: 'Dépendances (CVE)', dimensions: 'security', how: 'node scripts/argus/argus-mobile.mjs sca' },
 ];
 
 /**

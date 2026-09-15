@@ -58,7 +58,7 @@ app:
   # Où le lire : ios/Runner/Info.plist → CFBundleDisplayName, ou côté Android
   # `resValue("string", "app_name", …)` du build.gradle, ou <string name="app_name">
   # d'un strings.xml, ou android:label s'il porte un littéral.
-  # `node scripts/argus/config.mjs` te le signale s'il reste sur le nom du paquet.
+  # `node scripts/argus/argus-mobile.mjs config` te le signale s'il reste sur le nom du paquet.
   name: mon_app
   # Identifiant Android (applicationId) et iOS (CFBundleIdentifier). C'est ce que
   # Maestro met dans `appId:` en tête de chaque flow. REQUIS pour la plateforme
@@ -83,7 +83,7 @@ build:
   # raison. Renseigne alors le binaire de release ici, une fois pour toutes,
   # plutôt que d'éditer la ligne du dessus entre deux runs :
   # androidScan: build/app/outputs/flutter-apk/app-release.apk
-  # (ponctuellement : `node scripts/argus/sec.mjs --binary=<chemin>`)
+  # (ponctuellement : `node scripts/argus/argus-mobile.mjs sec --binary=<chemin>`)
   #
   # Elle décide AUSSI de la taille que pèse `argus-perf` : le budget
   # `binarySizeMb` vise la publication, donc sans cette clé le rapport ne juge

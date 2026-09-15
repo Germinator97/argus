@@ -22,6 +22,21 @@ import { fileURLToPath } from 'node:url';
 
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
+/**
+ * Reconnaît l'invocation d'une commande du moteur, dans les trois formes que
+ * portent les fichiers livrés : `$(ARGUS) sec` (Makefile), `$ARGUS sec`
+ * (workflow), `argus-mobile.mjs sec` (scripts npm, documentation, et les
+ * messages que le programme imprime).
+ * ⚠️ ÉCRIT UNE FOIS, et c'est tout l'intérêt. Le jour où le lanceur a remplacé
+ * les chemins nus, SIX gardes sont tombés ensemble — chacun portait sa copie du
+ * motif. Six copies, c'est six occasions de dériver, et celle qu'on oublie ne
+ * rougit pas : elle devient vacante, ce qui ne se voit pas.
+ * @param {string} commande le nom du script, sans .mjs
+ * @param {string} [suite] ce qui doit suivre, déjà échappé
+ */
+const invocationDe = (commande, suite = '') => new RegExp(
+  String.raw`(?:\$\(ARGUS\)|\$ARGUS|argus-mobile\.mjs)\s+` + commande + String.raw`\b` + suite);
+
 import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   localeAlignment,
@@ -4111,7 +4126,7 @@ test('les drapeaux que le SKILL prescrit pour itérer existent dans le runner', 
   // `--flow` dans ma propre phrase disant qu'il n'existe pas. Il porte donc sur
   // le BLOC DE COMMANDE — ce que le lecteur copie —, jamais sur ce qu'on en dit.
   const commande = bloc.slice(bloc.indexOf('```bash'), bloc.indexOf('```', bloc.indexOf('```bash') + 7));
-  assert.ok(commande.includes('run.mjs'), 'le bloc ne porte plus de commande à copier');
+  assert.ok(invocationDe('run').test(commande), 'le bloc ne porte plus de commande à copier');
   const prescrits = [...commande.matchAll(/(--[a-z-]+)/g)].map((m) => m[1]);
   assert.ok(prescrits.length >= 2,
     `la commande ne porte plus de drapeaux (${prescrits.length}) — si sa forme a changé, mets ce garde à jour`);
@@ -6406,7 +6421,7 @@ test('toute dimension que le rapport JUGE est lancée par la séquence du skill 
   // sixième dimension ajoutée demain hérite du garde sans qu'on y pense.
   const rapport = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs'), 'utf8');
-  const sources = [...rapport.matchAll(/how:\s*'node scripts\/argus\/(\w+)\.mjs'/g)].map((m) => m[1]);
+  const sources = [...rapport.matchAll(/how:\s*'[^']*argus-mobile\.mjs (\w+)'/g)].map((m) => m[1]);
   assert.ok(sources.length >= 5,
     `seulement ${sources.length} source(s) dérivée(s) de report.mjs — le motif ne matche plus, ce garde est vacant`);
 
@@ -6431,7 +6446,7 @@ test('toute dimension que le rapport JUGE est lancée par la séquence du skill 
     }
     assert.ok(recettes.size > 5, 'aucune recette Make lue — ce garde ne mesure plus rien');
     const cible = [...recettes.entries()]
-      .find(([, lignes]) => lignes.some((l) => l.includes(`scripts/argus/${script}.mjs`)))?.[0];
+      .find(([, lignes]) => lignes.some((l) => invocationDe(script).test(l)))?.[0];
     if (!cible) { absentes.push(`${script}.mjs → aucune cible Makefile`); continue; }
     // La séquence, c'est LE bloc bash qui va jusqu'au rapport. Il y en a
     // plusieurs qui commencent par `make argus-…` — prendre le premier venu
@@ -8093,7 +8108,7 @@ test('le geste documenté est le geste outillé : ARGS arrive jusqu\'au rapport 
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
   const recette = mk.match(/^argus-report:.*\n((?:\t.*\n)+)/m);
   assert.ok(recette, 'la recette argus-report a disparu — mets ce garde à jour');
-  assert.match(recette[1], /report\.mjs \$\(ARGS\)/,
+  assert.match(recette[1], invocationDe('report', String.raw` \$\(ARGS\)`),
     'la recette doit transmettre ARGS, sinon --previous n\'atteint jamais le script');
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
   assert.match(skill, /ARGS="--previous=/, 'et le skill doit prescrire le geste que la recette offre');
@@ -8640,7 +8655,8 @@ test('la CI n\'exige pas un scan binaire du paquet qu\'elle vient de construire 
   const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
   const jobs = utile.split(/\n  (?=[a-z][a-z0-9-]*:\n)/);
   assert.ok(jobs.length > 3, 'le découpage par job n\'a rien trouvé — mets ce garde à jour');
-  assert.ok(jobs.some((j) => /sec\.mjs/.test(j)), 'aucun job ne lance sec.mjs — le garde est vacant');
+  assert.ok(jobs.some((j) => invocationDe('sec').test(j)),
+    'aucun job ne lance la dimension sécurité — le garde est vacant');
 
   // ⚠️ LE DÉTECTEUR EST EXTRAIT ET EXERCÉ DANS LES DEUX SENS. Écrit « il doit
   // exister un job qui passe --require-tools, et il ne doit pas construire de
@@ -8648,7 +8664,8 @@ test('la CI n\'exige pas un scan binaire du paquet qu\'elle vient de construire 
   // justement à retirer ce drapeau, donc la boucle n'aurait plus eu de sujet et
   // serait passée au vert sans rien vérifier.
   const combineLesDeux = (job) =>
-    /sec\.mjs[^\n]*--require-tools/.test(job) && /flutter build apk --debug/.test(job);
+    invocationDe('sec', '[^\\n]*--require-tools').test(job)
+    && /flutter build apk --debug/.test(job);
 
   for (const job of jobs) {
     assert.ok(!combineLesDeux(job),
@@ -8656,7 +8673,7 @@ test('la CI n\'exige pas un scan binaire du paquet qu\'elle vient de construire 
   }
   // La contre-épreuve : le détecteur sait-il seulement dire oui ?
   assert.ok(combineLesDeux('  x:\n    steps:\n      - run: flutter build apk --debug\n'
-    + '      - run: node scripts/argus/sec.mjs --require-tools\n'),
+    + '      - run: $ARGUS sec --require-tools\n'),
   'le détecteur ne reconnaît plus l\'assemblage qu\'il interdit — il ne garde plus rien');
 });
 
@@ -8669,8 +8686,10 @@ test('la CVE et le scan de secrets ne se conditionnent à AUCUNE plateforme (B4)
   // Commentaires ôtés : un exemple commenté n'est pas une étape exécutée.
   const utile = wf.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
   const jobs = utile.split(/\n  (?=[a-z][a-z0-9-]*:\n)/);
-  const porteurs = jobs.filter((j) => /sca\.mjs|sec\.mjs/.test(j) && !/^#/.test(j));
-  assert.ok(porteurs.length > 0, 'aucun job ne lance sca.mjs/sec.mjs — le garde ne mesure plus rien');
+  const porteurs = jobs.filter((j) => (invocationDe('sca').test(j) || invocationDe('sec').test(j))
+    && !/^#/.test(j));
+  assert.ok(porteurs.length > 0,
+    'aucun job ne lance la CVE ni le scan de secrets — le garde ne mesure plus rien');
   for (const job of porteurs) {
     const entete = job.split('steps:')[0];
     assert.ok(!/^\s+if:.*outputs\.(android|ios)/m.test(entete),
@@ -12598,7 +12617,7 @@ test('la fraîcheur du paquet se relève AVANT le build (431)', () => {
 
   // ⚠️ L'autre moitié : le relevé doit être RELU, sinon il ne sert à rien. La
   // variable se dérive de la ligne qui le capture.
-  const v = (/(\w+)="\$\$\(node [^)]*--print-freshness/.exec(recette) ?? [])[1];
+  const v = (/(\w+)="\$\$\(.*--print-freshness/.exec(recette) ?? [])[1];
   assert.ok(v, 'le relevé n\'est plus capturé dans une variable : il est calculé et jeté');
   assert.ok(recette.lastIndexOf(`$$${v}`) > build,
     `« ${v} » est relevé avant le build et jamais relu après : c'est la comparaison qui décide, `

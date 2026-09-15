@@ -15,6 +15,13 @@
 # plutôt que de demander à chacun d'éditer ce fichier.
 FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo flutter)
 
+# ⚠️ UN SEUL SITE CONNAÎT LE CHEMIN DU MOTEUR, et c'est celui-ci. Le chemin était
+# écrit dix-neuf fois dans ce fichier : autant de copies d'une même décision, que
+# rien ne fait rougir quand elle change. Le lanceur, lui, CHERCHE le moteur — dans
+# le projet, ou là où une installation globale l'a posé — donc ces recettes ne
+# changent plus jamais, quel que soit l'endroit où il vit.
+ARGUS := node scripts/argus/argus-mobile.mjs
+
 .PHONY: argus-help argus argus-lint argus-guards argus-debts argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-anchors argus-reach \
@@ -32,7 +39,7 @@ argus-help: ## Liste les cibles
 
 argus-doctor: ## Config résolue + outillage détecté
 	@echo "flutter : $(FLUTTER)"
-	@node scripts/argus/config.mjs
+	@$(ARGUS) config
 
 
 argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du device
@@ -42,15 +49,15 @@ argus-build: ## Construit le binaire que la config déclare, ciblé sur l'ABI du
 # taisait pas : elle affirmait, et un chiffre qui n'a rien mesuré se lit comme un
 # chiffre qui a mesuré. `--measure-binary` traite les deux formes, un garde
 # l'exerce, et le Makefile l'INTERROGE au lieu de recopier sa propre version.
-	@CMD="$$(node scripts/argus/config.mjs --print-build-cmd)"; \
-	APK="$$(node scripts/argus/config.mjs --print-binary)"; \
-	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
+	@CMD="$$($(ARGUS) config --print-build-cmd)"; \
+	APK="$$($(ARGUS) config --print-binary)"; \
+	M="$$($(ARGUS) config --measure-binary)"; \
 	BKIND=$$(printf '%s' "$$M" | cut -f1); BEFORE=$$(printf '%s' "$$M" | cut -f2); \
 	BEFOREH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "→ $$CMD"; \
-	FRESHBEFORE="$$(node scripts/argus/sec.mjs --print-freshness 2>/dev/null || echo inconnu)"; \
+	FRESHBEFORE="$$($(ARGUS) sec --print-freshness 2>/dev/null || echo inconnu)"; \
 	START=$$(date +%s); eval "$$CMD"; RC=$$?; ELAPSED=$$(( $$(date +%s) - START )); \
-	M="$$(node scripts/argus/config.mjs --measure-binary)"; \
+	M="$$($(ARGUS) config --measure-binary)"; \
 	AKIND=$$(printf '%s' "$$M" | cut -f1); AFTER=$$(printf '%s' "$$M" | cut -f2); \
 	AFTERH=$$(printf '%s' "$$M" | cut -f3); \
 	echo "  paquet   $$APK"; \
@@ -106,7 +113,7 @@ argus-lint: ## Syntaxe des flows Maestro, sans device
 	@# ⚠️ Et le GRAPHE, que `check-syntax` ne résout pas : un sous-flow qui
 	@# s'appelle lui-même passe fichier par fichier, puis Maestro rejette le
 	@# workspace entier au démarrage — sans étape fautive à nommer.
-	@node scripts/argus/config.mjs --check-flows
+	@$(ARGUS) config --check-flows
 
 argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans device)
 # Deux moitiés, et la seconde manquait (point 219) : le test prouve
@@ -126,7 +133,7 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 # On ne réordonne pas (la seconde moitié doit tourner même si la première
 # échoue) : on RÉSUME après les deux, en nommant celle qui a échoué.
 	@croise=0; suite=0; \
-	node scripts/argus/config.mjs --check-anchors || croise=$$?; \
+	$(ARGUS) config --check-anchors || croise=$$?; \
 	$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \
 	if [ $$croise -ne 0 ] || [ $$suite -ne 0 ]; then \
 	  echo ""; \
@@ -143,7 +150,7 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 	fi
 
 argus-reach: ## Quels écrans ancrés aucun `goto` ne dessert ? (sans device)
-	@node scripts/argus/config.mjs --check-reachability
+	@$(ARGUS) config --check-reachability
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # ⚠️ `--file-reporter` EN PLUS de la sortie lisible, pas à sa place : le rapport
@@ -154,7 +161,7 @@ argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # ⚠️ Et le dossier est DEMANDÉ à la config, jamais recopié : il est configurable,
 # donc l'écrire en dur ferait écrire la recette là où le rapport ne lit pas, et
 # la dimension se rapporterait « jamais lancée » au sortir d'un run vert.
-	@$(FLUTTER) test --file-reporter json:"$$(node scripts/argus/config.mjs --print-artifacts-dir)/stage1.jsonl" test/argus
+	@$(FLUTTER) test --file-reporter json:"$$($(ARGUS) config --print-artifacts-dir)/stage1.jsonl" test/argus
 
 # ⚠️ QUATRE LANCEMENTS POUR UNE PREMIÈRE INSTALLATION, et deux étaient du
 # recopiage. Un run l'a mesuré : obtenir les échecs, les lister, capturer la
@@ -181,35 +188,35 @@ argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'
 	else echo "  (aucune dette à inscrire — la suite est verte, ou elle n'a pas tourné)"; fi
 
 argus-run: ## Étage 2 — suite Maestro sur device
-	@node scripts/argus/run.mjs
+	@$(ARGUS) run
 
 argus-smoke: ## Étage 2 — smoke seul (le plus rapide)
-	@node scripts/argus/run.mjs --tags=smoke
+	@$(ARGUS) run --tags=smoke
 
 argus-visual: ## Étage 2 — régression visuelle seule
-	@node scripts/argus/run.mjs --tags=visual
+	@$(ARGUS) run --tags=visual
 
 argus-baselines: ## (Re)génère les références visuelles — voir l'avertissement du README
-	@node scripts/argus/run.mjs --update-baselines
+	@$(ARGUS) run --update-baselines
 
 argus-perf: ## Démarrage à froid/à chaud, mémoire, taille du binaire
-	@node scripts/argus/perf.mjs
+	@$(ARGUS) perf
 
 argus-a11y: ## Cibles tactiles et labels, sur l'écran affiché
-	@node scripts/argus/a11y.mjs
+	@$(ARGUS) a11y
 
 argus-sec: ## MASVS statique (sources + binaire)
-	@node scripts/argus/sec.mjs
+	@$(ARGUS) sec
 
 argus-sca: ## CVE des dépendances Dart et natives
-	@node scripts/argus/sca.mjs
+	@$(ARGUS) sca
 
 # `ARGS` passe les drapeaux du rapport, `--previous=<page>` en tête : c'est lui
 # qui rend les onglets des runs passés. ⚠️ Une variable donnée EN LIGNE DE
 # COMMANDE descend dans les sous-make, donc `make argus-run ARGS=…` la fait
 # suivre jusqu'ici — c'est ce qui évite d'avoir à relancer le rapport à part.
 argus-report: ## Agrège tout en rapport HTML (ARGS=--previous=<page publiée>)
-	@node scripts/argus/report.mjs $(ARGS)
+	@$(ARGUS) report $(ARGS)
 
 # ⚠️ PAS une liste de prérequis. `argus-run` sort en 1 ou 2 dès qu'un finding
 # atteint le seuil du gate — c'est son travail —, et make s'arrête là : le
