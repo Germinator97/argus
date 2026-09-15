@@ -100,21 +100,54 @@ install_global() {
   echo "   Le scaffold, lui, se pose toujours par :"
   echo "     bash $home/scripts/install-mobile.sh <projet>"
 }
+
+# ── Désinstallation GLOBALE : la maison et la commande ──────────────────────
+# Même règle, même raison : on ne retire que ce qu'on reconnaît. Un
+# `argus-mobile` qui n'est pas le nôtre reste où il est.
+uninstall_global() {
+  local home="${ARGUS_MOBILE_HOME:-$HOME/.argus-mobile}"
+  local bindir="${ARGUS_MOBILE_BIN:-$HOME/.local/bin}"
+  local lien="$bindir/argus-mobile"
+  local fait=0
+
+  if [ -e "$lien" ]; then
+    if head -3 "$lien" 2>/dev/null | grep -qF 'ARGUS:CADRE'; then
+      rm -f "$lien"; echo "  🗑️  retiré : $lien"; fait=1
+    else
+      echo "  ⏭️  gardé, pas d'origine Argus : $lien"
+    fi
+  fi
+  if [ -d "$home" ]; then
+    if [ -e "$home/bin/argus-mobile" ]; then
+      rm -rf "$home"; echo "  🗑️  retiré : $home"; fait=1
+    else
+      echo "  ⏭️  gardé, aucune installation Argus dedans : $home"
+    fi
+  fi
+  [ "$fait" -eq 1 ] || echo "  Rien à retirer : aucune installation globale trouvée."
+  echo
+  echo "  Les projets déjà installés ne sont pas touchés : leur cadre leur"
+  echo "  appartient, et il continue de tourner sans la commande globale."
+}
 MODE="install"
 TARGET=""
 GLOBAL=0
+UNGLOBAL=0
 for arg in "$@"; do
   case "$arg" in
     --check)  MODE="check" ;;
     --update) MODE="update" ;;
     --global) GLOBAL=1 ;;
+    --uninstall) MODE="uninstall" ;;
+    --uninstall-global) UNGLOBAL=1 ;;
     -h|--help)
       # Dérivé : tout l'en-tête, jusqu'à la première ligne de code. Une plage
       # de lignes figée se serait tue dès qu'on ajoute un paragraphe au-dessus.
       sed -n '2,/^[^#]/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'
       exit 0 ;;
     -*) echo "❌ option inconnue : $arg" >&2
-        echo "   Connues : --check, --update, --global, --help." >&2
+        echo "   Connues : --check, --update, --uninstall, --global,
+             --uninstall-global, --help." >&2
         echo "   Rien n'a été touché." >&2
         exit 2 ;;
     *) TARGET="$arg" ;;
@@ -126,6 +159,12 @@ if [ "$GLOBAL" -eq 1 ]; then
     echo "   agit sur un projet. Rien n'a été touché." >&2
     exit 2; }
   install_global
+  exit 0
+fi
+if [ "$UNGLOBAL" -eq 1 ]; then
+  echo "🗑️  Désinstallation globale d'Argus Mobile"
+  echo
+  uninstall_global
   exit 0
 fi
 TARGET="${TARGET:-$(pwd)}"
@@ -183,6 +222,88 @@ merge_gitignore() {
   return 0
 }
 
+# ── Désinstallation : le SEUL geste qui supprime ────────────────────────────
+# Donc le seul qu'on ne rattrape pas. Retirer le scaffold en bloc effacerait le
+# harnais rempli, les parcours écrits et la config — des jours de travail qui
+# n'ont jamais appartenu au plugin. Ne part d'ici que du CADRE dont la copie
+# locale porte encore la signature, et tout ce qui reste est ÉNUMÉRÉ : une
+# suppression muette laisse celui qui la lance sans moyen de savoir ce qu'il a
+# perdu.
+#
+# ⚠️ AUCUN REPLI DE PROSE ICI, contrairement à --update. Là-bas, ne pas
+# reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à tort
+# la DÉTRUIT. Les deux erreurs n'ont pas le même prix, donc pas le même seuil :
+# un fichier gardé de trop se supprime à la main, l'inverse ne se répare pas.
+uninstall_project() {
+  local target="$1"
+  local retires=0 gardes=0
+  local liste=''
+
+  [ -d "$target" ] || { echo "❌ Projet introuvable : $target" >&2; exit 1; }
+
+  echo "🗑️  Désinstallation du cadre Argus Mobile dans $target"
+  echo
+  while IFS= read -r src; do
+    local rel dest
+    rel="${src#"$SCAFFOLD_DIR"/}"
+    dest="$target/$rel"
+    [ -e "$dest" ] || continue
+
+    if head -20 "$src" | grep -qF 'ARGUS:OWNED'; then
+      liste="$liste  ⏭️  à toi, gardé          : $rel"$'\n'; gardes=$((gardes + 1)); continue
+    fi
+    if head -20 "$src" | grep -qF 'ARGUS:MERGE'; then
+      # Le fichier est au projet ; seul NOTRE bloc s'en va.
+      if [ "$(basename "$rel")" = ".gitignore" ] && grep -qF "$BLOC_DEBUT" "$dest"; then
+        local tmp
+        tmp="$(mktemp)"
+        awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" \
+          'index($0,d){p=1;next} index($0,f){p=0;next} !p{print}' "$dest" > "$tmp"
+        mv "$tmp" "$dest"
+        echo "  🔁 bloc retiré du .gitignore (le reste du fichier est intact)"
+        retires=$((retires + 1))
+      elif cmp -s "$src" "$dest"; then
+        # Un gabarit que le projet n'a jamais touché est resté au plugin : le
+        # laisser, c'est laisser derrière soi un fichier qui parle d'un outil
+        # désinstallé. Mais dès qu'il DIFFÈRE, il porte une trace de quelqu'un,
+        # et il reste — garder de trop se répare à la main, l'inverse non.
+        rm -f "$dest"
+        echo "  🗑️  retiré : $rel (gabarit jamais modifié)"
+        retires=$((retires + 1))
+      else
+        liste="$liste  ⏭️  à fusionner, gardé    : $rel"$'\n'; gardes=$((gardes + 1))
+      fi
+      continue
+    fi
+
+    if head -20 "$dest" | grep -qF 'ARGUS:CADRE'; then
+      rm -f "$dest"
+      echo "  🗑️  retiré : $rel"
+      retires=$((retires + 1))
+    else
+      liste="$liste  ⏭️  pas d'origine Argus   : $rel"$'\n'; gardes=$((gardes + 1))
+    fi
+  done < <(find "$SCAFFOLD_DIR" -type f)
+
+  # Les dossiers devenus vides, et EUX SEULS : rmdir refuse tout le reste, ce
+  # qui protège .maestro/_baselines (tes références visuelles) et le dossier de
+  # rapports sans qu'on ait à les nommer — une liste de noms aurait vieilli.
+  local d
+  for d in scripts/argus test/argus .maestro/_subflows .maestro scripts test; do
+    rmdir "$target/$d" 2>/dev/null || true
+  done
+
+  echo
+  printf '%s' "$liste"
+  echo
+  echo "  $retires retiré(s) · $gardes gardé(s)"
+  echo
+  echo "  Ce qui reste t'appartient : la config, les ancres, les parcours, les"
+  echo "  références visuelles et les rapports déjà produits. Rien de tout cela"
+  echo "  n'a jamais été au plugin."
+}
+
+
 # ⚠️ RELEVÉ AVANT LA BOUCLE, et c'est tout l'intérêt (475). Elle POSE
 # `.github/workflows/argus-mobile.yml` : demandé après, « ce projet a-t-il des
 # workflows GitHub ? » vaut « oui » à jamais, et le contrôle serait vacant le
@@ -197,6 +318,11 @@ avait_github_actions=0
 if [ -d "$TARGET/.github/workflows" ]; then
   autres=$(find "$TARGET/.github/workflows" -type f ! -name 'argus-mobile.yml' 2>/dev/null | head -1)
   [ -n "$autres" ] && avait_github_actions=1
+fi
+
+if [ "$MODE" = "uninstall" ]; then
+  uninstall_project "$TARGET"
+  exit 0
 fi
 
 copied=0

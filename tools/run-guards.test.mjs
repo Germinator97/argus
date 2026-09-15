@@ -14659,3 +14659,136 @@ test('l\'installeur refuse un drapeau inconnu sans rien toucher (497)', () => {
     rmSync(tmp, { recursive: true, force: true });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 498 · La désinstallation, seul geste qui supprime
+// ═══════════════════════════════════════════════════════════════════════════
+// Retirer le scaffold en bloc effacerait le harnais rempli, les parcours écrits
+// et la config : des jours de travail qui n'ont jamais appartenu au plugin. Ce
+// qui part est le CADRE dont la copie locale porte encore la signature, et rien
+// d'autre — et ce qui reste est énuméré, parce qu'une suppression muette laisse
+// celui qui la lance sans moyen de savoir ce qu'il a perdu.
+//
+// ⚠️ CE QUI DOIT RESTER EST DÉRIVÉ DE LA TABLE DES CAMPS, pas figé une seconde
+// fois : deux relevés du même fait dérivent l'un de l'autre, et c'est celui
+// qu'on oublie qui ment. La table, elle, est déjà gardée par égalité (495).
+
+test('la désinstallation retire le cadre et GARDE tout le travail du projet (498)', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-desinstall-'));
+  try {
+    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    mkdirSync(join(projet, 'lib'));
+    writeFileSync(join(projet, 'lib/main.dart'), 'void main() {}\n');
+    writeFileSync(join(projet, '.gitignore'), 'a-moi/\n');
+    installe(projet);
+
+    // Le travail du dev, tel qu'il existe après quelques jours.
+    const travail = {
+      'test/argus/harness.dart': 'MON-HARNAIS',
+      '.maestro/_subflows/goto.yaml': 'MES-ANCRES',
+      'argus.mobile.yaml': 'MA-CONFIG',
+    };
+    for (const [rel, marque] of Object.entries(travail)) {
+      const f = join(projet, rel);
+      writeFileSync(f, `${readFileSync(f, 'utf8')}\n# ${marque}\n`);
+    }
+    mkdirSync(join(projet, '.maestro/_baselines'), { recursive: true });
+    writeFileSync(join(projet, '.maestro/_baselines/home.png'), 'PNG');
+    mkdirSync(join(projet, 'argus-mobile-report'), { recursive: true });
+    writeFileSync(join(projet, 'argus-mobile-report/report.json'), '{}');
+
+    const r = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
+    assert.equal(r.status, 0, `la désinstallation a échoué : ${r.stderr}`);
+
+    // 1. Tout le cadre est parti — dérivé de la table, pas listé ici.
+    const cadre = CAMPS_DU_SCAFFOLD.filter(([, c]) => c === 'CADRE').map(([rel]) => rel);
+    assert.ok(cadre.length > 0, 'aucun fichier de cadre dans la table : le garde ne mesure rien');
+    const restes = cadre.filter((rel) => existsSync(join(projet, rel)));
+    assert.deepStrictEqual(restes, [],
+      'des fichiers de cadre survivent à la désinstallation : elle laisse derrière elle un '
+      + 'outil à moitié retiré (498)');
+
+    // 2. …et RIEN du travail n'a été touché. C'est l'autre moitié, et la seule
+    //    qui ne se répare pas : une désinstallation trop zélée est définitive.
+    for (const [rel, marque] of Object.entries(travail)) {
+      assert.ok(existsSync(join(projet, rel)), `${rel} a été SUPPRIMÉ : c'est du travail perdu`);
+      assert.match(readFileSync(join(projet, rel), 'utf8'), new RegExp(marque),
+        `${rel} existe mais a été réécrit : le travail qu'il portait est perdu (498)`);
+    }
+    for (const rel of ['lib/main.dart', 'pubspec.yaml', '.maestro/_baselines/home.png',
+      'argus-mobile-report/report.json']) {
+      assert.ok(existsSync(join(projet, rel)),
+        `${rel} a disparu : il n'a jamais appartenu au plugin`);
+    }
+    // 3. Le .gitignore garde sa ligne, et perd notre bloc.
+    const gi = readFileSync(join(projet, '.gitignore'), 'utf8');
+    assert.match(gi, /a-moi/, 'le .gitignore du projet a été réécrit');
+    assert.ok(!gi.includes('Argus Mobile'), 'le bloc géré est resté dans le .gitignore');
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+});
+
+test('elle ne retire pas un homonyme, et le gabarit ne part que s\'il est vierge (498)', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-homonyme-'));
+  try {
+    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    writeFileSync(join(projet, 'Makefile'), 'build:\n\t@echo a-moi\n');
+    installe(projet);
+    writeFileSync(join(projet, 'package.snippet.json'),
+      `${readFileSync(join(projet, 'package.snippet.json'), 'utf8')}\n// ANNOTE\n`);
+
+    spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
+    assert.match(readFileSync(join(projet, 'Makefile'), 'utf8'), /a-moi/,
+      'le Makefile du projet a été supprimé par la désinstallation : il ne portait pas notre '
+      + 'signature, donc il ne nous appartenait pas (498)');
+    assert.ok(existsSync(join(projet, 'package.snippet.json')),
+      'un gabarit que le projet avait annoté a été supprimé');
+
+    // Le jumeau : vierge, il doit partir — sinon la désinstallation laisse
+    // derrière elle un fichier qui parle d'un outil qu'on vient de retirer.
+    const vierge = mkdtempSync(join(tmpdir(), 'argus-vierge-'));
+    writeFileSync(join(vierge, 'pubspec.yaml'), 'name: hote\n');
+    installe(vierge);
+    spawnSync('bash', [INSTALLEUR, vierge, '--uninstall'], { encoding: 'utf8' });
+    assert.ok(!existsSync(join(vierge, 'package.snippet.json')),
+      'un gabarit jamais modifié survit à la désinstallation');
+    rmSync(vierge, { recursive: true, force: true });
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+});
+
+test('la désinstallation globale ne retire que ce qu\'elle reconnaît (498)', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-desglobal-'));
+  try {
+    // Ce qui est à nous s'en va.
+    const { home, bin } = poseGlobale(tmp);
+    const r = spawnSync('bash', [INSTALLEUR, '--uninstall-global'], {
+      encoding: 'utf8',
+      env: { ...process.env, ARGUS_MOBILE_HOME: home, ARGUS_MOBILE_BIN: bin },
+    });
+    assert.equal(r.status, 0, `la désinstallation globale a échoué : ${r.stderr}`);
+    assert.ok(!existsSync(home), 'la maison globale est restée');
+    assert.ok(!existsSync(join(bin, 'argus-mobile')), 'la commande est restée dans le PATH');
+
+    // Ce qui ne l'est pas reste — les deux sens, sinon un geste qui ne
+    // supprime jamais rien passerait la première moitié.
+    const binTiers = join(tmp, 'bin-tiers');
+    const homeTiers = join(tmp, 'home-tiers');
+    mkdirSync(binTiers, { recursive: true });
+    mkdirSync(homeTiers, { recursive: true });
+    writeFileSync(join(binTiers, 'argus-mobile'), '#!/bin/sh\necho a-moi\n');
+    writeFileSync(join(homeTiers, 'fichier.txt'), 'rien\n');
+    spawnSync('bash', [INSTALLEUR, '--uninstall-global'], {
+      encoding: 'utf8',
+      env: { ...process.env, ARGUS_MOBILE_HOME: homeTiers, ARGUS_MOBILE_BIN: binTiers },
+    });
+    assert.match(readFileSync(join(binTiers, 'argus-mobile'), 'utf8'), /a-moi/,
+      'un `argus-mobile` qui n\'est pas le nôtre a été supprimé (498)');
+    assert.ok(existsSync(join(homeTiers, 'fichier.txt')),
+      'un dossier qui ne porte aucune installation Argus a été effacé');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
