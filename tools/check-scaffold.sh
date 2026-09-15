@@ -12,9 +12,27 @@
 # relevé à jour dans le même commit.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# ⚠️ La racine est SURCHARGEABLE, et ce n'est pas du confort de test. Le garde
+# local (`tools/run-guards.test.mjs`) exerce ce script sur un export de HEAD,
+# jamais sur l'arbre de travail : lancé sur l'arbre, il rougirait sous CHAQUE
+# mutation du harnais qui touche un fichier du scaffold — et comme le harnais
+# crédite le PREMIER test rouge, « le garde tombe » deviendrait vrai pour des
+# mutations sans rapport, y compris au-dessus de gardes vacants. L'instrument,
+# lui, reste lu depuis l'arbre : c'est ce qui le laisse mutable.
+ROOT="${ARGUS_SCAFFOLD_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 SCAFFOLD="$ROOT/plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile"
 HEADER=20   # même borne que l'installeur
+
+# ⚠️ REFUSER DE CONCLURE plutôt que mesurer le mauvais sujet. Sans ce garde, une
+# racine qui ne porte pas le scaffold fait échouer le `cd` ci-dessous SANS
+# arrêter le script : `find .` relève alors le répertoire COURANT — `.git/`
+# compris — et le diff accuse une classification qui n'a jamais été lue. Le
+# verdict a l'air d'un sujet fautif alors que rien n'a pu être mesuré.
+if [ ! -d "$SCAFFOLD" ]; then
+  echo "✖ scaffold introuvable sous « $ROOT » — rien n'a pu être contrôlé." >&2
+  echo "   (ARGUS_SCAFFOLD_ROOT pointe-t-il une racine de dépôt complète ?)" >&2
+  exit 2
+fi
 
 # ── Le relevé attendu. Une ligne par fichier : « catégorie<TAB>chemin ». ──────
 EXPECTED=$(cat <<'EOF'

@@ -14928,3 +14928,83 @@ test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)
     + 'un exemple volontaire, soit un faux positif du motif, soit une VRAIE fuite — et seule la '
     + 'troisième demande de purger l\'historique avant de publier quoi que ce soit (500)');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 501 — le contrôle de classification n'avait aucun lecteur LOCAL
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SCAFFOLD_REL = 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile';
+
+test('la classification du scaffold est contrôlée EN LOCAL, pas seulement en CI (501)', () => {
+  // `check-scaffold.sh` fige le camp de chaque fichier — ce que `--update`
+  // remplace, ce qu'il préserve. Son seul lecteur était `.github/workflows/
+  // plugin.yml`, donc une CI qui ne tourne que sur `main` et sur les PR : un
+  // lanceur ajouté au scaffold à 13:16 n'a vu son entrée posée qu'à 16:56, et
+  // pendant ces 3 h 40 le contrôle aurait échoué sans que rien ne rougisse. Un
+  // garde dont le seul lecteur est un événement qui n'a pas encore eu lieu ne
+  // garde pas : il attend.
+  //
+  // ⚠️ L'INSTRUMENT est lu depuis l'arbre de travail, les DONNÉES depuis l'état
+  // COMMITÉ, et cette asymétrie est tout le montage. Lancé sur l'arbre, ce
+  // contrôle verrait la mutation que le harnais vient d'écrire dans le scaffold
+  // et la dénoncerait — or le harnais crédite le PREMIER test rouge, donc
+  // « le garde tombe » deviendrait vrai pour des mutations sans rapport, y
+  // compris au-dessus de gardes parfaitement vacants. Un test qui rougit sous
+  // TOUTE mutation est un harnais qui approuve tout. Le script, lui, reste pris
+  // dans l'arbre : c'est ce qui le laisse mutable, et donc gardé.
+  const bac = mkdtempSync(join(tmpdir(), 'argus-scaffold-'));
+  try {
+    // Le contenu qu'un `push` enverrait, pas celui qu'une mutation vient
+    // d'écrire. Coût mesuré : 0,22 s, export et contrôle compris.
+    execFileSync('bash', ['-c', 'git archive HEAD | tar -x -C "$1"', '_', bac],
+      { cwd: RACINE, encoding: 'utf8' });
+
+    const lance = () => spawnSync('bash', [join(RACINE, 'tools/check-scaffold.sh')],
+      { env: { ...process.env, ARGUS_SCAFFOLD_ROOT: bac }, encoding: 'utf8' });
+
+    const vert = lance();
+
+    // ⚠️ Le MONTAGE d'abord : `2` dit « je n'ai pas pu mesurer » et `1` « le
+    // sujet est fautif ». Les deux sont non nuls, et les confondre ferait
+    // accuser la classification d'un dépôt sain pour un export qui a raté.
+    assert.equal(vert.status, 0,
+      vert.status === 2
+        ? `le contrôle n'a RIEN PU mesurer sur l'export de HEAD — c'est le montage de ce garde `
+          + `qui est en cause, pas la classification :\n${vert.stderr}`
+        : 'la classification effective du scaffold ne correspond plus au relevé figé de '
+          + `check-scaffold.sh. Tranche chaque ligne, puis mets le relevé à jour DANS LE MÊME `
+          + `COMMIT que le fichier ajouté (501) :\n${vert.stdout}`);
+
+    // ⚠️ ET SEULEMENT ENSUITE, l'INSTRUMENT : un « conforme » ne vaut que si le
+    // contrôle a vu TOUT ce qu'on lui a donné — un script qui ne trouve aucun
+    // fichier sort en 0 lui aussi, et « ✔ conforme (0 lu) » est exact tout en se
+    // lisant comme une réussite. Le compte attendu se DÉRIVE des données, jamais
+    // du relevé figé (qui rendrait le contrôle circulaire) ni d'un plancher
+    // deviné : c'est le seul critère qui voie aussi une TRONCATURE du relevé.
+    // ⚠️ Cet ordre a été payé : écrite avant le verdict, cette assertion parlait
+    // la première sous une classification fautive — le script n'imprime alors
+    // plus son compte — et accusait le garde de ne plus savoir lire, en taisant
+    // le diff qui dit quoi corriger.
+    const reels = execFileSync('find', [join(bac, SCAFFOLD_REL), '-type', 'f'],
+      { encoding: 'utf8' }).split('\n').filter(Boolean).length;
+    const annonce = Number(/(\d+) fichiers/.exec(vert.stdout ?? '')?.[1]);
+    assert.equal(annonce, reels,
+      `le contrôle annonce ${annonce} fichier(s) là où le scaffold commité en porte ${reels} — `
+      + 'son relevé ne couvre plus tout ce qu\'il reçoit, ou la tournure a changé et ce garde '
+      + 'ne sait plus lire ce qu\'il mesure (501)');
+
+    // ⚠️ LA CONTRE-ÉPREUVE, sur la copie jetable — sans elle on ne sait pas si
+    // l'instrument sait dire NON. Un script devenu incapable de rendre un code
+    // non nul passerait tous les jours pour un garde. Et elle doit rendre 1
+    // (« sujet fautif »), jamais 2 (« pas pu mesurer ») : les deux sont non
+    // nuls, et les confondre ferait passer un montage cassé pour une détection.
+    writeFileSync(join(bac, SCAFFOLD_REL, 'scripts/argus/intrus.mjs'),
+      '#!/usr/bin/env node\n// fichier non déclaré, posé par le garde 501\n');
+    const rouge = lance();
+    assert.equal(rouge.status, 1,
+      'un fichier AJOUTÉ au scaffold ne fait pas échouer le contrôle : il ne discrimine plus, '
+      + 'et son vert ci-dessus ne prouvait donc rien (501)');
+  } finally {
+    rmSync(bac, { recursive: true, force: true });
+  }
+});

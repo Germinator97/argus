@@ -137,6 +137,13 @@ CIBLES = {
     "methodoweb": ROOT / "plugins/argus-web/skills/argus/references/methodology.md",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
     "lanceur": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/argus-mobile.mjs",
+    # 501 — le contrôle de classification lui-même. Il n'avait aucune cible :
+    # rien ne pouvait dire si son relevé gardait encore, et il n'avait pas non
+    # plus de lecteur local. Le site que personne ne mute est le site dont
+    # personne n'apprend rien. ⚠️ Son garde lit les DONNÉES depuis HEAD, jamais
+    # depuis l'arbre — c'est le script, relevé figé compris, qui est muté ici :
+    # l'instrument, pas ce qu'il mesure.
+    "scaffoldcheck": ROOT / "tools/check-scaffold.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -2314,6 +2321,16 @@ MUTATIONS = [
     ("confid", "500 · le balayage ne lit plus qu'une partie de ce qu'on lui donne",
      "export function fuitesDe(texte) {\n",
      "export function fuitesDe(texte) {\n  texte = texte.slice(0, 100_000);\n"),
+    # 501 — le défaut du jour, remis : un fichier ajouté au scaffold dont
+    # l'entrée n'est pas posée au relevé. Il a vécu trois heures et demie sans
+    # que rien ne rougisse, parce que seule la CI lisait ce contrôle.
+    # ⚠️ Elle vise la ligne du LANCEUR et pas n'importe laquelle : c'est celle
+    # dont l'oubli a été payé. Le motif est ancré sur le saut de ligne qui la
+    # précède, sans quoi il matcherait aussi la même ligne écrite plus indentée
+    # ailleurs un jour.
+    ("scaffoldcheck", "un fichier du scaffold n'est plus déclaré au relevé",
+     "\ncadre\tscripts/argus/argus-mobile.mjs",
+     "\n"),
 ]
 
 
