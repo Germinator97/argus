@@ -2277,6 +2277,17 @@ MUTATIONS = [
     ("installeur", "498 · la dépose globale efface un dossier qui n'est pas le sien",
      "    if [ -e \"$home/bin/argus-mobile\" ]; then\n",
      "    if [ -d \"$home\" ]; then\n"),
+    # ⚠️ Un drapeau qui disparaît de l'AIDE en restant accepté. Les deux moitiés
+    # sont justes séparément — le drapeau marche, l'aide est cohérente avec
+    # elle-même — et c'est leur ÉCART qui est faux : le geste existe et personne
+    # ne peut l'apprendre. Aucun comportement à casser, donc aucun test à faire
+    # rougir, sauf celui qui compare les deux.
+    # 📌 Elle vise l'aide et non le parseur : renommer le drapeau ferait tomber
+    # d'abord le garde qui l'INVOQUE, et le harnais crédite le premier test
+    # rouge — la mutation prouverait alors le garde du voisin.
+    ("installeur", "498 · un geste disparaît de l'aide en restant accepté",
+     "#   --uninstall-global\n#              retire cette installation et le lien",
+     "#              retire cette installation et le lien"),
 ]
 
 
