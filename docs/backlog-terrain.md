@@ -8940,7 +8940,7 @@ laissé le 485 vivre un mois après le 481.
 
 ### 489. Un test qui ESPÉRAIT un écart de date, sur un disque qui ne le doit pas
 
-**Fermé le 14/09/2026** (`cbe0ab7`). Trouvé par la **première exécution de la
+**Fermé le 14/09/2026** (`ccc8664`). Trouvé par la **première exécution de la
 CI du plugin**, qui n'avait jamais tourné en 79 runs.
 
 Le test 343 écrivait le paquet, écrivait ensuite `lib/main.dart`, et attendait

@@ -14862,3 +14862,64 @@ test('tout drapeau que l\'installeur accepte est documenté par son aide (498)',
     'le SKILL prescrit des drapeaux que l\'installeur n\'accepte pas : le lecteur les tapera, '
     + 'et la commande s\'arrêtera sur un geste que la doc lui a donné (498)');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 500 · La confidentialité de l'HISTOIRE, pas seulement de la page
+// ═══════════════════════════════════════════════════════════════════════════
+// Le détecteur de fuites existait depuis le 333 et ne s'appliquait qu'à un
+// texte : celui de la page publiée. Les six cent quatre-vingt-onze commits que
+// ce dépôt garde n'avaient JAMAIS été mesurés — et c'est eux qu'une pull
+// request rend publics, pas seulement l'état courant.
+//
+// Ce qu'il a trouvé à son premier passage : un `.pyc` commité par accident le
+// 10/09, retiré de l'arbre le 14/09, et qui portait le chemin absolu de la
+// machine. Absent de l'arbre, couvert par le .gitignore — et récupéré par tout
+// clone. Un fichier retiré n'est pas un fichier parti.
+//
+// ⚠️ IL LIT TOUS LES OBJETS, jamais les commits atteignables. C'est la même
+// distinction que pour une purge : `git log -S` ne voit que ce qui est
+// joignable depuis une ref, et laisse dehors précisément ce qu'on cherche.
+
+/** Ce que le détecteur trouve LÉGITIMEMENT, figé par égalité. Relevé le 15/09/2026. */
+const FUITES_LEGITIMES = [
+  '/Users/quelquun',                          // l'exemple anonymisé des gardes du 333
+  '/home/home_page.dart',                     // un chemin de fichier Dart, faux positif du motif
+  '192.168.1.42:5555',                        // l'adresse d'exemple des mêmes gardes
+  'Exemple_API34',                            // l'AVD d'exemple
+  'FR.name.toLowerCase',                      // du JavaScript, faux positif du motif
+  'com.apple.CoreSimulator.SimRuntime.iOS',   // un identifiant de la plateforme
+  'com.exemple.a',
+  'com.exemple.autreapp',
+  'com.exemple.monapp',
+  'com.x.monapp',                             // les bundle ids d'exemple du scaffold
+  'io.flutter.splash',                        // une clé du framework
+];
+
+test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)', () => {
+  const objets = execFileSync('git',
+    ['cat-file', '--batch-all-objects', '--batch-check=%(objecttype) %(objectname)'],
+    { cwd: RACINE, encoding: 'utf8', maxBuffer: 1 << 28 })
+    .split('\n').filter((l) => l.startsWith('blob ')).map((l) => l.split(' ')[1]);
+
+  // ⚠️ Prouver que le balayage a du GRAIN À MOUDRE avant de lire son verdict :
+  // un dépôt fraîchement cloné en profondeur 1, ou une commande qui échoue,
+  // rendraient « aucune fuite » — exactement la réponse qu'on espère.
+  assert.ok(objets.length > 500,
+    `${objets.length} blob(s) lus dans la base d'objets — le balayage ne mesure rien`);
+
+  const texte = execFileSync('git', ['cat-file', '--batch'],
+    { cwd: RACINE, input: `${objets.join('\n')}\n`, encoding: 'latin1', maxBuffer: 1 << 30 });
+  const { fuites, instrumentAveugle } = fuitesDe(texte);
+  assert.ok(!instrumentAveugle,
+    'le témoin n\'apparaît pas dans les objets lus : ce n\'est pas le dépôt qui est propre, '
+    + 'c\'est l\'instrument qui ne lit rien');
+
+  // Figé par ÉGALITÉ : une valeur qui APPARAÎT doit être arbitrée, une qui
+  // DISPARAÎT aussi — sinon la liste survit à ce qu'elle décrit et devient une
+  // permission permanente.
+  const vues = [...new Set(fuites.map((f) => f.valeur))].sort();
+  assert.deepStrictEqual(vues, [...FUITES_LEGITIMES].sort(),
+    'la liste des valeurs que le détecteur trouve dans l\'historique a changé. Chacune est soit '
+    + 'un exemple volontaire, soit un faux positif du motif, soit une VRAIE fuite — et seule la '
+    + 'troisième demande de purger l\'historique avant de publier quoi que ce soit (500)');
+});
