@@ -2305,6 +2305,15 @@ MUTATIONS = [
      "  {\n    cle: 'chemin',\n    quoi: 'chemin de machine (il porte un nom de compte)',\n"
      "    motif: /\\/(?:Users|home)\\/[A-Za-z][\\w.-]*/g,\n  },\n",
      ""),
+    # ⚠️ ELLE ISOLE LE GARDE DE L'HISTOIRE, et c'est tout son intérêt. Le
+    # détecteur garde ses quatre motifs, donc les gardes du 333 — qui lui
+    # passent des phrases de quelques dizaines de caractères — restent VERTS.
+    # Seul un balayage de 255 Mo voit qu'il n'en lit plus que le premier
+    # centième. Une troncature « d'optimisation » est exactement la forme sous
+    # laquelle ce défaut-là arriverait.
+    ("confid", "500 · le balayage ne lit plus qu'une partie de ce qu'on lui donne",
+     "export function fuitesDe(texte) {\n",
+     "export function fuitesDe(texte) {\n  texte = texte.slice(0, 100_000);\n"),
 ]
 
 
