@@ -14260,7 +14260,7 @@ test('le format se juge à version FIXE, la compatibilité sur la stable (494)',
 // (l'installation globale, `docs/chantiers-differes.md`) — c'est cette table
 // qui dira ce qui déménage et ce qui reste.
 
-/** Le camp DÉCLARÉ de chaque fichier livré. Relevé le 15/09/2026 : 20 · 12 · 2. */
+/** Le camp DÉCLARÉ de chaque fichier livré, relevé le 15/09/2026. */
 const CAMPS_DU_SCAFFOLD = [
   ['.github/workflows/argus-mobile.yml', 'CADRE'],
   ['.gitignore', 'MERGE'],
@@ -14283,6 +14283,7 @@ const CAMPS_DU_SCAFFOLD = [
   ['argus.mobile.yaml', 'OWNED'],
   ['package.snippet.json', 'MERGE'],
   ['scripts/argus/a11y.mjs', 'CADRE'],
+  ['scripts/argus/argus-mobile.mjs', 'CADRE'],
   ['scripts/argus/config.mjs', 'CADRE'],
   ['scripts/argus/perf.mjs', 'CADRE'],
   ['scripts/argus/report.mjs', 'CADRE'],
@@ -14383,5 +14384,93 @@ test('et `--update` ne remplace QUE les fichiers de cadre (495, l\'effet)', () =
       + 'jour, en silence (495)');
   } finally {
     rmSync(hote, { recursive: true, force: true });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 496 · Un seul fichier sait où vit le moteur
+// ═══════════════════════════════════════════════════════════════════════════
+// Le chemin `scripts/argus/<x>.mjs` était écrit quarante et une fois dans les
+// trois fichiers qui EXÉCUTENT, et quarante fois de plus en mentions — dont des
+// messages que le programme imprime à l'utilisateur. Autant de copies d'une même
+// décision, et une copie dérive : le jour où le moteur déménage, il faut les
+// retrouver toutes, y compris celles que rien ne fait rougir.
+//
+// Le lanceur les remplace, et il CHERCHE le moteur au lieu de le savoir :
+// la variable imposée, puis son propre dossier, puis l'installation globale.
+// Ce qu'il faut garder de lui n'est pas qu'il marche — c'est qu'il ne mente
+// pas : le Makefile CAPTURE sa sortie dans des substitutions de commande, donc
+// un octet de plus casse un build sans rien dire.
+
+const LANCEUR = 'scripts/argus/argus-mobile.mjs';
+const SCAFFOLD = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+/** @param {string[]} args @param {Record<string,string>} [env] */
+const lance = (args, env) => spawnSync(process.execPath, args,
+  { cwd: SCAFFOLD, encoding: 'utf8', env: { ...process.env, ...env } });
+
+test('le lanceur relaie la sortie et le code sans rien y changer (496)', () => {
+  const direct = lance(['scripts/argus/config.mjs', '--print-platforms']);
+  assert.equal(direct.status, 0,
+    'l\'appel direct échoue déjà : c\'est le montage qui est cassé, pas le lanceur');
+  assert.ok(direct.stdout.trim().length > 0,
+    'l\'appel direct ne rend rien — le garde comparerait deux vides et serait vert sur tout');
+
+  const via = lance([LANCEUR, 'config', '--print-platforms']);
+  assert.equal(via.stdout, direct.stdout,
+    'le lanceur a changé la sortie. Le Makefile la CAPTURE — `$(node … --print-binary)` — donc '
+    + 'un octet de plus casse un build sans qu\'aucune erreur soit levée (496)');
+  assert.equal(via.status, direct.status,
+    'le lanceur a changé le code de sortie : les recettes qui enchaînent sur `&&` ne le verront '
+    + 'plus passer, ou pire, ne le verront plus échouer');
+});
+
+test('un moteur IMPOSÉ qui n\'en est pas un fait échouer, sans repli (496)', () => {
+  // ⚠️ MESURÉ AVANT DE LIVRER, et la première version repliait : avec la variable
+  // pointée sur un dossier vide, elle rendait la réponse du moteur du PROJET. On
+  // croit épingler un moteur, on exécute l'autre, et rien ne le dit — en CI, une
+  // variable mal renseignée ferait mesurer le mauvais tout en affichant un succès.
+  const vide = mkdtempSync(join(tmpdir(), 'argus-vide-'));
+  const rate = lance([LANCEUR, 'config', '--print-platforms'], { ARGUS_MOBILE_ENGINE: vide });
+  assert.notEqual(rate.status, 0,
+    'le lanceur est retombé en silence sur un autre moteur que celui qu\'on lui imposait (496)');
+  assert.match(rate.stderr, /ARGUS_MOBILE_ENGINE/,
+    'l\'échec ne nomme pas la variable en cause : on cherchera le défaut ailleurs');
+
+  // Le jumeau, sans lequel on garderait un lanceur qui refuse TOUT moteur imposé.
+  const bon = mkdtempSync(join(tmpdir(), 'argus-moteur-'));
+  cpSync(join(SCAFFOLD, 'scripts/argus'), bon, { recursive: true });
+  const ok = lance([LANCEUR, 'config', '--print-platforms'], { ARGUS_MOBILE_ENGINE: bon });
+  assert.equal(ok.status, 0,
+    'un moteur imposé VALIDE est refusé : le mode global est mort-né');
+  assert.ok(ok.stdout.trim().length > 0,
+    'le moteur imposé ne rend rien alors qu\'il est complet — il ne lit plus le projet depuis '
+    + 'le répertoire courant, ce qui est la seule raison pour laquelle il peut vivre ailleurs');
+  rmSync(vide, { recursive: true, force: true });
+  rmSync(bon, { recursive: true, force: true });
+});
+
+test('le lanceur refuse l\'inconnu et n\'exécute rien sans commande (496)', () => {
+  // Un outil qui pilote un device et fabrique des rapports ne doit rien faire
+  // « par défaut » : on lui passe un drapeau inconnu pendant qu'on cherche encore
+  // comment s'en servir, et c'est le moment où il agit le moins à propos.
+  assert.notEqual(lance([LANCEUR, 'migrate']).status, 0,
+    'une commande inconnue est acceptée : le lanceur exécutera ce qu\'il n\'a pas compris');
+  assert.notEqual(lance([LANCEUR]).status, 0,
+    'sans commande, le lanceur sort en 0 — donc une recette qui l\'appelle à vide passe pour '
+    + 'avoir fait le travail');
+
+  // Les commandes sont DÉRIVÉES du moteur : une liste écrite à la main se
+  // périmerait au premier script ajouté, et en silence — la commande neuve
+  // serait simplement « inconnue ».
+  const aide = lance([LANCEUR, '--help']);
+  assert.equal(aide.status, 0, '`--help` doit sortir en 0 : c\'est ce qu\'on tape en premier');
+  const moteur = readdirSync(join(SCAFFOLD, 'scripts/argus'))
+    .filter((f) => f.endsWith('.mjs') && f !== 'argus-mobile.mjs')
+    .map((f) => f.slice(0, -'.mjs'.length));
+  assert.ok(moteur.length > 0, 'aucun script relevé dans le moteur — le garde ne mesure plus rien');
+  for (const c of moteur) {
+    assert.match(aide.stdout, new RegExp(`\\b${c}\\b`),
+      `\`${c}\` existe dans le moteur et n'est pas annoncé par l'aide : la liste a cessé d'être `
+      + 'dérivée, donc elle se périmera sans que rien ne le dise (496)');
   }
 });
