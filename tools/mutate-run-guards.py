@@ -2217,6 +2217,15 @@ MUTATIONS = [
     ("lanceur", "496 · le lanceur sans commande sort en 0 au lieu de refuser",
      "\n  if (commande === undefined) {\n    aide(commandes, origine, moteur);\n    process.exit(2);\n  }",
      "\n  if (commande === undefined) {\n    aide(commandes, origine, moteur);\n    process.exit(0);\n  }"),
+    # ── 497 · le lanceur cherche le moteur du projet, pas seulement le sien ──
+    # ⚠️ Elle retire le candidat qui ne sert QUE depuis ailleurs. Rien ne casse
+    # dans le dépôt — ici le lanceur est toujours posé à côté du moteur, donc le
+    # candidat suivant répond pour lui. C'est le jour de l'installation globale
+    # que la commande cesse de trouver quoi que ce soit, chez quelqu'un qui n'a
+    # rien changé : le mode de panne que ce garde existe pour voir.
+    ("lanceur", "497 · le lanceur cesse de chercher le moteur du projet courant",
+     "  ['le projet courant', join(process.cwd(), 'scripts', 'argus')],\n",
+     ""),
 ]
 
 
