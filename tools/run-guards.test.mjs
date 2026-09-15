@@ -14493,3 +14493,46 @@ test('le lanceur refuse l\'inconnu et n\'exécute rien sans commande (496)', () 
       + 'dérivée, donc elle se périmera sans que rien ne le dise (496)');
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 497 · Le lanceur installé AILLEURS doit trouver le moteur du projet
+// ═══════════════════════════════════════════════════════════════════════════
+// Installé globalement, le lanceur vit dans ~/.argus-mobile/bin : il n'a aucun
+// moteur à côté de lui. S'il ne cherchait qu'auprès de lui-même, il ne
+// trouverait jamais celui du projet où on l'invoque — le seul que ce projet ait
+// testé et épinglé — et le mode global serait inutilisable le jour de sa pose.
+//
+// Le défaut ne se voit pas depuis le dépôt : ici le lanceur est TOUJOURS posé à
+// côté du moteur, donc le candidat manquant ne manque à personne. Il faut
+// l'exécuter d'ailleurs pour que la question se pose.
+
+test('le lanceur posé AILLEURS trouve le moteur du projet courant (497)', () => {
+  const ailleurs = mkdtempSync(join(tmpdir(), 'argus-bin-'));
+  try {
+    cpSync(join(SCAFFOLD, LANCEUR), join(ailleurs, 'argus-mobile.mjs'));
+    const via = spawnSync(process.execPath, [join(ailleurs, 'argus-mobile.mjs'),
+      'config', '--print-platforms'], { cwd: SCAFFOLD, encoding: 'utf8' });
+    const direct = lance(['scripts/argus/config.mjs', '--print-platforms']);
+    assert.equal(direct.status, 0, 'l\'appel direct échoue déjà — le montage est cassé');
+    assert.ok(direct.stdout.trim().length > 0,
+      'l\'appel direct ne rend rien : le garde comparerait deux vides');
+    assert.equal(via.stdout, direct.stdout,
+      'un lanceur posé hors du projet ne rend pas ce que rend le moteur du projet : installé '
+      + 'globalement, il ne trouve pas le moteur que ce projet a testé et épinglé (497)');
+
+    // L'autre moitié : hors d'un projet, il ne doit RIEN inventer. Sans elle,
+    // un lanceur qui répondrait n'importe quoi passerait ce garde.
+    const nulle_part = mkdtempSync(join(tmpdir(), 'argus-vide-'));
+    const perdu = spawnSync(process.execPath, [join(ailleurs, 'argus-mobile.mjs'),
+      'config', '--print-platforms'], { cwd: nulle_part, encoding: 'utf8' });
+    assert.notEqual(perdu.status, 0,
+      'hors de tout projet, le lanceur a trouvé un moteur : il en exécute un que personne n\'a '
+      + 'choisi');
+    assert.match(perdu.stderr, /le projet courant/,
+      'l\'échec ne dit pas qu\'il a cherché dans le projet courant : celui qui le lit depuis le '
+      + 'mauvais dossier ne saura pas que c\'est son dossier, le problème');
+    rmSync(nulle_part, { recursive: true, force: true });
+  } finally {
+    rmSync(ailleurs, { recursive: true, force: true });
+  }
+});

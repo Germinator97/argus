@@ -48,6 +48,15 @@ const PIERRE_DE_TOUCHE = 'run.mjs';
  * @returns {Array<[string, string]>}
  */
 const candidats = () => [
+  // ⚠️ LE PROJET COURANT D'ABORD, et ce n'est pas un ordre arbitraire : installé
+  // globalement, ce lanceur vit dans ~/.argus-mobile/bin et n'a aucun moteur à
+  // côté de lui — il ne trouverait donc jamais celui du projet où on l'invoque,
+  // qui est pourtant le seul que ce projet a testé et épinglé.
+  // 📌 Et PAS de remontée vers le dossier parent, si tentant soit-il : les sept
+  // scripts résolvent le projet depuis `process.cwd()` sans remonter non plus.
+  // Un lanceur plus malin qu'eux trouverait un moteur là où eux ne trouveraient
+  // plus le projet, et l'erreur parlerait alors d'autre chose.
+  ['le projet courant', join(process.cwd(), 'scripts', 'argus')],
   ['le dossier de ce lanceur', dirname(MOI)],
   ['l\'installation globale', join(homedir(), '.argus-mobile', 'engine')],
 ];
