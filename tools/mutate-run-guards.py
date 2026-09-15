@@ -1740,8 +1740,8 @@ MUTATIONS = [
     # elle ne prouvait plus rien. Elle vise toujours la POSITION du relevé, qui
     # reste la seule variable qu'un garde de texte ne peut pas voir.
     ("installeur", "475 · le relevé passe APRÈS la boucle qui pose le workflow",
-     "avait_github_actions=0\nif [ -d \"$TARGET/.github/workflows\" ]; then\n  autres=$(find \"$TARGET/.github/workflows\" -type f ! -name 'argus-mobile.yml' 2>/dev/null | head -1)\n  [ -n \"$autres\" ] && avait_github_actions=1\nfi\n\ncopied=0",
-     "avait_github_actions=0\n\ncopied=0"),
+     "avait_github_actions=0\nif [ -d \"$TARGET/.github/workflows\" ]; then\n  autres=$(find \"$TARGET/.github/workflows\" -type f ! -name 'argus-mobile.yml' 2>/dev/null | head -1)\n  [ -n \"$autres\" ] && avait_github_actions=1\nfi\n",
+     "avait_github_actions=0\n"),
     # 478 — le NÔTRE compté comme un workflow du projet : l'avertissement
     # sortait une fois, puis jamais. Le motif retiré est l'exclusion elle-même.
     ("installeur", "478 · notre propre workflow recompte, et fait taire dès le 2e passage",
@@ -2255,8 +2255,8 @@ MUTATIONS = [
     # globale — et c'est l'intégration qui n'a plus rien à appeler, sur une
     # machine que personne ne regarde au moment du changement.
     ("installeur", "497 · le moteur cesse d'être copié dans le projet",
-     '  rel="${src#"$SCAFFOLD_DIR"/}"\n',
-     '  rel="${src#"$SCAFFOLD_DIR"/}"\n  case "$rel" in scripts/argus/*.mjs) continue ;; esac\n'),
+     '\n  rel="${src#"$SCAFFOLD_DIR"/}"\n',
+     '\n  rel="${src#"$SCAFFOLD_DIR"/}"\n  case "$rel" in scripts/argus/*.mjs) continue ;; esac\n'),
     # ── 498 · la désinstallation, seul geste qui supprime ──────────────────
     # ⚠️ « Désinstaller, c'est tout enlever » : la version naïve, et la seule qui
     # soit vraiment irrattrapable. Le harnais rempli, les ancres et les parcours
