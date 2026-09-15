@@ -9243,3 +9243,55 @@ ne peut satisfaire toutes les versions à la fois : c'est une limite, pas un bug
 📌 **Les quatre jobs de la CI tournent et passent maintenant dans un conteneur
 Linux** — `scaffold`, `mutation` (44/44), `format`, `harness`. C'est la première
 fois depuis que ce dépôt existe.
+
+### 495. Un fichier qui change de camp ne casse rien, nulle part
+
+**Fermé le 15/09/2026**, en ouvrant le chantier **F** de
+`docs/chantiers-differes.md` (l'installation globale) : c'en est la troisième
+épreuve, *figer la classification effective par ÉGALITÉ, avant tout déplacement*.
+
+L'installeur range chaque fichier livré dans l'un de trois camps, lus sur les
+vingt premières lignes de la **source** :
+
+    ARGUS:OWNED   12 fichiers   au projet — jamais remplacés
+    ARGUS:MERGE    2 fichiers   à fusionner dans un homonyme
+    ARGUS:CADRE   20 fichiers   à nous — remplacés par `--update`
+
+Ce classement décide **de qui écrase le travail de qui**, et rien ne le
+surveillait. Les deux sens coûtent cher, et les deux sont muets. Un OWNED qui
+perd son marqueur devient du cadre, donc `--update` efface le harnais rempli,
+les ancres et les parcours métier — chez quelqu'un qui n'a fait que mettre à
+jour. Un CADRE qui gagne un OWNED cesse d'être mis à jour, pour toujours et chez
+tous les hôtes, y compris ceux qui ne lancent jamais rien. Et le cas le plus
+courant n'est ni l'un ni l'autre : un fichier **ajouté sans marqueur** tombe dans
+le camp par défaut sans que personne l'ait décidé.
+
+**Ce qui le ferme** : deux gardes. Le premier fige la table des trente-quatre
+fichiers **par égalité** — il rougit à chaque ajout, retrait ou déplacement, et
+c'est le but : le camp se choisit en écrivant une ligne, pas en oubliant un
+en-tête. Le second mesure l'**effet** et non la déclaration : il installe, ajoute
+une ligne témoin à chaque fichier posé comme si le projet l'avait édité, lance
+`--update`, et exige qu'**exactement** les fichiers de cadre aient perdu leur
+témoin. Les deux moitiés refusent de conclure quand elles cessent de
+discriminer : rien de relevé, rien de remplacé, ou tout remplacé.
+
+⚠️ **Le second n'est pas un doublon du premier : c'est ce qui l'empêche de
+dériver.** La table déclarée recopie l'ordre de lecture de l'installeur, et une
+recopie dérive ; un changement d'ordre ou une reconnaissance cassée sépare
+désormais les deux relevés.
+
+⚠️ **Il a fallu deux essais pour que la mutation garde le BON garde.** Casser la
+reconnaissance du marqueur OWNED fait bien tomber quelque chose — mais le **341**,
+qui voit revenir les `TODO(argus)` que le plugin livre, et le harnais crédite le
+PREMIER test qui rougit. Une mutation qui tombe sur le garde du voisin ne garde
+plus le sien : celui-ci pourrait devenir vacant sans que rien ne le dise. Le camp
+MERGE ne porte aucun TODO, donc lui seul sépare — mesuré à 503 verts et un seul
+rouge, le bon. Le défaut qu'elle réintroduit est d'ailleurs le plus grave des
+trois : le `.gitignore` du projet **écrasé** par le nôtre, au lieu d'être fusionné
+dans son bloc délimité.
+
+📌 Re-mesuré le 15/09 en rouvrant le dossier F, et c'est cette table que le
+chantier consultera pour dire ce qui déménage et ce qui reste : le moteur pèse
+**9 148 lignes sur 14 717**, soit 62 % du scaffold ; les invocations à fermer sont
+toujours 41, dans trois fichiers (Makefile 19, CI 12, snippet npm 10) ; et le
+couplage du cadre vers le possédé tient toujours en deux points.
