@@ -136,6 +136,7 @@ CIBLES = {
     # c'est la façon dont ce garde-ci pourrait devenir vacant.
     "methodoweb": ROOT / "plugins/argus-web/skills/argus/references/methodology.md",
     "installeur": ROOT / "plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh",
+    "lanceur": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/argus-mobile.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -2189,6 +2190,33 @@ MUTATIONS = [
     ("installeur", "495 · les fichiers à fusionner sont écrasés au lieu d'être fusionnés",
      "\n    skipped=$((skipped + 1))\n    continue\n  fi\n\n  # Fichier de CADRE",
      "\n    skipped=$((skipped + 1))\n  fi\n\n  # Fichier de CADRE"),
+    # ── 496 · le lanceur, seul à savoir où vit le moteur ───────────────────
+    # ⚠️ Elle imprime UNE ligne de plus, et c'est tout. Rien ne casse, rien ne
+    # lève, le lanceur fait toujours son travail — mais le Makefile capture cette
+    # sortie dans des substitutions de commande (`$(… --print-binary)`), donc le
+    # chemin du binaire devient une phrase et le build s'en va chercher un APK
+    # qui n'existe pas. Un octet de trop, aucun message.
+    ("lanceur", "496 · le relais se met à parler par-dessus la sortie qu'il relaie",
+     "\n  const r = spawnSync(process.execPath,",
+     "\n  console.log(`→ ${commande}`);\n  const r = spawnSync(process.execPath,"),
+    # ⚠️ ELLE REMET LE REPLI SILENCIEUX, le défaut mesuré avant de livrer : la
+    # variable imposée qui ne porte pas le moteur cesse d'être une erreur et
+    # laisse chercher plus loin. On croit épingler un moteur, on exécute l'autre,
+    # et la sortie est exactement celle qu'on attendait — c'est ce qui la rend
+    # indétectable autrement qu'en imposant un dossier vide exprès.
+    ("lanceur", "496 · un moteur imposé qui n'en est pas un replie au lieu d'échouer",
+     "    return existsSync(join(impose, PIERRE_DE_TOUCHE))\n"
+     "      ? { moteur: impose, origine: '$ARGUS_MOBILE_ENGINE', regardes, impose: true }\n"
+     "      : { moteur: null, origine: null, regardes, impose: true };\n",
+     "    if (existsSync(join(impose, PIERRE_DE_TOUCHE))) {\n"
+     "      return { moteur: impose, origine: '$ARGUS_MOBILE_ENGINE', regardes, impose: true };\n"
+     "    }\n"),
+    # ⚠️ Sortir en 0 sans avoir rien fait est le mode de panne le plus poli qui
+    # soit : la recette qui appelle le lanceur à vide passe pour avoir travaillé,
+    # et la CI est verte sur un run qui n'a jamais eu lieu.
+    ("lanceur", "496 · le lanceur sans commande sort en 0 au lieu de refuser",
+     "\n  if (commande === undefined) {\n    aide(commandes, origine, moteur);\n    process.exit(2);\n  }",
+     "\n  if (commande === undefined) {\n    aide(commandes, origine, moteur);\n    process.exit(0);\n  }"),
 ]
 
 
