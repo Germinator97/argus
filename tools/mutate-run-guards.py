@@ -2295,6 +2295,16 @@ MUTATIONS = [
     ("ciplugin", "499 · le job de format redevient injouable hors d'un vrai runner",
      "          flutter-version: 3.32.0\n          architecture: x64\n",
      "          flutter-version: 3.32.0\n"),
+    # ── 500 · la confidentialité de l'HISTOIRE ─────────────────────────────
+    # ⚠️ Elle retire le détecteur de CHEMINS, soit exactement celui qui a trouvé
+    # le `.pyc` dont la purge du 15/09 est née. Rien ne casse : le module
+    # s'importe, la page reste propre, et les trois autres détecteurs continuent
+    # de rendre des valeurs — donc le balayage a toujours du grain à moudre et
+    # ne peut pas se déclarer aveugle. Seule l'ÉGALITÉ de la liste le voit.
+    ("confid", "500 · le détecteur de chemins de machine disparaît",
+     "  {\n    cle: 'chemin',\n    quoi: 'chemin de machine (il porte un nom de compte)',\n"
+     "    motif: /\\/(?:Users|home)\\/[A-Za-z][\\w.-]*/g,\n  },\n",
+     ""),
 ]
 
 
