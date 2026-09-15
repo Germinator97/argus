@@ -9536,3 +9536,62 @@ valeur**, puis redevient vert dès que `gc` la retire. Il refuse aussi de conclu
 sur un dépôt qui ne lui donne rien à lire — moins de cinq cents blobs, ou un
 témoin absent —, parce qu'un « aucune fuite » rendu par un balayage vide est
 exactement la réponse qu'on espère. Coût : **1,5 s** pour 1603 blobs et 255 Mo.
+
+### 501. Le contrôle de classification n'avait aucun lecteur LOCAL
+
+**Fermé le 15/09/2026**, sur un **commit** — celui qui ajoutait au relevé de
+`check-scaffold.sh` la ligne du lanceur posé au scaffold le jour même. Le commit
+était juste ; c'est l'écart entre les deux gestes qui ne l'était pas.
+
+    lanceur ajouté au scaffold      13:16
+    entrée posée au relevé          16:56
+    entre les deux                  3 h 40 où le contrôle aurait échoué
+
+Rien ne rougissait, et l'en-tête du script prescrit pourtant de mettre le relevé
+à jour **dans le même commit**. La raison est mesurable : son seul appelant
+exécutable est `.github/workflows/plugin.yml`, donc une CI qui ne tourne que sur
+`main` et sur les pull requests — et rien n'a jamais été poussé. *Un garde dont
+le seul lecteur est un événement qui n'a pas encore eu lieu ne garde pas : il
+attend.*
+
+⚠️ **Son unique occurrence dans la suite était une MENTION, pas une invocation** :
+le nom du script apparaissait dans le libellé d'un autre test, ce qui suffit à
+faire croire à un `grep` qu'il est câblé. Le marqueur existait pour une autre
+raison, légitime — la septième façon de naître vacant.
+
+📌 **Et il n'avait aucune cible de mutation.** Les deux manques vont ensemble :
+personne ne l'exécutait, donc personne ne pouvait apprendre qu'il avait cessé de
+garder. *Le site que personne ne mute est le site dont personne n'apprend rien.*
+
+**Ce qui le ferme** : le contrôle est joué par la suite locale, à chaque
+exécution ; il porte sa mutation ; et il sait désormais refuser de conclure.
+
+⚠️ **L'INSTRUMENT vient de l'arbre, les DONNÉES de l'état COMMITÉ — et cette
+asymétrie est tout le montage.** Lancé sur l'arbre de travail, ce contrôle
+verrait la mutation que le harnais vient d'écrire dans le scaffold et la
+dénoncerait. Or le harnais crédite le **premier** test rouge : « le garde
+tombe » serait alors vrai pour des mutations sans rapport, y compris au-dessus
+de gardes parfaitement vacants. *Un test qui rougit sous toute mutation est un
+harnais qui approuve tout.* Le script, lui, reste pris dans l'arbre : c'est ce
+qui le laisse mutable. Coût mesuré : **0,22 s** par exécution, export de `HEAD`
+compris — soit moins de deux minutes sur une passe entière.
+
+⚠️ **Rendre la racine surchargeable a OUVERT un chemin où le script mesurait le
+mauvais sujet**, et c'est la contre-épreuve de cette surcharge qui l'a montré :
+sur une racine sans scaffold, le `cd` échoue **sans arrêter le script**, `find .`
+relève alors le répertoire courant — `.git/` compris — et le diff accuse une
+classification qui n'a jamais été lue. Le verdict a l'apparence d'un sujet
+fautif alors que rien n'a pu être mesuré. Trois états désormais distincts :
+`0` conforme, `1` sujet fautif, `2` pas pu mesurer — et le garde exige **1**, pas
+« non nul », sinon un montage cassé passerait pour une détection.
+
+⚠️ **L'ORDRE des assertions comptait plus que leur contenu.** La preuve « le
+contrôle a bien tout lu » était écrite avant le verdict ; sous une classification
+fautive le script n'imprime plus son compte, donc c'est elle qui parlait la
+première — en accusant le garde de ne plus savoir lire, et en taisant le diff qui
+dit quoi corriger. Le montage d'abord, le sujet ensuite, l'instrument en dernier.
+
+📌 Le compte attendu se **dérive des données** (les fichiers réellement présents
+dans l'export), jamais du relevé figé — qui rendrait le contrôle circulaire — ni
+d'un plancher deviné. C'est le seul critère qui voie aussi une **troncature** de
+l'instrument.
