@@ -39,6 +39,7 @@ cadre	Makefile
 owned	argus.mobile.yaml
 merge	package.snippet.json
 cadre	scripts/argus/a11y.mjs
+cadre	scripts/argus/argus-mobile.mjs
 cadre	scripts/argus/config.mjs
 cadre	scripts/argus/perf.mjs
 cadre	scripts/argus/report.mjs
