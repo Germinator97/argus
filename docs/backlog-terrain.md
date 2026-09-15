@@ -9348,3 +9348,48 @@ plus dans le projet — or le **runner de CI n'a aucune installation globale**. 
 workflow que l'installeur pose chez l'hôte n'a donc plus de moteur à appeler, et
 le dossier ne l'avait pas vu. C'est l'arbitrage du troisième temps, pas un détail
 d'implémentation.
+
+### 497. L'installation globale : la commande une fois, le cadre par projet
+
+**Fermé le 15/09/2026**, troisième temps du chantier **F** — la question posée le
+14/09 : *installer le skill globalement, comme `flutter` ou `git`, ou dans le
+projet au choix*.
+
+`install-mobile.sh --global` pose `~/.argus-mobile` et un lien `argus-mobile`
+dans le PATH. **La maison reproduit exactement la structure du skill**
+(`assets/scaffold-mobile`, `scripts/`, `bin/`), ce qui n'est pas cosmétique :
+l'installeur copié dedans y retrouve son scaffold par le même chemin relatif,
+donc il n'a **pas une ligne à changer** selon l'endroit d'où il tourne. La
+commande du PATH est un lien symbolique, parce qu'`import.meta.url` porte le
+chemin réel : le lanceur en dérive sa maison même invoqué à travers le lien.
+
+🔴 **Le moteur reste COPIÉ dans chaque projet, et c'est une décision.** Un runner
+de CI n'a aucune installation globale : un projet dont le moteur vivrait dans la
+maison n'aurait plus rien à appeler en intégration, et le dev exécuterait une
+autre version que son intégration. Rien dans le code ne dit cela, donc **un garde
+le porte**. La voie inverse — le moteur en global, la CI qui va le chercher à un
+SHA épinglé — reste ouverte, mais elle est **suspendue à la publication du
+plugin** : le dépôt public ne contient aujourd'hui que le commit initial, zéro
+fichier du moteur, et 676 commits ne sont pas poussés. Arbitrage de Germinator :
+voie 2 maintenant, voie 3 après la PR.
+
+⚠️ **Un trou que seule la conception du global a révélé** : le lanceur ne
+cherchait le moteur qu'**auprès de lui-même**. Installé dans `~/.argus-mobile/bin`,
+il n'aurait jamais trouvé celui du projet où on l'invoque — le seul que ce projet
+ait testé et épinglé — et le mode global aurait été inutilisable **le jour de sa
+pose**. Invisible depuis le dépôt, où le lanceur est toujours posé à côté du
+moteur : il faut l'exécuter d'ailleurs pour que la question se pose. Et **pas de
+remontée vers le dossier parent** : les sept scripts résolvent le projet depuis
+`process.cwd()` sans remonter non plus, et un lanceur plus malin qu'eux
+trouverait un moteur là où eux ne trouveraient plus le projet.
+
+📌 **Deux refus, et leurs deux moitiés.** Un `argus-mobile` déjà présent qui ne
+porte pas la signature n'est jamais remplacé — le geste qu'on ne rattrape pas —
+pendant que **notre** copie doit continuer de l'être, sinon plus rien ne se met à
+jour ; la seconde moitié est mesurée en abîmant la copie et en vérifiant qu'elle
+revient. Et un drapeau inconnu **arrête** désormais l'installeur : `--updat`
+mourait sur un `cd: --: invalid option` qui ne nomme ni la cause ni le drapeau,
+au moment précis où quelqu'un cherche encore comment s'en servir.
+
+📌 Le PATH n'est jamais modifié : si le dossier n'y est pas, l'installeur imprime
+la ligne à ajouter plutôt que d'éditer un fichier de shell.
