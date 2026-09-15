@@ -39,20 +39,95 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SCAFFOLD_DIR="$SKILL_DIR/assets/scaffold-mobile"
+
+# ── Installation GLOBALE : la commande une fois, le cadre par projet ────────
+# Ce qui vit ici est le PLUGIN — le scaffold source, l'installeur, le lanceur —
+# jamais les données d'un projet. La maison reproduit exactement la structure du
+# skill (`assets/scaffold-mobile`, `scripts/`), ce qui n'est pas cosmétique :
+# l'installeur copié y retrouve son scaffold par le même chemin relatif, donc il
+# n'a pas une ligne à changer selon l'endroit d'où il tourne.
+#
+# ⚠️ Le moteur reste COPIÉ dans chaque projet, et c'est une décision, pas un
+# oubli : un runner de CI n'a aucune installation globale, donc un projet dont
+# le moteur vivrait ici n'aurait plus rien à appeler en intégration. Le projet et
+# sa CI exécutent ainsi le même moteur, à la même version.
+install_global() {
+  local home="${ARGUS_MOBILE_HOME:-$HOME/.argus-mobile}"
+  local bindir="${ARGUS_MOBILE_BIN:-$HOME/.local/bin}"
+  local lien="$bindir/argus-mobile"
+  local lanceur="$SCAFFOLD_DIR/scripts/argus/argus-mobile.mjs"
+
+  [ -f "$lanceur" ] || { echo "❌ Lanceur introuvable : $lanceur" >&2; exit 1; }
+
+  # ⚠️ On ne remplace QUE notre propre copie. Un `argus-mobile` déjà présent qui
+  # ne porte pas la signature appartient à quelqu'un d'autre : l'écraser
+  # détruirait son travail, et c'est le genre de geste qu'on ne rattrape pas.
+  if [ -e "$lien" ] && ! head -3 "$lien" 2>/dev/null | grep -qF 'ARGUS:CADRE'; then
+    echo "❌ $lien existe déjà et ne porte pas la signature d'Argus." >&2
+    echo "   Rien n'a été touché. Déplace-le, ou désigne un autre dossier par" >&2
+    echo "   ARGUS_MOBILE_BIN." >&2
+    exit 1
+  fi
+  if [ -d "$home" ] && [ ! -e "$home/bin/argus-mobile" ] \
+     && [ -n "$(command ls -A "$home" 2>/dev/null)" ]; then
+    echo "❌ $home existe, n'est pas vide, et ne porte aucune installation Argus." >&2
+    echo "   Rien n'a été touché. Désigne un autre dossier par ARGUS_MOBILE_HOME." >&2
+    exit 1
+  fi
+
+  mkdir -p "$home/assets" "$home/scripts" "$home/bin" "$bindir"
+  rm -rf "$home/assets/scaffold-mobile"
+  cp -R "$SCAFFOLD_DIR" "$home/assets/scaffold-mobile"
+  cp "${BASH_SOURCE[0]}" "$home/scripts/install-mobile.sh"
+  cp "$lanceur" "$home/bin/argus-mobile"
+  chmod +x "$home/bin/argus-mobile" "$home/scripts/install-mobile.sh"
+  ln -sf "$home/bin/argus-mobile" "$lien"
+
+  echo "✅ Argus Mobile est installé globalement."
+  echo "   maison   : $home"
+  echo "   commande : $lien"
+  case ":$PATH:" in
+    *":$bindir:"*) echo "   PATH     : $bindir y figure déjà." ;;
+    *) echo "   ⚠️  $bindir n'est PAS dans ton PATH : la commande ne sera pas trouvée."
+       echo "       Ajoute cette ligne à ton shell, puis rouvre-le :"
+       echo "         export PATH=\"$bindir:\$PATH\"" ;;
+  esac
+  echo
+  echo "   Dans un projet où le scaffold est posé :"
+  echo "     argus-mobile --help        ce que le moteur du projet expose"
+  echo "     argus-mobile run --tags=smoke"
+  echo
+  echo "   Le scaffold, lui, se pose toujours par :"
+  echo "     bash $home/scripts/install-mobile.sh <projet>"
+}
 MODE="install"
 TARGET=""
+GLOBAL=0
 for arg in "$@"; do
   case "$arg" in
     --check)  MODE="check" ;;
     --update) MODE="update" ;;
+    --global) GLOBAL=1 ;;
     -h|--help)
       # Dérivé : tout l'en-tête, jusqu'à la première ligne de code. Une plage
       # de lignes figée se serait tue dès qu'on ajoute un paragraphe au-dessus.
       sed -n '2,/^[^#]/p' "${BASH_SOURCE[0]}" | sed '$d' | sed 's/^# \{0,1\}//'
       exit 0 ;;
+    -*) echo "❌ option inconnue : $arg" >&2
+        echo "   Connues : --check, --update, --global, --help." >&2
+        echo "   Rien n'a été touché." >&2
+        exit 2 ;;
     *) TARGET="$arg" ;;
   esac
 done
+if [ "$GLOBAL" -eq 1 ]; then
+  [ "$MODE" = "install" ] || {
+    echo "❌ --global ne se combine pas avec --$MODE : l'un pose la commande, l'autre" >&2
+    echo "   agit sur un projet. Rien n'a été touché." >&2
+    exit 2; }
+  install_global
+  exit 0
+fi
 TARGET="${TARGET:-$(pwd)}"
 
 if [ ! -d "$SCAFFOLD_DIR" ]; then

@@ -14536,3 +14536,126 @@ test('le lanceur posé AILLEURS trouve le moteur du projet courant (497)', () =>
     rmSync(ailleurs, { recursive: true, force: true });
   }
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 497 · L'installation globale : la commande une fois, le cadre par projet
+// ═══════════════════════════════════════════════════════════════════════════
+// ⚠️ TOUS CES GARDES POSENT DANS UN DOSSIER TEMPORAIRE, jamais dans le vrai
+// ~/.argus-mobile : un test qui installe chez celui qui le joue est un test
+// qu'on finit par ne plus jouer.
+//
+// Ce qui se décide ici et qu'aucun comportement ne dirait : le moteur reste
+// COPIÉ dans chaque projet. Un runner de CI n'a pas d'installation globale,
+// donc un projet dont le moteur vivrait dans la maison n'aurait plus rien à
+// appeler en intégration — et le dev et sa CI exécuteraient deux versions
+// différentes. C'est une décision, pas un reste : elle a besoin d'un garde.
+
+/** Pose l'installation globale dans un dossier jetable. @returns {{home: string, bin: string}} */
+const poseGlobale = (racineTmp, env = {}) => {
+  const home = join(racineTmp, 'maison');
+  const bin = join(racineTmp, 'bin');
+  const r = spawnSync('bash', [INSTALLEUR, '--global'], {
+    encoding: 'utf8',
+    env: { ...process.env, ARGUS_MOBILE_HOME: home, ARGUS_MOBILE_BIN: bin, ...env },
+  });
+  return { home, bin, r };
+};
+
+test('la maison globale reproduit la structure du skill, donc l\'installeur y marche (497)', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-global-'));
+  try {
+    const { home, bin, r } = poseGlobale(tmp);
+    assert.equal(r.status, 0, `la pose globale a échoué : ${r.stderr}`);
+    assert.ok(existsSync(join(bin, 'argus-mobile')), 'aucune commande posée dans le dossier du PATH');
+
+    // ⚠️ C'est LA raison d'être de la structure : l'installeur copié retrouve
+    // son scaffold par le même chemin relatif, donc il n'a pas une ligne à
+    // changer selon l'endroit d'où il tourne. Rien d'autre ne le vérifierait.
+    const projet = join(tmp, 'projet');
+    mkdirSync(projet);
+    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    const pose = spawnSync('bash', [join(home, 'scripts/install-mobile.sh'), projet],
+      { encoding: 'utf8' });
+    assert.equal(pose.status, 0, `l'installeur de la maison a échoué : ${pose.stderr}`);
+    assert.ok(existsSync(join(projet, 'Makefile')),
+      'l\'installeur copié dans la maison ne retrouve plus son scaffold : la structure de la '
+      + 'maison a cessé de reproduire celle du skill (497)');
+
+    // Le moteur est DANS le projet — la décision de la voie 2, et sa raison.
+    const moteur = readdirSync(join(projet, 'scripts/argus')).filter((f) => f.endsWith('.mjs'));
+    assert.ok(moteur.length >= 7,
+      `${moteur.length} script(s) posé(s) dans le projet : le moteur a cessé d'y être copié, `
+      + 'donc la CI de ce projet — qui n\'a aucune installation globale — n\'a plus rien à '
+      + 'appeler, et le dev exécute une autre version que son intégration (497)');
+
+    // Et la commande globale tourne DANS ce projet, sur ce moteur-là.
+    const via = spawnSync(join(bin, 'argus-mobile'), ['config', '--print-platforms'],
+      { cwd: projet, encoding: 'utf8' });
+    assert.equal(via.status, 0, `la commande globale échoue dans un projet installé : ${via.stderr}`);
+    assert.ok(via.stdout.trim().length > 0, 'la commande globale ne rend rien');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('la pose globale n\'écrase pas un homonyme, et remplace bien la NÔTRE (497)', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-homo-'));
+  try {
+    // Un `argus-mobile` qui appartient à quelqu'un d'autre.
+    const bin = join(tmp, 'bin');
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, 'argus-mobile'), '#!/bin/sh\necho a-moi\n');
+    const r = spawnSync('bash', [INSTALLEUR, '--global'], {
+      encoding: 'utf8',
+      env: { ...process.env, ARGUS_MOBILE_HOME: join(tmp, 'maison'), ARGUS_MOBILE_BIN: bin },
+    });
+    assert.notEqual(r.status, 0, 'la pose globale a accepté d\'écraser un fichier qui n\'est pas à nous');
+    assert.match(readFileSync(join(bin, 'argus-mobile'), 'utf8'), /a-moi/,
+      'le fichier d\'un tiers a été remplacé : c\'est le geste qu\'on ne rattrape pas (497)');
+
+    // ⚠️ L'AUTRE MOITIÉ, sans laquelle une pose qui refuse TOUT passerait : une
+    // seconde pose doit remplacer notre propre copie, sinon plus rien ne se met
+    // à jour — le piège par défaut est de fermer le premier en cassant celui-ci.
+    const propre = mkdtempSync(join(tmpdir(), 'argus-maj-'));
+    const un = poseGlobale(propre);
+    assert.equal(un.r.status, 0, `première pose : ${un.r.stderr}`);
+    // ⚠️ MESURÉ, pas déduit d'un code de sortie : une pose qui ne ferait plus
+    // rien sortirait en 0 elle aussi. On abîme la copie, et elle doit revenir.
+    const pose = join(propre, 'maison/bin/argus-mobile');
+    writeFileSync(pose, `${readFileSync(pose, 'utf8')}\n// PERIME\n`);
+    const deux = poseGlobale(propre);
+    assert.equal(deux.r.status, 0,
+      'une seconde pose globale est refusée : la commande ne se mettra plus jamais à jour');
+    assert.ok(!readFileSync(pose, 'utf8').includes('PERIME'),
+      'la seconde pose n\'a pas remplacé notre propre copie : elle reste à la version du jour '
+      + 'de son installation, sans que rien ne le signale (497)');
+    rmSync(propre, { recursive: true, force: true });
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+test('l\'installeur refuse un drapeau inconnu sans rien toucher (497)', () => {
+  // Une faute de frappe sur un drapeau ne doit pas devenir un répertoire cible :
+  // `--updat` mourait sur un « cd: -- : invalid option » qui ne nomme pas la
+  // cause, et c'est le message qu'on lit quand on cherche encore comment s'en
+  // servir — le moment où un outil qui écrit doit être le plus prudent.
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-typo-'));
+  try {
+    writeFileSync(join(tmp, 'pubspec.yaml'), 'name: hote\n');
+    const r = spawnSync('bash', [INSTALLEUR, '--updat'], { cwd: tmp, encoding: 'utf8' });
+    assert.notEqual(r.status, 0, 'un drapeau inconnu est accepté');
+    assert.match(r.stderr, /option inconnue/,
+      'l\'échec ne dit pas que le drapeau est inconnu : on cherchera la cause ailleurs');
+    assert.deepStrictEqual(readdirSync(tmp), ['pubspec.yaml'],
+      'un drapeau inconnu a fait écrire quelque chose');
+
+    // Le jumeau : un drapeau CONNU passe toujours. Sans lui, un parseur qui
+    // refuserait tout satisfait l'assertion ci-dessus.
+    const bon = spawnSync('bash', [INSTALLEUR, tmp, '--check'], { encoding: 'utf8' });
+    assert.match(`${bon.stdout}${bon.stderr}`, /absent|à jour|retard/,
+      '`--check` ne répond plus rien : le parseur refuse aussi ce qu\'il connaît');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
