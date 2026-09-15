@@ -9473,3 +9473,66 @@ les deux tombent maintenant sur le même garde.
 par `git checkout` — le correctif n'était pas encore commité, et c'est ce même
 geste qui avait effacé un en-tête une heure plus tôt (498). Restauration prouvée
 par empreinte, pas annoncée.
+
+### 500. La confidentialité mesurait la page, jamais l'HISTOIRE
+
+**Fermé le 15/09/2026**, sur une **question** — *« donc la PR prévoit de pousser
+sur le distant ? »* — et non sur un run. La réponse est oui : **691 commits** sur
+un dépôt **public**, dont l'accès anonyme a été vérifié. Ce qui a suivi n'était
+pas prévu.
+
+Le détecteur de fuites existe depuis le **333**. Il ne s'applique qu'à un
+**texte** : celui de la page publiée. Les six cent quatre-vingt-onze commits que
+ce dépôt garde n'avaient **jamais** été mesurés — et ce sont eux qu'une pull
+request rend publics, pas seulement l'état courant.
+
+    arbre courant       11 valeurs distinctes — toutes des exemples ou des faux positifs
+    TOUS les objets     12 valeurs distinctes — une de plus
+                        /Users/<compte>/…/tools/mutate-run-guards.py
+
+🔴 **La douzième vient d'un `.pyc`** : `tools/__pycache__/mutate-run-guards.cpython-314.pyc`,
+commité par accident le 10/09 (point **471**), retiré de l'arbre le 14/09. Du
+bytecode Python embarque le chemin absolu de son source. Absent de l'arbre,
+couvert par le `.gitignore` — et **récupéré par tout clone**. *Un fichier retiré
+n'est pas un fichier parti.*
+
+⚠️ **Deux mesures se sont contredites, et c'est ce qui a tranché.** Le détecteur
+en comptait une, `grep` n'en trouvait aucune : le blob est **binaire**, et c'est
+le contexte extrait — du bytecode, `subprocess`, `capture_output` — qui a nommé
+le coupable en une lecture. Devant deux instruments qui ne peuvent pas avoir
+raison ensemble, on extrait, on ne choisit pas.
+
+**Ce qui le ferme** : la purge complète — réécriture, `refs/original` supprimées,
+`reflog expire --expire=now --all`, `gc --prune=now` — puis la **preuve par
+balayage de tous les objets**, où le compte tombe de douze valeurs à onze. Et un
+garde, celui qui manquait : le détecteur appliqué aux objets du dépôt et non à
+un texte.
+
+⚠️ **Les deux gestes n'ont pas le même critère, et les confondre coûte dans les
+deux sens.** Pour *prouver une purge*, il faut **tous** les objets
+(`--batch-all-objects`) : c'est la seule façon de voir ce que `refs/original`, le
+reflog et les orphelins gardent encore, et `git log -S` n'en montre rien. Pour
+*garder en continu*, il faut l'**atteignable** (`rev-list --objects --all`) :
+c'est exactement ce qu'un `push` envoie, et rien d'autre. Écrit d'abord sur le
+premier critère, le garde a rougi sur le blob qu'un `commit --amend` venait de
+détacher — du travail local que personne ne verra jamais. Il couvre en prime les
+**messages de commit**, qui sont atteignables eux aussi.
+
+📌 **La fenêtre comptait plus que la gravité.** Un chemin de compte n'est ni un
+secret ni un client. Mais tant que rien n'est poussé, réécrire ne casse aucun
+clone ni aucun fork ; après, ça ne redevient jamais gratuit. Mesuré avant
+d'agir : **91 commits** réécrits, aucun ne devient vide — donc le compte de 696
+tient —, `main` n'est pas concernée, et **un seul** SHA cité par les docs est
+touché. La page publiée en cite trois, qui sont republiés avec elle.
+
+⚠️ **Et il a attrapé son propre auteur, dans l'heure.** Cette entrée-ci citait
+le chemin en clair pour l'expliquer : le garde a rougi au commit suivant. *Un
+garde ne nomme pas ce qu'il interdit* — la valeur est anonymisée ci-dessus, et
+c'est le détecteur, pas une relecture, qui l'a exigé.
+
+⚠️ **Le garde tient les deux sens, prouvé par un blob écrit droit dans la base
+d'objets** (`git hash-object -w`, sans commit) : il tombe **en nommant la
+valeur**, puis redevient vert dès que `gc` la retire. Il refuse aussi de conclure
+sur un dépôt qui ne lui donne rien à lire — moins de cinq cents blobs, ou un
+témoin absent —, parce qu'un « aucune fuite » rendu par un balayage vide est
+exactement la réponse qu'on espère. Coût : **1,5 s** pour 1603 blobs et 255 Mo.

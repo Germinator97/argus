@@ -14896,10 +14896,15 @@ const FUITES_LEGITIMES = [
 ];
 
 test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)', () => {
-  const objets = execFileSync('git',
-    ['cat-file', '--batch-all-objects', '--batch-check=%(objecttype) %(objectname)'],
+  // ⚠️ ATTEIGNABLE DEPUIS UNE REF, jamais `--batch-all-objects`. La base
+  // d'objets garde aussi les orphelins — le blob qu'un `commit --amend` vient
+  // de détacher, ceux d'un rebase — et un push n'envoie QUE l'atteignable :
+  // ce garde-là rougirait sur du travail local que personne ne verra jamais.
+  // `--all` couvre les refs/original d'un filter-branch, qui sont des refs et
+  // voyagent donc, elles.
+  const objets = execFileSync('git', ['rev-list', '--objects', '--all'],
     { cwd: RACINE, encoding: 'utf8', maxBuffer: 1 << 28 })
-    .split('\n').filter((l) => l.startsWith('blob ')).map((l) => l.split(' ')[1]);
+    .split('\n').filter(Boolean).map((l) => l.split(' ')[0]);
 
   // ⚠️ Prouver que le balayage a du GRAIN À MOUDRE avant de lire son verdict :
   // un dépôt fraîchement cloné en profondeur 1, ou une commande qui échoue,
