@@ -5096,14 +5096,6 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS — 502, 503, 504**, rapportés par la paire de runs 80-81 du
-15/09/2026, la première à exercer l'installation GLOBALE sur des projets réels.
-Un remède que le plugin prescrit et que Maestro rejette ; une dimension d'analyse
-qui n'existe que d'un côté des deux plateformes ; et un avertissement écrit deux
-fois qui a échoué quatre fois. Aucun des trois n'était visible autrement qu'en
-jouant un run : ce sont de la PROSE que rien n'exécute, une ABSENCE de mesure, et
-un texte que personne ne lit au moment où il servirait.
-
 ✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
 Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
 le reste passant : le scaffold est compatible, l'écart est stylistique. Style à
@@ -9606,8 +9598,23 @@ l'instrument.
 
 ### 502. Le remède que `QAM-START-ABSORBE` prescrit n'existe pas dans Maestro
 
-**Ouvert le 15/09/2026**, rapporté par le run 80 (Android, terrain 1) et
+**Fermé le 15/09/2026**, rapporté par le run 80 (Android, terrain 1) et
 reproduit avec sa contre-épreuve avant inscription.
+
+**Ce qui le ferme** : le remède prescrit désormais les deux gestes que des runs
+ont réellement joués — retirer l'appel quand rien ne peut ouvrir d'invite,
+le déplacer là où elle naît sinon — et dit que ces fichiers appartiennent au
+projet, sans quoi le lecteur attend une mise à jour qui ne viendra jamais.
+
+⚠️ **Le garde évident ne marchait pas, et c'est la mesure qui l'a dit AVANT
+qu'il soit écrit.** Exiger que toute propriété citée soit « employée par un flow
+livré » ne discrimine rien : `timeout:` **est** valide — sur `extendedWaitUntil`,
+pas sur `tapOn`. La validité tient au COUPLE commande/propriété, jamais à la
+propriété seule. Et le motif aurait en prime matché la mention que le remède
+fait de la propriété pour l'écarter. Le garde porte donc sur ce que le remède
+PRESCRIT, jamais sur ce qu'il interdit — un garde qui nomme la forme fautive se
+périme à la première reformulation et remet dans le dépôt la chaîne qu'il sert
+à en sortir.
 
 Le finding du **479** est juste, sa mesure est juste, et il censure correctement
 les échantillons absorbés au lieu de rendre un budget tenu sur du néant. C'est ce
@@ -9639,7 +9646,23 @@ sur le fait que la prescription soit EXERCÉE — un flow d'exemple que
 
 ### 503. L'analyse binaire iOS n'est pas couverte, et un défaut de parité y a vécu
 
-**Ouvert le 15/09/2026**, rapporté par le run 81 (iOS, terrain 2).
+**Fermé le 15/09/2026**, rapporté par le run 81 (iOS, terrain 2).
+
+**Ce qui le ferme** : la DÉCISION est séparée de l'extraction, parce qu'elle est
+la même des deux côtés quand le format d'archive ne l'est pas. Elle garde ses
+deux gestes — motif ancré sur le paquet du projet, sonde de présence certaine —
+et iOS lit son AOT dans `Frameworks/App.framework/App`, directement.
+
+⚠️ **Le troisième barreau a failli manquer.** La fonction peut être juste et
+n'avoir aucun appelant : une mesure qu'on n'invoque jamais est indiscernable
+d'une mesure qui ne trouve rien, c'est-à-dire le défaut même qu'on ferme. Le
+garde tient donc aussi le CÂBLAGE — et son premier motif était vacant le jour
+de son écriture, `auditObfuscationIos(` matchant sa propre DÉCLARATION dans le
+même fichier. Ancré sur l'affectation, prouvé dans les deux sens.
+
+📌 **Le refactor a périmé deux mutations existantes** — la sonde et le motif ont
+changé de fonction, donc de nom de variable. Ré-ancrées dans le commit du
+correctif, comme la règle le demande.
 
     80 chemins `package:<le paquet de l'app>` LISIBLES dans l'AOT iOS release
     contre-épreuve : 60 sur un motif témoin — l'instrument discrimine
@@ -9663,8 +9686,20 @@ garde devra prouver qu'il sait VOIR avant de dire qu'il n'a rien vu, sinon un
 
 ### 504. Un avertissement écrit DEUX FOIS a échoué QUATRE fois
 
-**Ouvert le 15/09/2026**, rapporté par les runs 80 **et** 81 — deux terrains,
+**Fermé le 15/09/2026**, rapporté par les runs 80 **et** 81 — deux terrains,
 deux plateformes, deux agents qui ne se connaissent pas.
+
+**Ce qui le ferme** : le message du parseur DIT quoi faire, comme le fait son
+voisin immédiat depuis toujours — et il le dit en **un seul endroit**, les deux
+copies précédentes n'attendant que de diverger. Le garde l'EXERCE au lieu de
+le lire, sur les deux formes de bloc, et prouve que ce qu'il prescrit **passe**
+réellement : un remède non exercé est exactement le défaut que le 502 ferme à
+deux fichiers d'ici.
+
+📌 **La place comptait plus que le texte.** Le fichier prévenait deux fois, et
+bien ; mais un commentaire s'adresse à qui n'a pas encore le problème, un
+message d'erreur à qui l'a. Le premier se lit avant d'écrire sa valeur — donc
+jamais ; le second au moment où ça casse — donc toujours.
 
 `evidenceAcknowledged` a reçu un bloc YAML replié dans les deux runs
 (`argus.mobile.yaml:919` au 80, `:1058` au 81), et le parseur a refusé :
