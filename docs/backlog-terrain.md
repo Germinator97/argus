@@ -9393,3 +9393,49 @@ au moment précis où quelqu'un cherche encore comment s'en servir.
 
 📌 Le PATH n'est jamais modifié : si le dossier n'y est pas, l'installeur imprime
 la ligne à ajouter plutôt que d'éditer un fichier de shell.
+
+### 498. La désinstallation, le seul geste qui supprime
+
+**Fermé le 15/09/2026**, première épreuve du chantier **F** et la seule
+irrattrapable. Retirer le scaffold en bloc effacerait le harnais rempli, les
+parcours écrits et la config — des jours de travail qui n'ont **jamais**
+appartenu au plugin.
+
+Ce qui part est le cadre dont la copie locale porte **encore la signature**, et
+rien d'autre ; ce qui reste est **énuméré**, parce qu'une suppression muette
+laisse celui qui la lance sans moyen de savoir ce qu'il a perdu.
+
+⚠️ **Aucun repli de prose ici, contrairement à `--update`.** Là-bas, ne pas
+reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à tort la
+**détruit**. Les deux erreurs n'ont pas le même prix, donc pas le même seuil : un
+fichier gardé de trop se supprime à la main, l'inverse ne se répare pas.
+
+📌 **Les dossiers vides ne partent que par `rmdir`**, qui refuse tout le reste :
+c'est ce qui protège `.maestro/_baselines` et le dossier de rapports **sans
+avoir à les nommer** — une liste de noms aurait vieilli au premier dossier ajouté.
+
+📌 **Le gabarit jamais modifié s'en va, celui qu'on a annoté reste.** Le laisser
+intact, c'est laisser derrière soi un fichier qui parle d'un outil désinstallé ;
+mais dès qu'il diffère de la source, il porte la trace de quelqu'un.
+
+**Mesuré sur un projet où l'on avait travaillé** : 23 retirés, 12 gardés, chaque
+fichier marqué intact, et le `.gitignore` gardant sa propre ligne tout en perdant
+notre bloc. `--uninstall-global` suit la même règle : un `argus-mobile` qui n'est
+pas le nôtre reste où il est, et un dossier sans installation Argus n'est pas
+effacé.
+
+⚠️ **Et l'aide ne disait pas ce que l'outil sait faire** : l'en-tête dont elle
+dérive décrivait deux drapeaux sur cinq. Aucun comportement à casser, donc aucun
+test à faire rougir — le geste documenté qui diverge du geste outillé, dans sa
+plus petite forme. Le garde **dérive les drapeaux du parseur** et tient les deux
+sens : ce qui est accepté doit être documenté, et ce que le SKILL prescrit doit
+être accepté. Une liste écrite à la main se serait périmée au premier drapeau
+ajouté, et c'est le drapeau neuf — celui que personne ne connaît encore — qui
+aurait manqué.
+
+⚠️ **Le harnais a fait payer sa règle une fois de plus**, le jour même où elle
+est écrite : un `git checkout --` lancé pour défaire une mutation manuelle a
+effacé l'en-tête que je venais d'écrire et n'avais pas commité. Rien ne le
+signale — la contre-épreuve avait réussi, le garde tombait bien. *Commiter avant
+de muter* vaut aussi pour les mutations qu'on fait à la main, et surtout pour
+celles-là.
