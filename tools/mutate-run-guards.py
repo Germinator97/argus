@@ -2257,6 +2257,26 @@ MUTATIONS = [
     ("installeur", "497 · le moteur cesse d'être copié dans le projet",
      '  rel="${src#"$SCAFFOLD_DIR"/}"\n',
      '  rel="${src#"$SCAFFOLD_DIR"/}"\n  case "$rel" in scripts/argus/*.mjs) continue ;; esac\n'),
+    # ── 498 · la désinstallation, seul geste qui supprime ──────────────────
+    # ⚠️ « Désinstaller, c'est tout enlever » : la version naïve, et la seule qui
+    # soit vraiment irrattrapable. Le harnais rempli, les ancres et les parcours
+    # écrits partent avec le cadre, chez quelqu'un qui voulait juste retirer un
+    # outil. Aucune erreur, aucun code non nul : la commande réussit.
+    ("installeur", "498 · la désinstallation emporte aussi ce qui est à toi",
+     "      liste=\"$liste  ⏭️  à toi, gardé          : $rel\"$'\\n'; gardes=$((gardes + 1)); continue\n",
+     "      rm -f \"$dest\"; retires=$((retires + 1)); continue\n"),
+    # ⚠️ La signature cesse d'être exigée avant de supprimer. Le Makefile du
+    # projet, son .gitignore, tout homonyme s'en va — et c'est précisément le
+    # fichier dont l'installeur refuse la mise à jour, faute de le reconnaître.
+    ("installeur", "498 · la désinstallation supprime sans vérifier la signature",
+     "    if head -20 \"$dest\" | grep -qF 'ARGUS:CADRE'; then\n      rm -f \"$dest\"\n",
+     "    if true; then\n      rm -f \"$dest\"\n"),
+    # ⚠️ La dépose globale cesse de vérifier qu'elle est chez elle : un dossier
+    # désigné par ARGUS_MOBILE_HOME est effacé en entier, qu'il porte ou non une
+    # installation. `rm -rf` sur un chemin qu'on n'a pas reconnu.
+    ("installeur", "498 · la dépose globale efface un dossier qui n'est pas le sien",
+     "    if [ -e \"$home/bin/argus-mobile\" ]; then\n",
+     "    if [ -d \"$home\" ]; then\n"),
 ]
 
 
