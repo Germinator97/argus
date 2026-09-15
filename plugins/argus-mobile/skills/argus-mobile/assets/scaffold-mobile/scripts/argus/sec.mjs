@@ -696,17 +696,36 @@ export function dartPackageName(root) {
  * @param {string} apk @param {string[]} entries @param {string} dartPackage
  * @returns {{findings:any[], scanned:boolean, why:string, projectPaths:number}}
  */
-export function auditObfuscation(apk, entries, dartPackage) {
+/**
+ * LA DÉCISION, séparée de l'extraction — parce qu'elle est la même sur les deux
+ * plateformes et que l'extraction ne l'est pas (503).
+ *
+ * 🔴 POURQUOI CETTE SÉPARATION EXISTE. L'obfuscation n'était jugée que sur
+ * Android : `auditObfuscation` lisait un `libapp.so` par `unzip`, donc rien de
+ * ce qu'elle sait faire ne pouvait servir à un bundle iOS. Un run l'a payé —
+ * **80 chemins du projet lisibles** dans une release iOS, contre-épreuve à 60,
+ * pendant que la doc du projet portait `--obfuscate` sur ses deux lignes
+ * Android et sur AUCUNE ligne iOS. La bonne décision existait, écrite et
+ * commentée, et elle n'avait pas traversé : c'est la parité entre plateformes,
+ * et le harnais reproduisait la même asymétrie que le projet qu'il mesure.
+ *
+ * ⚠️ Ce n'est PAS un balayage de chaînes de plus : c'est la mesure d'Android,
+ * portée telle quelle. Elle garde donc ses deux gestes — le motif ANCRÉ sur le
+ * paquet du projet (sans quoi les chemins du framework, que `--obfuscate`
+ * n'efface jamais, rendraient le même verdict dans les deux sens), et la
+ * SONDE DE PRÉSENCE CERTAINE qui distingue « obfusqué » de « pas pu lire ».
+ *
+ * @param {string} texte le binaire AOT, lu en latin-1
+ * @param {string} dartPackage @param {string} ou d'où vient le texte, pour le message
+ * @returns {{findings:any[], scanned:boolean, why:string, projectPaths:number}}
+ */
+export function verdictObfuscation(texte, dartPackage, ou) {
   const nope = (/** @type {string} */ why) => ({ findings: [], scanned: false, why, projectPaths: 0 });
-  const soEntry = entries.find((e) => /lib\/[^/]+\/libapp\.so$/.test(e));
-  if (!soEntry) return nope('aucun lib/<abi>/libapp.so dans l\'APK : rien à lire pour juger l\'obfuscation.');
-  const dumped = sh('unzip', ['-p', apk, soEntry], { maxBuffer: 256 * 1024 * 1024, encoding: 'latin1' });
-  if (!dumped.ok) return nope(`unzip n'a pas rendu ${soEntry} — obfuscation non jugée.`);
 
   // La sonde de présence certaine. Elle partage la nature de ce qu'elle
   // contrôle : même forme de chemin, même encodage, même extraction.
-  if (!/package:flutter\/[a-z0-9_/]+\.dart/.test(dumped.stdout)) {
-    return nope('aucun chemin `package:flutter/…` dans libapp.so — or ceux-là survivent à '
+  if (!/package:flutter\/[a-z0-9_/]+\.dart/.test(texte)) {
+    return nope(`aucun chemin \`package:flutter/…\` dans ${ou} — or ceux-là survivent à `
       + '`--obfuscate`. Leur absence dit que la LECTURE a échoué, pas que le binaire est obfusqué.');
   }
   if (!dartPackage) {
@@ -715,17 +734,54 @@ export function auditObfuscation(apk, entries, dartPackage) {
   }
 
   const trouves = new Set(
-    [...dumped.stdout.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\.dart`, 'g'))].map((m) => m[0]),
+    [...texte.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\.dart`, 'g'))].map((m) => m[0]),
   );
   if (trouves.size === 0) return { findings: [], scanned: true, why: '', projectPaths: 0 };
   return {
     scanned: true, why: '', projectPaths: trouves.size,
     findings: [finding('QAM-SEC-OBFUS', 'Binaire AOT non obfusqué', 'major',
       'build avec --obfuscate --split-debug-info=<dir>',
-      `${trouves.size} chemin(s) \`package:${dartPackage}/….dart\` lisibles dans libapp.so `
+      `${trouves.size} chemin(s) \`package:${dartPackage}/….dart\` lisibles dans ${ou} `
         + `(p. ex. ${[...trouves][0]})`,
-      'Reconstruis avec --obfuscate --split-debug-info, et conserve la table de symboles hors du dépôt : sans elle les traces de crash deviennent illisibles.', apk)],
+      'Reconstruis avec --obfuscate --split-debug-info, et conserve la table de symboles hors du dépôt : sans elle les traces de crash deviennent illisibles.', ou)],
   };
+}
+
+export function auditObfuscation(apk, entries, dartPackage) {
+  const nope = (/** @type {string} */ why) => ({ findings: [], scanned: false, why, projectPaths: 0 });
+  const soEntry = entries.find((e) => /lib\/[^/]+\/libapp\.so$/.test(e));
+  if (!soEntry) return nope('aucun lib/<abi>/libapp.so dans l\'APK : rien à lire pour juger l\'obfuscation.');
+  const dumped = sh('unzip', ['-p', apk, soEntry], { maxBuffer: 256 * 1024 * 1024, encoding: 'latin1' });
+  if (!dumped.ok) return nope(`unzip n'a pas rendu ${soEntry} — obfuscation non jugée.`);
+  return verdictObfuscation(dumped.stdout, dartPackage, 'libapp.so');
+}
+
+/**
+ * La même mesure, sur le bundle iOS (503).
+ *
+ * ⚠️ SEULE L'EXTRACTION DIFFÈRE. Le binaire AOT d'iOS n'est pas dans une
+ * archive : c'est un fichier du bundle, `Frameworks/App.framework/App`, qu'on
+ * lit directement. La décision, elle, est celle d'Android — motif ancré et
+ * sonde de présence comprises.
+ *
+ * ⚠️ Et `App` est le nom du FICHIER, pas un dossier : sur un `.app` de
+ * simulateur comme sur un d'appareil, c'est le même chemin relatif. On rend
+ * « non conclu » s'il manque, jamais « rien trouvé » — un bundle qu'on n'a pas
+ * su ouvrir et un bundle obfusqué produiraient sinon le même silence.
+ *
+ * @param {string} bundle chemin du `.app` @param {string} dartPackage
+ * @returns {{findings:any[], scanned:boolean, why:string, projectPaths:number}}
+ */
+export function auditObfuscationIos(bundle, dartPackage) {
+  const nope = (/** @type {string} */ why) => ({ findings: [], scanned: false, why, projectPaths: 0 });
+  const aot = join(bundle, 'Frameworks', 'App.framework', 'App');
+  if (!existsSync(aot)) {
+    return nope(`aucun Frameworks/App.framework/App sous ${bundle} — rien à lire pour juger `
+      + 'l\'obfuscation. Un bundle de debug n\'en porte pas d\'AOT.');
+  }
+  let texte = '';
+  try { texte = readFileSync(aot, 'latin1'); } catch (e) { return nope(`lecture de ${aot} impossible : ${e}`); }
+  return verdictObfuscation(texte, dartPackage, 'App.framework/App');
 }
 
 /**
@@ -885,6 +941,27 @@ function main() {
   const plan = binaryScanPlan(platform, binary, root, config, tools.unzip.present);
   if (!plan.scan) {
     binaryFacts = { scanned: false, why: plan.why };
+    // 🔴 SUR iOS, LE SCAN COMPLET EST SANS OBJET — L'OBFUSCATION NE L'EST PAS (503).
+    // Le plan ci-dessus refuse à raison : le niveau B lit un APK, et un bundle
+    // n'en est pas un. Mais de tout ce que ce niveau juge, l'obfuscation est la
+    // seule mesure qui ne dépende pas du format d'archive — elle lit un binaire
+    // AOT, et iOS en a un.
+    //
+    // Ce qui l'a rendue nécessaire : un run a mesuré 80 chemins du projet
+    // lisibles dans une release iOS, à la main, hors harnais — pendant que la
+    // doc du projet portait `--obfuscate` sur ses deux lignes Android et sur
+    // AUCUNE ligne iOS. Le défaut appartenait au projet ; ce qui appartenait au
+    // plugin est qu'aucun finding ne pouvait le dire.
+    //
+    // ⚠️ Elle reste gouvernée par `security.requireObfuscation`, comme son
+    // homologue Android : une plateforme qui se met à juger ce que l'autre
+    // jugeait déjà ne doit pas le faire sous une clé différente — ce serait
+    // remplacer une asymétrie par une autre.
+    if (platform === 'ios' && config.security?.requireObfuscation) {
+      const o = auditObfuscationIos(binary, dartPackageName(root));
+      binaryFindings = o.findings;
+      binaryFacts = { ...binaryFacts, obfuscation: o };
+    }
   } else {
     const result = auditApk(binary, config);
     binaryFindings = result.findings;

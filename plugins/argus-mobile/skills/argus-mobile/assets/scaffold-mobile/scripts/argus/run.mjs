@@ -1449,9 +1449,30 @@ function startupFindings(samples, device, platform, config, variante = '') {
         id: 'QAM-START-ABSORBE',
         title: `le budget de démarrage n'a pas pu être jugé : ${absorbees.length}/${samples.length} `
           + 'flows ont attendu autre chose avant de mesurer l\'écran de départ',
-        suggestedFix: 'Ce qui précède l\'attente d\'ancre dans `launch-clean.yaml` doit être BORNÉ '
-          + '(donne un `timeout:` court au geste optionnel) : sans ça le sas de démarrage se '
-          + 'déroule pendant cette attente, et la mesure qui suit ne le contient plus.',
+        // ⚠️ CE REMÈDE A PRESCRIT UNE PROPRIÉTÉ QUI N'EXISTE PAS (502). Il
+        // conseillait « donne un `timeout:` court au geste optionnel » — or
+        // `maestro check-syntax` rend « Unknown Property: timeout » sur un
+        // `tapOn` en 2.8.0, le même flow sans cette ligne passant en exit 0.
+        // C'est la DEUXIÈME fois du chantier qu'un remède cite une propriété
+        // que Maestro refuse ; la première (`accessibilityText:`) avait été
+        // attrapée avant livraison, celle-ci a été trouvée par un run qui
+        // tentait de l'appliquer. Un `suggestedFix` est de la PROSE dans un
+        // objet : rien ne l'exécute, donc il se périme en silence.
+        //
+        // ⚠️ Et l'alternative évidente ne vaut pas mieux : mesuré sur le même
+        // terrain, un `when: visible:` coûte 7 088 ms contre les 7 190-7 490
+        // qu'on voulait éviter. La raison tient en un mot — `visible:` ATTEND
+        // un élément, quand `true:` ÉVALUE une expression (486).
+        //
+        // Ce qui reste est donc ce que le run a fait, et qui a marché : ne pas
+        // jouer le geste là où il n'a rien à fermer. Le sous-flow t'appartient.
+        suggestedFix: 'Le geste qui précède l\'attente d\'ancre attend sa BORNE quand il n\'a rien '
+          + 'à fermer — ~7 s par flow, mesuré. Si ton app ne demande aucune permission (vérifie '
+          + 'ton manifeste ET `lib/`, pas seulement l\'un des deux), retire l\'appel à '
+          + '`dismiss-system-alerts.yaml` de `launch-clean.yaml` : ces deux fichiers t\'appartiennent. '
+          + 'Si elle en demande, garde-le et joue-le là où l\'invite NAÎT — souvent après la '
+          + 'connexion, pas au lancement — en acceptant le coût sur les flows concernés. '
+          + 'Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`.',
         severity: 'info',
         dimension: 'performance',
         screen: 'démarrage',

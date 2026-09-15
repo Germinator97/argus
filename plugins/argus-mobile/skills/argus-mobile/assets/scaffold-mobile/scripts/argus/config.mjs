@@ -168,12 +168,33 @@ function unquote(text, ctx) {
  * @param {string} text @param {YamlCtx} ctx
  * @returns {string|number|boolean|null|Array<any>}
  */
+/**
+ * Ce que le refus du bloc multi-lignes doit DIRE, en un seul endroit (504).
+ *
+ * ⚠️ IL NE DISAIT PAS QUOI FAIRE, et son voisin immédiat le fait depuis
+ * toujours — « map en flow non supportée <em>— écris-la en map imbriquée</em> ».
+ * L'écart est une parité manquée entre deux messages du même fichier.
+ *
+ * 🔴 Ce que ça a coûté : QUATRE agents ont écrit un bloc replié sur
+ * `evidenceAcknowledged`, dont deux le même jour sur deux projets et deux
+ * plateformes. Le fichier livré prévient pourtant DEUX fois — en tête, et à la
+ * clé elle-même. *Un avertissement qui échoue quatre fois n'en est plus un.*
+ *
+ * La bonne place n'est pas un commentaire écrit AVANT, que personne ne relit au
+ * moment d'écrire sa valeur : c'est le message rendu QUAND ça casse, le seul
+ * texte dont la lecture est garantie. Le commentaire s'adresse à qui n'a pas
+ * encore le problème ; le message, à qui l'a.
+ */
+const BLOC_MULTILIGNE_REFUSE = 'bloc multi-lignes (| ou >) non supporté — mets la valeur sur UNE '
+  + 'ligne (quotée si elle porte des `:` ou des `#`) ; si elle ne tient pas, raccourcis-la : '
+  + 'elle est faite pour être relue';
+
 function parseScalar(text, ctx) {
   const t = text.trim();
   if (t === '' || t === '~' || /^null$/i.test(t)) return null;
   if (t[0] === '&' || t[0] === '*') throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'ancre/alias non supporté');
   if (t === '|' || t === '>' || /^[|>][-+\d]*$/.test(t)) {
-    throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'bloc multi-lignes (| ou >) non supporté');
+    throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, BLOC_MULTILIGNE_REFUSE);
   }
   if (t[0] === '{') throw new YamlSubsetError(ctx.file, ctx.line, ctx.raw, 'map en flow ({…}) non supportée — écris-la en map imbriquée, une clé par ligne');
   if (t[0] === '[') {
@@ -274,7 +295,7 @@ function parseMapping(L, i, indent, file) {
     // Testé AVANT le garde « inline + bloc » pour que le message nomme la vraie
     // cause : `clé: |` suivi d'un bloc déclencherait sinon le mauvais diagnostic.
     if (/^[|>][-+\d]*$/.test(inline)) {
-      throw new YamlSubsetError(file, item.line, item.raw, 'bloc multi-lignes (| ou >) non supporté');
+      throw new YamlSubsetError(file, item.line, item.raw, BLOC_MULTILIGNE_REFUSE);
     }
     if (inline !== '' && deeper) {
       // ⚠️ DEUX CAUSES, QUI NE SE CORRIGENT PAS PAREIL — et c'est la seconde qui

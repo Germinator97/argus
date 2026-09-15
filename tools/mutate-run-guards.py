@@ -315,10 +315,10 @@ MUTATIONS = [
     # contrôle de sécurité qui rendait le MÊME verdict sur un binaire obfusqué
     # et sur un binaire qui ne l'est pas. La première le réintroduit tel quel.
     ("sec", "le motif d'obfuscation redevient nu, donc il attrape le framework",
-     "    [...dumped.stdout.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\\\.dart`, 'g'))].map((m) => m[0]),",
-     "      [...dumped.stdout.matchAll(/package:[a-z_][a-z0-9_]*\\/[a-z0-9_/]+\\.dart/g)].map((m) => m[0]),"),
+     "    [...texte.matchAll(new RegExp(`package:${dartPackage}/[a-z0-9_/]+\\\\.dart`, 'g'))].map((m) => m[0]),",
+     "      [...texte.matchAll(/package:[a-z_][a-z0-9_]*\\/[a-z0-9_/]+\\.dart/g)].map((m) => m[0]),"),
     ("sec", "la contre-épreuve d'instrument disparaît",
-     "  if (!/package:flutter\\/[a-z0-9_/]+\\.dart/.test(dumped.stdout)) {",
+     "  if (!/package:flutter\\/[a-z0-9_/]+\\.dart/.test(texte)) {",
      "  if (false) {"),
     ("sec", "le nom du paquet est deviné au lieu d'être lu",
      "    return m ? m[1] : '';",
@@ -2331,6 +2331,26 @@ MUTATIONS = [
     ("scaffoldcheck", "un fichier du scaffold n'est plus déclaré au relevé",
      "\ncadre\tscripts/argus/argus-mobile.mjs",
      "\n"),
+    # 502 — le remède redevient un bornage, c'est-à-dire la forme que Maestro
+    # refuse. Elle vise `retire l'appel`, que SEUL le garde du 502 lit : le
+    # reste de la phrase est partagé avec d'autres assertions.
+    ("run", "le remède du démarrage absorbé represcrit de borner le tap",
+     "pas seulement l\\'un des deux), retire l\\'appel à ",
+     "pas seulement l\\'un des deux), donne un timeout: court à "),
+    # 503 — le CÂBLAGE, pas la décision. Retirer l'appel laisse la fonction
+    # intacte et juste : c'est exactement le troisième barreau, celui où l'on
+    # croit avoir fini parce que la mesure, elle, marche.
+    # ⚠️ Elle NEUTRALISE au lieu de commenter : commenter la ligne y laisserait
+    # le nom que le garde cherche, et le garde paraîtrait mort quand c'est la
+    # mutation qui l'est.
+    ("sec", "la mesure d'obfuscation iOS existe, et plus rien ne l'appelle",
+     "      const o = auditObfuscationIos(binary, dartPackageName(root));",
+     "      const o = { findings: [], scanned: false, why: '', projectPaths: 0 };"),
+    # 504 — le refus cesse de dire quoi faire et redevient un constat nu, soit
+    # la forme qui a échoué quatre fois.
+    ("config", "le refus du bloc multi-lignes ne dit plus quoi faire",
+     "non supporté — mets la valeur sur UNE '",
+     "non supporté. Cette forme n'est pas acceptee par le parseur'"),
 ]
 
 

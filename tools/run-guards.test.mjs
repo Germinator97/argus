@@ -48,6 +48,7 @@ import { visuelsInatteignables } from '../plugins/argus-mobile/skills/argus-mobi
 import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { parseYaml } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -67,7 +68,7 @@ import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
-import { auditAndroidManifest, auditApk, auditObfuscation, exigenceNonTenue, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
+import { auditAndroidManifest, auditApk, auditObfuscation, auditObfuscationIos, verdictObfuscation, exigenceNonTenue, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -230,6 +231,155 @@ test("une attente longue AVANT la mesure la marque absorbée — et le témoin n
   assert.equal(temoin[0].absorbed, false,
     'un flow qui lance lui-même mesure encore le sas : le marquer absorbé viderait le relevé entier');
   assert.equal(temoin[0].ms, 2697);
+});
+
+test("l'obfuscation se juge aussi sur iOS, et par la MÊME décision (503)", () => {
+  // 🔴 ELLE NE SE JUGEAIT QUE SUR ANDROID, et un run l'a payé : 80 chemins du
+  // projet lisibles dans une release iOS, mesurés À LA MAIN, hors harnais —
+  // pendant que la doc du projet portait `--obfuscate` sur ses deux lignes
+  // Android et sur AUCUNE ligne iOS. La bonne décision existait, écrite et
+  // commentée ; elle n'avait pas traversé. Et le harnais reproduisait la même
+  // asymétrie que le projet qu'il mesure.
+  //
+  // La décision est donc SÉPARÉE de l'extraction : c'est elle qui est la même
+  // des deux côtés, quand le format d'archive ne l'est pas. Ce garde l'exerce
+  // par ses trois issues, puis exerce l'extraction iOS pour de vrai.
+  const flutter = 'package:flutter/src/services/platform_channel.dart';
+
+  // 1. la décision, dans ses trois états — et le troisième est celui qui compte :
+  //    « je n'ai pas pu lire » ne doit JAMAIS se confondre avec « rien trouvé ».
+  const nu = verdictObfuscation(`${flutter} package:monapp/pages/home.dart`, 'monapp', 'App');
+  assert.equal(nu.projectPaths, 1);
+  assert.equal(nu.findings.length, 1, 'un chemin du projet lisible doit produire son finding');
+
+  const obf = verdictObfuscation(`${flutter} plus rien du projet`, 'monapp', 'App');
+  assert.equal(obf.scanned, true);
+  assert.equal(obf.findings.length, 0, 'un binaire obfusqué ne doit rien produire');
+
+  const aveugle = verdictObfuscation('pas un seul chemin dart', 'monapp', 'App');
+  assert.equal(aveugle.scanned, false,
+    'sans la sonde de présence, un binaire illisible passerait pour obfusqué — le pire des deux sens');
+
+  // 2. l'extraction iOS, sur un bundle fabriqué — le chemin est celui du vrai
+  //    bundle, `Frameworks/App.framework/App`, et c'est un FICHIER.
+  const bac = mkdtempSync(join(tmpdir(), 'argus-ios-'));
+  try {
+    const app = join(bac, 'Runner.app');
+    mkdirSync(join(app, 'Frameworks', 'App.framework'), { recursive: true });
+    writeFileSync(join(app, 'Frameworks', 'App.framework', 'App'),
+      `${flutter}\npackage:monapp/main.dart\npackage:monapp/pages/detail.dart\n`);
+    const ios = auditObfuscationIos(app, 'monapp');
+    assert.equal(ios.scanned, true, `l'extraction iOS n'a pas lu le bundle : ${ios.why}`);
+    assert.equal(ios.projectPaths, 2, 'les deux chemins du projet doivent être comptés');
+    assert.match(ios.findings[0].actual, /App\.framework\/App/,
+      "le finding doit dire OÙ il a lu — un verdict sans son objet ne se vérifie pas");
+
+    // ⚠️ L'AUTRE MOITIÉ : un bundle sans AOT — un debug, typiquement — ne rend
+    // pas « obfusqué », il rend « pas pu mesurer ». Sans ce cas, le garde
+    // approuverait un scan qui n'a jamais rien ouvert.
+    const vide = auditObfuscationIos(join(bac, 'Absent.app'), 'monapp');
+    assert.equal(vide.scanned, false);
+    assert.equal(vide.findings.length, 0, 'aucun verdict ne se rend sur un bundle qu on n a pas ouvert');
+  } finally {
+    rmSync(bac, { recursive: true, force: true });
+  }
+
+  // 🔴 ET LE TROISIÈME BARREAU : la fonction peut être juste et n'avoir AUCUN
+  // appelant. Une mesure qui n'est jamais invoquée est indiscernable d'une
+  // mesure qui ne trouve rien — c'est le défaut même que ce point ferme, et il
+  // se reproduirait ici sans qu'un test de comportement puisse le voir.
+  //
+  // Le garde lit donc la SOURCE du scanner, commentaires dépouillés — sans quoi
+  // il matcherait le paragraphe qui explique pourquoi l'appel existe.
+  const scanner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs'), 'utf8')
+    .split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  // ⚠️ ANCRÉ SUR L'AFFECTATION, jamais sur le nom nu : `auditObfuscationIos(`
+  // matche aussi sa propre DÉCLARATION, qui vit dans le même fichier. Un garde
+  // de câblage satisfait par la définition de ce qu'il cherche est vacant le
+  // jour où on l'écrit — et rien ne le dit, puisqu'il est vert.
+  assert.ok(/=\s*auditObfuscationIos\s*\(/.test(scanner),
+    "auditObfuscationIos n'est APPELÉE nulle part dans le scanner : la mesure existe et ne tourne jamais");
+  assert.match(scanner, /platform === 'ios'[\s\S]{0,200}auditObfuscationIos/,
+    "l'appel doit vivre sur le chemin iOS — ailleurs, il ne serait jamais atteint");
+});
+
+test('le refus du bloc multi-lignes DIT quoi faire, et ce qu il dit passe (504)', () => {
+  // ⚠️ QUATRE AGENTS ONT ÉCRIT UN BLOC REPLIÉ sur la même clé, dont deux le
+  // même jour sur deux projets et deux plateformes. Le fichier livré prévient
+  // pourtant DEUX fois — en tête, et à la clé elle-même, où il est écrit qu'une
+  // invitation à « écrire une phrase » y a déjà conduit deux fois.
+  //
+  // Le constat n'est donc ni sur le parseur — son refus est délibéré, il nomme
+  // la ligne au lieu de mal interpréter — ni sur l'attention du lecteur. Il est
+  // sur la PLACE : un commentaire s'adresse à qui n'a pas encore le problème,
+  // un message d'erreur à qui l'a. Et le voisin immédiat de ce refus le fait
+  // depuis toujours (« map en flow non supportée — écris-la en map imbriquée »).
+  //
+  // Le garde EXERCE le message au lieu de le lire dans la source : un garde qui
+  // cherche un motif resterait vert sur une constante devenue inatteignable.
+  const refuse = (src) => {
+    try { parseYaml(src, 'argus.mobile.yaml'); return null; } catch (e) { return String(e.message); }
+  };
+
+  // Les DEUX formes de bloc, parce que le parseur les traite au même endroit et
+  // qu'un correctif qui n'en couvrirait qu'une laisserait l'autre muette.
+  for (const [forme, src] of [['>-', 'run:\n  evidenceAcknowledged: >-\n    une phrase\n'],
+                              ['|',  'run:\n  evidenceAcknowledged: |\n    une phrase\n']]) {
+    const msg = refuse(src);
+    assert.ok(msg, `la forme ${forme} est ACCEPTÉE : le parseur ne refuse plus rien`);
+    assert.match(msg, /UNE ligne/,
+      `${forme} : le refus doit dire quoi faire, pas seulement ce qu'il n'accepte pas`);
+    assert.match(msg, /raccourcis/,
+      `${forme} : et quoi faire quand la valeur ne tient pas — sinon le lecteur reste bloqué`);
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ, sans laquelle le message pourrait prescrire n'importe
+  // quoi : ce qu'il conseille doit RÉELLEMENT passer. Un remède non exercé est
+  // exactement le défaut que le 502 vient de fermer, à deux fichiers d'ici.
+  assert.equal(refuse('run:\n  evidenceAcknowledged: une phrase sur une ligne\n'), null,
+    'la forme que le message prescrit est refusée : le remède enverrait dans le mur');
+});
+
+test('le remède du démarrage absorbé prescrit un geste APPLICABLE (502)', () => {
+  // ⚠️ IL A PRESCRIT UNE PROPRIÉTÉ QUI N'EXISTE PAS, et un run l'a trouvé en
+  // tentant de l'appliquer : « donne un `timeout:` court au geste optionnel »,
+  // quand `maestro check-syntax` rend « Unknown Property: timeout » sur un
+  // `tapOn` en 2.8.0 — le même flow sans cette ligne passant en exit 0.
+  //
+  // C'est la DEUXIÈME occurrence de la classe dans ce chantier : un remède
+  // avait déjà cité `accessibilityText:`, refusé de la même façon, attrapé
+  // avant livraison parce qu'on l'avait mesuré. Celui-ci est parti.
+  //
+  // ⚠️ LE CRITÈRE ÉVIDENT NE MARCHE PAS, mesuré avant d'écrire ce garde :
+  // exiger que toute propriété citée soit « employée par un flow livré » ne
+  // discrimine rien, parce que `timeout:` EST valide — sur `extendedWaitUntil`,
+  // pas sur `tapOn`. La validité tient au COUPLE commande/propriété, jamais à
+  // la propriété seule. Et un tel motif matcherait en prime la mention que le
+  // remède fait de la propriété pour l'écarter.
+  //
+  // Le garde porte donc sur ce que le remède PRESCRIT — les deux gestes que
+  // deux runs ont réellement joués — et non sur ce qu'il interdit : un garde
+  // qui nomme la forme fautive se périme à la première reformulation, et
+  // réintroduit dans le dépôt la chaîne qu'il sert à en sortir.
+  const [f] = startupFindings(
+    startupSamples([bundleLance('smoke', { lancementMs: 441, avantMs: 7355, mesureMs: 58 })],
+      'home_root', 2000),
+    { id: 'emulator-5554', os: 'android-36' }, 'android', CFG_SPLASH);
+
+  assert.ok(f, 'aucun finding produit : ce garde ne mesure rien');
+  assert.equal(f.id, 'QAM-START-ABSORBE');
+
+  // Les deux issues, parce qu'elles ne se remplacent pas : retirer l'appel ne
+  // vaut que si rien ne peut ouvrir d'invite, et le déplacer est ce qui reste
+  // sinon. N'en garder qu'une rendrait le remède faux pour la moitié des
+  // projets — c'est précisément ce que le 405 avait payé.
+  assert.match(f.suggestedFix, /retire l'appel/i,
+    'le remède doit offrir le retrait, mesuré sur un projet sans permission');
+  assert.match(f.suggestedFix, /où l'invite NAÎT/i,
+    'et le déplacement, seule issue quand une invite peut réellement s\'ouvrir');
+  assert.match(f.suggestedFix, /t'appartiennent/i,
+    'et dire que ces fichiers sont au projet — sinon le lecteur attend une mise à jour qui ne viendra pas');
 });
 
 test('sans plancher de splash déclaré, on RELÈVE sans conclure (479)', () => {
