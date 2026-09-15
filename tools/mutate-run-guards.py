@@ -2165,6 +2165,30 @@ MUTATIONS = [
     ("mutateur", "490 · la partition laisse un trou que le workflow ne montre pas",
      "    taille = base + (1 if k <= reste else 0)\n    return list(range(debut + 1, debut + taille + 1))",
      "    taille = base + (1 if k <= reste else 0)\n    return list(range(debut + 1, debut + taille))"),
+    # ── 495 · le camp de chaque fichier du scaffold ────────────────────────
+    # ⚠️ Elle ne casse RIEN d'observable : le fichier reste valide, le scaffold
+    # compile, l'installeur ne se plaint pas. Le fichier cesse simplement d'être
+    # mis à jour, chez tous les hôtes et pour toujours — le mode de panne exact
+    # que ce garde existe pour voir, et qu'aucune exécution ne rapporte.
+    ("layout", "495 · un fichier de cadre change de camp et cesse d'être mis à jour",
+     "// ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.\n",
+     "// ARGUS:OWNED — à toi : `install-mobile.sh --update` ne le remplace pas.\n"),
+    # ⚠️ ELLE ISOLE LE SECOND GARDE, et il a fallu deux essais pour ça. Casser la
+    # reconnaissance du marqueur OWNED faisait bien tomber quelque chose — mais
+    # le 341, qui voit revenir les TODO que le plugin livre, et le harnais
+    # attribue le verdict au PREMIER test qui rougit. Une mutation qui tombe sur
+    # le garde du voisin ne garde plus le sien : il pourrait devenir vacant sans
+    # que rien ne le dise. Le camp MERGE ne porte aucun TODO, donc lui seul
+    # sépare — mesuré : 503 verts, un seul rouge, et c'est le bon.
+    # ⚠️ Elle laisse aussi la DÉCLARATION intacte, et c'est le reste de son
+    # intérêt : les marqueurs ne bougent pas, donc le garde qui les LIT reste
+    # vert. Seul celui qui lance vraiment `--update` voit le travail du projet
+    # écrasé — ici le `.gitignore`, remplacé par le nôtre au lieu d'être fusionné
+    # dans son bloc délimité. C'est la mutation qui sépare « déclaré » de « en
+    # vigueur », et le défaut le plus grave des trois.
+    ("installeur", "495 · les fichiers à fusionner sont écrasés au lieu d'être fusionnés",
+     "\n    skipped=$((skipped + 1))\n    continue\n  fi\n\n  # Fichier de CADRE",
+     "\n    skipped=$((skipped + 1))\n  fi\n\n  # Fichier de CADRE"),
 ]
 
 
