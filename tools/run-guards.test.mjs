@@ -14234,3 +14234,154 @@ test('le format se juge à version FIXE, la compatibilité sur la stable (494)',
     'un job sur `channel: stable` lance `dart format` : le style redevient tributaire d\'une '
     + 'version qui bouge');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 495 · Le camp de chaque fichier du scaffold, figé par ÉGALITÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// L'installeur range chaque fichier livré dans l'un de trois camps, en lisant
+// un marqueur réservé et borné à l'en-tête de la SOURCE : `ARGUS:OWNED` (au
+// projet, jamais remplacé), `ARGUS:MERGE` (à fusionner dans un homonyme), et le
+// défaut, `ARGUS:CADRE` (à nous, remplacé par `--update`).
+//
+// Ce classement décide de qui écrase le travail de qui, et RIEN ne le
+// surveillait. Un fichier qui change de camp ne casse rien : il ne lève pas, ne
+// déborde pas, ne fait rougir aucun test — et les deux sens coûtent cher.
+//   · un OWNED qui perd son marqueur devient du cadre, donc `--update` l'écrase
+//     — le harnais rempli, les ancres, le parcours métier, effacés chez
+//     quelqu'un qui n'a fait que mettre à jour ;
+//   · un CADRE qui gagne un OWNED cesse d'être mis à jour, en silence et pour
+//     toujours, chez tous les hôtes, y compris ceux qui ne lancent jamais rien.
+// Le cas le plus courant est le troisième : un fichier AJOUTÉ sans marqueur
+// tombe dans le camp par défaut sans que personne l'ait décidé.
+//
+// D'où ce relevé, figé un par un. Il rougit à chaque ajout, retrait ou
+// déplacement de fichier, et c'est le but : le camp se choisit en écrivant une
+// ligne ici, pas en oubliant un en-tête. C'est aussi le préalable du chantier F
+// (l'installation globale, `docs/chantiers-differes.md`) — c'est cette table
+// qui dira ce qui déménage et ce qui reste.
+
+/** Le camp DÉCLARÉ de chaque fichier livré. Relevé le 15/09/2026 : 20 · 12 · 2. */
+const CAMPS_DU_SCAFFOLD = [
+  ['.github/workflows/argus-mobile.yml', 'CADRE'],
+  ['.gitignore', 'MERGE'],
+  ['.maestro/_subflows/disable-animations.yaml', 'CADRE'],
+  ['.maestro/_subflows/dismiss-system-alerts.yaml', 'OWNED'],
+  ['.maestro/_subflows/goto.yaml', 'OWNED'],
+  ['.maestro/_subflows/launch-clean.yaml', 'CADRE'],
+  ['.maestro/_subflows/login.yaml', 'OWNED'],
+  ['.maestro/_subflows/mask-dynamic.yaml', 'OWNED'],
+  ['.maestro/a11y.yaml', 'OWNED'],
+  ['.maestro/config.yaml', 'CADRE'],
+  ['.maestro/i18n.yaml', 'OWNED'],
+  ['.maestro/journey-critical.yaml', 'OWNED'],
+  ['.maestro/lifecycle.yaml', 'OWNED'],
+  ['.maestro/resilience.yaml', 'OWNED'],
+  ['.maestro/smoke.yaml', 'CADRE'],
+  ['.maestro/visual.yaml', 'CADRE'],
+  ['ARGUS-MOBILE.md', 'CADRE'],
+  ['Makefile', 'CADRE'],
+  ['argus.mobile.yaml', 'OWNED'],
+  ['package.snippet.json', 'MERGE'],
+  ['scripts/argus/a11y.mjs', 'CADRE'],
+  ['scripts/argus/config.mjs', 'CADRE'],
+  ['scripts/argus/perf.mjs', 'CADRE'],
+  ['scripts/argus/report.mjs', 'CADRE'],
+  ['scripts/argus/run.mjs', 'CADRE'],
+  ['scripts/argus/sca.mjs', 'CADRE'],
+  ['scripts/argus/sec.mjs', 'CADRE'],
+  ['test/argus/a11y_test.dart', 'CADRE'],
+  ['test/argus/anchors_test.dart', 'CADRE'],
+  ['test/argus/argus_harness.dart', 'CADRE'],
+  ['test/argus/argus_types.dart', 'CADRE'],
+  ['test/argus/harness.dart', 'OWNED'],
+  ['test/argus/known_issues.dart', 'OWNED'],
+  ['test/argus/layout_test.dart', 'CADRE'],
+];
+
+/**
+ * Le classement tel que l'installeur le fait : les 20 premières lignes de la
+ * SOURCE, OWNED d'abord, MERGE ensuite, CADRE en défaut — marqué ou non.
+ * ⚠️ C'est une recopie, et une recopie dérive. Ce qui l'en empêche est le garde
+ * suivant, qui lance vraiment `--update` : les deux relevés doivent concorder,
+ * donc un changement d'ordre ou une reconnaissance cassée les sépare.
+ */
+const campDeclare = (texte) => {
+  const entete = texte.split('\n').slice(0, 20).join('\n');
+  if (entete.includes('ARGUS:OWNED')) return 'OWNED';
+  if (entete.includes('ARGUS:MERGE')) return 'MERGE';
+  return entete.includes('ARGUS:CADRE') ? 'CADRE' : 'CADRE-SANS-MARQUEUR';
+};
+
+/** Tri par unités de code, des DEUX côtés : `sort(1)` dépend de la locale, pas lui. */
+const parChemin = (a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0);
+
+test('le camp de chaque fichier du scaffold est figé, un par un (495)', () => {
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const fichiers = execFileSync('bash', ['-c',
+    `cd "${scaffold}" && find . -type f | sed 's|^\\./||'`], { encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+  assert.ok(fichiers.length > 0,
+    'aucun fichier relevé dans le scaffold — le garde ne mesure plus rien');
+
+  const declare = fichiers.map((rel) => [rel, campDeclare(readFileSync(join(scaffold, rel), 'utf8'))]);
+  assert.deepStrictEqual(declare.sort(parChemin), [...CAMPS_DU_SCAFFOLD].sort(parChemin),
+    'la classification du scaffold a changé. Ce n\'est pas une formalité de relevé : le camp '
+    + 'décide qui écrase le travail de qui. Mets cette table à jour en CHOISISSANT le camp du '
+    + 'fichier — un fichier neuf sans marqueur tombe dans le cadre, donc `--update` l\'écrasera '
+    + 'chez tous les hôtes (495)');
+
+  // La contre-épreuve du classeur : il doit savoir SÉPARER, sinon l'égalité
+  // ci-dessus resterait vraie d'un classeur qui rend toujours la même chose.
+  assert.equal(campDeclare('// ARGUS:OWNED\n// ARGUS:CADRE\n'), 'OWNED',
+    'OWNED doit l\'emporter : c\'est l\'ordre dans lequel l\'installeur lit les trois marqueurs');
+  assert.equal(campDeclare(`${'\n'.repeat(20)}// ARGUS:OWNED\n`), 'CADRE-SANS-MARQUEUR',
+    'un marqueur passé la 20e ligne est hors de la fenêtre que l\'installeur lit (`head -20`)');
+});
+
+test('et `--update` ne remplace QUE les fichiers de cadre (495, l\'effet)', () => {
+  // ⚠️ MESURÉ, pas déduit. Le garde ci-dessus lit des marqueurs ; celui-ci lance
+  // l'installeur pour de vrai et regarde ce qu'il a fait au travail du projet.
+  // Un garde qui ne peut pas distinguer « déclaré » de « en vigueur » n'est pas
+  // un garde, c'est un rappel.
+  const hote = mkdtempSync(join(tmpdir(), 'argus-camps-'));
+  try {
+    writeFileSync(join(hote, 'pubspec.yaml'), 'name: hote\n');
+    installe(hote);
+
+    const poses = CAMPS_DU_SCAFFOLD.map(([rel]) => rel).filter((rel) => existsSync(join(hote, rel)));
+    assert.equal(poses.length, CAMPS_DU_SCAFFOLD.length,
+      'l\'installation n\'a pas posé tout le scaffold : c\'est le montage qui est cassé, pas le '
+      + 'classement — ne pas lire le verdict ci-dessous');
+
+    // Le travail du projet, simulé par une ligne ajoutée à la FIN de chaque
+    // fichier : l'en-tête reste intact, donc ce n'est pas la reconnaissance de
+    // notre copie qu'on mesure ici, mais bien le camp.
+    const TEMOIN = 'ARGUS-TEMOIN-495';
+    for (const rel of poses) {
+      const f = join(hote, rel);
+      writeFileSync(f, `${readFileSync(f, 'utf8')}\n${TEMOIN}\n`);
+    }
+
+    installe(hote, '--update');
+    const remplaces = poses
+      .filter((rel) => !readFileSync(join(hote, rel), 'utf8').includes(TEMOIN))
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+
+    // L'instrument sépare-t-il ? Sans ces deux lignes, un `--update` devenu
+    // inerte — ou devenu total — passerait pour un classement respecté.
+    assert.ok(remplaces.length > 0,
+      `\`--update\` n'a remplacé aucun des ${poses.length} fichiers : la mesure ne sépare plus `
+      + 'les camps, donc ce garde serait vert quel que soit le classement');
+    assert.ok(remplaces.length < poses.length,
+      `\`--update\` a remplacé les ${poses.length} fichiers, le travail du projet compris`);
+
+    const attendus = CAMPS_DU_SCAFFOLD.filter(([, camp]) => camp === 'CADRE').map(([rel]) => rel)
+      .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    assert.deepStrictEqual(remplaces, attendus,
+      '`--update` ne traite pas les fichiers comme leur camp l\'annonce. Un fichier du projet '
+      + 'écrasé est du travail perdu ; un fichier de cadre épargné ne sera plus jamais mis à '
+      + 'jour, en silence (495)');
+  } finally {
+    rmSync(hote, { recursive: true, force: true });
+  }
+});
