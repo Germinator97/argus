@@ -9439,3 +9439,37 @@ effacé l'en-tête que je venais d'écrire et n'avais pas commité. Rien ne le
 signale — la contre-épreuve avait réussi, le garde tombait bien. *Commiter avant
 de muter* vaut aussi pour les mutations qu'on fait à la main, et surtout pour
 celles-là.
+
+### 499. Le garde du job Flutter couvrait un job sur deux, et se taisait
+
+**Fermé le 15/09/2026**, et **trouvé par la passe de mutation complète — par rien
+d'autre**. Sur 456 mutations, 455 sont tombées ; la seule qui ne tombait pas était
+*« le job Flutter redevient injouable hors d'un vrai runner »*, rendue **VACANTE**.
+
+Le garde lisait **une seule action** — `match` sans le drapeau `g` rend la
+première — et comparait son architecture au `runs-on` du job `harness`, **écrit en
+dur**, alors que l'action qu'il venait de lire appartenait à un **autre job**. Deux
+défauts dans trois lignes, dont aucun ne se voyait tant qu'il n'y avait qu'un seul
+job Flutter.
+
+🔴 **Le jour où le 494 a créé le second job, la moitié du phénomène a cessé d'être
+gardée — sans qu'une ligne bouge.** Le garde restait vert, sa mutation n'avait pas
+été rejouée en passe entière depuis, et le défaut a vécu une journée. C'est le
+mode de panne que la passe complète existe pour trouver, et il a fallu qu'elle
+tourne pour qu'on l'apprenne.
+
+**Ce qui le ferme** : le garde parcourt **tous** les jobs, contrôle **chaque**
+`flutter-action` contre le `runs-on` de **son** job, et **prouve d'abord qu'il les
+a toutes vues** — `vues === total`. C'est ce compte qui manquait, et lui seul
+aurait attrapé la panne. ⚠️ *Un garde écrit contre un SITE se périme dès qu'un
+second site apparaît* ; celui-ci porte désormais sur le phénomène.
+
+📌 **Et le second site n'avait aucune mutation à lui.** Cette absence est
+exactement pourquoi la couverture a pu tomber de moitié sans bruit : **le site que
+personne ne mute est le site dont personne n'apprend rien.** Elle est ajoutée, et
+les deux tombent maintenant sur le même garde.
+
+📌 Les deux sens ont été mesurés en restaurant le workflow **par copie** et non
+par `git checkout` — le correctif n'était pas encore commité, et c'est ce même
+geste qui avait effacé un en-tête une heure plus tôt (498). Restauration prouvée
+par empreinte, pas annoncée.
