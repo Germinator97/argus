@@ -2226,6 +2226,37 @@ MUTATIONS = [
     ("lanceur", "497 · le lanceur cesse de chercher le moteur du projet courant",
      "  ['le projet courant', join(process.cwd(), 'scripts', 'argus')],\n",
      ""),
+    # ── 497 · l'installation globale ───────────────────────────────────────
+    # ⚠️ La maison cesse de reproduire la structure du skill. Rien ne casse à la
+    # pose — elle réussit, le message est le même — et c'est l'INSTALLEUR copié
+    # dedans qui ne retrouve plus son scaffold, plus tard, chez quelqu'un qui
+    # voulait juste poser le cadre dans un projet.
+    ("installeur", "497 · la maison globale cesse de reproduire la structure du skill",
+     '  cp -R "$SCAFFOLD_DIR" "$home/assets/scaffold-mobile"\n',
+     '  cp -R "$SCAFFOLD_DIR" "$home/scaffold"\n'),
+    # ⚠️ Le refus d'écraser un homonyme disparaît. Le seul geste irrattrapable de
+    # tout l'outil : le fichier d'un tiers, remplacé sans un mot.
+    ("installeur", "497 · la pose globale écrase un `argus-mobile` qui n'est pas le nôtre",
+     '  if [ -e "$lien" ] && ! head -3 "$lien" 2>/dev/null | grep -qF \'ARGUS:CADRE\'; then\n'
+     '    echo "❌ $lien existe déjà et ne porte pas la signature d\'Argus." >&2\n'
+     '    echo "   Rien n\'a été touché. Déplace-le, ou désigne un autre dossier par" >&2\n'
+     '    echo "   ARGUS_MOBILE_BIN." >&2\n'
+     '    exit 1\n'
+     '  fi\n',
+     ''),
+    # ⚠️ Un drapeau mal tapé redevient un répertoire cible. L'outil ne se plaint
+    # pas de ce qu'il n'a pas compris : il agit, au moment précis où l'on cherche
+    # encore comment s'en servir.
+    ("installeur", "497 · un drapeau inconnu redevient une cible d'installation",
+     '    -*) echo "❌ option inconnue : $arg" >&2\n',
+     '    --jamais-ecrit) echo "❌ option inconnue : $arg" >&2\n'),
+    # ⚠️ CELLE-CI REJOUE LA VOIE 3 MAL FAITE : le moteur cesse d'être copié dans
+    # le projet. Sur le poste du dev tout continue de marcher — il a la commande
+    # globale — et c'est l'intégration qui n'a plus rien à appeler, sur une
+    # machine que personne ne regarde au moment du changement.
+    ("installeur", "497 · le moteur cesse d'être copié dans le projet",
+     '  rel="${src#"$SCAFFOLD_DIR"/}"\n',
+     '  rel="${src#"$SCAFFOLD_DIR"/}"\n  case "$rel" in scripts/argus/*.mjs) continue ;; esac\n'),
 ]
 
 
