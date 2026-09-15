@@ -2350,7 +2350,7 @@ MUTATIONS = [
     # la forme qui a échoué quatre fois.
     ("config", "le refus du bloc multi-lignes ne dit plus quoi faire",
      "non supporté — mets la valeur sur UNE '",
-     "non supporté. Cette forme n'est pas acceptee par le parseur'"),
+     "non supporté. Cette forme reste refusee par le parseur'"),
 ]
 
 
