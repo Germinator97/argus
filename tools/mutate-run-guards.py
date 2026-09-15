@@ -2288,6 +2288,13 @@ MUTATIONS = [
     ("installeur", "498 · un geste disparaît de l'aide en restant accepté",
      "#   --uninstall-global\n#              retire cette installation et le lien",
      "#              retire cette installation et le lien"),
+    # ⚠️ LE SECOND SITE, et c'est celui qui n'était gardé par personne. Le job de
+    # format monte Flutter lui aussi depuis le 494 : sa mutation manquait, et
+    # c'est précisément parce qu'elle manquait que le garde a pu ne couvrir
+    # qu'une moitié pendant une journée sans que rien ne le dise.
+    ("ciplugin", "499 · le job de format redevient injouable hors d'un vrai runner",
+     "          flutter-version: 3.32.0\n          architecture: x64\n",
+     "          flutter-version: 3.32.0\n"),
 ]
 
 
