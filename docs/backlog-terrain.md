@@ -5096,6 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **5 POINTS OUVERTS — 505 à 509**, rendus par la paire de confirmation
+82-83 du 16/09/2026. Trois portent sur le plugin (un remède qui ne tranche
+pas, un réglage système jamais restauré, une classe de canaux sortants que
+le cadrage ne peut pas neutraliser), un sur le lint, un sur deux dimensions
+qui se contredisent sans que le rapport le dise.
+
 ✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
 Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
 le reste passant : le scaffold est compatible, l'écart est stylistique. Style à
@@ -9727,3 +9733,141 @@ accepte `>` pour les clés de prose, ou la clé cesse d'inviter à écrire une p
 📌 À rapprocher du **480** — « l'avertissement qui écarte un raccourci ne
 s'adresse qu'à ceux qui ne l'ont pas pris ». Même famille : le texte est lu par
 ceux qui n'en avaient pas besoin.
+
+## Rendu par la paire de CONFIRMATION 82-83 — 16/09/2026
+
+Deux agents vierges, deux terrains, deux plateformes, et des prompts **identiques
+au caractère près** à ceux des runs 78 et 79 (diff prouvé dans les deux sens) :
+la seule variable était le plugin. C'est la passe qui manquait aux 502-504, dont
+les correctifs n'étaient gardés que par des tests et des mutations.
+
+**Ce que la paire a confirmé**, chaque ligne mesurée sur les artefacts :
+
+| | |
+|---|---|
+| **502** | le finding rend le NOUVEAU remède, fausse piste fermée en toutes lettres, et l'agent a fait la vérification qu'il prescrit |
+| **503** | `obfuscation.scanned: true`, `projectPaths: 0`, distinct du scan d'archive qui dit POURQUOI il ne conclut pas. Son pendant sur l'autre plateforme a tourné au 83 |
+| **504** | **non exercé** — aucun bloc replié écrit ni sur un terrain ni sur l'autre. Il reste gardé par ses seuls tests |
+| **475** | l'avertissement de l'installeur a été relayé par les DEUX agents, l'un le classant reste-à-faire n° 1 |
+| **479** | l'autre moitié : il ne censure pas quand il y a une vraie mesure. Les trois cas sont maintenant vus — rien à censurer (81), tout absorbé (82), vraie lenteur (83) |
+| réserve de variant | la mise en garde « mesuré sur un debug » est bien sur le DÉMARRAGE, l'appel qui l'avait perdue |
+
+⚠️ **Deux constats des agents étaient la SORTIE d'un remède**, pas un défaut : le
+workflow posé sur un projet dont la forge est autre (475), et les valeurs saisies
+présentes dans les artefacts par défaut (documenté au SKILL). Les inscrire aurait
+dédoublé des points fermés. *Un journal de vérification n'est pas un journal de
+résultats* — le piège s'est présenté aux deux runs.
+
+### 505. Le remède du 502 est lisible, suivi, et il ne TRANCHE pas
+
+**Ouvert le 16/09/2026**, rapporté par le run 82 et reproduit sur les artefacts.
+
+Deux agents vierges, **le même terrain**, deux décisions opposées sur le même
+geste : le run 80 a RETIRÉ l'appel au sous-flow qui referme les invites système ;
+le run 82 l'a GARDÉ, en écrivant sa raison dans le fichier — aucune permission
+déclarée, mais l'invite reste utile pour ce que la plateforme présente d'elle-même.
+
+    10/10 flows absorbés · 7 254 à 7 354 ms attendus avant la mesure
+    mesures retenues : 80, 80, 82, 85, 85, 85, 88, 199, 353 ms
+    ⇒ le budget de démarrage n'est jugeable sur AUCUN flow
+
+Le remède dit quoi faire **si l'app ne demande aucune permission** (retirer), et
+ce que coûte de le garder **si elle en demande** (« en acceptant le coût sur les
+flows concernés »). Il ne dit pas ce que coûte de le **garder quand rien ne peut
+ouvrir d'invite** — c'est-à-dire le seul cas où le coût est intégral, et
+précisément celui où le lecteur hésite.
+
+📌 Le correctif du 502 reste juste : il a supprimé une prescription que l'outil
+rejette. Ce point-ci porte sur ce qui manque à côté — *un remède qui laisse le
+choix ouvert doit chiffrer les deux branches, sinon il départage par le tempérament
+du lecteur.* Deux runs, deux tempéraments, deux résultats.
+
+### 506. Un libellé qui porte une virgule, dans une syntaxe qui s'y coupe
+
+**Ouvert le 16/09/2026**, rapporté par le run 82.
+
+L'agent a écrit treize commandes sous forme de map **en flow** dont le libellé
+est une phrase française :
+
+    - tapOn: { id: …, label: Refermer le formulaire, s'il est ouvert }
+
+YAML coupe la map sur la virgule, et c'est l'outil piloté qui refuse — avec un
+message qui ne nomme pas la cause : `Unknown Property: s'il est ouvert`.
+
+Mesuré : le scaffold n'écrit **aucune** map en flow (0 occurrence dans tout
+`assets/scaffold-mobile`, 0 dans le SKILL et ses références) — il écrit en bloc,
+où la virgule passe. **Le plugin n'y conduit donc pas**, et c'est ce qui borne la
+valeur de ce point.
+
+📌 Mais c'est le **phénomène du 504**, à un fichier de distance : *un champ qui
+invite à écrire une phrase, dans une syntaxe qui n'accepte pas ce qu'une phrase
+contient* — une virgule ici, un retour à la ligne là. Le garde du 504 vit dans le
+parseur de configuration et ne peut structurellement pas atteindre les flows.
+Ce que le lint peut faire, lui, c'est nommer la cause au lieu de relayer.
+
+### 507. Le runner coupe les animations et ne les rend JAMAIS
+
+**Ouvert le 16/09/2026**, rapporté par le run 83 — et **prouvé par l'expérience**
+plutôt que par lecture : les trois échelles ont été remises à `1.0` avant le run
+(relevé après coup), elles valaient `0` à la fin.
+
+`run.mjs` définit les trois échelles, les met à zéro et **relit la valeur pour le
+prouver** — ce qui est bien. Mais la constante n'a que **deux** usages dans tout
+le fichier, et **aucune fonction ne restaure**. Deux conséquences, et la seconde
+est la pire :
+
+1. *Hygiène* — le runner modifie un réglage **système global**, pas un réglage de
+   l'app, et laisse l'appareil ainsi. Rencontré à **quatre préparations de suite**,
+   sur les deux terrains.
+2. 🔴 *Garde vacant* — au run suivant sur le même appareil, les échelles valent
+   déjà `0` : la relecture rend `0` **sans que l'écriture ait rien changé**. La
+   preuve de coupure ne peut alors plus dire non, et le commentaire du 486
+   explique précisément pourquoi ce signal compte sur cette plateforme.
+
+Le remède doit fermer les deux : relever les valeurs AVANT, les restaurer après,
+et faire porter la preuve sur l'**écart** (autre chose avant, `0` après) plutôt
+que sur la valeur seule — sans quoi on garde une mesure qui ne peut plus échouer.
+
+### 508. Un canal sortant que le cadrage ne PEUT pas neutraliser
+
+**Ouvert le 16/09/2026**, rapporté par les runs 82 **et** 83 — deux terrains, deux
+agents qui ne se connaissent pas, deux SDK différents, le même mur.
+
+Le gabarit de prompt demande de neutraliser la télémétrie et de le prouver, et il
+suppose qu'un canal se coupe par une injection de build. Les deux agents ont
+trouvé une classe pour laquelle c'est structurellement faux :
+
+| run | canal | pourquoi il est resté ouvert |
+|---|---|---|
+| 82 | une vérification de mise à jour interrogeant la fiche du magasin à chaque ouverture des réglages | « aucune injection de build ne le gouverne ; le couper aurait demandé de toucher `lib/`, donc de changer l'app que je viens tester » |
+| 83 | la messagerie push, qui demande un jeton après l'accueil | « le seul moyen était de toucher `lib/` ou de retirer le fichier de configuration — l'amorçage de l'accueil échouerait » |
+
+Les deux l'ont **dit au compte rendu**, ce qui est le comportement attendu et
+montre que la consigne « vérifie toi-même ce que ce projet émet d'autre » porte.
+Ce qui manque est en amont : *le skill classe les canaux en « à neutraliser »
+sans distinguer ceux que le build gouverne de ceux qui vivent dans le code*. Pour
+les seconds, la seule réponse honnête est de les inventorier, de dire ce qu'ils
+émettent et vers qui, et de laisser la décision à qui connaît le projet — jamais
+de laisser croire qu'une passe QA est muette.
+
+⚠️ Deux remèdes possibles, à choisir plutôt qu'à cumuler : l'inventaire de §2a
+rend une **classification** (gouverné par le build / dans le code / inerte), ou
+le rapport porte une ligne « canaux laissés ouverts » que le gate ne fait pas
+échouer mais qu'il ne peut pas taire.
+
+### 509. Deux instruments du harnais se contredisent, et le rapport se tait
+
+**Ouvert le 16/09/2026**, rapporté par le run 83.
+
+Sur le même écran : l'étage 1, qui lit l'arbre sémantique du framework, ne
+rapporte **aucun** libellé manquant ; la passe device, qui lit le dump de la
+plateforme, y voit un champ de saisie sans libellé, bornes à l'appui. Les deux
+lisent des arbres différents — le second voit vraisemblablement la vue native
+créée pour la saisie.
+
+L'agent a **refusé de trancher** laquelle décrit ce que le lecteur d'écran
+annonce, et il a eu raison de le dire plutôt que de le supposer. Ce qui manque
+est que **rien dans le rapport ne signale l'écart** : deux dimensions rendent des
+verdicts inconciliables sur le même nœud, et elles sont publiées côte à côte sans
+un mot. 📌 La cible tactile, elle, **concorde** des deux côtés — ce qui montre que
+le désaccord porte sur la nature du nœud lu, pas sur la mesure.
