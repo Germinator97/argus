@@ -23,7 +23,7 @@ import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { acquitter, artifactFor, artifactsDir, loadConfig, log, err, warn, writeJson } from './config.mjs';
+import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, loadConfig, log, err, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -305,6 +305,37 @@ export const LIGHTBOX = `<div class="lb" id="argus-lb" role="dialog" aria-modal=
 </script>`;
 
 /** @param {any[]} findings @param {Map<string,string>} shots @returns {string} */
+/**
+ * Les canaux sortants que la passe n'a PAS pu couper — dits, jamais tus.
+ *
+ * 🔴 POURQUOI CE BLOC EXISTE (508). Deux runs en aveugle, deux projets, deux
+ * SDK : chacun a trouvé un canal qu'aucune injection de build ne gouverne et
+ * que couper aurait demandé de modifier l'app qu'il venait mesurer. Les deux
+ * l'ont écrit dans leur compte rendu — qui se lit une fois, quand la passe, elle,
+ * se relit pendant des mois. Il manquait un endroit dans le LIVRABLE.
+ *
+ * ⚠️ Il ne fait pas échouer le gate et n'excuse rien : il rend visible. Se taire
+ * ferait croire qu'une passe QA est muette alors qu'elle émet.
+ *
+ * ⚠️ Et il ne s'affiche PAS quand la liste est vide : un bloc « aucun canal
+ * ouvert » sur un projet qui n'a rien déclaré affirmerait ce que personne n'a
+ * mesuré — la nuance entre « rien à signaler » et « personne n'a regardé » est
+ * précisément ce qu'on ne sait pas ici.
+ *
+ * @param {Array<{channel:string, to:string, why:string, libelle:string}>} canaux
+ * @returns {string}
+ */
+export function canauxOuvertsBloc(canaux) {
+  if (!canaux || canaux.length === 0) return '';
+  const lignes = canaux.map((c) => `<tr><td><code>${esc(c.channel)}</code></td>`
+    + `<td>${esc(c.to)}</td><td class="muted">${esc(c.libelle)}</td></tr>`).join('');
+  return `\n  <h2>Canaux laissés ouverts (${canaux.length})</h2>\n`
+    + '  <p class="muted">Cette passe a émis vers ces destinataires. Ce ne sont pas des findings : '
+    + 'aucune injection de build ne les gouverne, et les couper aurait demandé de modifier '
+    + 'l\'application mesurée. Ils sont écrits ici pour qu\'une passe QA ne passe pas pour muette.</p>\n'
+    + `  <table><tr><th>Canal</th><th>Vers</th><th>Pourquoi il reste ouvert</th></tr>${lignes}</table>\n`;
+}
+
 export function findingCards(findings, shots = new Map()) {
   if (findings.length === 0) return '<p class="muted">Aucun finding. 🎉</p>';
   return SEVERITIES.map((severity) => {
@@ -545,6 +576,7 @@ function renderBody(context) {
   <h2>Findings (${findings.length})</h2>
   ${context.evidenceNote ?? ''}${findingCards(findings, shots)}
 
+  ${canauxOuvertsBloc(context.canauxOuverts ?? [])}
   <h2>✅ Ce qui fonctionne</h2>
   ${ok.length ? `<ul class="ok-list">${ok.map((/** @type {any} */ p) => `<li>${esc(p.label)} <span class="muted">— exécutée, aucun finding</span></li>`).join('')}</ul>` : '<p class="muted">Aucune dimension n\'a tourné sans finding.</p>'}
 
@@ -1051,7 +1083,8 @@ function main() {
   const generatedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
 
   const htmlPath = join(dir, 'report.html');
-  const context = { run, counts, gate, parts, findings, coverage, perf, generatedAt, staleness };
+  const canauxOuverts = canauxOuvertsDe(config).canaux;
+  const context = { run, counts, gate, parts, findings, coverage, perf, generatedAt, staleness, canauxOuverts };
   writeJson(join(dir, 'summary.json'), {
     generatedAt, gate, counts, findings: findings.length,
     staleParts: staleness.stale,

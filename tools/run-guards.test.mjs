@@ -59,6 +59,8 @@ import { variantePubliee } from '../plugins/argus-mobile/skills/argus-mobile/ass
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { mapsEnFlowSuspectes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { RAISONS_CANAL_OUVERT, canauxOuvertsDe, parseYaml as parseYamlConf } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { canauxOuvertsBloc } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -15386,4 +15388,77 @@ test('le contrôle des flows CÂBLE la détection (506)', () => {
   const appels = [...nu.matchAll(/(?<!function\s)\bmapsEnFlowSuspectes\s*\(/g)];
   assert.ok(appels.length >= 1,
     'plus aucun APPEL à `mapsEnFlowSuspectes` : la détection existe et rien ne la déclenche');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 508 — le canal sortant qu'aucun drapeau de build ne gouverne
+// ═══════════════════════════════════════════════════════════════════════════
+
+const YAML_SCAFFOLD = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml');
+
+test('`why` est une ÉNUMÉRATION, jamais une phrase (508, et c\'est le 504 qu\'on ne rouvre pas)', () => {
+  const ok = canauxOuvertsDe({ telemetry: { leftOpen: [{ channel: 'push', to: 'firebase', why: 'would-change-app' }] } });
+  assert.deepEqual(ok.erreurs, [], 'une déclaration conforme doit passer');
+  assert.equal(ok.canaux[0].libelle, RAISONS_CANAL_OUVERT['would-change-app'],
+    'le rapport doit rendre le libellé LISIBLE, pas le code de l\'énumération');
+
+  // 🔴 Le cœur : une phrase est refusée. Une clé qui invite à écrire une phrase,
+  // dans un parseur qui n'accepte qu'une ligne, est l'écart de conception que le
+  // 504 a payé quatre fois — on le ferme ici par le TYPE, pas par un avertissement.
+  const phrase = canauxOuvertsDe({ telemetry: { leftOpen: [{ channel: 'push', to: 'firebase', why: 'parce que le couper casserait l\'amorçage, et je préfère le dire' }] } });
+  assert.equal(phrase.canaux.length, 0, 'une phrase ne doit pas être acceptée comme raison');
+  assert.match(phrase.erreurs[0], /énumération/, 'le refus doit dire QUOI mettre à la place');
+
+  // Les champs qui servent au lecteur sont exigés, les deux.
+  assert.equal(canauxOuvertsDe({ telemetry: { leftOpen: [{ to: 'firebase', why: 'no-build-flag' }] } }).canaux.length, 0, 'un canal sans nom');
+  assert.equal(canauxOuvertsDe({ telemetry: { leftOpen: [{ channel: 'push', why: 'no-build-flag' }] } }).canaux.length, 0, 'un canal sans destinataire');
+
+  // L'autre moitié : ne rien exiger de qui n'a rien déclaré.
+  assert.deepEqual(canauxOuvertsDe({}).erreurs, [], 'une config sans section telemetry ne doit rien reprocher');
+});
+
+test('le rapport publie les canaux ouverts, et se tait quand il n\'y en a pas (508)', () => {
+  assert.equal(canauxOuvertsBloc([]), '',
+    'un bloc « aucun canal ouvert » affirmerait ce que personne n\'a mesuré : rien à signaler '
+    + 'et personne n\'a regardé ne se distinguent pas ici');
+  const html = canauxOuvertsBloc([{ channel: 'store-check', to: 'apple-app-store', why: 'no-build-flag', libelle: 'aucune injection' }]);
+  assert.match(html, /Canaux laissés ouverts \(1\)/, 'le compte doit être dérivé, pas écrit');
+  assert.match(html, /apple-app-store/, 'le DESTINATAIRE est la seule chose qui compte pour le lecteur');
+});
+
+test('l\'exemple commenté du scaffold PASSE une fois décommenté (508)', () => {
+  // ⚠️ C'est exactement le 504 : l'exemple livré pour `acknowledged` était replié,
+  // et décommenté tel quel il faisait échouer TOUTES les commandes. Un exemple
+  // qu'on ne peut pas suivre est pire qu'une absence d'exemple.
+  const brut = readFileSync(YAML_SCAFFOLD, 'utf8');
+  const decommente = brut
+    .replace('  leftOpen: []', '  leftOpen:')
+    .replace('  #   - channel: store-version-check', '    - channel: store-version-check')
+    .replace('  #     to: apple-app-store', '      to: apple-app-store')
+    .replace('  #     why: no-build-flag', '      why: no-build-flag');
+  assert.notEqual(decommente, brut, 'l\'exemple commenté a changé de forme : ce garde ne décommente plus rien');
+
+  const config = parseYamlConf(decommente);
+  const lu = canauxOuvertsDe(config);
+  assert.deepEqual(lu.erreurs, [], 'l\'exemple livré est refusé par la validation qu\'il illustre');
+  assert.equal(lu.canaux.length, 1, 'l\'exemple décommenté ne produit aucun canal');
+  // Et il ne casse pas ses voisins : une section mal fermée emporte la suite.
+  assert.ok(config.budget, 'la section qui suit `telemetry:` n\'est plus lue');
+});
+
+test('le rapport ALIMENTE le contexte, et le skill dit d\'alimenter la clé (508)', () => {
+  const rapport = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+  assert.match(rapport, /(?<!function\s)\bcanauxOuvertsDe\s*\(/,
+    'le rapport ne lit plus la clé : le bloc existerait et ne serait jamais alimenté');
+  assert.match(rapport, /canauxOuverts\s*[,}]/, 'le contexte ne porte plus les canaux');
+
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /telemetry\.leftOpen/,
+    'le skill ne dit plus où déclarer un canal laissé ouvert : la clé existerait sans que personne '
+    + 'sache l\'alimenter — une prescription posée hors du chemin');
+  assert.match(skill, /vit dans le code/,
+    'la classification a disparu du §2 : c\'est elle qui fait reconnaître le cas au bon moment');
 });

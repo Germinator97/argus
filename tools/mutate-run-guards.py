@@ -2388,6 +2388,20 @@ MUTATIONS = [
     ("config", "la detection des maps coupees n'a plus d'appelant",
      "    const coupes = mapsEnFlowSuspectes(flows);",
      "    const coupes = [];"),
+
+    # ── 508 — le canal sortant qu'aucun drapeau ne gouverne ───────────────
+    ("config", "why redevient une phrase libre",
+     "    if (!(why in RAISONS_CANAL_OUVERT)) {",
+     "    if (false) {"),
+    ("report", "le bloc s'affiche meme sans aucun canal declare",
+     "  if (!canaux || canaux.length === 0) return '';",
+     "  if (false) return '';"),
+    ("report", "le contexte cesse d'etre alimente en canaux",
+     "  const canauxOuverts = canauxOuvertsDe(config).canaux;",
+     "  const canauxOuverts = [];"),
+    ("yamlconf", "l'exemple livre redevient impossible a decommenter",
+     "  #     why: no-build-flag",
+     "  #     why: parce que le couper casserait tout"),
 ]
 
 

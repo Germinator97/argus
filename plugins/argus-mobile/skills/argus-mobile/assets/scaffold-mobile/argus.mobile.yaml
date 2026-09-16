@@ -662,6 +662,33 @@ security:
 # tronque rien et ne fait pas échouer — dépasser un budget dit quelque chose de
 # la capacité, pas de l'application, et faire rougir la CI là-dessus apprendrait
 # à ignorer le rouge. Mettre 0 désactive le plafond.
+telemetry:
+  # ── Les canaux sortants que tu n'as PAS pu couper ──────────────────────────
+  # 🔴 POURQUOI CETTE CLÉ EXISTE. Une passe QA neutralise sa télémétrie par des
+  # injections de build (`--dart-define=SENTRY_DSN=`…). Deux runs en aveugle, sur
+  # deux projets et deux SDK différents, ont buté le même jour sur la même
+  # limite : une vérification de version du magasin d'un côté, la messagerie push
+  # de l'autre. Aucun drapeau ne les gouverne, et les couper aurait demandé de
+  # modifier `lib/` — donc de changer l'application qu'on vient mesurer.
+  #
+  # Les deux agents l'ont écrit dans leur compte rendu. Un compte rendu se lit
+  # une fois ; une passe QA se relit pendant des mois. D'où cet endroit-ci, dans
+  # le livrable : le rapport publie la liste sous « Canaux laissés ouverts ».
+  #
+  # Ça n'excuse rien et ça ne fait échouer aucun gate : ça rend VISIBLE. Le taire
+  # ferait croire qu'une passe QA est muette alors qu'elle émet.
+  #
+  # ⚠️ `why` est une ÉNUMÉRATION, pas une phrase, et c'est délibéré : une clé qui
+  # invite à écrire une phrase, dans un parseur qui n'accepte qu'une ligne, est
+  # l'écart de conception que le 504 a payé quatre fois. Trois valeurs :
+  #     no-build-flag      aucune injection de build ne le gouverne
+  #     would-change-app   le couper demanderait de modifier `lib/`
+  #     sdk-autostart      le SDK démarre de lui-même, avant tout code du projet
+  leftOpen: []
+  #   - channel: store-version-check
+  #     to: apple-app-store
+  #     why: no-build-flag
+
 budget:
   maxMinutes: 25
   maxFlows: 40

@@ -243,10 +243,26 @@ démarrage, un `POST` dans un `initState`.
 
 Rends la liste à qui te cadre **avant** de construire, avec pour chacun comment
 le neutraliser (une clé vide au build, un flavor de test) — et si la réponse est
-« laisse-le », que ce soit une décision prise, pas un oubli. 📌 Vérifier qu'un
+« laisse-le », que ce soit une décision prise, pas un oubli.
+ 📌 Vérifier qu'un
 canal est bien coupé se fait **sur la release**, jamais sur le debug : un
 `String.fromEnvironment` garde sa valeur par défaut dans le kernel JIT, donc le
 binaire de debug ne tranche rien.
+📌 **CLASSE-LES EN LES INVENTORIANT, pas après (508).** Trois familles, et elles
+ne se traitent pas pareil :
+
+- **gouverné par le build** — une injection suffit (`--dart-define=CLE=`). Tu le
+  neutralises seul : ça ne change rien à ce que tu mesures.
+- **vit dans le code** — aucun drapeau ne l'atteint, et le couper demanderait de
+  modifier `lib/`, donc l'application que tu viens mesurer. Tu le LAISSES, tu le
+  déclares dans `telemetry.leftOpen`, et tu dis vers qui il émet.
+- **inerte dans ce flavor** — une condition du projet le désarme déjà. Vérifie-le
+  sur la **release** plutôt que de le croire, puis dis-le.
+
+⚠️ Le deuxième cas n'est pas un cas limite : deux runs en aveugle, sur deux
+projets et deux SDK différents, l'ont rencontré **le même jour**, chacun de son
+côté — une vérification de version du magasin d'un côté, la messagerie push de
+l'autre.
 
 🔴 **ET SI PERSONNE NE PEUT RÉPONDRE, NE BLOQUE PAS.** Tu travailles peut-être en
 une seule passe, sans interlocuteur : ton seul canal est alors ton compte rendu,
@@ -261,6 +277,12 @@ lancer, or mon seul canal est ce rapport »*. Dans ce cas :
    particulier mesurerait autre chose.
 3. **Écris les DEUX listes** dans ton compte rendu — ce que tu as coupé, ce que
    tu as laissé partir, et pourquoi pour chacun.
+   🔴 **Et inscris la seconde dans `telemetry.leftOpen` (508).** Un compte rendu
+   se lit une fois ; une passe QA se relit pendant des mois. Le rapport publie
+   alors une section « Canaux laissés ouverts » avec le destinataire et la
+   raison — trois champs courts, jamais une phrase : `channel`, `to`, et un `why`
+   pris dans une énumération fermée. Ça n'excuse rien et ça ne fait échouer aucun
+   gate ; ça empêche seulement une passe qui émet de passer pour muette.
 
 Un canal laissé ouvert et DIT vaut mieux qu'une passe qui n'a pas eu lieu ; un
 canal laissé ouvert et tu ne vaut rien.

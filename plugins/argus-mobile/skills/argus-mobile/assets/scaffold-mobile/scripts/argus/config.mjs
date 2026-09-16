@@ -447,6 +447,9 @@ export function validateConfig(config) {
   const problems = [];
   const platforms = config.platforms ?? [];
   if (platforms.length === 0) problems.push({ level: 'error', message: 'platforms est vide : rien à tester.' });
+  // 508 — un canal qu'on déclare mal vaut moins qu'un canal non déclaré : il
+  // laisserait croire que la question a été traitée.
+  for (const m of canauxOuvertsDe(config).erreurs) problems.push({ level: 'error', message: m });
   if (platforms.includes('android') && !config.app.androidPackage) {
     problems.push({ level: 'error', message: 'app.androidPackage est vide (requis pour la plateforme android).' });
   }
@@ -2429,6 +2432,68 @@ export function mapsEnFlowSuspectes(flows) {
     });
   }
   return suspects;
+}
+
+/**
+ * Les raisons admises pour qu'un canal sortant reste ouvert. FERMÉE, et c'est
+ * le point : une énumération ne se coupe pas sur une virgule et ne se replie pas
+ * sur deux lignes (504). Une clé qui invite à écrire une phrase, dans un format
+ * qui n'accepte qu'une ligne, est un écart de conception que nul avertissement
+ * ne comble — on ne le rouvre donc pas ici.
+ */
+export const RAISONS_CANAL_OUVERT = Object.freeze({
+  'no-build-flag': 'aucune injection de build ne le gouverne',
+  'would-change-app': 'le couper demanderait de modifier `lib/`, donc l\'app qu\'on mesure',
+  'sdk-autostart': 'le SDK démarre de lui-même, avant tout code du projet',
+});
+
+/**
+ * Les canaux sortants qu'une passe QA n'a PAS pu couper — lus, validés, rendus.
+ *
+ * 🔴 POURQUOI CETTE CLÉ EXISTE (508). Le cadrage demande de neutraliser la
+ * télémétrie et de le prouver, et il suppose qu'un canal se coupe par une
+ * injection de build. Deux runs en aveugle, sur deux projets et deux SDK
+ * différents, ont buté sur la même limite le même jour : une vérification de
+ * version du magasin d'un côté, la messagerie push de l'autre — aucun drapeau
+ * ne les gouverne, et les couper aurait demandé de toucher `lib/`, donc de
+ * changer l'application qu'on vient mesurer.
+ *
+ * Les deux agents l'ont DIT dans leur compte rendu, ce qui est le bon geste —
+ * et c'est tout le problème : un compte rendu se lit une fois, une passe QA se
+ * relit pendant des mois. Il fallait un endroit dans le livrable.
+ *
+ * ⚠️ Ce relevé n'excuse rien et ne fait pas échouer le gate : il REND VISIBLE.
+ * Le taire ferait croire qu'une passe QA est muette alors qu'elle émet.
+ *
+ * @param {any} config
+ * @returns {{canaux: Array<{channel:string, to:string, why:string, libelle:string}>, erreurs: string[]}}
+ */
+export function canauxOuvertsDe(config) {
+  const brut = config?.telemetry?.leftOpen;
+  /** @type {string[]} */
+  const erreurs = [];
+  if (brut === undefined || brut === null || brut === '') return { canaux: [], erreurs };
+  if (!Array.isArray(brut)) {
+    return { canaux: [], erreurs: ['`telemetry.leftOpen` doit être une liste (ou vide), pas une valeur seule.'] };
+  }
+  /** @type {Array<{channel:string, to:string, why:string, libelle:string}>} */
+  const canaux = [];
+  brut.forEach((e, i) => {
+    const ou = `telemetry.leftOpen[${i}]`;
+    const channel = String(e?.channel ?? '').trim();
+    const to = String(e?.to ?? '').trim();
+    const why = String(e?.why ?? '').trim();
+    if (!channel) { erreurs.push(`${ou} n'a pas de \`channel\` : un canal sans nom ne se retrouve pas.`); return; }
+    if (!to) { erreurs.push(`${ou} (${channel}) n'a pas de \`to\` : vers QUI il émet est la seule chose qui compte pour le lecteur.`); return; }
+    if (!(why in RAISONS_CANAL_OUVERT)) {
+      erreurs.push(`${ou} (${channel}) : \`why: ${why || '(vide)'}\` n'est pas une raison admise. `
+        + `Choisis parmi ${Object.keys(RAISONS_CANAL_OUVERT).join(' | ')} — c'est une énumération `
+        + 'et non une phrase, pour que ce champ ne se coupe jamais sur une virgule.');
+      return;
+    }
+    canaux.push({ channel, to, why, libelle: RAISONS_CANAL_OUVERT[/** @type {keyof typeof RAISONS_CANAL_OUVERT} */ (why)] });
+  });
+  return { canaux, erreurs };
 }
 
 export function lireFlows(racine) {
