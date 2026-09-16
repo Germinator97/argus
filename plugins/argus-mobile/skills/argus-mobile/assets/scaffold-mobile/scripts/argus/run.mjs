@@ -658,13 +658,89 @@ function disableAnimations(platform, udid, dryRun) {
     return { ok: false, detail: 'iOS : pas d\'équivalent local à `settings put` (disableAnimations du config.yaml est Cloud only)' };
   }
   if (dryRun) return { ok: true, detail: 'dry-run' };
-  const readback = [];
+  const avant = ANIMATION_SCALES.map((key) => sh('adb', ['-s', udid, 'shell', 'settings', 'get', 'global', key]).stdout.trim());
+  const apres = [];
   for (const key of ANIMATION_SCALES) {
     sh('adb', ['-s', udid, 'shell', 'settings', 'put', 'global', key, '0']);
-    readback.push(sh('adb', ['-s', udid, 'shell', 'settings', 'get', 'global', key]).stdout.trim());
+    apres.push(sh('adb', ['-s', udid, 'shell', 'settings', 'get', 'global', key]).stdout.trim());
   }
-  const ok = readback.every((v) => Number.parseFloat(v) === 0);
-  return { ok, detail: `${ANIMATION_SCALES.length} échelles → ${readback.join(', ')}` };
+  return { ...verdictAnimations(avant, apres), avant };
+}
+
+/**
+ * Ce que la coupure a établi, et ce qu'il faudra rendre.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (507). La version d'avant écrivait `0`,
+ * relisait, et concluait `ok` sur `tout vaut 0`. C'est juste — et ça cesse de
+ * prouver quoi que ce soit dès le SECOND run sur le même appareil, parce que
+ * personne ne restaurait : les échelles valaient déjà `0` en arrivant, la
+ * relecture rendait `0`, et l'écriture n'avait rien eu à faire. *Un garde qui ne
+ * peut plus dire non n'est plus un garde* — or le commentaire d'`animationsApplicables`
+ * explique précisément pourquoi ce signal compte ici : un `settings put` peut
+ * échouer selon l'image de l'émulateur, et c'est ce cas-là qu'on veut voir.
+ *
+ * D'où deux verdicts au lieu d'un. `ok` dit l'ÉTAT (le run sera déterministe),
+ * `prouve` dit si l'écriture a été MESURÉE — ce qui n'est possible que si au
+ * moins une valeur d'avant différait. Les deux sont utiles et ils ne disent pas
+ * la même chose.
+ *
+ * 📌 Et c'est la restauration qui rend la preuve possible au run suivant : les
+ * deux moitiés de ce point se ferment par le même geste, l'une servant l'autre.
+ *
+ * @param {string[]} avant valeurs relevées avant l'écriture
+ * @param {string[]} apres valeurs relues après
+ * @returns {{ok:boolean, prouve:boolean, aRestaurer:string[]|null, detail:string}}
+ */
+export function verdictAnimations(avant, apres) {
+  const zero = (/** @type {string} */ v) => Number.parseFloat(v) === 0;
+  const ok = apres.length === ANIMATION_SCALES.length && apres.every(zero);
+  // Une valeur illisible (`null`, vide, appareil perdu) n'est pas un `0` : on ne
+  // restaure que ce qu'on a su lire, et un tel relevé ne prouve rien non plus.
+  const lisible = avant.length === ANIMATION_SCALES.length && avant.every((v) => Number.isFinite(Number.parseFloat(v)));
+  const prouve = ok && lisible && avant.some((v) => !zero(v));
+  const detail = !ok
+    ? `${ANIMATION_SCALES.length} échelles → ${apres.join(', ')}`
+    : prouve
+      ? `${ANIMATION_SCALES.length} échelles coupées (étaient ${avant.join(', ')}) — restaurées en fin de run`
+      : lisible
+        ? `${ANIMATION_SCALES.length} échelles à 0, mais elles y étaient DÉJÀ : l'écriture n'a rien pu prouver, et rien n'est à rendre`
+        : `${ANIMATION_SCALES.length} échelles à 0, mais le relevé d'AVANT est illisible (${avant.join(', ')}) : rien ne sera restauré`;
+  return { ok, prouve, aRestaurer: prouve ? avant : null, detail };
+}
+
+/**
+ * Rend à l'appareil les échelles qu'on lui a prises.
+ * @param {string} udid @param {string[]} valeurs
+ */
+function restoreAnimations(udid, valeurs) {
+  ANIMATION_SCALES.forEach((key, i) => {
+    sh('adb', ['-s', udid, 'shell', 'settings', 'put', 'global', key, valeurs[i]]);
+  });
+}
+
+/**
+ * Arme la restauration sur TOUTES les sorties, et pas seulement sur la bonne.
+ *
+ * ⚠️ `main()` sort par une dizaine de `process.exit()` répartis après la
+ * coupure : un geste posé « à la fin » n'aurait été joué que sur un chemin sur
+ * dix, ce qui est la façon la plus sûre d'écrire un remède que rien n'exerce.
+ * `exit` les couvre tous — et il ne couvre QUE le synchrone, ce qui tombe bien :
+ * `sh` est un `spawnSync`.
+ *
+ * ⚠️ Un `exit` seul ne se déroule pas sur Ctrl+C, d'où les deux signaux. La
+ * garde `fait` rend le geste idempotent : sur SIGINT, `exit` suit.
+ *
+ * @param {{on:Function, exit:Function}} proc @param {() => void} rendre
+ * @param {string[]|null} aRestaurer
+ * @returns {boolean} vrai si la restauration a été armée
+ */
+export function armerRestaurationAnimations(proc, rendre, aRestaurer) {
+  if (!aRestaurer || aRestaurer.length === 0) return false;
+  let fait = false;
+  const uneFois = () => { if (fait) return; fait = true; rendre(); };
+  proc.on('exit', uneFois);
+  for (const signal of ['SIGINT', 'SIGTERM']) proc.on(signal, () => { uneFois(); proc.exit(130); });
+  return true;
 }
 
 /**
@@ -2257,6 +2333,9 @@ async function main() {
 
   const animations = disableAnimations(platform, resolved.udid, opts.dryRun);
   (animations.ok ? log : warn)(`animations : ${animations.detail}`);
+  // 507 — ce qu'on prend à l'appareil, on le lui rend : c'est un réglage SYSTÈME,
+  // pas un réglage de l'app, et le laisser à zéro vide la preuve du run suivant.
+  armerRestaurationAnimations(process, () => restoreAnimations(resolved.udid, /** @type {string[]} */ (animations.aRestaurer)), animations.aRestaurer ?? null);
 
   // 🔴 LE PENDANT iOS DE `clearState`, et il manquait. Voir `resetKeychain` : sans
   // lui, le premier flow part d'une app vierge et TOUS les suivants démarrent sur

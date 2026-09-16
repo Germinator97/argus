@@ -53,6 +53,7 @@ import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureB
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { verdictSansFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { armerRestaurationAnimations, verdictAnimations } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { junitsVisuelsOrphelins } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { variantePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -15157,4 +15158,106 @@ test('la classification du scaffold est contrôlée EN LOCAL, pas seulement en C
   } finally {
     rmSync(bac, { recursive: true, force: true });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 507 — ce que le runner prend à l'appareil, il doit le lui rendre
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('la coupure des animations distingue « c\'est à 0 » de « je l\'ai MIS à 0 » (507)', () => {
+  // Le défaut fermé ici : l'ancienne version concluait `ok` sur « tout vaut 0 »,
+  // ce qui est vrai — et cesse de mesurer quoi que ce soit au second run sur le
+  // même appareil, personne ne restaurant. Le verdict porte donc désormais sur
+  // l'ÉCART, et c'est ce que ce garde exerce.
+  const vrai = verdictAnimations(['1', '1', '1'], ['0', '0', '0']);
+  assert.equal(vrai.ok, true, 'les échelles sont à 0 : le run sera déterministe');
+  assert.equal(vrai.prouve, true, 'elles valaient 1 avant : l\'écriture a été mesurée');
+  assert.deepEqual(vrai.aRestaurer, ['1', '1', '1'], 'ce qu\'il faudra rendre à l\'appareil');
+
+  const deja = verdictAnimations(['0', '0', '0'], ['0', '0', '0']);
+  assert.equal(deja.ok, true, 'l\'état voulu est atteint');
+  assert.equal(deja.prouve, false,
+    'elles y étaient DÉJÀ : rendre `prouve` ici rendrait le garde incapable de voir '
+    + 'un `settings put` qui a cessé de fonctionner — c\'est le défaut du 507');
+  assert.equal(deja.aRestaurer, null, 'rien à rendre : on ne restaure pas un zéro qu\'on n\'a pas posé');
+
+  const echec = verdictAnimations(['1', '1', '1'], ['1', '0', '0']);
+  assert.equal(echec.ok, false, 'une échelle non coupée doit rester un échec');
+
+  // ⚠️ Un relevé ILLISIBLE n'est pas un relevé « déjà à 0 » — et il ne doit
+  // surtout pas être restauré : on réécrirait `null` dans un réglage système.
+  const illisible = verdictAnimations(['null', '1', '1'], ['0', '0', '0']);
+  assert.equal(illisible.aRestaurer, null, 'on ne restaure que ce qu\'on a su lire');
+  assert.match(illisible.detail, /illisible/,
+    'le détail doit dire POURQUOI rien ne sera rendu, sinon il décrit un état qui n\'est pas celui mesuré');
+});
+
+test('la restauration est armée sur TOUTES les sorties, une seule fois (507)', () => {
+  /** @param {string[]|null} aRestaurer */
+  const faux = (aRestaurer) => {
+    const poses = /** @type {Record<string, Function[]>} */ ({});
+    let rendus = 0, sorties = /** @type {number[]} */ ([]);
+    const proc = {
+      on: (/** @type {string} */ ev, /** @type {Function} */ fn) => { (poses[ev] ??= []).push(fn); },
+      exit: (/** @type {number} */ c) => { sorties.push(c); },
+    };
+    const arme = armerRestaurationAnimations(proc, () => { rendus += 1; }, aRestaurer);
+    return { poses, arme, rendus: () => rendus, sorties };
+  };
+
+  const f = faux(['1', '1', '1']);
+  assert.equal(f.arme, true, 'il y avait quelque chose à rendre');
+  // `main()` sort par une dizaine de `process.exit()` répartis APRÈS la coupure :
+  // seul `exit` les couvre tous. Un geste posé « à la fin » ne serait joué que
+  // sur un chemin sur dix — un remède que rien n'exerce.
+  assert.ok(f.poses.exit?.length, 'aucun handler `exit` : la restauration ne serait jouée que sur le chemin nominal');
+  assert.ok(f.poses.SIGINT?.length, 'Ctrl+C ne déroule pas `exit` : il lui faut son propre handler');
+  assert.ok(f.poses.SIGTERM?.length, 'SIGTERM non plus');
+
+  f.poses.SIGINT[0]();
+  assert.equal(f.rendus(), 1, 'SIGINT doit rendre les échelles');
+  assert.deepEqual(f.sorties, [130], 'et sortir : un handler de signal qui ne sort pas laisse le process suspendu');
+  f.poses.exit[0]();
+  assert.equal(f.rendus(), 1,
+    'restauré DEUX fois : `exit` suit SIGINT, donc le geste doit être idempotent');
+
+  // L'autre moitié : ne rien armer quand il n'y a rien à rendre, sinon on
+  // réécrirait des valeurs qu'on n'a jamais prises.
+  for (const rien of [null, []]) {
+    const v = faux(/** @type {string[]|null} */ (rien));
+    assert.equal(v.arme, false, `armé sur ${JSON.stringify(rien)} : il n'y a rien à rendre`);
+    assert.equal(v.poses.exit, undefined, 'aucun handler ne doit être posé');
+  }
+});
+
+test('le runner CÂBLE la restauration qu\'il sait faire (507)', () => {
+  // Troisième barreau. Les deux gardes ci-dessus prouvent que la décision et
+  // l'armement sont justes ; ils resteraient verts si `main()` n'appelait
+  // jamais `armerRestaurationAnimations`. Une fonction correcte sans appelant
+  // est indiscernable d'une mesure qui ne trouve rien — c'est la leçon du 503.
+  const source = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  // Dépouiller AVANT de chercher : un commentaire qui cite le nom satisfait le
+  // motif à lui seul, et le garde naît vert. On remplace par des espaces pour
+  // que les positions restent justes.
+  const nu = source
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+
+  // ⚠️ ANCRÉ SUR L'APPEL, jamais sur le nom nu : `armerRestaurationAnimations(`
+  // matche aussi sa propre DÉCLARATION, dans ce même fichier. C'est ce qui avait
+  // rendu le garde du 503 vacant le jour de son écriture.
+  const appels = [...nu.matchAll(/(?<!function\s)\barmerRestaurationAnimations\s*\(/g)];
+  assert.ok(appels.length >= 1,
+    'plus aucun APPEL à `armerRestaurationAnimations` dans le runner : la restauration '
+    + 'existe et personne ne la déclenche. Si le nom a changé, mets ce motif à jour.');
+  const restaure = [...nu.matchAll(/(?<!function\s)\brestoreAnimations\s*\(/g)];
+  assert.ok(restaure.length >= 1,
+    'la restauration elle-même n\'a plus d\'appelant : le handler armé ne rendrait rien');
+
+  // Contre-épreuve : le motif sait-il refuser ? Sans elle, un lookbehind mal
+  // écrit passerait pour un garde alors qu'il matche n'importe quoi.
+  const declarationSeule = 'export function armerRestaurationAnimations(proc, rendre, aRestaurer) {}';
+  assert.equal([...declarationSeule.matchAll(/(?<!function\s)\barmerRestaurationAnimations\s*\(/g)].length, 0,
+    'le motif compte une DÉCLARATION comme un appel : il serait vert sur un runner qui ne câble rien');
 });

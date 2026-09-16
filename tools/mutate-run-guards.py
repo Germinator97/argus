@@ -2351,6 +2351,21 @@ MUTATIONS = [
     ("config", "le refus du bloc multi-lignes ne dit plus quoi faire",
      "non supporté — mets la valeur sur UNE '",
      "non supporté. Cette forme reste refusee par le parseur'"),
+
+    # ── 507 — le réglage système que le runner ne rendait pas ──────────────
+    # Chaque mutation vise ce que SEUL son garde lit : une mutation qui tombe
+    # sur le garde du voisin rend un verdict juste et un appariement faux.
+    ("run", "le verdict ne distingue plus « c'est a 0 » de « je l'ai MIS a 0 »",
+     "  const prouve = ok && lisible && avant.some((v) => !zero(v));",
+     "  const prouve = ok;"),
+    ("run", "la restauration n'est plus idempotente : exit rejoue apres SIGINT",
+     "  const uneFois = () => { if (fait) return; fait = true; rendre(); };",
+     "  const uneFois = () => { fait = true; rendre(); };"),
+    # ⚠️ Celle-ci retire le CÂBLAGE en laissant la fonction intacte : c'est le
+    # cas que les deux premières ne peuvent pas voir, et le troisième barreau.
+    ("run", "la restauration existe et plus personne ne la declenche",
+     "\n  armerRestaurationAnimations(process, () => restoreAnimations(resolved.udid, /** @type {string[]} */ (animations.aRestaurer)), animations.aRestaurer ?? null);",
+     "\n  const _restaurationRetiree = animations.aRestaurer;"),
 ]
 
 
