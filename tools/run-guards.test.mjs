@@ -23,6 +23,34 @@ import { fileURLToPath } from 'node:url';
 const RACINE = join(fileURLToPath(new URL('.', import.meta.url)), '..');
 
 /**
+ * La fenêtre qui suit un motif, bornée par la STRUCTURE du document.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (510). Une trentaine de gardes de ce fichier
+ * fenêtrent par un nombre de caractères — `slice(i, i + 1800)` — et ce nombre est
+ * deviné. Il tient tant que personne n'écrit dans le paragraphe visé ; le jour où
+ * on y ajoute de la prose LÉGITIME, une phrase requise passe hors de la borne et
+ * le garde rougit sur un dépôt sain. Vécu en fermant le 508 : garde exact, ajout
+ * exact, rouge à un endroit qu'il ne surveillait pas.
+ *
+ * La borne naturelle d'un paragraphe de prose est le **titre suivant** : c'est
+ * aussi le vrai critère de proximité, puisque ce qu'on veut vérifier est que la
+ * phrase vit dans la MÊME section que la consigne. Elle ne se périme pas quand la
+ * section grossit, et elle tombe toujours si la phrase déménage.
+ *
+ * ⚠️ Le plafond reste un nombre, mais il n'est plus le critère : c'est un
+ * garde-fou pour un document sans titre, et il est large exprès.
+ *
+ * @param {string} texte @param {number} debut @param {number} [plafond]
+ * @returns {string}
+ */
+function sectionDepuis(texte, debut, plafond = 12000) {
+  const borne = debut + plafond;              // pas d'arithmétique dans le slice :
+  const suite = texte.slice(debut, borne);    // le garde du 510 compte ces formes
+  const fin = suite.search(/\n#{1,3} /);
+  return fin > 0 ? suite.slice(0, fin) : suite;
+}
+
+/**
  * Reconnaît l'invocation d'une commande du moteur, dans les trois formes que
  * portent les fichiers livrés : `$(ARGUS) sec` (Makefile), `$ARGUS sec`
  * (workflow), `argus-mobile.mjs sec` (scripts npm, documentation, et les
@@ -11608,7 +11636,10 @@ test('le skill dit comment trancher un écran inattendu, et fait chercher les ca
   // passé l'assertion d'existence, qui elle est insensible à la casse.
   const j = skill.search(/canaux sortants/i);
   assert.ok(j !== -1, 'la consigne des canaux sortants a disparu — mets ce garde à jour');
-  const bloc = skill.slice(j, j + 1800).replace(/\s+/g, ' ');
+  // 510 — bornée par la SECTION et non par 1800 caractères devinés : ajouter
+  // de la prose ici poussait la troisième phrase hors de la fenêtre, et le
+  // garde accusait le skill de ne plus dire ce qu'il disait.
+  const bloc = sectionDepuis(skill, j).replace(/\s+/g, ' ');
   // ⚠️ DEUX ASSERTIONS, PAS UNE ALTERNATIVE. La première version acceptait
   // `A|B` — et les deux phrases existaient, si bien qu'en muter une laissait
   // l'autre debout : le harnais a rendu VACANT, à raison. Un garde qui accepte
@@ -15461,4 +15492,66 @@ test('le rapport ALIMENTE le contexte, et le skill dit d\'alimenter la clé (508
     + 'sache l\'alimenter — une prescription posée hors du chemin');
   assert.match(skill, /vit dans le code/,
     'la classification a disparu du §2 : c\'est elle qui fait reconnaître le cas au bon moment');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 510 — une fenêtre bornée par un NOMBRE se périme à distance
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le relevé des fenêtres à longueur fixe ne croît pas en silence (510)', () => {
+  // 🔴 CE QUE CE GARDE RETIENT. Une fenêtre `slice(i, i + 1800)` tient tant que
+  // personne n'écrit dans le paragraphe visé. Le jour où on y ajoute de la prose
+  // LÉGITIME, une phrase requise passe hors de la borne et le garde rougit sur un
+  // dépôt sain — vécu en fermant le 508 : garde exact, ajout exact, rouge à un
+  // endroit qu'il ne surveillait pas.
+  //
+  // Les corriger toutes d'un coup serait le mauvais geste : elles n'ont pas la
+  // même nature — certaines fenêtrent deux lignes de CODE, où le nombre est juste
+  // et local. Ce qui se ferme ici est la CLASSE : le compte est figé par ÉGALITÉ,
+  // donc une fenêtre de plus est une décision et non une dérive.
+  const source = readFileSync(join(RACINE, 'tools/run-guards.test.mjs'), 'utf8');
+  const fixes = [...source.matchAll(/\.(?:slice|substring|substr)\([^)]*\+\s*\d{2,}/g)];
+
+  // ⚠️ Prouver qu'il VOIT avant de dire ce qu'il a vu : un motif devenu muet
+  // rendrait 0, c'est-à-dire « tout est propre », sur un fichier qui n'a pas bougé.
+  assert.ok(fixes.length > 0,
+    'aucune fenêtre à longueur fixe trouvée : le motif ne matche plus rien, et un '
+    + 'zéro se lirait comme un dépôt assaini. Mets ce motif à jour avant de baisser le compte.');
+
+  // 📌 L'une des 38 est la contre-épreuve du garde voisin, qui DOIT fenêtrer par
+  // un nombre puisque c'est ce qu'elle démontre. Elle est légitime, et la masquer
+  // rendrait ce relevé faux : on la compte, et on écrit pourquoi.
+  assert.equal(fixes.length, 38,
+    `${fixes.length} fenêtre(s) à longueur fixe dans ce fichier, le relevé en fige 38.\n`
+    + '  · Tu en as CORRIGÉ une ? baisse le chiffre — c\'est le seul endroit qui compte le progrès.\n'
+    + '  · Tu en AJOUTES une ? emploie `sectionDepuis(texte, i)`, qui borne par le titre suivant.\n'
+    + '    Si la fenêtre porte du CODE et non de la prose, le nombre peut être juste :\n'
+    + '    monte le compte en le disant, plutôt que de laisser le relevé dériver.');
+});
+
+test('`sectionDepuis` borne par la structure, et tombe quand la phrase déménage (510)', () => {
+  const doc = ['## Titre A', 'une consigne ici', 'la phrase attendue', '', '## Titre B',
+    'la phrase attendue'].join('\n');
+  const i = doc.indexOf('une consigne');
+
+  // Ce que la borne fixe ne sait pas faire : rester juste quand la section grossit.
+  assert.match(sectionDepuis(doc, i), /la phrase attendue/,
+    'la phrase vit dans la même section que la consigne : elle doit être vue');
+
+  const gonfle = doc.replace('une consigne ici',
+    'une consigne ici\n' + 'de la prose ajoutée plus tard. '.repeat(120));
+  const j = gonfle.indexOf('une consigne');
+  assert.match(sectionDepuis(gonfle, j), /la phrase attendue/,
+    'ajouter de la prose LÉGITIME dans la section ne doit plus rien casser — '
+    + 'c\'est exactement ce qu\'une borne de 1800 caractères ne tenait pas');
+  assert.doesNotMatch(gonfle.slice(j, j + 1800), /la phrase attendue/,
+    'contre-épreuve : la borne fixe, elle, a bien perdu la phrase. Sans ce cas, '
+    + 'ce garde ne prouverait pas que la structure apporte quelque chose.');
+
+  // 🔴 L'AUTRE MOITIÉ : la borne doit toujours REFUSER ce qui a déménagé, sinon
+  // on a remplacé un garde trop étroit par un garde qui ne garde plus rien.
+  const deplace = doc.replace('la phrase attendue\n', '');
+  const k = deplace.indexOf('une consigne');
+  assert.doesNotMatch(sectionDepuis(deplace, k), /la phrase attendue/,
+    'la phrase est passée sous un AUTRE titre : la fenêtre doit s\'arrêter avant');
 });
