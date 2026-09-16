@@ -5096,11 +5096,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS — 505 à 509**, rendus par la paire de confirmation
-82-83 du 16/09/2026. Trois portent sur le plugin (un remède qui ne tranche
-pas, un réglage système jamais restauré, une classe de canaux sortants que
-le cadrage ne peut pas neutraliser), un sur le lint, un sur deux dimensions
-qui se contredisent sans que le rapport le dise.
+🔴 **1 POINT OUVERT — le 510**, rencontré en fermant les autres : un garde qui
+borne sa fenêtre par un nombre de caractères, et qu'un ajout légitime fait rougir
+à distance. Les 505 à 509, rendus par la paire de confirmation 82-83 du
+16/09/2026, sont **fermés le jour même**, chacun avec son garde et sa mutation.
 
 ✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
 Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
@@ -9760,7 +9759,13 @@ résultats* — le piège s'est présenté aux deux runs.
 
 ### 505. Le remède du 502 est lisible, suivi, et il ne TRANCHE pas
 
-**Ouvert le 16/09/2026**, rapporté par le run 82 et reproduit sur les artefacts.
+**Fermé le 16/09/2026**, rapporté par le run 82 et reproduit sur les artefacts.
+
+**Ce qui le ferme** : le remède chiffre désormais la troisième branche — garder le
+geste quand rien ne peut ouvrir d'invite, ce que le run 82 a fait — avec ce
+qu'elle coûte et ce qu'elle PERD. Le garde vise ce que lui seul lit, les deux
+autres branches ayant déjà le leur, et il asserte qu'elles survivent : *un remède
+se complète, il ne se remplace pas.*
 
 Deux agents vierges, **le même terrain**, deux décisions opposées sur le même
 geste : le run 80 a RETIRÉ l'appel au sous-flow qui referme les invites système ;
@@ -9784,7 +9789,15 @@ du lecteur.* Deux runs, deux tempéraments, deux résultats.
 
 ### 506. Un libellé qui porte une virgule, dans une syntaxe qui s'y coupe
 
-**Ouvert le 16/09/2026**, rapporté par le run 82.
+**Fermé le 16/09/2026**, rapporté par le run 82.
+
+**Ce qui le ferme** : `--check-flows` nomme la cause — fichier, ligne, segment
+coupé — et donne les deux issues, avant que l'outil piloté ne rende son message
+opaque. Le découpage respecte les guillemets, sans quoi la forme JUSTE serait
+accusée : *un contrôle qui rougit sur ce qui va bien apprend à être ignoré, et
+vaut alors moins que pas de contrôle.* Un garde s'exerce sur les flows LIVRÉS et
+non sur un montage, parce qu'un montage propre prouve la logique et jamais la
+rencontre avec ce qui est distribué.
 
 L'agent a écrit treize commandes sous forme de map **en flow** dont le libellé
 est une phrase française :
@@ -9807,9 +9820,16 @@ Ce que le lint peut faire, lui, c'est nommer la cause au lieu de relayer.
 
 ### 507. Le runner coupe les animations et ne les rend JAMAIS
 
-**Ouvert le 16/09/2026**, rapporté par le run 83 — et **prouvé par l'expérience**
+**Fermé le 16/09/2026**, rapporté par le run 83 — et **prouvé par l'expérience**
 plutôt que par lecture : les trois échelles ont été remises à `1.0` avant le run
 (relevé après coup), elles valaient `0` à la fin.
+
+**Ce qui le ferme** : la restauration, armée sur `exit` et sur les deux signaux —
+`main()` sort par une dizaine de `process.exit()` placés APRÈS la coupure, si
+bien qu'un geste posé « à la fin » n'aurait été joué que sur un chemin sur dix.
+Et deux verdicts au lieu d'un : `ok` dit l'ÉTAT, `prouve` dit si l'écriture a été
+MESURÉE. *Les deux moitiés se ferment par le même geste* — restaurer est ce qui
+rend la preuve possible au run suivant.
 
 `run.mjs` définit les trois échelles, les met à zéro et **relit la valeur pour le
 prouver** — ce qui est bien. Mais la constante n'a que **deux** usages dans tout
@@ -9830,8 +9850,17 @@ que sur la valeur seule — sans quoi on garde une mesure qui ne peut plus écho
 
 ### 508. Un canal sortant que le cadrage ne PEUT pas neutraliser
 
-**Ouvert le 16/09/2026**, rapporté par les runs 82 **et** 83 — deux terrains, deux
+**Fermé le 16/09/2026**, rapporté par les runs 82 **et** 83 — deux terrains, deux
 agents qui ne se connaissent pas, deux SDK différents, le même mur.
+
+**Ce qui le ferme, et Germinator a tranché « les deux »** : la classification au
+§2 du SKILL, qui fait reconnaître le cas à l'inventaire ; et `telemetry.leftOpen`,
+que le rapport publie sous « Canaux laissés ouverts ». 🔴 `why` est une
+ÉNUMÉRATION FERMÉE et non du texte libre : *une clé qui invite à écrire une
+phrase, dans un parseur qui n'accepte qu'une ligne, est l'écart de conception que
+le 504 a payé quatre fois* — fermé ici par le TYPE, pas par un avertissement de
+plus. L'exemple livré est asserté DÉCOMMENTÉ, puisque l'échec du 504 était un
+exemple qu'on ne pouvait pas suivre.
 
 Le gabarit de prompt demande de neutraliser la télémétrie et de le prouver, et il
 suppose qu'un canal se coupe par une injection de build. Les deux agents ont
@@ -9857,7 +9886,13 @@ le rapport porte une ligne « canaux laissés ouverts » que le gate ne fait pas
 
 ### 509. Deux instruments du harnais se contredisent, et le rapport se tait
 
-**Ouvert le 16/09/2026**, rapporté par le run 83.
+**Fermé le 16/09/2026**, rapporté par le run 83.
+
+**Ce qui le ferme** : croiser les deux sources est impossible — l'étage 1 publie
+un finding agrégé sans ancre, donc l'information n'est pas dans le rapport. Le
+finding device porte donc la réserve lui-même, **bornée au seul cas qui la
+mérite** : un champ de saisie. Un bouton-icône anonyme est un défaut sans
+ambiguïté, et lui coller la même prose apprendrait à sauter la ligne.
 
 Sur le même écran : l'étage 1, qui lit l'arbre sémantique du framework, ne
 rapporte **aucun** libellé manquant ; la passe device, qui lit le dump de la
@@ -9871,3 +9906,24 @@ est que **rien dans le rapport ne signale l'écart** : deux dimensions rendent d
 verdicts inconciliables sur le même nœud, et elles sont publiées côte à côte sans
 un mot. 📌 La cible tactile, elle, **concorde** des deux côtés — ce qui montre que
 le désaccord porte sur la nature du nœud lu, pas sur la mesure.
+
+### 510. Un garde borne sa fenêtre par un NOMBRE, et se casse à distance
+
+**Ouvert le 16/09/2026**, rencontré en fermant le 508 — pas rapporté par un run.
+
+Le garde du 413 cherche une consigne dans le SKILL, puis vérifie trois phrases
+dans les **1800 caractères** qui suivent. Ajouter la classification du 508 dans
+ce paragraphe a repoussé la troisième au-delà de la borne : *un garde exact,
+rendu rouge par un ajout légitime, à un endroit qu'il ne surveillait pas.*
+
+Le remède appliqué a été de déplacer la prose hors du paragraphe — ce qui rend le
+garde vert sans rien régler : **la borne reste un nombre deviné**, et le prochain
+ajout la refranchira. Ce qu'il faut est une fenêtre bornée par la STRUCTURE (du
+motif jusqu'au prochain titre), qui ne dépend d'aucune longueur.
+
+📌 À rapprocher de la règle « une fenêtre calculée par index retombe sur le
+fichier entier quand la recherche échoue » : ici la recherche réussit, et c'est
+la TAILLE qui ment. Même famille, autre moitié.
+
+⚠️ Et le balayage doit être total : ce fichier n'est sans doute pas le seul garde
+à fenêtrer par un nombre. Compter d'abord, corriger ensuite.
