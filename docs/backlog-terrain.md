@@ -5096,10 +5096,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 510**, rencontré en fermant les autres : un garde qui
-borne sa fenêtre par un nombre de caractères, et qu'un ajout légitime fait rougir
-à distance. Les 505 à 509, rendus par la paire de confirmation 82-83 du
-16/09/2026, sont **fermés le jour même**, chacun avec son garde et sa mutation.
+Les **505 à 510** sont fermés — les cinq premiers rendus par la paire de
+confirmation 82-83 du 16/09/2026, le dernier rencontré en les fermant. Chacun
+porte son garde ; tous sauf le 510 portent aussi leur mutation, et celui-là dit
+pourquoi il ne peut pas en avoir.
 
 ✅ **494 FERMÉ le 14/09/2026 — le format dépend de la VERSION du formateur.**
 Le job sur la stable du jour (Flutter 3.47.4) échouait sur le format seul, tout
@@ -9909,7 +9909,32 @@ le désaccord porte sur la nature du nœud lu, pas sur la mesure.
 
 ### 510. Un garde borne sa fenêtre par un NOMBRE, et se casse à distance
 
-**Ouvert le 16/09/2026**, rencontré en fermant le 508 — pas rapporté par un run.
+**Fermé le 16/09/2026**, rencontré en fermant le 508 — pas rapporté par un run.
+
+**Ce qui le ferme, et la mesure a décidé du remède** : le balayage en a compté
+**38** dans le même fichier. Celui qui avait cassé n'était donc pas le problème,
+il en était un cas — et les réécrire toutes aurait été le mauvais geste, puisque
+certaines fenêtrent deux lignes de CODE, où un nombre est juste et local.
+
+Ce qui se ferme est la **classe** : `sectionDepuis` borne par le titre suivant —
+qui est aussi le vrai critère de proximité, la phrase devant vivre dans la MÊME
+section que la consigne — et le compte est **figé par égalité**, si bien qu'une
+fenêtre de plus est une décision et non une dérive. Le garde du 413 prend
+désormais sa section : **7060 caractères au lieu de 1800**, les quatre phrases
+requises dedans.
+
+📌 **L'une des 38 est la contre-épreuve du garde voisin**, qui DOIT fenêtrer par
+un nombre puisque c'est ce qu'elle démontre — sans elle, rien ne prouverait que
+la structure apporte quelque chose. Elle est légitime, elle est comptée, et la
+raison est écrite : *masquer une occurrence rendrait le relevé faux.*
+
+⚠️ **Ce point repart sans mutation, et voici pourquoi** : le sujet de ces gardes
+est le fichier de test lui-même, que le harnais ne cible pas — ce serait
+circulaire. Deux choses en tiennent lieu, et elles ont été vérifiées : le relevé
+a **réellement rougi** pendant l'écriture (38 contre 37, attrapé par sa propre
+égalité), et le garde du 413 garde la mutation qu'il avait déjà. Rejouée à la
+main sur le SKILL, elle fait tomber **exactement** le garde reborné — vérifié en
+lisant tous les noms qui rougissent, le harnais n'en affichant qu'un tronqué.
 
 Le garde du 413 cherche une consigne dans le SKILL, puis vérifie trois phrases
 dans les **1800 caractères** qui suivent. Ajouter la classification du 508 dans
