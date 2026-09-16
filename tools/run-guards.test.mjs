@@ -15261,3 +15261,34 @@ test('le runner CÂBLE la restauration qu\'il sait faire (507)', () => {
   assert.equal([...declarationSeule.matchAll(/(?<!function\s)\barmerRestaurationAnimations\s*\(/g)].length, 0,
     'le motif compte une DÉCLARATION comme un appel : il serait vert sur un runner qui ne câble rien');
 });
+
+test('le remède chiffre les DEUX branches, pas seulement celle qui arrange (505)', () => {
+  // La paire 82-83 a montré ce qu'un remède incomplet produit : deux agents
+  // vierges, le MÊME projet, deux décisions opposées sur le même geste. L'un l'a
+  // retiré, l'autre l'a gardé en écrivant sa raison — et chez celui-là, 10 flows
+  // sur 10 sont partis absorbés, budget jugeable sur aucun.
+  //
+  // Le texte disait le coût de garder quand l'app demande des permissions, et
+  // rien du coût de garder quand elle n'en demande AUCUNE : le seul cas où il
+  // est intégral, et celui où le lecteur hésite. Un remède qui laisse le choix
+  // ouvert sans chiffrer les deux branches départage par le tempérament.
+  const absorbe = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7355, absorbed: true };
+  const [f] = startupFindings([absorbe], DEVICE, 'android', CFG_SPLASH);
+  assert.ok(f, 'aucun finding produit : ce garde ne mesure rien');
+  assert.equal(f.id, 'QAM-START-ABSORBE');
+
+  // Ce que SEUL ce garde lit — la branche ajoutée par le 505. Les deux issues
+  // du 502 ont déjà le leur : viser ici ce qu'il vérifie ferait tomber deux
+  // gardes sur une mutation, et l'appariement serait faux.
+  assert.match(f.suggestedFix, /ALORS QUE rien ne peut ouvrir d'invite/i,
+    'le remède ne dit pas ce que coûte de GARDER le geste quand rien ne peut ouvrir '
+    + 'd\'invite — c\'est le cas du run 82, et le seul où le coût est intégral');
+  assert.match(f.suggestedFix, /AUCUN/,
+    'il doit dire ce qu\'on PERD, pas seulement ce qu\'on paie : le budget de démarrage '
+    + 'ne sera jugeable sur aucun flow tant que le geste reste là');
+
+  // L'autre moitié : chiffrer la troisième branche ne doit pas avoir effacé les
+  // deux premières. Un remède se complète, il ne se remplace pas.
+  assert.match(f.suggestedFix, /retire l'appel/i, 'la branche « retirer » a disparu');
+  assert.match(f.suggestedFix, /où l'invite NAÎT/i, 'la branche « déplacer » a disparu');
+});

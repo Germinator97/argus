@@ -2366,6 +2366,11 @@ MUTATIONS = [
     ("run", "la restauration existe et plus personne ne la declenche",
      "\n  armerRestaurationAnimations(process, () => restoreAnimations(resolved.udid, /** @type {string[]} */ (animations.aRestaurer)), animations.aRestaurer ?? null);",
      "\n  const _restaurationRetiree = animations.aRestaurer;"),
+
+    # ── 505 — le remède ne chiffrait qu'une branche sur deux ───────────────
+    ("run", "le remede ne dit plus ce que GARDER le geste coute",
+     "          + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\\'invite — défendable, la '",
+     "          + 'Et si tu le gardes — défendable, la '"),
 ]
 
 

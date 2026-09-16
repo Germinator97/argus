@@ -1542,12 +1542,25 @@ function startupFindings(samples, device, platform, config, variante = '') {
         //
         // Ce qui reste est donc ce que le run a fait, et qui a marché : ne pas
         // jouer le geste là où il n'a rien à fermer. Le sous-flow t'appartient.
+        //
+        // ⚠️ ET IL FAUT CHIFFRER LES DEUX BRANCHES (505). Ce texte disait le coût
+        // de garder quand l'app demande des permissions, et rien du coût de
+        // garder quand elle n'en demande aucune — c'est-à-dire le seul cas où il
+        // est INTÉGRAL, et précisément celui où le lecteur hésite. Mesuré : deux
+        // agents vierges, le même projet, deux décisions opposées ; celui qui a
+        // gardé le geste a vu 10 flows sur 10 absorbés et un budget qu'aucun
+        // d'eux ne pouvait juger. *Un remède qui laisse le choix ouvert sans
+        // chiffrer les deux branches départage par le tempérament du lecteur.*
         suggestedFix: 'Le geste qui précède l\'attente d\'ancre attend sa BORNE quand il n\'a rien '
           + 'à fermer — ~7 s par flow, mesuré. Si ton app ne demande aucune permission (vérifie '
           + 'ton manifeste ET `lib/`, pas seulement l\'un des deux), retire l\'appel à '
           + '`dismiss-system-alerts.yaml` de `launch-clean.yaml` : ces deux fichiers t\'appartiennent. '
           + 'Si elle en demande, garde-le et joue-le là où l\'invite NAÎT — souvent après la '
           + 'connexion, pas au lancement — en acceptant le coût sur les flows concernés. '
+          + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\'invite — défendable, la '
+          + 'plateforme en présente parfois d\'elle-même — sache ce que ça coûte : ce même '
+          + 'délai sur CHAQUE flow, et le budget de démarrage ne sera jugeable sur AUCUN '
+          + 'd\'eux, aussi longtemps que le geste restera là. '
           + 'Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`.',
         severity: 'info',
         dimension: 'performance',
