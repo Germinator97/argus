@@ -2380,6 +2380,14 @@ MUTATIONS = [
     ("a11y", "le finding recopie une phrase au lieu d'appeler le conseil",
      "      suggestedFix: conseilSansLabel(item.class),",
      "      suggestedFix: 'Côté Flutter : Icon(semanticLabel: …) ou Semantics(label: …).',"),
+
+    # ── 506 — la virgule d'un libellé, nommée au lieu d'être relayée ───────
+    ("config", "le decoupage ne respecte plus les guillemets",
+     "        if (c === '\"' || c === \"'\") { quote = c; courant += c; continue; }",
+     "        if (false) { quote = c; courant += c; continue; }"),
+    ("config", "la detection des maps coupees n'a plus d'appelant",
+     "    const coupes = mapsEnFlowSuspectes(flows);",
+     "    const coupes = [];"),
 ]
 
 

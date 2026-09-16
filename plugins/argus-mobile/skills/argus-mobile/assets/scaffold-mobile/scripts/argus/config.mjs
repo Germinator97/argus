@@ -2366,6 +2366,71 @@ export function flowCycles(flows) {
  * les deux dériver. `config.yaml` est écarté : ce n'est pas un flow.
  * @param {string} racine @returns {Record<string,string>}
  */
+/**
+ * Les maps EN FLOW dont un libellé se coupe sur sa propre virgule.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (506). Un run a écrit treize commandes sous
+ * la forme `{ id: …, label: Refermer le formulaire, s'il est ouvert }`. YAML
+ * coupe la map sur la virgule, et c'est Maestro qui refuse — avec un message
+ * qui ne nomme pas la cause : « Unknown Property: s'il est ouvert ». Le scaffold
+ * n'écrit aucune map en flow, donc il n'y conduit pas ; mais quand le lecteur a
+ * le problème, il lui faut la cause, pas le symptôme.
+ *
+ * 📌 C'est le phénomène du 504 à un fichier de distance : un champ qui invite à
+ * écrire une phrase, dans une syntaxe qui n'accepte pas ce qu'une phrase
+ * contient — une virgule ici, un retour à la ligne là.
+ *
+ * ⚠️ Le découpage RESPECTE LES GUILLEMETS, sans quoi `{ label: "Refermer, si
+ * ouvert" }` — qui est correct — serait accusé : son second morceau n'a pas de
+ * deux-points. Un garde qui rougit sur la forme juste apprend à être ignoré.
+ *
+ * @param {Record<string,string>} flows nom → contenu
+ * @returns {Array<{flow:string, ligne:number, segment:string, texte:string}>}
+ */
+export function mapsEnFlowSuspectes(flows) {
+  /** @type {Array<{flow:string, ligne:number, segment:string, texte:string}>} */
+  const suspects = [];
+  for (const [nom, contenu] of Object.entries(flows)) {
+    contenu.split('\n').forEach((texte, i) => {
+      const nu = texte.trimStart();
+      if (nu.startsWith('#')) return;
+      const ouvre = texte.indexOf('{');
+      const ferme = texte.lastIndexOf('}');
+      if (ouvre === -1 || ferme <= ouvre) return;
+      // `${VAR}` est une interpolation Maestro, pas une map : l'écarter.
+      if (texte.slice(Math.max(0, ouvre - 1), ouvre + 1) === '${') return;
+      const dedans = texte.slice(ouvre + 1, ferme);
+
+      /** @type {string[]} */
+      const segments = [];
+      let courant = '', quote = '';
+      for (const c of dedans) {
+        if (quote) { courant += c; if (c === quote) quote = ''; continue; }
+        if (c === '"' || c === "'") { quote = c; courant += c; continue; }
+        if (c === ',') { segments.push(courant); courant = ''; continue; }
+        courant += c;
+      }
+      segments.push(courant);
+      if (segments.length < 2) return;
+
+      for (const seg of segments) {
+        const s = seg.trim();
+        if (!s) continue;
+        // Un segment sans deux-points HORS quotes n'est pas une paire clé/valeur :
+        // c'est la suite d'un libellé que la virgule vient de trancher.
+        let dehors = '', q = '';
+        for (const c of s) {
+          if (q) { if (c === q) q = ''; continue; }
+          if (c === '"' || c === "'") { q = c; continue; }
+          dehors += c;
+        }
+        if (!dehors.includes(':')) suspects.push({ flow: nom, ligne: i + 1, segment: s, texte: texte.trim() });
+      }
+    });
+  }
+  return suspects;
+}
+
 export function lireFlows(racine) {
   /** @type {Record<string,string>} */
   const flows = {};
@@ -2459,6 +2524,20 @@ function main() {
     if (manquants.length) {
       err('  Maestro ne le dira qu\'au lancement, sur device. Corrige le chemin — il est');
       err('  relatif au dossier du flow appelant, pas à la racine du workspace.');
+      process.exit(1);
+    }
+    // 506 — la virgule d'un libellé, dans une map en flow, coupe la map. Maestro
+    // refuse ensuite avec « Unknown Property: <la fin du libellé> », qui nomme le
+    // symptôme et pas la cause. Ici on a le fichier sous la main : autant le dire.
+    const coupes = mapsEnFlowSuspectes(flows);
+    for (const c of coupes) {
+      err(`${c.flow}:${c.ligne} — « ${c.segment} » n'est pas une clé : la virgule qui le précède a coupé la map.`);
+    }
+    if (coupes.length) {
+      err('  Une map en flow (`{ a: 1, b: 2 }`) se découpe sur les virgules, y compris celles');
+      err('  qui appartiennent à un libellé. Maestro dira « Unknown Property » en citant la FIN');
+      err('  de ta phrase, ce qui n\'aide pas. Deux issues : quoter la valeur, ou écrire la');
+      err('  commande en bloc comme le scaffold le fait — une clé par ligne, où la virgule passe.');
       process.exit(1);
     }
     const cycles = flowCycles(flows);

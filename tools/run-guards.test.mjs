@@ -58,6 +58,7 @@ import { junitsVisuelsOrphelins } from '../plugins/argus-mobile/skills/argus-mob
 import { variantePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { flowsIntrouvables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { lireFlows, tagsDeclares } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { mapsEnFlowSuspectes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -15337,4 +15338,52 @@ test('le finding de libellé CÂBLE ce conseil plutôt que de recopier une phras
   }, 48);
   assert.doesNotMatch(autre[0].suggestedFix, /PLATEFORME/i,
     'tous les findings de libellé portent la réserve : le bornage a été perdu au câblage');
+});
+
+test('une virgule de libellé dans une map en flow est NOMMÉE, pas relayée (506)', () => {
+  // Maestro refuse ces lignes avec « Unknown Property: <la fin du libellé> » :
+  // il nomme le symptôme, jamais la cause. Ici le fichier est sous la main.
+  const vus = mapsEnFlowSuspectes({
+    'x.yaml': 'appId: com.exemple.app\n---\n- tapOn: { id: a, label: Refermer le formulaire, sil est ouvert }',
+  });
+  assert.equal(vus.length, 1, 'la forme fautive n\'est plus vue : ce garde ne mesure rien');
+  assert.equal(vus[0].segment, 'sil est ouvert', 'le segment cité doit être la FIN coupée, celle que Maestro citera');
+  assert.equal(vus[0].ligne, 3, 'sans le numéro de ligne, le lecteur cherche');
+
+  // 🔴 L'AUTRE MOITIÉ — et c'est elle qui décide si ce garde est utilisable. Un
+  // contrôle qui rougit sur la forme JUSTE apprend à être ignoré, et il vaut
+  // alors moins que pas de contrôle.
+  for (const [quoi, ligne] of [
+    ['valeur quotée', '- tapOn: { id: a, label: "Refermer, sil est ouvert" }'],
+    ['map simple', '- tapOn: { id: a, label: Refermer }'],
+    ['interpolation Maestro', '- tapOn: { id: ${ANCRE}, label: Valider }'],
+    ['commentaire', '#- tapOn: { id: a, label: Refermer, sil est ouvert }'],
+    ['écriture en bloc', '- tapOn:\n    id: a\n    label: Refermer, sil est ouvert'],
+  ]) {
+    assert.deepEqual(mapsEnFlowSuspectes({ 'y.yaml': ligne }), [],
+      `faux positif sur ${quoi} : le découpage ne respecte plus les guillemets ou les commentaires`);
+  }
+});
+
+test('les flows LIVRÉS ne portent aucune de ces coupures (506)', () => {
+  // ⚠️ Un montage fabriqué prouve la logique, jamais la rencontre avec le réel.
+  // Ce garde-ci s'exerce sur ce que le plugin DISTRIBUE — c'est lui qui dirait
+  // qu'un flow livré vient d'acquérir la forme que le contrôle refuse.
+  const flows = lireFlows(FLOWS_DIR);
+  assert.ok(Object.keys(flows).length > 0, 'aucun flow lu : le garde n\'a rien mesuré');
+  assert.deepEqual(mapsEnFlowSuspectes(flows), [],
+    'un flow livré porte une map en flow coupée par une virgule — le scaffold enseignerait '
+    + 'la forme que son propre contrôle rejette');
+});
+
+test('le contrôle des flows CÂBLE la détection (506)', () => {
+  const source = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs'), 'utf8');
+  const nu = source
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => ' '.repeat(m.length))
+    .replace(/\/\/[^\n]*/g, (m) => ' '.repeat(m.length));
+  // Ancré sur l'APPEL : le nom suivi d'une parenthèse matche aussi la déclaration.
+  const appels = [...nu.matchAll(/(?<!function\s)\bmapsEnFlowSuspectes\s*\(/g)];
+  assert.ok(appels.length >= 1,
+    'plus aucun APPEL à `mapsEnFlowSuspectes` : la détection existe et rien ne la déclenche');
 });
