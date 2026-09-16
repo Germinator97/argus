@@ -368,6 +368,37 @@ function captureEcran(udid, dir, ecran) {
  * couvrir : le lire dans la source serait un garde de texte, et un garde de
  * texte ne voit pas une valeur neutralisée.
  */
+/**
+ * Le conseil pour un nœud interactif sans libellé — et la RÉSERVE quand elle
+ * s'applique, jamais ailleurs.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (509). Un run a relevé que cette passe et
+ * les gardes d'étage 1 rendaient des verdicts inconciliables sur le même champ :
+ * ici un champ de saisie sans libellé, là rien du tout. Il a refusé de trancher,
+ * et il a eu raison — les deux lisent des arbres différents, celui de la
+ * plateforme et celui du framework, et un champ de saisie expose une vue native
+ * que le second ne montre pas. Aucun des deux rapports n'a tort ; c'est de ne
+ * rien dire qui laisse le lecteur devant deux vérités.
+ *
+ * ⚠️ Et la réserve est BORNÉE au cas qui la mérite. Un bouton-icône anonyme est
+ * un vrai défaut, sans ambiguïté : lui coller la même prose apprendrait à
+ * ignorer la ligne, ce qui est la façon la plus sûre de rendre un avertissement
+ * inutile. Le tell est dans la classe du nœud, que la passe relève déjà.
+ *
+ * @param {string} classe la classe du nœud telle que le dump la donne
+ * @returns {string}
+ */
+export function conseilSansLabel(classe = '') {
+  const base = 'Côté Flutter : Icon(semanticLabel: …) ou Semantics(label: …). '
+    + 'Sans label, TalkBack annonce « bouton », rien de plus.';
+  if (!/edittext|textfield|textinput/i.test(classe)) return base;
+  return `${base} ⚠️ Sur un champ de SAISIE, cette lecture peut contredire tes gardes `
+    + 'd\'étage 1 sans qu\'aucun des deux ait tort : cette passe lit l\'arbre de la '
+    + 'PLATEFORME, tes gardes celui du FRAMEWORK, et un champ y expose une vue native que '
+    + 'le second ne montre pas. Ne tranche pas sur les deux rapports — écoute TalkBack sur '
+    + 'ce champ, c\'est lui que l\'utilisateur entend.';
+}
+
 export function buildFindings(result, minDp, preuve = '') {
   const evidence = preuve ? [preuve] : [];
   const findings = [];
@@ -387,7 +418,7 @@ export function buildFindings(result, minDp, preuve = '') {
       title: 'Élément interactif sans label', dimension: 'a11y', severity: 'major',
       selector: item.element, expected: 'un texte ou un content-desc annonçable',
       actual: `aucun (bounds ${item.bounds}, ${item.class})`,
-      suggestedFix: 'Côté Flutter : Icon(semanticLabel: …) ou Semantics(label: …). Sans label, TalkBack annonce « bouton », rien de plus.',
+      suggestedFix: conseilSansLabel(item.class),
       wcag: 'WCAG 2.1 A — 4.1.2 Name, Role, Value', evidence, status: 'open',
     });
   }

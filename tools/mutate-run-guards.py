@@ -2371,6 +2371,15 @@ MUTATIONS = [
     ("run", "le remede ne dit plus ce que GARDER le geste coute",
      "          + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\\'invite — défendable, la '",
      "          + 'Et si tu le gardes — défendable, la '"),
+
+    # ── 509 — deux arbres, deux verdicts, et rien qui le disait ────────────
+    ("a11y", "la reserve des deux arbres disparait du conseil",
+     "  if (!/edittext|textfield|textinput/i.test(classe)) return base;",
+     "  return base;"),
+    # Le CÂBLAGE : la fonction reste juste, et le finding cesse de l'appeler.
+    ("a11y", "le finding recopie une phrase au lieu d'appeler le conseil",
+     "      suggestedFix: conseilSansLabel(item.class),",
+     "      suggestedFix: 'Côté Flutter : Icon(semanticLabel: …) ou Semantics(label: …).',"),
 ]
 
 

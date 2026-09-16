@@ -69,6 +69,7 @@ import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/asset
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { conseilSansLabel } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditAndroidManifest, auditApk, auditObfuscation, auditObfuscationIos, verdictObfuscation, exigenceNonTenue, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
@@ -15291,4 +15292,49 @@ test('le remède chiffre les DEUX branches, pas seulement celle qui arrange (505
   // deux premières. Un remède se complète, il ne se remplace pas.
   assert.match(f.suggestedFix, /retire l'appel/i, 'la branche « retirer » a disparu');
   assert.match(f.suggestedFix, /où l'invite NAÎT/i, 'la branche « déplacer » a disparu');
+});
+
+test('la réserve sur les deux arbres ne se pose QUE sur un champ de saisie (509)', () => {
+  // Un run a relevé que cette passe et les gardes d'étage 1 se contredisaient
+  // sur le même champ, et a refusé de trancher — à raison : les deux lisent des
+  // arbres différents. Ce qui manquait, c'est que le rapport le DISE.
+  const champ = conseilSansLabel('android.widget.EditText');
+  assert.match(champ, /arbre de la\s+PLATEFORME/i,
+    'le conseil ne dit pas POURQUOI les deux lectures peuvent diverger');
+  assert.match(champ, /TalkBack/,
+    'et il doit donner le geste qui tranche, sinon il décrit un problème sans issue');
+
+  // 🔴 L'AUTRE MOITIÉ, et c'est elle qui empêche le remède de trop couper. Un
+  // bouton-icône anonyme est un vrai défaut, sans ambiguïté : lui coller la même
+  // prose apprendrait à sauter la ligne, ce qui est la façon la plus sûre de
+  // rendre un avertissement inutile.
+  const bouton = conseilSansLabel('android.widget.ImageView');
+  assert.doesNotMatch(bouton, /PLATEFORME/i,
+    'la réserve est posée sur un nœud qui ne la mérite pas : elle est bornée au champ de saisie');
+  assert.ok(bouton.length < champ.length, 'les deux conseils ont fini par se confondre');
+
+  // Un nœud sans classe connue ne doit pas hériter de la réserve par défaut.
+  assert.doesNotMatch(conseilSansLabel(''), /PLATEFORME/i, 'classe vide : pas de réserve');
+  assert.doesNotMatch(conseilSansLabel(), /PLATEFORME/i, 'classe absente : pas de réserve');
+});
+
+test('le finding de libellé CÂBLE ce conseil plutôt que de recopier une phrase (509)', () => {
+  // Troisième barreau : la fonction peut être juste et n'avoir aucun appelant —
+  // le défaut même qu'on ferme. On l'exerce donc à travers le producteur réel.
+  const findings = buildFindings({
+    tooSmall: [],
+    unlabeled: [{ element: 'auth_phone', bounds: '[54,578][1026,699]', class: 'android.widget.EditText' }],
+  }, 48);
+  assert.equal(findings.length, 1, 'aucun finding produit : ce garde ne mesure rien');
+  assert.match(findings[0].suggestedFix, /arbre de la\s+PLATEFORME/i,
+    'le finding livré ne porte pas la réserve : `conseilSansLabel` n\'est plus câblé, '
+    + 'et une réserve que personne ne rend ne prévient personne');
+
+  // Et le bornage tient jusque dans le finding, pas seulement dans la fonction.
+  const autre = buildFindings({
+    tooSmall: [],
+    unlabeled: [{ element: 'home_help', bounds: '[0,0][48,48]', class: 'android.widget.ImageView' }],
+  }, 48);
+  assert.doesNotMatch(autre[0].suggestedFix, /PLATEFORME/i,
+    'tous les findings de libellé portent la réserve : le bornage a été perdu au câblage');
 });
