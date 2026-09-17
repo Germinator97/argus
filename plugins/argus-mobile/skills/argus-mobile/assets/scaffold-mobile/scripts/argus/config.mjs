@@ -2218,14 +2218,67 @@ export function adbShell(udid, command) {
 export const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
 /**
+ * Ce qui PÈSE sur un verdict, par opposition à ce qui est seulement rapporté.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (511). La règle « un finding acquitté ne
+ * fait pas échouer le gate » était écrite à UN endroit — le calcul agrégé de
+ * `report.mjs` — pendant que `exitCodeFor`, l'autre chemin vers le même verdict,
+ * ne lisait que `severity`. Deux calculs de gate, une seule décision écrite, et
+ * rien qui les relie : la page annonçait `major: 0` et la dimension sortait en 1
+ * sur le MÊME finding. Un run en aveugle a acquitté une posture assumée, l'a dit
+ * dans sa raison, et a vu sa CI rougir quand même — l'acquittement n'a d'usage
+ * réel qu'en CI, donc il ne lui restait qu'à désarmer la règle, c'est-à-dire à
+ * MASQUER, précisément ce que l'acquittement existe pour éviter.
+ *
+ * ⚠️ Ce n'est pas une suppression : un finding acquitté reste compté, affiché,
+ * et sa raison avec lui. Il change de statut, pas d'existence. C'est pour ça que
+ * cette fonction rend ce qu'elle ÉCARTE en plus de ce qu'elle garde — un appelant
+ * qui tait ce qu'il n'a pas jugé rend un vert qu'on ne peut pas relire.
+ *
+ * ⚠️ Et l'acquittement SANS raison n'en est pas un : `acquitter()` le laisse en
+ * `open` exprès, donc il pèse encore. Ce filtre-ci n'a pas à le savoir — il lit
+ * le statut, qui porte déjà la décision.
+ *
+ * @param {Array<{severity:string, status?:string}>} findings
+ * @returns {{pesent:any[], ecartes:any[]}}
+ */
+export function partageParAcquittement(findings) {
+  const tous = findings ?? [];
+  return {
+    pesent: tous.filter((f) => f?.status !== 'acknowledged'),
+    ecartes: tous.filter((f) => f?.status === 'acknowledged'),
+  };
+}
+
+/**
+ * Ce qu'une dimension dit des findings qu'elle n'a pas comptés.
+ *
+ * ⚠️ Rend la chaîne VIDE quand il n'y a rien à écarter : une ligne « 0 acquitté »
+ * sur un run qui n'en a aucun affirme un travail que personne n'a fait, et c'est
+ * le défaut que le bloc des canaux ouverts avait déjà fermé (508).
+ *
+ * @param {Array<{id?:string, severity?:string}>} ecartes @returns {string}
+ */
+export function mentionDesAcquittes(ecartes) {
+  if (!ecartes || ecartes.length === 0) return '';
+  const noms = ecartes.map((f) => `${f.id ?? '?'} (${f.severity ?? '?'})`).join(', ');
+  return `${ecartes.length} finding(s) acquitté(s), non comptés dans le verdict : ${noms}`;
+}
+
+/**
  * Exit code d'une dimension. 2 = blocker/critical, 1 = major dans le gate,
  * 0 = vert. Identique au harness web : la cohérence entre les deux skills est
  * un objectif en soi.
- * @param {Array<{severity:string}>} findings @param {any} [gate] @returns {0|1|2}
+ *
+ * ⚠️ Il ne juge que ce qui PÈSE (voir `partageParAcquittement`) : c'est le seul
+ * endroit où la règle vit désormais, et `report.mjs` l'appelle plutôt que de la
+ * recopier — une décision écrite deux fois diverge à la première retouche.
+ *
+ * @param {Array<{severity:string, status?:string}>} findings @param {any} [gate] @returns {0|1|2}
  */
 export function exitCodeFor(findings, gate = DEFAULTS.gate) {
   const failOn = new Set(gate.failOn ?? []);
-  const present = new Set(findings.map((f) => f.severity));
+  const present = new Set(partageParAcquittement(findings).pesent.map((f) => f.severity));
   if ((present.has('blocker') && failOn.has('blocker')) || (present.has('critical') && failOn.has('critical'))) return 2;
   if (present.has('major') && failOn.has('major')) return 1;
   return 0;

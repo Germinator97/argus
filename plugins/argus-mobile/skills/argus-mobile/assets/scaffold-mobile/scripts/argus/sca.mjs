@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   artifactsDir, detectTools, err, exitCodeFor, loadConfig, log,
-  acquitter, missingToolMessage, sh, usesFvm, warn, writeJson,
+  acquitter, mentionDesAcquittes, missingToolMessage, partageParAcquittement, sh, usesFvm, warn, writeJson,
 } from './config.mjs';
 
 /** Bandes CVSS v3, du plus grave au moins grave. */
@@ -294,7 +294,13 @@ function main() {
     err('--require-tools : la dimension CVE n\'a pas été exécutée, le résultat ne peut pas être vert.');
     process.exit(2);
   }
-  process.exit(exitCodeFor(findings, config.gate));
+  // 🔴 511 — C'ÉTAIT `findings`, DONC LES NON-ACQUITTÉS. Le rapport écrit
+  // `acquittes`, le log les compte, et seul le verdict lisait l'autre liste :
+  // tant que `exitCodeFor` ne regardait que la sévérité les deux coïncidaient,
+  // si bien que le défaut n'existait qu'en attente du correctif qui le révèle.
+  const mention = mentionDesAcquittes(partageParAcquittement(acquittes).ecartes);
+  if (mention) log(mention);
+  process.exit(exitCodeFor(acquittes, config.gate));
 }
 
 // Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans

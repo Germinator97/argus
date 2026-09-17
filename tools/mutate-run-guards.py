@@ -2402,6 +2402,21 @@ MUTATIONS = [
     ("yamlconf", "l'exemple livre redevient impossible a decommenter",
      "  #     why: no-build-flag",
      "  #     why: parce que le couper casserait tout"),
+    # 511 — l'acquittement ne valait pas pour le gate. Quatre mutations, et deux
+    # d'entre elles visent le CABLAGE : la regle etait juste, elle n'etait
+    # simplement ecrite qu'a un seul des deux endroits qui decident du verdict.
+    ("config", "le verdict cesse d'ecarter les findings acquittes",
+     "\n    pesent: tous.filter((f) => f?.status !== 'acknowledged'),",
+     "\n    pesent: tous,"),
+    ("config", "la dimension se tait sur ce qu'elle a ecarte",
+     "\n  if (!ecartes || ecartes.length === 0) return '';",
+     "\n  if (true) return '';"),
+    ("report", "la regle du gate est RECOPIEE au lieu d'etre appelee",
+     "\n  const pesent = partageParAcquittement(findings).pesent;",
+     "\n  const pesent = findings.filter((f) => f.status !== 'acknowledged');"),
+    ("sca", "le verdict rejuge la liste NON acquittee, comme avant",
+     "\n  process.exit(exitCodeFor(acquittes, config.gate));",
+     "\n  process.exit(exitCodeFor(findings, config.gate));"),
 ]
 
 

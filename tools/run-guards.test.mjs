@@ -117,6 +117,7 @@ import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/s
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { partageParAcquittement, mentionDesAcquittes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, rupturesDOrdreDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
@@ -7306,7 +7307,10 @@ test('trois choses écrites là où elles servent (293, 294, 295)', () => {
   const detail = ligneDe(/[A-ZÉ]+ causes, et la plus chère/, 'le détail des trois causes');
   assert.ok(renvoi - sequence > 0 && renvoi - sequence < 40,
     `le renvoi vers le diagnostic est à ${renvoi - sequence} lignes de la séquence : c'est là `
-    + 'qu\'on lance argus-run, donc là qu\'il faut savoir que le runner donne l\'ordre');
+    + 'qu\'on lance argus-run, donc là qu\'il faut savoir que le runner donne l\'ordre.\n'
+    + '  ⚠️ Si tu viens d\'AJOUTER de la prose entre les deux, c\'est elle qu\'il faut déplacer '
+    + 'après le diagnostic — pas cette borne qu\'il faut relever. Payé en écrivant le 511 : '
+    + '27 lignes légitimes insérées là ont fait rougir un garde exact.');
   assert.ok(detail > renvoi,
     'le détail doit rester APRÈS le renvoi — on le lit quand on dépanne, pas quand on lance');
 
@@ -15554,4 +15558,86 @@ test('`sectionDepuis` borne par la structure, et tombe quand la phrase déménag
   const k = deplace.indexOf('une consigne');
   assert.doesNotMatch(sectionDepuis(deplace, k), /la phrase attendue/,
     'la phrase est passée sous un AUTRE titre : la fenêtre doit s\'arrêter avant');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 511 — un acquittement ne vaut rien s'il ne vaut pas pour le GATE
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('511 — un finding acquitté avec sa raison ne pèse plus sur le verdict', () => {
+  const GATE = { failOn: ['blocker', 'critical', 'major'] };
+  const brut = [{ id: 'QAM-SEC-BACKUP', severity: 'major' }];
+  const acquitte = acquitter(brut, { security: { acknowledged: [{ id: 'QAM-SEC-BACKUP', why: 'posture assumée' }] } }).findings;
+
+  assert.equal(acquitte[0].status, 'acknowledged', 'le montage doit VRAIMENT acquitter, sinon ce test ne mesure rien');
+  assert.equal(exitCodeFor(acquitte, GATE), 0,
+    'un défaut assumé, motivé, ne doit pas faire rougir la CI — sinon il ne reste qu\'à désarmer la règle, c\'est-à-dire à MASQUER');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui dit si le remède a coupé trop. Rendre
+  // un verdict conditionnel est exactement le genre de correctif qui éteint
+  // aussi ce qu'il fallait garder allumé.
+  assert.equal(exitCodeFor(brut, GATE), 1, 'un major NON acquitté doit toujours faire rougir');
+  assert.equal(exitCodeFor([{ severity: 'blocker' }], GATE), 2, 'un blocker non acquitté reste un 2');
+
+  // ⚠️ Et un acquittement SANS raison n'en est pas un : `acquitter()` le laisse
+  // `open` exprès, donc il pèse encore. La règle vit là-bas, on vérifie ici
+  // qu'elle traverse jusqu'au verdict.
+  const sansRaison = acquitter(brut, { security: { acknowledged: [{ id: 'QAM-SEC-BACKUP' }] } }).findings;
+  assert.equal(exitCodeFor(sansRaison, GATE), 1, 'un acquittement sans motif ne doit rien faire taire');
+});
+
+test('511 — la dimension DIT ce qu\'elle a écarté, et se tait quand il n\'y a rien', () => {
+  const acquitte = acquitter([{ id: 'QAM-SEC-BACKUP', severity: 'major' }],
+    { security: { acknowledged: [{ id: 'QAM-SEC-BACKUP', why: 'assumé' }] } }).findings;
+
+  const mention = mentionDesAcquittes(partageParAcquittement(acquitte).ecartes);
+  assert.match(mention, /QAM-SEC-BACKUP/, 'la mention doit NOMMER ce qui a été écarté : un vert muet ne se relit pas');
+  assert.match(mention, /major/, 'et dire sa sévérité');
+
+  // ⚠️ Vide quand il n'y a rien à écarter — une ligne « 0 acquitté » affirmerait
+  // un travail que personne n'a fait (le défaut que le bloc des canaux a fermé).
+  assert.equal(mentionDesAcquittes(partageParAcquittement([{ severity: 'major' }]).ecartes), '',
+    'rien à écarter ⇒ aucune mention');
+  assert.equal(mentionDesAcquittes([]), '', 'liste vide ⇒ aucune mention');
+});
+
+test('511 — les DEUX chemins vers le verdict lisent la même règle', () => {
+  // 🔴 GARDE DE CÂBLAGE. Le défaut n'était pas dans la règle — elle était juste,
+  // écrite dans `report.mjs`. Il était dans le fait qu'elle n'était écrite QUE
+  // là, pendant que `exitCodeFor` décidait sans elle. Un garde de comportement
+  // ne peut pas voir ça : chaque chemin est correct pris à part.
+  // ⚠️ Commentaires ET littéraux ôtés — les miens, juste au-dessus, citent les
+  // symboles que ce garde cherche.
+  const lire = (f) => codeSansLitteraux(readFileSync(join(SCRIPTS_DIR, f), 'utf8'));
+
+  const report = lire('report.mjs');
+  assert.match(report, /partageParAcquittement\(/,
+    'report.mjs doit APPELER la règle ; s\'il la recopie, elle divergera à la première retouche');
+  assert.doesNotMatch(report, /status\s*!==\s*.acknowledged./,
+    'report.mjs ne doit plus porter sa propre copie du filtre');
+
+  // ⚠️ Et le troisième barreau : `sca.mjs` écrivait `acquittes` dans son rapport
+  // et jugeait `findings`. Tant que `exitCodeFor` ne lisait que la sévérité les
+  // deux coïncidaient — le défaut n'existait qu'en ATTENTE du correctif qui le
+  // révèle, donc rien n'aurait pu le signaler avant aujourd'hui.
+  const sca = lire('sca.mjs');
+  assert.match(sca, /exitCodeFor\(acquittes/,
+    'sca.mjs doit juger la liste ACQUITTÉE, la même que celle qu\'il écrit dans son rapport');
+});
+
+test('511 — le SKILL documente l\'acquittement, et que sa raison est obligatoire', () => {
+  // ⚠️ Le mécanisme existait depuis deux points (442, 443) et le mot « acquitt »
+  // n'apparaissait NULLE PART dans le SKILL : un outil livré que rien n'explique
+  // à celui qui doit s'en servir. Un run en aveugle l'a trouvé seul, et s'est
+  // trompé sur ce qu'il faisait au gate.
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const i = skill.indexOf('security.acknowledged');
+  assert.notEqual(i, -1, 'le SKILL doit nommer `security.acknowledged` — sinon personne ne peut s\'en servir');
+
+  const section = sectionDepuis(skill, i);
+  assert.match(section, /why/, 'la section doit montrer le champ `why`');
+  assert.match(section, /obligatoire/i, 'et dire qu\'il est obligatoire');
+  assert.match(section, /barré|compté|affiché/,
+    'et dire que le finding reste visible : sinon on lit « acquitter » comme « supprimer »');
 });

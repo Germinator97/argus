@@ -23,7 +23,7 @@ import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, loadConfig, log, err, warn, writeJson } from './config.mjs';
+import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, loadConfig, log, err, partageParAcquittement, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -1068,8 +1068,13 @@ function main() {
   // l'acquittement. Mais il reste COMPTÉ et AFFICHÉ : un signal qu'on assume ne
   // se supprime pas, il change de statut. Sans quoi l'acquittement deviendrait
   // une suppression, et la page mentirait par omission.
+  // 🔴 511 — CETTE RÈGLE N'EST PLUS ÉCRITE ICI, elle est APPELÉE. Elle l'était,
+  // et `exitCodeFor` — l'autre chemin vers le même verdict — ne la portait pas :
+  // la page annonçait `major: 0` pendant que la dimension sortait en 1 sur le
+  // même finding. Deux calculs de gate, une seule décision écrite.
+  const pesent = partageParAcquittement(findings).pesent;
   const bloquants = Object.fromEntries(SEVERITIES.map((s) => [s,
-    findings.filter((f) => f.severity === s && f.status !== 'acknowledged').length]));
+    pesent.filter((f) => f.severity === s).length]));
   const gate = interrompues.length > 0
     || SEVERITIES.some((s) => failOn.has(s) && bloquants[s] > 0) ? 'fail' : 'pass';
   const brut = parts.find((p) => p.file === 'report.json')?.data?.run ?? { platform: (config.platforms ?? [])[0], appId: config.app?.androidPackage || config.app?.iosBundleId };

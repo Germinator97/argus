@@ -2048,6 +2048,30 @@ le rapport publie un périmètre amputé sous un bandeau que personne ne lit. É
 l'exclusion et sa raison dans le rapport : « références générées hors
 `functional`, flow X rouge sur <défaut>, inscrit en dette ».
 
+🔴 **ET UN FINDING ACQUITTÉ NE PÈSE PAS SUR CE VERDICT** (511). Quand un défaut
+est une posture assumée — `allowBackup` documenté, une CVE inerte dans ta
+configuration —, déclare-le dans `security.acknowledged` **avec sa raison** :
+
+```yaml
+security:
+  acknowledged:
+    - id: QAM-SEC-BACKUP
+      why: sauvegarde assumée — aucun jeton de session dans cette app, cf. POLICY.md §3
+```
+
+Il reste **compté, affiché et barré** dans la page, sa raison avec lui, et la
+dimension **dit** ce qu'elle a écarté (« 1 finding(s) acquitté(s), non comptés
+dans le verdict »). Ce n'est donc pas une suppression : un signal qu'on assume
+change de statut, il ne disparaît pas.
+
+⚠️ **Le `why` est obligatoire.** Sans lui, le finding reste `open` et continue de
+faire rougir — un acquittement sans motif se relit dans six mois comme un oubli,
+et personne n'ose le retirer.
+
+📌 **N'utilise pas ceci pour faire taire une règle** : désarmer le contrôle
+(`requireAllowBackupOff: false`) supprime le signal, l'acquittement le garde
+visible. C'est toute la différence, et c'est pour ça que le second existe.
+
 ### La contre-épreuve visuelle — le seul temps qui prouve que la comparaison MESURE
 
 ⚠️ **Ce passage n'avait pas de titre, et deux runs ne l'ont pas trouvé.** Il

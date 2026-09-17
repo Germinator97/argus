@@ -34,7 +34,8 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import {
-  artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, platformFor, projectBuildCmd,
+  artifactsDir, detectTools, err, exitCodeFor, flutterCommandIn, loadConfig, log, mentionDesAcquittes,
+  partageParAcquittement, platformFor, projectBuildCmd,
   acquitter, configNonEmbarquee, releaseBuildCmd, sh, toolPath, usesFvm, warn, writeJson,
 } from './config.mjs';
 
@@ -1040,6 +1041,12 @@ function main() {
     err(`--require-tools : l'obfuscation n'a pas pu être jugée (${obfuscation.why}).`);
     process.exit(2);
   }
+  // 🔴 511 — DIRE CE QU'ON N'A PAS COMPTÉ. Le verdict ignore les acquittés, ce
+  // qui est le contrat ; taire lesquels rendrait un vert qu'on ne peut pas
+  // relire. La mention est vide quand il n'y a rien à écarter — annoncer
+  // « 0 acquitté » affirmerait un travail que personne n'a fait.
+  const mention = mentionDesAcquittes(partageParAcquittement(findings).ecartes);
+  if (mention) log(mention);
   process.exit(exitCodeFor(findings, config.gate));
 }
 
