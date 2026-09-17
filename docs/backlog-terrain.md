@@ -10032,3 +10032,36 @@ c'est la prose ajoutée qu'il faut déplacer, pas la borne qu'il faut relever.
 inscrits : `timeout` absent sur macOS (le SKILL le nomme) et le workflow GitHub
 posé sur un projet GitLab (c'est le **475**, relayé mot pour mot pour la troisième
 fois — la décision appartient au projet, pas au plugin).
+
+## Bilan de la paire de confirmation — runs 84 et 85 — 17/09/2026
+
+Rotation suivie (T1→Android, T2→iOS), prompts **identiques au caractère près** à
+ceux des runs 76 et 77 — le seul couple passé à même affectation sans la variable
+« installation globale ». La seule variable était le plugin.
+
+| point | 84 · T1/Android | 85 · T2/iOS | verdict |
+|---|---|---|---|
+| **505** | ✅ le finding rend le remède COMPLÉTÉ, 3ᵉ branche comprise (8/9 absorbés) | ⚪ 0 flow absorbé sur 8 | **confirmé** |
+| **506** | ✅ 13 flows livrés, exit 0 | ✅ 14 flows livrés, exit 0 | **moitié gratuite confirmée des deux côtés** ; la moitié « nomme la virgule » reste non exercée, comme le point le prévoyait |
+| **507** | ✅ **EN VRAI** — les 3 échelles revenues à `1.0` seules | — impossible sur iOS (`adb settings global`) | **confirmé** |
+| **508** | ✅ 1 canal, `why: would-change-app` | ✅ **2 canaux, 2 raisons distinctes** de l'énumération | **confirmé des deux côtés, et plus fort au 85** |
+| **509** | ⚪ le BORNAGE confirmé (conseil de base rendu SANS la réserve sur un nœud non-saisie) | — la passe a11y device est **sautée sur iOS** | **moitié** |
+| **511** | (né ici) | ✅ **contre-épreuve en vrai** : `status: open`, gate **`fail`** | **fermé et contre-éprouvé** |
+| **504** | ⚪ non exercé | ⚪ non exercé | **4 runs consécutifs sans l'exercer** (82, 83, 84, 85) |
+
+🔴 **Ce que le 85 n'a PAS rendu, et c'est le résultat** : aucun constat neuf sur
+le plugin. Les trois points qu'il remonte sont des défauts du **projet** (parité
+d'obfuscation iOS/Android, une ancre posée sur deux écrans, un overlay sans ancre
+dans le paquet partagé), et le quatrième est la sortie du **475** — relayée pour
+la **quatrième** fois consécutive.
+
+📌 **Le 85 est le premier run à avoir tourné avec le correctif du 511**, vérifié
+dans le scaffold posé. Son gate `fail` sur un major non acquitté est la preuve
+que le remède n'a pas « tout laissé passer » — c'est la moitié qui coupe trop,
+vérifiée hors du laboratoire.
+
+📌 **Sur le 504** : quatre agents vierges n'ont écrit aucun bloc replié. Le point
+reste gardé par ses seuls tests, et la page le DIT plutôt que de compter une
+confirmation qui n'a pas eu lieu. *Un défaut qu'on n'arrive pas à faire revenir
+en quatre tentatives est peut-être un défaut que le remède a réellement fermé —
+mais on ne peut pas l'écrire, alors on écrit ce qu'on sait.*
