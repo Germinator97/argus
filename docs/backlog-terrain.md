@@ -9952,3 +9952,83 @@ la TAILLE qui ment. Même famille, autre moitié.
 
 ⚠️ Et le balayage doit être total : ce fichier n'est sans doute pas le seul garde
 à fenêtrer par un nombre. Compter d'abord, corriger ensuite.
+
+## Rendu par le run 84 — 17/09/2026
+
+Première moitié de la paire de confirmation des 505-510. Prompt identique au
+caractère près à celui du run 76 (`shasum` vérifié, diff contre-éprouvé).
+
+**Ce que le run a confirmé**, chaque ligne mesurée sur les artefacts :
+
+| | |
+|---|---|
+| **505** | le finding `QAM-START-ABSORBE` rend le remède COMPLÉTÉ, troisième branche comprise — 8/9 flows absorbés, `precedeMs` 7197-7779 |
+| **507** | ✅ **en vrai** : les trois échelles sont revenues à `1.0` toutes seules. Elles valaient `0` à l'arrivée sur un émulateur fraîchement démarré (réglage persistant) et avaient été remises à `1.0` avant le lancement — sans ce geste, `prouve` restait hors d'atteinte |
+| **508** | `why: would-change-app` — une valeur de l'ÉNUMÉRATION, pas du texte libre — et « Canaux laissés ouverts (1) » publié dans les deux HTML |
+| **506** | moitié gratuite : `--check-flows` sur les 13 flows LIVRÉS, exit 0, aucun faux positif |
+| **509** | moitié : le nœud sans libellé est un `android.view.View`, donc le conseil de base est rendu SANS la réserve — le bornage voulu. La moitié « sur un champ de saisie » reste non exercée |
+| **504** | ⚪ non exercé pour la **troisième** fois : 0 bloc replié dans le YAML |
+
+### 511. Un acquittement retire le finding du RAPPORT mais pas du GATE
+
+**Fermé le 17/09/2026**, rapporté par le run 84 et reproduit sur les artefacts.
+
+**Ce qui le ferme, et le remède n'est pas celui qu'on croyait.** La règle « un
+finding acquitté ne fait pas échouer le gate » **existait déjà**, écrite noir sur
+blanc dans `report.mjs` — *« c'est tout l'objet de l'acquittement. Mais il reste
+COMPTÉ et AFFICHÉ »*. Elle n'était simplement écrite **qu'à un seul des deux
+endroits qui décident d'un verdict** : `exitCodeFor` mappait sur `severity` sans
+jamais lire `status`. Il n'y avait donc rien à arbitrer — la décision était prise,
+elle n'avait pas traversé.
+
+    report.json agrégé  →  "major": 0        l'acquitté est exclu
+    la page             →  major (6 + 1 acquitté), badge barré
+    make argus-sec      →  exit 1
+
+Le remède fait **converger les deux chemins sur une source unique** :
+`partageParAcquittement()` porte la règle, `exitCodeFor` l'applique, et
+`report.mjs` l'**appelle** au lieu de la recopier — *une décision écrite deux fois
+diverge à la première retouche.* Mesuré de bout en bout sur le terrain : `exit 1`
+avant, `exit 0` après, le finding toujours compté et affiché.
+
+📌 **Et un troisième site, que rien n'aurait pu signaler avant aujourd'hui** :
+`sca.mjs` écrivait `acquittes` dans son rapport, les comptait dans son log, et
+jugeait `findings`. Tant qu'`exitCodeFor` ne lisait que la sévérité, les deux
+listes coïncidaient — *le défaut n'existait qu'en ATTENTE du correctif qui le
+révèle*. Le corriger était la condition pour que le remède ne soit pas inerte là.
+
+🔴 **Ce qui rendait le défaut coûteux** : l'acquittement n'a qu'un usage réel, la
+CI. S'il ne change pas le gate, il ne reste qu'à désarmer la règle — c'est-à-dire
+à MASQUER, précisément ce qu'il existe pour éviter. L'agent l'a écrit sans voir la
+contradiction : « Désarmer la règle aurait masqué ; l'acquittement garde le
+finding visible avec sa raison. »
+
+⚠️ **Et le mot « acquitt » n'apparaissait NULLE PART dans le SKILL** : un mécanisme
+livré, bâti sur deux points (442, 443), que rien n'expliquait à qui devait s'en
+servir. Documenté ici, avec le `why` obligatoire et la différence d'avec le
+désarmement d'une règle.
+
+⚠️ **La moitié qui coupe trop est gardée** : un major NON acquitté sort toujours
+en 1, un blocker en 2, et un acquittement **sans raison** — que `acquitter()`
+laisse `open` exprès — pèse encore. Quatre mutations, dont deux visent le
+**câblage** : la règle était juste, c'est son second site qui manquait.
+
+📌 **Ce qu'on a failli faire, et qui aurait été une régression** : l'option
+envisagée ajoutait « refuser sur un acquittement périmé » à la dimension. Or
+`perimes` est **déjà** consommé, au bon endroit — `report.mjs`, seul à voir
+l'union — et `sec.mjs`/`sca.mjs` l'ignorent **délibérément**, ce qui est un
+correctif documenté : chacun dénonçait les acquittements de l'autre. *Un remède
+qui a l'air complet peut rouvrir ce qu'un autre a fermé ;* la vérification coûtait
+deux greps.
+
+📌 **En écrivant ce point, le 510 s'est rejoué en vrai** : 27 lignes de prose
+légitime insérées dans le SKILL ont poussé un renvoi hors d'une fenêtre de 40
+lignes, et fait rougir un garde exact. La borne était juste — c'est une proximité
+de LECTURE, pas une fenêtre de recherche, donc la structure ne s'y substitue pas.
+Ce qui manquait est que le garde dise **quoi faire** : il explique désormais que
+c'est la prose ajoutée qu'il faut déplacer, pas la borne qu'il faut relever.
+
+⚠️ **Deux constats du run 84 étaient la SORTIE d'un remède** et n'ont pas été
+inscrits : `timeout` absent sur macOS (le SKILL le nomme) et le workflow GitHub
+posé sur un projet GitLab (c'est le **475**, relayé mot pour mot pour la troisième
+fois — la décision appartient au projet, pas au plugin).
