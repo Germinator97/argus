@@ -10688,3 +10688,31 @@ mutation qui ne mute rien ne prouve rien. Ré-ancrées **dans la même passe**, 
 assertant l'unicité du nouveau motif dans la cible avant d'écrire — un motif
 portant son ancienne indentation aurait quand même matché une copie plus
 profonde.
+
+## Le critère de sortie du run 90 — écrit AVANT de le lancer, 18/09/2026
+
+Arrêté par Germinator avant le lancement, et consigné ici pour que le commit
+l'horodate : *un critère choisi après avoir vu le résultat n'est pas un
+critère.* Le chantier écrit ailleurs qu'il faut définir le comparateur avant de
+voir la production ; c'est la même règle, appliquée à sa propre sortie.
+
+**Le run 90 (terrain 2, iOS) confirme les 523 et 524. On publie si les points
+qu'il rend ne sont d'AUCUNE de ces trois natures :**
+
+1. un **faux vert** — un verdict, un gate ou une dimension qui rassure sans
+   avoir mesuré ;
+2. une **perte de temps de device** — un geste livré qui attend sa borne, coupe
+   une passe, ou fait payer un flow pour rien ;
+3. un **message qui accuse à tort** — un échec, un finding ou un remède qui
+   désigne quelque chose de correct, ou qui envoie défaire ce qui marche.
+
+⚠️ **Pourquoi ce seuil et pas « aucun constat »** : sur les runs 80 à 89, un
+seul n'a rien rendu (le 85). Neuf sur dix en ont rendu un ou deux, et le dernier
+deux. Un critère rempli deux fois en dix passes, jamais deux fois d'affilée,
+n'exige pas — il **attend**, exactement comme la condition de clôture du 373 qui
+réclamait un geste que le skill interdit.
+
+📌 **Contre-épreuve du seuil, posée d'avance** : appliqué au run 89, il aurait
+**bloqué** — le 523 est une perte de temps de device (une mesure de démarrage
+rendue injugeable) et le 524 un message qui envoie défaire un appel déjà inerte.
+Un seuil qui n'aurait rien bloqué hier ne mesurerait rien demain.
