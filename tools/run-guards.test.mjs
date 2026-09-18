@@ -6918,6 +6918,22 @@ test('une ancre connue de screens[] mais pas du harness est DISTINGUÉE (281)', 
     + 'elle irait chercher une déclaration qui n\'existe nulle part');
   assert.match(inconnues, /allowUndeclared/, 'les deux issues restent offertes dans tous les cas');
 
+  // 🔴 LA TROISIÈME ISSUE (520), et c'est la seule qui s'applique au cas vécu :
+  // un run avait déclaré dans `anchors.paramNames` un paramètre qui porte un
+  // PRÉFIXE et non une ancre, si bien que le contrôle réclamait cinq ancres
+  // inexistantes — en n'offrant que des issues fausses, donc en envoyant
+  // déclarer de l'imaginaire ou l'inscrire hors périmètre. L'information
+  // existait dans le SKILL, à mille lignes de là où on lit le verdict.
+  // ⚠️ Le garde APPELLE la fonction et lit ce qui revient : chercher la phrase
+  // dans la source resterait vert si le `lignes.push` cessait d'être atteint.
+  for (const [quoi, msg] of [['mélange', melange], ['inconnues', inconnues]]) {
+    assert.match(msg, /PRÉFIXE/,
+      `${quoi} : le message doit envisager que le nom soit un PRÉFIXE de famille et non une `
+      + 'ancre — sans ça, ses deux autres issues sont fausses sur ce cas (520)');
+    assert.match(msg, /paramNames/,
+      `${quoi} : il doit nommer la clé à corriger, sinon le lecteur a le diagnostic sans le geste`);
+  }
+
   // Le compte reste juste quelle que soit la répartition.
   for (const [quoi, msg] of [['mélange', melange], ['inconnues', inconnues]]) {
     const n = Number((/^(\d+) ancre\(s\)/.exec(msg) ?? [])[1]);
@@ -15986,7 +16002,11 @@ function interrogationsNonGardees(src) {
     if (/^when:/.test(corps)) {
       const j = suivanteUtile(i);
       const cle = j < 0 ? '' : corpsDe(lignes[j]);
-      if (/^true:/.test(cle)) {
+      // `platform:` ne consulte pas l'arbre non plus — c'est une condition sur
+      // l'environnement, et `resilience.yaml` l'emploie depuis toujours pour la
+      // même raison (518). Les deux natures sont donc gratuites ; ce qui coûte,
+      // c'est d'interroger l'ARBRE.
+      if (/^(true|platform):/.test(cle)) {
         // ⚠️ ON EMPILE L'INDENTATION DU PAS, PAS CELLE DU `when:` — et ce
         // détail a fait rougir mon propre correctif à la première exécution.
         // `commands:` est le FRÈRE de `when:` (même indentation), donc une
@@ -16024,41 +16044,31 @@ test('517 — aucune interrogation de l\'arbre n\'attend sa borne dans les flows
   // Le 486 avait fermé ce mécanisme dans un flow et l'avait laissé chez son
   // voisin (motif du 488) ; le 516 a cru le fermer en changeant de mot. Le
   // garde porte donc sur TOUS les flows, et sur l'atteinte.
-  // 🔴 LE PÉRIMÈTRE EST LE CHEMIN DE LANCEMENT, ET IL SE DÉRIVE. C'est là, et
-  // seulement là, que le coût est payé par TOUS les flows à CHAQUE exécution :
-  // six flows sur huit entrent par `launch-clean.yaml`. Ailleurs, un
-  // `when: visible:` peut être un aiguillage dont la condition est vraie dans
-  // le cas courant — et l'interrogation ne coûte alors ~0 (mesuré).
-  // ⚠️ Il reste des interrogations coûteuses HORS de ce chemin (`lifecycle.yaml`
-  // attend une confirmation iOS normalement absente ; les deux branches de
-  // `goto.yaml` sont exclusives, donc l'une paie toujours sa borne). Ce sont de
-  // vrais coûts de la même classe, et ils demandent un arbitrage que ce garde
-  // n'a pas à trancher seul : ils vivent au point 518. Ne pas élargir ce garde
-  // sans cette décision — il ferait rougir un aiguillage nécessaire.
+  // 🔴 LE PÉRIMÈTRE EST LA CLASSE ENTIÈRE — tous les flows livrés (518). Il a
+  // d'abord été borné au chemin de lancement, faute de savoir quoi faire des
+  // deux sites qui vivaient dehors ; l'arbitrage les a séparés, et le critère
+  // les couvre maintenant tous les deux sans rougir sur du sain :
+  //   · `lifecycle.yaml` attendait une confirmation iOS que la plateforme
+  //     Android ne peut pas produire — question INUTILE, désormais bornée par
+  //     `when: platform:`, exactement comme le 517 borne la sienne ;
+  //   · les deux branches de `goto.yaml` sont exclusives sur la même ancre,
+  //     donc l'une paie toujours sa borne — mais la question EST le travail du
+  //     flow (savoir où l'on est), et elles vivent déjà sous un `when: true:`.
+  // ⚠️ MESURÉ À 0 SUR LES 14 FLOWS AVANT D'ÉLARGIR, contre-épreuve à l'appui :
+  // un garde qui rougit sur un aiguillage correct s'apprend à être ignoré, et
+  // c'est pour ça que ce périmètre-ci a attendu une décision plutôt qu'un
+  // durcissement.
   const dir = join(FLOWS_DIR, '_subflows');
-  const vus = new Set();
-  const aSuivre = ['_subflows/launch-clean.yaml'];
-  const cheminDeLancement = [];
-  while (aSuivre.length) {
-    const nom = aSuivre.pop();
-    if (vus.has(nom)) continue;
-    vus.add(nom);
-    const chemin = nom.startsWith('_subflows/') ? join(dir, nom.slice('_subflows/'.length)) : join(FLOWS_DIR, nom);
-    if (!existsSync(chemin)) continue;
-    const src = readFileSync(chemin, 'utf8');
-    cheminDeLancement.push({ nom, chemin, src });
-    for (const m of src.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
-      .matchAll(/runFlow:\s*([\w.-]+\.yaml)/g)) {
-      aSuivre.push(`_subflows/${m[1]}`);
-    }
-  }
-  assert.ok(cheminDeLancement.length > 2,
-    `seulement ${cheminDeLancement.length} flow(s) sur le chemin de lancement : la dérivation est cassée, `
-    + 'pas le dépôt — `launch-clean.yaml` a-t-il changé de nom ou d\'appels ?');
+  const flows = readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.yaml'))
+    .map((f) => ({ nom: f, chemin: join(FLOWS_DIR, f) }))
+    .concat(readdirSync(dir).filter((f) => f.endsWith('.yaml'))
+      .map((f) => ({ nom: `_subflows/${f}`, chemin: join(dir, f) })));
+  assert.ok(flows.length > 5,
+    `seulement ${flows.length} flow(s) lu(s) : le périmètre de ce garde est trop étroit`);
 
   const fautifs = [];
-  for (const { nom, src: texte } of cheminDeLancement) {
-    for (const f of interrogationsNonGardees(texte)) fautifs.push(`${nom} ${f}`);
+  for (const { nom, chemin } of flows) {
+    for (const f of interrogationsNonGardees(readFileSync(chemin, 'utf8'))) fautifs.push(`${nom} ${f}`);
   }
   assert.deepEqual(fautifs, [],
     'ces pas interrogent l\'arbre sans vivre sous un `when: true:`, donc ils attendent leur '
@@ -16081,6 +16091,13 @@ test('517 — aucune interrogation de l\'arbre n\'attend sa borne dans les flows
     "              text: 'y'", '          commands:', '            - tapOn: y'].join('\n');
   assert.deepEqual(interrogationsNonGardees(garde), [],
     'une interrogation sous un `when: true:` doit être ACCEPTÉE');
+
+  const surPlateforme = ['appId: x', '---', '- runFlow:', '    when:', '      platform: iOS',
+    '    commands:', '      - runFlow:', '          when:', '            visible:',
+    "              text: 'y'", '          commands:', '            - tapOn: y'].join('\n');
+  assert.deepEqual(interrogationsNonGardees(surPlateforme), [],
+    'une interrogation bornée par `when: platform:` doit être ACCEPTÉE — la plateforme '
+    + 'se lit sans consulter l\'arbre (518)');
 
   const surCondition = ['appId: x', '---', '- assertTrue:', '    condition: "${X}"',
     '    optional: true'].join('\n');

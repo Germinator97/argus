@@ -1776,10 +1776,24 @@ export function ancresOrphelinesReport(orphelines, config) {
     lignes.push('     deux s\'écrit aux deux endroits.');
   }
   lignes.push('  Une ancre non déclarée n\'est pas en échec — elle est ABSENTE de tout relevé,');
-  lignes.push('  donc aucun garde ne dit qu\'elle n\'est pas couverte. Deux issues :');
+  lignes.push('  donc aucun garde ne dit qu\'elle n\'est pas couverte. Issues :');
   lignes.push('    · la déclarer sur son ArgusScreen (commands: / displays: / anchor:) ;');
   lignes.push('    · si elle est hors périmètre exprès, l\'inscrire dans');
   lignes.push('      argus.mobile.yaml → anchors.allowUndeclared, avec la raison à côté.');
+  // 🔴 LA TROISIÈME ISSUE, ET C'EST ELLE QUI MANQUAIT (520). Un run a déclaré
+  // dans `anchors.paramNames` un paramètre qui porte un PRÉFIXE et non une
+  // ancre : le contrôle a alors réclamé cinq ancres qui n'existent pas, en
+  // proposant les deux issues ci-dessus — donc en envoyant DÉCLARER des ancres
+  // imaginaires, ou les inscrire hors périmètre. Les deux sont fausses.
+  // Le SKILL distingue pourtant les deux natures (`semanticIdentifier` porte
+  // une ancre, `anchorPrefix` préfixe une famille) : l'information existait, à
+  // mille lignes de l'endroit où l'on en a besoin. *Un message qui n'offre que
+  // des issues fausses coûte plus qu'un message absent : on en suit une.*
+  lignes.push('    · ou ce nom n\'est pas une ancre mais un PRÉFIXE de famille');
+  lignes.push('      (un stepper, une liste, un groupe de puces) : retire-le alors de');
+  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');
+  lignes.push('      portent UNE ancre. Un préfixe y fait réclamer des ancres qui');
+  lignes.push('      n\'existent pas, et aucune des deux issues ci-dessus ne s\'applique.');
   return lignes;
 }
 

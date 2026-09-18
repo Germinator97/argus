@@ -101,11 +101,31 @@ tags:
       # est PERMANENT pour ce simulateur — `clearState` ne le réinitialise pas.
       # Sans ce garde, le premier run d'une machine neuve échoue et les suivants
       # passent : le pire profil de flake.
+      #
+      # 🔴 ET IL EST BORNÉ À iOS, PARCE QU'INTERROGER L'ARBRE COÛTE (518). Un
+      # sélecteur absent ne fait pas renoncer Maestro tout de suite : il réessaie
+      # jusqu'à sa borne, mesurée à **~6,4 s** (trois répétitions, témoin à
+      # 8,5 s). Sur Android cette confirmation n'existe pas, donc la question ne
+      # peut recevoir que « non » — 6,4 s payés pour rien, à chaque run d'un
+      # projet qui déclare un deep link. `when: platform:` n'interroge pas
+      # l'arbre, lui : il ne coûte rien, et c'est la forme que `resilience.yaml`
+      # emploie déjà pour la même raison.
+      # ⚠️ LES DEUX NATURES DE CONDITION SONT EMBOÎTÉES, jamais mélangées dans un
+      # seul `when:` — voir l'en-tête de `_subflows/goto.yaml` : c'est ce qui
+      # donne le ET sans rien supposer de la façon dont Maestro les combine.
+      # 📌 CE QUI RESTE, ET C'EST ASSUMÉ : sur iOS la question garde son coût, la
+      # confirmation n'apparaissant qu'au PREMIER deep link d'un simulateur neuf.
+      # On ne peut pas savoir d'avance si c'est le premier — et le retirer
+      # rouvrirait le flake que ce garde existe pour fermer. Un flow, une fois.
       - runFlow:
           when:
-            visible: 'Open in'
+            platform: iOS
           commands:
-            - tapOn: Open
+            - runFlow:
+                when:
+                  visible: 'Open in'
+                commands:
+                  - tapOn: Open
       # TODO(argus): asserte l'écran que le deep link doit ouvrir. Sans ça, on
       # prouve seulement que l'OS a transmis l'intent, pas que l'app l'a honoré.
 

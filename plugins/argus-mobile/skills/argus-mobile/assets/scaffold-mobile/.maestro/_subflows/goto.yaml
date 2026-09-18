@@ -63,6 +63,26 @@ appId: ${APP_ID}
 # rien ici ne peut mesurer sans device. Déroulé sur les quatre cas, une lecture
 # en OU ferait échouer un `goto` vers un autre écran. Deux `when` emboîtés, qui
 # ne portent chacun qu'une nature de condition, donnent le ET sans rien supposer.
+#
+# 🔴 CE QUE CET AIGUILLAGE COÛTE, ET POURQUOI ON LE PAIE (518). Interroger
+# l'arbre n'est pas gratuit : un sélecteur absent ne fait pas renoncer Maestro
+# tout de suite, il réessaie jusqu'à sa borne — **~6,4 s**, mesuré en trois
+# répétitions contre un témoin à 8,5 s. Or les deux branches ci-dessous sont
+# EXCLUSIVES sur la même ancre : `visible:` puis `notVisible:`. **L'une des deux
+# paie donc toujours sa borne**, et Maestro n'a pas d'`else` pour que la seconde
+# hérite du verdict de la première. Un appelant (`visual.yaml`), un appel par
+# écran visuel : 4 écrans sur le dernier run mesuré, soit ~26 s par suite.
+#
+# 📌 ON NE LE FERME PAS, ET C'EST UNE DÉCISION. Le 517 a supprimé ce coût
+# ailleurs — sur un pas qui demande « une invite système recouvre-t-elle
+# l'écran ? », question INUTILE dès qu'on sait qu'aucune invite ne peut naître.
+# Ici la question EST le travail du flow : il faut savoir où l'on est pour
+# décider s'il faut naviguer, et rien ne le dérive d'avance (l'app a pu naviguer
+# depuis le lancement). *Le 517 retire une question inutile ; il ne rend pas
+# gratuite une question nécessaire.*
+# ⚠️ Donc ne « simplifie » pas ces deux branches en une seule sur la foi de ce
+# coût : c'est ce que faisait la version d'avant, et elle mentait un appel sur
+# deux (voir l'avertissement ci-dessus).
 - runFlow:
     when:
       true: "${(typeof SCREEN_ID === 'undefined' || SCREEN_ID === '' || SCREEN_ID === ARGUS_START_SCREEN) && typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
