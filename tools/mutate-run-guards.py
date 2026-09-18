@@ -2485,6 +2485,20 @@ MUTATIONS = [
     ("ci", "l'autre moitie de argus-anchors disparait de la CI",
      "\n      - name: Ancres posées mais non déclarées\n        if: ${{ !cancelled() }}\n        run: $ARGUS config --check-anchors\n",
      "\n"),
+    # ── 517 — l'attente qu'un `when:` ne supprime pas ──────────────────────
+    # La reconnaissance par SUFFIXE disparait : la derivation rend alors JOUE
+    # sur une application sans aucune permission runtime, c'est-a-dire le cas
+    # exact ou le defaut avait ete mesure. C'est la faute que la premiere
+    # version du correctif portait, et qu'aucune relecture n'avait vue.
+    ("run", "517 · la permission prefixee par l'applicationId n'est plus reconnue",
+     "  const inerte = (/** @type {string} */ p) => PERMISSIONS_SANS_INVITE.has(p)\n    || SUFFIXES_SANS_INVITE.some((s) => p.endsWith(s));",
+     "  const inerte = (/** @type {string} */ p) => PERMISSIONS_SANS_INVITE.has(p);"),
+    # L'AUTRE MOITIE : la detection reste juste et cesse d'etre DITE. Un
+    # avertissement calcule puis jete ne garde rien, et rien ne s'en plaint —
+    # c'est le troisieme barreau, le cablage.
+    ("run", "517 · l'ecart chez l'hote est calcule mais plus emis",
+     "\n  if (alerteInvite) warn(alerteInvite);",
+     "\n  if (false && alerteInvite) warn(alerteInvite);"),
 ]
 
 

@@ -733,6 +733,43 @@ const SUFFIXES_SANS_INVITE = [
  * @param {any} config
  * @returns {boolean}
  */
+/**
+ * Le flow local qui referme l'invite système a-t-il MANQUÉ le correctif du 517 ?
+ *
+ * 🔴 POURQUOI CETTE DÉTECTION EXISTE, ET C'EST LA MOITIÉ QUI MANQUE D'HABITUDE.
+ * `dismiss-system-alerts.yaml` porte `ARGUS:OWNED` : l'installeur ne l'écrase
+ * ni ne le compare, jamais — c'est ce qui protège les libellés et les invites
+ * que le projet y a ajoutés. Conséquence exacte : le correctif du 517 atteint
+ * les projets NEUFS et **aucun projet déjà installé**. Ni `--update` ni
+ * `--check` n'y changent quoi que ce soit, et le symptôme est une absence —
+ * 6,4 s par flow que personne ne voit passer.
+ *
+ * Le remède ne peut donc pas être d'écrire chez l'hôte. Il est de LIRE ce qui
+ * s'y trouve : si le flow interroge encore l'arbre sans lire la variable qui
+ * rend le geste gratuit, la variable qu'on vient de lui passer est INERTE, et
+ * c'est mesurable en une lecture.
+ *
+ * ⚠️ Un flow qui n'interroge plus l'arbre du tout ne déclenche rien : le projet
+ * a le droit d'avoir retiré ce geste, c'est son fichier. On n'avertit que sur
+ * l'écart entre ce que le runner injecte et ce que le flow lit.
+ * @param {string|null} flow le contenu du flow local, ou null s'il n'existe pas
+ * @returns {string|null} le message à émettre, ou null s'il n'y a rien à dire
+ */
+function inviteSystemeInerte(flow) {
+  if (!flow) return null;
+  // Commentaires dépouillés : ce fichier EXPLIQUE `optional: true` et le 517 en
+  // prose, et un motif compterait ces explications comme du code.
+  const nu = flow.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  const interroge = /when:\s*\n\s*(?:visible|notVisible):/.test(nu) || /optional:\s*true/.test(nu);
+  if (!interroge) return null;
+  if (/ARGUS_SYSTEM_ALERTS/.test(nu)) return null;
+  return '.maestro/_subflows/dismiss-system-alerts.yaml interroge l\'arbre sans lire '
+    + '`ARGUS_SYSTEM_ALERTS` : ce geste attend donc sa borne à CHAQUE flow (~6,4 s mesurés, '
+    + '~44 s par suite) même quand aucune invite ne peut naître. Ce fichier t\'appartient, '
+    + 'l\'installeur ne le remplace pas — reprends la forme livrée dans le scaffold (517), '
+    + 'qui enveloppe l\'interrogation dans un `when: true:` dérivé de tes permissions.';
+}
+
 function invitesSystemePossibles(config) {
   const declarees = config.security?.expectedPermissions ?? [];
   if (declarees.length === 0) return true;
@@ -2456,6 +2493,12 @@ async function main() {
   const keychain = resetKeychain(platform, resolved.udid, opts.dryRun);
   if (platform === 'ios') (keychain.ok ? log : warn)(`trousseau : ${keychain.detail}`);
 
+  // 517 — la variable qu'on vient de dériver est-elle LUE par le flow local ?
+  const cheminInvite = resolve(process.cwd(), '.maestro/_subflows/dismiss-system-alerts.yaml');
+  const alerteInvite = inviteSystemeInerte(
+    existsSync(cheminInvite) ? readFileSync(cheminInvite, 'utf8') : null);
+  if (alerteInvite) warn(alerteInvite);
+
   const secretsPassed = (config.auth?.secretsFromEnv ?? []).filter((/** @type {string} */ n) => process.env[n]);
   if (secretsPassed.length) {
     warn(`${secretsPassed.join(', ')} passés à Maestro via -e : visibles dans \`ps\` le temps du run.`);
@@ -2814,6 +2857,6 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
-  anchorAfterAuth, animationsApplicables, invitesSystemePossibles,
+  anchorAfterAuth, animationsApplicables, invitesSystemePossibles, inviteSystemeInerte,
   resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

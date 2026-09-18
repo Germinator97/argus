@@ -110,7 +110,7 @@ import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceSta
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { anchorAfterAuth, animationsApplicables } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { anchorAfterAuth, animationsApplicables, invitesSystemePossibles, inviteSystemeInerte } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -15128,6 +15128,11 @@ const FUITES_LEGITIMES = [
   'com.android.vending.BILLING',
   'com.google.android.finsky.permission',
   'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
+  // La fixture du garde de dérivation (517) : un bundle id d'EXEMPLE suivi du
+  // suffixe qu'AndroidX ajoute. Le détecteur la rend en entier là où le motif
+  // du 255 s'arrête au préfixe déjà déclaré — d'où cette entrée de plus pour
+  // une seule valeur écrite dans le fichier.
+  'com.exemple.monapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION',
 ];
 
 test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)', () => {
@@ -16081,4 +16086,72 @@ test('517 — aucune interrogation de l\'arbre n\'attend sa borne dans les flows
     '    optional: true'].join('\n');
   assert.deepEqual(interrogationsNonGardees(surCondition), [],
     'une assertion sur une `condition:` JS n\'interroge pas l\'arbre : ne pas la refuser');
+});
+
+test('517 — la décision de jouer l\'invite se DÉRIVE des permissions déclarées', () => {
+  // ⚠️ LA DIRECTION COMPTE : large moins les exceptions. Une permission inconnue
+  // doit faire JOUER le geste (elle coûte sa borne, elle ne casse rien) ; c'est
+  // l'inverse qui serait grave, un flow rouge sur une invite non fermée.
+  const avec = (/** @type {string[]} */ p) => invitesSystemePossibles({ security: { expectedPermissions: p } });
+
+  assert.equal(avec(['android.permission.CAMERA']), true, 'une permission à invite doit faire JOUER');
+  assert.equal(avec(['android.permission.POST_NOTIFICATIONS']), true,
+    'Android 13+ demande les notifications par une invite : jouer');
+  assert.equal(avec(['android.permission.QUELQUE_CHOSE_DE_NEUF']), true,
+    'une permission INCONNUE doit faire jouer — le doute coûte 6,4 s, il ne casse rien');
+  assert.equal(avec([]), true, 'liste vide : on ne sait pas, donc on joue comme avant');
+  assert.equal(avec(['android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE']), false,
+    'que des permissions inertes : le geste ne peut rien fermer, donc il ne doit rien coûter');
+
+  // 🔴 LE CAS QUI A FAIT RATER LA PREMIÈRE VERSION, et il vient du terrain.
+  // AndroidX déclare sa permission de signature sous `${applicationId}.DYNAMIC_…`,
+  // donc son nom PORTE le paquet et ne peut pas figurer dans une liste de
+  // littéraux. Écrite de mémoire avec le préfixe `android.permission.`, la liste
+  // rendait JOUE sur l'application sans aucune permission runtime — le correctif
+  // n'aurait rien soulagé là où le défaut avait été mesuré, et rien ne l'aurait
+  // dit. C'est en appelant la dérivation avec ce que le projet déclare VRAIMENT
+  // que ça s'est vu, pas en relisant la liste.
+  assert.equal(avec(['android.permission.INTERNET', 'android.permission.ACCESS_NETWORK_STATE',
+    'com.exemple.monapp.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION']), false,
+  'une permission de signature préfixée par l\'applicationId doit être reconnue par son SUFFIXE');
+});
+
+test('517 — le runner DIT quand le flow local a manqué le correctif', () => {
+  // 🔴 L'ATTEINTE, ET C'EST LA MOITIÉ QU'ON OUBLIE. Le flow porte `ARGUS:OWNED` :
+  // l'installeur ne le remplace jamais, donc le correctif atteint les projets
+  // NEUFS et aucun projet déjà installé. Ni `--update` ni `--check` ne le
+  // voient, et le symptôme est une absence. Le seul remède possible est de LIRE
+  // ce qui se trouve chez l'hôte et de le dire.
+  const interrogeSansLire = ['appId: x', '---', '- runFlow:', '    when:', '      visible:',
+    "        text: 'y'", '    commands:', '      - tapOn: y'].join('\n');
+  const msg = inviteSystemeInerte(interrogeSansLire);
+  assert.ok(msg && /ARGUS_SYSTEM_ALERTS/.test(msg),
+    'un flow qui interroge l\'arbre sans lire la variable doit être SIGNALÉ');
+  assert.ok(msg && /517/.test(msg), 'le message doit renvoyer au point, pour qu\'on sache quoi reprendre');
+
+  // ⚠️ Les trois silences, et chacun est une décision : sans eux l'avertissement
+  // crierait au loup, et un avertissement qu'on apprend à ignorer ne vaut rien.
+  assert.equal(inviteSystemeInerte(null), null, 'flow absent : rien à dire');
+  assert.equal(inviteSystemeInerte(['appId: x', '---', '- evalScript: ${1}'].join('\n')), null,
+    'un flow qui n\'interroge plus l\'arbre a le droit d\'exister — c\'est le fichier du projet');
+  const aJour = readFileSync(join(FLOWS_DIR, '_subflows/dismiss-system-alerts.yaml'), 'utf8');
+  assert.equal(inviteSystemeInerte(aJour), null,
+    'le flow LIVRÉ ne doit pas se signaler lui-même — sinon chaque run neuf porte un faux positif');
+
+  // ⚠️ Et le commentaire ne suffit pas à satisfaire le motif : ce fichier
+  // EXPLIQUE `optional: true` en prose, donc un scanner naïf le compterait.
+  assert.equal(inviteSystemeInerte(['appId: x', '---', '# - tapOn:', '#     optional: true',
+    '- evalScript: ${1}'].join('\n')), null,
+  'un `optional: true` en COMMENTAIRE ne doit pas déclencher l\'avertissement');
+
+  // 🔴 ET LE CÂBLAGE, qui est le troisième barreau : la fonction peut être juste
+  // et n'être jamais appelée — un avertissement non émis ne se plaint pas.
+  const source = readFileSync(join(SCAFFOLD, 'scripts/argus/run.mjs'), 'utf8');
+  const appels = source.split('\n')
+    .filter((l) => !l.trimStart().startsWith('*') && !l.trimStart().startsWith('//'))
+    .filter((l) => /inviteSystemeInerte\(/.test(l));
+  assert.ok(appels.length >= 1,
+    'plus aucun appel à inviteSystemeInerte dans le runner : la détection est inerte (517)');
+  assert.ok(source.includes('if (alerteInvite) warn(alerteInvite);'),
+    'le résultat de la détection n\'est plus ÉMIS : la calculer sans la dire ne garde rien');
 });
