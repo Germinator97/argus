@@ -15649,3 +15649,126 @@ test('511 — le SKILL documente l\'acquittement, et que sa raison est obligatoi
   assert.match(section, /barré|compté|affiché/,
     'et dire que le finding reste visible : sinon on lit « acquitter » comme « supprimer »');
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 512 — le gate était calculé, écrit, affiché… et porté par personne
+// ═══════════════════════════════════════════════════════════════════════════
+
+const REPORT_MJS = join(RACINE,
+  'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs');
+
+/**
+ * Lance `report.mjs` sur un jeu d'artefacts et rend `{ code, gate }`.
+ * ⚠️ `spawnSync`, jamais `execFileSync` : depuis le 512 un gate rouge REND un
+ * code non nul, c'est-à-dire exactement ce que ce garde vient mesurer.
+ * @param {Record<string, any>} artefacts @returns {{code: number|null, gate: string}}
+ */
+function verdictRendu(artefacts) {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-verdict-'));
+  try {
+    writeFileSync(join(dir, 'argus.mobile.yaml'),
+      'app:\n  name: sonde\n  id: com.exemple\nartifact:\n  enabled: false\n', 'utf8');
+    mkdirSync(join(dir, 'argus-mobile-report'), { recursive: true });
+    for (const [nom, data] of Object.entries(artefacts)) {
+      writeFileSync(join(dir, 'argus-mobile-report', nom), JSON.stringify(data), 'utf8');
+    }
+    const r = spawnSync(process.execPath, [REPORT_MJS], { cwd: dir, encoding: 'utf8' });
+    assert.equal(r.signal, null, `report.mjs tué par ${r.signal} — le montage n'a rien mesuré`);
+    const resume = join(dir, 'argus-mobile-report/summary.json');
+    assert.ok(existsSync(resume),
+      `report.mjs n'a pas rendu de summary.json (code ${r.status}) — MONTAGE cassé, pas verdict :\n${r.stderr}`);
+    return { code: r.status, gate: JSON.parse(readFileSync(resume, 'utf8')).gate };
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
+test('512 — un gate rouge SORT en non nul : le verdict se porte, il ne fait plus que s\'écrire', () => {
+  // 🔴 GARDE DE BOUT EN BOUT — le troisième barreau, et le seul qui voie ce
+  // défaut-ci. `gate` était calculé (une seule décision, celle du 511), affiché
+  // au terminal, écrit dans `summary.json`… et PERSONNE ne le portait : `main()`
+  // finissait sur un `log()`, donc `report` sortait en 0 sur un run rouge.
+  // Chaque dimension portait le sien par son propre code de sortie, or la CI
+  // invoque `perf` et `a11y` en `|| true` — pour ne pas perdre le rapport quand
+  // une mesure plante sur un device instable, ce qui est juste —, et aucune
+  // étape du workflow ne relit `summary.json`. Mesuré sur les artefacts du run
+  // 84 : 6 des 7 findings majors venaient de `perf` (1) et `a11y` (5). La CI
+  // aurait été VERTE sur un run dont le rapport publié affiche `gate: fail`.
+  const COMPLET = { run: { platform: 'android', scope: 'complet' }, summary: {}, findings: [] };
+  const majorDeSec = (extra = {}) => ({
+    'report.json': COMPLET,
+    'sec.json': { findings: [{ id: 'QAM-SEC-X', severity: 'major', title: 'sonde', ...extra }] },
+  });
+
+  const rouge = verdictRendu(majorDeSec());
+  assert.equal(rouge.gate, 'fail', 'le montage doit VRAIMENT produire un gate rouge, sinon ce test ne mesure rien');
+  assert.equal(rouge.code, 1, 'un gate rouge qui sort en 0 est un faux vert : c\'est tout l\'objet du 512');
+
+  // ⚠️ LA GRAVITÉ PASSE AUSSI. Rendre « non nul » suffirait à ce garde et
+  // perdrait la distinction que `exitCodeFor` porte depuis toujours.
+  const noir = verdictRendu({
+    'report.json': COMPLET,
+    'sec.json': { findings: [{ id: 'QAM-SEC-X', severity: 'blocker', title: 'sonde' }] },
+  });
+  assert.equal(noir.code, 2, 'un blocker doit rendre 2, comme dans chaque dimension');
+
+  // ⚠️ L'AUTRE MOITIÉ, sans quoi un remède qui rougit TOUJOURS passerait ce
+  // garde en rendant la CI inutilisable — le défaut symétrique, et le pire,
+  // parce qu'on le corrige en désarmant la règle.
+  const vert = verdictRendu({ 'report.json': COMPLET });
+  assert.equal(vert.gate, 'pass', 'le montage vert doit VRAIMENT être vert');
+  assert.equal(vert.code, 0, 'un run propre qui rougit apprend à ignorer le gate');
+
+  // ⚠️ ET LE 511 TRAVERSE JUSQU'ICI : un acquittement qui ne vaut pas pour le
+  // code de sortie ne vaut rien. La liste vient déjà acquittée de sa dimension —
+  // `report.mjs` n'acquitte pas, il ne lit d'`acquitter()` que les diagnostics.
+  const assume = verdictRendu(majorDeSec({ status: 'acknowledged', acknowledgedWhy: 'posture assumée' }));
+  assert.equal(assume.gate, 'pass', 'un major acquitté ne doit pas rendre le gate rouge (511)');
+  assert.equal(assume.code, 0, 'un défaut assumé et motivé ne doit pas faire rougir la CI');
+
+  // ⚠️ ET LA MOITIÉ QU'`exitCodeFor` NE VOIT PAS : une dimension INTERROMPUE
+  // rend `fail` sans qu'aucune sévérité ne pèse. C'est ce que le repli `|| 1`
+  // rattrape — sans lui le verdict serait `fail` et le code 0, c'est-à-dire le
+  // défaut même qu'on ferme, revenu par la porte du 367.
+  const interrompu = verdictRendu({
+    'report.json': { run: { platform: 'android', status: 'interrompu' }, incomplete: true, why: 'arrêté', summary: {}, findings: [] },
+  });
+  assert.equal(interrompu.gate, 'fail', 'le montage doit VRAIMENT produire une dimension interrompue');
+  assert.equal(interrompu.code, 1, 'un run interrompu qui sort en 0 conclut « ça passe » sur ce qu\'il n\'a pas mesuré');
+});
+
+test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
+  // 🔴 GARDE DE CÂBLAGE. Le correctif ci-dessus est inerte si quelqu'un écrit
+  // `$ARGUS report || true` — et c'est le geste le plus naturel du monde, celui
+  // par lequel `perf` et `a11y` ont été neutralisées sans que personne ne le
+  // décide : un refactor les a transportées telles quelles depuis
+  // `node scripts/argus/perf.mjs || true`, et le `|| true` n'était justifié
+  // NULLE PART (0 occurrence dans cette suite, 0 dans le backlog).
+  const wf = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8');
+
+  const etapes = [...wf.matchAll(/^\s*run: \$ARGUS report\b.*$/gm)].map((m) => m[0]);
+  assert.ok(etapes.length > 0,
+    'aucune étape `$ARGUS report` dans le workflow : ce garde ne mesure plus rien — mettre le motif à jour');
+  for (const e of etapes) {
+    assert.doesNotMatch(e, /\|\|\s*true/,
+      `l'étape qui PORTE le verdict est neutralisée : « ${e.trim()} » — le gate redevient décoratif`);
+  }
+
+  // ⚠️ L'AUTRE MOITIÉ, et elle compte autant : maintenant que `report` rougit,
+  // l'artefact doit continuer de partir. Sans `if: !cancelled()` sur l'upload,
+  // le rapport disparaîtrait exactement quand il devient utile — c'est le piège
+  // que le Makefile avait déjà fermé pour `make argus`, et pour la même raison.
+  // ⚠️ TOUS les uploads, pas le premier : le défaut qu'on ferme est né d'un site
+  // laissé de côté pendant qu'on regardait son voisin.
+  const uploads = wf.split('- uses: actions/upload-artifact').slice(1)
+    .map((reste) => {
+      const suivante = reste.search(/^ {6}- (uses|name|run):/m);
+      return suivante === -1 ? reste : reste.slice(0, suivante);
+    });
+  assert.ok(uploads.length > 0, 'plus d\'upload-artifact : ce garde ne mesure plus rien');
+  for (const etape of uploads) {
+    const quoi = (etape.match(/name: (\S+)/) ?? [, '?'])[1];
+    assert.match(etape, /if: \$\{\{ !cancelled\(\) \}\}/,
+      `l'artefact « ${quoi} » ne part plus quand une étape a échoué — donc jamais quand on en a besoin`);
+  }
+});

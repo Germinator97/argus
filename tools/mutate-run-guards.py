@@ -2417,6 +2417,29 @@ MUTATIONS = [
     ("sca", "le verdict rejuge la liste NON acquittee, comme avant",
      "\n  process.exit(exitCodeFor(acquittes, config.gate));",
      "\n  process.exit(exitCodeFor(findings, config.gate));"),
+    # ── 512 — le gate etait calcule, ecrit, affiche… et porte par personne ──
+    # ⚠️ Les deux premieres visent `report.mjs`, qui PORTE desormais le verdict.
+    # Les deux suivantes visent le CABLAGE : le correctif est inerte si la CI
+    # neutralise l'etape, et inutile si le rapport ne part plus au moment precis
+    # ou il rougit.
+    ("report", "le verdict n'est plus porte, seulement ecrit",
+     "\n  process.exit(gate === 'fail' ? (exitCodeFor(findings, config.gate) || 1) : 0);\n",
+     "\n"),
+    # ⚠️ Celle-ci ne touche QUE le repli : elle laisse les severites faire rougir
+    # et ne vide que le cas d'une dimension INTERROMPUE — la moitie
+    # qu'`exitCodeFor` ne voit pas, donc celle qu'un garde trop court raterait.
+    ("report", "le repli du gate sans severite (dimension interrompue) saute",
+     " || 1) : 0);",
+     " || 0) : 0);"),
+    # ⚠️ Ancree sur `sca --require-tools`, unique dans le fichier : `run: $ARGUS
+    # report` y apparait TROIS fois, et le harnais refuse — a raison — un motif
+    # qu'il ne sait pas situer.
+    ("ci", "la CI neutralise l'etape qui porte le verdict",
+     "\n        run: $ARGUS sca --require-tools\n      - name: Rapport\n        if: ${{ !cancelled() }}\n        run: $ARGUS report\n",
+     "\n        run: $ARGUS sca --require-tools\n      - name: Rapport\n        if: ${{ !cancelled() }}\n        run: $ARGUS report || true\n"),
+    ("ci", "le rapport ne part plus quand une etape a echoue",
+     "\n      - uses: actions/upload-artifact@v7\n        if: ${{ !cancelled() }}\n        with:\n          name: argus-mobile-security\n",
+     "\n      - uses: actions/upload-artifact@v7\n        with:\n          name: argus-mobile-security\n"),
 ]
 
 
