@@ -147,6 +147,11 @@ CIBLES = {
     # depuis l'arbre — c'est le script, relevé figé compris, qui est muté ici :
     # l'instrument, pas ce qu'il mesure.
     "scaffoldcheck": ROOT / "tools/check-scaffold.sh",
+    # 526 — le geste qui ÉCRIT la dette. Ses deux décisions sont invisibles à
+    # tout test de comportement nominal : s'ancrer sur la dernière occurrence
+    # (le dartdoc en porte une autre, plus haut) et faire l'UNION plutôt que
+    # remplacer. Les deux se cassent sans rien faire lever.
+    "debts": SCAFFOLD / "debts.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -2556,6 +2561,29 @@ MUTATIONS = [
     ("config", "520 · le verdict n'envisage plus la cle a corriger",
      "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
      "\n  lignes.push('      (sans objet)');"),
+    # ── 526 — les deux decisions du geste d'ecriture, une par moitie ──────
+    # La premiere est le defaut historique lui-meme : `indexOf` frappe le
+    # dartdoc, qui porte la declaration mot pour mot et PLUS HAUT que la vraie.
+    # C'est ce que trois destructions ont coute, et c'est ce que le garde du
+    # dartdoc intact existe pour refuser.
+    ("debts", "526 · l'ancrage retombe sur la PREMIERE occurrence",
+     "\n  const decl = source.lastIndexOf(DECLARATION);",
+     "\n  const decl = source.indexOf(DECLARATION);"),
+    # La seconde isole l'AUTRE moitie : ecrire au bon endroit ne suffit pas si
+    # l'on remplace. Une cle deja inscrite ne fait plus echouer la suite, donc
+    # elle n'est plus derivee — le deuxieme lancement viderait la dette assumee.
+    ("debts", "526 · le geste remplace la dette au lieu de l'y ajouter",
+     "\n  const toutes = [...new Set([...ou.cles, ...ajouts])].sort();",
+     "\n  const toutes = [...new Set(ajouts)].sort();"),
+    # La troisieme isole le REFUS, et elle existe parce que la premiere ne
+    # prouve pas ce qu'on croirait : sous `indexOf`, le marqueur ne precede plus
+    # la cible, donc le geste REFUSE au lieu d'ecrire dans le dartdoc. Les deux
+    # filets se rattrapent — c'est une propriete du code, pas un trou du garde —,
+    # mais il faut alors muter le second pour l'exercer. Sans elle, le refus
+    # serait une branche que rien ne visite.
+    ("debts", "526 · le geste ecrit meme sans son point d'ancrage",
+     "\n  if (marqueur === -1) {",
+     "\n  if (false && marqueur === -1) {"),
 ]
 
 

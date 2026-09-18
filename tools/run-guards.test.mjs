@@ -9324,6 +9324,112 @@ test('argus-debts rend le bloc prêt à coller quand il y a des dettes (M5, l\'a
   rmSync(dir, { recursive: true, force: true });
 });
 
+// ── 526 · le bloc de dette est ÉCRIT, pas seulement affiché ─────────────────
+// `argus-debts` dérivait, puis s'arrêtait à l'affichage : coller restait à la
+// charge du lecteur, et coller est le SEUL geste que le fichier interdit — son
+// dartdoc porte la déclaration mot pour mot et PLUS HAUT que la vraie. Trois
+// destructions par ce mécanisme, dont une au run 91 par un agent qui avait lu
+// l'avertissement et l'a cité en reconstruisant le fichier.
+
+const DECL_DETTE = 'const Set<String> argusKnownIssues';
+const DETTE_LIVREE = join(RACINE,
+  'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart');
+
+/** Le terrain de M5, plus le moteur et le fichier de dette tel qu'il est livré. */
+const terrainWrite = (sortieDeFlutter) => {
+  const dir = terrainMake(sortieDeFlutter);
+  mkdirSync(join(dir, 'scripts/argus'), { recursive: true });
+  mkdirSync(join(dir, 'test/argus'), { recursive: true });
+  for (const f of readdirSync(SCRIPTS_DIR)) cpSync(join(SCRIPTS_DIR, f), join(dir, 'scripts/argus', f));
+  cpSync(DETTE_LIVREE, join(dir, 'test/argus/known_issues.dart'));
+  return dir;
+};
+const ecrireDettes = (dir) => execFileSync('make', ['argus-debts-write'], {
+  cwd: dir, encoding: 'utf8', env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}` },
+});
+
+test('argus-debts-write écrit dans le SET et laisse le dartdoc intact (526)', () => {
+  const livre = readFileSync(DETTE_LIVREE, 'utf8');
+
+  // ── Non-vacance, et c'est ELLE qui donne son sens au reste : si le fichier
+  // ne portait qu'une occurrence, écrire correctement serait gratuit et ce
+  // garde passerait sur l'implémentation naïve qu'il existe pour rejeter.
+  const occurrences = livre.split(DECL_DETTE).length - 1;
+  assert.equal(occurrences, 2,
+    `le fichier livré porte ${occurrences} occurrence(s) de la déclaration : le piège a changé de `
+    + 'forme, et ce garde ne mesure plus ce qu\'il croit');
+  const naif = livre.indexOf(DECL_DETTE);
+  const juste = livre.lastIndexOf(DECL_DETTE);
+  assert.notEqual(naif, juste, 'les deux occurrences se confondent — la contre-épreuve ne prouve rien');
+  assert.match(livre.slice(livre.lastIndexOf('\n', naif) + 1, naif + 4), /^\s*\/\/\//,
+    'la PREMIÈRE occurrence n\'est plus celle du dartdoc : le naïf ne frappe plus un commentaire, '
+    + 'donc l\'écart que ce garde mesure a disparu');
+
+  const dir = terrainWrite("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  const sortie = ecrireDettes(dir);
+  const apres = readFileSync(join(dir, 'test/argus/known_issues.dart'), 'utf8');
+
+  assert.match(sortie, /2 clé\(s\) inscrite\(s\)/, `la commande n'a pas inscrit les deux clés : ${sortie}`);
+  // Les clés vivent APRÈS la déclaration réelle — donc dans le code.
+  const set = apres.slice(apres.lastIndexOf(DECL_DETTE));
+  assert.match(set, /'home · cibles tactiles ≥ 48 dp \(Android\)',/,
+    'la clé n\'est pas dans le set : elle a été écrite ailleurs');
+  assert.match(set, /'panier · texte ×2\.0',/);
+  // … et le dartdoc, lui, n'a pas bougé d'un caractère.
+  assert.equal(apres.slice(0, apres.lastIndexOf(DECL_DETTE)), livre.slice(0, juste),
+    'tout ce qui PRÉCÈDE la déclaration a changé : c\'est le commentaire qui a été réécrit, '
+    + 'exactement le défaut que cette commande existe pour rendre impossible');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('argus-debts-write AJOUTE à la dette assumée, il ne la remplace pas (526, l\'autre moitié)', () => {
+  // Sans cette moitié, « réécrire le fichier avec le bloc reçu » passerait pour
+  // un correctif — alors qu'une clé déjà inscrite ne fait plus échouer la suite,
+  // donc n'est plus dérivée : le deuxième lancement VIDERAIT la dette.
+  const dir = terrainWrite("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  ecrireDettes(dir);
+
+  // Deuxième passe : une clé neuve, une déjà assumée, et la troisième a disparu
+  // de ce que la suite rend — c'est le cas réel.
+  writeFileSync(join(dir, 'bin/flutter'),
+    "#!/bin/sh\ncat <<'EOF'\n      'reglages · contraste',\n      'panier · texte ×2.0',\nEOF\n");
+  chmodSync(join(dir, 'bin/flutter'), 0o755);
+  const sortie = ecrireDettes(dir);
+  assert.match(sortie, /1 clé\(s\) inscrite\(s\) · 2 déjà assumée\(s\) · 3 au total/,
+    `l'union n'a pas été faite : ${sortie}`);
+
+  const apres = readFileSync(join(dir, 'test/argus/known_issues.dart'), 'utf8');
+  const set = apres.slice(apres.lastIndexOf(DECL_DETTE));
+  for (const clef of ['home · cibles tactiles', 'panier · texte', 'reglages · contraste']) {
+    assert.ok(set.includes(clef), `« ${clef} » a disparu du set : la dette a été remplacée, pas complétée`);
+  }
+
+  // Et relancé à l'identique, il n'ajoute rien : le geste est idempotent.
+  assert.match(ecrireDettes(dir), /0 clé\(s\) inscrite\(s\)/,
+    'une relance ré-inscrit des clés déjà assumées — le set va doubler à chaque passage');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('argus-debts-write REFUSE quand le marqueur ne précède plus la déclaration (526)', () => {
+  // Le marqueur est la seule chose qui distingue le code du commentaire qui le
+  // cite. Sans lui, écrire quand même reviendrait à deviner lequel des deux on
+  // réécrit — et le fichier dit que l'ambiguïté revient dès qu'on cite.
+  const dir = terrainWrite("      'home · cibles tactiles',");
+  const cible = join(dir, 'test/argus/known_issues.dart');
+  const sans = readFileSync(cible, 'utf8').split('\n').filter((l) => !l.includes('ARGUS:DECLARATION')).join('\n');
+  assert.ok(!sans.includes('ARGUS:DECLARATION'), 'le montage n\'a pas retiré le marqueur — il n\'arme rien');
+  writeFileSync(cible, sans);
+
+  const r = spawnSync('make', ['argus-debts-write'], {
+    cwd: dir, encoding: 'utf8', env: { ...process.env, PATH: `${join(dir, 'bin')}:${process.env.PATH}` },
+  });
+  assert.notEqual(r.status, 0, 'il a écrit sans son point d\'ancrage : le refus est une branche morte');
+  assert.match(`${r.stderr}`, /ARGUS:DECLARATION/,
+    'le refus ne nomme pas ce qui manque — il enverrait chercher ailleurs');
+  assert.equal(readFileSync(cible, 'utf8'), sans, 'le fichier a été touché malgré le refus');
+  rmSync(dir, { recursive: true, force: true });
+});
+
 test('la table des cibles d\'ARGUS-MOBILE.md est DÉRIVÉE du Makefile (m4)', () => {
   // Elle en listait onze sur treize, et les deux absentes étaient celles que le
   // SKILL présente comme les plus rentables. Un tableau qui a l'air exhaustif et
@@ -14645,6 +14751,10 @@ const CAMPS_DU_SCAFFOLD = [
   ['scripts/argus/a11y.mjs', 'CADRE'],
   ['scripts/argus/argus-mobile.mjs', 'CADRE'],
   ['scripts/argus/config.mjs', 'CADRE'],
+  // 526 — du CADRE comme tout le moteur : le geste d'écriture doit arriver chez
+  // les hôtes déjà installés, qui sont précisément ceux où le fichier de dette
+  // a été détruit trois fois. `OWNED` le figerait à la version du jour.
+  ['scripts/argus/debts.mjs', 'CADRE'],
   ['scripts/argus/perf.mjs', 'CADRE'],
   ['scripts/argus/report.mjs', 'CADRE'],
   ['scripts/argus/run.mjs', 'CADRE'],
