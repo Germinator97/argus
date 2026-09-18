@@ -5096,12 +5096,22 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS — 518, 519, 520, 521**, tous rendus par le run 87 du
-18/09/2026 et tous en attente d'un **arbitrage**, non d'un correctif : la même
-attente hors du chemin de lancement (518, où un aiguillage nécessaire paie sa
-borne), le CTA que le clavier remonte et qu'aucun des deux étages ne peut voir
-(519), le message qui ne distingue pas une ancre d'un préfixe (520), et le
-workflow GitHub posé sur un projet GitLab (521, **6ᵉ relais**).
+✅ **Aucun point ouvert.** Les **518 à 521**, ouverts le soir du run 87 faute
+d'arbitrage, ont été tranchés dans la nuit — et le résultat le plus instructif
+n'est aucun des correctifs : **deux des quatre étaient déjà décidés dans le
+dépôt**, et je les avais inscrits sans chercher.
+
+🔴 **Le 521 était la SORTIE d'un remède** : sa décision est écrite en toutes
+lettres dans `avertir_ci_etrangere()`, et l'agent en avait relayé le message mot
+pour mot. Le « 6ᵉ relais » disait l'inverse de ce que j'en avais lu — un message
+relayé six fois n'est pas une question sans réponse, c'est la preuve qu'il
+arrive. Le **519** était un doublon du **334** côté diagnostic, dont le remède
+vient précisément d'être exercé une seconde fois. Le **520** n'était pas un
+arbitrage mais un placement : l'information vivait dans le SKILL, à mille lignes
+de l'endroit où l'on lit le verdict.
+
+*Avant de présenter un arbitrage, chercher si le dépôt ne l'a pas déjà rendu* —
+la règle était écrite, et deux `grep` ont suffi à en fermer deux.
 
 🔴 **Le 517 a DÉMENTI le 516**, qu'il était censé confirmer : le remède coûtait
 autant que ce qu'il remplaçait. Fermé le 18/09/2026, mesuré de bout en bout.
@@ -10371,7 +10381,8 @@ dépassement que l'absorption masquait depuis 87 runs.
 
 ### 518. Les autres interrogations de l'arbre, hors du chemin de lancement
 
-**Ouvert le 18/09/2026** — trouvé en écrivant le garde du 517, qui les a nommées
+**Ouvert et fermé le 18/09/2026**, l'arbitrage étant de Germinator — trouvé en
+écrivant le garde du 517, qui les a nommées
 avant qu'on ait décidé quoi en faire. Le garde est donc borné au chemin de
 lancement, et ce point porte le reste.
 
@@ -10394,10 +10405,47 @@ aiguillage dont la condition est vraie dans le cas courant, où l'interrogation 
 coûte ~0 (mesuré). Le coût dépend de la fréquence d'absence, que rien ne dérive
 statiquement.
 
+**Tranché : les deux sites ne se valent pas, donc ils ne reçoivent pas le même
+traitement.**
+
+- `lifecycle.yaml` posait une question **inutile** — la confirmation n'existe pas
+  sur Android, donc la réponse ne peut être que « non ». Bornée par
+  `when: platform:`, forme que `resilience.yaml` emploie **déjà** pour la même
+  raison, et **emboîtée** plutôt que mélangée comme l'en-tête de `goto.yaml` l'a
+  tranché. 📌 Ce qui reste est assumé et écrit : sur iOS la question garde son
+  coût, la confirmation n'apparaissant qu'au **premier** deep link d'un
+  simulateur neuf — on ne peut pas savoir d'avance si c'est le premier, et
+  retirer le pas rouvrirait le flake qu'il ferme.
+- `goto.yaml` **reste**, et son coût est désormais écrit là où quelqu'un voudrait
+  simplifier (~26 s par suite : un appelant, un appel par écran visuel). *Le 517
+  retire une question inutile ; il ne rend pas gratuite une question
+  nécessaire.*
+
+Le garde du 517 s'élargit donc à **tous** les flows livrés, `platform:` accepté
+comme condition gratuite — **mesuré à 0 sur les 14 flows AVANT d'élargir**, avec
+la contre-épreuve qui prouve qu'il sait encore dire non.
+
+🔴 **Et il a fallu un SECOND garde, parce que le premier ne pouvait pas voir le
+défaut.** La mutation qui retire le correctif est revenue **VACANT** : le pas
+vivait déjà sous un `when: true:` (le deep link déclaré), donc le critère du
+voisin — « avoir un ancêtre qui n'interroge pas l'arbre » — était **déjà
+satisfait** par une enveloppe qui ne borne pas la plateforme. *Un garde satisfait
+par une enveloppe préexistante ne garde pas ce qu'on vient d'ajouter*, et sans
+cette mutation le correctif repartait sans garde.
+
+⚠️ **La même erreur de structure, deux fois dans la même passe** : `platform:`
+est le **FRÈRE** de `commands:`, pas un ancêtre, donc une remontée par
+indentation décroissante ne le voit jamais — exactement le piège de la portée
+ouverte sur le `when:`. Le second garde **RÉUTILISE** donc la mécanique du
+premier avec `platform:` pour seule condition gratuite, au lieu de la réécrire :
+écrite deux fois, elle se serait trompée deux fois. Sa contre-épreuve asserte les
+**deux** sens sur la même entrée — le critère de plateforme refuse ce que le
+voisin accepte —, sans quoi les deux gardes mesureraient la même chose.
+
 ### 519. Le CTA flottant remonté par le clavier : un défaut que les DEUX étages sont aveugles à voir
 
-**Ouvert le 18/09/2026** — signalé par l'agent lui-même, qui l'a rencontré sans
-pouvoir le garder, et l'a dit plutôt que de le taire.
+**Ouvert et TRANCHÉ le 18/09/2026** — signalé par l'agent lui-même, qui l'a
+rencontré sans pouvoir le garder, et l'a dit plutôt que de le taire.
 
 Sur un formulaire, le clavier remonte le bouton d'action flottant, qui recouvre
 alors le libellé et le sélecteur du champ situé juste au-dessus. Qui saisit puis
@@ -10413,14 +10461,27 @@ Le flow ne casse que si l'on attendait autre chose.
 désignait l'ancre introuvable avec aplomb : *un message nomme le symptôme,
 la capture montre la cause.*
 
-**À trancher** : le skill peut-il garder cette classe ? Une piste — asserter,
-après une saisie, que le sélecteur visé est encore **actionnable** (et pas
-seulement visible), ce qui demande de savoir ce que Maestro sait dire d'un nœud
-recouvert.
+**Tranché : le phénomène est DÉJÀ fermé, et son remède vient d'être exercé une
+seconde fois.** Le **334** — *« le clavier qui DÉPLACE, là où on lit celui qui
+CACHE »* — l'a fermé côté diagnostic : *« quand un `tapOn` réussit mais que
+l'étape suivante trouve un écran inattendu, regarde la capture avant de
+soupçonner l'ancre »*. Or c'est **mot pour mot** ce que l'agent du run 87 a fait,
+sans savoir que la phrase existait : il a lu la capture, écarté l'ancre, et nommé
+la cause. *Le remède arrive.*
+
+Ce qui reste — écrire un garde qui détecte une cible recouverte — n'est pas
+ouvert mais **écarté**, et pour une raison mesurée ailleurs : l'étage 1 ne monte
+aucun clavier système, et à l'étage 2 le tap **réussit**, donc il n'y a rien à
+faire échouer. Prescrire l'assertion sans avoir mesuré que Maestro sait dire d'un
+nœud qu'il est recouvert reproduirait le **502** — un `suggestedFix` que l'outil
+refuse, de la prose dans un objet que rien n'exécute.
+
+📌 Le défaut d'expérience, lui, appartient au projet et lui est rendu dans sa
+dette. Il n'y a pas de correctif de skill à écrire ici.
 
 ### 520. Le garde des ancres ne distingue pas un paramètre d'ANCRE d'un paramètre de PRÉFIXE
 
-**Ouvert le 18/09/2026.** L'agent a déclaré dans `anchors.paramNames` un
+**Ouvert et fermé le 18/09/2026.** L'agent a déclaré dans `anchors.paramNames` un
 paramètre qui porte un **préfixe** et non une ancre. Le contrôle a aussitôt
 réclamé cinq ancres inexistantes — il a donc bien réagi, mais son message ne dit
 pas que les deux natures existent, ni laquelle il attend.
@@ -10429,15 +10490,41 @@ L'agent a corrigé seul, en mesurant, et a écrit la raison à côté. Le consta
 donc sur le **message**, pas sur le contrôle : il coûte un aller-retour à chaque
 projet qui emploie les deux mécanismes.
 
+🔴 **Et le message n'offrait que des issues FAUSSES sur ce cas** — « déclare-la
+sur son `ArgusScreen` » ou « inscris-la hors périmètre » : suivre l'une ou
+l'autre revenait à déclarer des ancres imaginaires. *Un message qui n'offre que
+des issues fausses coûte plus qu'un message absent : on en suit une.* La
+troisième est désormais là — « ou ce nom n'est pas une ancre mais un PRÉFIXE de
+famille : retire-le de `anchors.paramNames` ».
+
+📌 **L'information existait**, dans le SKILL, à mille lignes de l'endroit où l'on
+lit le verdict (`semanticIdentifier` porte une ancre, `anchorPrefix` préfixe une
+famille). C'est la classe la plus fréquente de ce chantier : *juste, mais mal
+placé.* Le garde qui **appelle** déjà cette fonction a été étendu plutôt que
+dupliqué, et il asserte la troisième issue dans les **deux** branches du message.
+
 ### 521. Le workflow GitHub posé sur un projet GitLab — 6ᵉ relais consécutif
 
-**Ouvert le 18/09/2026**, et c'est la sixième fois qu'un agent le remonte sans
-que la question soit tranchée. L'installeur pose `.github/workflows/` sur un
+**Inscrit puis DÉMENTI le 18/09/2026** — et c'est le démenti qui compte, pas le
+point. L'installeur pose `.github/workflows/` sur un
 projet qui porte un `.gitlab-ci.yml` ; il le DIT (« ce projet n'avait aucun
 workflow GitHub, et il porte `.gitlab-ci.yml` »), et l'agent a eu raison de ne
 pas toucher à la CI du projet.
 
-Reste que le fichier livré ne s'exécutera nulle part. Trois issues, et c'est une
-décision de produit : porter les étapes vers le format de l'hôte, ne rien poser
-et laisser la séquence documentée, ou poser le fichier en l'annonçant comme une
-référence — ce que le skill fait aujourd'hui sans l'avoir choisi.
+🔴 **La décision existe, et elle est écrite dans le code** — `avertir_ci_etrangere()`
+la porte en toutes lettres : *« On ne décide pas à la place du projet — on refuse
+seulement de laisser croire que la garde est en place. »* Et le message livré
+énumère exactement les issues que je croyais devoir faire trancher : *« Porte ses
+étapes dans ta CI, ou retire le fichier — il reste la référence de ce qu'il faut
+lancer, et dans quel ordre. »*
+
+⚠️ **Donc ce n'était pas un point : c'était la SORTIE d'un remède**, celui des
+**475** et **478**, relayée par un agent qui ne savait pas la phrase neuve. Le
+piège est répertorié — *le tell est que la phrase de l'agent ressemble trait pour
+trait à celle du correctif* — et j'ai inscrit le point **sans chercher le texte
+dans le dépôt**, ce que la règle demande AVANT d'ouvrir quoi que ce soit.
+
+📌 **Le « 6ᵉ relais » aurait dû m'alerter, et il disait l'inverse de ce que j'en
+ai lu** : un message relayé six fois n'est pas une question sans réponse, c'est
+la preuve qu'il **arrive**. Un relevé de fréquence ne se lit pas comme un
+symptôme sans savoir ce que l'outil fabrique.
