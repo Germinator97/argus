@@ -23,7 +23,7 @@ import { extname, join, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, loadConfig, log, err, partageParAcquittement, warn, writeJson } from './config.mjs';
+import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, exitCodeFor, loadConfig, log, err, partageParAcquittement, warn, writeJson } from './config.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -1171,6 +1171,29 @@ function main() {
   for (const part of notRun) log(`  ○ ${part.label} : ${part.reason}`);
   log(`rapport : ${htmlPath}`);
   log(`ouvrir : open ${htmlPath}   (ou : xdg-open / start)`);
+
+  // 🔴 512 — ET LE VERDICT SE PORTE ICI, il ne fait plus que s'écrire. `gate`
+  // était calculé, affiché, posé dans `summary.json` — puis personne ne le
+  // lisait. Chaque dimension le portait par son propre code de sortie, or la CI
+  // invoque `perf` et `a11y` en `|| true` pour ne pas perdre le rapport quand une
+  // mesure plante sur un device instable : le seul mécanisme par lequel ces deux
+  // dimensions font rougir était donc avalé, et aucune étape du workflow ne relit
+  // `summary.json`. Mesuré sur les artefacts du run 84 : 6 des 7 findings majors
+  // venaient de `perf` (1) et `a11y` (5) — la CI aurait été VERTE sur un run dont
+  // le rapport publié affiche `gate: fail`. Après le 367 et le 391.
+  // ⚠️ LA DÉCISION EXISTAIT DÉJÀ, écrite dans le Makefile : « le code de sortie
+  // reste celui du gate : produire le rapport ne doit pas verdir un run rouge ».
+  // Elle n'avait jamais traversé jusqu'au workflow — deux chemins vers le même
+  // verdict, la règle écrite à un seul.
+  // ⚠️ `|| 1` POUR NE PAS CRÉER UNE TROISIÈME TABLE : le gate décide SI on
+  // échoue — une seule décision, celle d'au-dessus —, `exitCodeFor` décide avec
+  // quelle gravité. Une dimension INTERROMPUE, ou un `failOn` qui ne porte que
+  // des sévérités basses, rend `fail` sans qu'`exitCodeFor` n'y voie rien : sans
+  // ce repli le verdict serait `fail` et le code 0, c'est-à-dire le défaut même
+  // qu'on ferme.
+  // 📌 `make argus` ne change pas : la cible ignore déjà le code de
+  // `argus-report` et rend le pire de ses dimensions.
+  process.exit(gate === 'fail' ? (exitCodeFor(findings, config.gate) || 1) : 0);
 }
 
 // Comme pour run.mjs : ne lancer que si CE fichier est le point d'entrée. Sans

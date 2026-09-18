@@ -9978,8 +9978,16 @@ test("un run INTERROMPU ne peut pas se rendre en vert (367)", () => {
       mkdirSync(join(dir, 'argus-mobile-report'), { recursive: true });
       writeFileSync(join(dir, 'argus-mobile-report/report.json'),
         JSON.stringify(rapport), 'utf8');
-      execFileSync(process.execPath, [script], { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
-      return readFileSync(join(dir, 'argus-mobile-report/report.html'), 'utf8');
+      // ⚠️ PAS `execFileSync` : depuis le 512, `report.mjs` PORTE le verdict, donc
+      // il sort en 1 sur un gate `fail` — c'est-à-dire sur le cas même que ce
+      // garde monte. `execFileSync` lèverait, et l'échec accuserait le rendu au
+      // lieu de le mesurer. Ce qui sépare « a rendu, et le gate est rouge » de
+      // « a planté » n'est pas le code de sortie, c'est la PRÉSENCE de la page.
+      const r = spawnSync(process.execPath, [script], { cwd: dir, encoding: 'utf8' });
+      assert.equal(r.signal, null, `report.mjs tué par ${r.signal}`);
+      const page = join(dir, 'argus-mobile-report/report.html');
+      assert.ok(existsSync(page), `report.mjs n'a rien rendu (code ${r.status}) :\n${r.stderr}`);
+      return readFileSync(page, 'utf8');
     } finally { rmSync(dir, { recursive: true, force: true }); }
   };
 
