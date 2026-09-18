@@ -5096,9 +5096,19 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Aucun point ouvert.** Les **514** et **515**, ouverts le matin même faute
-d'arbitrage, ont été tranchés et fermés dans la journée ; le **516** est né du
-run 86 et fermé avec eux.
+🔴 **4 POINTS OUVERTS — 518, 519, 520, 521**, tous rendus par le run 87 du
+18/09/2026 et tous en attente d'un **arbitrage**, non d'un correctif : la même
+attente hors du chemin de lancement (518, où un aiguillage nécessaire paie sa
+borne), le CTA que le clavier remonte et qu'aucun des deux étages ne peut voir
+(519), le message qui ne distingue pas une ancre d'un préfixe (520), et le
+workflow GitHub posé sur un projet GitLab (521, **6ᵉ relais**).
+
+🔴 **Le 517 a DÉMENTI le 516**, qu'il était censé confirmer : le remède coûtait
+autant que ce qu'il remplaçait. Fermé le 18/09/2026, mesuré de bout en bout.
+
+Les **514** et **515**, ouverts le matin même faute d'arbitrage, ont été tranchés
+et fermés dans la journée ; le **516** est né du run 86 et fermé avec eux — puis
+rouvert et remplacé par le 517.
 
 Les **511 à 513** sont fermés — le 511 par le run 84, le **512** par une passe de
 vérification Codex reproduite par exécution, le **513** en cherchant sa classe.
@@ -10279,3 +10289,155 @@ sait voir avant de dire qu'il n'a rien vu.
 ⚠️ **Et la mutation du 388 est devenue inerte en fermant ce point** — son motif
 visait la forme d'hier. Ré-ancrée **dans le commit du correctif**, sur le fait et
 non sur la forme ; la mutation neuve qui faisait doublon a été retirée.
+
+## Rendu par le run 87 — passe de confirmation du 516 — 18/09/2026
+
+Le run avait été demandé pour **confirmer le 516**. Il l'a **démenti**, et c'est
+la valeur de la passe : un correctif gardé, muté et mesuré sur un terrain ne
+prouve pas qu'il ferme le mécanisme qu'il visait.
+
+### 517. Un `when:` n'est pas gratuit — une EXPRESSION l'est
+
+**Né du run 87 et fermé le 18/09/2026.** Il dément le **516**, qui avait remplacé
+`tapOn … optional: true` par `runFlow … when: visible:` en écrivant qu'« un
+`when:` s'ÉVALUE ; une assertion optionnelle ATTEND ».
+
+Sur les artefacts du run, le coût n'avait pas bougé :
+
+    run 86    7 absorbés / 8   ·  precedeMs ~7 063 à 7 115
+    run 87   10 absorbés /10   ·  precedeMs  7 066 à 7 121
+
+Le remède était en place et ATTEINT — le flow du terrain était identique au
+fichier livré, commentaires exclus. Chronométré ensuite forme par forme, trois
+répétitions, témoin à 8,5 s :
+
+    when: visible: sur élément ABSENT   14,87 / 14,93 / 14,80  → ~6,4 s
+    tapOn … optional: true              15,06 / 14,79 / 15,03  → ~6,4 s
+    when: visible: sur élément PRÉSENT    8,27 /  8,14 /  8,16  → ~0
+    when: true: (expression JS) fausse    8,24 /  8,21 /  8,18  → ~0
+
+🔴 **La distinction qui compte n'est pas `when` contre `optional` : c'est
+INTERROGER L'ARBRE contre ÉVALUER UNE EXPRESSION.** Et `timeout:` est refusé
+dans un `when:` (`Unknown Property: timeout`), donc la borne n'est pas réglable —
+il faut ne pas poser la question quand aucune invite ne peut naître.
+
+📌 **Le 486, lui, tient** : il conditionne sur une expression. Le 516 a recopié
+le MOT `when` sans ce qui le rendait gratuit — le motif du 488 au deuxième degré,
+puisque le remède du voisin n'avait traversé qu'en apparence.
+
+⚠️ **Pourquoi la passe précédente a conclu trop vite** : l'agent du run 86 avait
+mesuré une amélioration RÉELLE sur son terrain (absorption 5/6 → 3/6). Le chiffre
+était juste, la conclusion fausse. C'est l'anti-pattern « isoler une variable et
+conclure qu'il n'y en a pas d'autre », appliqué à un correctif.
+
+**Le remède** dérive de `security.expectedPermissions`, que le projet remplit déjà
+depuis le manifeste fusionné de sa release : aucune clé de plus à faire écrire. Il
+est dérivé dans `buildEnv`, qui reçoit déjà la config — contrairement au 486, qui
+dépend de `platform` et doit être passé à trois sites.
+
+⚠️ **La direction de l'énumération est LARGE MOINS LES EXCEPTIONS.** Lister les
+permissions « dangereuses » ferait rater l'invite de celle qu'on aurait oubliée,
+et ce symptôme-là est un flow ROUGE. On liste les permissions inertes : une
+permission inconnue fait jouer un geste inutile, ça coûte 6,4 s et ça ne casse
+rien.
+
+🔴 **La première version du correctif a raté son propre terrain**, et seule une
+mesure l'a dit. J'avais écrit `android.permission.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`
+de mémoire ; AndroidX la déclare sous `${applicationId}.DYNAMIC_…`, donc son nom
+porte le paquet et ne peut pas figurer dans une liste de littéraux. La dérivation
+rendait JOUE sur l'application sans aucune permission runtime — *le correctif
+n'aurait rien soulagé là où le défaut avait été relevé.* Reconnaissance par
+SUFFIXE ajoutée.
+
+⚠️ **Le garde du 516 mesurait la FORME** : il tolérait un pas dès qu'un `when:`
+apparaissait n'importe où dans le fichier, donc il était vert pendant que le
+fichier attendait 6,4 s. Le nouveau garde porte sur l'ATTEINTE — toute
+interrogation de l'arbre doit avoir un ancêtre `when: true:` — avec ses quatre
+contre-épreuves dans le même fichier.
+
+📌 **Le garde neuf a refusé mon propre correctif à sa première exécution** : une
+portée ouverte sur l'indentation du `when:` se referme juste avant `commands:`,
+qui en est le FRÈRE. *Un garde qui rejette le remède qu'il existe pour imposer
+coûte plus cher qu'un garde absent : on croit le correctif faux.*
+
+📌 **Et la mutation 388, ré-ancrée une seconde fois, tombait d'abord sur le garde
+du VOISIN** (« toute variable produite par le run est lue quelque part »), que le
+harnais crédite parce qu'il retient le premier test rouge. Verdict juste,
+appariement faux. Déplacée sur le site que seul le garde de l'atteinte lit.
+
+**Bout en bout sur le terrain** : `precedeMs` 7108 → **36 ms**, `absorbed` true →
+**false**, et la mesure de démarrage devient enfin une mesure — révélant un
+dépassement que l'absorption masquait depuis 87 runs.
+
+### 518. Les autres interrogations de l'arbre, hors du chemin de lancement
+
+**Ouvert le 18/09/2026** — trouvé en écrivant le garde du 517, qui les a nommées
+avant qu'on ait décidé quoi en faire. Le garde est donc borné au chemin de
+lancement, et ce point porte le reste.
+
+Trois sites paient la même borne (~6,4 s), et ils ne se valent pas :
+
+    lifecycle.yaml      `when: visible: 'Open in'`   confirmation iOS,
+                                                     normalement ABSENTE
+    _subflows/goto.yaml `when: visible:` + `notVisible:` sur la même ancre —
+                                                     les branches sont
+                                                     EXCLUSIVES, donc l'une
+                                                     paie toujours sa borne
+
+Le premier est de la même classe que le 517 : une invite système normalement
+absente, donc un coût systématique. Le second est un **aiguillage nécessaire** —
+il faut bien savoir où l'on est —, et Maestro n'a pas de `else` : la deuxième
+branche ne peut pas hériter du verdict de la première.
+
+⚠️ **Ne pas élargir le garde du 517 sans trancher ceci** : il ferait rougir un
+aiguillage dont la condition est vraie dans le cas courant, où l'interrogation ne
+coûte ~0 (mesuré). Le coût dépend de la fréquence d'absence, que rien ne dérive
+statiquement.
+
+### 519. Le CTA flottant remonté par le clavier : un défaut que les DEUX étages sont aveugles à voir
+
+**Ouvert le 18/09/2026** — signalé par l'agent lui-même, qui l'a rencontré sans
+pouvoir le garder, et l'a dit plutôt que de le taire.
+
+Sur un formulaire, le clavier remonte le bouton d'action flottant, qui recouvre
+alors le libellé et le sélecteur du champ situé juste au-dessus. Qui saisit puis
+tend le doigt vers ce sélecteur touche le CTA et **part avec les valeurs par
+défaut**.
+
+🔴 **Ce n'est mesurable par aucun des deux étages, et c'est ça le constat** :
+l'étage 1 ne monte pas de clavier système, et à l'étage 2 le tap **RÉUSSIT** —
+l'assertion qui suit reste verte, elle mesure l'écran où l'on vient d'arriver.
+Le flow ne casse que si l'on attendait autre chose.
+
+📌 C'est la capture du pas qui l'a tranché, pas le message d'erreur, lequel
+désignait l'ancre introuvable avec aplomb : *un message nomme le symptôme,
+la capture montre la cause.*
+
+**À trancher** : le skill peut-il garder cette classe ? Une piste — asserter,
+après une saisie, que le sélecteur visé est encore **actionnable** (et pas
+seulement visible), ce qui demande de savoir ce que Maestro sait dire d'un nœud
+recouvert.
+
+### 520. Le garde des ancres ne distingue pas un paramètre d'ANCRE d'un paramètre de PRÉFIXE
+
+**Ouvert le 18/09/2026.** L'agent a déclaré dans `anchors.paramNames` un
+paramètre qui porte un **préfixe** et non une ancre. Le contrôle a aussitôt
+réclamé cinq ancres inexistantes — il a donc bien réagi, mais son message ne dit
+pas que les deux natures existent, ni laquelle il attend.
+
+L'agent a corrigé seul, en mesurant, et a écrit la raison à côté. Le constat est
+donc sur le **message**, pas sur le contrôle : il coûte un aller-retour à chaque
+projet qui emploie les deux mécanismes.
+
+### 521. Le workflow GitHub posé sur un projet GitLab — 6ᵉ relais consécutif
+
+**Ouvert le 18/09/2026**, et c'est la sixième fois qu'un agent le remonte sans
+que la question soit tranchée. L'installeur pose `.github/workflows/` sur un
+projet qui porte un `.gitlab-ci.yml` ; il le DIT (« ce projet n'avait aucun
+workflow GitHub, et il porte `.gitlab-ci.yml` »), et l'agent a eu raison de ne
+pas toucher à la CI du projet.
+
+Reste que le fichier livré ne s'exécutera nulle part. Trois issues, et c'est une
+décision de produit : porter les étapes vers le format de l'hôte, ne rien poser
+et laisser la séquence documentée, ou poser le fichier en l'annonçant comme une
+référence — ce que le skill fait aujourd'hui sans l'avoir choisi.
