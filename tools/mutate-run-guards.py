@@ -2537,6 +2537,15 @@ MUTATIONS = [
     ("resilience", "523 · la stabilisation se remet devant le chronometre",
      "\n- runFlow: _subflows/disable-animations.yaml\n",
      "\n- runFlow: _subflows/disable-animations.yaml\n- waitForAnimationToEnd:\n    timeout: 5000\n"),
+    # ── 524 — la derivation est debranchee, le remede redevient fige ──────
+    # On vise le CÂBLAGE, pas la fonction : extraire une construction la rend
+    # exerçable, elle ne garantit pas que le site d'appel s'en serve encore.
+    # Le garde qui APPELLE `remedeAbsorption` reste vert sous cette mutation —
+    # c'est voulu : seul celui qui exerce `startupFindings` de bout en bout la
+    # voit, et c'est lui qu'on prouve ici.
+    ("run", "524 · le remede d'absorption cesse de suivre la config",
+     "remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
+     "remedeAbsorption(true, pire.flow)"),
     ("config", "520 · le verdict n'envisage plus la cle a corriger",
      "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
      "\n  lignes.push('      (sans objet)');"),
