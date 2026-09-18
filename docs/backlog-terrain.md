@@ -5096,6 +5096,22 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
+🔴 **2 POINTS OUVERTS**, tous deux ouverts le 18/09/2026 en cherchant la classe
+du 512 — *un contrôle livré que la CI ne joue pas*. Les deux sont **mesurés** et
+laissés ouverts parce qu'ils demandent un arbitrage, pas un correctif :
+
+- **514** — l'étage 1 n'entre dans aucun rapport de CI (`--file-reporter` :
+  Makefile 2, workflow 0). Ce n'est pas un faux vert — le job `guards` rougit
+  quand même —, mais le remède engage la structure des jobs, et mal fait il
+  fabrique un gate rouge permanent.
+- **515** — `--check-anchors` est un vrai gate (exit 1 mesuré sur une ancre
+  orpheline) qu'aucun job ne joue. Le câbler ferait rougir tout projet en cours
+  d'instrumentation : la question est *à partir de quand le projet hôte doit être
+  tenu à ses ancres*.
+
+Les **511 à 513** sont fermés — le 511 par le run 84, le **512** par une passe de
+vérification Codex reproduite par exécution, le **513** en cherchant sa classe.
+
 Les **505 à 510** sont fermés — les cinq premiers rendus par la paire de
 confirmation 82-83 du 16/09/2026, le dernier rencontré en les fermant. Chacun
 porte son garde ; tous sauf le 510 portent aussi leur mutation, et celui-là dit
@@ -10128,3 +10144,85 @@ findings lui arrivent déjà acquittés par leur dimension. *Suspecter le montag
 avant le code.*
 
 **2 gardes, 4 mutations, 4/4 tombent sur le garde visé.**
+
+### 513. Le graphe des flows : un contrôle qui existait, câblé d'un seul côté
+
+**Fermé le 18/09/2026**, trouvé en cherchant la CLASSE du 512 — *un contrôle
+livré que la CI ne joue pas* — et prouvé par exécution des deux côtés.
+
+Maestro rejette le **workspace entier** au démarrage quand des sous-flows
+s'appellent en boucle : le refus ne nomme aucun fichier, et l'échec accuse le
+dernier flow lancé, qui n'y est pour rien. Le moteur a le contrôle qui résout le
+graphe et nomme le cycle ; `argus-lint` l'appelle. La CI, elle, ne jouait que
+`maestro check-syntax`, fichier par fichier :
+
+    sous-flow qui s'appelle lui-même
+      config --check-flows    → exit 1, le cycle est nommé
+      maestro check-syntax    → « OK », exit 0          ← tout ce que la CI jouait
+
+La PR passait donc au vert sur « Syntaxe des flows », puis le job **émulateur** —
+le plus cher — mourait au démarrage. Le commentaire du Makefile décrivait ce trou
+mot pour mot : *« un sous-flow qui s'appelle lui-même passe fichier par fichier,
+puis Maestro rejette le workspace entier »*. La décision était prise, pas son
+câblage. Posé dans le job `cadre`, qui lit déjà la config et ne demande ni Flutter
+ni device.
+
+⚠️ **Le garde est DÉRIVÉ, pas cité** : il lit les `--check-*` qu'expose
+`config.mjs` et fige par égalité ceux que la CI joue. Une liste écrite à la main
+n'aurait couvert que ce dont on s'est souvenu ; celle-ci fait rougir au prochain
+contrôle ajouté, tant que personne n'a répondu **« qui le joue ? »**. C'est cette
+question-là qui manquait, pas une ligne de YAML.
+
+⚠️ **Et le garde exige que le contrôle SACHE DIRE NON** — il monte un cycle et
+vérifie l'exit 1. Sans quoi le câbler ne garderait rien : c'est exactement ce qui
+a fait écarter `--check-reachability` (voir 515).
+
+**2 gardes, 3 mutations, 3/3 tombent sur le garde visé.**
+
+### 514. L'étage 1 n'entre dans aucun rapport de CI
+
+**Ouvert le 18/09/2026** — mesuré, non corrigé : le remède engage la structure
+des jobs.
+
+`--file-reporter` : Makefile **2**, workflow **0**. En local, `argus-guards`
+écrit `stage1.jsonl`, que le rapport agrège — c'est le correctif du 391, sans
+lequel un projet à 117 gardes rouges publiait `gate: pass`. En CI, l'étape est
+`flutter test test/argus` tout court : le fichier n'existe pas, et la page dira
+« Gardes d'étage 1 : jamais lancé ». **Le correctif du 391 n'a pas traversé.**
+
+⚠️ **Ce n'est PAS un faux vert** — et c'est ce qui le distingue du 512 : le job
+`guards` n'a pas de `|| true`, il rougit bel et bien sur un test rouge. Ce qui se
+perd est l'information dans le rapport, pas le verdict.
+
+🔴 **Pourquoi il n'est pas fermé dans la foulée.** Les jobs GitHub sont isolés :
+ajouter `--file-reporter` dans `guards` produit le fichier **dans ce job**, et les
+trois jobs qui rendent le rapport ne le verront jamais. Il faut l'uploader, le
+télécharger dans les trois, et surtout **décider ce qui se passe quand `guards`
+n'a pas tourné** — traité en « dimension interrompue », cela fabrique un gate
+rouge permanent, c'est-à-dire le défaut symétrique de celui que le 512 vient de
+fermer. Choix de conception du workflow livré, à prendre à froid.
+
+### 515. `--check-anchors` est un gate que la CI ne joue pas
+
+**Ouvert le 18/09/2026** — mesuré, non corrigé : l'ajouter est un arbitrage
+produit, pas un correctif.
+
+Mesuré : une ancre posée dans `lib/` que rien ne déclare → **exit 1** ; aucune
+ancre orpheline → exit 0 ; `lib/` absent → exit 2, il refuse de conclure. C'est
+donc un vrai gate, et il n'est joué par aucun job.
+
+🔴 **Mais le câbler ferait rougir tout projet en cours d'instrumentation**, tant
+qu'`allowUndeclared` n'est pas rempli — ce que le Makefile dit déjà de son
+voisin : *« sur un projet fraîchement instrumenté c'est justement lui qui échoue
+le plus »*. Un gate qui rougit toujours s'ignore aussi vite qu'un gate qui ne
+rougit jamais. La question n'est pas technique : **à partir de quand le projet
+hôte doit-il être tenu à ses ancres ?**
+
+📌 **À distinguer de `--check-reachability`, écarté pour une raison OPPOSÉE** :
+celui-là ne sait pas dire non. Sur un écran ancré qu'aucune branche ne dessert il
+rend **0**, et son propre code écrit pourquoi — *« ce n'est PAS un défaut en soi,
+c'est une absence de chemin »*. Il ne sort en 2 que s'il n'a rien pu mesurer. Le
+câbler serait donc inerte sur le cas utile **et** bloquant sur un cas qui n'est
+pas un défaut. J'avais d'abord recommandé de l'ajouter, sur une réserve tirée
+d'un commentaire qui parle des **ancres** et non de l'atteignabilité : c'est la
+contre-épreuve qui l'a démenti, pas la relecture.
