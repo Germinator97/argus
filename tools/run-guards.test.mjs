@@ -16291,3 +16291,60 @@ test('517 — le runner DIT quand le flow local a manqué le correctif', () => {
   assert.ok(source.includes('if (alerteInvite) warn(alerteInvite);'),
     'le résultat de la détection n\'est plus ÉMIS : la calculer sans la dire ne garde rien');
 });
+
+// ── 523 ────────────────────────────────────────────────────────────────────
+// Le 460 a corrigé l'ordre de ces deux attentes dans `launch-clean.yaml`, et son
+// garde lit CE fichier par un chemin en dur. Il est juste, il tombe si on inverse
+// l'ordre là-bas — et il est structurellement aveugle au flow d'à côté.
+// `resilience.yaml`, livré par le même scaffold, portait le même
+// `waitForAnimationToEnd` au même endroit fautif : relevé par le run 89 à 121 ms
+// derrière 5334 ms d'attente, sur une app à splash de 2 s. Huit jours entre le
+// correctif et sa rencontre, parce que le garde portait sur le SITE.
+// Celui-ci porte sur le PHÉNOMÈNE : zéro stabilisation entre un lancement et la
+// première attente d'ancre qui le suit, dans TOUS les flows livrés.
+// ⚠️ Les commentaires sont dépouillés — `resilience.yaml` explique désormais le
+// piège juste au-dessus des commandes, et un garde qui lirait le texte brut
+// rougirait sur sa propre explication.
+// ⚠️ Et le critère est l'INTERVALLE, pas la présence : un `waitForAnimationToEnd`
+// qui suit une rotation ne s'interpose dans aucune mesure de démarrage. Sur les
+// trois de `resilience.yaml`, un seul était fautif — mesurer large et retrancher
+// les exceptions, jamais l'inverse.
+test('aucune stabilisation ne s\'interpose entre le lancement et le chronomètre (523)', () => {
+  const dossier = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+  const fichiers = [
+    ...readdirSync(dossier).filter((f) => f.endsWith('.yaml')).map((f) => join(dossier, f)),
+    ...readdirSync(join(dossier, '_subflows')).filter((f) => f.endsWith('.yaml'))
+      .map((f) => join(dossier, '_subflows', f)),
+  ];
+  assert.ok(fichiers.length >= 10,
+    `seulement ${fichiers.length} flow(s) livré(s) trouvé(s) : le balayage ne mesure plus rien (523)`);
+
+  const fautifs = [];
+  let avecLancement = 0;
+  for (const p of fichiers) {
+    const lignes = readFileSync(p, 'utf8').split('\n')
+      .map((l) => (/^\s*#/.test(l) ? '' : l));
+    const iLancement = lignes.findIndex((l) => l.includes('launchApp'));
+    if (iLancement < 0) continue;
+    const iAncre = lignes.findIndex((l, i) => i > iLancement
+      && (l.includes('extendedWaitUntil') || l.includes('assertVisible')));
+    if (iAncre < 0) continue;
+    avecLancement += 1;
+    lignes.forEach((l, i) => {
+      if (i > iLancement && i < iAncre && l.includes('waitForAnimationToEnd')) {
+        fautifs.push(`${p.slice(dossier.length + 1)}:${i + 1}`);
+      }
+    });
+  }
+  assert.ok(avecLancement >= 3,
+    `seulement ${avecLancement} flow(s) portent un lancement suivi d'une attente d'ancre : le garde `
+    + 'ne rencontre plus le phénomène qu\'il surveille (523)');
+
+  assert.deepEqual(fautifs, [],
+    `une stabilisation s'interpose entre le lancement et la première attente d'ancre, ici : `
+    + `${fautifs.join(', ')}. \`startup.samples\` chronomètre cette attente-là : tout ce qui `
+    + 'patiente avant lui est soustrait en silence, et le relevé ne garde que le résidu — 121 ms '
+    + "derrière 5334 ms au run 89, impossible pour un splash de 2 s. Déplacer l'attente "
+    + "d'animation APRÈS l'attente d'ancre, comme `launch-clean.yaml` le fait depuis le 460 (523)");
+});

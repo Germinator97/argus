@@ -26,9 +26,17 @@ tags:
     label: Lancement toutes permissions refusées
 
 - runFlow: _subflows/disable-animations.yaml
-- waitForAnimationToEnd:
-    timeout: 5000
 
+# 🔴 L'ORDRE DE CES DEUX ATTENTES EST UNE MESURE, PAS UN STYLE (460, puis 523).
+# `startup.samples` chronomètre la PREMIÈRE attente sur l'ancre qui suit le
+# lancement : tout ce qui attend avant elle lui est soustrait, en silence.
+# `waitForAnimationToEnd` était ici AVANT, et il absorbait le sas de démarrage —
+# relevé 121 ms derrière 5334 ms d'attente sur une app dont le splash tient 2 s,
+# ce qui est physiquement impossible. Le 460 avait corrigé cet ordre dans
+# `launch-clean.yaml` ; il n'avait pas traversé jusqu'ici, et huit jours ont
+# passé avant qu'un run ne le rencontre.
+# ⚠️ Les `waitForAnimationToEnd` qui suivent une ROTATION, plus bas, sont à leur
+# place : ils ne s'interposent dans aucune mesure de démarrage.
 - runFlow:
     when:
       true: "${typeof ARGUS_ANCHOR_HOME !== 'undefined' && ARGUS_ANCHOR_HOME !== ''}"
@@ -38,6 +46,9 @@ tags:
             id: ${ARGUS_ANCHOR_HOME}
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: L'app reste utilisable sans aucune permission (pas d'écran blanc, pas de crash)
+
+- waitForAnimationToEnd:
+    timeout: 5000
 
 # Puis on accorde, et l'app doit se rattraper sans redémarrage.
 - setPermissions:
