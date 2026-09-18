@@ -2499,6 +2499,27 @@ MUTATIONS = [
     ("run", "517 · l'ecart chez l'hote est calcule mais plus emis",
      "\n  if (alerteInvite) warn(alerteInvite);",
      "\n  if (false && alerteInvite) warn(alerteInvite);"),
+    # ── 518 · 520 — l'arbitrage des points ouverts du run 87 ──────────────
+    # L'interrogation de l'arbre reperd l'enveloppe qui la borne a la
+    # plateforme capable d'y repondre : elle redevient nue, donc elle paie sa
+    # borne sur celle qui ne peut que dire non. Le YAML reste valide.
+    # Ancree sur le saut de ligne : a six espaces, le motif serait une
+    # sous-chaine de n'importe quelle ligne plus indentee.
+    ("lifecycle", "518 · l'invite de deep link redevient une attente sur toute plateforme",
+     "\n      - runFlow:\n          when:\n            platform: iOS\n          commands:\n            - runFlow:\n                when:\n                  visible: 'Open in'\n                commands:\n                  - tapOn: Open",
+     "\n      - runFlow:\n          when:\n            visible: 'Open in'\n          commands:\n            - tapOn: Open"),
+    # Le message reperd la seule issue qui s'applique au cas vecu, et retombe
+    # sur deux issues fausses : declarer des ancres imaginaires, ou les
+    # inscrire hors perimetre.
+    # ⚠️ ANCREE SUR UNE LIGNE SANS APOSTROPHE, et ce n'est pas un detail : le
+    # premier motif visait `n\'est`, et Python lit `\'` comme `'` dans une chaine
+    # a guillemets doubles — donc il cherchait `n'est` quand le JS porte
+    # `n\'est`. Motif absent, mutation INERTE, et c'est --check-motifs qui l'a
+    # dit. Deux langages se disputent les memes caracteres des qu'un generateur
+    # ecrit du code.
+    ("config", "520 · le verdict n'envisage plus la cle a corriger",
+     "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
+     "\n  lignes.push('      (sans objet)');"),
 ]
 
 
