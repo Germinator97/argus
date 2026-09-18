@@ -10649,3 +10649,42 @@ Corriger le scaffold ne sert donc qu'aux **nouvelles** installations ; les
 projets déjà instrumentés gardent leur copie fautive. C'est exactement ce que le
 **524** rattrape, en rendant la cause trouvable dans le rapport.
 
+### 524. Le remède de l'absorption ne connaissait qu'une cause
+
+**Né du run 89 et fermé le 18/09/2026.** Troisième péremption de ce même texte,
+et d'une nature neuve. Les deux premières étaient des erreurs de **contenu** —
+le **502** prescrivait une propriété que Maestro refuse, le **505** laissait une
+branche non chiffrée. Celle-ci est une erreur de **portée** : le remède ne
+connaissait qu'une cause, le geste d'invite système, et la prescrivait **même là
+où ce geste ne joue pas**.
+
+Mesuré sur le run 89 : aucune permission déclarée n'ouvre d'invite (`INTERNET`
+seule), la dérivation rend donc **false**, et les neuf autres flows mesurent à
+**8-32 ms** — la preuve que le geste est inerte. Le lecteur qui applique le
+remède retire un appel déjà mort, pendant que la vraie cause — le
+`waitForAnimationToEnd` du **523** — n'est jamais nommée. *La MESURE était juste
+et nommait le flow ; c'est le REMÈDE qui était mono-cause.*
+
+🔴 **Le runner SAVAIT déjà** : `invitesSystemePossibles(config)` lui donnait la
+réponse, et le `suggestedFix` était un littéral qui l'ignorait. Le remède
+dérive désormais sa branche de cette fonction, et **nomme le flow** que la
+mesure a identifié comme le pire — le lecteur n'a plus à le chercher dans un
+relevé qu'il n'a pas sous les yeux.
+
+📌 **La construction est EXTRAITE** (`remedeAbsorption`) pour que le garde
+l'**appelle** et lise ce qui revient : un garde qui lirait le texte du fichier
+resterait vert sur une branche devenue morte. Et un **second** garde exerce
+`startupFindings` de bout en bout sur deux configs qui ne diffèrent que par la
+permission déclarée — *extraire rend la décision exerçable, ça ne garde pas le
+CÂBLAGE*, et c'est ce troisième barreau que la mutation vise.
+
+⚠️ **Les deux moitiés sont gardées** : le remède historique doit **survivre** là
+où il est juste, sans quoi « cesser de se tromper » se confondrait avec « cesser
+de rien dire ».
+
+⚠️ **Et l'extraction a déplacé ce que deux mutations anciennes visaient** (502,
+505) : leurs motifs ne matchaient plus, le harnais rendait `HARNAIS`, et une
+mutation qui ne mute rien ne prouve rien. Ré-ancrées **dans la même passe**, en
+assertant l'unicité du nouveau motif dans la cible avant d'écrire — un motif
+portant son ancienne indentation aurait quand même matché une copie plus
+profonde.
