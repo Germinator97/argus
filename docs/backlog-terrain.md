@@ -10716,3 +10716,70 @@ réclamait un geste que le skill interdit.
 **bloqué** — le 523 est une perte de temps de device (une mesure de démarrage
 rendue injugeable) et le 524 un message qui envoie défaire un appel déjà inerte.
 Un seuil qui n'aurait rien bloqué hier ne mesurerait rien demain.
+
+## Rendu par le run 90 — le 522, le 523 et le 524 confirmés — 18/09/2026
+
+Terrain 2, iOS, prompt **identique au shasum près** à celui du run 85. Gate
+`pass`, 11 écrans déclarés = 11 ancrés, 10 visités, 12 min 46 s de device sur 60.
+
+✅ **523 confirmé, et c'est net** — le flow `resilience` passe de `precede 5334 ·
+ms 121 · absorbed true` (run 89) à **`precede 6 · ms 1905 · absorbed false`**.
+Autre terrain, autre plateforme, agent qui ne savait rien : le correctif ferme
+le **phénomène**, pas le cas qui l'avait révélé.
+✅ **524 confirmé** — le remède nomme le flow mesuré et offre ses deux gestes.
+✅ **522 confirmé dans sa branche « plancher absent »**, exercée pour la première
+fois : `brandedSplashMs: 0`, et `QAM-START-NONJUGEABLE` parle sur 6/7 flows.
+
+### 525. La valeur LIVRÉE était la seule qui désarme
+
+**Né du run 90 et fermé le 18/09/2026.**
+
+Le **517** fait dériver `ARGUS_SYSTEM_ALERTS` de `security.expectedPermissions`.
+Cette liste est **Android par nature** — son propre commentaire prescrit de la
+tirer de `aapt2 dump permissions … app-release.apk`. Un projet iOS n'a aucun APK
+dont la dériver, donc elle reste à la valeur **livrée par le scaffold**.
+
+Exercé sur la dérivation, seule cette clé changeant :
+
+    `[android.permission.INTERNET]`  (la valeur LIVRÉE)  →  false   ← désarmé
+    clé absente                                          →  true
+    liste vide                                           →  true
+    une permission à invite                              →  true
+
+🔴 **La seule forme qui désarme est celle que le fichier livre.** Une liste non
+vide d'inertes rend `false` ; l'absence et le vide sont prudents.
+
+Ce que ça a coûté, mesuré : **5 flows rouges**, 159 s de device, et le message
+`Assertion is false: id: <ancre> is visible` sur une **ancre parfaitement
+correcte** — la cause réelle était l'invite « Autorisez-vous … à vous envoyer
+des notifications ? » par-dessus le splash, vue sur la **capture**, jamais dans
+le message.
+
+⚠️ **C'est le correctif du 517, écrit la veille.** Avant lui le geste jouait
+toujours : coûteux, et sûr. 🔴 **Et il violait la direction que le 517 avait
+lui-même écrite** — *large moins les exceptions, parce que rater une invite
+donne un flow ROUGE alors qu'un geste inutile coûte 6,4 s et ne casse rien.* Sur
+iOS la liste est vide de sens, donc tout y paraît inerte, donc on rate tout.
+
+⚠️ **Le remède évident est faux** : dériver des `NS*UsageDescription` de
+l'`Info.plist` raterait **précisément le cas rencontré** — l'invite de
+notifications n'en porte aucune. Dès qu'iOS est déclaré, on ne décide donc pas :
+on joue.
+
+📌 **La plateforme se lit dans `config`, jamais en paramètre** : le 517 avait
+raison de refuser un câblage de plus, dont l'oubli est silencieux. Ce qui
+manquait n'était pas le câblage, c'était que la **source lue** ne vaut pas sur
+toutes les plateformes.
+
+📌 **Le garde DÉRIVE la valeur livrée du scaffold**, il ne la cite pas : la
+citer le rendrait vert le jour où quelqu'un change cette clé — c'est-à-dire le
+jour où il doit parler. Et il garde les **deux moitiés** : sur Android la
+dérivation rend toujours `false` sur une liste d'inertes, sans quoi « cesser de
+désarmer à tort » se confondrait avec « ne plus rien dériver ».
+
+📌 **Deux constats du run ont été écartés en les reproduisant**, tous deux des
+montages : un « 0 Mo » publié venait de l'agent, qui a pesé pendant que le build
+tournait (le plugin rend `QAM-PERF-SIZE-UNMEASURED` et distingue « pas déclarée »
+de « déclarée mais absente ») ; et les `undefined` que j'ai cru voir dans ce
+finding venaient de **mon** appel — un argument passé à une fonction qui en
+prend cinq. *Suspecter le montage avant le code, y compris le sien.*
