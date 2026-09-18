@@ -39,6 +39,9 @@ CIBLES = {
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
     "i18n": FLOWS / "i18n.yaml",
+    # 523 — le flow que le correctif du 460 n'avait pas atteint. Sa cible
+    # manquait, donc rien ne pouvait dire que le garde neuf le voit.
+    "resilience": FLOWS / "resilience.yaml",
     # Depuis le run 22 : l'aiguillage de navigation. Ses gardes lisent une
     # STRUCTURE de branches — quelle condition décide quoi —, donc rien d'autre
     # ne peut dire s'ils gardent encore.
@@ -2527,6 +2530,13 @@ MUTATIONS = [
     ("run", "522 · l'attente non jugeable cesse d'etre dite",
      "\n  if (floor === 0) {",
      "\n  if (false && floor === 0) {"),
+    # ── 523 — la stabilisation revient s'interposer avant le chronometre ──
+    # On vise ce que le garde ASSERTE : la liste des sites fautifs, vide. Le
+    # motif est ancre sur le saut de ligne, sans quoi il matcherait aussi une
+    # ligne plus indentee ailleurs dans le fichier.
+    ("resilience", "523 · la stabilisation se remet devant le chronometre",
+     "\n- runFlow: _subflows/disable-animations.yaml\n",
+     "\n- runFlow: _subflows/disable-animations.yaml\n- waitForAnimationToEnd:\n    timeout: 5000\n"),
     ("config", "520 · le verdict n'envisage plus la cle a corriger",
      "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
      "\n  lignes.push('      (sans objet)');"),
