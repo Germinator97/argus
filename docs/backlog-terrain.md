@@ -10534,14 +10534,14 @@ ai lu** : un message relayé six fois n'est pas une question sans réponse, c'es
 la preuve qu'il **arrive**. Un relevé de fréquence ne se lit pas comme un
 symptôme sans savoir ce que l'outil fabrique.
 
-## Rendu par le run 88 — confirmation des 517-521 — 19/09/2026
+## Rendu par le run 88 — confirmation des 517-521 — 18/09/2026
 
 La passe de confirmation demandée après leur clôture. **Les cinq tiennent** — et
 elle rend un point de plus, qui était caché *derrière* l'un d'eux.
 
 ### 522. Sans plancher de marque, le 479 ne disait RIEN du tout
 
-**Né du run 88 et fermé le 19/09/2026.** Le critère d'absorption du **479**
+**Né du run 88 et fermé le 18/09/2026.** Le critère d'absorption du **479**
 n'emploie que `thresholds.brandedSplashMs` — **délibérément**, pour ne deviner
 aucun nombre. Conséquence exacte : `absorbed` est **toujours faux** quand ce
 plancher vaut 0, c'est-à-dire sur **tout projet sans écran de marque**. Le
