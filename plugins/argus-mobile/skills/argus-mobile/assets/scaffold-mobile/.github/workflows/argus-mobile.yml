@@ -118,8 +118,55 @@ jobs:
       - run: flutter pub get
       - name: Analyse
         run: flutter analyze
+      # ⚠️ `--file-reporter` EN PLUS de la sortie lisible, jamais à sa place — et
+      # c'est lui qui manquait ici (514). Le rapport agrège cinq relevés de
+      # device et AUCUN résultat de `flutter test` tant que ce fichier n'existe
+      # pas : un projet dont les gardes d'étage 1 décrivent des défauts réels
+      # publiait `gate: pass` par-dessus (391). Le correctif vivait dans la
+      # cible locale depuis, et n'avait jamais traversé jusqu'au workflow.
+      # ⚠️ Le dossier est DEMANDÉ à la config, jamais recopié : il est
+      # configurable, donc l'écrire en dur ferait écrire là où le rapport ne lit
+      # pas, et la dimension se rapporterait « jamais lancée » au sortir d'un
+      # run qui vient de tourner.
       - name: Gardes a11y et disposition
-        run: flutter test test/argus
+        run: flutter test --file-reporter json:"$($ARGUS config --print-artifacts-dir)/stage1.jsonl" test/argus
+
+      # ⚠️ L'AUTRE MOITIÉ DE `argus-anchors`, et elle manquait ici (515).
+      # La suite ci-dessus prouve DÉCLARÉ → PRÉSENT ; celle-ci prouve POSÉ →
+      # DÉCLARÉ. Une ancre posée dans `lib/` que rien ne déclare n'est vérifiée
+      # nulle part — c'est une ABSENCE, donc elle n'apparaît dans aucun relevé et
+      # aucun test ne peut rougir dessus. La cible locale joue les deux depuis
+      # toujours ; la CI n'en jouait qu'une.
+      # 📌 `!cancelled()` pour la même raison que la cible locale les enchaîne
+      # sans se couper : un garde qui empêche l'autre de s'exécuter coûte plus
+      # qu'il ne rapporte — sur un projet fraîchement instrumenté, c'est
+      # justement celui-ci qui échoue le plus.
+      # 🔴 Il ÉCHOUE, et c'est voulu : une ancre hors périmètre s'inscrit dans
+      # `anchors.allowUndeclared` avec sa raison, elle ne se tait pas.
+      - name: Ancres posées mais non déclarées
+        if: ${{ !cancelled() }}
+        run: $ARGUS config --check-anchors
+
+      # 📌 Ce job rend son rapport comme ses trois voisins — c'est la seconde
+      # moitié du 514 : produire le relevé ne suffit pas, encore faut-il que
+      # quelque chose l'agrège. Aucun `needs:` ajouté : les jobs restent
+      # indépendants, donc un étage 1 qui n'a pas tourné reste « jamais lancé »
+      # et ne fabrique pas de dimension interrompue — le gate rouge permanent
+      # serait le miroir exact du 512.
+      - name: Rapport
+        if: ${{ !cancelled() }}
+        run: $ARGUS report
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: argus-mobile-stage1
+          path: |
+            argus-mobile-report/report.html
+            argus-mobile-report/*.json
+            argus-mobile-report/*.jsonl
+          retention-days: 14
+          if-no-files-found: warn
       # ⚠️ Ces gardes se marquent SKIPPÉES tant que `argusScreens` est vide dans
       # test/argus/harness.dart. Un job vert ne prouve donc rien avant que
       # quelqu'un les ait branchées : lis la sortie, pas seulement la pastille.
