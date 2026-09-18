@@ -1376,14 +1376,31 @@ MUTATIONS = [
     ("launchclean", "382 · l'alerte système iOS n'est plus documentée",
      "# 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS.",
      "# Rien de particulier à signaler sur les permissions."),
-    # 388 — le geste de l'invite système perd sa forme conditionnelle : un tap
-    # inconditionnel échoue dès le second run, l'alerte n'apparaissant qu'une fois.
-    # ⚠️ RÉ-ANCRÉE AU 516, dans le commit du correctif : le pas ne porte plus
-    # `optional: true` mais vit sous un `when:` qui s'évalue. La mutation vise
-    # donc le FAIT — rendre le geste inconditionnel — et non la forme d'hier.
-    ('dismiss', "388 · le geste de l'invite n'est plus conditionnel",
-     "- runFlow:\n    when:\n      visible:\n        text: '(?s).*(Refuser|Don.t Allow).*'\n    commands:\n      - tapOn:\n          text: '(?s).*(Refuser|Don.t Allow).*'\n          label: Refermer l'invite système, si elle recouvre l'écran",
-     "- tapOn:\n    text: '(?s).*(Refuser|Don.t Allow).*'\n    label: Refermer l'invite système, si elle recouvre l'écran"),
+    # 388 — l'interrogation de l'arbre perd l'enveloppe qui la rend gratuite.
+    # ⚠️ RÉ-ANCRÉE UNE SECONDE FOIS, AU 517, dans le commit du correctif. Elle
+    # visait le FAIT du 516 — « le geste reste conditionnel » —, or ce fait
+    # était le mauvais : un `when: visible:` conditionne ET attend (6,4 s
+    # mesurés, soit autant que l'`optional: true` qu'il remplaçait). Le fait
+    # gardé est maintenant l'ATTEINTE : toute interrogation de l'arbre vit sous
+    # un `when: true:`, la seule forme dont on ait mesuré qu'elle ne coûte rien.
+    # La mutation retire donc cette enveloppe en la transformant en une
+    # interrogation de plus — le YAML reste valide, et une mutation qui ne
+    # parse pas rougirait pour une raison sans rapport.
+    # ⚠️ Ancrée sur le SAUT DE LIGNE : à six espaces, le motif serait une
+    # sous-chaîne de n'importe quelle ligne plus indentée, et le remplacement
+    # hériterait de la mauvaise indentation.
+    # 🔴 ET ELLE A CHANGÉ DE SITE APRÈS SA PREMIÈRE ÉPREUVE. Retirer la variable
+    # faisait bien TOMBER la suite — mais sur le garde du VOISIN, « toute
+    # variable produite par le run est lue quelque part », que le harnais
+    # crédite parce qu'il retient le PREMIER test rouge. Le verdict était juste
+    # et l'appariement faux : le jour où le garde du 517 deviendrait vacant,
+    # cette mutation serait restée verte grâce au voisin, c'est-à-dire
+    # exactement ce qu'on croyait avoir écarté. Elle DÉPLACE donc
+    # l'interrogation hors de l'enveloppe en laissant la variable citée — seul
+    # le garde de l'atteinte peut voir ça.
+    ('dismiss', "388 · l'invite système redevient une attente payée à chaque flow",
+     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - runFlow:\n          when:\n            visible:\n              text: '(?s).*(Refuser|Don.t Allow).*'\n          commands:\n            - tapOn:\n                text: '(?s).*(Refuser|Don.t Allow).*'\n                label: Refermer l'invite système, si elle recouvre l'écran",
+     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - evalScript: ${output.argusSystemAlerts = 1}\n- runFlow:\n    when:\n      visible:\n        text: '(?s).*(Refuser|Don.t Allow).*'\n    commands:\n      - tapOn:\n          text: '(?s).*(Refuser|Don.t Allow).*'\n          label: Refermer l'invite système, si elle recouvre l'écran"),
     # 388 bis — la moitié que le 382 avait manquée : fermer l'alerte ne suffit pas.
     ('launchclean', "388 bis · le lien avec le trousseau disparaît",
      '    clearKeychain: true',

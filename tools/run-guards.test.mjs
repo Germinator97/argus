@@ -15120,6 +15120,14 @@ const FUITES_LEGITIMES = [
   'com.exemple.monapp',
   'com.x.monapp',                             // les bundle ids d'exemple du scaffold
   'io.flutter.splash',                        // une clé du framework
+  // 517 — quatre valeurs de la PLATEFORME Google Play, entrées avec
+  // `PERMISSIONS_SANS_INVITE` (run.mjs). Le détecteur les rend sous deux formes
+  // parce que son motif et celui du 255 ne coupent pas au même endroit : le nom
+  // complet, et son préfixe en minuscules. Aucune n'est à nous.
+  'com.android.vending',
+  'com.android.vending.BILLING',
+  'com.google.android.finsky.permission',
+  'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
 ];
 
 test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)', () => {
@@ -15916,40 +15924,161 @@ test('514 — le job sans device produit son relevé ET le fait agréger', () =>
     + 'interrompue, donc un gate rouge permanent');
 });
 
-test('516 — aucun pas optionnel des flows livrés n\'attend sa borne', () => {
-  // 🔴 LA CLASSE, PAS LE SITE. Un `tapOn … optional: true` ne renonce pas tout
-  // de suite : il boucle sur la recherche jusqu'à son délai, à CHAQUE flow.
-  // Mesuré sur le terrain au run 86 : ~7,3 s par flow, ~44 s par suite, et la
-  // mesure de démarrage ABSORBÉE sur 7 flows sur 8 — 55 à 66 ms retenus derrière
-  // ~7 080 ms d'attente. Un budget qu'aucune valeur ne peut dépasser a toutes
-  // les apparences d'un budget tenu.
-  // Le 486 avait fermé ce mécanisme dans un flow et l'avait laissé chez son
-  // voisin : c'est le motif du 488, et le garde porte donc sur TOUS les flows.
-  const dir = join(FLOWS_DIR, '_subflows');
-  const flows = readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.yaml'))
-    .map((f) => ({ nom: f, chemin: join(FLOWS_DIR, f) }))
-    .concat(readdirSync(dir).filter((f) => f.endsWith('.yaml'))
-      .map((f) => ({ nom: `_subflows/${f}`, chemin: join(dir, f) })));
-  assert.ok(flows.length > 5, `seulement ${flows.length} flow(s) lu(s) : le périmètre de ce garde est trop étroit`);
+/**
+ * Les pas d'un flow qui INTERROGENT L'ARBRE sans avoir traversé un `when: true:`.
+ *
+ * 🔴 CE CRITÈRE REMPLACE CELUI DU 516, QUI MESURAIT LA FORME (517). L'ancien
+ * tolérait un pas dès qu'un `when:` apparaissait N'IMPORTE OÙ dans le fichier —
+ * deux fois trop large : il ne distinguait pas `when: true:` (une expression,
+ * gratuite) de `when: visible:` (l'arbre, donc l'attente), et le `when:` qui
+ * l'absolvait pouvait vivre vingt lignes plus loin, sur un autre pas. Il était
+ * donc VERT sur le fichier livré pendant que celui-ci attendait 6,4 s par flow.
+ *
+ * Le fait gardé est désormais l'ATTEINTE : toute interrogation tolérante de
+ * l'arbre doit avoir un ANCÊTRE `when: true:`, ce qui est la seule forme dont
+ * on ait mesuré qu'elle ne coûte rien (~0 s contre ~6,4 s, trois répétitions).
+ *
+ * ⚠️ Une assertion sur une `condition:` JS n'interroge PAS l'arbre : l'exiger
+ * sous un `when: true:` serait un faux positif, et c'est pourquoi le bloc du
+ * pas est lu avant de conclure.
+ * @param {string} src le flow entier
+ * @returns {string[]} une entrée par interrogation non gardée, avec sa ligne
+ */
+function interrogationsNonGardees(src) {
+  // Commentaires dépouillés EN PLACE : plusieurs de ces fichiers expliquent
+  // `optional: true` en prose, et un motif les compterait. Remplacer la ligne
+  // par du vide plutôt que la retirer garde les numéros de ligne justes.
+  const lignes = src.split('\n').map((l) => (l.trimStart().startsWith('#') ? '' : l));
+  const indent = (/** @type {string} */ l) => l.length - l.trimStart().length;
+  const corpsDe = (/** @type {string} */ l) => l.trim().replace(/^-\s*/, '');
+  const suivanteUtile = (/** @type {number} */ i) => {
+    for (let j = i + 1; j < lignes.length; j++) if (lignes[j].trim()) return j;
+    return -1;
+  };
+  // Le pas auquel appartient la ligne `i` porte-t-il une `condition:` ?
+  const surUneCondition = (/** @type {number} */ i) => {
+    const k = indent(lignes[i]);
+    let debut = i;
+    for (let j = i; j >= 0; j--) {
+      if (lignes[j].trim() && indent(lignes[j]) < k && lignes[j].trim().startsWith('-')) { debut = j; break; }
+    }
+    for (let j = debut; j < lignes.length; j++) {
+      if (j > debut && lignes[j].trim() && indent(lignes[j]) <= indent(lignes[debut])) break;
+      if (/^condition:/.test(corpsDe(lignes[j]))) return true;
+    }
+    return false;
+  };
 
-  // ⚠️ Commentaires dépouillés : plusieurs de ces fichiers EXPLIQUENT
-  // `optional: true` en prose, et le motif les compterait.
+  const fautes = [];
+  /** Les indentations des `when: true:` dont la portée est encore ouverte. */
+  const gratuits = [];
+  for (let i = 0; i < lignes.length; i++) {
+    if (!lignes[i].trim()) continue;
+    const k = indent(lignes[i]);
+    while (gratuits.length && k <= gratuits[gratuits.length - 1]) gratuits.pop();
+    const corps = corpsDe(lignes[i]);
+
+    if (/^when:/.test(corps)) {
+      const j = suivanteUtile(i);
+      const cle = j < 0 ? '' : corpsDe(lignes[j]);
+      if (/^true:/.test(cle)) {
+        // ⚠️ ON EMPILE L'INDENTATION DU PAS, PAS CELLE DU `when:` — et ce
+        // détail a fait rougir mon propre correctif à la première exécution.
+        // `commands:` est le FRÈRE de `when:` (même indentation), donc une
+        // portée ouverte sur l'indentation du `when:` se refermait juste avant
+        // le bloc qu'elle doit couvrir. Un garde qui refuse le remède qu'il
+        // existe pour imposer est plus coûteux qu'un garde absent : on croit
+        // le correctif faux.
+        let pas = k;
+        for (let z = i; z >= 0; z--) {
+          if (lignes[z].trim() && indent(lignes[z]) < k && lignes[z].trim().startsWith('-')) { pas = indent(lignes[z]); break; }
+        }
+        gratuits.push(pas);
+        continue;
+      }
+      if (/^(visible|notVisible):/.test(cle) && gratuits.length === 0) {
+        fautes.push(`ligne ${i + 1} : \`when: ${cle.split(':')[0]}:\` interroge l'arbre`);
+      }
+      continue;
+    }
+    if (/^optional:\s*true$/.test(corps) && gratuits.length === 0 && !surUneCondition(i)) {
+      fautes.push(`ligne ${i + 1} : \`optional: true\` sur un pas à sélecteur`);
+    }
+  }
+  return fautes;
+}
+
+test('517 — aucune interrogation de l\'arbre n\'attend sa borne dans les flows livrés', () => {
+  // 🔴 LA CLASSE, PAS LE SITE — et le FAIT, pas la forme. Mesuré sur le fichier
+  // livré, trois répétitions, témoin à 8,5 s :
+  //
+  //     when: visible: sur élément ABSENT   14,87 / 14,93 / 14,80  → ~6,4 s
+  //     tapOn … optional: true              15,06 / 14,79 / 15,03  → ~6,4 s
+  //     when: true: (expression JS) fausse    8,24 /  8,21 /  8,18  → ~0
+  //
+  // Le 486 avait fermé ce mécanisme dans un flow et l'avait laissé chez son
+  // voisin (motif du 488) ; le 516 a cru le fermer en changeant de mot. Le
+  // garde porte donc sur TOUS les flows, et sur l'atteinte.
+  // 🔴 LE PÉRIMÈTRE EST LE CHEMIN DE LANCEMENT, ET IL SE DÉRIVE. C'est là, et
+  // seulement là, que le coût est payé par TOUS les flows à CHAQUE exécution :
+  // six flows sur huit entrent par `launch-clean.yaml`. Ailleurs, un
+  // `when: visible:` peut être un aiguillage dont la condition est vraie dans
+  // le cas courant — et l'interrogation ne coûte alors ~0 (mesuré).
+  // ⚠️ Il reste des interrogations coûteuses HORS de ce chemin (`lifecycle.yaml`
+  // attend une confirmation iOS normalement absente ; les deux branches de
+  // `goto.yaml` sont exclusives, donc l'une paie toujours sa borne). Ce sont de
+  // vrais coûts de la même classe, et ils demandent un arbitrage que ce garde
+  // n'a pas à trancher seul : ils vivent au point 518. Ne pas élargir ce garde
+  // sans cette décision — il ferait rougir un aiguillage nécessaire.
+  const dir = join(FLOWS_DIR, '_subflows');
+  const vus = new Set();
+  const aSuivre = ['_subflows/launch-clean.yaml'];
+  const cheminDeLancement = [];
+  while (aSuivre.length) {
+    const nom = aSuivre.pop();
+    if (vus.has(nom)) continue;
+    vus.add(nom);
+    const chemin = nom.startsWith('_subflows/') ? join(dir, nom.slice('_subflows/'.length)) : join(FLOWS_DIR, nom);
+    if (!existsSync(chemin)) continue;
+    const src = readFileSync(chemin, 'utf8');
+    cheminDeLancement.push({ nom, chemin, src });
+    for (const m of src.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n')
+      .matchAll(/runFlow:\s*([\w.-]+\.yaml)/g)) {
+      aSuivre.push(`_subflows/${m[1]}`);
+    }
+  }
+  assert.ok(cheminDeLancement.length > 2,
+    `seulement ${cheminDeLancement.length} flow(s) sur le chemin de lancement : la dérivation est cassée, `
+    + 'pas le dépôt — `launch-clean.yaml` a-t-il changé de nom ou d\'appels ?');
+
   const fautifs = [];
-  for (const { nom, chemin } of flows) {
-    const pas = readFileSync(chemin, 'utf8').split('\n')
-      .filter((l) => !l.trimStart().startsWith('#')).join('\n');
-    if (!/optional:\s*true/.test(pas)) continue;
-    // Toléré quand le pas vit sous un `when:` — il s'évalue au lieu d'attendre.
-    if (/when:/.test(pas)) continue;
-    fautifs.push(nom);
+  for (const { nom, src: texte } of cheminDeLancement) {
+    for (const f of interrogationsNonGardees(texte)) fautifs.push(`${nom} ${f}`);
   }
   assert.deepEqual(fautifs, [],
-    `ces flows portent un pas optionnel qu'aucun \`when:\` ne garde, donc il attend sa borne à `
-    + `chaque exécution : ${fautifs.join(', ')}. Un \`when:\` s'évalue ; une assertion optionnelle attend`);
+    'ces pas interrogent l\'arbre sans vivre sous un `when: true:`, donc ils attendent leur '
+    + `borne à chaque exécution (~6,4 s) : ${fautifs.join(' · ')}. Un \`when: visible:\` n'est PAS `
+    + 'gratuit — seule une condition qui n\'interroge pas l\'arbre l\'est');
 
-  // ⚠️ Le garde doit savoir VOIR avant de dire qu'il n'a rien vu : au moins un
-  // flow porte un `optional:` quelque part, sinon le motif est périmé.
-  const porteurs = flows.filter(({ chemin }) => /optional:/.test(readFileSync(chemin, 'utf8')));
-  assert.ok(porteurs.length > 0,
-    'plus aucun flow ne porte `optional:` : le motif de ce garde est périmé, mets-le à jour');
+  // ⚠️ LE GARDE DOIT SAVOIR DIRE NON, et c'est la seule chose qui prouve que le
+  // critère sépare le bon remède du mauvais : celui du 516 tenait sur les
+  // composants où la forme suffisait, et naissait vert ici.
+  const fautif = ['appId: x', '---', '- tapOn:', "    text: 'y'", '    optional: true'].join('\n');
+  assert.equal(interrogationsNonGardees(fautif).length, 1, 'un `optional: true` nu doit être REFUSÉ');
+
+  const visibleNu = ['appId: x', '---', '- runFlow:', '    when:', '      visible:',
+    "        text: 'y'", '    commands:', '      - tapOn: y'].join('\n');
+  assert.equal(interrogationsNonGardees(visibleNu).length, 1,
+    'un `when: visible:` nu doit être REFUSÉ — c\'est exactement ce que le 516 laissait passer');
+
+  const garde = ['appId: x', '---', '- runFlow:', '    when:', '      true: "${X === \'true\'}"',
+    '    commands:', '      - runFlow:', '          when:', '            visible:',
+    "              text: 'y'", '          commands:', '            - tapOn: y'].join('\n');
+  assert.deepEqual(interrogationsNonGardees(garde), [],
+    'une interrogation sous un `when: true:` doit être ACCEPTÉE');
+
+  const surCondition = ['appId: x', '---', '- assertTrue:', '    condition: "${X}"',
+    '    optional: true'].join('\n');
+  assert.deepEqual(interrogationsNonGardees(surCondition), [],
+    'une assertion sur une `condition:` JS n\'interroge pas l\'arbre : ne pas la refuser');
 });
