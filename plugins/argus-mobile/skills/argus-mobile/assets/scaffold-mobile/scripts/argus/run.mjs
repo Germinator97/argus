@@ -1609,6 +1609,40 @@ function anchorAfterAuth(anchors, home) {
  * @param {'debug'|'release'|''} [variante]
  * @returns {any[]}
  */
+/**
+ * Le remède d'une absorption dépend de CE QUI a fait attendre — et le runner le
+ * sait déjà : si aucune permission déclarée n'ouvre d'invite, le geste d'invite
+ * ne joue pas, donc ce n'est pas lui. Prescrire de le retirer enverrait alors
+ * défaire un appel déjà inerte (524, rendu par le run 89).
+ * ⚠️ Extraite pour que le garde l'APPELLE et lise ce qui revient : un garde qui
+ * lirait le texte du fichier ne verrait pas une branche devenue morte.
+ * @param {boolean} invitePossible une permission déclarée peut-elle ouvrir une invite
+ * @param {string} flow le flow qui a le plus attendu — celui qu'il faut ouvrir
+ * @returns {string}
+ */
+function remedeAbsorption(invitePossible, flow) {
+  const ici = flow ? `« ${flow} »` : 'le flow qui a le plus attendu';
+  if (!invitePossible) {
+    return `Ce n'est PAS le geste d'invite système : aucune de tes permissions déclarées `
+      + `n'ouvre d'invite, il ne joue donc pas — et les autres flows le prouvent, ils mesurent `
+      + `sans attendre. Le retard vient d'AILLEURS, dans ${ici} : ouvre-le et cherche, entre son `
+      + '`launchApp` et sa première attente d\'ancre, toute commande qui patiente. Le cas connu '
+      + 'est `waitForAnimationToEnd`, dont la place est APRÈS l\'attente d\'ancre et non avant : '
+      + '`startup.samples` chronomètre cette attente-là, donc tout ce qui patiente devant elle '
+      + 'lui est soustrait en silence. Ce flow t\'appartient, l\'installeur ne le remplacera pas.';
+  }
+  return `Le geste qui précède l'attente d'ancre attend sa BORNE quand il n'a rien à fermer — `
+    + `~7 s par flow, mesuré, et c'est ${ici} qui a le plus attendu. Si ton app ne demande aucune `
+    + 'permission (vérifie ton manifeste ET `lib/`, pas seulement l\'un des deux), retire l\'appel '
+    + 'à `dismiss-system-alerts.yaml` de `launch-clean.yaml` : ces deux fichiers t\'appartiennent. '
+    + 'Si elle en demande, garde-le et joue-le là où l\'invite NAÎT — souvent après la connexion, '
+    + 'pas au lancement — en acceptant le coût sur les flows concernés. '
+    + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\'invite — défendable, la plateforme en '
+    + 'présente parfois d\'elle-même — sache ce que ça coûte : ce même délai sur CHAQUE flow, et '
+    + 'le budget de démarrage ne sera jugeable sur AUCUN d\'eux, aussi longtemps que le geste '
+    + 'restera là. Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`.';
+}
+
 function startupFindings(samples, device, platform, config, variante = '') {
   const budget = config.thresholds?.coldStartMs ?? 2000;
   // ⚠️ Le plancher de marque n'est PAS un assouplissement du seuil : c'est une
@@ -1687,17 +1721,14 @@ function startupFindings(samples, device, platform, config, variante = '') {
         // gardé le geste a vu 10 flows sur 10 absorbés et un budget qu'aucun
         // d'eux ne pouvait juger. *Un remède qui laisse le choix ouvert sans
         // chiffrer les deux branches départage par le tempérament du lecteur.*
-        suggestedFix: 'Le geste qui précède l\'attente d\'ancre attend sa BORNE quand il n\'a rien '
-          + 'à fermer — ~7 s par flow, mesuré. Si ton app ne demande aucune permission (vérifie '
-          + 'ton manifeste ET `lib/`, pas seulement l\'un des deux), retire l\'appel à '
-          + '`dismiss-system-alerts.yaml` de `launch-clean.yaml` : ces deux fichiers t\'appartiennent. '
-          + 'Si elle en demande, garde-le et joue-le là où l\'invite NAÎT — souvent après la '
-          + 'connexion, pas au lancement — en acceptant le coût sur les flows concernés. '
-          + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\'invite — défendable, la '
-          + 'plateforme en présente parfois d\'elle-même — sache ce que ça coûte : ce même '
-          + 'délai sur CHAQUE flow, et le budget de démarrage ne sera jugeable sur AUCUN '
-          + 'd\'eux, aussi longtemps que le geste restera là. '
-          + 'Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`.',
+        // ⚠️ TROISIÈME PÉREMPTION DE CE REMÈDE (524), et d'une nature neuve : il
+        // ne connaissait qu'UNE cause. Il prescrivait de retirer le geste
+        // d'invite système — alors que sur le run 89 ce geste ne jouait DÉJÀ
+        // pas (aucune permission déclarée n'ouvre d'invite, et les neuf autres
+        // flows mesuraient à 8-32 ms). Le lecteur qui l'applique retire un
+        // appel inerte, et le finding revient au run suivant. La MESURE était
+        // juste et nommait le flow ; c'est le REMÈDE qui était mono-cause.
+        suggestedFix: remedeAbsorption(invitesSystemePossibles(config), pire.flow),
         severity: 'info',
         dimension: 'performance',
         screen: 'démarrage',
@@ -2920,5 +2951,5 @@ if (invokedDirectly) {
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
   anchorAfterAuth, animationsApplicables, invitesSystemePossibles, inviteSystemeInerte,
-  resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
+  remedeAbsorption, resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

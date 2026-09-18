@@ -68,7 +68,7 @@ const invocationDe = (commande, suite = '') => new RegExp(
 import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   localeAlignment,
-  resetKeychain, startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
+  remedeAbsorption, resetKeychain, startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -16347,4 +16347,78 @@ test('aucune stabilisation ne s\'interpose entre le lancement et le chronomètre
     + 'patiente avant lui est soustrait en silence, et le relevé ne garde que le résidu — 121 ms '
     + "derrière 5334 ms au run 89, impossible pour un splash de 2 s. Déplacer l'attente "
     + "d'animation APRÈS l'attente d'ancre, comme `launch-clean.yaml` le fait depuis le 460 (523)");
+});
+
+// ── 524 ────────────────────────────────────────────────────────────────────
+// Troisième péremption de ce remède, et d'une nature neuve. Les deux premières
+// étaient des erreurs de CONTENU (502 : une propriété que Maestro refuse ;
+// 505 : une branche non chiffrée). Celle-ci est une erreur de PORTÉE : le texte
+// ne connaissait qu'une cause — le geste d'invite système — et la prescrivait
+// même là où ce geste ne joue pas. Au run 89, aucune permission déclarée
+// n'ouvrait d'invite, les neuf autres flows mesuraient à 8-32 ms, et le lecteur
+// était envoyé retirer un appel déjà inerte pendant que la vraie cause — un
+// `waitForAnimationToEnd` mal placé — n'était jamais nommée.
+// Le runner SAVAIT : `invitesSystemePossibles(config)` le lui disait déjà.
+// ⚠️ Ce garde APPELLE la construction au lieu de lire le fichier : un motif
+// cherché dans la source resterait vert sur une branche devenue morte.
+test('le remède d\'absorption nomme la cause MESURÉE, pas une cause supposée (524)', () => {
+  const inerte = remedeAbsorption(false, 'resilience');
+  const possible = remedeAbsorption(true, 'resilience');
+
+  assert.notEqual(inerte, possible,
+    'le remède ne dépend plus de ce qui a fait attendre : il redevient mono-cause (524)');
+
+  // La branche neuve : le geste d'invite ne joue pas, donc ce n'est pas lui.
+  assert.ok(!inerte.includes('dismiss-system-alerts'),
+    'le remède prescrit encore de retirer le geste d\'invite alors qu\'aucune permission '
+    + 'déclarée n\'en ouvre : il envoie défaire un appel déjà inerte, et le finding '
+    + 'reviendra au run suivant (524)');
+  assert.ok(inerte.includes('waitForAnimationToEnd'),
+    'le remède ne nomme plus la cause connue quand ce n\'est pas le geste d\'invite : il dit '
+    + 'que ce n\'est pas lui, sans dire où chercher (524)');
+
+  // L'autre moitié — le remède historique doit SURVIVRE là où il est juste,
+  // sans quoi « ne plus se tromper » se confondrait avec « ne plus rien dire ».
+  assert.ok(possible.includes('dismiss-system-alerts'),
+    'le remède ne prescrit plus rien là où le geste d\'invite PEUT ouvrir une invite : '
+    + 'le correctif du 524 a coupé trop large (524)');
+
+  // Et les deux nomment le flow à ouvrir : la mesure le connaît, le lecteur non.
+  for (const [quoi, texte] of [['inerte', inerte], ['possible', possible]]) {
+    assert.ok(texte.includes('resilience'),
+      `le remède (${quoi}) ne nomme pas le flow qui a le plus attendu — le lecteur doit alors `
+      + 'le chercher lui-même dans un relevé qu\'il n\'a pas sous les yeux (524)');
+  }
+});
+
+// ── 524 bis ────────────────────────────────────────────────────────────────
+// Le barreau au-dessus : que la décision soit CÂBLÉE. Extraire la construction
+// la rend exerçable, elle ne garantit pas que le finding s'en serve — le site
+// d'appel pourrait être rebranché sur un littéral figé et la suite resterait
+// verte. Ce garde exerce donc `startupFindings` de bout en bout, sur deux
+// configs qui ne diffèrent QUE par la permission déclarée.
+test('le finding d\'absorption fait varier son remède avec la config (524)', () => {
+  const samples = [
+    { flow: 'resilience', ms: 121, status: 'COMPLETED', precedeMs: 5334, absorbed: true },
+    { flow: 'smoke', ms: 3599, status: 'COMPLETED', precedeMs: 8, absorbed: false },
+  ];
+  const base = { thresholds: { brandedSplashMs: 2000, coldStartMs: 2000 } };
+  // INTERNET n'ouvre aucune invite → le geste est inerte (vérifié à l'exécution).
+  const sansInvite = startupFindings(samples, 'ios-sim', 'ios',
+    { ...base, security: { expectedPermissions: ['android.permission.INTERNET'] } });
+  // CAMERA en ouvre une → le geste joue.
+  const avecInvite = startupFindings(samples, 'ios-sim', 'ios',
+    { ...base, security: { expectedPermissions: ['android.permission.CAMERA'] } });
+
+  const absorbe = (/** @type {any[]} */ fs) => fs.find((f) => f.id === 'QAM-START-ABSORBE');
+  assert.ok(absorbe(sansInvite),
+    'le finding d\'absorption n\'est plus émis : ce garde ne mesure plus rien (524)');
+  assert.ok(absorbe(avecInvite),
+    'le finding d\'absorption n\'est plus émis sur l\'autre config : ce garde ne mesure plus rien (524)');
+
+  assert.notEqual(absorbe(sansInvite).suggestedFix, absorbe(avecInvite).suggestedFix,
+    'le remède du finding ne bouge plus quand la config change : la décision a été débranchée '
+    + 'de `invitesSystemePossibles`, et le texte est redevenu un littéral figé (524)');
+  assert.ok(absorbe(sansInvite).suggestedFix.includes('resilience'),
+    'le remède ne nomme plus le flow que la mesure a pourtant identifié comme le pire (524)');
 });
