@@ -72,6 +72,19 @@ jobs:
             *) echo "ios=false" >> "$GITHUB_OUTPUT" ;;
           esac
 
+      # ⚠️ LE GRAPHE DES FLOWS, QUE `check-syntax` NE RÉSOUT PAS. L'étape
+      # « Syntaxe des flows » du job e2e valide un fichier à la fois : mesuré,
+      # elle rend « OK » (exit 0) sur un sous-flow qui s'appelle lui-même.
+      # Maestro, lui, rejette le WORKSPACE ENTIER au démarrage sur un cycle —
+      # l'échec tombe donc dans le job qui coûte un émulateur, sans étape fautive
+      # à nommer, et accuse le dernier flow lancé, qui n'y est pour rien.
+      # Le contrôle existait et vivait dans `argus-lint` ; il n'avait jamais
+      # traversé jusqu'ici — la décision était prise, pas son câblage (513).
+      # 📌 ICI plutôt que dans `guards` : ce job lit déjà la config, ne demande
+      # ni Flutter ni device, et tourne avant tout ce qui coûte.
+      - name: Graphe d'appels des flows
+        run: $ARGUS config --check-flows
+
   # ── Étage 1 : les gardes sans device ────────────────────────────────────
   # Quelques secondes, aucun émulateur. Couvre les cibles tactiles, les
   # contrastes et la disposition à 130 % et 200 % de taille de texte —
