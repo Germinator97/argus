@@ -2440,6 +2440,21 @@ MUTATIONS = [
     ("ci", "le rapport ne part plus quand une etape a echoue",
      "\n      - uses: actions/upload-artifact@v7\n        if: ${{ !cancelled() }}\n        with:\n          name: argus-mobile-security\n",
      "\n      - uses: actions/upload-artifact@v7\n        with:\n          name: argus-mobile-security\n"),
+    # ── 513 — le graphe des flows, cable d'un seul cote ────────────────────
+    ("ci", "l'etape qui lit le graphe des flows disparait de la CI",
+     "\n      - name: Graphe d'appels des flows\n        run: $ARGUS config --check-flows\n",
+     "\n"),
+    # ⚠️ Celle-ci ne touche pas le cablage mais le CONTROLE : cable en CI, il ne
+    # garde rien s'il ne sait pas dire non. C'est ce qui a fait ecarter
+    # `--check-reachability`, qui avertit sans jamais sortir en non nul.
+    ("config", "un cycle d'appels entre flows cesse de faire sortir en 1",
+     "      process.exit(1);\n    }\n    log(`✔ ${n} flows, aucun cycle d'appels`);",
+     "      process.exit(0);\n    }\n    log(`✔ ${n} flows, aucun cycle d'appels`);"),
+    # ⚠️ Et l'AUTRE SENS du releve derive : un controle de plus, cable sans que
+    # personne n'ait repondu « qui le joue ? », doit faire rougir lui aussi.
+    ("ci", "un controle --check-* de plus, hors du releve fige",
+     "        run: $ARGUS config --check-flows\n",
+     "        run: $ARGUS config --check-flows\n      - name: Atteignabilite\n        run: $ARGUS config --check-reachability\n"),
 ]
 
 

@@ -15772,3 +15772,83 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
       `l'artefact « ${quoi} » ne part plus quand une étape a échoué — donc jamais quand on en a besoin`);
   }
 });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 513 — le graphe des flows : un contrôle qui existait, câblé d'un seul côté
+// ═══════════════════════════════════════════════════════════════════════════
+
+const WORKFLOW_HOTE = join(RACINE,
+  'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.github/workflows/argus-mobile.yml');
+
+/** Le workflow livré, commentaires ôtés — un commentaire qui cite un drapeau ne le câble pas. */
+function workflowSansCommentaires() {
+  return readFileSync(WORKFLOW_HOTE, 'utf8').split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+}
+
+test('513 — le graphe des flows est joué en CI, et `check-syntax` ne le remplace pas', () => {
+  // 🔴 Maestro rejette le WORKSPACE ENTIER au démarrage sur un cycle de
+  // sous-flows : aucune étape n'est fautive, et l'échec accuse le dernier flow
+  // lancé. `maestro check-syntax` — tout ce que la CI jouait — valide un fichier
+  // à la fois et ne résout pas le graphe : mesuré, il rend « OK » sur le cycle.
+  // Le contrôle qui le voit vivait dans `argus-lint` et n'avait jamais traversé
+  // jusqu'au workflow livré : la décision était prise, pas son câblage.
+  assert.match(workflowSansCommentaires(), /\$ARGUS config --check-flows/,
+    'le graphe des flows n\'est plus joué en CI : un cycle y passera au vert, puis tuera le job émulateur');
+
+  // ⚠️ ET LE CONTRÔLE DOIT SAVOIR DIRE NON — sinon le câbler ne garde rien,
+  // exactement ce qui a fait écarter `--check-reachability` (voir le garde
+  // suivant). On monte le défaut plutôt que de faire confiance à son nom.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-flows-'));
+  try {
+    const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+    cpSync(join(scaffold, 'scripts'), join(dir, 'scripts'), { recursive: true });
+    cpSync(join(scaffold, '.maestro'), join(dir, '.maestro'), { recursive: true });
+    cpSync(join(scaffold, 'argus.mobile.yaml'), join(dir, 'argus.mobile.yaml'));
+    const check = () => spawnSync(process.execPath, [join(dir, 'scripts/argus/config.mjs'), '--check-flows'],
+      { cwd: dir, encoding: 'utf8' });
+
+    const sain = check();
+    assert.equal(sain.status, 0,
+      `le scaffold livré doit passer son propre contrôle — MONTAGE cassé, pas défaut :\n${sain.stdout}${sain.stderr}`);
+
+    writeFileSync(join(dir, '.maestro/_subflows/boucle.yaml'),
+      'appId: com.exemple\n---\n- runFlow: boucle.yaml\n', 'utf8');
+    const cycle = check();
+    assert.notEqual(cycle.status, 0,
+      'un sous-flow qui s\'appelle lui-même passe le contrôle : le câbler en CI ne garderait rien');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('513 — tout contrôle `config --check-*` est joué en CI, ou son absence est motivée', () => {
+  // 🔴 DÉRIVÉ, JAMAIS CITÉ — et c'est le point. Une liste écrite à la main ne
+  // couvre que ce dont on s'est souvenu : elle enregistrerait les contrôles
+  // existants et laisserait passer le prochain. Ici la liste vient du moteur,
+  // donc un `--check-…` ajouté demain fait rougir ce garde tant que personne
+  // n'a répondu « qui le joue ? ». C'est la question qui manquait.
+  const src = readFileSync(join(SCRIPTS_DIR, 'config.mjs'), 'utf8');
+  const exposes = [...new Set([...src.matchAll(/includes\(\s*'--(check-[a-z-]+)'\s*\)/g)].map((m) => m[1]))].sort();
+  assert.ok(exposes.length > 0,
+    'aucun contrôle `--check-*` lu dans config.mjs : ce garde ne mesure plus rien — mettre le motif à jour');
+
+  const wf = workflowSansCommentaires();
+  const joues = exposes.filter((c) => wf.includes(`--${c}`));
+  const absents = exposes.filter((c) => !joues.includes(c));
+
+  // Figé PAR ÉGALITÉ des deux côtés : une réparation fait rougir autant qu'une
+  // régression, et le relevé ne peut pas survivre à ce qu'il décrit.
+  assert.deepEqual(joues, ['check-flows'],
+    'la liste des contrôles joués en CI a changé — si c\'est voulu, mets ce relevé à jour et dis pourquoi');
+
+  // ⚠️ Les deux absents le sont pour des raisons MESURÉES, pas supposées :
+  //   · `check-reachability` ne sait pas dire non — il rend 0 sur un écran
+  //     orphelin (« ce n'est PAS un défaut en soi », dit son propre code) et ne
+  //     sort en 2 que s'il n'a rien pu mesurer. Le câbler serait inerte sur le
+  //     cas utile et bloquant sur un cas qui n'est pas un défaut.
+  //   · `check-anchors`, lui, SAIT dire non (exit 1 sur une ancre orpheline,
+  //     mesuré) : son absence est un arbitrage produit, pas une propriété du
+  //     contrôle — il rougirait sur tout projet en cours d'instrumentation,
+  //     tant qu'`allowUndeclared` n'est pas rempli. Point 515, ouvert.
+  assert.deepEqual(absents, ['check-anchors', 'check-reachability'],
+    'un contrôle `--check-*` n\'est ni joué en CI ni inscrit ici : réponds « qui le joue ? » avant de le livrer');
+});
