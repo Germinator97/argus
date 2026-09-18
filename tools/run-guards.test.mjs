@@ -444,6 +444,68 @@ test('un budget absorbé se DIT au lieu de passer pour tenu (479)', () => {
   assert.deepEqual(startupFindings([mesure], DEVICE, 'android', CFG_SPLASH), []);
 });
 
+test('522 — sans plancher de marque, l\'attente se DIT au lieu de ne rien produire', () => {
+  // 🔴 CE GARDE FERME LE 479 SUR LA CLASSE QU'IL NE COUVRAIT PAS. Le critère
+  // d'absorption n'emploie que `brandedSplashMs` — délibérément, pour ne deviner
+  // aucun nombre — donc `absorbed` est TOUJOURS faux quand ce plancher vaut 0,
+  // c'est-à-dire sur tout projet sans écran de marque. Le mécanisme se taisait
+  // alors, là où son propre commentaire dit que « se taire serait le reproduire
+  // une troisième fois ».
+  //
+  // Mesuré sur le run 88, mêmes chiffres, seule cette clé changeant :
+  //     brandedSplashMs = 2000  →  6/7 absorbés · QAM-START-ABSORBE
+  //     brandedSplashMs =    0  →  0/7 absorbés · aucun mot sur l'attente
+  // et les six relevés valaient 8 à 58 ms derrière 7 022 à 7 097 ms.
+  const CFG_NU = { thresholds: { coldStartMs: 2000, brandedSplashMs: 0 } };
+  const parasite = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7054, absorbed: false };
+  const vraie = { flow: 'resilience', ms: 2435, status: 'COMPLETED', precedeMs: 1079, absorbed: false };
+
+  // 🔴 LE CAS QUI COMPTE : une suite dont AUCUN flow ne mesure vraiment rendait
+  // zéro finding — un budget « tenu » sur du néant. C'est le 479 à l'identique.
+  const seuls = startupFindings([parasite], DEVICE, 'android', CFG_NU);
+  assert.ok(seuls.some((f) => f.id === 'QAM-START-NONJUGEABLE'),
+    'une attente de l\'ordre du budget devant toutes les mesures doit se DIRE : sans ça, le '
+    + 'rapport publie un budget tenu sur des relevés qui ne mesurent pas le démarrage (522)');
+  assert.equal(seuls.find((f) => f.id === 'QAM-START-NONJUGEABLE').severity, 'info',
+    'il informe — on ne conclut toujours pas, on dit qu\'on ne peut pas');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui empêche le remède de couper trop : une
+  // mesure que l'attente ne peut pas contenir reste une mesure. `resilience`
+  // fait son propre `launchApp`, 1 079 ms devant un budget de 2 000 — exactement
+  // la séparation que le plancher produisait quand il existait.
+  // ⚠️ Et l'assertion porte sur CE finding, pas sur la liste entière : cette
+  // mesure-là dépasse le budget (2 435 contre 2 000), donc `QAM-START` sort —
+  // à raison. Écrite `deepEqual(…, [])`, elle a rougi sur un comportement juste,
+  // et c'est la mesure qui l'a dit.
+  const surVraie = startupFindings([vraie], DEVICE, 'android', CFG_NU);
+  assert.ok(!surVraie.some((f) => f.id === 'QAM-START-NONJUGEABLE'),
+    'une attente inférieure au budget ne doit PAS déclencher ce finding : sinon le garde rallume '
+    + 'du bruit sur un relevé sain, et on apprend à l\'ignorer');
+  assert.ok(surVraie.some((f) => f.id === 'QAM-START'),
+    'et la vraie mesure doit rester jugée : le remède ne doit pas rendre le budget inerte');
+
+  // ⚠️ ET L'EXCLUSIVITÉ AVEC SON VOISIN : avec un plancher déclaré, c'est
+  // l'absorption qui parle, jamais ce finding-ci — sans quoi le lecteur verrait
+  // deux fois la même chose sous deux noms.
+  const absorbe = { ...parasite, absorbed: true };
+  const avecPlancher = startupFindings([absorbe], DEVICE, 'android', CFG_SPLASH);
+  assert.ok(avecPlancher.some((f) => f.id === 'QAM-START-ABSORBE'));
+  assert.ok(!avecPlancher.some((f) => f.id === 'QAM-START-NONJUGEABLE'),
+    'avec un plancher déclaré, le nouveau finding doit se taire : les deux mesureraient la même '
+    + 'chose sous deux noms');
+
+  // ⚠️ Et le remède doit renvoyer vers la CAUSE, pas décrire le symptôme : ce
+  // qui attend est presque toujours le geste d'invite système, dont le voisin
+  // porte déjà le remède complet.
+  const f = seuls.find((x) => x.id === 'QAM-START-NONJUGEABLE');
+  assert.match(f.suggestedFix, /launch-clean|invite/,
+    'le remède doit nommer ce qui attend, sinon le lecteur a un constat sans geste');
+  assert.match(f.suggestedFix, /brandedSplashMs/,
+    'et dire comment rendre le relevé concluant, puisque c\'est ce qui manque');
+  assert.match(f.actual, /7054/, 'le chiffre de l\'attente doit être DANS le finding : c\'est la '
+    + 'seule chose que le lecteur de la page verra — le JSON en portait 7 occurrences et le HTML 0');
+});
+
 test('une mesure absorbée ne compte pas dans le budget, une vraie mesure si (479)', () => {
   // Absorbée ET au-dessus du seuil : elle ne doit PAS produire QAM-START, parce
   // que sa valeur ne mesure pas le sas. C'est la moitié qui coupe trop si on

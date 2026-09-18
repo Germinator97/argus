@@ -1715,6 +1715,68 @@ function startupFindings(samples, device, platform, config, variante = '') {
       status: 'open',
     });
   }
+  // 🔴 ET SANS PLANCHER DE MARQUE, LE MÉCANISME CI-DESSUS EST VACANT (522). Le
+  // critère d'absorption n'emploie que `brandedSplashMs` — délibérément, pour ne
+  // deviner aucun nombre — donc `absorbed` est TOUJOURS faux quand ce plancher
+  // vaut 0, c'est-à-dire sur tout projet sans splash de marque. Le commentaire
+  // d'à côté dit « se taire serait le reproduire une troisième fois » ; à 0, il
+  // se tait. Mesuré sur un run réel, mêmes chiffres, seule cette clé changeant :
+  //
+  //     brandedSplashMs = 2000  →  6/7 absorbés · QAM-START-ABSORBE [info]
+  //     brandedSplashMs =    0  →  0/7 absorbés · aucun mot sur l'attente
+  //
+  // et les six relevés valaient 8 à 58 ms derrière 7 022 à 7 097 ms d'attente.
+  // ⚠️ Ce run-là n'a produit un verdict que par ACCIDENT : un seul de ses sept
+  // flows fait son propre `launchApp`, et c'est lui qui portait la seule vraie
+  // mesure. La même suite sans ce flow rend **zéro finding**, donc un budget
+  // TENU sur six relevés dont aucun ne mesure le démarrage — le 479 à
+  // l'identique. Rien dans le skill n'impose qu'un tel flow existe.
+  //
+  // 📌 ON NE CONCLUT TOUJOURS PAS, ET C'EST JUSTE : sans plancher, rien ne dit
+  // que l'écran ne pouvait pas être prêt avant qu'on cherche. Ce qui manquait
+  // n'est pas un verdict, c'est de DIRE qu'on n'a pas pu en rendre un — et le
+  // commentaire d'à côté l'affirmait déjà (« le relevé porte quand même
+  // `precedeMs`, et le lecteur tranche »), sauf que la page publiée n'en porte
+  // AUCUNE trace : mesuré, 0 occurrence de `precede`, `attente` ou `absorb`
+  // dans le HTML, contre 7 dans le JSON. *Le lecteur ne peut pas trancher sur un
+  // chiffre qu'il ne voit pas.*
+  // ⚠️ Le seuil de l'attente est DÉRIVÉ du budget déclaré, jamais deviné : une
+  // attente qui vaut à elle seule tout le budget de démarrage est de l'ordre de
+  // grandeur qui compte, et `resilience` (1 079 ms devant 2 000) reste donc une
+  // mesure — exactement la séparation que le plancher produisait.
+  if (floor === 0) {
+    const nonJugeables = vivantes.filter((s) => s.precedeMs >= budget && s.ms < budget);
+    if (nonJugeables.length > 0) {
+      const pire = nonJugeables.reduce((a, b) => (b.precedeMs > a.precedeMs ? b : a));
+      findings.push({
+        id: 'QAM-START-NONJUGEABLE',
+        title: `le budget de démarrage n'a pas pu être jugé sur ${nonJugeables.length}/${samples.length} `
+          + 'flows : une attente les précède, et aucun plancher de marque ne permet de trancher',
+        suggestedFix: 'Deux gestes, et le premier suffit souvent. (1) Ce qui attend avant la mesure '
+          + 'est presque toujours le geste d\'invite système de `launch-clean.yaml` : s\'il n\'a rien '
+          + 'à fermer chez toi, retire-le — voir QAM-START-ABSORBE, même cause, même remède. '
+          + '(2) Si ton app impose une durée d\'affichage à son écran de marque, déclare-la dans '
+          + '`thresholds.brandedSplashMs` : c\'est ce plancher qui permet de dire si une mesure '
+          + 'CONTIENT le démarrage ou s\'est déroulée pendant l\'attente. Sans lui, ce relevé ne '
+          + 'peut ni conclure ni se taire — il te rend les deux chiffres et te laisse trancher.',
+        severity: 'info',
+        dimension: 'performance',
+        screen: 'démarrage',
+        step: 0,
+        selector: '',
+        device: device.id,
+        platform,
+        osVersion: device.os ?? '',
+        expected: `une mesure non précédée d'une attente de l'ordre du budget (${budget} ms)`,
+        actual: `${pire.precedeMs} ms attendus avant la mesure sur « ${pire.flow} », pour une mesure `
+          + `retenue de ${Math.round(pire.ms)} ms — `
+          + nonJugeables.map((x) => `${x.flow} ${Math.round(x.ms)} ms après ${x.precedeMs}`).join(', '),
+        evidence: [],
+        repro: [],
+        status: 'open',
+      });
+    }
+  }
   if (over.length === 0) return findings;
   const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
   const dont = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
