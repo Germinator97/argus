@@ -10592,3 +10592,60 @@ garde neuf porte ce qu'il ne mesurait pas.
 pour porter sur le finding et non sur la liste, plus une assertion qui exige que
 la vraie mesure **reste jugée** : sans elle, le remède aurait pu rendre le budget
 inerte sans qu'on le voie.
+
+## Rendu par le run 89 — le 522 confirmé sur son autre branche — 18/09/2026
+
+Terrain 1, iOS, prompt **identique au shasum près** à celui du run 82 (même
+terrain, même plateforme). Gate `pass`, 8/8 écrans visités, `notConfigured []`.
+
+🔴 **Le 522 est confirmé dans la branche qu'aucun run n'avait exercée** :
+`origin: declared`, `brandedSplashMs: 2000` — dérivé par l'agent de
+`_kMinSplashDuration`, pas choisi pour verdir. Le mécanisme **parle** au lieu de
+se taire : *« le budget de démarrage n'a pas pu être jugé : 1/10 flows ont
+attendu autre chose avant de mesurer »*, avec `actual: 5334 ms attendus pour une
+mesure retenue de 121 ms`. Au run 88, plancher à 0, il ne disait rien de six
+relevés du même genre.
+
+✅ **Et le 517 est confirmé dans son sens principal** : 0 `NS*UsageDescription`,
+donc la dérivation rend **NE JOUE PAS** et `precedeMs` tombe à **8-32 ms** sur 9
+flows, contre ~7 000 ms au run 88 où 12 permissions justifiaient le geste. Les
+deux sens sont désormais mesurés, sur deux terrains.
+
+### 523. Le correctif du 460 n'avait pas traversé jusqu'au flow d'à côté
+
+**Né du run 89 et fermé le 18/09/2026.**
+
+`resilience.yaml`, **livré par le scaffold**, plaçait `waitForAnimationToEnd:
+5000` AVANT la première attente d'ancre qui suit son `launchApp` — exactement
+l'ordre que le **460** avait corrigé le 10/09 dans `launch-clean.yaml`, où
+`extendedWaitUntil` précède désormais la stabilisation.
+
+Mesuré par le run : le flow `resilience` rend `precedeMs 5334 · ms 121 ·
+absorbed true` quand les neuf autres rendent **8 à 32 ms**. 🔴 **121 ms est
+physiquement impossible** pour une app dont le splash tient 2 s — le même
+désaccord qui avait démasqué le 460 (« 86 à 130 ms »), huit jours plus tôt.
+
+🔴 **Le garde du 460 lit UN SEUL FICHIER**, par un chemin en dur vers
+`_subflows/launch-clean.yaml`. Il est juste, il tombe si on inverse l'ordre
+là-bas, et il ne peut **structurellement pas** voir le fichier voisin. *Le remède
+portait sur le SITE, le défaut est un PHÉNOMÈNE.* Le garde neuf balaie les 14
+flows livrés et interdit toute stabilisation entre un lancement et la première
+attente d'ancre qui le suit ; écrit le 10/09, il aurait fermé ce point avant
+qu'un run ne le rencontre.
+
+⚠️ **Et le périmètre mesuré était plus étroit que le constat.** J'ai d'abord
+écrit « trois sites fautifs » en comptant les trois `waitForAnimationToEnd` du
+fichier. Mesure faite : **un seul** l'est. Les deux autres suivent une
+`setOrientation` et ne s'interposent dans aucune mesure de démarrage — les
+déplacer aurait cassé la stabilisation après rotation. Le critère est
+l'**intervalle** (entre le lancement et le chronomètre), jamais la présence.
+
+📌 **Ce point n'était visible que grâce au 522** : à plancher 0, le mécanisme se
+taisait et `121 ms` passait pour un démarrage exemplaire. *Un remède qui apprend
+à dire « je ne peux pas conclure » fait apparaître ce que le silence couvrait.*
+
+⚠️ **`resilience.yaml` est `ARGUS:OWNED`** — l'installeur ne l'écrase jamais.
+Corriger le scaffold ne sert donc qu'aux **nouvelles** installations ; les
+projets déjà instrumentés gardent leur copie fautive. C'est exactement ce que le
+**524** rattrape, en rendant la cause trouvable dans le rapport.
+
