@@ -1500,6 +1500,9 @@ commentaire, pas le vrai site. Le §2b le dit — à neuf cents lignes d'ici, c'
 loin de l'endroit où l'on remplit ces deux fichiers. Un run l'a lu, puis a cassé
 `known_issues.dart` ; il n'est pas suivi par git, donc `checkout` ne le ramène
 pas — il a fallu le reconstruire depuis le scaffold.
+📌 **Ne l'édite donc pas à la main : `make argus-debts-write`** dérive la dette
+ET l'écrit, ancré au bon endroit, en ajoutant à ce qui est déjà assumé. Ce
+rappel n'a pas suffi trois fois (526) : le geste, lui, ne peut pas se tromper.
 
 ⚠️ **UN TODO SE FERME, il ne se supprime pas — et il y a TROIS façons.** Un
 TODO qu'on retire ne laisse aucune trace de la décision ; un TODO qu'on laisse

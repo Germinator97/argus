@@ -10783,3 +10783,90 @@ tournait (le plugin rend `QAM-PERF-SIZE-UNMEASURED` et distingue « pas déclar�
 de « déclarée mais absente ») ; et les `undefined` que j'ai cru voir dans ce
 finding venaient de **mon** appel — un argument passé à une fonction qui en
 prend cinq. *Suspecter le montage avant le code, y compris le sien.*
+
+## Rendu par le run 91 — les 517, 522, 523 et 525 confirmés — 18/09/2026
+
+Terrain 1, Android, prompt **identique au shasum près** à ceux des runs 84, 86
+et 87 (`fbc0fceb…`). Gate `fail` (8 major, 2 info), 10 écrans déclarés = 10
+ancrés = 10 visités, `notConfigured []`, 6/6 dimensions, ~24 min de device.
+
+🔴 **517 et 523 confirmés, et c'est le relevé le plus net du chantier** — même
+terrain, même plateforme, même cadrage qu'au run 87 :
+
+    run 87   absorbés 10/10 · precedeMs 7066 à 7121
+    run 91   absorbés  0/10 · precedeMs    3 à   26
+
+La mesure de démarrage redevient une mesure (3989 à 4547 ms), là où l'absorption
+la rendait muette depuis 87 runs.
+
+✅ **525 confirmé dans sa moitié Android**, lu sur les blocs d'environnement du
+run et non sur la config : `ARGUS_SYSTEM_ALERTS = "false"` sur **80 occurrences**,
+à raison — trois permissions inertes, dont une reconnue par SUFFIXE
+(`${applicationId}.DYNAMIC_RECEIVER_…`, le cas que la première version du
+correctif avait raté). 10/10 flows COMPLETED, aucune attente de 6,4 s.
+✅ **522 confirmé dans sa branche « plancher déclaré »** — `brandedSplashMs: 2000`
+lu depuis `_kMinSplashDuration`, et `QAM-START` le soustrait.
+✅ **La réserve de variant est passée aux DEUX findings sensibles** : `QAM-START`
+et `QAM-PERF-MEM` portent « (mesuré sur un debug) ».
+✅ **520 confirmé** — `anchorPrefix` employé sur 5 sites sans confusion.
+
+⚪ **Quatre constats de l'agent écartés en les REPRODUISANT**, chacun étant la
+sortie d'un remède : la locale inerte (`run.mjs:69` avertit, le rapport publie
+`QAM-LOCALE-INERTE`), le point mort du clavier (`SKILL.md:2274` : « relève TON
+point sur TA capture »), les `model`/`os` vides (`config.mjs:737` : « normal
+avec un avd nommé »), le message qui accuse le démontage (`harness.dart:31`
+cite déjà l'erreur mot pour mot). Le tell a joué à chaque fois — la phrase de
+l'agent ressemble trait pour trait à celle du correctif.
+
+### 526. Le bloc de dette est « prêt à coller », et coller est le seul geste dangereux
+
+**Né du run 91 et fermé le 18/09/2026.**
+
+`make argus-debts` dérive les 54 lignes — le **316** a prouvé que personne n'a
+plus à les réécrire de mémoire — puis **s'arrête à l'affichage**. L'écriture
+reste à la charge de celui qui lit, et c'est elle, exactement elle, que
+`known_issues.dart` interdit en majuscules **trois fois**.
+
+L'agent a écrit `s.index('const Set<String> argusKnownIssues')`, frappé
+l'exemplaire du dartdoc, **détruit le fichier**, puis l'a reconstruit depuis le
+scaffold **en citant l'avertissement qu'il venait d'enfreindre**.
+
+Reproduit sur le fichier livré : **2** occurrences du motif, ligne 58 (dartdoc,
+précédée de `///`) et ligne 86 (déclaration). `indexOf` désigne la première,
+`lastIndexOf` la seconde.
+
+⚠️ **C'est la troisième destruction par ce mécanisme.** Le **239** en comptait
+deux, et son remède était un marqueur plus une mise en garde — *un panneau, pas
+un garde-fou*. Le SKILL relate même l'incident précédent trois lignes avant
+l'endroit où l'on édite ces fichiers, et il n'a pas suffi.
+
+**Le remède n'est pas la discipline, c'est de supprimer la raison de bricoler un
+script** : tant qu'il faut écrire le sien, on écrira `indexOf`. C'est la même
+forme que le `--only` du harnais de mutation — *un raccourci sûr supprime la
+raison d'en bricoler un ; un rappel à l'ordre, non.*
+
+📌 **Il AJOUTE, il ne remplace pas**, et c'est la moitié qu'un `sed` naïf rate :
+une clé déjà inscrite ne fait plus échouer la suite, donc elle n'est plus
+dérivée — réécrire le fichier avec le seul bloc reçu **viderait** la dette
+assumée au deuxième lancement. L'union rend le geste idempotent.
+
+📌 **Trois gardes, trois mutations qui isolent.** La première (`lastIndexOf` →
+`indexOf`) ne prouve pas ce qu'on croirait : le mauvais ancrage fait échouer
+l'exigence du marqueur, donc le geste **refuse** au lieu d'écrire dans le
+dartdoc. Les deux filets se rattrapent — propriété du code, pas trou du garde —,
+d'où une troisième mutation qui désarme le refus pour l'exercer.
+
+📌 **Le camp du fichier neuf est CADRE**, choisi et non subi : le geste doit
+atteindre les hôtes **déjà installés**, qui sont précisément ceux où le fichier
+de dette a été détruit. L'avertissement, lui, vit dans un fichier `OWNED` et
+n'y arrivera jamais — le bon partage est que le geste voyage et que la prose
+reste.
+
+🔴 **Le critère de sortie NE BLOQUE PAS** : ce n'est ni un faux vert (`analyze`
+rougit), ni du temps de device, ni un message qui accuse à tort. C'est le premier
+run à passer le seuil depuis qu'il existe.
+
+📌 **Trois gardes existants ont rougi sur ce correctif, et tous les trois avaient
+raison** : la table des cibles dérivée du Makefile, le camp de chaque fichier du
+scaffold figé un par un, et le contrôle local de classification — ce dernier
+exigeant que le relevé voyage **dans le même commit** que le fichier ajouté.
