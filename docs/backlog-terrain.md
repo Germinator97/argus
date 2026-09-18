@@ -5096,18 +5096,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS**, tous deux ouverts le 18/09/2026 en cherchant la classe
-du 512 — *un contrôle livré que la CI ne joue pas*. Les deux sont **mesurés** et
-laissés ouverts parce qu'ils demandent un arbitrage, pas un correctif :
-
-- **514** — l'étage 1 n'entre dans aucun rapport de CI (`--file-reporter` :
-  Makefile 2, workflow 0). Ce n'est pas un faux vert — le job `guards` rougit
-  quand même —, mais le remède engage la structure des jobs, et mal fait il
-  fabrique un gate rouge permanent.
-- **515** — `--check-anchors` est un vrai gate (exit 1 mesuré sur une ancre
-  orpheline) qu'aucun job ne joue. Le câbler ferait rougir tout projet en cours
-  d'instrumentation : la question est *à partir de quand le projet hôte doit être
-  tenu à ses ancres*.
+✅ **Aucun point ouvert.** Les **514** et **515**, ouverts le matin même faute
+d'arbitrage, ont été tranchés et fermés dans la journée ; le **516** est né du
+run 86 et fermé avec eux.
 
 Les **511 à 513** sont fermés — le 511 par le run 84, le **512** par une passe de
 vérification Codex reproduite par exécution, le **513** en cherchant sa classe.
@@ -10181,8 +10172,8 @@ a fait écarter `--check-reachability` (voir 515).
 
 ### 514. L'étage 1 n'entre dans aucun rapport de CI
 
-**Ouvert le 18/09/2026** — mesuré, non corrigé : le remède engage la structure
-des jobs.
+**Ouvert puis FERMÉ le 18/09/2026.** Ouvert le matin faute d'arbitrage sur la
+structure des jobs ; tranché l'après-midi.
 
 `--file-reporter` : Makefile **2**, workflow **0**. En local, `argus-guards`
 écrit `stage1.jsonl`, que le rapport agrège — c'est le correctif du 391, sans
@@ -10202,14 +10193,33 @@ n'a pas tourné** — traité en « dimension interrompue », cela fabrique un g
 rouge permanent, c'est-à-dire le défaut symétrique de celui que le 512 vient de
 fermer. Choix de conception du workflow livré, à prendre à froid.
 
+**Ce qui le ferme, et le remède n'est pas celui que je redoutais.** Je craignais
+de devoir faire transiter le relevé entre jobs isolés — donc d'ajouter un
+`needs:`, donc de transformer un étage 1 non joué en dimension **interrompue**,
+c'est-à-dire en gate rouge permanent : le miroir exact du 512. La structure
+répondait déjà : **trois jobs sur quatre rendent chacun leur rapport partiel**.
+Le job sans device n'en rendait pas — il lui manquait d'être comme ses voisins.
+Il produit donc son relevé (`--file-reporter`, dossier **demandé** à la config et
+jamais recopié) et l'agrège, **sans aucune dépendance ajoutée**. Un étage 1 qui
+n'a pas tourné reste « jamais lancé », comme avant.
+
+📌 *Le remède le plus sûr était de lire la structure au lieu de la modifier.*
+
 ### 515. `--check-anchors` est un gate que la CI ne joue pas
 
-**Ouvert le 18/09/2026** — mesuré, non corrigé : l'ajouter est un arbitrage
-produit, pas un correctif.
+**Ouvert puis FERMÉ le 18/09/2026.**
 
 Mesuré : une ancre posée dans `lib/` que rien ne déclare → **exit 1** ; aucune
 ancre orpheline → exit 0 ; `lib/` absent → exit 2, il refuse de conclure. C'est
 donc un vrai gate, et il n'est joué par aucun job.
+
+**Ce qui le ferme : la parité avec la cible locale.** `argus-anchors` joue les
+**deux** moitiés depuis toujours — POSÉ → DÉCLARÉ par le croisement, DÉCLARÉ →
+PRÉSENT par la suite Dart — et la CI n'en jouait qu'une. L'étape est posée dans
+le job sans device, en `!cancelled()` pour la même raison que la cible locale les
+enchaîne sans se couper : *un garde qui empêche l'autre de s'exécuter coûte plus
+qu'il ne rapporte*. Il échoue sur une ancre orpheline, et c'est voulu : une ancre
+hors périmètre s'inscrit dans `allowUndeclared` **avec sa raison**.
 
 🔴 **Mais le câbler ferait rougir tout projet en cours d'instrumentation**, tant
 qu'`allowUndeclared` n'est pas rempli — ce que le Makefile dit déjà de son
@@ -10226,3 +10236,46 @@ câbler serait donc inerte sur le cas utile **et** bloquant sur un cas qui n'est
 pas un défaut. J'avais d'abord recommandé de l'ajouter, sur une réserve tirée
 d'un commentaire qui parle des **ancres** et non de l'atteignabilité : c'est la
 contre-épreuve qui l'a démenti, pas la relecture.
+
+### 516. Un pas optionnel n'échoue pas vite : il attend sa borne
+
+**Né du run 86 et fermé le 18/09/2026** — le seul constat neuf de cette passe de
+confirmation, et il vient du terrain, pas d'une relecture.
+
+Le gabarit de l'invite système était livré avec un `tapOn … optional: true`. Un
+pas optionnel ne renonce pas tout de suite : il **boucle** sur la recherche
+jusqu'à son délai, et il le fait **à chaque flow**. Mesuré :
+
+    ~7,3 s par flow · ~44 s par suite
+    a11y  61 ms [ABSORBÉ] précédé de 7063 ms · lifecycle 57 / 7082
+    i18n  61 / 7083 · journey 62 / 7082 · smoke 55 / 7115 · visual 66 / 7090
+    resilience 3294 ms [mesuré] — précédé de 1739 ms seulement
+
+**7 flows sur 8 rendaient une mesure de démarrage absorbée.** Un budget
+qu'aucune valeur ne peut dépasser a toutes les apparences d'un budget tenu — et
+le 479 avait déjà appris au rapport à le **dire**, ce qui rendait le défaut
+lisible sans le fermer.
+
+⚠️ **C'est le motif du 488, à l'identique.** Le **486** avait fermé exactement ce
+mécanisme — *« un `when:` s'évalue ; une assertion optionnelle attend »* — dans
+`disable-animations.yaml`, et l'avait laissé chez son voisin :
+
+    disable-animations.yaml   optional exécutable 1 · when 1   ← fermé par le 486
+    dismiss-system-alerts.yaml optional exécutable 1 · when 0   ← resté
+
+Le remède garde la **tolérance** et retire l'**attente** : le pas vit sous un
+`when: visible:`. Mesuré par l'agent sur le terrain : absorption de **5/6 à 3/6**.
+
+🔴 **Un garde ancien a refusé ce correctif, et il avait à moitié raison.** Il
+exigeait `optional: true` sur le pas — c'est-à-dire la **forme** de la tolérance,
+pas la tolérance. La pente était de le supprimer ; il a été **étendu** au fait
+(« jamais inconditionnel »), avec sa contre-épreuve : un `tapOn` nu doit être
+refusé. *Sixième fois qu'un garde en place arrête un correctif juste.*
+
+📌 **Le garde neuf porte sur la CLASSE** : tous les flows livrés, commentaires
+dépouillés (plusieurs expliquent `optional: true` en prose), et il prouve qu'il
+sait voir avant de dire qu'il n'a rien vu.
+
+⚠️ **Et la mutation du 388 est devenue inerte en fermant ce point** — son motif
+visait la forme d'hier. Ré-ancrée **dans le commit du correctif**, sur le fait et
+non sur la forme ; la mutation neuve qui faisait doublon a été retirée.
