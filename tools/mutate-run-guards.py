@@ -2546,6 +2546,13 @@ MUTATIONS = [
     ("run", "524 · le remede d'absorption cesse de suivre la config",
      "remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
      "remedeAbsorption(true, pire.flow)"),
+    # ── 525 — la derivation redevient aveugle a la plateforme ─────────────
+    # On vise la GARDE iOS elle-meme : sans elle, la liste Android decide pour
+    # iOS, et la valeur livree desarme. Le garde du 517 appelle la fonction sans
+    # `platforms`, donc il ne peut pas voir cette mutation : elle isole.
+    ("run", "525 · la liste Android redecide pour iOS",
+     "\n  if (plateformes.includes('ios')) return true;",
+     "\n  if (false && plateformes.includes('ios')) return true;"),
     ("config", "520 · le verdict n'envisage plus la cle a corriger",
      "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
      "\n  lignes.push('      (sans objet)');"),
