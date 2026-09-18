@@ -10065,3 +10065,66 @@ reste gardé par ses seuls tests, et la page le DIT plutôt que de compter une
 confirmation qui n'a pas eu lieu. *Un défaut qu'on n'arrive pas à faire revenir
 en quatre tentatives est peut-être un défaut que le remède a réellement fermé —
 mais on ne peut pas l'écrire, alors on écrit ce qu'on sait.*
+
+### 512. Le gate était calculé, écrit, affiché — et porté par personne
+
+**Fermé le 18/09/2026**, rapporté par une passe de vérification Codex et
+**reproduit par exécution** sur les artefacts réels du run 84.
+
+**Le constat tel qu'il est arrivé** : « deux dimensions qui produisent
+explicitement un échec de gate sont neutralisées par la CI ». Exact, et la chaîne
+est plus longue que ça — c'est le quatrième maillon qui fait le faux vert :
+
+    exitCodeFor(perf.json)   → 1    1 finding major
+    exitCodeFor(a11y.json)   → 1    5 findings major
+    workflow  $ARGUS perf || true   les 2 SEULES neutralisations du fichier
+              $ARGUS a11y || true
+    $ARGUS report            → 0    il CALCULE `gate: fail`, il ne le porte pas
+    summary.json lu en CI    → 0 occurrence du mot `gate` dans tout le workflow
+
+Sur le run 84, **6 des 7 findings majors** venaient de `perf` (1) et `a11y` (5) —
+le septième, celui de `sec`, était acquitté et ne pesait pas (511). **La CI aurait
+donc été verte de bout en bout sur un run dont le rapport publié affiche
+`gate: fail`.** Après le 367 et le 391.
+
+**Le remède ne touche pas le `|| true`, qui protège une chose réelle** : une
+mesure `perf`/`a11y` qui plante sur un device instable ne doit pas tuer le job
+avant que le rapport existe. C'est `report` qui **porte** désormais le verdict —
+l'endroit où la décision est déjà écrite (une seule, celle du 511), qui tourne
+toujours (`if: !cancelled()`), qui voit les findings des dimensions avalées, et
+qui couvre en prime la dimension **interrompue**. Une dimension ajoutée demain en
+hérite sans qu'on y repense.
+
+⚠️ **La décision existait déjà, écrite dans le `Makefile`** — *« on retient le
+pire code, et le rapport sort toujours. Le code de sortie reste celui du gate :
+produire le rapport ne doit pas verdir un run rouge »*. Elle n'avait jamais
+traversé jusqu'au workflow : deux chemins vers le même verdict, la règle écrite à
+un seul. Et le `|| true` n'était justifié **nulle part** — 0 occurrence dans la
+suite, 0 dans le backlog ; un refactor l'a transporté tel quel depuis
+`node scripts/argus/perf.mjs || true`.
+
+📌 **`|| 1` pour ne pas créer une troisième table** : le gate décide **si** on
+échoue, `exitCodeFor` décide **avec quelle gravité**. Une dimension interrompue —
+ou un `failOn` qui ne porte que des sévérités basses — rend `fail` sans
+qu'`exitCodeFor` n'y voie rien : sans ce repli le verdict serait `fail` et le code
+`0`, c'est-à-dire le défaut même qu'on ferme. Mesuré : major → 1, blocker → **2**,
+interrompu → 1, acquitté → **0**, run propre → 0.
+
+⚠️ **Le montage du 367 levait sur le cas qu'il mesure** : il lançait `report.mjs`
+par `execFileSync`, qui lève sur un code non nul — donc sur un run interrompu,
+exactement sa raison d'être. Ce qui sépare « a rendu, et le gate est rouge » de
+« a planté » n'est pas le code de sortie, c'est la **présence de la page**.
+
+⚠️ **La moitié qui coupe trop est gardée** : un run propre sort en 0 — un gate qui
+rougit toujours s'ignore aussi vite qu'un gate qui ne rougit jamais. Et les deux
+gardes de câblage portent sur **toutes** les étapes `report` (il y en a trois) et
+**tous** les uploads, pas sur le site qu'on vient de corriger : le défaut qu'on
+ferme est né d'un site laissé de côté pendant qu'on regardait son voisin.
+
+📌 **Ce que la reproduction a corrigé au constat** : mon premier montage acquittait
+un finding par la config et concluait à une régression du 511. C'était le montage
+— `acquitter()` est **pur**, et `report.mjs` n'en lit que les diagnostics : les
+findings lui arrivent déjà acquittés par leur dimension. *Suspecter le montage
+avant le code.*
+
+**2 gardes, 4 mutations, 4/4 tombent sur le garde visé.**
