@@ -771,6 +771,23 @@ function inviteSystemeInerte(flow) {
 }
 
 function invitesSystemePossibles(config) {
+  // ⚠️ 525 — CETTE LISTE EST ANDROID PAR NATURE, et son commentaire le dit : il
+  // prescrit de la dériver de `aapt2 dump permissions … app-release.apk`. Un
+  // projet iOS n'a aucun APK dont la tirer, donc elle reste à la valeur LIVRÉE
+  // — `[android.permission.INTERNET]`, inerte, c'est-à-dire la SEULE qui
+  // désarme (clé absente et liste vide rendent toutes deux `true`).
+  // Mesuré au run 90 : 5 flows rouges, 159 s de device, et un message qui
+  // accusait une ancre parfaitement correcte pendant que l'invite de
+  // notifications couvrait le splash. Dès qu'iOS est déclaré, on ne décide donc
+  // pas : on joue. C'est la direction que le 517 avait lui-même écrite —
+  // rater une invite donne un flow ROUGE, un geste inutile coûte 6,4 s.
+  // ⚠️ ET LE REMÈDE ÉVIDENT EST FAUX : dériver des `NS*UsageDescription` de
+  // l'Info.plist raterait PRÉCISÉMENT le cas rencontré, l'invite de
+  // notifications n'en portant aucune.
+  // 📌 La plateforme se lit dans `config` et non en paramètre : le 517 avait
+  // raison de refuser un câblage de plus, qui peut s'oublier en silence.
+  const plateformes = (config.platforms ?? []).map((p) => String(p).toLowerCase());
+  if (plateformes.includes('ios')) return true;
   const declarees = config.security?.expectedPermissions ?? [];
   if (declarees.length === 0) return true;
   const inerte = (/** @type {string} */ p) => PERMISSIONS_SANS_INVITE.has(p)

@@ -16422,3 +16422,42 @@ test('le finding d\'absorption fait varier son remède avec la config (524)', ()
   assert.ok(absorbe(sansInvite).suggestedFix.includes('resilience'),
     'le remède ne nomme plus le flow que la mesure a pourtant identifié comme le pire (524)');
 });
+
+// ── 525 ────────────────────────────────────────────────────────────────────
+// Le 517 fait dériver `ARGUS_SYSTEM_ALERTS` de `security.expectedPermissions`.
+// Cette liste est ANDROID PAR NATURE — son propre commentaire prescrit de la
+// tirer de `aapt2 dump permissions … app-release.apk`. Un projet iOS n'a aucun
+// APK dont la dériver, donc elle reste à la valeur LIVRÉE, laquelle est
+// `[android.permission.INTERNET]` : une liste non vide d'inertes, c'est-à-dire
+// la SEULE forme qui désarme (clé absente et liste vide rendent toutes deux
+// `true`). Le run 90 l'a payé — 5 flows rouges, 159 s de device, et un message
+// accusant une ancre correcte pendant qu'une invite couvrait le splash.
+// ⚠️ La valeur livrée est DÉRIVÉE du scaffold, jamais citée : la citer ferait
+// passer le garde au vert le jour où quelqu'un change cette clé, c'est-à-dire
+// exactement le jour où il faudrait qu'il parle.
+test('la valeur LIVRÉE ne désarme pas la fermeture des invites sur iOS (525)', () => {
+  const yaml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const livree = parseYaml(yaml).security?.expectedPermissions ?? [];
+  assert.ok(Array.isArray(livree) && livree.length > 0,
+    'le scaffold ne livre plus de `security.expectedPermissions` : ce garde ne mesure plus le cas '
+    + 'qu\'il surveille — soit la clé a disparu, soit le parseur ne la lit plus (525)');
+
+  // La branche iOS : quoi que la liste contienne, on ne peut pas décider.
+  for (const plateformes of [['ios'], ['android', 'ios'], ['iOS']]) {
+    assert.equal(invitesSystemePossibles({ platforms: plateformes, security: { expectedPermissions: livree } }), true,
+      `avec platforms: ${JSON.stringify(plateformes)} et la liste LIVRÉE, la fermeture des invites `
+      + 'système est DÉSARMÉE. Cette liste est Android par nature — aucun projet iOS ne peut la '
+      + 'renseigner — et la valeur livrée est la seule qui éteigne le geste. Symptôme mesuré au '
+      + "run 90 : des flows rouges accusant une ancre correcte, pendant qu'une invite système "
+      + 'couvre le splash (525)');
+  }
+
+  // L'AUTRE MOITIÉ — le remède du 517 doit SURVIVRE là où il est juste, sinon
+  // « cesser de désarmer à tort » se confondrait avec « ne plus rien dériver ».
+  assert.equal(invitesSystemePossibles({ platforms: ['android'], security: { expectedPermissions: livree } }), false,
+    'sur Android la dérivation ne rend plus `false` sur une liste d\'inertes : le correctif du 525 '
+    + 'a coupé trop large, et le 517 ne soulage plus rien (525)');
+  assert.equal(invitesSystemePossibles({ platforms: ['android'], security: { expectedPermissions: ['android.permission.CAMERA'] } }), true,
+    'sur Android une permission à invite ne fait plus jouer le geste : la dérivation est inerte (525)');
+});
