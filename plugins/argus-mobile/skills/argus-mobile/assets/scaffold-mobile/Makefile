@@ -187,6 +187,18 @@ argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'
 	if [ -n "$$dettes" ]; then printf '%s\n' "$$dettes"; \
 	else echo "  (aucune dette à inscrire — la suite est verte, ou elle n'a pas tourné)"; fi
 
+argus-debts-write: ## … et l'ÉCRIT dans known_issues.dart, en ajoutant à l'assumé
+# ⚠️ CETTE CIBLE EXISTE PARCE QUE « PRÊT À COLLER » S'ARRÊTE UN PAS TROP TÔT.
+# Coller est le seul geste dangereux du fichier : son dartdoc porte la ligne de
+# déclaration mot pour mot et PLUS HAUT que la vraie, donc un `indexOf` ou un
+# `sed` ancré dessus frappe le commentaire. Trois destructions, dont une par un
+# agent qui avait LU l'avertissement et l'a cité en reconstruisant le fichier.
+# Un rappel à l'ordre ne tient pas cette marche-là ; un raccourci sûr supprime
+# la raison d'en bricoler un.
+# 📌 Elle ne relance pas la suite : elle passe par `argus-debts`, seule source de
+# la dérivation — deux dérivations seraient deux copies de la même décision.
+	@$(MAKE) --no-print-directory argus-debts | $(ARGUS) debts --write
+
 argus-run: ## Étage 2 — suite Maestro sur device
 	@$(ARGUS) run
 
