@@ -37,14 +37,27 @@ appId: ${APP_ID}
 # ⚠️ ADAPTE LES LIBELLÉS À TA LANGUE ET À TES PERMISSIONS. Ceux-ci couvrent
 # l'alerte de notifications en français et en anglais. Si ton app demande la
 # localisation, la caméra ou le suivi, ajoute leurs boutons ici.
-# ⚠️ GARDE `optional: true` : l'alerte n'apparaît qu'une fois par installation, et
-# un tap inconditionnel ferait rougir tous les runs suivants sur un parcours sain.
+# ⚠️ LA TOLÉRANCE EST NÉCESSAIRE, LA FORME NON : l'alerte n'apparaît qu'une fois
+# par installation, donc un tap inconditionnel ferait rougir tous les runs
+# suivants sur un parcours sain. Mais un `tapOn … optional: true` ne renonce pas
+# tout de suite — il BOUCLE sur la recherche jusqu'à son délai, et il le fait à
+# CHAQUE flow. Mesuré sur le terrain : **~7,3 s par flow**, ~44 s par suite, et
+# surtout la mesure de démarrage ABSORBÉE sur 7 flows sur 8 (55-66 ms retenus
+# derrière ~7 080 ms d'attente). Un budget qu'aucune valeur ne peut dépasser a
+# toutes les apparences d'un budget tenu (516).
+# 🔴 Un `when:` s'ÉVALUE ; une assertion optionnelle ATTEND. C'est la même
+# distinction que le 486 a fermée chez le voisin `disable-animations.yaml` — et
+# qui n'avait pas traversé jusqu'ici. Le `when` garde la tolérance sans le coût.
 # ⚠️ Et le sélecteur est ENCADRÉ (`(?s).*…*`) : un sélecteur porte sur le nœud
 # ENTIER, et un nœud fusionne le texte qu'il recouvre.
 # TODO(argus): adapte les libellés à ta langue et ajoute les autres invites que
 # ton app déclenche — localisation, caméra, suivi. Retire ce TODO quand c'est
 # fait, ou écris en une ligne pourquoi la valeur livrée te suffit.
-- tapOn:
-    text: '(?s).*(Refuser|Don.t Allow).*'
-    optional: true
-    label: Refermer l'invite système, si elle recouvre l'écran
+- runFlow:
+    when:
+      visible:
+        text: '(?s).*(Refuser|Don.t Allow).*'
+    commands:
+      - tapOn:
+          text: '(?s).*(Refuser|Don.t Allow).*'
+          label: Refermer l'invite système, si elle recouvre l'écran
