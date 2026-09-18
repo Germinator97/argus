@@ -15962,10 +15962,18 @@ test('514 — le job sans device produit son relevé ET le fait agréger', () =>
  * ⚠️ Une assertion sur une `condition:` JS n'interroge PAS l'arbre : l'exiger
  * sous un `when: true:` serait un faux positif, et c'est pourquoi le bloc du
  * pas est lu avant de conclure.
+ * ⚠️ `gratuites` est paramétrable pour que le garde du 518 REUTILISE cette
+ * mécanique au lieu de la redupliquer : restreint à `platform:`, le même code
+ * répond « ce pas est-il borné par la PLATEFORME ? ». Écrite deux fois, la
+ * remontée se serait trompée deux fois — et elle l'a fait : `platform:` est le
+ * FRÈRE de `commands:`, pas un ancêtre, donc une remontée naïve par indentation
+ * décroissante ne le voit jamais. C'est le même piège que la portée ouverte sur
+ * le `when:`, payé une seconde fois dans la même passe.
  * @param {string} src le flow entier
+ * @param {string[]} [gratuites] les natures de condition qui n'interrogent pas l'arbre
  * @returns {string[]} une entrée par interrogation non gardée, avec sa ligne
  */
-function interrogationsNonGardees(src) {
+function interrogationsNonGardees(src, gratuites = ['true:', 'platform:']) {
   // Commentaires dépouillés EN PLACE : plusieurs de ces fichiers expliquent
   // `optional: true` en prose, et un motif les compterait. Remplacer la ligne
   // par du vide plutôt que la retirer garde les numéros de ligne justes.
@@ -16006,7 +16014,7 @@ function interrogationsNonGardees(src) {
       // l'environnement, et `resilience.yaml` l'emploie depuis toujours pour la
       // même raison (518). Les deux natures sont donc gratuites ; ce qui coûte,
       // c'est d'interroger l'ARBRE.
-      if (/^(true|platform):/.test(cle)) {
+      if (gratuites.some((g) => cle.startsWith(g))) {
         // ⚠️ ON EMPILE L'INDENTATION DU PAS, PAS CELLE DU `when:` — et ce
         // détail a fait rougir mon propre correctif à la première exécution.
         // `commands:` est le FRÈRE de `when:` (même indentation), donc une
@@ -16103,6 +16111,55 @@ test('517 — aucune interrogation de l\'arbre n\'attend sa borne dans les flows
     '    optional: true'].join('\n');
   assert.deepEqual(interrogationsNonGardees(surCondition), [],
     'une assertion sur une `condition:` JS n\'interroge pas l\'arbre : ne pas la refuser');
+});
+
+test('518 — une invite propre à UNE plateforme est bornée par la plateforme', () => {
+  // 🔴 CE GARDE EXISTE PARCE QUE SON VOISIN NE POUVAIT PAS VOIR LE DÉFAUT, et
+  // c'est le harnais de mutation qui l'a dit — « VACANT, aucun garde n'a bougé »
+  // sur la mutation qui retire précisément le correctif du 518.
+  //
+  // Le voisin demande qu'une interrogation de l'arbre ait un ancêtre qui
+  // n'interroge pas l'arbre. Ici cet ancêtre EXISTAIT DÉJÀ — le pas vit sous un
+  // `when: true:` qui teste si un deep link est déclaré — et il ne borne pas du
+  // tout ce que le correctif borne : la PLATEFORME. Le critère du voisin est une
+  // condition *suffisante* pour sa classe, pas le fait mesuré ici. *Un garde
+  // satisfait par une enveloppe préexistante ne garde pas ce qu'on vient
+  // d'ajouter.*
+  //
+  // Le fait : la confirmation système d'un deep link n'existe que sur iOS. Sur
+  // Android la question ne peut recevoir que « non », donc elle paie sa borne
+  // (~6,4 s mesurés) à chaque run d'un projet qui déclare un deep link.
+  // ⚠️ Garde de SITE, et c'est assumé : rien ne dérive automatiquement quels
+  // sélecteurs sont propres à une plateforme. Le critère généralisable est écrit
+  // dans le flow, à côté du pas.
+  const chemin = join(FLOWS_DIR, 'lifecycle.yaml');
+  const src = readFileSync(chemin, 'utf8');
+
+  assert.match(src, /visible:\s*'Open in'/,
+    'plus aucune interrogation `Open in` dans lifecycle.yaml : si le geste a été retiré, '
+    + 'retire ce garde avec lui ; s\'il a été reformulé, mets ce motif à jour (518)');
+
+  // ⚠️ ON RÉUTILISE LA MÉCANIQUE DU VOISIN, avec `platform:` pour SEULE condition
+  // gratuite : la question devient « ce pas est-il borné par la plateforme ? ».
+  // La réécrire ici l'aurait fait se tromper deux fois — elle s'est déjà trompée
+  // une fois sur la portée du `when:`.
+  assert.deepEqual(interrogationsNonGardees(src, ['platform:']), [],
+    'une interrogation de lifecycle.yaml n\'est pas bornée par un `when: platform:` : elle '
+    + 'paie donc sa borne (~6,4 s) sur une plateforme qui ne peut pas afficher cette '
+    + 'confirmation. Ce n\'est pas le pas qu\'il faut retirer — c\'est la question qu\'il ne '
+    + 'faut pas poser là (518)');
+
+  // ⚠️ LA CONTRE-ÉPREUVE : le critère doit REFUSER l'état que la mutation
+  // rétablit — un pas que seul un `when: true:` enveloppe, ce que le garde
+  // voisin accepte précisément.
+  const nu = ['appId: x', '---', '- runFlow:', '    when:', '      true: "${X}"',
+    '    commands:', '      - runFlow:', '          when:', "            visible: 'Open in'",
+    '          commands:', '            - tapOn: Open'].join('\n');
+  assert.equal(interrogationsNonGardees(nu, ['platform:']).length, 1,
+    'le critère doit REFUSER un pas que seul un `when: true:` enveloppe : c\'est l\'état exact '
+    + 'que la mutation du 518 rétablit, et celui que le garde voisin laisse passer');
+  assert.deepEqual(interrogationsNonGardees(nu), [],
+    'et le voisin, lui, doit l\'accepter — sans quoi les deux gardes mesureraient la même chose');
 });
 
 test('517 — la décision de jouer l\'invite se DÉRIVE des permissions déclarées', () => {
