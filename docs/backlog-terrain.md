@@ -5096,7 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Aucun point ouvert.** Les **518 à 521**, ouverts le soir du run 87 faute
+✅ **Aucun point ouvert.** Le **522** est né du run 88 et fermé le même jour : la
+passe de confirmation a montré que le **479** était vacant sur toute une classe
+de projets — ceux qui n'ont pas d'écran de marque —, et que le run n'avait rendu
+un verdict que par accident de composition de sa suite.
+
+Les **518 à 521**, ouverts le soir du run 87 faute
 d'arbitrage, ont été tranchés dans la nuit — et le résultat le plus instructif
 n'est aucun des correctifs : **deux des quatre étaient déjà décidés dans le
 dépôt**, et je les avais inscrits sans chercher.
@@ -10528,3 +10533,62 @@ dans le dépôt**, ce que la règle demande AVANT d'ouvrir quoi que ce soit.
 ai lu** : un message relayé six fois n'est pas une question sans réponse, c'est
 la preuve qu'il **arrive**. Un relevé de fréquence ne se lit pas comme un
 symptôme sans savoir ce que l'outil fabrique.
+
+## Rendu par le run 88 — confirmation des 517-521 — 19/09/2026
+
+La passe de confirmation demandée après leur clôture. **Les cinq tiennent** — et
+elle rend un point de plus, qui était caché *derrière* l'un d'eux.
+
+### 522. Sans plancher de marque, le 479 ne disait RIEN du tout
+
+**Né du run 88 et fermé le 19/09/2026.** Le critère d'absorption du **479**
+n'emploie que `thresholds.brandedSplashMs` — **délibérément**, pour ne deviner
+aucun nombre. Conséquence exacte : `absorbed` est **toujours faux** quand ce
+plancher vaut 0, c'est-à-dire sur **tout projet sans écran de marque**. Le
+terrain de ce run déclare `0`, à raison.
+
+Mesuré sur ses propres chiffres, seule cette clé changeant :
+
+    brandedSplashMs = 2000  →  6/7 absorbés · QAM-START-ABSORBE [info]
+    brandedSplashMs =    0  →  0/7 absorbés · aucun mot sur l'attente
+
+et les six relevés valaient **8 à 58 ms derrière 7 022 à 7 097 ms** d'attente.
+
+🔴 **Le code porte lui-même la phrase qui condamne ce comportement** : « une
+absorption n'a aucun autre canal pour se dire […] **se taire serait le reproduire
+une troisième fois** ». À 0, il se tait.
+
+🔴 **Et ce run n'a produit un verdict que par ACCIDENT.** Un seul de ses sept
+flows fait son propre `launchApp` — c'est lui qui portait la seule vraie mesure,
+donc le `major` publié. **La même suite sans ce flow rend zéro finding** : un
+budget « tenu » sur six relevés dont aucun ne chronomètre le démarrage, soit le
+479 à l'identique. *Rien dans le skill n'impose qu'un tel flow existe*, et la
+contre-épreuve est conservée dans le garde.
+
+📌 **Le remède ne conclut toujours pas, et c'est juste** : sans plancher, rien ne
+dit que l'écran ne pouvait pas être prêt avant qu'on cherche. Ce qui manquait
+n'est pas un verdict mais de **DIRE** qu'on n'a pas pu en rendre un — et le
+commentaire l'affirmait déjà (« le relevé porte quand même `precedeMs`, et le
+lecteur tranche »), sauf que la page publiée n'en porte **aucune trace** :
+mesuré, **0 occurrence** de `precede`, `attente` ou `absorb` dans le HTML contre
+**7 dans le JSON**. *Le lecteur ne peut pas trancher sur un chiffre qu'il ne voit
+pas.*
+
+⚠️ **Le seuil de l'attente est DÉRIVÉ du budget déclaré**, jamais deviné : une
+attente qui vaut à elle seule tout le budget de démarrage est de l'ordre de
+grandeur qui compte — et le flow qui lance lui-même (1 079 ms devant 2 000) reste
+donc une mesure, exactement la séparation que le plancher produisait quand il
+existait.
+
+⚠️ **Un garde en place figeait le comportement muet**, et c'est le motif du
+**439** : il assertait `absorbed === false` sans plancher, sous le commentaire
+« sans référence, aucun verdict inventé ». C'était vrai et incomplet — *rendre
+une non-conclusion sans la dire EST une conclusion*. Il n'a pas été touché ; le
+garde neuf porte ce qu'il ne mesurait pas.
+
+⚠️ **Et une de mes propres assertions était fausse** : écrite
+`deepEqual(startupFindings([vraie]), [])`, elle a rougi sur un comportement
+**juste** — cette mesure dépasse son budget, donc `QAM-START` sort. Corrigée
+pour porter sur le finding et non sur la liste, plus une assertion qui exige que
+la vraie mesure **reste jugée** : sans elle, le remède aurait pu rendre le budget
+inerte sans qu'on le voie.
