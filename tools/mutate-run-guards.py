@@ -1378,9 +1378,12 @@ MUTATIONS = [
      "# Rien de particulier à signaler sur les permissions."),
     # 388 — le geste de l'invite système perd sa forme conditionnelle : un tap
     # inconditionnel échoue dès le second run, l'alerte n'apparaissant qu'une fois.
+    # ⚠️ RÉ-ANCRÉE AU 516, dans le commit du correctif : le pas ne porte plus
+    # `optional: true` mais vit sous un `when:` qui s'évalue. La mutation vise
+    # donc le FAIT — rendre le geste inconditionnel — et non la forme d'hier.
     ('dismiss', "388 · le geste de l'invite n'est plus conditionnel",
-     '    optional: true',
-     '    optional: false'),
+     "- runFlow:\n    when:\n      visible:\n        text: '(?s).*(Refuser|Don.t Allow).*'\n    commands:\n      - tapOn:\n          text: '(?s).*(Refuser|Don.t Allow).*'\n          label: Refermer l'invite système, si elle recouvre l'écran",
+     "- tapOn:\n    text: '(?s).*(Refuser|Don.t Allow).*'\n    label: Refermer l'invite système, si elle recouvre l'écran"),
     # 388 bis — la moitié que le 382 avait manquée : fermer l'alerte ne suffit pas.
     ('launchclean', "388 bis · le lien avec le trousseau disparaît",
      '    clearKeychain: true',
@@ -2455,6 +2458,16 @@ MUTATIONS = [
     ("ci", "un controle --check-* de plus, hors du releve fige",
      "        run: $ARGUS config --check-flows\n",
      "        run: $ARGUS config --check-flows\n      - name: Atteignabilite\n        run: $ARGUS config --check-reachability\n"),
+    # ── 514 · 515 · 516 — ce que la CI ne jouait pas, et le pas qui attendait ──
+    ("ci", "le journal machine de l'etage 1 cesse d'etre produit",
+     " --file-reporter json:\"$($ARGUS config --print-artifacts-dir)/stage1.jsonl\"",
+     ""),
+    ("ci", "le job sans device produit son releve et personne ne l'agrege",
+     "\n      - name: Rapport\n        if: ${{ !cancelled() }}\n        run: $ARGUS report\n\n      - uses: actions/upload-artifact@v7\n        if: ${{ !cancelled() }}\n        with:\n          name: argus-mobile-stage1\n",
+     "\n      - uses: actions/upload-artifact@v7\n        if: ${{ !cancelled() }}\n        with:\n          name: argus-mobile-stage1\n"),
+    ("ci", "l'autre moitie de argus-anchors disparait de la CI",
+     "\n      - name: Ancres posées mais non déclarées\n        if: ${{ !cancelled() }}\n        run: $ARGUS config --check-anchors\n",
+     "\n"),
 ]
 
 

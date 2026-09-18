@@ -10947,9 +10947,28 @@ test('le geste de l\'invite système est écrit là où TOUS les flows passent (
   // la mutation 388, qui ne tombait que sur le contrôle des motifs.
   // (Le marqueur ARGUS:OWNED, lui, EST un commentaire : il se cherche sur le brut.)
   const pas = geste.split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
-  assert.match(pas, /optional:\s*true/,
-    'sans `optional: true` sur le PAS lui-même, le geste échoue dès le SECOND run : l\'alerte '
-    + 'n\'apparaît qu\'une fois par installation (et un `optional: false` passe le motif nu)');
+  // 🔴 LE FAIT EST « JAMAIS INCONDITIONNEL », PAS « PORTE optional: true » (516).
+  // Ce garde a d'abord exigé la forme, et il a rougi sur un correctif JUSTE : un
+  // `tapOn … optional: true` ne renonce pas tout de suite, il BOUCLE jusqu'à son
+  // délai — ~7,3 s par flow mesurés sur le terrain, et la mesure de démarrage
+  // absorbée sur 7 flows sur 8. Le remède garde la tolérance et retire l'attente
+  // en mettant le pas sous un `when:`, qui s'ÉVALUE. C'est ce que le 486 avait
+  // fermé chez le voisin `disable-animations.yaml`, et qui n'avait pas traversé.
+  // ⚠️ Deux FORMES pour un seul FAIT — ce n'est pas l'alternative que ce dépôt
+  // proscrit : là-bas deux synonymes décrivent la même chose, donc en retirer un
+  // laisse l'autre debout ; ici les deux sont légitimes, et la mutation qui
+  // compte casse le fait — un `tapOn` nu, sans garde ni tolérance.
+  const tolere = /optional:\s*true/.test(pas);
+  const garde = /runFlow:\s*\n\s+when:\s*\n\s+visible:/.test(pas);
+  assert.ok(tolere || garde,
+    'le geste s\'exécute INCONDITIONNELLEMENT : il échouera dès le SECOND run, l\'alerte '
+    + 'n\'apparaissant qu\'une fois par installation. Deux formes le tolèrent — `optional: true` '
+    + 'sur le pas, ou un `when: visible:` qui le garde — et la seconde ne paie pas l\'attente');
+
+  // ⚠️ ET LA CONTRE-ÉPREUVE, sans quoi on ne sait pas si le critère sait dire non.
+  const nu = "appId: x\n---\n- tapOn:\n    text: 'Refuser'\n";
+  assert.ok(!(/optional:\s*true/.test(nu) || /runFlow:\s*\n\s+when:\s*\n\s+visible:/.test(nu)),
+    'le critère accepte un `tapOn` NU : il ne garde plus rien');
 
   // ⚠️ LA MOITIÉ QUI MANQUAIT, ET DÉRIVÉE : le geste doit être ATTEIGNABLE.
   const clean = readFileSync(join(dir, 'launch-clean.yaml'), 'utf8');
@@ -15837,7 +15856,7 @@ test('513 — tout contrôle `config --check-*` est joué en CI, ou son absence 
 
   // Figé PAR ÉGALITÉ des deux côtés : une réparation fait rougir autant qu'une
   // régression, et le relevé ne peut pas survivre à ce qu'il décrit.
-  assert.deepEqual(joues, ['check-flows'],
+  assert.deepEqual(joues, ['check-anchors', 'check-flows'],
     'la liste des contrôles joués en CI a changé — si c\'est voulu, mets ce relevé à jour et dis pourquoi');
 
   // ⚠️ Les deux absents le sont pour des raisons MESURÉES, pas supposées :
@@ -15845,10 +15864,82 @@ test('513 — tout contrôle `config --check-*` est joué en CI, ou son absence 
   //     orphelin (« ce n'est PAS un défaut en soi », dit son propre code) et ne
   //     sort en 2 que s'il n'a rien pu mesurer. Le câbler serait inerte sur le
   //     cas utile et bloquant sur un cas qui n'est pas un défaut.
-  //   · `check-anchors`, lui, SAIT dire non (exit 1 sur une ancre orpheline,
-  //     mesuré) : son absence est un arbitrage produit, pas une propriété du
-  //     contrôle — il rougirait sur tout projet en cours d'instrumentation,
-  //     tant qu'`allowUndeclared` n'est pas rempli. Point 515, ouvert.
-  assert.deepEqual(absents, ['check-anchors', 'check-reachability'],
+  //   · `check-anchors` EST joué depuis le 515, dans le job sans device, en
+  //     parité avec la cible locale qui lance les deux moitiés depuis toujours.
+  //     Il ÉCHOUE sur une ancre orpheline, et c'est voulu : une ancre hors
+  //     périmètre s'inscrit dans `allowUndeclared` avec sa raison.
+  assert.deepEqual(absents, ['check-reachability'],
     'un contrôle `--check-*` n\'est ni joué en CI ni inscrit ici : réponds « qui le joue ? » avant de le livrer');
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 514 · 516 — ce que la CI ne jouait pas, et le pas qui attendait sa borne
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('514 — le job sans device produit son relevé ET le fait agréger', () => {
+  // 🔴 Le rapport agrège cinq relevés de device et AUCUN résultat de
+  // `flutter test` tant que le journal machine n'est pas écrit : un projet dont
+  // les gardes d'étage 1 décrivent des défauts réels publiait `gate: pass`
+  // par-dessus (391). Le correctif vivait dans la cible locale, et n'avait
+  // jamais traversé jusqu'au workflow — la page de CI disait donc « jamais
+  // lancé » d'une dimension qui venait de tourner.
+  const wf = workflowSansCommentaires();
+  const guards = wf.slice(wf.indexOf('\n  guards:'), wf.indexOf('\n  security:'));
+  assert.ok(guards.length > 0, 'le job sans device a disparu : ce garde ne mesure plus rien');
+
+  assert.match(guards, /--file-reporter json:/,
+    'le journal machine de l\'étage 1 n\'est plus produit : le rapport ne verra rien de cette dimension');
+  // ⚠️ DEMANDÉ à la config, jamais recopié : le dossier est configurable, donc
+  // l'écrire en dur ferait écrire là où le rapport ne lit pas.
+  assert.match(guards, /--print-artifacts-dir/,
+    'le dossier du relevé est écrit en dur : il divergera de celui que le rapport lit');
+  // 📌 La seconde moitié : produire le relevé ne suffit pas, il faut l'agréger.
+  assert.match(guards, /run: \$ARGUS report/,
+    'le job produit son relevé et personne ne l\'agrège — la dimension restera « jamais lancé »');
+
+  // ⚠️ ET AUCUN `needs:` AJOUTÉ. Faire dépendre les autres jobs de celui-ci
+  // transformerait un étage 1 non joué en dimension INTERROMPUE, donc en gate
+  // rouge permanent : le miroir exact du 512.
+  assert.doesNotMatch(guards, /needs:/,
+    'le job sans device a gagné une dépendance : un étage 1 non joué deviendrait une dimension '
+    + 'interrompue, donc un gate rouge permanent');
+});
+
+test('516 — aucun pas optionnel des flows livrés n\'attend sa borne', () => {
+  // 🔴 LA CLASSE, PAS LE SITE. Un `tapOn … optional: true` ne renonce pas tout
+  // de suite : il boucle sur la recherche jusqu'à son délai, à CHAQUE flow.
+  // Mesuré sur le terrain au run 86 : ~7,3 s par flow, ~44 s par suite, et la
+  // mesure de démarrage ABSORBÉE sur 7 flows sur 8 — 55 à 66 ms retenus derrière
+  // ~7 080 ms d'attente. Un budget qu'aucune valeur ne peut dépasser a toutes
+  // les apparences d'un budget tenu.
+  // Le 486 avait fermé ce mécanisme dans un flow et l'avait laissé chez son
+  // voisin : c'est le motif du 488, et le garde porte donc sur TOUS les flows.
+  const dir = join(FLOWS_DIR, '_subflows');
+  const flows = readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.yaml'))
+    .map((f) => ({ nom: f, chemin: join(FLOWS_DIR, f) }))
+    .concat(readdirSync(dir).filter((f) => f.endsWith('.yaml'))
+      .map((f) => ({ nom: `_subflows/${f}`, chemin: join(dir, f) })));
+  assert.ok(flows.length > 5, `seulement ${flows.length} flow(s) lu(s) : le périmètre de ce garde est trop étroit`);
+
+  // ⚠️ Commentaires dépouillés : plusieurs de ces fichiers EXPLIQUENT
+  // `optional: true` en prose, et le motif les compterait.
+  const fautifs = [];
+  for (const { nom, chemin } of flows) {
+    const pas = readFileSync(chemin, 'utf8').split('\n')
+      .filter((l) => !l.trimStart().startsWith('#')).join('\n');
+    if (!/optional:\s*true/.test(pas)) continue;
+    // Toléré quand le pas vit sous un `when:` — il s'évalue au lieu d'attendre.
+    if (/when:/.test(pas)) continue;
+    fautifs.push(nom);
+  }
+  assert.deepEqual(fautifs, [],
+    `ces flows portent un pas optionnel qu'aucun \`when:\` ne garde, donc il attend sa borne à `
+    + `chaque exécution : ${fautifs.join(', ')}. Un \`when:\` s'évalue ; une assertion optionnelle attend`);
+
+  // ⚠️ Le garde doit savoir VOIR avant de dire qu'il n'a rien vu : au moins un
+  // flow porte un `optional:` quelque part, sinon le motif est périmé.
+  const porteurs = flows.filter(({ chemin }) => /optional:/.test(readFileSync(chemin, 'utf8')));
+  assert.ok(porteurs.length > 0,
+    'plus aucun flow ne porte `optional:` : le motif de ce garde est périmé, mets-le à jour');
 });
