@@ -2517,6 +2517,16 @@ MUTATIONS = [
     # `n\'est`. Motif absent, mutation INERTE, et c'est --check-motifs qui l'a
     # dit. Deux langages se disputent les memes caracteres des qu'un generateur
     # ecrit du code.
+    # ── 522 — l'attente que le 479 ne disait pas sans plancher ────────────
+    # Le relevé retombe muet sur la classe de projets sans écran de marque :
+    # une attente de l'ordre du budget devant toutes les mesures cesse d'être
+    # dite, et une suite dont aucun flow ne mesure rend « budget tenu ».
+    # ⚠️ Le garde APPELLE la fonction, donc la neutralisation par `false &&`
+    # est visible — c'est elle qu'on mute, et non le motif, parce qu'un garde
+    # qui lit du texte ne verrait pas une valeur neutralisée.
+    ("run", "522 · l'attente non jugeable cesse d'etre dite",
+     "\n  if (floor === 0) {",
+     "\n  if (false && floor === 0) {"),
     ("config", "520 · le verdict n'envisage plus la cle a corriger",
      "\n  lignes.push('      anchors.paramNames — cette clé ne prend que les paramètres qui');",
      "\n  lignes.push('      (sans objet)');"),
