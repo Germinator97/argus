@@ -2358,8 +2358,8 @@ MUTATIONS = [
     # refuse. Elle vise `retire l'appel`, que SEUL le garde du 502 lit : le
     # reste de la phrase est partagé avec d'autres assertions.
     ("run", "le remède du démarrage absorbé represcrit de borner le tap",
-     "pas seulement l\\'un des deux), retire l\\'appel à ",
-     "pas seulement l\\'un des deux), donne un timeout: court à "),
+     "pas seulement l\\'un des deux), retire l\\'appel '",
+     "pas seulement l\\'un des deux), donne un timeout: court '"),
     # 503 — le CÂBLAGE, pas la décision. Retirer l'appel laisse la fonction
     # intacte et juste : c'est exactement le troisième barreau, celui où l'on
     # croit avoir fini parce que la mesure, elle, marche.
@@ -2392,8 +2392,8 @@ MUTATIONS = [
 
     # ── 505 — le remède ne chiffrait qu'une branche sur deux ───────────────
     ("run", "le remede ne dit plus ce que GARDER le geste coute",
-     "          + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\\'invite — défendable, la '",
-     "          + 'Et si tu le gardes — défendable, la '"),
+     "    + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\\'invite — défendable, la plateforme en '",
+     "    + 'Et si tu le gardes — défendable, la plateforme en '"),
 
     # ── 509 — deux arbres, deux verdicts, et rien qui le disait ────────────
     ("a11y", "la reserve des deux arbres disparait du conseil",
