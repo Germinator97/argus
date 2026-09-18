@@ -39,15 +39,30 @@ appId: ${APP_ID}
 # localisation, la caméra ou le suivi, ajoute leurs boutons ici.
 # ⚠️ LA TOLÉRANCE EST NÉCESSAIRE, LA FORME NON : l'alerte n'apparaît qu'une fois
 # par installation, donc un tap inconditionnel ferait rougir tous les runs
-# suivants sur un parcours sain. Mais un `tapOn … optional: true` ne renonce pas
-# tout de suite — il BOUCLE sur la recherche jusqu'à son délai, et il le fait à
-# CHAQUE flow. Mesuré sur le terrain : **~7,3 s par flow**, ~44 s par suite, et
-# surtout la mesure de démarrage ABSORBÉE sur 7 flows sur 8 (55-66 ms retenus
-# derrière ~7 080 ms d'attente). Un budget qu'aucune valeur ne peut dépasser a
-# toutes les apparences d'un budget tenu (516).
-# 🔴 Un `when:` s'ÉVALUE ; une assertion optionnelle ATTEND. C'est la même
-# distinction que le 486 a fermée chez le voisin `disable-animations.yaml` — et
-# qui n'avait pas traversé jusqu'ici. Le `when` garde la tolérance sans le coût.
+# suivants sur un parcours sain. Mais toute forme qui INTERROGE L'ARBRE pour le
+# savoir ne renonce pas tout de suite — elle attend sa borne, à chaque flow.
+# Mesuré : ~7,3 s par flow, ~44 s par suite, et la mesure de démarrage ABSORBÉE
+# sur 7 flows sur 8 (55-66 ms retenus derrière ~7 080 ms d'attente). Un budget
+# qu'aucune valeur ne peut dépasser a toutes les apparences d'un budget tenu (516).
+#
+# 🔴 ET LE PREMIER REMÈDE ÉTAIT FAUX — c'est le 517, et il vaut d'être lu. Le
+# 516 avait remplacé `tapOn … optional: true` par ce `when: visible:` en écrivant
+# « un `when:` s'ÉVALUE ; une assertion optionnelle ATTEND ». La phrase est fausse
+# du `when: visible:`, qui interroge l'arbre lui aussi. Mesuré sur le fichier
+# LIVRÉ, trois répétitions, témoin à 8,5 s :
+#
+#     when: visible: sur élément ABSENT   14,87 / 14,93 / 14,80  → ~6,4 s
+#     tapOn … optional: true              15,06 / 14,79 / 15,03  → ~6,4 s
+#     when: visible: sur élément PRÉSENT    8,27 /  8,14 /  8,16  → ~0
+#     when: true: (expression JS) fausse    8,24 /  8,21 /  8,18  → ~0
+#
+# Le coût n'avait pas bougé : `precedeMs` ~7,1 s, et l'absorption est passée de
+# 7/8 à **10/10**. Le 486 est juste parce qu'il conditionne sur une EXPRESSION,
+# pas parce qu'il emploie le mot `when` ; le 516 a recopié le mot sans la raison.
+# ⚠️ Et `timeout:` est refusé dans un `when:` (`Unknown Property: timeout`) : la
+# borne n'est pas réglable, il faut donc ne PAS poser la question quand aucune
+# invite ne peut naître. C'est ce que fait le `when: true:` extérieur ci-dessous,
+# dont la valeur est dérivée de `security.expectedPermissions` par le runner.
 # ⚠️ Et le sélecteur est ENCADRÉ (`(?s).*…*`) : un sélecteur porte sur le nœud
 # ENTIER, et un nœud fusionne le texte qu'il recouvre.
 # TODO(argus): adapte les libellés à ta langue et ajoute les autres invites que
@@ -55,9 +70,13 @@ appId: ${APP_ID}
 # fait, ou écris en une ligne pourquoi la valeur livrée te suffit.
 - runFlow:
     when:
-      visible:
-        text: '(?s).*(Refuser|Don.t Allow).*'
+      true: "${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}"
     commands:
-      - tapOn:
-          text: '(?s).*(Refuser|Don.t Allow).*'
-          label: Refermer l'invite système, si elle recouvre l'écran
+      - runFlow:
+          when:
+            visible:
+              text: '(?s).*(Refuser|Don.t Allow).*'
+          commands:
+            - tapOn:
+                text: '(?s).*(Refuser|Don.t Allow).*'
+                label: Refermer l'invite système, si elle recouvre l'écran

@@ -6511,6 +6511,16 @@ test('aucun identifiant d\'application réel dans le dépôt (255)', () => {
     'com.exemple.autreapp',
     // Tiers légitime : c'est Flutter qui le déclare, pas nous.
     'io.flutter.splash',
+    // Idem pour ces deux-ci (517) : des permissions que GOOGLE PLAY définit, et
+    // qu'une app déclare sans qu'aucune invite système en naisse. Elles vivent
+    // dans `PERMISSIONS_SANS_INVITE` (run.mjs), donc dans du code, pas dans un
+    // constat — et ce sont des noms de la plateforme, pas de nos terrains.
+    // ⚠️ Les PRÉFIXES, pas les noms complets : le motif ci-dessous ne capte que
+    // des minuscules, donc il rend `com.android.vending` de
+    // `com.android.vending.BILLING`. Déclarer le nom entier laisse le garde
+    // rouge ET crée un orphelin — j'ai fait les deux avant de lire le motif.
+    'com.android.vending',
+    'com.google.android.finsky.permission',
   ]);
   const MOTIF = /\b(?:com|io|org|net|app|fr|dev|me|eu|uk)\.[a-z0-9_]+(?:\.[a-z0-9_]+)+/g;
 

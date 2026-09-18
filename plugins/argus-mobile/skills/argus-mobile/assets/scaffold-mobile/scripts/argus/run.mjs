@@ -639,12 +639,106 @@ const ANIMATION_SCALES = ['window_animation_scale', 'transition_animation_scale'
  * C'est la confusion entre « j'ai mesuré, et c'est NON » — sur Android, où un
  * `settings put` peut échouer et où le signal compte — et « il n'y a RIEN À
  * CONCLURE ici ». Le premier mérite son assertion ; le second doit être sauté,
- * parce qu'un `when:` s'évalue quand une assertion optionnelle ATTEND.
+ * parce qu'un `when: true:` s'évalue quand une assertion optionnelle ATTEND.
+ *
+ * ⚠️ LA PRÉCISION `true:` N'EST PAS COSMÉTIQUE, et elle a coûté le 517. Ce
+ * commentaire disait « un `when:` s'évalue », ce qui est FAUX du `when:
+ * visible:` — celui-là interroge l'arbre, donc il attend sa borne comme
+ * l'assertion qu'il remplaçait (mesuré : 6,26 s contre 6,41 s). Le 486 est
+ * juste parce qu'il conditionne sur une EXPRESSION (`${…}`), pas parce qu'il
+ * emploie le mot `when` ; le 516 a recopié le mot et laissé la raison.
  * @param {string} platform
  * @returns {boolean}
  */
 function animationsApplicables(platform) {
   return platform === 'android';
+}
+
+/**
+ * Les permissions dont on SAIT qu'elles n'ouvrent jamais d'invite système.
+ *
+ * ⚠️ LA DIRECTION DU RAISONNEMENT EST « LARGE MOINS LES EXCEPTIONS », et c'est
+ * le seul sens sûr. Énumérer les permissions *dangereuses* ferait rater
+ * l'invite de celle qu'on n'aurait pas listée — et ce symptôme-là est un flow
+ * ROUGE. Énumérer celles qui sont inertes fait, au pire, jouer un geste inutile
+ * qui coûte sa borne : on perd du temps, on ne casse rien. Une permission
+ * inconnue tombe donc du bon côté.
+ */
+const PERMISSIONS_SANS_INVITE = new Set([
+  'android.permission.INTERNET',
+  'android.permission.ACCESS_NETWORK_STATE',
+  'android.permission.ACCESS_WIFI_STATE',
+  'android.permission.WAKE_LOCK',
+  'android.permission.VIBRATE',
+  'android.permission.FOREGROUND_SERVICE',
+  'android.permission.RECEIVE_BOOT_COMPLETED',
+  'android.permission.SCHEDULE_EXACT_ALARM',
+  'android.permission.USE_EXACT_ALARM',
+  'android.permission.MODIFY_AUDIO_SETTINGS',
+  'com.android.vending.BILLING',
+  'com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE',
+]);
+
+/**
+ * Les mêmes, quand leur nom PORTE l'applicationId et ne peut donc pas être cité.
+ *
+ * 🔴 CETTE LISTE EXISTE PARCE QUE LA PREMIÈRE VERSION DU 517 A RATÉ SON PROPRE
+ * TERRAIN. J'avais écrit `android.permission.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION`
+ * de mémoire ; AndroidX la déclare en fait sous
+ * `${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` — son préfixe est
+ * donc le paquet de l'application, jamais `android.permission.`. La dérivation rendait
+ * donc JOUE sur l'application sans aucune permission runtime — le correctif
+ * n'aurait rien soulagé là où le défaut avait été relevé, et rien ne l'aurait
+ * dit : un geste inutile ne lève pas, il coûte.
+ *
+ * Le tell est général : *une permission dont le préfixe est le nom du paquet ne
+ * peut pas figurer dans une liste de noms exacts.* Elle se reconnaît par son
+ * SUFFIXE, et c'est une mesure sur le cas réel qui l'a montré, pas une relecture.
+ */
+const SUFFIXES_SANS_INVITE = [
+  '.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION',
+  '.permission.C2D_MESSAGE',
+];
+
+/**
+ * Une invite SYSTÈME peut-elle naître dans cette application ?
+ *
+ * 🔴 POURQUOI CETTE DÉRIVATION EXISTE (517), ET CE QU'ELLE CORRIGE DU 516. Le
+ * pas qui referme l'invite interroge l'ARBRE, et un sélecteur absent n'échoue
+ * pas vite : il attend sa borne. Le 516 avait cru fermer ce coût en passant de
+ * `tapOn … optional: true` à `runFlow … when: visible:` — les deux coûtent la
+ * MÊME chose. Mesuré sur un projet sans aucune permission runtime, trois
+ * répétitions, témoin à 8,5 s :
+ *
+ *     when: visible: sur élément ABSENT   14,87 / 14,93 / 14,80  → ~6,4 s
+ *     tapOn … optional: true              15,06 / 14,79 / 15,03  → ~6,4 s
+ *     when: visible: sur élément PRÉSENT    8,27 /  8,14 /  8,16  → ~0
+ *     when: true: (expression JS) fausse    8,24 /  8,21 /  8,18  → ~0
+ *
+ * La distinction qui compte n'est donc pas `when` contre `optional` : c'est
+ * **interroger l'arbre** contre **évaluer une expression**. Et `timeout:` est
+ * refusé dans un `when:` (`Unknown Property: timeout`), donc la borne n'est pas
+ * réglable — il faut ne pas poser la question du tout.
+ *
+ * ⚠️ Le run qui a rendu le 516 mesurait une amélioration RÉELLE sur son terrain
+ * (absorption 5/6 → 3/6) : c'est ce qui a fait conclure trop vite. Sur le
+ * fichier livré, le `precedeMs` est resté à ~7,1 s et l'absorption est passée
+ * de 7/8 à **10/10** — plus aucune mesure de démarrage jugeable.
+ *
+ * La valeur se DÉRIVE de `security.expectedPermissions`, que le projet remplit
+ * déjà depuis le manifeste fusionné de sa release : aucune clé de plus à faire
+ * écrire, et rien à recopier. En l'absence de liste on JOUE le geste, comme
+ * avant : un projet qui n'a pas encore rempli sa config ne doit pas hériter
+ * d'un silence qu'il n'a pas demandé.
+ * @param {any} config
+ * @returns {boolean}
+ */
+function invitesSystemePossibles(config) {
+  const declarees = config.security?.expectedPermissions ?? [];
+  if (declarees.length === 0) return true;
+  const inerte = (/** @type {string} */ p) => PERMISSIONS_SANS_INVITE.has(p)
+    || SUFFIXES_SANS_INVITE.some((s) => p.endsWith(s));
+  return declarees.map(String).some((/** @type {string} */ p) => !inerte(p));
 }
 
 /**
@@ -890,6 +984,11 @@ function buildEnv(config, appId, extra = {}) {
     ARGUS_ANIMATIONS_DISABLED: 'false',
     // Repli SÛR : en l'absence d'injection, le pas joue comme avant le 486.
     ARGUS_ANIMATIONS_APPLICABLE: 'true',
+    // 517 — dérivé ICI et nulle part ailleurs : `buildEnv` reçoit déjà `config`,
+    // donc la valeur ne peut pas manquer à un site d'appel. Le 486, lui, dépend
+    // de `platform` et doit être passé trois fois : un câblage de plus est un
+    // câblage qui peut s'oublier, et son oubli est SILENCIEUX (repli légal).
+    ARGUS_SYSTEM_ALERTS: String(invitesSystemePossibles(config)),
     ...extra,
   };
   // Secrets : uniquement depuis l'environnement, jamais depuis le fichier.
@@ -2715,6 +2814,6 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
-  anchorAfterAuth, animationsApplicables,
+  anchorAfterAuth, animationsApplicables, invitesSystemePossibles,
   resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };
