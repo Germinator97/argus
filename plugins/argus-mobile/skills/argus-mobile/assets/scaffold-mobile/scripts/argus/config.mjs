@@ -392,7 +392,7 @@ const DEFAULTS = {
   security: {
     expectedPermissions: [], forbiddenPermissions: [], requireDebuggableOff: true,
     requireCleartextDisabled: true, requireAllowBackupOff: true, requireObfuscation: true,
-    secretPatterns: [], allowSecretsIn: [], scaFailOn: 'high',
+    secretPatterns: [], allowSecretsIn: [], scaFailOn: 'high', systemAlerts: 'auto',
   },
   budget: { maxMinutes: 25, maxFlows: 40 },
   gate: { failOn: ['blocker', 'critical', 'major'], failOnVisualDiff: true, failOnEmptyRun: true },
@@ -2508,6 +2508,32 @@ export function mapsEnFlowSuspectes(flows) {
  * qui n'accepte qu'une ligne, est un écart de conception que nul avertissement
  * ne comble — on ne le rouvre donc pas ici.
  */
+// ── 531 · les trois états des invites système, et pourquoi c'est une ÉNUMÉRATION
+// Sur iOS le plugin ne PEUT pas dériver la réponse : la liste dont il la tire
+// est Android par nature (`aapt2 dump permissions`), et le remède évident —
+// lire les `NS*UsageDescription` — raterait précisément l'invite de
+// notifications, qui n'en porte aucune. Le 525 a donc tranché « dès qu'iOS est
+// déclaré, on joue », sur la direction juste : rater une invite donne un flow
+// ROUGE, un geste inutile coûte quelques secondes.
+//
+// 🔴 Ce que le 525 ne pouvait pas savoir, et que le run 93 a mesuré : ce geste
+// ne coûte pas « quelques secondes et rien d'autre ». Il ABSORBE la mesure de
+// démarrage — 7 flows sur 8, 83 à 95 ms retenus derrière 7 110 à 7 160 ms —
+// c'est-à-dire exactement ce que quatre points successifs ont travaillé à
+// rendre mesurable. Sur une app qui ne demande aucune permission, la dimension
+// ne peut alors jamais conclure.
+//
+// Ce que le plugin ne peut pas découvrir, l'utilisateur le DÉCLARE — c'est le
+// principe déjà posé pour la commande de remise à zéro (373). D'où ces trois
+// états, et une énumération plutôt qu'un booléen : `auto` doit rester
+// distinguable de `always`, sans quoi on ne saurait plus si le geste joue parce
+// qu'on l'a voulu ou parce qu'on n'a rien dit.
+export const ETATS_INVITES_SYSTEME = Object.freeze({
+  auto: 'dérivé des permissions déclarées (Android) · toujours joué (iOS, faute de source)',
+  always: 'joué quoi qu\'il arrive',
+  never: 'jamais joué — à ne déclarer que si l\'app ne demande AUCUNE permission',
+});
+
 export const RAISONS_CANAL_OUVERT = Object.freeze({
   'no-build-flag': 'aucune injection de build ne le gouverne',
   'would-change-app': 'le couper demanderait de modifier `lib/`, donc l\'app qu\'on mesure',

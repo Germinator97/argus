@@ -35,8 +35,7 @@ import {
   startScreen,
   deviceAbi, err, exitCodeFor, flutterCommand, installedVariant, loadConfig, log, missingToolMessage, parseYaml, projectBuildCmd,
   sh, validateConfig, warn, writeJson,
-  lireFlows, tagsDeclares,
-} from './config.mjs';
+  lireFlows, tagsDeclares, ETATS_INVITES_SYSTEME } from './config.mjs';
 // La réserve de variant vit là où elle a été écrite ; la recopier ici l'aurait
 // laissée diverger de celle des deux autres démarrages, qui disent la même chose.
 import { caveatDebug } from './perf.mjs';
@@ -786,6 +785,26 @@ function invitesSystemePossibles(config) {
   // notifications n'en portant aucune.
   // 📌 La plateforme se lit dans `config` et non en paramètre : le 517 avait
   // raison de refuser un câblage de plus, qui peut s'oublier en silence.
+  //
+  // 🔴 531 — ET CE QUE LE PLUGIN NE PEUT PAS DÉCOUVRIR, L'UTILISATEUR LE DÉCLARE.
+  // Le run 93 a mesuré ce que « un geste inutile ne casse rien » taisait : sur
+  // iOS le geste inconditionnel ABSORBE la mesure de démarrage — 7 flows sur 8,
+  // 83 à 95 ms retenus derrière 7 110 à 7 160 ms d'attente — donc le budget
+  // n'est jugeable sur aucun. La déclaration passe AVANT toute dérivation,
+  // puisqu'elle est le seul endroit où la réponse existe sur cette plateforme.
+  // Le défaut est `auto`, c'est-à-dire le comportement d'hier : aucun projet
+  // déjà installé ne change de verdict sans l'avoir écrit.
+  const etat = String(config.security?.systemAlerts ?? 'auto');
+  // ⚠️ REFUSER, jamais replier : une faute de frappe qui retomberait sur `auto`
+  // rendrait la déclaration inerte en silence — et le lecteur croirait avoir
+  // désarmé le geste pendant qu'il continue de coûter. C'est la forme du 508.
+  if (!(etat in ETATS_INVITES_SYSTEME)) {
+    throw new Error(`argus.mobile.yaml — \`security.systemAlerts: ${etat}\` n'est pas un état admis. `
+      + `Choisis parmi ${Object.keys(ETATS_INVITES_SYSTEME).join(' | ')} : c'est une énumération, `
+      + 'pas une phrase. ' + Object.entries(ETATS_INVITES_SYSTEME).map(([k, d]) => `${k} = ${d}`).join(' · '));
+  }
+  if (etat === 'never') return false;
+  if (etat === 'always') return true;
   const plateformes = (config.platforms ?? []).map((p) => String(p).toLowerCase());
   if (plateformes.includes('ios')) return true;
   const declarees = config.security?.expectedPermissions ?? [];
@@ -1650,14 +1669,19 @@ function remedeAbsorption(invitePossible, flow) {
   }
   return `Le geste qui précède l'attente d'ancre attend sa BORNE quand il n'a rien à fermer — `
     + `~7 s par flow, mesuré, et c'est ${ici} qui a le plus attendu. Si ton app ne demande aucune `
-    + 'permission (vérifie ton manifeste ET `lib/`, pas seulement l\'un des deux), retire l\'appel '
-    + 'à `dismiss-system-alerts.yaml` de `launch-clean.yaml` : ces deux fichiers t\'appartiennent. '
+    + 'permission (vérifie ton manifeste ET `lib/`, pas seulement l\'un des deux), déclare-le : '
+    + '`security.systemAlerts: never` dans argus.mobile.yaml, et `dismiss-system-alerts.yaml` '
+    + 'cesse d\'être joué — c\'est l\'équivalent d\'en retirer l\'appel, en une ligne que la mise '
+    + 'à jour ne reposera pas. '
     + 'Si elle en demande, garde-le et joue-le là où l\'invite NAÎT — souvent après la connexion, '
     + 'pas au lancement — en acceptant le coût sur les flows concernés. '
     + 'Et si tu le gardes ALORS QUE rien ne peut ouvrir d\'invite — défendable, la plateforme en '
     + 'présente parfois d\'elle-même — sache ce que ça coûte : ce même délai sur CHAQUE flow, et '
     + 'le budget de démarrage ne sera jugeable sur AUCUN d\'eux, aussi longtemps que le geste '
-    + 'restera là. Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`.';
+    + 'restera là. Ne cherche pas à borner le tap : `timeout:` n\'est pas une propriété de `tapOn`. '
+    + '⚠️ Et n\'essaie pas de retirer l\'appel de `launch-clean.yaml` : ce fichier est au CADRE, '
+    + 'donc `--update` le reposerait — ce texte a prescrit ce geste en affirmant qu\'il '
+    + 't\'appartenait, et un run l\'a payé en cherchant comment faire.';
 }
 
 function startupFindings(samples, device, platform, config, variante = '') {

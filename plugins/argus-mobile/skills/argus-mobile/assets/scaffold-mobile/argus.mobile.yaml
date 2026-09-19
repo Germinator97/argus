@@ -577,6 +577,20 @@ security:
   # Remplie depuis un debug, cette liste déclare « attendu » ce que
   # l'utilisateur ne recevra jamais — et tait ce qu'il recevra.
   #   aapt2 dump permissions build/app/outputs/flutter-apk/app-release.apk
+  # 531 — Les invites système peuvent-elles naître pendant un run ?
+  #   auto   : dérivé des permissions ci-dessous (Android) · toujours joué sur
+  #            iOS, où le plugin n'a AUCUNE source à dériver
+  #   always : joué quoi qu'il arrive
+  #   never  : jamais joué
+  # ⚠️ `never` est une DÉCLARATION, pas une optimisation : ne l'écris que si ton
+  # application ne demande AUCUNE permission système. Le geste coûte ~7 s par
+  # flow et, sur iOS, il ABSORBE la mesure de démarrage — mesuré au run 93 :
+  # 7 flows sur 8 rendaient 83 à 95 ms derrière 7 110 à 7 160 ms d'attente, donc
+  # un budget qu'aucune valeur ne pouvait dépasser. Mais le déclarer à tort rend
+  # les flows ROUGES sur une ancre parfaitement correcte, l'invite recouvrant
+  # l'écran attendu — mesuré au run 90 : 5 flows et 159 s de device.
+  systemAlerts: auto
+
   expectedPermissions:
     - android.permission.INTERNET
   # Permissions qui font échouer immédiatement si présentes.

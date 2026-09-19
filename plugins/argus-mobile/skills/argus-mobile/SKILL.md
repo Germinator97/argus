@@ -221,6 +221,48 @@ choix du designer**. Mesuré sur un même projet à deux runs d'écart — clé 
 `QAM-START major, « 3 s pour afficher l'écran de départ »` ; clé à `2000` :
 3415 ms relevés, budget 2000, **zéro finding**. Le verdict change, l'app non.
 
+🔴 **ET LE GESTE QUI FERME LES INVITES SYSTÈME PEUT AVALER CETTE MESURE — 531.**
+Avant de chercher l'écran de départ, la séquence de lancement joue un geste qui
+referme une éventuelle invite du système. Il le faut : une invite recouvre
+l'écran attendu, et l'échec accuse alors une ancre parfaitement correcte —
+mesuré, 5 flows rouges et 159 s d'appareil. Mais quand il n'y a **rien** à
+fermer, ce geste ne renonce pas : il **attend sa borne**, ~7 s, à chaque flow.
+
+Et cette attente précède le chronomètre. Mesuré sur un run entier, sur une
+application qui ne demande **aucune** permission :
+
+    sept flows sur huit    83 à 95 ms   précédés de 7 110 à 7 160 ms
+    le huitième            3 490 ms     précédé de 5 ms
+
+Le budget de démarrage n'est donc jugeable sur **aucun** des sept — et le seul
+qui mesure le fait par accident, parce qu'il relance l'application lui-même. Le
+rapport le DIT (`QAM-START-ABSORBE`) au lieu de conclure sur du néant, mais une
+dimension qui ne peut jamais conclure ne mesure plus rien.
+
+⚠️ **Sur Android, le runner le dérive de `security.expectedPermissions`** : si
+tout ce que tu déclares est inerte, le geste ne joue pas et la mesure est
+propre. **Sur iOS il n'a AUCUNE source à dériver** — cette liste est Android par
+nature, et lire les `NS*UsageDescription` raterait précisément l'invite de
+notifications, qui n'en porte aucune. Il joue donc toujours.
+
+**Ce que le plugin ne peut pas découvrir, tu le DÉCLARES :**
+
+```yaml
+security:
+  systemAlerts: never   # auto (défaut) · always · never
+```
+
+⚠️ `never` est une **déclaration**, pas une optimisation : ne l'écris que si ton
+application ne demande aucune permission système — vérifie ton manifeste **et**
+`lib/`, pas seulement l'un des deux. Le déclarer à tort rend les flows rouges
+sur une ancre correcte, et le message n'aidera pas. Une valeur hors de ces trois
+est **refusée** plutôt que repliée sur le défaut : une déclaration mal
+orthographiée qui retomberait sur `auto` te laisserait croire que tu as désarmé.
+
+📌 Et ne cherche pas à retirer l'appel de `launch-clean.yaml` : ce fichier est
+au **cadre**, donc la prochaine mise à jour le reposerait. La clé est le seul
+geste que `--update` ne défait pas.
+
 🔴 **ET INVENTORIE LES CANAUX SORTANTS, AVANT LA PREMIÈRE PASSE DEVICE (413).**
 Une suite QA produit des dizaines de sessions et **provoque des erreurs par
 métier** (c'est le travail de `resilience.yaml`) : ce qui part, part pour de
