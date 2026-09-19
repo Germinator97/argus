@@ -5103,6 +5103,10 @@ fabrique un champ *plein et faux sous une assertion verte*. Sa preuve ne se
 généralisait pas non plus, et la forme `- eraseText:` casse le workspace entier.
 *L'arbitrage pris à froid n'a pas confirmé le remède : il l'a complété.*
 
+Le **530** est né de la **remise à neuf d'un terrain**, et non d'un run : une
+désinstallation laissait deux résidus qu'aucun `git status` ne montre — un
+dossier vide, et une ligne vide de plus dans un fichier de l'hôte.
+
 Les **526**, **527**, **528** et **529** sont nés et fermés les 18 et 19/09 — le premier
 parce qu'un avertissement lu et cité n'empêche rien, le deuxième parce qu'un geste
 nommé cinq fois ailleurs n'est pas atteint, le troisième parce qu'un marqueur qui
@@ -11070,3 +11074,71 @@ par la structure la rendrait inopérante ici. Exception **comptée**, pas masqu�
 `login` du harnais existait déjà depuis le 405, et la redéfinir laissait Python
 garder la dernière — même chemin, donc rien à voir, sinon le motif exact que ce
 dépôt proscrit ailleurs. Trouvé en comptant les clés, pas en relisant.
+
+### 530. La désinstallation laissait deux résidus que git ne peut pas montrer
+
+**Né de la remise à neuf du terrain 2 et fermé le 19/09/2026.**
+
+Mesurés en remettant un terrain à neuf, donc sur un cas réel : après
+`--uninstall`, le projet n'était **pas** revenu à son état d'avant installation.
+Et aucun des deux ne se voit dans `git status` — un dossier vide n'est suivi par
+aucun git, une ligne vide de plus dans un `.gitignore` est le genre de diff qu'on
+committe sans le voir.
+
+🔴 **`.github/workflows` restait VIDE.** Le retrait des dossiers devenus vides
+existait, et son commentaire disait ce qu'il fallait : `rmdir` refuse tout
+dossier non vide, donc il protège les références visuelles et les rapports
+« **sans qu'on ait à les nommer — une liste de noms aurait vieilli** ». Il avait
+raison sur ce qu'il PROTÈGE. C'est la liste de ce qu'il **VISITE** qui était
+écrite à la main, et elle a vieilli le jour où l'installeur s'est mis à poser un
+workflow. *Le commentaire dénonçait exactement le défaut qui vivait trois lignes
+plus bas.*
+
+🔴 **Et `.gitignore` restait MODIFIÉ** — l'insertion pose un `\n` **devant** le
+bloc géré, le retrait ne reprenait que le bloc. Mesuré sur un projet jetable :
+**25 octets** avant installation, **26** après désinstallation.
+
+#### Ce que le remède change
+
+La liste des candidats se **dérive** des deux seules façons dont cette
+installation crée un dossier : les **parents des fichiers livrés**, remontés
+jusqu'à la racine, et ceux que l'installeur **crée lui-même**. Ces derniers
+vivent désormais dans une seule déclaration que le `mkdir` **et** le `rmdir`
+LISENT — écrite deux fois, elle divergerait à la première retouche, et la
+divergence serait muette.
+
+Le retrait du bloc est **extrait en fonction**, partagée par la mise à jour et
+par la désinstallation : une ligne vide n'est imprimée qu'une fois qu'on sait ce
+qui la suit, et si c'est notre borne d'ouverture, elle part avec le bloc.
+
+Éprouvé **par exécution** sur six formes, les deux sens à chaque fois : les
+résidus partent, et ce qui appartient au projet survit — son propre workflow,
+son propre dossier `scripts/`, ses références visuelles, les rapports déjà
+produits, et un `.gitignore` qui se terminait déjà par une ligne vide.
+
+#### 🔴 Le garde avait l'air complet et ne gardait presque rien
+
+La première version montait **un seul** projet jetable, portant à la fois les
+résidus à mesurer et les fichiers de l'hôte à préserver. Or ces fichiers vivent
+dans les dossiers **mêmes** qui doivent finir vides : le projet remplissait donc
+ce que le critère devait trouver vide. **Deux mutations sur trois sont revenues
+VACANT**, sur un garde qui se lisait parfaitement.
+
+*Un garde dont une moitié satisfait l'autre ne garde ni l'une ni l'autre.* Scindé
+en deux : un projet **nu** mesure les résidus, un projet **meublé** prouve la
+survie. Aucune relecture ne l'aurait vu — c'est la mutation qui l'a dit.
+
+⚠️ **Et la quatrième mutation tombe sur DEUX gardes**, mesuré en la jouant à la
+main et en lisant *tous* les noms rouges : le **498** d'abord — que le harnais
+crédite, puisqu'il retient le premier — puis celui du 530. Les deux tombent bel
+et bien ; ce qui n'est pas isolé est l'appariement. La part que le 530 garde
+**seul** est précisément ce que ce correctif a ajouté aux candidats : le workflow
+et le dossier `scripts/` de l'**hôte**, que le 498 ne pose pas. Isoler
+demanderait de couper la boucle en deux dans le code livré — *abîmer le sujet
+pour arranger la mesure.*
+
+📌 **Le garde n'a aucun nom de dossier en lui.** Il installe, désinstalle, et
+exige que rien de vide ne subsiste : un dossier ajouté demain au scaffold, ou
+créé par un `mkdir` écrit en dur, le fait rougir de lui-même. Un garde qui
+citerait `.github/workflows` n'aurait couvert que le cas du jour — c'est-à-dire
+la façon exacte dont la liste d'origine avait vieilli.
