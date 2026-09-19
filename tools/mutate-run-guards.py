@@ -2710,9 +2710,15 @@ MUTATIONS = [
     # motif nu est AMBIGU depuis que ce correctif a créé un second appel — c'est
     # d'ailleurs ce qui a rendu la mutation du 524 inerte, et `--check-motifs`
     # l'a dit en une seconde.
+    # ⚠️ ET LE TEXTE DE REMPLACEMENT PORTE « invite » ET « launch-clean » : sans
+    # eux, il fait tomber le garde du 522 — qui les exige — AVANT le nôtre, et le
+    # harnais crédite le premier test rouge. Verdict juste, appariement faux : le
+    # jour où ce garde-ci deviendrait vacant, la mutation resterait verte grâce
+    # au voisin. Le geste qui tranche est de changer la VALEUR, pas le garde.
     ("run", "533 · le remède du non-jugeable récite au lieu de dériver",
      "\n          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
-     "\n          + 'Ce qui attend est presque toujours le geste système : retire-le.'"),
+     "\n          + 'Ce qui attend est presque toujours le geste qui ferme une invite "
+     "système, dans launch-clean.yaml : retire-le.'"),
 ]
 
 
