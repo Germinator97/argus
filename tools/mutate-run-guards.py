@@ -2360,11 +2360,13 @@ MUTATIONS = [
      "\ncadre\tscripts/argus/argus-mobile.mjs",
      "\n"),
     # 502 — le remède redevient un bornage, c'est-à-dire la forme que Maestro
-    # refuse. Elle vise `retire l'appel`, que SEUL le garde du 502 lit : le
-    # reste de la phrase est partagé avec d'autres assertions.
+    # refuse. ⚠️ RÉ-ANCRÉE AU 531 : le remède n'envoie plus « retirer l'appel »,
+    # geste qu'un run a mesuré impraticable (`launch-clean.yaml` est au CADRE),
+    # mais déclarer la clé. La mutation vise donc la ligne qui porte désormais
+    # l'issue applicable — et rend le bornage que l'outil refuse.
     ("run", "le remède du démarrage absorbé represcrit de borner le tap",
-     "pas seulement l\\'un des deux), retire l\\'appel '",
-     "pas seulement l\\'un des deux), donne un timeout: court '"),
+     "pas seulement l\\'un des deux), déclare-le : '",
+     "pas seulement l\\'un des deux), donne un timeout: court : '"),
     # 503 — le CÂBLAGE, pas la décision. Retirer l'appel laisse la fonction
     # intacte et juste : c'est exactement le troisième barreau, celui où l'on
     # croit avoir fini parce que la mesure, elle, marche.
@@ -2650,6 +2652,26 @@ MUTATIONS = [
     ("installeur", "530 \u00b7 le retrait des dossiers cesse de refuser le non-vide",
      "\n        rmdir \"$target/$d\" 2>/dev/null || true",
      "\n        rm -rf \"$target/$d\" 2>/dev/null || true"),
+    # 531 \u00b7 les quatre d\u00e9cisions de la d\u00e9claration, une mutation chacune.
+    # La premi\u00e8re rend la cl\u00e9 INERTE : elle est lue, elle ne d\u00e9cide plus rien.
+    ("run", "531 \u00b7 la d\u00e9claration `never` cesse de d\u00e9sarmer",
+     "\n  if (etat === 'never') return false;",
+     "\n  if (false && etat === 'never') return false;"),
+    # La deuxi\u00e8me remplace le refus par un repli silencieux sur le d\u00e9faut \u2014 la
+    # forme exacte du 508 : le lecteur croit avoir d\u00e9sarm\u00e9, le geste co\u00fbte.
+    ("run", "531 \u00b7 un \u00e9tat inconnu replie au lieu d'\u00eatre refus\u00e9",
+     "\n  if (!(etat in ETATS_INVITES_SYSTEME)) {",
+     "\n  if (false && !(etat in ETATS_INVITES_SYSTEME)) {"),
+    # La troisi\u00e8me retire la cl\u00e9 du rem\u00e8de : le finding parle toujours, et
+    # n'offre plus l'issue applicable \u2014 c'est ce que le 502 et le 505 gardent.
+    ("run", "531 \u00b7 le rem\u00e8de cesse de nommer la cl\u00e9 qui d\u00e9sarme",
+     "\n    + '`security.systemAlerts: never` dans argus.mobile.yaml, et `dismiss-system-alerts.yaml` '",
+     "\n    + 'retire le geste, et `dismiss-system-alerts.yaml` '"),
+    # La quatri\u00e8me change la valeur LIVR\u00c9E : un scaffold qui d\u00e9sarme d'office
+    # ferait rougir tout projet \u00e0 permissions, sans que personne l'ait choisi.
+    ("yamlconf", "531 \u00b7 le scaffold livre une valeur qui d\u00e9cide \u00e0 la place du projet",
+     "\n  systemAlerts: auto",
+     "\n  systemAlerts: never"),
 ]
 
 

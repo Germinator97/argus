@@ -77,6 +77,7 @@ import { CONFIG_FILES, configNonEmbarquee } from '../plugins/argus-mobile/skills
 import { nomAffiche, nomTechniqueEnTitre } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { outilPresent } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { parseYaml } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
+import { ETATS_INVITES_SYSTEME } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { PROBE_TIMEOUT_MS, SH_TIMEOUT_MS, declaredAnchors, exitCodeFor, measureBinary, platformFor,
   posedAnchors, releaseBuildCmd, sh, shTimeoutMs, undeclaredAnchors } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { baselinesEnDoublon } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -408,12 +409,33 @@ test('le remède du démarrage absorbé prescrit un geste APPLICABLE (502)', () 
   // vaut que si rien ne peut ouvrir d'invite, et le déplacer est ce qui reste
   // sinon. N'en garder qu'une rendrait le remède faux pour la moitié des
   // projets — c'est précisément ce que le 405 avait payé.
-  assert.match(f.suggestedFix, /retire l'appel/i,
-    'le remède doit offrir le retrait, mesuré sur un projet sans permission');
+  // ⚠️ 531 — LE CRITÈRE PORTE SUR LE FAIT, PAS SUR LE LIBELLÉ. Il citait
+  // « retire l'appel » — geste qu'un run a mesuré IMPRATICABLE, `launch-clean.yaml`
+  // étant au CADRE et `--update` le reposant. Le remède offre désormais la
+  // déclaration, et le critère se DÉRIVE de l'énumération : renommer un état
+  // fait rougir le remède, jamais ce garde.
+  const desarmants = Object.keys(ETATS_INVITES_SYSTEME).filter((e) => e !== 'auto' && e !== 'always');
+  assert.ok(desarmants.length > 0,
+    'aucun état désarmant dans l\'énumération : ce garde ne mesure rien (531)');
+  assert.ok(desarmants.some((e) => f.suggestedFix.includes(`systemAlerts: ${e}`)),
+    'le remède n\'offre plus d\'issue qui DÉSARME le geste : il doit nommer la clé qui le fait '
+    + 'cesser de jouer, et cette issue-là est applicable — contrairement au retrait de l\'appel, '
+    + 'que `--update` reposerait (531)');
   assert.match(f.suggestedFix, /où l'invite NAÎT/i,
     'et le déplacement, seule issue quand une invite peut réellement s\'ouvrir');
-  assert.match(f.suggestedFix, /t'appartiennent/i,
-    'et dire que ces fichiers sont au projet — sinon le lecteur attend une mise à jour qui ne viendra pas');
+  // ⚠️ 531 — L'INTENTION ÉTAIT JUSTE ET LE CRITÈRE FIGEAIT UNE CONTRE-VÉRITÉ.
+  // Il exigeait le mot « t'appartiennent » à propos de DEUX fichiers dont l'un,
+  // `launch-clean.yaml`, est au CADRE : le remède prescrivait donc d'éditer un
+  // fichier que `--update` repose, en affirmant le contraire, et un run l'a payé
+  // en cherchant comment faire. Ce que le lecteur doit savoir est la PROPRIÉTÉ
+  // de ce qu'on lui fait éditer — dans un sens comme dans l'autre.
+  // 📌 Ce n'est pas l'alternative que ce dépôt proscrit : là-bas deux synonymes
+  // disent la même chose, donc en retirer un laisse l'autre debout ; ici les
+  // deux faits sont opposés et tous deux légitimes, et la mutation casse le FAIT.
+  assert.match(f.suggestedFix, /t'appartien|au CADRE/i,
+    'le remède ne dit plus À QUI appartient ce qu\'il fait éditer : le lecteur ne peut pas '
+    + 'savoir si la prochaine mise à jour effacera son geste — ou, pire, il tentera un geste '
+    + 'que `--update` défera (531)');
 });
 
 test('sans plancher de splash déclaré, on RELÈVE sans conclure (479)', () => {
@@ -15656,7 +15678,10 @@ test('le remède chiffre les DEUX branches, pas seulement celle qui arrange (505
 
   // L'autre moitié : chiffrer la troisième branche ne doit pas avoir effacé les
   // deux premières. Un remède se complète, il ne se remplace pas.
-  assert.match(f.suggestedFix, /retire l'appel/i, 'la branche « retirer » a disparu');
+  // ⚠️ 531 — même extension : le FAIT est qu'une issue désarmante reste offerte.
+  const desarmants2 = Object.keys(ETATS_INVITES_SYSTEME).filter((e) => e !== 'auto' && e !== 'always');
+  assert.ok(desarmants2.some((e) => f.suggestedFix.includes(`systemAlerts: ${e}`)),
+    'la branche qui DÉSARME a disparu : un remède se complète, il ne se remplace pas (531)');
   assert.match(f.suggestedFix, /où l'invite NAÎT/i, 'la branche « déplacer » a disparu');
 });
 
@@ -16890,4 +16915,88 @@ test('530 — et ce qui appartient au projet SURVIT à la désinstallation', () 
     'le `.gitignore` du projet n\'est pas revenu à son état d\'origine (530)');
 
   rmSync(cible, { recursive: true, force: true });
+});
+
+
+// ── 531 ────────────────────────────────────────────────────────────────────
+// Le 525 avait tranché « dès qu'iOS est déclaré, on joue », sur la direction
+// juste : rater une invite donne un flow ROUGE. Ce qu'il chiffrait — « un geste
+// inutile coûte 6,4 s et ne casse rien » — était incomplet, et le run 93 l'a
+// mesuré : le geste ABSORBE la mesure de démarrage. 7 flows sur 8 rendaient 83 à
+// 95 ms derrière 7 110 à 7 160 ms d'attente, donc un budget qu'aucune valeur ne
+// pouvait dépasser, sur une app qui ne demande AUCUNE permission.
+//
+// Le plugin ne peut pas dériver la réponse sur iOS — la source est Android par
+// nature, et lire les `NS*UsageDescription` raterait l'invite de notifications,
+// qui n'en porte aucune (mesuré au 525). Donc l'utilisateur DÉCLARE, comme pour
+// la commande de remise à zéro (373).
+//
+// ⚠️ CE GARDE APPELLE LA DÉCISION. Un garde qui lirait le texte de la fonction
+// resterait vert sur une branche devenue morte — c'est le deuxième barreau, et
+// ce point est né de trois remèdes qui se lisaient bien.
+
+test('531 — la déclaration désarme, et le défaut ne change RIEN à ce qui existe', () => {
+  const iOS = (/** @type {string|undefined} */ etat) => invitesSystemePossibles(
+    { platforms: ['ios'], security: etat === undefined ? {} : { systemAlerts: etat } });
+
+  // 1. Le défaut, et l'absence de clé : le comportement d'hier, à l'identique.
+  //    C'est la moitié qui compte le plus — aucun projet déjà installé ne doit
+  //    changer de verdict sans l'avoir écrit.
+  assert.equal(iOS(undefined), true,
+    'un projet qui n\'a jamais entendu parler de cette clé voit son comportement changer : '
+    + 'la déclaration doit être un choix, jamais un défaut (531)');
+  assert.equal(iOS('auto'), true,
+    '`auto` ne vaut plus le comportement d\'hier sur iOS, où le plugin n\'a rien à dériver (531)');
+
+  // 2. La déclaration agit — c'est tout l'objet du point.
+  assert.equal(iOS('never'), false,
+    '`never` ne désarme pas le geste : la mesure de démarrage reste absorbée, et la clé ne sert '
+    + 'à rien (531)');
+  assert.equal(iOS('always'), true, '`always` ne fait plus jouer le geste (531)');
+
+  // 3. L'AUTRE MOITIÉ — la dérivation Android du 517/525 doit SURVIVRE, sans
+  //    quoi « ajouter une déclaration » se confondrait avec « ne plus dériver ».
+  const android = (/** @type {object} */ sec) => invitesSystemePossibles({ platforms: ['android'], security: sec });
+  assert.equal(android({ expectedPermissions: ['android.permission.INTERNET'] }), false,
+    'sur Android, une liste d\'inertes ne désarme plus : le 517 ne soulage plus rien (531)');
+  assert.equal(android({ expectedPermissions: ['android.permission.CAMERA'] }), true,
+    'sur Android, une permission à invite ne fait plus jouer le geste : la dérivation est inerte (531)');
+  assert.equal(android({ systemAlerts: 'never', expectedPermissions: ['android.permission.CAMERA'] }), false,
+    'la déclaration ne prime pas sur la dérivation : elle doit trancher partout, sinon elle ne '
+    + 'tranche nulle part (531)');
+
+  // 4. REFUSER, jamais replier. Une faute de frappe qui retomberait sur `auto`
+  //    rendrait la déclaration inerte EN SILENCE — le lecteur croirait avoir
+  //    désarmé pendant que le geste continue de coûter. C'est la forme du 508.
+  for (const faute of ['nerver', 'true', 'False', '']) {
+    assert.throws(() => iOS(faute), /n'est pas un état admis/,
+      `\`systemAlerts: ${faute}\` est accepté en silence : une déclaration mal orthographiée doit `
+      + 'être REFUSÉE, pas repliée sur le défaut (531)');
+  }
+
+  // 5. Et le message du refus NOMME les états admis, dérivés de l'énumération :
+  //    un refus qui ne dit pas quoi écrire envoie lire le code.
+  try { iOS('nerver'); assert.fail('aucun refus'); } catch (e) {
+    for (const etat of Object.keys(ETATS_INVITES_SYSTEME)) {
+      assert.ok(String(e.message).includes(etat),
+        `le refus ne nomme pas l'état « ${etat} » : le lecteur doit aller lire le code (531)`);
+    }
+  }
+});
+
+test('531 — la clé est LIVRÉE, et le scaffold ne change le verdict de personne', () => {
+  const yml = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/argus.mobile.yaml'), 'utf8');
+  const livree = parseYaml(yml).security?.systemAlerts;
+  assert.ok(livree !== undefined,
+    'le scaffold ne livre plus la clé : personne ne saura qu\'elle existe, et le finding la '
+    + 'nommera sans qu\'on trouve où l\'écrire (531)');
+  assert.equal(livree, 'auto',
+    `le scaffold livre \`systemAlerts: ${livree}\` : la valeur livrée doit être celle qui ne `
+    + 'change RIEN — un scaffold qui désarme d\'office ferait rougir tout projet à permissions, '
+    + 'et un qui force ferait payer le coût à qui ne l\'a pas choisi (531)');
+  // Et la valeur livrée doit appartenir à l'énumération : sinon le premier run
+  // sur un scaffold neuf lèverait sur le refus qu'on vient d'écrire.
+  assert.ok(String(livree) in ETATS_INVITES_SYSTEME,
+    'la valeur livrée n\'est pas un état admis : un scaffold neuf lèverait au premier run (531)');
 });
