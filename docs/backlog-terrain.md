@@ -5096,12 +5096,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-⚪ **1 POINT OUVERT — le 532**, né en remettant un terrain à neuf : le correctif
-du **530** tient sur un vrai terrain, et il laisse un résidu d'**un octet** que
-son propre garde ne pouvait pas voir — le `.gitignore` de ce projet ne finissait
-pas par un saut de ligne, et le montage du garde en porte un. *L'information
-« l'hôte en avait-il un ? » n'existe plus après l'insertion : il faut choisir
-entre la mémoriser et le dire.*
+✅ **Rien d'ouvert.** Le **532** est né en remettant un terrain à neuf et a été
+tranché le jour même : le correctif du **530** tient sur un vrai terrain, et il y
+laissait un résidu d'**un octet** que son propre garde ne pouvait pas voir — le
+`.gitignore` de ce projet ne finissait pas par un saut de ligne, et le montage du
+garde en porte un. *L'information « l'hôte en avait-il un ? » n'existe plus après
+l'insertion* : le bloc la **mémorise** désormais, sur la borne de fin qui nous
+appartient, et la désinstallation la relit pour rendre le fichier à l'octet près.
 
 Le **531** a été tranché à froid : ce que le plugin
 ne peut pas découvrir, l'utilisateur le **déclare** — `security.systemAlerts`,
@@ -11317,10 +11318,10 @@ pour un mécanisme bâti sur **cinq** points (405, 479, 516, 517, 525). C'est le
 servir*, et c'est pourquoi l'agent a dû lire le code pour comprendre pourquoi il
 attendait. Le §1 porte désormais le mécanisme, son coût mesuré et la clé.
 
-### 532. ⚪ OUVERT — le résidu que le correctif du 530 ne pouvait pas voir
+### 532. Le résidu que le correctif du 530 ne pouvait pas voir
 
-**Ouvert le 19/09/2026 en remettant le terrain 1 à neuf, non traité : arbitrage
-à prendre à froid.**
+**Né de la remise à neuf du terrain 1 le 19/09/2026, et fermé le même jour :
+l'arbitrage a été tranché, le bloc MÉMORISE.**
 
 La remise à neuf a servi de contre-épreuve au **530**, fermé le matin même et
 jamais exercé sur un vrai terrain. Il tient : `.github` part, les 4 références
@@ -11371,3 +11372,64 @@ après l'insertion : aucun retrait ne peut la déduire. Donc :
 est défendable. Mais le 530 s'est fermé sur le principe inverse : *après une
 désinstallation, le projet est revenu à ce qu'il était.* Trancher, c'est choisir
 entre l'exactitude et la simplicité — et ce choix-là n'est pas mécanique.
+#### ✅ Tranché : le bloc mémorise, il ne se contente pas de le dire
+
+L'insertion écrit un suffixe **réservé** sur sa borne de fin — la seule ligne
+qui nous appartienne — quand elle a dû terminer la dernière ligne de l'hôte ; le
+retrait le lit et dé-termine la sienne. Les deux lectures de cette borne
+cherchent une sous-chaîne (`index()` en awk, `grep -qF`), donc elles le
+traversent sans le voir, et la comparaison d'idempotence le retire avant de
+comparer : sans quoi chaque `--update` annoncerait un bloc qu'il n'a pas changé,
+sur tout projet sans saut de ligne final.
+
+Mesuré sur cinq formes, installation puis désinstallation, empreinte comparée :
+
+    forme du .gitignore de l'hôte        avant → après   marqueur
+    avec saut de ligne final               25 → 25  ✅   absent
+    SANS saut de ligne final               24 → 24  ✅   posé
+    une seule ligne, sans saut              6 →  6  ✅   posé
+    vide                                    0 →  0  ✅   absent
+    lignes vides à la fin, sans saut        5 →  5  ✅   posé
+
+Le même banc joué contre le script d'AVANT rend un octet de plus sur les trois
+formes sans saut de ligne final — 24 → 25, 6 → 7, 5 → 6 — et laisse les deux
+autres intactes. La contre-épreuve prouve donc dans les deux sens.
+
+#### Ce que les gardes mesurent, et pourquoi il en faut deux
+
+Le premier balaie les **cinq formes** au lieu d'en figer une, et son critère est
+le retour à l'**octet près** : il couvre les deux sens d'un seul geste, puisqu'un
+marqueur jamais posé laisse un octet de trop sur les formes sans saut de ligne
+final, tandis qu'un marqueur posé partout en **retire** un aux formes qui en ont
+un. Comparer des tailles n'aurait vu que le premier sens.
+
+Le second tient l'autre moitié — le vrai risque du remède : que le marqueur
+entre dans la comparaison et rende la mise à jour **bavarde**. Sans lui, la
+troisième décision n'aurait aucune mutation, et le site que personne ne mute est
+le site dont personne n'apprend rien.
+
+Trois mutations, chacune isolant un garde **et** une assertion : le marqueur
+jamais posé (premier garde, assertion du marqueur), le marqueur posé puis ignoré
+au retrait (premier garde, **égalité finale** — le vrai critère), le marqueur
+laissé dans la comparaison (second garde).
+
+#### 🔴 Ma première contre-épreuve était rouge et ne prouvait RIEN
+
+Pour vérifier que le garde tombe, j'ai d'abord remis le script d'avant le
+correctif. Il est tombé — en **1,76 ms**, c'est-à-dire avant d'avoir rien
+installé. Ce n'était pas l'égalité finale qui parlait mais la dérivation du
+marqueur, absente de cette version : le garde tombait pour une raison **sans
+rapport** avec ce qu'il mesure, et un ✖ se lit comme une preuve. Ce sont les
+trois mutations ciblées, qui laissent la déclaration en place, qui ont prouvé les
+gardes. *Revenir à la version d'avant n'est pas une mutation : c'est en jouer
+plusieurs à la fois, dont celle qui retire l'instrument.*
+
+#### 📌 Une mutation ancienne avait cessé d'être fidèle
+
+Le retrait retient désormais une ligne d'avance — c'est ce qui lui permet de
+sortir la dernière sans son saut de ligne. La mutation du **530** qui remplaçait
+la retenue par un `print ""` nu ne reproduisait donc plus le défaut qu'elle
+décrit : elle sortait la ligne vide **avant** celle encore en tampon, donc elle
+cassait l'ordre. Elle reste verte au contrôle des motifs — son motif n'a pas
+bougé — et c'est son EFFET qui avait changé. Ré-ancrée sur `emettre("")`, elle
+tombe toujours sur le garde du 530, vérifié en lisant le nom rouge.
