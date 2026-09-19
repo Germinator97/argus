@@ -5096,11 +5096,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-⚪ **3 POINTS OUVERTS — les 533, 534 et 535**, rendus par le run 94 (terrain à
-API, Android). Le premier est un remède qui récite une cause unique que son
-voisin a cessé de réciter ; le deuxième est le cas dominant d'une application à
-listes, dont les trois recettes du skill échouent ; le troisième est un comptage
-prescrit qui peut rendre zéro parce que l'outil a échoué.
+⚪ **1 POINT OUVERT — le 535**, un comptage prescrit qui peut rendre zéro parce
+que l'OUTIL a échoué, indiscernable du zéro légitime que le 472 a documenté.
+
+Des trois points du run 94, le **533** est fermé — son remède compose désormais
+la même construction que son voisin — et le **534** est **démenti** : la sonde a
+montré que la liste n'y est pour rien, et que le remède du skill tient. *La
+phrase « il n'y a pas de quatrième case » du compte rendu était la phrase du
+skill, relayée.*
 
 Le **532** est né en remettant un terrain à neuf et a été
 tranché le jour même : le correctif du **530** tient sur un vrai terrain, et il y
@@ -11440,9 +11443,9 @@ cassait l'ordre. Elle reste verte au contrôle des motifs — son motif n'a pas
 bougé — et c'est son EFFET qui avait changé. Ré-ancrée sur `emettre("")`, elle
 tombe toujours sur le garde du 530, vérifié en lisant le nom rouge.
 
-### 533. ⚪ OUVERT — le remède de NONJUGEABLE récite la cause que son voisin a cessé de réciter
+### 533. Le remède de NONJUGEABLE récitait la cause que son voisin a cessé de réciter
 
-**Ouvert le 19/09/2026 par le run 94, non traité : arbitrage à prendre à froid.**
+**Ouvert par le run 94 le 19/09/2026 et fermé le jour même.**
 
 Le **524** avait corrigé le `suggestedFix` de `QAM-START-ABSORBE` pour qu'il
 DÉRIVE sa branche des permissions déclarées et NOMME le flow fautif. Son voisin
@@ -11467,13 +11470,43 @@ C'est le motif du **488** — le correctif ferme son cas, le voisin garde le sie
 et la **quatrième péremption** du même texte : 502 (propriété que l'outil
 refuse), 505 (branche non chiffrée), 524 (portée mono-cause), celle-ci.
 
-📌 Ce qu'il faut trancher n'est pas *s'il faut dériver* mais **jusqu'où** : les
-deux findings partagent la cause, pas le contexte — l'un sait quel flow est le
-pire, l'autre non, faute de plancher pour l'établir.
+#### ✅ Ce qui l'a fermé : composer, jamais recopier
 
-### 534. ⚪ OUVERT — `ListView` fusionne chaque ligne, et les trois recettes échouent
+Le remède appelle désormais **la même fonction** que son voisin — celle que le
+524 avait extraite pour cette raison exacte — et garde en propre ce qui lui
+appartient : le plancher, sa raison d'être. Deux copies d'une décision divergent
+à la première retouche, et c'est précisément ce qui s'était produit.
 
-**Ouvert le 19/09/2026 par le run 94, non traité.**
+#### Le garde porte sur l'ÉCART, jamais sur un libellé
+
+Celui qui existait acceptait une **alternative** — `/launch-clean|invite/` — et
+c'est pourquoi ce point a pu vivre : *les deux textes la satisfont*, celui qui
+récite et celui qui dérive. Il mesurait la présence d'un mot, jamais la décision.
+
+Le neuf monte deux configs qui ne diffèrent **que** par les permissions et exige
+que les deux remèdes **diffèrent**. Il exige aussi que celui du non-jugeable
+**contienne** celui de son voisin — ce qui prouve la source unique — et que le
+plancher survive à la composition. Citer la bonne phrase aurait figé un texte que
+la prochaine mesure pourrait devoir corriger, ce que trois gardes du 531 ont fait.
+
+#### ⚠️ Et deux choses que la fermeture a apprises
+
+- 🔴 **Mon correctif a rendu une mutation INERTE, à distance.** Ajouter un second
+  appel à la même fonction a fait matcher le motif du **524** deux fois : il ne
+  mutait plus rien, et `--check-motifs` l'a dit en une seconde. Les deux sont
+  ré-ancrées sur ce qui **précède** l'appel — l'un l'affecte, l'autre le
+  concatène. *Un motif juste devient ambigu le jour où un ajout ailleurs porte
+  la même ligne.*
+- 🔴 **La mutation neuve tombait sur le garde du VOISIN.** Son texte de
+  remplacement ne portait ni « invite » ni « launch-clean », que le garde du 522
+  exige : celui-là rougissait le premier, et le harnais lui créditait la
+  mutation. Verdict juste, **appariement faux** — le jour où le garde du 533
+  serait devenu vacant, elle serait restée verte grâce au voisin. Le geste qui
+  tranche est de changer la **valeur**, jamais de durcir le garde d'à côté.
+
+### 534. ✅ DÉMENTI — la liste n'y est pour rien, et le remède du skill tient
+
+**Ouvert par le run 94 le 19/09/2026, démenti le jour même par une sonde.**
 
 Mesuré par l'agent sur une sonde à trois formes de liste, la quatrième servant
 de témoin hors liste :
@@ -11500,10 +11533,41 @@ application qui affiche une liste. Le **400** avait fermé « une ancre présent
 active, et pointant le mauvais rectangle » ; son garde d'étage 1 attrape bien ce
 cas-ci, mais aucune recette ne le résout.
 
-📌 L'agent a fait le bon geste faute de mieux : ancre gardée pour le lecteur
-d'écran, sortie de `commands:`, inscrite dans `allowUndeclared` avec sa mesure,
-écran retiré de `screens[]` avec sa raison. *Ce qui manque n'est pas un garde,
-c'est une recette — ou l'aveu écrit qu'il n'y en a pas.*
+#### 🔴 Ce que la sonde a mesuré, et qui renverse le diagnostic
+
+Montée sur un projet jetable, en ne faisant varier qu'une chose à la fois
+(`tools/list-merge-probe.dart`, Flutter 3.32.0) :
+
+    carte NON tapable, hors liste              noeud 400x600  ✖ fusionné
+    carte NON tapable, DANS un ListView        noeud 400x92   ✖ fusionné
+    carte TAPABLE,     DANS un ListView        noeud  65x20   ✔
+    + container:true sur le lien               noeud  65x20   ✔
+    le même, DANS un ListView                  noeud  65x20   ✔
+
+**La liste n'y est pour rien** : une carte non tapable fusionne tout autant
+*hors* liste. Ce qui fusionne est l'**absence de frontière sémantique** autour du
+lien — et le remède que le §2c prescrit, `container: true` plus
+`explicitChildNodes`, tient, y compris dans une liste.
+
+#### 🔴 C'était la sortie d'un remède, et le code du terrain le prouve
+
+Le SKILL porte **exactement** ce cas, avec sa mesure : *« sur certains composants,
+aucun des trois ne donne les deux […] il n'y a pas de quatrième case »*, suivi de
+la prescription — *« garde alors l'ancre ACTIVE, et inscris l'écart »*, et si le
+centre tombe dehors, *« remonter au composant, ou déclarer l'écran `stageOneOnly`
+avec sa raison »*. C'est **mot pour mot** ce que l'agent a fait.
+
+Et sur le composant qu'il POUVAIT éditer, il a appliqué la recette — son propre
+commentaire la mesure : *« sans lui le nœud du lien se fond dans celui de la
+carte (324×145 dp relevé) […] il est sans danger sur un `GestureDetector`, qui
+ne déclare aucun rôle »*. **Son compte rendu disait qu'il n'y avait pas de
+quatrième case ; son code montre qu'il en a appliqué une.**
+
+📌 *Le tell est celui qu'on connaît : la phrase de l'agent ressemble trait pour
+trait à la phrase du skill.* Ce qui reste vrai est un constat sur l'application,
+pas sur le plugin — le seul moyen d'ouvrir un détail y est un lien de 65×20 dp,
+sous le seuil de 48 dp et inatteignable par toute automatisation qui vise un
+centre.
 
 ### 535. ⚪ OUVERT — un comptage prescrit peut rendre zéro parce que l'OUTIL a échoué
 
