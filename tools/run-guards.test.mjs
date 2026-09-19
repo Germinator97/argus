@@ -17087,6 +17087,74 @@ test('532 — et le marqueur ne rend pas la seconde installation bavarde', () =>
 });
 
 
+// ── 535 ────────────────────────────────────────────────────────────────────
+// Le §2b fait compter les ancres à la main, avant que le harnais existe. Sur un
+// poste où `grep` est relayé par un autre binaire, un motif à parenthèses peut
+// échouer en noyant son erreur dans la sortie : le run 94 a vu son premier
+// comptage rendre 0 PARTOUT.
+//
+// 🔴 CE QUI REND CE ZÉRO-LÀ INDISCERNABLE. Un 0 légitime est ATTENDU ici : le
+// 472 a mesuré qu'un projet tirant ses ancres d'un paquet voisin en rend un sur
+// `lib` seul. Les deux zéros ont la même tête, et le second se lit « projet
+// vierge » — c'est-à-dire exactement le faux constat que le 472 avait fermé.
+//
+// ⚠️ LE TÉMOIN DOIT PARTAGER LA NATURE DU MOTIF. Un contrôle plus simple
+// passerait là où la vraie commande échoue : c'est la leçon de la contre-épreuve
+// ASCII, aveugle au cas accentué qu'elle devait couvrir. Le critère porte donc
+// sur une commande qui emploie la MÊME forme, sur une entrée littérale dont la
+// réponse est écrite — jamais sur la phrase qui l'explique.
+
+test('535 — le bloc de comptage du §2b porte son témoin d\'instrument', () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // Le bloc se DÉRIVE de ce qu'il fait — il compte des ancres — jamais d'un
+  // numéro de ligne ni d'un titre, qu'une réécriture déplacerait.
+  const blocs = [...skill.matchAll(/```bash\n([\s\S]*?)```/g)].map((m) => m[1]);
+  const comptages = blocs.filter((b) => /grep -c/.test(b) && /identifier: \*'/.test(b));
+  assert.equal(comptages.length, 1,
+    `${comptages.length} bloc(s) de comptage d'ancres trouvé(s), 1 attendu : si le §2b a été `
+    + 'découpé ou reformulé, ce garde ne mesure plus ce qu\'il croit (535)');
+  const bloc = comptages[0];
+
+  const lignes = bloc.split('\n');
+  const compte = lignes.filter((l) => /grep -c/.test(l) && !l.trimStart().startsWith('#'));
+  assert.ok(compte.length >= 3,
+    `${compte.length} commande(s) de comptage lue(s) : le balayage n'a rien ouvert (535)`);
+
+  // Le témoin : il emploie la même forme de comptage, et il ne lit AUCUN fichier
+  // du projet — c'est ce qui le rend indépendant de ce qu'on mesure.
+  const temoins = compte.filter((l) => !/\bfind\b|lib\/|\.dart|pubspec/.test(l));
+  assert.ok(temoins.length >= 1,
+    'aucun témoin dans le bloc de comptage : toutes ses commandes lisent le projet, donc un zéro '
+    + 'rendu par un instrument mort est indiscernable du zéro légitime que le 472 documente. '
+    + 'Ajoute une commande qui passe le MÊME motif sur une entrée littérale (535)');
+
+  // Et son attendu doit être ÉCRIT : un témoin dont personne ne connaît la
+  // réponse ne prouve rien — on lirait son chiffre comme on lit les autres.
+  const avecAttendu = temoins.filter((l) => /\d/.test(l.split('#').slice(1).join('#')));
+  assert.ok(avecAttendu.length >= 1,
+    `le témoin ne dit pas ce qu'il doit rendre : « ${temoins[0].trim().slice(0, 70)} ». Sans `
+    + 'attendu écrit, son chiffre se lit comme une mesure de plus (535)');
+
+  // ⚠️ L'AUTRE MOITIÉ — le témoin doit porter la forme qu'on va EMPLOYER. Un
+  // motif plus simple passerait là où la vraie commande échoue, et le garde
+  // serait vert sur un témoin qui ne protège de rien.
+  const motif = /identifier: \*'/;
+  assert.ok(avecAttendu.some((l) => motif.test(l)),
+    'le témoin n\'emploie pas le motif des comptages : il vaudrait alors pour n\'importe quelle '
+    + 'panne SAUF celle qu\'on a mesurée — un grep relayé qui échoue sur les parenthèses (535)');
+
+  // La contre-épreuve : sur un bloc sans témoin, le critère doit REFUSER.
+  const fabrique = ["find lib -name '*.dart' | grep -c \"identifier: *'\"",
+    "find lib -name '*.dart' | grep -c \"anchor: *'\"",
+    "grep -c 'ArgusScreen(' test/argus/harness.dart"];
+  assert.equal(fabrique.filter((l) => !/\bfind\b|lib\/|\.dart|pubspec/.test(l)).length, 0,
+    'le critère accepte un bloc dont toutes les commandes lisent le projet : il ne sait pas dire '
+    + 'non, donc son vert ne prouve rien (535)');
+});
+
+
 // ── Lisibilité des sources Python ───────────────────────────────────────────
 // Un outil d'édition avait échappé TOUS les non-ASCII du harnais de mutation :
 // 62 occurrences dans ses commentaires, 57 dans ses chaînes. Rien ne cassait —
