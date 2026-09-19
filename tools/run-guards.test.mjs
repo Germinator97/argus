@@ -528,6 +528,72 @@ test('522 — sans plancher de marque, l\'attente se DIT au lieu de ne rien prod
     + 'seule chose que le lecteur de la page verra — le JSON en portait 7 occurrences et le HTML 0');
 });
 
+// ── 533 ────────────────────────────────────────────────────────────────────
+// Le garde ci-dessus accepte une ALTERNATIVE — `/launch-clean|invite/` — et
+// c'est exactement pourquoi ce point a pu vivre : les deux textes, celui qui
+// récite et celui qui dérive, la satisfont. Il mesurait la présence d'un mot,
+// jamais la décision.
+//
+// 🔴 CE QUE LE RUN 94 A MESURÉ. Le 524 avait appris à QAM-START-ABSORBE à
+// dériver sa branche des permissions déclarées ; son voisin immédiat, créé deux
+// points plus tôt, récitait encore « c'est presque toujours le geste d'invite
+// système : s'il n'a rien à fermer chez toi, retire-le » — sur un terrain dont
+// l'app déclare CAMERA, POST_NOTIFICATIONS et ACCESS_FINE_LOCATION, donc où le
+// geste a TOUT à fermer. Le coût de le retirer est mesuré au 525 : 5 flows
+// rouges, 159 s de device, sur une ancre parfaitement correcte.
+//
+// ⚠️ LE CRITÈRE EST L'ÉCART, jamais un libellé : deux configs qui ne diffèrent
+// QUE par les permissions doivent produire deux remèdes DIFFÉRENTS. Un garde qui
+// citerait la bonne phrase se périmerait à la première reformulation, et pire —
+// il figerait un texte que la prochaine mesure pourrait devoir corriger, ce que
+// trois gardes du 531 ont fait.
+
+test('533 — le remède du non-jugeable DÉRIVE des permissions, il ne récite pas', () => {
+  const NU = { thresholds: { coldStartMs: 2000, brandedSplashMs: 0 } };
+  const attente = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7054, absorbed: false };
+  const avec = (/** @type {string[]} */ perms) => ({
+    ...NU, platforms: ['android'], security: { expectedPermissions: perms },
+  });
+  const remede = (/** @type {object} */ cfg) => startupFindings([attente], DEVICE, 'android', cfg)
+    .find((x) => x.id === 'QAM-START-NONJUGEABLE')?.suggestedFix ?? '';
+
+  // Le terrain du run 94 : une permission qui ouvre une invite. Le geste sert.
+  const sert = remede(avec(['android.permission.INTERNET', 'android.permission.CAMERA']));
+  // La valeur LIVRÉE par le scaffold : inerte, donc le geste ne joue pas.
+  const inerte = remede(avec(['android.permission.INTERNET']));
+
+  assert.ok(sert && inerte, 'le finding n\'est plus produit : ce garde ne mesure plus rien (533)');
+
+  // 🔴 LE CRITÈRE. Si les deux sont identiques, la dérivation est inerte — et
+  // c'est l'état exact que le run 94 a trouvé.
+  assert.notEqual(sert, inerte,
+    'le remède est le MÊME que le geste ait quelque chose à fermer ou non : il récite une cause '
+    + 'unique au lieu de la dériver, comme QAM-START-ABSORBE le fait depuis le 524. Compose la '
+    + 'même construction que lui plutôt que d\'écrire un second texte — deux copies d\'une '
+    + 'décision divergent à la première retouche (533)');
+
+  // Et l'ACCORD avec le voisin prouve la source unique : le segment dérivé est
+  // le sien, mot pour mot, parce que c'est la même fonction qui le produit.
+  const absorbe = startupFindings(
+    [{ ...attente, absorbed: true }], DEVICE, 'android',
+    { ...avec(['android.permission.INTERNET', 'android.permission.CAMERA']),
+      thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } },
+  ).find((x) => x.id === 'QAM-START-ABSORBE')?.suggestedFix ?? '';
+  assert.ok(absorbe, 'le voisin ne produit plus son remède : la comparaison ne mesure rien');
+  assert.ok(sert.includes(absorbe),
+    'le remède du non-jugeable ne CONTIENT pas celui de son voisin : les deux textes ont été '
+    + 'écrits séparément, donc ils divergeront — c\'est la forme même du défaut (533)');
+
+  // ⚠️ Et ce qui lui est PROPRE doit survivre : le plancher est sa raison d'être,
+  // et composer ne doit pas l'avaler. Sans cette moitié, le remède serait juste
+  // et le finding perdrait ce qu'il est seul à savoir.
+  for (const [nom, texte] of [['geste utile', sert], ['geste inerte', inerte]]) {
+    assert.match(texte, /brandedSplashMs/,
+      `${nom} : le remède ne dit plus comment rendre le relevé concluant — or c'est exactement `
+      + 'ce qui manque quand aucun plancher n\'est déclaré (533)');
+  }
+});
+
 test('une mesure absorbée ne compte pas dans le budget, une vraie mesure si (479)', () => {
   // Absorbée ET au-dessus du seuil : elle ne doit PAS produire QAM-START, parce
   // que sa valeur ne mesure pas le sas. C'est la moitié qui coupe trop si on
