@@ -5096,7 +5096,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **532** est né en remettant un terrain à neuf et a été
+⚪ **3 POINTS OUVERTS — les 533, 534 et 535**, rendus par le run 94 (terrain à
+API, Android). Le premier est un remède qui récite une cause unique que son
+voisin a cessé de réciter ; le deuxième est le cas dominant d'une application à
+listes, dont les trois recettes du skill échouent ; le troisième est un comptage
+prescrit qui peut rendre zéro parce que l'outil a échoué.
+
+Le **532** est né en remettant un terrain à neuf et a été
 tranché le jour même : le correctif du **530** tient sur un vrai terrain, et il y
 laissait un résidu d'**un octet** que son propre garde ne pouvait pas voir — le
 `.gitignore` de ce projet ne finissait pas par un saut de ligne, et le montage du
@@ -11433,3 +11439,89 @@ décrit : elle sortait la ligne vide **avant** celle encore en tampon, donc elle
 cassait l'ordre. Elle reste verte au contrôle des motifs — son motif n'a pas
 bougé — et c'est son EFFET qui avait changé. Ré-ancrée sur `emettre("")`, elle
 tombe toujours sur le garde du 530, vérifié en lisant le nom rouge.
+
+### 533. ⚪ OUVERT — le remède de NONJUGEABLE récite la cause que son voisin a cessé de réciter
+
+**Ouvert le 19/09/2026 par le run 94, non traité : arbitrage à prendre à froid.**
+
+Le **524** avait corrigé le `suggestedFix` de `QAM-START-ABSORBE` pour qu'il
+DÉRIVE sa branche des permissions déclarées et NOMME le flow fautif. Son voisin
+immédiat, créé par le **522** deux points plus tôt, est resté un littéral :
+
+    ABSORBE      suggestedFix: remedeAbsorption(invitesSystemePossibles(config), pire.flow)
+    NONJUGEABLE  suggestedFix: '… presque toujours le geste d'invite système … retire-le'
+
+🔴 **Sur le terrain du run 94, le geste a TOUT à fermer** : l'application déclare
+`CAMERA`, `POST_NOTIFICATIONS` et `ACCESS_FINE_LOCATION`. Qui applique le remède
+retire un geste nécessaire, et ses flows rougissent à la première invite — le
+coût mesuré au **525** était de **5 flows rouges et 159 s de device**, sur une
+ancre parfaitement correcte.
+
+🔴 **Le tell est dans le texte lui-même** : il renvoie à ABSORBE en écrivant
+« même cause, même remède », une équivalence qui a cessé d'être vraie le jour du
+524. Et le commentaire du site, long de vingt-cinq lignes, explique pourquoi
+NONJUGEABLE existe sans dire un mot de pourquoi son remède ne dériverait pas :
+*ce n'est pas un arbitrage rendu, c'est le voisin qui n'a pas reçu la correction.*
+
+C'est le motif du **488** — le correctif ferme son cas, le voisin garde le sien —
+et la **quatrième péremption** du même texte : 502 (propriété que l'outil
+refuse), 505 (branche non chiffrée), 524 (portée mono-cause), celle-ci.
+
+📌 Ce qu'il faut trancher n'est pas *s'il faut dériver* mais **jusqu'où** : les
+deux findings partagent la cause, pas le contexte — l'un sait quel flow est le
+pire, l'autre non, faute de plancher pour l'établir.
+
+### 534. ⚪ OUVERT — `ListView` fusionne chaque ligne, et les trois recettes échouent
+
+**Ouvert le 19/09/2026 par le run 94, non traité.**
+
+Mesuré par l'agent sur une sonde à trois formes de liste, la quatrième servant
+de témoin hors liste :
+
+    A (builder + Padding)  node id=sonde rect=800x153 tap=true
+    B (separated)          node id=sonde rect=800x137 tap=true
+    C (builder nu)         node id=sonde rect=800x137 tap=true
+    hors liste             node id=sonde rect=65x20   tap=true
+
+`ListView` enveloppe chaque ligne dans un `IndexedSemantics` qui fusionne tout
+son sous-arbre : l'ancre d'un lien de 65×20 dp hérite du rect de la ligne
+entière, et Maestro vise le **centre** — donc le milieu de la carte, où aucun
+geste n'existe. Le `tapOn` est rapporté **COMPLETED**, et c'est l'écran suivant
+qui échoue en accusant une ancre correcte.
+
+🔴 **Les trois remèdes que le skill propose ont été essayés et échouent** :
+`container: true` rend l'ancre inerte, `explicitChildNodes` la laisse mal cadrée,
+`onTap:` + `excludeFromSemantics` aussi. *Il n'y a pas de quatrième case tant que
+la ligne entière n'est pas tapable.*
+
+Mesuré sur le plugin : **`IndexedSemantics` rend zéro occurrence**, `ListView`
+aussi, dans le SKILL comme dans la méthodologie — pour le cas dominant de toute
+application qui affiche une liste. Le **400** avait fermé « une ancre présente,
+active, et pointant le mauvais rectangle » ; son garde d'étage 1 attrape bien ce
+cas-ci, mais aucune recette ne le résout.
+
+📌 L'agent a fait le bon geste faute de mieux : ancre gardée pour le lecteur
+d'écran, sortie de `commands:`, inscrite dans `allowUndeclared` avec sa mesure,
+écran retiré de `screens[]` avec sa raison. *Ce qui manque n'est pas un garde,
+c'est une recette — ou l'aveu écrit qu'il n'y en a pas.*
+
+### 535. ⚪ OUVERT — un comptage prescrit peut rendre zéro parce que l'OUTIL a échoué
+
+**Ouvert le 19/09/2026 par le run 94, non traité — le plus faible des trois.**
+
+Le §2b prescrit **24 lignes de commande** portant un `grep`. Sur le poste du run,
+`grep` est une fonction de shell qui relaie un autre binaire : le premier
+comptage de l'agent a rendu **0 partout**, sur une erreur `mismatched ( )` noyée
+dans la sortie. Il s'en est sorti seul en recomptant avec `/usr/bin/grep -F`, et
+a contre-éprouvé les deux compteurs qui décident.
+
+⚠️ **Le danger est aggravé par le 472** : sur un projet à paquet voisin, un vrai
+zéro est déjà attendu — « la commande rend 0 nom sur `lib` seul ». Les deux zéros
+sont alors **indiscernables**, et celui qui vient de l'outil se lit « projet
+vierge », c'est-à-dire exactement le faux constat que le 472 a fermé.
+
+📌 Ce qui rend ce point plus faible que les deux autres : il dépend de
+l'environnement du lecteur, et prescrire un chemin de binaire ne serait juste que
+sur un poste. L'issue qui ne suppose rien est une **contre-épreuve** — un motif
+dont la présence est certaine, à côté du comptage — que le skill sait déjà écrire
+ailleurs (le comptage dans un binaire en porte deux).
