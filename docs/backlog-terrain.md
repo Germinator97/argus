@@ -5096,13 +5096,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-⚪ **1 POINT OUVERT — le 529**, et c'est délibéré : `inputText` rend `COMPLETED`
-avant que le texte n'ait atterri, l'échec sort trois étapes plus loin en accusant
-une ancre correcte, et le remède que le run 92 a inventé (un `retry` sur la seule
-saisie, qui attend un ÉTAT) **n'a pas été éprouvé par ce dépôt**. *Un arbitrage
-se prend à froid, pas en fin de passe.*
+✅ **AUCUN POINT OUVERT.** Le **529** a été tranché à froid le 19/09, comme il
+avait été laissé ouvert pour l'être : le remède du run 92 tenait sur le motif et
+manquait sa première pièce — `inputText` AJOUTE, donc un `retry` sans `eraseText`
+fabrique un champ *plein et faux sous une assertion verte*. Sa preuve ne se
+généralisait pas non plus, et la forme `- eraseText:` casse le workspace entier.
+*L'arbitrage pris à froid n'a pas confirmé le remède : il l'a complété.*
 
-Les **526**, **527** et **528** sont nés et fermés les 18 et 19/09 — le premier
+Les **526**, **527**, **528** et **529** sont nés et fermés les 18 et 19/09 — le premier
 parce qu'un avertissement lu et cité n'empêche rien, le deuxième parce qu'un geste
 nommé cinq fois ailleurs n'est pas atteint, le troisième parce qu'un marqueur qui
 existait déjà ne date rien.
@@ -10990,9 +10991,9 @@ tableau** : deux lignes, et leurs attendus doivent différer — l'une non nulle
 l'autre zéro. *Deux lignes qui attendent la même chose ne datent pas plus
 qu'une seule.*
 
-### 529. ⚪ OUVERT — `inputText` rend COMPLETED avant que le texte n'ait atterri
+### 529. `inputText` rend COMPLETED avant que le texte n'ait atterri
 
-**Ouvert le 19/09/2026 par le run 92, non traité : arbitrage à prendre à froid.**
+**Né du run 92 et fermé le 19/09/2026.**
 
 Le dump de l'étape en échec montrait le champ à `texte=''` et le bouton à
 `enabled=false` : la frappe n'avait pas atterri. Maestro rapporte pourtant
@@ -11009,3 +11010,63 @@ mauvais rectangle » — et jamais celui de la **saisie**.
 plus — et qui attend un **ÉTAT** (`assertVisible: enabled: true` sur le bouton,
 seule preuve observable que le texte est là). *Le remède a l'air bon ; il n'a pas
 été éprouvé par ce dépôt.*
+
+#### Ce que l'arbitrage a rendu
+
+🔴 **Le mécanisme est confirmé, et il se re-mesure sans appareil.** Décompilé sur
+la version installée (2.8.0) : `inputTextCommand` appelle `driver.inputText(texte)`
+puis rend `true`, **sans jamais relire le champ**. `COMPLETED` prouve l'ENVOI,
+jamais l'ARRIVÉE — et le skill porte désormais la ligne qui le rejoue sur
+n'importe quelle version, parce qu'un fait sans sa mesure se périme en silence.
+
+🔴 **Le remède de l'agent était juste sur le motif et FAUX sur sa première
+pièce.** `inputText` **AJOUTE** : `eraseText` est un appel **séparé** sur les deux
+drivers, donc un `retry` écrit à la suite de l'essai précédent. Sous un formateur
+qui tronque — exactement le cas du terrain, dix chiffres —, le second tour laisse
+le champ *plein et faux* pendant que l'assertion reste **verte**. Le garde
+anti-flake devient alors un producteur de faux vert, ce qui est pire que le
+défaut qu'il ferme. Personne ne l'invente, parce que le premier tour a toutes les
+apparences d'un échec **total** : c'est l'hypothèse « il ne s'est rien passé »
+qui rend la concaténation impensable.
+
+⚠️ **Et sa preuve ne se généralisait pas.** `enabled: true` sur le bouton ne vaut
+que si l'état du bouton dépend du champ qu'on vient de remplir. Sur le formulaire
+à **deux** champs que le scaffold livre, il ne s'active qu'après les deux :
+l'assertion posée après le premier échouerait *toujours* — trois tours pour rien,
+et trois saisies concaténées. Et s'il est **toujours actif**, elle est verte sur
+un champ VIDE. La seule preuve qui ne demande rien à l'app est `copyTextFrom` sur
+le champ, assertée sur sa **longueur** : elle lit CE champ et ne publie pas la
+valeur, là où `assertVisible: text:` ferait fuiter le secret que `label:` sert à
+masquer. ⚠️ Réserve écrite plutôt que tue : non éprouvée sur un champ **masqué**.
+
+🔴 **`- eraseText:` CASSE LE WORKSPACE ENTIER, et la forme nue est `- eraseText`.**
+Mesuré à `maestro check-syntax` : `- eraseText` passe, `- eraseText: 30` passe, la
+forme longue passe, et le deux-points suivi de rien rend « Incorrect Command
+Format ». Comme Maestro valide TOUT le workspace au démarrage, ce caractère de
+trop n'échoue pas une étape — il empêche la suite de partir.
+
+#### Ce que la passe a appris sur ses propres instruments
+
+🔴 **Une mutation REFUSÉE a trouvé un trou dans le garde qu'elle devait prouver.**
+Le harnais exige que chaque mutation PARSE ; il a donc rendu `HARNAIS` — et non un
+verdict — sur celle qui écrivait un YAML invalide dans un flow livré. Ré-ancrée
+sur l'exemple du **skill**, qui est de la prose, elle a exposé la forme que le
+détecteur ne voyait pas : `- eraseText:` suivi d'un **COMMENTAIRE**, c'est-à-dire
+la seule qu'on écrit vraiment, puisque le deux-points se tape en expliquant ce
+que fait la ligne. Mesuré : cette forme casse (exit 1) quand `- eraseText  # x`
+passe. *Le refus d'un instrument vaut parfois mieux que son verdict.*
+
+⚠️ **Le garde du 410 a rougi, et il avait raison.** Mon paragraphe s'était inséré
+**entre** le geste de la capture et la consigne qui le tranche, poussant celle-ci
+hors de sa fenêtre. C'est l'un des 38 fenêtrages comptés au **510**, et le réflexe
+— déplacer la prose pour faire taire le garde — l'aurait rendu vert *sans rien
+régler*. Ici la question s'est posée à l'endroit : le phénomène mesuré existe
+toujours, j'avais bel et bien coupé un enchaînement, et le bloc est allé en fin de
+séquence avec son accroche réécrite. ⚠️ La fenêtre par nombre reste une
+fragilité — la section n'a **aucun titre** avant 21 000 caractères, donc borner
+par la structure la rendrait inopérante ici. Exception **comptée**, pas masquée.
+
+📌 **Et une clé s'est retrouvée en double sans aucun effet visible** : la cible
+`login` du harnais existait déjà depuis le 405, et la redéfinir laissait Python
+garder la dernière — même chemin, donc rien à voir, sinon le motif exact que ce
+dépôt proscrit ailleurs. Trouvé en comptant les clés, pas en relisant.
