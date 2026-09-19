@@ -5096,10 +5096,8 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-⚪ **1 POINT OUVERT — le 535**, un comptage prescrit qui peut rendre zéro parce
-que l'OUTIL a échoué, indiscernable du zéro légitime que le 472 a documenté.
-
-Des trois points du run 94, le **533** est fermé — son remède compose désormais
+✅ **Rien d'ouvert.** Les trois points du run 94 sont traités : le **533** est
+fermé — son remède compose désormais
 la même construction que son voisin — et le **534** est **démenti** : la sonde a
 montré que la liste n'y est pour rien, et que le remède du skill tient. *La
 phrase « il n'y a pas de quatrième case » du compte rendu était la phrase du
@@ -11569,9 +11567,9 @@ pas sur le plugin — le seul moyen d'ouvrir un détail y est un lien de 65×20 
 sous le seuil de 48 dp et inatteignable par toute automatisation qui vise un
 centre.
 
-### 535. ⚪ OUVERT — un comptage prescrit peut rendre zéro parce que l'OUTIL a échoué
+### 535. Un comptage prescrit pouvait rendre zéro parce que l'OUTIL avait échoué
 
-**Ouvert le 19/09/2026 par le run 94, non traité — le plus faible des trois.**
+**Ouvert par le run 94 le 19/09/2026 et fermé le jour même.**
 
 Le §2b prescrit **24 lignes de commande** portant un `grep`. Sur le poste du run,
 `grep` est une fonction de shell qui relaie un autre binaire : le premier
@@ -11584,8 +11582,38 @@ zéro est déjà attendu — « la commande rend 0 nom sur `lib` seul ». Les de
 sont alors **indiscernables**, et celui qui vient de l'outil se lit « projet
 vierge », c'est-à-dire exactement le faux constat que le 472 a fermé.
 
-📌 Ce qui rend ce point plus faible que les deux autres : il dépend de
-l'environnement du lecteur, et prescrire un chemin de binaire ne serait juste que
-sur un poste. L'issue qui ne suppose rien est une **contre-épreuve** — un motif
-dont la présence est certaine, à côté du comptage — que le skill sait déjà écrire
-ailleurs (le comptage dans un binaire en porte deux).
+#### ✅ Ce qui l'a fermé : un témoin, avant le premier chiffre
+
+Prescrire un chemin de binaire aurait été faux — ça ne vaudrait que sur un poste.
+Le remède qui ne suppose rien est un **témoin** : la même forme de commande,
+passée sur une **entrée littérale** dont la réponse est écrite.
+
+    printf "identifier: 'a'\nidentifier: 'b'\n" | grep -c "identifier: *'"   # attendu : 2
+
+Mesuré avant de le prescrire — *on ne prescrit pas une commande qu'on n'a pas
+lancée* : **2** avec le motif employé, **0** avec un motif mort.
+
+#### Deux choses le rendent utile, et elles ne se remplacent pas
+
+- 🔴 **Il vient AVANT le premier chiffre.** Un contrôle qui suit ce qu'il juge
+  est vacant par construction — c'est le motif d'un point antérieur, où une garde
+  de fraîcheur relevait sa mesure *après* le build qui venait de la réécrire.
+- 🔴 **Il porte le motif qu'on va EMPLOYER.** Un témoin plus simple passerait
+  exactement là où la vraie commande échoue : c'est la leçon de la contre-épreuve
+  ASCII, aveugle au cas accentué qu'elle devait couvrir. Le garde asserte cette
+  seconde moitié à part, et c'est elle que la mutation vise.
+
+#### Le garde se dérive de ce que le bloc FAIT
+
+Il retrouve le bloc parce qu'il **compte des ancres**, jamais par un titre ni un
+numéro de ligne qu'une réécriture déplacerait. Il exige ensuite une commande qui
+emploie la même forme, ne lit **aucun** fichier du projet, et porte un attendu
+écrit — *un témoin dont personne ne connaît la réponse se lit comme une mesure de
+plus*. Et il garde sa contre-épreuve : sur un bloc fabriqué dont toutes les
+commandes lisent le projet, le critère doit refuser.
+
+📌 **Ce que ce point partage avec les deux autres du run 94** : le remède existait
+déjà dans le skill — dix-huit mentions de contre-épreuve, dont « un `0` ne prouve
+rien tout seul » — pour le comptage dans un binaire et pour le croisement des
+ancres. *Il n'avait simplement jamais été porté au §2b*, c'est-à-dire là où un
+zéro légitime est attendu et où il est donc le plus nécessaire.
