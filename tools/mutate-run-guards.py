@@ -2719,6 +2719,14 @@ MUTATIONS = [
      "\n          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
      "\n          + 'Ce qui attend est presque toujours le geste qui ferme une invite "
      "système, dans launch-clean.yaml : retire-le.'"),
+    # 535 · le témoin d'instrument perd le motif qu'il doit porter. C'est la
+    # « simplification » qu'on écrirait vraiment — elle laisse un témoin en place,
+    # donc le garde reste vert sur ses trois premières assertions, et seule celle
+    # de la SECONDE MOITIÉ tombe : un témoin plus simple passe exactement là où la
+    # vraie commande échoue.
+    ("skill", "535 · le témoin d'instrument cesse de porter le motif employé",
+     "| grep -c \"identifier: *'\"   # attendu : 2",
+     "| grep -c \"identifier\"   # attendu : 2"),
 ]
 
 
