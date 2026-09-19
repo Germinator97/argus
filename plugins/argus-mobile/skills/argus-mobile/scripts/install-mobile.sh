@@ -212,6 +212,22 @@ fi
 BLOC_DEBUT='# ── Argus Mobile ── début du bloc géré (ne pas éditer à la main) ──'
 BLOC_FIN='# ── Argus Mobile ── fin du bloc géré ──'
 
+# ── Le suffixe qui MÉMORISE ce qu'aucun retrait ne peut déduire ─────────────
+# L'insertion écrit `\n` DEVANT le bloc. Quand le fichier de l'hôte finit déjà
+# par un saut de ligne, ce `\n` crée une ligne vide, que le retrait reprend.
+# Quand il n'en a pas, le MÊME `\n` termine sa dernière ligne : il ne crée
+# aucune ligne vide, donc le retrait n'a rien à reprendre et le fichier garde un
+# octet de plus. Mesuré sur un vrai projet : 1 662 → 1 663, et `git diff` le
+# disait en toutes lettres — `\ No newline at end of file`.
+#
+# ⚠️ L'information « l'hôte en avait-il un ? » N'EXISTE PLUS une fois le bloc
+# inséré : aucun retrait, si soigneux soit-il, ne peut la déduire. Donc
+# l'insertion l'INSCRIT, sur la seule ligne qui nous appartienne — notre borne
+# de fin. Le marqueur est RÉSERVÉ (jamais un mot de la langue) et il vit en
+# SUFFIXE : les deux seules lectures de cette borne cherchent une sous-chaîne
+# (`index()` en awk, `grep -qF`), donc elles le traversent sans le voir.
+BLOC_FIN_SANS_SAUT=' ARGUS:NO-EOL'
+
 # ── Les dossiers que cette installation crée SANS y livrer de fichier ───────
 # Ils naissent vides et se remplissent à l'exécution. Une seule déclaration,
 # lue par le `mkdir -p` qui les pose ET par le `rmdir` qui les reprend : écrite
@@ -229,20 +245,45 @@ DOSSIERS_CREES=(argus-mobile-report .maestro/_baselines)
 # la mise à jour réinsère ensuite le bloc avec sa ligne vide, donc le fichier
 # reste identique à lui-même quand le bloc n'a pas changé de place.
 retirer_bloc_gitignore() {
-  local dest="$1" tmp
+  local dest="$1" tmp sansSaut=0
+  # C'est le BLOC qui dit si l'insertion a dû terminer la dernière ligne de
+  # l'hôte : l'insertion l'y a écrit, et plus rien d'autre ne peut le savoir.
+  grep -qF "$BLOC_FIN$BLOC_FIN_SANS_SAUT" "$dest" && sansSaut=1
   tmp="$(mktemp)"
   # Une ligne vide n'est imprimée qu'une fois qu'on sait ce qui la suit : si
   # c'est notre borne d'ouverture, elle est à nous et elle part avec le bloc.
-  awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" '
+  # Et la DERNIÈRE ligne n'est imprimée qu'à la toute fin, parce qu'elle seule
+  # peut avoir à sortir sans son saut de ligne : `emettre` retient donc
+  # toujours une ligne d'avance.
+  awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" -v sansSaut="$sansSaut" '
+    function emettre(s) { if (aEcrire) printf "%s\n", tampon; tampon = s; aEcrire = 1 }
     index($0,d) { p=1; enAttente=0; next }
     index($0,f) { p=0; next }
     p           { next }
-    enAttente   { print ""; enAttente=0 }
+    enAttente   { emettre(""); enAttente=0 }
     $0 == ""    { enAttente=1; next }
-                { print }
-    END         { if (enAttente) print "" }
+                { emettre($0) }
+    END         { if (enAttente) emettre("")
+                  if (aEcrire) { if (sansSaut == 1) printf "%s", tampon
+                                 else               printf "%s\n", tampon } }
   ' "$dest" > "$tmp"
   mv "$tmp" "$dest"
+}
+
+# ── Poser le bloc à la fin, en mémorisant ce que l'insertion aura changé ────
+# Les deux chemins qui posent le bloc — l'ajout et la mise à jour — passent par
+# ici, sans quoi l'un des deux oublierait le marqueur et le retrait rendrait un
+# fichier différent selon le geste qui l'a écrit.
+ajouter_bloc_gitignore() {
+  local dest="$1" bloc="$2" marque=''
+  # Un fichier VIDE n'a pas de dernière ligne à terminer : le `\n` y crée une
+  # ligne vide comme ailleurs, et le retrait la reprend. Rien à mémoriser.
+  # La substitution mange les sauts de ligne finaux : elle rend vide quand le
+  # dernier octet en est un, et le dernier caractère sinon.
+  if [ -s "$dest" ] && [ -n "$(tail -c 1 "$dest")" ]; then
+    marque="$BLOC_FIN_SANS_SAUT"
+  fi
+  printf '\n%s%s\n' "$bloc" "$marque" >> "$dest"
 }
 
 merge_gitignore() {
@@ -254,19 +295,23 @@ merge_gitignore() {
 
   if grep -qF "$BLOC_DEBUT" "$dest"; then
     ancien="$(awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" 'index($0,d){p=1} p{print} index($0,f){p=0}' "$dest")"
-    if [ "$ancien" = "$nouveau" ]; then
+    # Le marqueur ne fait pas partie du bloc COMPARÉ : il décrit le fichier de
+    # l'hôte, pas notre contenu. Le laisser dans la comparaison rendrait la
+    # mise à jour non idempotente — « bloc mis à jour » à chaque exécution, sur
+    # tout projet dont le `.gitignore` n'a pas de saut de ligne final.
+    if [ "${ancien%"$BLOC_FIN_SANS_SAUT"}" = "$nouveau" ]; then
       return 1
     fi
     # Remplacement en place : on écrit dans un temporaire puis on renomme, parce
     # qu'un script d'édition qui échoue à mi-chemin est plus dangereux qu'un
     # script qui ne tourne pas.
     retirer_bloc_gitignore "$dest"
-    printf '\n%s\n' "$nouveau" >> "$dest"
+    ajouter_bloc_gitignore "$dest" "$nouveau"
     echo "  🔁 bloc .gitignore mis à jour (le reste du fichier est intact)"
     return 0
   fi
 
-  printf '\n%s\n' "$nouveau" >> "$dest"
+  ajouter_bloc_gitignore "$dest" "$nouveau"
   echo "  ➕ bloc .gitignore ajouté à la fin (le reste du fichier est intact)"
   return 0
 }
