@@ -2637,7 +2637,7 @@ MUTATIONS = [
     # exactement la forme du d\u00e9faut mesur\u00e9 \u2014 25 octets contre 26.
     ("installeur", "530 \u00b7 le retrait du bloc ne reprend plus sa ligne vide",
      "\n    $0 == \"\"    { enAttente=1; next }",
-     "\n    $0 == \"\"    { print \"\"; next }"),
+     "\n    $0 == \"\"    { emettre(\"\"); next }"),
     # \u26a0\ufe0f LA QUATRI\u00c8ME VISE L'AUTRE GARDE, celui de la SURVIE \u2014 sans elle il
     # n'aurait aucune mutation, et le site que personne ne mute est le site dont
     # personne n'apprend rien. `rm -rf` l\u00e0 o\u00f9 `rmdir` refusait.
@@ -2672,6 +2672,28 @@ MUTATIONS = [
     ("yamlconf", "531 \u00b7 le scaffold livre une valeur qui d\u00e9cide \u00e0 la place du projet",
      "\n  systemAlerts: auto",
      "\n  systemAlerts: never"),
+    # 532 · les trois décisions du marqueur, une mutation chacune — et chacune
+    # isole UN garde et UNE assertion, vérifié en lisant les noms rouges.
+    # La première ne mémorise plus rien : le retrait redevient celui d'avant, et
+    # c'est l'assertion sur le marqueur qui parle la première.
+    ("installeur", "532 · l'insertion ne mémorise plus le saut de ligne qu'elle ajoute",
+     "\n    marque=\"$BLOC_FIN_SANS_SAUT\"",
+     "\n    marque=''"),
+    # La deuxième POSE le marqueur et l'ignore au retrait : le fichier ne revient
+    # pas alors que le bloc porte l'information. Elle vise l'autre moitié de la
+    # décision, celle que la première laisse debout — et elle tombe sur l'ÉGALITÉ
+    # finale, qui est le vrai critère du garde.
+    ("installeur", "532 · le retrait ignore ce que le bloc lui dit",
+     "\n                  if (aEcrire) { if (sansSaut == 1) printf \"%s\", tampon",
+     "\n                  if (aEcrire) { if (sansSaut == 2) printf \"%s\", tampon"),
+    # ⚠️ LA TROISIÈME VISE L'AUTRE GARDE, celui de l'idempotence — sans elle il
+    # n'aurait aucune mutation, et le site que personne ne mute est le site dont
+    # personne n'apprend rien. Elle ne casse rien du fichier de l'hôte : elle
+    # rend le remède BAVARD, chaque exécution annonçant un bloc qu'elle n'a pas
+    # changé.
+    ("installeur", "532 · le marqueur entre dans la comparaison d'idempotence",
+     "\n    if [ \"${ancien%\"$BLOC_FIN_SANS_SAUT\"}\" = \"$nouveau\" ]; then",
+     "\n    if [ \"$ancien\" = \"$nouveau\" ]; then"),
 ]
 
 
