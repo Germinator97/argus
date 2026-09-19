@@ -16917,6 +16917,109 @@ test('530 — et ce qui appartient au projet SURVIT à la désinstallation', () 
   rmSync(cible, { recursive: true, force: true });
 });
 
+// ── 532 ────────────────────────────────────────────────────────────────────
+// Le garde du 530 ne POUVAIT PAS voir ce défaut : sa fixture écrit un
+// `.gitignore` AVEC saut de ligne final, et c'est la forme SANS qui casse. Le
+// terrain l'a rencontrée deux heures après l'écriture du garde — huitième façon
+// de naître vacant : un montage fabriqué ne rencontre que ce qu'on a imaginé.
+//
+// ⚠️ CE GARDE BALAIE DONC LES FORMES, il n'en fige aucune. Et son critère est le
+// retour à l'OCTET PRÈS, qui couvre les deux sens d'un seul geste : un marqueur
+// jamais posé laisse un octet de trop sur les formes sans saut de ligne final,
+// un marqueur posé partout en retire un sur les formes qui en ont un. Comparer
+// des tailles n'aurait vu que le premier.
+
+/**
+ * Les formes qu'un `.gitignore` d'hôte prend vraiment, et le marqueur attendu
+ * pour chacune. Le fichier VIDE n'a pas de dernière ligne à terminer : le `\n`
+ * y crée une ligne vide comme ailleurs, donc rien à mémoriser.
+ */
+const FORMES_GITIGNORE = [
+  ['avec saut de ligne final', 'build/\n.dart_tool/\n*.iml\n', false],
+  ['SANS saut de ligne final', 'build/\n.dart_tool/\n*.iml', true],
+  ['une seule ligne, sans saut', 'build/', true],
+  ['vide', '', false],
+  ['des lignes vides à la fin, sans saut', 'build/\n\n\nlib/gen/', true],
+];
+
+/** Le marqueur, DÉRIVÉ du script livré : le citer ici le figerait deux fois. */
+function marqueSansSaut() {
+  const sh = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh'), 'utf8');
+  const m = /^BLOC_FIN_SANS_SAUT='([^']+)'$/m.exec(sh);
+  assert.ok(m, 'l\'installeur ne déclare plus de suffixe de fin de bloc : ce garde en dérive '
+    + 'son motif, donc il ne mesure plus rien. Ré-ancre-le sur la déclaration du jour (532)');
+  return m[1];
+}
+
+/**
+ * Pose un projet nu au `.gitignore` donné, installe, puis désinstalle.
+ * Avec `rejouer`, une SECONDE installation s'intercale et sa sortie est rendue.
+ */
+function cycleSurGitignore(contenu, rejouer = false) {
+  const installeur = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  const cible = mkdtempSync(join(tmpdir(), 'argus-eol-'));
+  mkdirSync(join(cible, 'lib'), { recursive: true });
+  writeFileSync(join(cible, 'pubspec.yaml'), 'name: demo\n');
+  writeFileSync(join(cible, 'lib/main.dart'), 'void main() {}\n');
+  writeFileSync(join(cible, '.gitignore'), contenu);
+
+  execFileSync('bash', [installeur, cible], { encoding: 'utf8' });
+  const installe = readFileSync(join(cible, '.gitignore'), 'utf8');
+  const rejoue = rejouer
+    ? execFileSync('bash', [installeur, cible], { encoding: 'utf8' }) : '';
+  const sortie = execFileSync('bash', [installeur, cible, '--uninstall'], { encoding: 'utf8' });
+  const final = readFileSync(join(cible, '.gitignore'), 'utf8');
+
+  rmSync(cible, { recursive: true, force: true });
+  return { installe, rejoue, sortie, final };
+}
+
+test('532 — le `.gitignore` de l\'hôte revient à l\'OCTET PRÈS, quelle que soit sa forme', () => {
+  const marque = marqueSansSaut();
+
+  for (const [forme, contenu, marqueAttendue] of FORMES_GITIGNORE) {
+    const { installe, sortie, final } = cycleSurGitignore(contenu);
+
+    // Prouver que le geste a MESURÉ : une désinstallation devenue inerte
+    // laisserait le fichier intact, donc passerait tout ce qui suit.
+    const retires = Number(/(\d+) retiré\(s\)/.exec(sortie)?.[1] ?? 0);
+    assert.ok(retires > 10,
+      `${forme} : seulement ${retires} fichier(s) retiré(s) — l'installation ou la `
+      + 'désinstallation n\'a pas eu lieu, donc ce garde ne mesure rien (532)');
+
+    assert.equal(installe.includes(marque), marqueAttendue,
+      `${forme} : le marqueur \`${marque}\` est ${marqueAttendue ? 'absent' : 'posé'} alors `
+      + `qu'il devrait être ${marqueAttendue ? 'posé' : 'absent'}. L'insertion doit mémoriser `
+      + 'qu\'elle a dû TERMINER la dernière ligne de l\'hôte, et seulement dans ce cas (532)');
+
+    assert.equal(final, contenu,
+      `${forme} : le \`.gitignore\` n'est pas revenu à son état d'origine — ${contenu.length} `
+      + `octet(s) avant, ${final.length} après. L'insertion écrit \`\\n\` devant le bloc ; sur un `
+      + 'fichier sans saut de ligne final il TERMINE la dernière ligne de l\'hôte au lieu de '
+      + 'créer une ligne vide, donc le retrait n\'a rien à reprendre. Cette information n\'existe '
+      + 'plus après l\'insertion : c\'est le bloc qui doit la porter (532)');
+  }
+});
+
+// L'AUTRE MOITIÉ, et elle est le vrai risque du remède : un marqueur qui entre
+// dans la comparaison rendrait la mise à jour bavarde — « bloc mis à jour » à
+// chaque exécution, sur tout projet sans saut de ligne final. Le marqueur
+// décrit le fichier de l'HÔTE, jamais notre contenu.
+test('532 — et le marqueur ne rend pas la seconde installation bavarde', () => {
+  for (const [forme, contenu] of FORMES_GITIGNORE) {
+    const { rejoue } = cycleSurGitignore(contenu, true);
+
+    assert.ok(/déjà à jour|identique|à jour/.test(rejoue) || rejoue.length > 0,
+      `${forme} : la seconde installation n'a rien dit du tout — ce garde ne mesure rien (532)`);
+    assert.ok(!/bloc \.gitignore/.test(rejoue),
+      `${forme} : la seconde installation annonce encore le bloc \`.gitignore\` alors que rien `
+      + 'n\'a changé. Le marqueur est entré dans la comparaison d\'idempotence : il décrit le '
+      + 'fichier de l\'hôte, pas notre contenu, et il doit en être retiré avant de comparer (532)');
+  }
+});
+
 
 // ── 531 ────────────────────────────────────────────────────────────────────
 // Le 525 avait tranché « dès qu'iOS est déclaré, on joue », sur la direction
