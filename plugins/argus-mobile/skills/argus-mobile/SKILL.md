@@ -2305,6 +2305,77 @@ Relève donc TON point sur TA capture, et vérifie qu'il ne tombe sur rien de
 tapable. Si l'écran n'a aucune zone morte, remonte le bouton plutôt que de
 masquer le clavier.
 
+🔴 **ET LE JUMEAU DE CE DÉFAUT EST LA SAISIE — `inputText` RÉUSSIT TOUJOURS
+(529).** Le tap qui atterrit ailleurs, plus haut, a un jumeau — et
+celui-ci ne laisse même pas de trace à l'écran d'arrivée : une saisie n'atterrit parfois **nulle part**, et Maestro rapporte le même `COMPLETED`.
+Mesuré en décompilant la version installée (2.8.0) : `inputTextCommand` appelle
+`driver.inputText(texte)` puis rend `true`, **sans jamais relire le champ**. La
+commande prouve l'ENVOI, jamais l'ARRIVÉE — re-mesurable sur ta version en une
+ligne :
+
+```sh
+cd ~/.maestro/lib && unzip -o -q maestro-orchestra.jar 'maestro/orchestra/Orchestra.class' -d /tmp/m \
+  && javap -p -c -cp /tmp/m maestro.orchestra.Orchestra | grep -A20 'inputTextCommand('
+```
+
+Un run l'a payé : le dump montrait le champ à `texte=''` et le bouton à
+`enabled=false` après un `tapOn` **et** un `inputText` tous deux COMPLETED, et
+l'échec sortait **trois étapes plus loin** en accusant une ancre correcte. Le
+terrain n'avait qu'un écran dans ce cas — le seul qui ne demande pas le focus
+lui-même, quand ses voisins le prennent en post-frame. Le symptôme est donc
+**rare, reproductible et muet** : exactement ce qu'on prend pour un flake.
+
+Le remède attend un **ÉTAT**, jamais un délai, et il a trois pièces :
+
+```yaml
+- retry:
+    maxRetries: 3
+    commands:
+      - tapOn: { id: "${ARGUS_AUTH_USER}" }
+      - eraseText          # 1. sans lui, le second tour CONCATÈNE
+      - inputText: { text: "${QA_USER}", label: Saisie de l'identifiant }
+      - copyTextFrom: { id: "${ARGUS_AUTH_USER}" }
+      - assertTrue: "${maestro.copiedText.length > 0}"   # 2. LA PREUVE
+# 3. l'envoi reste DEHORS
+- tapOn: { id: "${ARGUS_AUTH_SUBMIT}" }
+```
+
+🔴 **`inputText` AJOUTE, il ne remplace pas — donc un `retry` CONCATÈNE.** Vérifié
+sur les DEUX drivers de la 2.8.0 : `inputText` et `eraseText` y sont deux appels
+**séparés** (`AndroidDriver`, `IOSDriver`), et aucune saisie ne vide le champ
+d'abord. Sans `eraseText` en tête du bloc, le second tour écrit **à la suite** du
+premier — et quand le champ porte un formateur qui TRONQUE, il se retrouve *plein
+et faux sous une assertion verte*. Le garde anti-flake devient alors un
+producteur de faux vert, ce qui est pire que le défaut qu'il ferme. On ne
+l'invente pas, parce que le premier tour a toutes les apparences d'un échec
+**total**.
+
+⚠️ **ET `- eraseText:` CASSE TOUTE LA SUITE — la forme nue est `- eraseText`.**
+Mesuré à `maestro check-syntax` : `- eraseText` passe, `- eraseText: 30` passe,
+la forme longue avec un `label:` passe, et `- eraseText:` **suivi de rien** rend
+`Incorrect Command Format: eraseText`. Comme Maestro valide TOUT le workspace au
+démarrage, ce deux-points de trop ne casse pas une étape : il empêche la suite
+entière de se lancer.
+
+⚠️ **LA PREUVE SE CHOISIT, ET LES DEUX QUI VIENNENT À L'ESPRIT SONT FAUSSES.**
+`enabled: true` sur le bouton ne vaut que si son état dépend du champ qu'on vient
+de remplir : sur un formulaire à **deux** champs, il ne s'active qu'après les
+deux, donc l'assertion posée après le premier échoue *toujours* — trois tours
+pour rien, et trois saisies concaténées. Et s'il est **toujours actif**, elle est
+verte sur un champ VIDE : le bloc ne garde plus rien. Quant à
+`assertVisible: text: <la valeur>`, elle PUBLIE le secret dans le rapport —
+exactement ce que `label:` sert à éviter (§5) — en plus d'être aveugle sur un
+champ masqué. Reste `copyTextFrom` + `assertTrue` sur la **longueur**, qui lit CE
+champ et n'imprime pas sa valeur. ⚠️ Non éprouvé sur un champ **masqué** : selon
+la plateforme il peut rendre les points, la valeur ou rien — vérifie-le sur ton
+écran avant d'en faire ta preuve pour un secret.
+
+⚠️ **ET LE `retry` NE COUVRE QUE LA SAISIE, JAMAIS L'ENVOI.** Rejouer un envoi
+consomme un code à usage unique de plus, et les quotas d'émission se comptent par
+minute : un garde anti-flake qui épuise le quota **déplace** la panne au lieu de
+la fermer. La règle se lit dans l'autre sens aussi — ce qui ne consomme rien
+(saisir, revalider un code déjà émis) peut se rejouer ; ce qui consomme, non.
+
 ⚠️ **CE QUI SUIT EST ANDROID — et le dépannage iOS n'existait pas du tout.**
 Trois écrans de diagnostic (`INSTALL_FAILED_INSUFFICIENT_STORAGE`, ciblage
 d'ABI, marqueur dans le kernel) et rien pour l'autre plateforme : un run iOS

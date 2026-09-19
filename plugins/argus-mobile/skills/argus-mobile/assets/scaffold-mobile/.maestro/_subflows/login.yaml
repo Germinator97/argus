@@ -50,9 +50,23 @@ appId: ${APP_ID}
           id: ${ARGUS_AUTH_SCREEN}
           label: Écran de connexion affiché
 
-      - tapOn:
-          id: ${ARGUS_AUTH_USER}
-          label: Champ identifiant
+      # 🔴 LA SAISIE SE RETENTE, L'ENVOI NON (529). `inputText` rend `COMPLETED`
+      # quand le texte est ENVOYÉ, jamais quand il est ARRIVÉ : la commande
+      # appelle le driver et rend `true` sans relire le champ. Un champ qui ne
+      # demande pas le focus lui-même laisse donc la frappe partir dans le vide,
+      # Maestro ne s'en plaint pas, et l'échec sort TROIS ÉTAPES PLUS LOIN en
+      # accusant une ancre correcte. On attend un ÉTAT, jamais un délai.
+      #
+      # ⚠️ `eraseText` EN TÊTE DE CHAQUE SAISIE, sans quoi le remède fabrique un
+      # faux vert : `inputText` AJOUTE, il ne remplace pas (les deux drivers ont
+      # deux appels séparés), donc le second tour écrirait à la SUITE du premier
+      # — et sous un formateur qui tronque, le champ finit plein et faux pendant
+      # que l'assertion reste verte.
+      #
+      # ⚠️ ET C'EST `- eraseText` NU : `- eraseText:` suivi de rien rend
+      # « Incorrect Command Format », et comme Maestro valide TOUT le workspace
+      # au démarrage, ce deux-points de trop empêche la suite entière de partir.
+      #
       # ⚠️ LA FORME LONGUE, POUR LE `label:`. Écrite en forme courte, la valeur
       # saisie apparaît EN CLAIR en console et dans les rapports — pendant que le
       # mot de passe, deux lignes plus bas, était bien masqué. L'intention était
@@ -60,17 +74,51 @@ appId: ${APP_ID}
       # le runner masque les deux dans la ligne de commande qu'il imprime. Un
       # identifiant de test est couramment un e-mail ou un numéro, et il part
       # dans le rapport publié.
-      - inputText:
-          text: ${QA_USER}
-          label: Saisie de l'identifiant du compte de test
+      #
+      # TODO(argus): VÉRIFIE TA PREUVE. Celle d'ici lit le champ qu'on vient de
+      # remplir et n'asserte que sa LONGUEUR — donc elle ne publie pas la valeur
+      # et ne dépend d'aucun bouton. Sur un champ MASQUÉ, `copyTextFrom` n'est
+      # pas éprouvé (points, valeur ou rien selon la plateforme) : si elle rougit
+      # là, remplace-la par `assertVisible: {id: ${ARGUS_AUTH_SUBMIT}, enabled:
+      # true}` — MAIS seulement si ton bouton s'active pour de bon quand les
+      # champs sont valides. S'il est toujours actif, cette assertion est verte
+      # sur un champ VIDE et ce bloc ne garde plus rien.
+      - retry:
+          maxRetries: 3
+          commands:
+            - tapOn:
+                id: ${ARGUS_AUTH_USER}
+                label: Champ identifiant
+            - eraseText
+            - inputText:
+                text: ${QA_USER}
+                label: Saisie de l'identifiant du compte de test
+            - copyTextFrom:
+                id: ${ARGUS_AUTH_USER}
+            - assertTrue:
+                condition: ${maestro.copiedText.length > 0}
+                label: L'identifiant a bien atterri dans le champ
 
-      - tapOn:
-          id: ${ARGUS_AUTH_PASS}
-          label: Champ mot de passe
-      - inputText:
-          text: ${QA_PASS}
-          label: Saisie du mot de passe du compte de test
+      - retry:
+          maxRetries: 3
+          commands:
+            - tapOn:
+                id: ${ARGUS_AUTH_PASS}
+                label: Champ mot de passe
+            - eraseText
+            - inputText:
+                text: ${QA_PASS}
+                label: Saisie du mot de passe du compte de test
+            - copyTextFrom:
+                id: ${ARGUS_AUTH_PASS}
+            - assertTrue:
+                condition: ${maestro.copiedText.length > 0}
+                label: Le mot de passe a bien atterri dans le champ
 
+      # 🔴 L'ENVOI RESTE DEHORS. Rejouer une saisie ne coûte rien ; rejouer un
+      # envoi consomme un code à usage unique de plus, et les quotas d'émission
+      # se comptent par minute — un garde anti-flake qui épuise le quota DÉPLACE
+      # la panne au lieu de la fermer.
       - tapOn:
           id: ${ARGUS_AUTH_SUBMIT}
           label: Validation de la connexion
