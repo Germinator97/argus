@@ -5096,10 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-⚪ **1 POINT OUVERT — le 531**, rendu par le run 93 et laissé ouvert
-délibérément : sur iOS, le geste du **525** absorbe la mesure de démarrage que
-les 516, 517, 522 et 523 avaient rendue possible — 7 flows sur 8, sur une app
-qui ne demande aucune permission. *Un arbitrage se prend à froid.*
+✅ **AUCUN POINT OUVERT.** Le **531** a été tranché à froid : ce que le plugin
+ne peut pas découvrir, l'utilisateur le **déclare** — `security.systemAlerts`,
+énumération fermée, défaut `auto` pour que rien ne change chez personne. Les
+trois autres issues étaient écartées chacune par une mesure, et le remède
+portait un second défaut que le run avait nommé : il prescrivait d'éditer un
+fichier du CADRE en affirmant qu'il appartenait au projet.
 
 Le **529** a été tranché à froid le 19/09, comme il
 avait été laissé ouvert pour l'être : le remède du run 92 tenait sur le motif et
@@ -11182,9 +11184,9 @@ le retirer.
 ⚠️ **Le workflow GitHub sur un projet GitLab : 8ᵉ relais consécutif.** Message
 qui ARRIVE, pas question sans réponse.
 
-### 531. ⚪ OUVERT — sur iOS, le geste du 525 absorbe la mesure que le 517 rendait possible
+### 531. Sur iOS, le geste du 525 absorbait la mesure que le 517 rendait possible
 
-**Ouvert le 19/09/2026 par le run 93, non traité : arbitrage à prendre à froid.**
+**Né du run 93 et fermé le 19/09/2026, après arbitrage pris à froid.**
 
 Mesuré sur `report.json`, et c'est le relevé le plus net du chantier sur ce
 mécanisme :
@@ -11246,3 +11248,64 @@ le geste est conditionnel : *que fait-on quand il est inconditionnel ?* Une pist
 mesurée — le chronomètre pourrait repartir **après** le geste d'outillage, comme
 `resilience` le fait de lui-même — mais c'est un arbitrage sur ce que
 `startup.samples` prétend mesurer, et il se prend à froid.
+#### Ce que l'arbitrage a rendu
+
+**Tranché : ce que le plugin ne peut pas découvrir, l'utilisateur le DÉCLARE.**
+C'est le principe déjà posé par le **373** pour la commande de remise à zéro —
+l'agent ne pouvant ni la découvrir ni l'appeler, elle se déclare.
+
+Une clé `security.systemAlerts` à trois états, **énumération fermée** et non
+booléen : `auto` doit rester distinguable d'`always`, sans quoi on ne saurait
+plus si le geste joue parce qu'on l'a voulu ou parce que personne n'a rien dit.
+Défaut `auto` — **aucun projet déjà installé ne change de verdict sans l'avoir
+écrit**, et c'est la moitié qui comptait le plus.
+
+⚠️ **Une valeur inconnue est REFUSÉE, jamais repliée sur le défaut.** Une
+déclaration mal orthographiée qui retomberait sur `auto` laisserait le lecteur
+croire qu'il a désarmé pendant que le geste continue de coûter — la forme exacte
+du **508**. Exercé sur quatre formes (`nerver`, `true`, `False`, vide).
+
+📌 **Les trois autres issues ont été écartées, chacune par une mesure** : dériver
+des `NS*UsageDescription` (écarté par le 525 lui-même, qui a mesuré que ce remède
+raterait précisément l'invite rencontrée), borner par `timeout:` (**502**,
+propriété refusée par le moteur), remettre l'ordre (**479**, l'invite recouvre
+l'écran attendu). Une quatrième — désarmer après le premier flow — demanderait
+un appel du moteur **par flow**, découpage structurel déjà écarté au run 53 :
+mesuré, le runner lance toute la suite en une commande.
+
+#### 🔴 Le remède portait un SECOND défaut, et le run l'avait dit
+
+Il prescrivait de « retirer l'appel à `dismiss-system-alerts.yaml` de
+`launch-clean.yaml` : **ces deux fichiers t'appartiennent** ». Mesuré :
+`launch-clean.yaml` porte `ARGUS:CADRE`. Le geste prescrit était donc
+**impraticable** — `--update` le repose — et l'affirmation fausse. L'agent du
+run 93 l'a écrit et avait raison ; c'est le motif du **375**, une issue offerte
+qui n'en est pas une.
+
+#### ⚠️ Et trois gardes en place ont rougi — la septième fois
+
+Tous les trois **citaient un libellé** au lieu du fait :
+
+- deux exigeaient les mots « retire l'appel », c'est-à-dire le geste
+  impraticable ;
+- le troisième exigeait que le remède dise « **t'appartiennent** », **figeant
+  ainsi la contre-vérité** que ce correctif supprime.
+
+Ils portent désormais sur le fait — qu'une issue **désarmante** soit offerte, et
+que le remède dise **à qui appartient** ce qu'il fait éditer, dans un sens comme
+dans l'autre — et leur critère se **dérive de l'énumération** : renommer un état
+fait rougir le remède, jamais le garde. *Un garde ne rend pas vrai ce qu'il
+garde* (396) : celui-là figeait une phrase fausse depuis qu'elle était écrite.
+
+📌 Et une mutation ancienne est devenue **inerte** sous la réécriture —
+ré-ancrée dans le commit du correctif, sur la ligne qui porte désormais l'issue
+applicable.
+
+#### 📌 Le skill n'en disait RIEN
+
+Mesuré avant d'écrire : `systemAlerts`, `dismiss-system-alerts`, « invite
+système » et `QAM-START-ABSORBE` rendaient **zéro occurrence** dans le SKILL —
+pour un mécanisme bâti sur **cinq** points (405, 479, 516, 517, 525). C'est le
+**511** à l'identique : *un outil livré que rien n'explique à qui doit s'en
+servir*, et c'est pourquoi l'agent a dû lire le code pour comprendre pourquoi il
+attendait. Le §1 porte désormais le mécanisme, son coût mesuré et la clé.
