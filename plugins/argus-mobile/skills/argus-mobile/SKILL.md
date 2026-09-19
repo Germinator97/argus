@@ -385,6 +385,20 @@ de vraies ancres. Un run a ainsi annoncé dix-sept écrans et deux ancres qui
 n'existent nulle part.
 
 ```bash
+# ⚠️ AVANT DE LIRE LE MOINDRE CHIFFRE — LE TÉMOIN DE L'INSTRUMENT (point 535).
+#    Ici, un 0 LÉGITIME est attendu : sur un projet qui tire ses ancres d'un
+#    paquet voisin, la première commande en rend un (472). Un 0 rendu par une
+#    chaîne CASSÉE a exactement la même tête, et se lit « projet vierge ».
+#    Mesuré sur un run : `grep` y était relayé par un autre binaire, un motif à
+#    parenthèses a échoué en noyant son erreur dans la sortie, et le premier
+#    comptage a rendu 0 PARTOUT.
+#    Le témoin passe le MÊME motif sur une entrée dont la réponse est connue :
+printf "identifier: 'a'\nidentifier: 'b'\n" | grep -c "identifier: *'"   # attendu : 2
+#    S'il ne rend pas 2, c'est ton INSTRUMENT qui est mort, pas le projet qui
+#    est vierge : répare-le avant de conclure quoi que ce soit. Et ne le
+#    remplace pas par un motif plus simple — il doit porter la forme que tu vas
+#    employer, sinon il passe là où la vraie commande échoue.
+
 # SITES d'instrumentation dans le code (filtre `//`, DEUX barres — point 452).
 # ⚠️ On RECOLLE la valeur à sa clé AVANT de compter : voir juste en dessous.
 find lib -name '*.dart' -exec cat {} + | grep -v '^\s*//' \
