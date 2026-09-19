@@ -2694,6 +2694,15 @@ MUTATIONS = [
     ("installeur", "532 · le marqueur entre dans la comparaison d'idempotence",
      "\n    if [ \"${ancien%\"$BLOC_FIN_SANS_SAUT\"}\" = \"$nouveau\" ]; then",
      "\n    if [ \"$ancien\" = \"$nouveau\" ]; then"),
+    # Le harnais est sa PROPRE cible ici : un outil d'édition avait échappé tous
+    # ses non-ASCII, et le garde exige désormais zéro échappement dans les .py.
+    # ⚠️ LE REMPLACEMENT EST CONCATÉNÉ, et ce n'est pas une coquetterie : écrit
+    # d'un seul tenant, il porterait LUI-MÊME la séquence interdite — donc le
+    # garde rougirait sur un dépôt sain, avant même qu'on mute quoi que ce soit.
+    # C'est le cas « un fichier devient sa propre cible », en une ligne.
+    ("mutateur", "chore · un commentaire redevient illisible",
+     "\n    # 532 · les trois décisions du marqueur",
+     "\n    # 532 " + chr(92) + "u00b7 les trois d" + chr(92) + "u00e9cisions du marqueur"),
 ]
 
 
