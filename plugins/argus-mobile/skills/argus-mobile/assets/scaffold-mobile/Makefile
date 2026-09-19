@@ -199,6 +199,15 @@ argus-debts-write: ## … et l'ÉCRIT dans known_issues.dart, en ajoutant à l'a
 # la dérivation — deux dérivations seraient deux copies de la même décision.
 	@$(MAKE) --no-print-directory argus-debts | $(ARGUS) debts --write
 
+argus-debts-forget: ## RETIRE une dette payée — KEY='<la clé du message d'échec>'
+# ⚠️ L'AUTRE MOITIÉ, et elle n'est pas un confort. Le harnais émet DEUX messages
+# sur ce fichier — « inscris-le » quand un défaut apparaît, « retire cette ligne »
+# quand il est corrigé. Deux gestes, le même fichier, le même piège d'ancrage :
+# n'outiller que l'ajout aurait laissé le retrait à la main, donc laissé ouverte
+# la forme exacte du défaut qu'on venait de fermer.
+	@test -n "$(KEY)" || { echo "  usage : make argus-debts-forget KEY='<clé>'"; exit 2; }
+	@$(ARGUS) debts --remove='$(KEY)' --write
+
 argus-run: ## Étage 2 — suite Maestro sur device
 	@$(ARGUS) run
 

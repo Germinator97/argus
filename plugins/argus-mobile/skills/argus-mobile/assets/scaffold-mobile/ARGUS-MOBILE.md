@@ -136,6 +136,7 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 | `make argus-reach` | quels écrans ancrés aucun `goto` ne dessert ? sans device |
 | `make argus-debts` | le bloc `known_issues` prêt à coller, dérivé des échecs |
 | `make argus-debts-write` | … et il l'ÉCRIT, en ajoutant à la dette déjà assumée |
+| `make argus-debts-forget` | retire une dette payée — `KEY='<la clé du message>'` |
 | `make argus-run` | étage 2 : suite Maestro complète |
 | `make argus-smoke` | smoke seul — le plus rapide |
 | `make argus-visual` | régression visuelle seule |

@@ -659,6 +659,12 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
         'Si celui-ci appartient à l\'application et ne se corrige pas maintenant, '
         'inscris-le TEL QUEL dans test/argus/known_issues.dart :\n\n'
         "      '$key',\n\n"
+        '🔴 NE L\'ÉDITE PAS À LA MAIN — lance `make argus-debts-write`, qui '
+        'dérive TOUTES les clés du lot et les écrit au bon endroit.\n'
+        'Le dartdoc de ce fichier porte un exemplaire de sa ligne de '
+        'déclaration, mot pour mot et PLUS HAUT que la vraie : un script ancré '
+        'dessus frappe le commentaire. Trois fichiers ont été détruits ainsi, '
+        'dont un par quelqu\'un qui venait de lire l\'avertissement.\n\n'
         'La suite repassera au vert — et rougira à nouveau le jour où il sera '
         'corrigé, pour te demander de retirer la ligne. Ce n\'est pas une '
         'exception, c\'est un relevé.\n\n'
@@ -680,7 +686,10 @@ Future<void> argusCheck(String key, Future<void> Function() verifier) async {
       '« $key » figure dans test/argus/known_issues.dart, mais l\'écran PASSE.\n'
       'Retire cette ligne. Une dette corrigée qui reste inscrite devient une '
       'permission permanente : la liste survit à ce qu\'elle décrit, et plus '
-      'rien ne mesure ce défaut-là.',
+      'rien ne mesure ce défaut-là.\n\n'
+      '🔴 LÀ ENCORE, N\'ÉDITE PAS À LA MAIN — le piège d\'ancrage est le même '
+      'qu\'à l\'inscription :\n\n'
+      "      make argus-debts-forget KEY='$key'\n",
     );
   }
 }

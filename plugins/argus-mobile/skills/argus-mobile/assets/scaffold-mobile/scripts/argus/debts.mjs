@@ -143,11 +143,60 @@ const aide = () => {
   console.log('Argus Mobile — écrit la dette assumée dans ' + CIBLE + '\n');
   console.log('  Le bloc se lit sur l\'ENTRÉE STANDARD, tel que `make argus-debts` l\'imprime :\n');
   console.log('    make argus-debts | argus-mobile debts --write\n');
-  console.log('  (sans --write)   dit ce qu\'il écrirait, et n\'écrit rien');
-  console.log('  --write          écrit, en AJOUTANT à ce qui est déjà assumé');
-  console.log('  --help, -h       ceci\n');
+  console.log('  (sans --write)     dit ce qu\'il écrirait, et n\'écrit rien');
+  console.log('  --write            écrit, en AJOUTANT à ce qui est déjà assumé');
+  console.log('  --remove=<clé>     RETIRE une clé payée — l\'autre moitié du geste');
+  console.log('  --help, -h         ceci\n');
   console.log('  Il s\'ancre sur la DERNIÈRE occurrence de la déclaration, le dartdoc du');
   console.log('  fichier en portant un exemplaire mot pour mot plus haut.');
+};
+
+/**
+ * Retire une clé payée.
+ *
+ * ⚠️ CETTE MOITIÉ EXISTE PARCE QUE LE FICHIER A DEUX MESSAGES. Le harnais dit
+ * « inscris-le » quand un défaut apparaît et « retire cette ligne » quand il est
+ * corrigé — deux gestes, le MÊME fichier, le MÊME piège d'ancrage. N'outiller
+ * que l'ajout aurait laissé le retrait à la main, c'est-à-dire laissé ouverte la
+ * forme exacte du défaut qu'on vient de fermer.
+ *
+ * @param {string} chemin
+ * @param {string} clef
+ * @param {boolean} ecrit
+ * @returns {number}
+ */
+const retirer = (chemin, clef, ecrit) => {
+  let source;
+  try {
+    source = readFileSync(chemin, 'utf8');
+  } catch {
+    console.error(`✖ ${CIBLE} est illisible depuis ${process.cwd()}`);
+    return 2;
+  }
+  const ou = situerLeSet(source);
+  if (!ou.ok) {
+    console.error(`✖ ${CIBLE} : ${ou.pourquoi}`);
+    return 2;
+  }
+  // ⚠️ Une clé absente est une ERREUR, jamais un succès silencieux : c'est le
+  // cas d'une clé recopiée de travers, et se taire laisserait croire au retrait.
+  if (!ou.cles.includes(clef)) {
+    console.error(`✖ « ${clef} » n'est pas dans la dette assumée (${ou.cles.length} clé(s)).`);
+    console.error('  Recopie-la TELLE QUELLE depuis le message d\'échec — elle porte des « · ».');
+    return 2;
+  }
+  const restantes = ou.cles.filter((c) => c !== clef);
+  const corps = restantes.length === 0
+    ? ''
+    : `\n${restantes.map((c) => `  '${c}',`).join('\n')}\n`;
+  const entete = `${DECLARATION} = <String>{`;
+  if (ecrit) {
+    writeFileSync(chemin, source.slice(0, ou.decl) + entete + corps + source.slice(ou.fin), 'utf8');
+  }
+  console.log(`  1 clé ${ecrit ? 'retirée' : 'à retirer'} · ${restantes.length} restante(s)`);
+  console.log(`    − ${clef}`);
+  if (!ecrit) console.log('\n  Rien n\'a été écrit. Ajoute `--write`.');
+  return 0;
 };
 
 const main = async () => {
@@ -157,11 +206,21 @@ const main = async () => {
   // ⚠️ Un outil qui ÉCRIT ne démarre pas sur un argument qu'il ne comprend pas :
   // le flag inconnu tomberait dans le seul comportement offert, c'est-à-dire le
   // plus destructeur, et il frapperait pendant la reconnaissance.
-  const inconnus = args.filter((a) => a !== '--write');
+  const aRetirer = args.find((a) => a.startsWith('--remove='));
+  const inconnus = args.filter((a) => a !== '--write' && a !== aRetirer);
   if (inconnus.length > 0) {
     console.error(`✖ option inconnue : ${inconnus.join(', ')}`);
     console.error('  `--help` dit ce que cette commande accepte.');
     return 2;
+  }
+
+  if (aRetirer !== undefined) {
+    const clef = aRetirer.slice('--remove='.length);
+    if (clef === '') {
+      console.error('✖ `--remove=` sans clé. Recopie-la depuis le message d\'échec.');
+      return 2;
+    }
+    return retirer(join(process.cwd(), CIBLE), clef, args.includes('--write'));
   }
 
   const entree = await lireEntree(process.stdin);
