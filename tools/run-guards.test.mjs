@@ -16661,3 +16661,125 @@ test('la valeur LIVRÉE ne désarme pas la fermeture des invites sur iOS (525)',
   assert.equal(invitesSystemePossibles({ platforms: ['android'], security: { expectedPermissions: ['android.permission.CAMERA'] } }), true,
     'sur Android une permission à invite ne fait plus jouer le geste : la dérivation est inerte (525)');
 });
+
+
+// ── 529 ────────────────────────────────────────────────────────────────────
+// `inputText` rend COMPLETED quand le texte est ENVOYÉ, jamais quand il est
+// ARRIVÉ : mesuré en décompilant Maestro 2.8.0, `inputTextCommand` appelle
+// `driver.inputText(texte)` puis rend `true`, sans relire le champ. Le remède
+// est un `retry` qui attend un ÉTAT — et il fabrique un FAUX VERT si on oublie
+// sa première pièce, parce que `inputText` AJOUTE : `eraseText` est un appel
+// SÉPARÉ sur les deux drivers, donc le second tour écrit à la suite du premier,
+// et sous un formateur qui tronque le champ finit plein et faux sous une
+// assertion verte.
+//
+// ⚠️ Le critère porte sur CHAQUE saisie et non sur le bloc : un seul `eraseText`
+// en tête couvrirait deux champs différents, et la seconde saisie concaténerait
+// quand même. D'où le drapeau qu'on rabaisse après chaque `inputText`.
+//
+// 📌 Limite assumée : le 3ᵉ barreau — `maestro check-syntax` sur le workspace —
+// n'est pas câblé ICI, l'outil n'étant pas installé sur les runners du dépôt.
+// Il l'est chez le projet qui installe le scaffold (`argus-lint`, qui enchaîne
+// `check-syntax` sur tous les flows sauf `config.yaml`, puis `--check-flows`).
+// Ce qui suit est donc structurel, et volontairement total et négatif.
+
+/** Les lignes d'un flow, commentaires exclus — l'indentation reste juste. */
+const lignesUtiles = (texte) => texte.split('\n').map((l) => (/^\s*#/.test(l) ? '' : l));
+
+/** Les blocs `retry:` des flows livrés, avec le corps que leur indentation borne. */
+function blocsRetryLivres() {
+  const out = [];
+  for (const [nom, texte] of FLOWS_LIVRES) {
+    const lignes = lignesUtiles(texte);
+    for (const [i, l] of lignes.entries()) {
+      const m = /^(\s*)-?\s*retry:\s*$/.exec(l);
+      if (!m) continue;
+      const base = m[1].length;
+      const corps = [];
+      for (let j = i + 1; j < lignes.length; j += 1) {
+        const suite = lignes[j];
+        if (!suite.trim()) continue;
+        if (suite.length - suite.trimStart().length <= base) break;
+        corps.push(suite);
+      }
+      out.push({ nom, ligne: i + 1, corps });
+    }
+  }
+  return out;
+}
+
+test('529 — dans un `retry`, chaque saisie est précédée de son `eraseText`', () => {
+  const blocs = blocsRetryLivres();
+  // ⚠️ D'abord prouver que le balayage a MESURÉ. Un `retry:` reformulé, une
+  // indentation qui change, et ce garde rendrait « zéro saisie nue » avec
+  // exactement le même vert qu'un scaffold sain.
+  assert.ok(blocs.length > 0,
+    'aucun bloc `retry:` lu dans les flows livrés — c\'est la reconnaissance qui est cassée (529)');
+  const avecSaisie = blocs.filter((b) => b.corps.some((l) => /^\s*-\s*inputText\b/.test(l)));
+  assert.ok(avecSaisie.length > 0,
+    'aucun `retry` ne contient de saisie dans les flows livrés : le motif du 529 a disparu du '
+    + 'scaffold, ou ce garde ne le reconnaît plus — dans les deux cas il ne garde plus rien (529)');
+
+  for (const b of avecSaisie) {
+    let efface = false;
+    for (const l of b.corps) {
+      if (/^\s*-\s*eraseText\b/.test(l)) { efface = true; continue; }
+      if (!/^\s*-\s*inputText\b/.test(l)) continue;
+      assert.ok(efface,
+        `${b.nom} (retry ligne ${b.ligne}) : une saisie sans \`eraseText\` avant elle. `
+        + '`inputText` AJOUTE — au second tour du retry, le texte s\'écrit à la SUITE du premier, '
+        + 'et sous un formateur qui tronque le champ finit plein et FAUX sous une assertion verte. '
+        + 'Le garde anti-flake devient alors un producteur de faux vert (529)');
+      efface = false; // la saisie suivante a besoin de son PROPRE effacement
+    }
+  }
+});
+
+/** Les `- eraseText:` suivis de rien — la forme qui casse le workspace entier. */
+function eraseTextVide(texte) {
+  const lignes = lignesUtiles(texte);
+  const fautifs = [];
+  for (const [i, l] of lignes.entries()) {
+    const m = /^(\s*)-\s*eraseText:\s*(#.*)?$/.exec(l);
+    if (!m) continue;
+    const base = m[1].length;
+    let j = i + 1;
+    while (j < lignes.length && !lignes[j].trim()) j += 1;
+    const suivante = lignes[j] ?? '';
+    // La forme LONGUE ouvre un bloc plus indenté (`label:`, `charactersToErase:`).
+    if (!suivante.trim() || suivante.length - suivante.trimStart().length <= base) fautifs.push(i + 1);
+  }
+  return fautifs;
+}
+
+test('529 — aucun `- eraseText:` vide nulle part : il casse la suite ENTIÈRE', () => {
+  // ⚠️ CONTRE-ÉPREUVE D'ABORD : un détecteur qui ne sait pas voir rend « zéro »
+  // exactement comme un dépôt sain. Mesuré à `maestro check-syntax` (2.8.0) :
+  // `- eraseText` nu → OK, `- eraseText: 30` → OK, la forme longue → OK, et
+  // `- eraseText:` suivi de rien → « Incorrect Command Format: eraseText ».
+  assert.deepEqual(eraseTextVide('- tapOn:\n    id: x\n- eraseText:\n- inputText:\n    text: y\n'), [3],
+    'le détecteur ne voit pas la forme qui casse : ce garde est vacant (529)');
+  // ⚠️ ET LA MÊME AVEC UN COMMENTAIRE, qui est la plus probable — on écrit ce
+  // deux-points en expliquant ce qu'on fait. Mesuré à `check-syntax` :
+  // `- eraseText:  # x` CASSE (exit 1) pendant que `- eraseText  # x` passe.
+  // Le détecteur s'arrêtait au `$` et ne la voyait pas ; c'est le harnais qui
+  // l'a révélé, en refusant d'écrire un YAML invalide dans un flow livré.
+  assert.deepEqual(eraseTextVide('- eraseText:  # sans lui ça concatène\n- inputText:\n    text: y\n'), [1],
+    'le détecteur ne voit pas la forme COMMENTÉE : c\'est celle qu\'on écrit vraiment (529)');
+  assert.deepEqual(eraseTextVide('- eraseText\n- eraseText: 30\n- eraseText  # nu, valide\n- eraseText:\n    label: ok\n'), [],
+    'le détecteur refuse les formes VALIDES : il ferait rougir un scaffold sain (529)');
+
+  // Total et négatif : les flows livrés ET les exemples que le SKILL donne à copier.
+  const sujets = [...FLOWS_LIVRES,
+    ['SKILL.md', readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8')]];
+  let vus = 0;
+  for (const [nom, texte] of sujets) {
+    vus += 1;
+    const fautifs = eraseTextVide(texte);
+    assert.deepEqual(fautifs, [],
+      `${nom} : \`- eraseText:\` vide aux lignes ${fautifs.join(', ')}. Maestro valide TOUT le `
+      + 'workspace au démarrage : ce deux-points de trop n\'échoue pas une étape, il empêche la '
+      + 'suite entière de partir. La forme nue est `- eraseText` (529)');
+  }
+  assert.ok(vus > 5, `${vus} sujets balayés : le balayage n'a rien ouvert (529)`);
+});

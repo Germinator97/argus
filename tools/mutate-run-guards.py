@@ -2602,6 +2602,25 @@ MUTATIONS = [
     ("harness", "527 · le message de retrait ne nomme plus son geste",
      "\n      \"      make argus-debts-forget KEY='$key'\\n\",",
      "\n      \"      (retire la ligne toi-m\u00eame)\\n\","),
+    # 529 · les deux moitiés du remède, une mutation chacune. La premi\u00e8re
+    # retire l'effacement d'UNE saisie sur deux : le bloc garde son `eraseText`
+    # en t\u00eate, donc un garde qui raisonnerait par BLOC resterait vert — c'est
+    # exactement la forme du faux vert qu'on ferme.
+    ("login", "529 \u00b7 une saisie sur deux perd son eraseText",
+     "\n            - eraseText\n            - inputText:\n                text: ${QA_PASS}",
+     "\n            - inputText:\n                text: ${QA_PASS}"),
+    # La seconde \u00e9crit la forme qui casse le WORKSPACE ENTIER. Elle laisse le
+    # mot `eraseText` en place, donc un garde qui cherchait sa PR\u00c9SENCE reste
+    # vert : seul celui qui lit la FORME tombe.
+    # \u26a0\ufe0f ELLE VISE LE SKILL ET NON LE FLOW, et ce n'est pas un pis-aller : le
+    # harnais exige que chaque mutation PARSE, donc il refuse par construction
+    # d'\u00e9crire un YAML invalide dans un flow livr\u00e9 — verdict HARNAIS, pas
+    # garde vacant. L'exemple du skill est de la prose, le garde le balaie au
+    # m\u00eame titre, et il porte un COMMENTAIRE de fin de ligne : c'est la forme
+    # que le d\u00e9tecteur ne voyait pas, trouv\u00e9e parce que le harnais a refus\u00e9.
+    ("skill", "529 \u00b7 l'eraseText prend le deux-points qui casse tout",
+     "\n      - eraseText          # 1. sans lui, le second tour CONCAT\u00c8NE",
+     "\n      - eraseText:         # 1. sans lui, le second tour CONCAT\u00c8NE"),
 ]
 
 
