@@ -16783,3 +16783,111 @@ test('529 — aucun `- eraseText:` vide nulle part : il casse la suite ENTIÈRE'
   }
   assert.ok(vus > 5, `${vus} sujets balayés : le balayage n'a rien ouvert (529)`);
 });
+
+
+// ── 530 ────────────────────────────────────────────────────────────────────
+// La désinstallation laissait DEUX résidus, et aucun des deux n'est visible à
+// `git status` : un dossier vide n'est suivi par aucun git, et une ligne vide
+// de plus dans un `.gitignore` est le genre de diff qu'on committe sans le voir.
+//
+// `.github/workflows` restait vide parce que la liste des candidats au `rmdir`
+// était écrite à la MAIN — exactement ce que son propre commentaire disait
+// vouloir éviter (« une liste de noms aurait vieilli ») — et elle a vieilli le
+// jour où l'installeur s'est mis à poser un workflow. Et le retrait du bloc
+// `.gitignore` ne reprenait pas la ligne vide que l'insertion pose devant lui :
+// 25 octets avant installation, 26 après désinstallation.
+//
+// ⚠️ CE GARDE EXÉCUTE, il ne relit pas. C'est le seul barreau qui couvre la
+// CLASSE : il ne connaît aucun nom de dossier, donc un dossier ajouté demain au
+// scaffold — ou créé par un `mkdir` écrit en dur — le fait rougir de lui-même.
+// Un garde qui citerait `.github/workflows` ne verrait que le cas d'aujourd'hui.
+
+/** Les dossiers vides sous `racine`, en chemins relatifs. */
+function dossiersVides(racine, prefixe = '') {
+  const out = [];
+  for (const e of readdirSync(join(racine, prefixe), { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    const rel = prefixe ? `${prefixe}/${e.name}` : e.name;
+    const dedans = readdirSync(join(racine, rel));
+    if (dedans.length === 0) out.push(rel);
+    else out.push(...dossiersVides(racine, rel));
+  }
+  return out;
+}
+
+/** Pose un projet jetable, installe, désinstalle, et rend sa sortie. */
+function installerPuisDesinstaller(fichiers) {
+  const installeur = join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  const cible = mkdtempSync(join(tmpdir(), 'argus-residus-'));
+  for (const [rel, contenu] of Object.entries(fichiers)) {
+    mkdirSync(join(cible, dirname(rel)), { recursive: true });
+    writeFileSync(join(cible, rel), contenu);
+  }
+  execFileSync('bash', [installeur, cible], { encoding: 'utf8' });
+  const sortie = execFileSync('bash', [installeur, cible, '--uninstall'], { encoding: 'utf8' });
+  return { cible, sortie };
+}
+
+const GITIGNORE_HOTE = 'build/\n.dart_tool/\n*.iml\n';
+const PROJET_NU = {
+  'pubspec.yaml': 'name: demo\n',
+  '.gitignore': GITIGNORE_HOTE,
+  'lib/main.dart': 'void main() {}\n',
+  'test/mon_test.dart': 'void main() {}\n',
+};
+
+// ⚠️ DEUX PROJETS, ET C'EST LA MUTATION QUI L'A DIT. La première version n'en
+// montait qu'un, portant à la fois les résidus à mesurer et les fichiers de
+// l'hôte à préserver — or ces fichiers vivent dans les dossiers MÊMES qui
+// doivent finir vides. Le projet remplissait donc ce que le critère devait
+// trouver vide : deux mutations sur trois sont revenues VACANT, sur un garde
+// qui avait l'air complet. Un garde dont une moitié satisfait l'autre ne garde
+// ni l'une ni l'autre.
+test('530 — sur un projet NU, la désinstallation ne laisse aucun résidu', () => {
+  const { cible, sortie } = installerPuisDesinstaller(PROJET_NU);
+
+  // D'abord prouver que le geste a MESURÉ : une désinstallation devenue inerte
+  // laisserait le projet intact, donc passerait tout ce qui suit.
+  const retires = Number(/(\d+) retiré\(s\)/.exec(sortie)?.[1] ?? 0);
+  assert.ok(retires > 10,
+    `seulement ${retires} fichier(s) retiré(s) : l'installation ou la désinstallation `
+    + 'n\'a pas eu lieu, donc ce garde ne mesure rien (530)');
+
+  const vides = dossiersVides(cible);
+  assert.deepEqual(vides, [],
+    `la désinstallation laisse ${vides.length} dossier(s) VIDE(S) : ${vides.join(', ')}. `
+    + 'Git ne suit pas les dossiers vides, donc ce résidu est invisible à `git status` — '
+    + 'la liste des candidats au `rmdir` ne couvre plus ce que l\'installation crée (530)');
+
+  assert.equal(readFileSync(join(cible, '.gitignore'), 'utf8'), GITIGNORE_HOTE,
+    'le `.gitignore` de l\'hôte n\'est pas revenu à son état d\'origine. L\'insertion pose '
+    + 'une ligne vide DEVANT le bloc ; un retrait qui ne la reprend pas laisse le fichier '
+    + 'modifié après une désinstallation censée ne rien laisser (530)');
+
+  rmSync(cible, { recursive: true, force: true });
+});
+
+// L'AUTRE MOITIÉ, sur son propre projet : sans elle, « aucun résidu » serait
+// tout aussi vrai d'un projet entièrement effacé. Les fichiers sont posés dans
+// les dossiers que l'installation touche, puisque c'est là que le `rmdir` passe.
+test('530 — et ce qui appartient au projet SURVIT à la désinstallation', () => {
+  const aLHote = {
+    ...PROJET_NU,
+    'scripts/deploy.sh': '#!/bin/sh\n',
+    '.github/workflows/ci.yml': 'on: push\n',
+    '.maestro/_baselines/home.png': 'png\n',
+    'argus-mobile-report/report.json': '{}\n',
+  };
+  const { cible } = installerPuisDesinstaller(aLHote);
+
+  for (const rel of Object.keys(aLHote)) {
+    assert.ok(existsSync(join(cible, rel)),
+      `${rel} a été DÉTRUIT : ce fichier appartient au projet, et retirer de trop ne se `
+      + 'répare pas — c\'est la raison pour laquelle ce geste n\'a aucun repli de prose (530)');
+  }
+  assert.equal(readFileSync(join(cible, '.gitignore'), 'utf8'), GITIGNORE_HOTE,
+    'le `.gitignore` du projet n\'est pas revenu à son état d\'origine (530)');
+
+  rmSync(cible, { recursive: true, force: true });
+});

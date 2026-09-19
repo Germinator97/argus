@@ -2621,6 +2621,35 @@ MUTATIONS = [
     ("skill", "529 \u00b7 l'eraseText prend le deux-points qui casse tout",
      "\n      - eraseText          # 1. sans lui, le second tour CONCAT\u00c8NE",
      "\n      - eraseText:         # 1. sans lui, le second tour CONCAT\u00c8NE"),
+    # 530 \u00b7 les trois d\u00e9cisions du r\u00e9sidu, une mutation chacune. Les deux
+    # premi\u00e8res visent les deux SOURCES de la d\u00e9rivation : couper l'une laisse
+    # l'autre debout, donc un garde qui n'en couvrirait qu'une resterait vert.
+    ("installeur", "530 \u00b7 la remont\u00e9e des parents s'arr\u00eate au premier niveau",
+     "\n        d=\"$(dirname \"$d\")\"\n      done",
+     "\n        d=\".\"\n      done"),
+    ("installeur", "530 \u00b7 les dossiers cr\u00e9\u00e9s par l'installeur sortent du flux",
+     "\n    printf '%s\\n' \"${DOSSIERS_CREES[@]}\"\n  }",
+     "\n    :\n  }"),
+    # La troisi\u00e8me rend la ligne vide imm\u00e9diatement au lieu de la retenir : le
+    # bloc part quand m\u00eame, seule la ligne vide qui le pr\u00e9c\u00e8de survit. C'est
+    # exactement la forme du d\u00e9faut mesur\u00e9 \u2014 25 octets contre 26.
+    ("installeur", "530 \u00b7 le retrait du bloc ne reprend plus sa ligne vide",
+     "\n    $0 == \"\"    { enAttente=1; next }",
+     "\n    $0 == \"\"    { print \"\"; next }"),
+    # \u26a0\ufe0f LA QUATRI\u00c8ME VISE L'AUTRE GARDE, celui de la SURVIE \u2014 sans elle il
+    # n'aurait aucune mutation, et le site que personne ne mute est le site dont
+    # personne n'apprend rien. `rm -rf` l\u00e0 o\u00f9 `rmdir` refusait.
+    # \u26a0\ufe0f ELLE FAIT TOMBER DEUX GARDES, mesur\u00e9 en la jouant \u00e0 la main et en lisant
+    # TOUS les noms rouges : le 498 d'abord \u2014 que le harnais cr\u00e9dite, puisqu'il
+    # retient le premier \u2014 puis celui du 530. Les deux tombent bel et bien ; ce
+    # qui n'est pas isol\u00e9 est l'appariement. La part que le 530 garde SEUL est ce
+    # que ce correctif a ajout\u00e9 aux candidats : le workflow et le dossier
+    # `scripts/` de l'H\u00d4TE, que le 498 ne pose pas. Isoler demanderait de couper
+    # la boucle en deux dans le code livr\u00e9, ce qui abimerait le sujet pour
+    # arranger la mesure.
+    ("installeur", "530 \u00b7 le retrait des dossiers cesse de refuser le non-vide",
+     "\n        rmdir \"$target/$d\" 2>/dev/null || true",
+     "\n        rm -rf \"$target/$d\" 2>/dev/null || true"),
 ]
 
 
