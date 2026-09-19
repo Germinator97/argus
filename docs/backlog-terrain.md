@@ -5096,10 +5096,16 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Aucun point ouvert.** Le **522** est né du run 88 et fermé le même jour : la
-passe de confirmation a montré que le **479** était vacant sur toute une classe
-de projets — ceux qui n'ont pas d'écran de marque —, et que le run n'avait rendu
-un verdict que par accident de composition de sa suite.
+⚪ **1 POINT OUVERT — le 529**, et c'est délibéré : `inputText` rend `COMPLETED`
+avant que le texte n'ait atterri, l'échec sort trois étapes plus loin en accusant
+une ancre correcte, et le remède que le run 92 a inventé (un `retry` sur la seule
+saisie, qui attend un ÉTAT) **n'a pas été éprouvé par ce dépôt**. *Un arbitrage
+se prend à froid, pas en fin de passe.*
+
+Les **526**, **527** et **528** sont nés et fermés les 18 et 19/09 — le premier
+parce qu'un avertissement lu et cité n'empêche rien, le deuxième parce qu'un geste
+nommé cinq fois ailleurs n'est pas atteint, le troisième parce qu'un marqueur qui
+existait déjà ne date rien.
 
 Les **518 à 521**, ouverts le soir du run 87 faute
 d'arbitrage, ont été tranchés dans la nuit — et le résultat le plus instructif
