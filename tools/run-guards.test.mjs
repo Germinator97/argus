@@ -9410,6 +9410,50 @@ test('argus-debts-write AJOUTE à la dette assumée, il ne la remplace pas (526,
   rmSync(dir, { recursive: true, force: true });
 });
 
+test('chaque message qui parle de la dette NOMME son geste outillé (527)', () => {
+  // ⚠️ LE TROISIÈME BARREAU. Les trois gardes ci-dessus prouvent que le geste
+  // MARCHE — ils l'appellent. Aucun ne prouve qu'il est ATTEINT : le message
+  // d'échec du harnais, seul endroit où l'on se trouve au moment d'écrire la
+  // dette, disait « inscris-le TEL QUEL dans known_issues.dart » et ne nommait
+  // aucune cible. Mesuré au 527 : 0 occurrence dans ce fichier, quand le geste
+  // était nommé cinq fois ailleurs — tous hors du chemin.
+  const harnais = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  const makefile = readFileSync(join(SCAFFOLD, 'Makefile'), 'utf8');
+
+  // Les cibles sont DÉRIVÉES de ce que leur recette fait, jamais citées ici :
+  // renommer `argus-debts-write` doit faire rougir le message, pas ce garde.
+  const cibles = {};
+  let courante = null;
+  for (const ligne of makefile.split('\n')) {
+    const m = ligne.match(/^([a-zA-Z0-9_-]+):/);
+    if (m) { courante = m[1]; continue; }
+    if (!courante || !/^\t/.test(ligne)) continue;
+    if (/debts --remove=/.test(ligne)) cibles.retrait = courante;
+    else if (/debts --write/.test(ligne)) cibles.ajout = courante;
+  }
+  assert.ok(cibles.ajout, 'aucune cible du Makefile n\'écrit la dette — le geste a disparu');
+  assert.ok(cibles.retrait, 'aucune cible du Makefile ne retire une dette payée');
+  assert.notEqual(cibles.ajout, cibles.retrait, 'les deux gestes ne peuvent pas être la même cible');
+
+  // Chaque message est borné par sa STRUCTURE — du marqueur au `);` qui le
+  // ferme — jamais par un nombre de caractères, qu'un ajout de prose périme.
+  for (const [quoi, marqueur, cible] of [
+    ['inscription', 'inscris-le TEL QUEL', cibles.ajout],
+    ['retrait', 'Retire cette ligne', cibles.retrait],
+  ]) {
+    const i = harnais.indexOf(marqueur);
+    assert.ok(i > 0, `le message d'${quoi} a disparu du harnais (« ${marqueur} ») — `
+      + 'ce garde ne mesure plus rien, mets son marqueur à jour');
+    const fin = harnais.indexOf(');', i);
+    assert.ok(fin > i, `le message d'${quoi} n'est pas refermé : la borne structurelle a lâché`);
+    const bloc = harnais.slice(i, fin);
+    assert.ok(bloc.includes(cible),
+      `le message d'${quoi} ne nomme pas \`${cible}\`. Il est lu au moment EXACT où l'on `
+      + 'édite le fichier de dette : un geste nommé ailleurs — dans le SKILL, dans une table '
+      + 'de cibles — n\'est pas atteint. Trois fichiers ont été détruits pour cette raison.');
+  }
+});
+
 test('argus-debts-write REFUSE quand le marqueur ne précède plus la déclaration (526)', () => {
   // Le marqueur est la seule chose qui distingue le code du commentaire qui le
   // cite. Sans lui, écrire quand même reviendrait à deviner lequel des deux on

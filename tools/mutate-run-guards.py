@@ -2584,6 +2584,16 @@ MUTATIONS = [
     ("debts", "526 · le geste ecrit meme sans son point d'ancrage",
      "\n  if (marqueur === -1) {",
      "\n  if (false && marqueur === -1) {"),
+    # ── 527 — le geste cesse d'etre nomme LA OU l'on ecrit la dette ───────
+    # Les trois mutations du 526 visent le comportement ; celles-ci visent
+    # l'ATTEINTE. C'est le troisieme barreau : le geste marchait deja, et il
+    # etait nomme cinq fois — toutes hors du chemin de celui qui ecrit.
+    ("harness", "527 · le message d'inscription ne nomme plus son geste",
+     "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance `make argus-debts-write`, qui '",
+     "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance la bonne commande, qui '"),
+    ("harness", "527 · le message de retrait ne nomme plus son geste",
+     "\n      \"      make argus-debts-forget KEY='$key'\\n\",",
+     "\n      \"      (retire la ligne toi-m\u00eame)\\n\","),
 ]
 
 
