@@ -2155,6 +2155,33 @@ unzip -p build/app/outputs/flutter-apk/app-debug.apk assets/flutter_assets/kerne
   | grep -a -c "home_empty_root"        # en release : lib/arm64-v8a/libapp.so
 ```
 
+🔴 **UN SEUL MARQUEUR NE DATE RIEN — il en faut DEUX.** Les contre-épreuves
+ci-dessous prouvent que l'instrument **voit** ; aucune ne prouve que ce qu'il
+voit est **de maintenant**. Si ton marqueur existait déjà dans une
+instrumentation antérieure, il rend un chiffre juste sous un verdict faux.
+Compte donc un **couple** :
+
+| ce qu'on compte | attendu |
+|---|---|
+| un littéral que tu viens d'AJOUTER | **> 0** |
+| un littéral que tu viens de RETIRER ou de renommer | **0** |
+
+Sans la seconde ligne, un kernel périmé passe pour frais. Mesuré : un run a lu
+`2` sur une ancre qu'il croyait sienne, l'a conclue embarquée, puis a perdu deux
+passes device sur un binaire qui n'était pas le sien — le kernel venait d'une
+instrumentation retirée du projet avant qu'on le lui confie, et dormait dans le
+cache Gradle. Après `flutter clean` : ancienne ancre **2 → 0**, la sienne
+**0 → 2**.
+
+📌 **Le tell qui arrive AVANT le comptage est la DURÉE du build.** Un build qui
+réutilise tout rend la main en quelques secondes là où une reconstruction en
+prend des dizaines — 11,7 s contre 26,2 s sur ce run. Un « ✓ Built » rapide après
+un changement de `lib/` n'est pas une bonne nouvelle.
+
+⚠️ **Et choisis un LITTÉRAL, jamais une ancre interpolée** : `'x_${item.id}'`
+n'apparaît nulle part entière dans le binaire — seul son préfixe y est, ce qui
+rend `0` sur un binaire parfaitement frais.
+
 ⚠️ **SUR iOS, LE BINAIRE EST UN RÉPERTOIRE — pas d'`unzip`, et le chemin n'est
 pas celui-là.** Il manquait, et un run a dû le retrouver seul :
 
