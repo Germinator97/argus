@@ -2551,8 +2551,8 @@ MUTATIONS = [
     # c'est voulu : seul celui qui exerce `startupFindings` de bout en bout la
     # voit, et c'est lui qu'on prouve ici.
     ("run", "524 · le remede d'absorption cesse de suivre la config",
-     "remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
-     "remedeAbsorption(true, pire.flow)"),
+     "suggestedFix: remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
+     "suggestedFix: remedeAbsorption(true, pire.flow)"),
     # ── 525 — la derivation redevient aveugle a la plateforme ─────────────
     # On vise la GARDE iOS elle-meme : sans elle, la liste Android decide pour
     # iOS, et la valeur livree desarme. Le garde du 517 appelle la fonction sans
@@ -2703,6 +2703,16 @@ MUTATIONS = [
     ("mutateur", "chore · un commentaire redevient illisible",
      "\n    # 532 · les trois décisions du marqueur",
      "\n    # 532 " + chr(92) + "u00b7 les trois d" + chr(92) + "u00e9cisions du marqueur"),
+    # 533 · le remède du non-jugeable redevient un texte figé — l'état EXACT que
+    # le run 94 a trouvé : une cause unique récitée là où le voisin la dérive
+    # depuis le 524, prescrivant de retirer un geste qui avait tout à fermer.
+    # ⚠️ ELLE VISE LE SITE QUI COMPOSE, distingué par le `+` qui le précède : le
+    # motif nu est AMBIGU depuis que ce correctif a créé un second appel — c'est
+    # d'ailleurs ce qui a rendu la mutation du 524 inerte, et `--check-motifs`
+    # l'a dit en une seconde.
+    ("run", "533 · le remède du non-jugeable récite au lieu de dériver",
+     "\n          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
+     "\n          + 'Ce qui attend est presque toujours le geste système : retire-le.'"),
 ]
 
 
