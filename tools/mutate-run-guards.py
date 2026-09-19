@@ -346,16 +346,16 @@ MUTATIONS = [
      '    + ` relève thresholds.startTimeoutMs (plafond effectif ${plafond} ms), dérivé du`',
      '    + ` relève thresholds.coldStartMs (plafond effectif ${plafond} ms), dérivé du`'),
     ("report", "la couverture reperd son compte visuel",
-     "    + ` \u00b7 compar\u00e9s visuellement : ${esc(visuels)}`\n",
+     "    + ` · comparés visuellement : ${esc(visuels)}`\n",
      ""),
-    ("skill", "le param\u00e8tre d'ancre redevient un placeholder",
-     "composant partag\u00e9, 14 call-sites \u2192 semanticIdentifier",
-     "composant partag\u00e9, 14 call-sites \u2192 <param d'ancre>"),
+    ("skill", "le paramètre d'ancre redevient un placeholder",
+     "composant partagé, 14 call-sites → semanticIdentifier",
+     "composant partagé, 14 call-sites → <param d'ancre>"),
     # ── Dix-septième run ────────────────────────────────────────────────────
-    ("perf", "un script cesse de passer la config, donc ignore l'AVD d\u00e9clar\u00e9",
+    ("perf", "un script cesse de passer la config, donc ignore l'AVD déclaré",
      "defaultAndroidDevice(config);",
      "defaultAndroidDevice();"),
-    ("run", "une seule ancre d'authentification redevient exig\u00e9e",
+    ("run", "une seule ancre d'authentification redevient exigée",
      "  const requises = ['screen', 'user', 'password', 'submit', 'success'];",
      "  const requises = ['user'];"),
     # ── Vingt-et-unième run ─────────────────────────────────────────────────
@@ -367,8 +367,8 @@ MUTATIONS = [
      "      if (String(step?.metadata?.status ?? '').toUpperCase() !== 'COMPLETED') continue;",
      "      if (false) continue;"),
     ("run", "la marque d'appareil cesse de graver la locale",
-     "  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesure' };".replace('mesure', 'mesur\u00e9'),
-     "  return { model, os: `android-${sdk}`, source: 'mesure' };".replace('mesure', 'mesur\u00e9')),
+     "  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesure' };".replace('mesure', 'mesuré'),
+     "  return { model, os: `android-${sdk}`, source: 'mesure' };".replace('mesure', 'mesuré')),
     ("skill", "les deux modes de build annoncent le meme encodage",
      "| debug | `assets/flutter_assets/kernel_blob.bin` | **UTF-8** |",
      "| debug | `assets/flutter_assets/kernel_blob.bin` | **Latin-1** |"),
@@ -1088,16 +1088,16 @@ MUTATIONS = [
 
     # ── Les compteurs de la page publiée (333) ──────────────────────────────
     ("artefact", "nombreFr rend zéro au lieu de lever sur un mot inconnu",
-     "    throw new Error(`nombreFr : mot non reconnu \u00ab ${mot} \u00bb dans \u00ab ${texte} \u00bb`);",
+     "    throw new Error(`nombreFr : mot non reconnu « ${mot} » dans « ${texte} »`);",
      "    return total;"),
     ("artefact", "quatre-vingt redevient 4 + 20",
-     "    .replace(/\\bquatre vingts?\\b/g, '\u00a780');",
+     "    .replace(/\\bquatre vingts?\\b/g, '§80');",
      "    .replace(/\\bquatre vingts?\\b/g, 'quatre vingt');"),
     ("artefact", "le texte de la page n'est plus aplati",
      "  return lisible.replace(/\\s+/g, ' ').trim();",
      "  return lisible.trim();"),
     ("artefact", "le compteur de gardes matche le mot nu",
-     "    motif: /run-guards\\.test\\.mjs\\s*\u2190\\s*(\\d+)\\s+gardes/g,",
+     "    motif: /run-guards\\.test\\.mjs\\s*←\\s*(\\d+)\\s+gardes/g,",
      "    motif: /(\\d+)\\s+gardes/g,"),
     ("artefact", "un motif introuvable redevient un silence",
      "    if (valeurs.length === 0) {",
@@ -1159,7 +1159,7 @@ MUTATIONS = [
      "    process.stdout.write(`${f ? (f.stale ? 'perime' : 'frais') : 'inconnu'}\\n`);",
      "    process.stdout.write(`${f ? 'frais' : 'inconnu'}\\n`);"),
     ("skill", "la contre-epreuve a cinq secondes disparait",
-     "maestro hierarchy | grep -c '<ton ancre>'     # 0 \u21d2 elle n'est PAS dans l'arbre",
+     "maestro hierarchy | grep -c '<ton ancre>'     # 0 ⇒ elle n'est PAS dans l'arbre",
      "maestro test .maestro/smoke.yaml              # rejoue le flow pour voir"),
     ("skill", "le rappel du dartdoc ne nomme plus le marqueur",
      "un exemplaire MOT POUR MOT de ce que tu vas chercher.** S'ancrer sur la ligne de",
@@ -1626,7 +1626,7 @@ MUTATIONS = [
     # valable en apparence sur les deux plateformes, et le lecteur iOS court 34
     # lignes avant d'apprendre qu'elle ne le concerne pas.
     ("skill", "418 · le renvoi iOS ressort de la phrase qui prescrit",
-     "`firstLaunchMs`** \u2014\n   **sur iOS, cette grandeur N'EXISTE PAS : va droit au \U0001f534 qui ferme ce point** \u2014,\n   que",
+     "`firstLaunchMs`** —\n   **sur iOS, cette grandeur N'EXISTE PAS : va droit au \U0001f534 qui ferme ce point** —,\n   que",
      "`firstLaunchMs`**, que"),
     # 419 a — le SKILL cesse de nommer le résidu : il reste dans le dossier des
     # références, et le suivant le découvre comme un fichier inconnu.
@@ -2591,85 +2591,85 @@ MUTATIONS = [
     # l'ATTEINTE. C'est le troisieme barreau : le geste marchait deja, et il
     # etait nomme cinq fois — toutes hors du chemin de celui qui ecrit.
     ("harness", "527 · le message d'inscription ne nomme plus son geste",
-     "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance `make argus-debts-write`, qui '",
-     "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance la bonne commande, qui '"),
+     "\n        '\U0001F534 NE L\\'ÉDITE PAS À LA MAIN — lance `make argus-debts-write`, qui '",
+     "\n        '\U0001F534 NE L\\'ÉDITE PAS À LA MAIN — lance la bonne commande, qui '"),
     # ── 528 — le couple de marqueurs perd sa moitie qui DATE ─────────────
     # On vise la seconde ligne du tableau, celle qui exige un litteral qui
     # DISPARAIT : c'est elle qui date le binaire, et la seule que les
     # contre-epreuves ne remplacent pas. La premiere ligne survit, donc le
     # passage reste plausible — exactement la forme du defaut mesure.
     ("skill", "528 · le marqueur qui doit DISPARAITRE sort du tableau",
-     "\n| un litt\u00e9ral que tu viens de RETIRER ou de renommer | **0** |",
-     "\n| (rien d'autre \u00e0 compter) | \u2014 |"),
+     "\n| un littéral que tu viens de RETIRER ou de renommer | **0** |",
+     "\n| (rien d'autre à compter) | — |"),
     ("harness", "527 · le message de retrait ne nomme plus son geste",
      "\n      \"      make argus-debts-forget KEY='$key'\\n\",",
-     "\n      \"      (retire la ligne toi-m\u00eame)\\n\","),
-    # 529 · les deux moitiés du remède, une mutation chacune. La premi\u00e8re
+     "\n      \"      (retire la ligne toi-même)\\n\","),
+    # 529 · les deux moitiés du remède, une mutation chacune. La première
     # retire l'effacement d'UNE saisie sur deux : le bloc garde son `eraseText`
-    # en t\u00eate, donc un garde qui raisonnerait par BLOC resterait vert — c'est
+    # en tête, donc un garde qui raisonnerait par BLOC resterait vert — c'est
     # exactement la forme du faux vert qu'on ferme.
-    ("login", "529 \u00b7 une saisie sur deux perd son eraseText",
+    ("login", "529 · une saisie sur deux perd son eraseText",
      "\n            - eraseText\n            - inputText:\n                text: ${QA_PASS}",
      "\n            - inputText:\n                text: ${QA_PASS}"),
-    # La seconde \u00e9crit la forme qui casse le WORKSPACE ENTIER. Elle laisse le
-    # mot `eraseText` en place, donc un garde qui cherchait sa PR\u00c9SENCE reste
+    # La seconde écrit la forme qui casse le WORKSPACE ENTIER. Elle laisse le
+    # mot `eraseText` en place, donc un garde qui cherchait sa PRÉSENCE reste
     # vert : seul celui qui lit la FORME tombe.
-    # \u26a0\ufe0f ELLE VISE LE SKILL ET NON LE FLOW, et ce n'est pas un pis-aller : le
+    # ⚠️ ELLE VISE LE SKILL ET NON LE FLOW, et ce n'est pas un pis-aller : le
     # harnais exige que chaque mutation PARSE, donc il refuse par construction
-    # d'\u00e9crire un YAML invalide dans un flow livr\u00e9 — verdict HARNAIS, pas
+    # d'écrire un YAML invalide dans un flow livré — verdict HARNAIS, pas
     # garde vacant. L'exemple du skill est de la prose, le garde le balaie au
-    # m\u00eame titre, et il porte un COMMENTAIRE de fin de ligne : c'est la forme
-    # que le d\u00e9tecteur ne voyait pas, trouv\u00e9e parce que le harnais a refus\u00e9.
-    ("skill", "529 \u00b7 l'eraseText prend le deux-points qui casse tout",
-     "\n      - eraseText          # 1. sans lui, le second tour CONCAT\u00c8NE",
-     "\n      - eraseText:         # 1. sans lui, le second tour CONCAT\u00c8NE"),
-    # 530 \u00b7 les trois d\u00e9cisions du r\u00e9sidu, une mutation chacune. Les deux
-    # premi\u00e8res visent les deux SOURCES de la d\u00e9rivation : couper l'une laisse
+    # même titre, et il porte un COMMENTAIRE de fin de ligne : c'est la forme
+    # que le détecteur ne voyait pas, trouvée parce que le harnais a refusé.
+    ("skill", "529 · l'eraseText prend le deux-points qui casse tout",
+     "\n      - eraseText          # 1. sans lui, le second tour CONCATÈNE",
+     "\n      - eraseText:         # 1. sans lui, le second tour CONCATÈNE"),
+    # 530 · les trois décisions du résidu, une mutation chacune. Les deux
+    # premières visent les deux SOURCES de la dérivation : couper l'une laisse
     # l'autre debout, donc un garde qui n'en couvrirait qu'une resterait vert.
-    ("installeur", "530 \u00b7 la remont\u00e9e des parents s'arr\u00eate au premier niveau",
+    ("installeur", "530 · la remontée des parents s'arrête au premier niveau",
      "\n        d=\"$(dirname \"$d\")\"\n      done",
      "\n        d=\".\"\n      done"),
-    ("installeur", "530 \u00b7 les dossiers cr\u00e9\u00e9s par l'installeur sortent du flux",
+    ("installeur", "530 · les dossiers créés par l'installeur sortent du flux",
      "\n    printf '%s\\n' \"${DOSSIERS_CREES[@]}\"\n  }",
      "\n    :\n  }"),
-    # La troisi\u00e8me rend la ligne vide imm\u00e9diatement au lieu de la retenir : le
-    # bloc part quand m\u00eame, seule la ligne vide qui le pr\u00e9c\u00e8de survit. C'est
-    # exactement la forme du d\u00e9faut mesur\u00e9 \u2014 25 octets contre 26.
-    ("installeur", "530 \u00b7 le retrait du bloc ne reprend plus sa ligne vide",
+    # La troisième rend la ligne vide immédiatement au lieu de la retenir : le
+    # bloc part quand même, seule la ligne vide qui le précède survit. C'est
+    # exactement la forme du défaut mesuré — 25 octets contre 26.
+    ("installeur", "530 · le retrait du bloc ne reprend plus sa ligne vide",
      "\n    $0 == \"\"    { enAttente=1; next }",
      "\n    $0 == \"\"    { emettre(\"\"); next }"),
-    # \u26a0\ufe0f LA QUATRI\u00c8ME VISE L'AUTRE GARDE, celui de la SURVIE \u2014 sans elle il
+    # ⚠️ LA QUATRIÈME VISE L'AUTRE GARDE, celui de la SURVIE — sans elle il
     # n'aurait aucune mutation, et le site que personne ne mute est le site dont
-    # personne n'apprend rien. `rm -rf` l\u00e0 o\u00f9 `rmdir` refusait.
-    # \u26a0\ufe0f ELLE FAIT TOMBER DEUX GARDES, mesur\u00e9 en la jouant \u00e0 la main et en lisant
-    # TOUS les noms rouges : le 498 d'abord \u2014 que le harnais cr\u00e9dite, puisqu'il
-    # retient le premier \u2014 puis celui du 530. Les deux tombent bel et bien ; ce
-    # qui n'est pas isol\u00e9 est l'appariement. La part que le 530 garde SEUL est ce
-    # que ce correctif a ajout\u00e9 aux candidats : le workflow et le dossier
-    # `scripts/` de l'H\u00d4TE, que le 498 ne pose pas. Isoler demanderait de couper
-    # la boucle en deux dans le code livr\u00e9, ce qui abimerait le sujet pour
+    # personne n'apprend rien. `rm -rf` là où `rmdir` refusait.
+    # ⚠️ ELLE FAIT TOMBER DEUX GARDES, mesuré en la jouant à la main et en lisant
+    # TOUS les noms rouges : le 498 d'abord — que le harnais crédite, puisqu'il
+    # retient le premier — puis celui du 530. Les deux tombent bel et bien ; ce
+    # qui n'est pas isolé est l'appariement. La part que le 530 garde SEUL est ce
+    # que ce correctif a ajouté aux candidats : le workflow et le dossier
+    # `scripts/` de l'HÔTE, que le 498 ne pose pas. Isoler demanderait de couper
+    # la boucle en deux dans le code livré, ce qui abimerait le sujet pour
     # arranger la mesure.
-    ("installeur", "530 \u00b7 le retrait des dossiers cesse de refuser le non-vide",
+    ("installeur", "530 · le retrait des dossiers cesse de refuser le non-vide",
      "\n        rmdir \"$target/$d\" 2>/dev/null || true",
      "\n        rm -rf \"$target/$d\" 2>/dev/null || true"),
-    # 531 \u00b7 les quatre d\u00e9cisions de la d\u00e9claration, une mutation chacune.
-    # La premi\u00e8re rend la cl\u00e9 INERTE : elle est lue, elle ne d\u00e9cide plus rien.
-    ("run", "531 \u00b7 la d\u00e9claration `never` cesse de d\u00e9sarmer",
+    # 531 · les quatre décisions de la déclaration, une mutation chacune.
+    # La première rend la clé INERTE : elle est lue, elle ne décide plus rien.
+    ("run", "531 · la déclaration `never` cesse de désarmer",
      "\n  if (etat === 'never') return false;",
      "\n  if (false && etat === 'never') return false;"),
-    # La deuxi\u00e8me remplace le refus par un repli silencieux sur le d\u00e9faut \u2014 la
-    # forme exacte du 508 : le lecteur croit avoir d\u00e9sarm\u00e9, le geste co\u00fbte.
-    ("run", "531 \u00b7 un \u00e9tat inconnu replie au lieu d'\u00eatre refus\u00e9",
+    # La deuxième remplace le refus par un repli silencieux sur le défaut — la
+    # forme exacte du 508 : le lecteur croit avoir désarmé, le geste coûte.
+    ("run", "531 · un état inconnu replie au lieu d'être refusé",
      "\n  if (!(etat in ETATS_INVITES_SYSTEME)) {",
      "\n  if (false && !(etat in ETATS_INVITES_SYSTEME)) {"),
-    # La troisi\u00e8me retire la cl\u00e9 du rem\u00e8de : le finding parle toujours, et
-    # n'offre plus l'issue applicable \u2014 c'est ce que le 502 et le 505 gardent.
-    ("run", "531 \u00b7 le rem\u00e8de cesse de nommer la cl\u00e9 qui d\u00e9sarme",
+    # La troisième retire la clé du remède : le finding parle toujours, et
+    # n'offre plus l'issue applicable — c'est ce que le 502 et le 505 gardent.
+    ("run", "531 · le remède cesse de nommer la clé qui désarme",
      "\n    + '`security.systemAlerts: never` dans argus.mobile.yaml, et `dismiss-system-alerts.yaml` '",
      "\n    + 'retire le geste, et `dismiss-system-alerts.yaml` '"),
-    # La quatri\u00e8me change la valeur LIVR\u00c9E : un scaffold qui d\u00e9sarme d'office
-    # ferait rougir tout projet \u00e0 permissions, sans que personne l'ait choisi.
-    ("yamlconf", "531 \u00b7 le scaffold livre une valeur qui d\u00e9cide \u00e0 la place du projet",
+    # La quatrième change la valeur LIVRÉE : un scaffold qui désarme d'office
+    # ferait rougir tout projet à permissions, sans que personne l'ait choisi.
+    ("yamlconf", "531 · le scaffold livre une valeur qui décide à la place du projet",
      "\n  systemAlerts: auto",
      "\n  systemAlerts: never"),
     # 532 · les trois décisions du marqueur, une mutation chacune — et chacune
