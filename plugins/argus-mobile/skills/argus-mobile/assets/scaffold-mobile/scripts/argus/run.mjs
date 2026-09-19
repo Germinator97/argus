@@ -1824,10 +1824,24 @@ function startupFindings(samples, device, platform, config, variante = '') {
         id: 'QAM-START-NONJUGEABLE',
         title: `le budget de démarrage n'a pas pu être jugé sur ${nonJugeables.length}/${samples.length} `
           + 'flows : une attente les précède, et aucun plancher de marque ne permet de trancher',
-        suggestedFix: 'Deux gestes, et le premier suffit souvent. (1) Ce qui attend avant la mesure '
-          + 'est presque toujours le geste d\'invite système de `launch-clean.yaml` : s\'il n\'a rien '
-          + 'à fermer chez toi, retire-le — voir QAM-START-ABSORBE, même cause, même remède. '
-          + '(2) Si ton app impose une durée d\'affichage à son écran de marque, déclare-la dans '
+        // 🔴 CE REMÈDE COMPOSE, IL NE RECOPIE PAS (533). Sa première version
+        // récitait une cause unique — « c'est presque toujours le geste d'invite
+        // système : s'il n'a rien à fermer chez toi, retire-le » — et renvoyait
+        // à QAM-START-ABSORBE en écrivant « même cause, même remède ». C'était
+        // vrai le jour où elle a été écrite, et faux dès le lendemain : le 524 a
+        // appris à ABSORBE à DÉRIVER sa branche des permissions déclarées, et
+        // son voisin immédiat ne l'a jamais reçu. Mesuré sur le run 94, dont
+        // l'app déclare CAMERA, POST_NOTIFICATIONS et ACCESS_FINE_LOCATION : le
+        // geste avait TOUT à fermer, et le texte prescrivait de le retirer —
+        // 5 flows rouges et 159 s de device, mesuré au 525, sur une ancre
+        // parfaitement correcte.
+        // 📌 La partie commune vient donc de la MÊME fonction que celle
+        // d'ABSORBE : deux copies d'une décision divergent à la première
+        // retouche, et c'est exactement ce qui s'est produit ici. Ce qui reste
+        // en propre est le plancher — la raison d'être de ce finding-ci.
+        suggestedFix: 'Deux gestes, et le premier suffit souvent. (1) '
+          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)
+          + ' (2) Si ton app impose une durée d\'affichage à son écran de marque, déclare-la dans '
           + '`thresholds.brandedSplashMs` : c\'est ce plancher qui permet de dire si une mesure '
           + 'CONTIENT le démarrage ou s\'est déroulée pendant l\'attente. Sans lui, ce relevé ne '
           + 'peut ni conclure ni se taire — il te rend les deux chiffres et te laisse trancher.',
