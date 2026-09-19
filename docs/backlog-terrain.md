@@ -10918,3 +10918,88 @@ prose périmerait, ce que le **510** a payé.
 instructif : la question « est-ce bon sans confirmation ? » se répond en
 **comptant les sites où le remède est nommé**, pas en attendant qu'un agent
 retombe dedans.
+
+## Rendu par le run 92 — les 526 et 527 confirmés — 19/09/2026
+
+Terrain 2, Android, prompt **identique au shasum près** aux runs 83 et 88.
+Gate `fail` (5 major, 2 info), 7 écrans déclarés = 7 ancrés = 7 visités,
+`notConfigured []` et `notVisited []`, 6/6 dimensions, ~22 min de device, 85
+clés de dette.
+
+🔴 **526 et 527 confirmés, et c'est écrit DANS l'artefact** — le fichier de dette
+porte en fin de déclaration :
+
+    }; // TODO(argus): FAIT — 85 clés inscrites par `make argus-debts-write`.
+
+L'agent a donc **lu le message**, **employé le geste**, et **fermé le TODO**
+selon la règle plutôt que de le supprimer. Dartdoc intact, les deux occurrences
+du piège en place. *C'est la preuve sur l'artefact, pas sur le compte rendu.*
+
+✅ **507 confirmé une 6ᵉ fois** (les trois échelles d'animation à 1.0 après le
+run) · ✅ **517 dans son sens « joue »** (12 permissions, `precedeMs` 7032-7065
+sur 6/7 flows) · ✅ **522 a PARLÉ** dans sa branche « plancher absent » :
+`QAM-START-NONJUGEABLE` émis, lu, mesuré, geste désarmé par l'agent dans SON
+fichier — après, `precedeMs` 3 à 21 ms et `QAM-START` redevient une mesure
+(« 7 s, seuil 2000 ms, **mesuré sur un debug** ») · ✅ **524** — le remède nomme
+le flow, et l'agent a écrit la mesure et la ligne pour réarmer.
+
+⚪ **Trois constats écartés** : le workflow GitLab (**521**, sortie d'un remède,
+7ᵉ relais), le lifecycle rouge (garde de sécurité — le gabarit prévenait deux
+lignes au-dessus de la ligne que l'agent a écrite, il le dit lui-même), et une
+session Maestro résiduelle.
+
+### 528. Un marqueur qui existait déjà ne DATE rien
+
+**Né du run 92 et fermé le 19/09/2026.**
+
+Le SKILL prescrit de compter un **marqueur** dans le binaire quand un correctif
+semble sans effet, et le passage est complet : piper jamais capturer, deux
+contre-épreuves (ASCII et accentuée), l'encodage selon le mode de build. Il ne
+dit **nulle part** que ce marqueur doit **dater**.
+
+🔴 **Les contre-épreuves prouvent que l'instrument VOIT ; aucune ne prouve que ce
+qu'il voit est de MAINTENANT.** L'agent a compté une ancre qu'il croyait sienne :
+elle rendait **2**, les contre-épreuves passaient, et il en a conclu que le
+binaire portait son code. Elle existait **aussi** dans une instrumentation
+antérieure, retirée du projet avant qu'on le lui confie, et dont le kernel
+dormait dans le cache Gradle. Coût : **deux passes device sur un binaire qui
+n'était pas le sien**.
+
+Après `flutter clean` : empreinte du kernel `bda25b37…` → `68d1b9c8…`, l'ancienne
+ancre **2 → 0**, la sienne **0 → 2**. Le couple qui tranche en porte donc deux —
+un littéral qui doit **apparaître**, un qui doit **disparaître**.
+
+📌 **Le tell qui arrive AVANT le comptage est la DURÉE du build** : 11,7 s contre
+**26,2 s** après `clean`. Un « ✓ Built » rapide après un changement de `lib/`
+n'est pas une bonne nouvelle.
+
+⚠️ **Et le second marqueur de l'agent était faux autrement** : il avait choisi
+une ancre **interpolée**, qui n'apparaît jamais entière dans le binaire — seul
+son préfixe littéral y est. Un `0` parfaitement trompeur sur un binaire frais.
+
+⚠️ **Mon garde est né VACANT, et la mutation seule l'a dit.** Il cherchait
+`retiré` dans le bloc — satisfait par « une instrumentation **retirée** du
+projet », trois lignes plus bas. Le critère porte désormais sur les **attendus du
+tableau** : deux lignes, et leurs attendus doivent différer — l'une non nulle,
+l'autre zéro. *Deux lignes qui attendent la même chose ne datent pas plus
+qu'une seule.*
+
+### 529. ⚪ OUVERT — `inputText` rend COMPLETED avant que le texte n'ait atterri
+
+**Ouvert le 19/09/2026 par le run 92, non traité : arbitrage à prendre à froid.**
+
+Le dump de l'étape en échec montrait le champ à `texte=''` et le bouton à
+`enabled=false` : la frappe n'avait pas atterri. Maestro rapporte pourtant
+`COMPLETED` — le nœud existe — et l'échec sort **trois étapes plus loin**, en
+accusant une ancre correcte. L'écran d'identification de ce terrain est le seul
+du parcours qui ne demande pas le focus lui-même.
+
+Mesuré : **`inputText` a 0 occurrence dans le SKILL**. C'est le voisin exact du
+**400-405**, qui a fermé le cas du **tap** — « présente, active, et pointant le
+mauvais rectangle » — et jamais celui de la **saisie**.
+
+📌 Ce que l'agent a inventé faute de prescription : un `retry` qui n'enveloppe
+**que la saisie** — jamais l'envoi, qui consommerait un code à usage unique de
+plus — et qui attend un **ÉTAT** (`assertVisible: enabled: true` sur le bouton,
+seule preuve observable que le texte est là). *Le remède a l'air bon ; il n'a pas
+été éprouvé par ce dépôt.*
