@@ -10870,3 +10870,51 @@ run à passer le seuil depuis qu'il existe.
 raison** : la table des cibles dérivée du Makefile, le camp de chaque fichier du
 scaffold figé un par un, et le contrôle local de classification — ce dernier
 exigeant que le relevé voyage **dans le même commit** que le fichier ajouté.
+
+### 527. Le geste existait, et rien ne le nommait là où l'on écrit la dette
+
+**Né en relisant le 526, fermé le 19/09/2026 — sans run.**
+
+La question posée était « le 526 peut-il être considéré comme bon sans un run ? ».
+La mesure a changé la nature du problème : il n'est pas *en attente de preuve*,
+il est **incomplet**, et ça se voit sans device.
+
+`argus-debts-write` était nommé **cinq** fois — `SKILL.md` §3c, la table des
+cibles, sa propre recette, sa propre doc, son propre message — et **zéro** fois
+aux deux endroits où se tient celui qui écrit la dette :
+
+    argus_harness.dart    0 occurrence   ← le message d'échec qui DONNE la clé
+    known_issues.dart     0 occurrence   ← le fichier qu'on s'apprête à éditer
+
+Ce message disait « inscris-le TEL QUEL dans `test/argus/known_issues.dart` » —
+une invitation directe à éditer le fichier à la main, c'est-à-dire exactement le
+geste qui l'a détruit trois fois.
+
+🔴 **Un run n'aurait donc pas confirmé le 526 : il l'aurait rouvert.** L'agent
+lit la même phrase et refait le même geste. C'est le **396** mot pour mot — *bon
+du point de vue de la propriété, faux du point de vue de l'atteinte* — et le
+**520** pour le placement : l'information existait, à mille lignes de l'endroit
+où l'on lit le verdict.
+
+⚠️ **Les trois gardes du 526 ne pouvaient pas le voir.** Ils *appellent* le
+geste, donc ils prouvent qu'il marche : c'est le deuxième barreau. Aucun ne
+prouve qu'il est **atteint**. Je me suis arrêté là où ce dépôt écrit qu'il ne
+faut pas s'arrêter.
+
+📌 **Et le harnais a DEUX messages, donc deux gestes.** Il dit « inscris-le »
+quand un défaut apparaît et « retire cette ligne » quand il est payé — même
+fichier, même piège d'ancrage. N'outiller que l'ajout aurait laissé le retrait à
+la main, c'est-à-dire laissé ouverte la forme exacte du défaut qu'on venait de
+fermer. `debts --remove=<clé>` et `make argus-debts-forget` la ferment, une clé
+absente étant **refusée** plutôt que silencieusement acceptée.
+
+📌 **Le garde porte sur l'ATTEINTE**, et il dérive les deux cibles de ce que leur
+recette *fait* au lieu de les citer : renommer une cible doit faire rougir le
+message, pas le garde. Chaque message est borné par sa **structure** — du
+marqueur au `);` qui le ferme — jamais par un nombre de caractères qu'un ajout de
+prose périmerait, ce que le **510** a payé.
+
+⚠️ **Ce point n'a pas eu besoin d'un run pour être vu**, et c'est ce qui le rend
+instructif : la question « est-ce bon sans confirmation ? » se répond en
+**comptant les sites où le remède est nommé**, pas en attendant qu'un agent
+retombe dedans.
