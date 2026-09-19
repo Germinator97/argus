@@ -212,6 +212,39 @@ fi
 BLOC_DEBUT='# ── Argus Mobile ── début du bloc géré (ne pas éditer à la main) ──'
 BLOC_FIN='# ── Argus Mobile ── fin du bloc géré ──'
 
+# ── Les dossiers que cette installation crée SANS y livrer de fichier ───────
+# Ils naissent vides et se remplissent à l'exécution. Une seule déclaration,
+# lue par le `mkdir -p` qui les pose ET par le `rmdir` qui les reprend : écrite
+# deux fois, elle divergerait à la première retouche — et l'oubli serait muet,
+# un dossier vide n'étant suivi par aucun git.
+DOSSIERS_CREES=(argus-mobile-report .maestro/_baselines)
+
+# ── Retirer NOTRE bloc d'un fichier de l'hôte, la ligne vide comprise ───────
+# ⚠️ L'insertion pose `\n` DEVANT le bloc ; un retrait qui ne reprend pas cette
+# ligne vide laisse le fichier de l'hôte MODIFIÉ — `git status` le montre changé
+# après une désinstallation censée ne rien laisser, et c'est le genre de diff
+# qu'on committe sans le voir. Mesuré sur un projet jetable : 25 octets avant
+# installation, 26 après désinstallation.
+# Les deux gestes partagent cette fonction pour qu'ils ne puissent plus diverger :
+# la mise à jour réinsère ensuite le bloc avec sa ligne vide, donc le fichier
+# reste identique à lui-même quand le bloc n'a pas changé de place.
+retirer_bloc_gitignore() {
+  local dest="$1" tmp
+  tmp="$(mktemp)"
+  # Une ligne vide n'est imprimée qu'une fois qu'on sait ce qui la suit : si
+  # c'est notre borne d'ouverture, elle est à nous et elle part avec le bloc.
+  awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" '
+    index($0,d) { p=1; enAttente=0; next }
+    index($0,f) { p=0; next }
+    p           { next }
+    enAttente   { print ""; enAttente=0 }
+    $0 == ""    { enAttente=1; next }
+                { print }
+    END         { if (enAttente) print "" }
+  ' "$dest" > "$tmp"
+  mv "$tmp" "$dest"
+}
+
 merge_gitignore() {
   src="$1"; dest="$2"
   # Le corps : la source sans son en-tête de marqueurs, qui ne concerne que
@@ -227,10 +260,8 @@ merge_gitignore() {
     # Remplacement en place : on écrit dans un temporaire puis on renomme, parce
     # qu'un script d'édition qui échoue à mi-chemin est plus dangereux qu'un
     # script qui ne tourne pas.
-    tmp="$(mktemp)"
-    awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" 'index($0,d){p=1;next} index($0,f){p=0;next} !p{print}' "$dest" > "$tmp"
-    printf '%s\n' "$nouveau" >> "$tmp"
-    mv "$tmp" "$dest"
+    retirer_bloc_gitignore "$dest"
+    printf '\n%s\n' "$nouveau" >> "$dest"
     echo "  🔁 bloc .gitignore mis à jour (le reste du fichier est intact)"
     return 0
   fi
@@ -273,11 +304,7 @@ uninstall_project() {
     if head -20 "$src" | grep -qF 'ARGUS:MERGE'; then
       # Le fichier est au projet ; seul NOTRE bloc s'en va.
       if [ "$(basename "$rel")" = ".gitignore" ] && grep -qF "$BLOC_DEBUT" "$dest"; then
-        local tmp
-        tmp="$(mktemp)"
-        awk -v d="$BLOC_DEBUT" -v f="$BLOC_FIN" \
-          'index($0,d){p=1;next} index($0,f){p=0;next} !p{print}' "$dest" > "$tmp"
-        mv "$tmp" "$dest"
+        retirer_bloc_gitignore "$dest"
         echo "  🔁 bloc retiré du .gitignore (le reste du fichier est intact)"
         retires=$((retires + 1))
       elif cmp -s "$src" "$dest"; then
@@ -304,12 +331,32 @@ uninstall_project() {
   done < <(find "$SCAFFOLD_DIR" -type f)
 
   # Les dossiers devenus vides, et EUX SEULS : rmdir refuse tout le reste, ce
-  # qui protège .maestro/_baselines (tes références visuelles) et le dossier de
-  # rapports sans qu'on ait à les nommer — une liste de noms aurait vieilli.
-  local d
-  for d in scripts/argus test/argus .maestro/_subflows .maestro scripts test; do
-    rmdir "$target/$d" 2>/dev/null || true
-  done
+  # qui protège les références visuelles et les rapports déjà produits sans
+  # qu'on ait à les nommer.
+  #
+  # ⚠️ MAIS LA LISTE DES CANDIDATS ÉTAIT ÉCRITE À LA MAIN, et elle a vieilli —
+  # exactement ce que le commentaire d'origine disait vouloir éviter. Elle
+  # ignorait `.github/workflows`, où l'installeur pose pourtant son workflow :
+  # ce dossier restait VIDE après désinstallation, et git ne suivant pas les
+  # dossiers vides, le résidu était invisible à `git status`.
+  #
+  # Elle se dérive donc des DEUX seules façons dont cette installation crée un
+  # dossier : les parents des fichiers qu'elle livre, et ceux qu'elle crée
+  # elle-même. Du plus profond au moins profond, sans quoi un parent serait
+  # visité pendant que son enfant l'occupe encore.
+  {
+    while IFS= read -r src; do
+      local d="$(dirname "${src#"$SCAFFOLD_DIR"/}")"
+      while [ "$d" != "." ] && [ -n "$d" ]; do
+        printf '%s\n' "$d"
+        d="$(dirname "$d")"
+      done
+    done < <(find "$SCAFFOLD_DIR" -type f)
+    printf '%s\n' "${DOSSIERS_CREES[@]}"
+  } | sort -u | awk -F/ '{ print NF, $0 }' | sort -rn -k1,1 | cut -d' ' -f2- \
+    | while IFS= read -r d; do
+        rmdir "$target/$d" 2>/dev/null || true
+      done
 
   echo
   printf '%s' "$liste"
@@ -467,8 +514,10 @@ if [ -f "$LEGACY_HARNESS" ] && grep -q '^class ArgusScreen' "$LEGACY_HARNESS"; t
 fi
 
 if [ "$MODE" != "check" ]; then
-  # Dossiers d'artefacts et de références visuelles.
-  mkdir -p "$TARGET/argus-mobile-report" "$TARGET/.maestro/_baselines"
+  # Dossiers d'artefacts et de références visuelles — la MÊME déclaration que
+  # celle dont la désinstallation les reprend, pour qu'ajouter un dossier ici ne
+  # laisse pas un résidu là-bas.
+  for d in "${DOSSIERS_CREES[@]}"; do mkdir -p "$TARGET/$d"; done
 fi
 
 echo
