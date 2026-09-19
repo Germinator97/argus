@@ -1028,6 +1028,52 @@ test('le rapport NOMME les écrans déclarés que rien n\'a atteints', () => {
 // Ce garde n'est pas circulaire : il lie DEUX endroits qui doivent s'accorder —
 // le binaire qu'ouvre la commande d'exemple, et la ligne du tableau qui décrit
 // son encodage.
+// ── 528 · un marqueur qui existait déjà ne date rien ──────────────────────
+// Le SKILL prescrivait de compter UN marqueur, avec ses contre-épreuves — qui
+// prouvent que l'instrument VOIT, jamais que ce qu'il voit DATE. Un run a lu 2
+// sur une ancre qu'il croyait sienne (elle venait d'une instrumentation
+// antérieure dormant dans le cache Gradle), l'a conclue embarquée, et a perdu
+// deux passes device sur un binaire qui n'était pas le sien.
+test('le comptage dans le binaire exige un marqueur qui DISPARAÎT (528)', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  // La section est bornée par sa STRUCTURE — du titre qui l'ouvre au suivant —
+  // jamais par un nombre de caractères qu'un ajout de prose périmerait (510).
+  const debut = skill.indexOf('UN SEUL MARQUEUR NE DATE RIEN');
+  assert.ok(debut > 0, 'le passage qui exige un couple de marqueurs a disparu du SKILL (528) — '
+    + 'sans lui, un kernel périmé passe pour frais et le comptage rend un verdict faux');
+  const apres = skill.slice(debut);
+  const fin = apres.indexOf('\n⚠️ **SUR iOS');
+  assert.ok(fin > 0, 'la borne structurelle du passage a lâché : son voisin iOS a été déplacé');
+  const bloc = apres.slice(0, fin);
+
+  // ⚠️ LE CRITÈRE PORTE SUR LES ATTENDUS DU TABLEAU, pas sur des mots du bloc.
+  // Première version : un motif `retiré` cherché dans le bloc entier — satisfait
+  // par « une instrumentation RETIRÉE du projet », trois lignes plus bas, donc
+  // VACANT sous la mutation qui vide pourtant la ligne du tableau. C'est la
+  // mutation qui l'a dit, pas la relecture.
+  const rangs = bloc.split('\n')
+    .filter((l) => l.startsWith('| ') && !/^\|\s*-+/.test(l) && !/ce qu'on compte/.test(l));
+  assert.equal(rangs.length, 2,
+    `${rangs.length} ligne(s) dans le tableau du couple au lieu de 2 — un marqueur seul ne date rien`);
+
+  // Ce qui compte est que les deux attendus DIFFÈRENT : l'un doit apparaître,
+  // l'autre doit valoir zéro. Deux lignes qui attendent la même chose ne datent
+  // pas plus qu'une seule.
+  const attendus = rangs.map((l) => l.split('|').slice(2).join('|'));
+  assert.ok(attendus.some((a) => />\s*0/.test(a)),
+    'aucune ligne du tableau n\'attend un compte NON NUL : le marqueur qui doit apparaître a disparu');
+  assert.ok(attendus.some((a) => /\*\*0\*\*|\b0\b/.test(a) && !/>\s*0/.test(a)),
+    'aucune ligne du tableau n\'attend ZÉRO — c\'est la moitié qui DATE le binaire, et la seule '
+    + 'que les contre-épreuves ne remplacent pas : sans elle, un kernel périmé passe pour frais');
+
+  // Et il doit porter la mesure qui explique POURQUOI, sans quoi la consigne
+  // se lit comme une préférence de style et se fait sauter au premier run pressé.
+  assert.match(bloc, /2 → 0|2 &rarr; 0/,
+    'le passage ne porte plus la mesure de la bascule (ancienne ancre 2 → 0) : '
+    + 'une consigne sans son coût mesuré se lit comme une préférence');
+});
+
 test('le binaire de la commande d\'exemple a sa ligne dans le tableau des encodages', () => {
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
 

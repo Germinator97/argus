@@ -2591,6 +2591,14 @@ MUTATIONS = [
     ("harness", "527 · le message d'inscription ne nomme plus son geste",
      "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance `make argus-debts-write`, qui '",
      "\n        '\U0001F534 NE L\\'\u00c9DITE PAS \u00c0 LA MAIN \u2014 lance la bonne commande, qui '"),
+    # ── 528 — le couple de marqueurs perd sa moitie qui DATE ─────────────
+    # On vise la seconde ligne du tableau, celle qui exige un litteral qui
+    # DISPARAIT : c'est elle qui date le binaire, et la seule que les
+    # contre-epreuves ne remplacent pas. La premiere ligne survit, donc le
+    # passage reste plausible — exactement la forme du defaut mesure.
+    ("skill", "528 · le marqueur qui doit DISPARAITRE sort du tableau",
+     "\n| un litt\u00e9ral que tu viens de RETIRER ou de renommer | **0** |",
+     "\n| (rien d'autre \u00e0 compter) | \u2014 |"),
     ("harness", "527 · le message de retrait ne nomme plus son geste",
      "\n      \"      make argus-debts-forget KEY='$key'\\n\",",
      "\n      \"      (retire la ligne toi-m\u00eame)\\n\","),
