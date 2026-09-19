@@ -5096,7 +5096,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **AUCUN POINT OUVERT.** Le **531** a été tranché à froid : ce que le plugin
+⚪ **1 POINT OUVERT — le 532**, né en remettant un terrain à neuf : le correctif
+du **530** tient sur un vrai terrain, et il laisse un résidu d'**un octet** que
+son propre garde ne pouvait pas voir — le `.gitignore` de ce projet ne finissait
+pas par un saut de ligne, et le montage du garde en porte un. *L'information
+« l'hôte en avait-il un ? » n'existe plus après l'insertion : il faut choisir
+entre la mémoriser et le dire.*
+
+Le **531** a été tranché à froid : ce que le plugin
 ne peut pas découvrir, l'utilisateur le **déclare** — `security.systemAlerts`,
 énumération fermée, défaut `auto` pour que rien ne change chez personne. Les
 trois autres issues étaient écartées chacune par une mesure, et le remède
@@ -11309,3 +11316,58 @@ pour un mécanisme bâti sur **cinq** points (405, 479, 516, 517, 525). C'est le
 **511** à l'identique : *un outil livré que rien n'explique à qui doit s'en
 servir*, et c'est pourquoi l'agent a dû lire le code pour comprendre pourquoi il
 attendait. Le §1 porte désormais le mécanisme, son coût mesuré et la clé.
+
+### 532. ⚪ OUVERT — le résidu que le correctif du 530 ne pouvait pas voir
+
+**Ouvert le 19/09/2026 en remettant le terrain 1 à neuf, non traité : arbitrage
+à prendre à froid.**
+
+La remise à neuf a servi de contre-épreuve au **530**, fermé le matin même et
+jamais exercé sur un vrai terrain. Il tient : `.github` part, les 4 références
+visuelles et les 254 fichiers de rapport survivent, et les seuls dossiers vides
+restants sont des artefacts de build du projet.
+
+🔴 **Mais le `.gitignore` n'est pas revenu à l'octet près** : 1 662 → **1 663**.
+Celui de ce projet ne se terminait pas par un saut de ligne — `git diff` le
+disait en toutes lettres, `\ No newline at end of file`.
+
+#### Le mécanisme, reproduit hors terrain
+
+    .gitignore de l'hôte          avant → après désinstallation
+    avec saut de ligne final       13 → 13    ✅ identique
+    SANS saut de ligne final       12 → 13    🔴 un octet de plus
+    sans, une seule ligne           6 →  7    🔴
+    vide                            0 →  0    ✅ (rien à terminer)
+
+L'insertion écrit `\n` + le bloc. Quand le fichier finit déjà par un saut de
+ligne, ce `\n` crée une **ligne vide** — que le 530 apprend à reprendre. Quand
+il n'en a pas, le même `\n` **termine la dernière ligne de l'hôte** : il ne crée
+aucune ligne vide, donc le retrait n'a rien à reprendre, et la ligne reste
+terminée. Pour git, elle a changé.
+
+#### 🔴 Pourquoi le garde du 530 ne pouvait pas le voir
+
+Son projet jetable écrit `'build/\n.dart_tool/\n*.iml\n'` — **avec** saut de
+ligne final. Le montage ne porte donc pas la forme que le réel portait, et c'est
+le terrain qui l'a rencontrée le jour même. *Un garde écrit sur un montage
+fabriqué ne rencontre jamais ce qu'il n'a pas imaginé* — c'est la huitième façon
+de naître vacant, appliquée à un garde écrit deux heures plus tôt.
+
+#### Les deux issues, et ce qui les sépare
+
+L'information « l'hôte avait-il un saut de ligne final ? » **n'existe plus**
+après l'insertion : aucun retrait ne peut la déduire. Donc :
+
+- **Mémoriser.** Le bloc nous appartient ; l'insertion peut y inscrire qu'elle a
+  dû terminer la ligne, et le retrait la dé-terminer. Déterministe, restauration
+  à l'octet près dans tous les cas. ⚠️ Vérifié : un suffixe sur la borne de fin
+  ne casserait ni le `grep -qF` ni l'`index()` de l'awk, qui cherchent tous deux
+  une sous-chaîne. Coût : une dizaine de lignes, un garde, une mutation.
+- **Le dire.** La désinstallation avertit que le fichier a gagné un saut de
+  ligne final, que l'installation avait ajouté. Trois lignes, aucun risque — et
+  `git status` reste sale après une désinstallation censée ne rien laisser.
+
+📌 Un fichier texte POSIX doit finir par un saut de ligne, donc « normaliser »
+est défendable. Mais le 530 s'est fermé sur le principe inverse : *après une
+désinstallation, le projet est revenu à ce qu'il était.* Trancher, c'est choisir
+entre l'exactitude et la simplicité — et ce choix-là n'est pas mécanique.
