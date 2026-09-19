@@ -5096,7 +5096,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **AUCUN POINT OUVERT.** Le **529** a été tranché à froid le 19/09, comme il
+⚪ **1 POINT OUVERT — le 531**, rendu par le run 93 et laissé ouvert
+délibérément : sur iOS, le geste du **525** absorbe la mesure de démarrage que
+les 516, 517, 522 et 523 avaient rendue possible — 7 flows sur 8, sur une app
+qui ne demande aucune permission. *Un arbitrage se prend à froid.*
+
+Le **529** a été tranché à froid le 19/09, comme il
 avait été laissé ouvert pour l'être : le remède du run 92 tenait sur le motif et
 manquait sa première pièce — `inputText` AJOUTE, donc un `retry` sans `eraseText`
 fabrique un champ *plein et faux sous une assertion verte*. Sa preuve ne se
@@ -11142,3 +11147,102 @@ exige que rien de vide ne subsiste : un dossier ajouté demain au scaffold, ou
 créé par un `mkdir` écrit en dur, le fait rougir de lui-même. Un garde qui
 citerait `.github/workflows` n'aurait couvert que le cas du jour — c'est-à-dire
 la façon exacte dont la liste d'origine avait vieilli.
+
+## Rendu par le run 93 — confirmation iOS du terrain 1 — 19/09/2026
+
+Prompt **identique au `shasum` près** à ceux des runs 74, 78, 82 et 89 : seule
+variable, le plugin. Gate `pass`, **9 écrans déclarés = ancrés = VISITÉS**,
+`notConfigured []` et `notVisited []`, 2 findings *info*, 248 tests du projet,
+339 gardes d'étage 1, ~13 min de device sur 60. Instrumentation partie de
+**zéro ancre**.
+
+### ✅ Ce que la passe confirme, lu sur les artefacts
+
+- 🔴 **Le 528, exercé pour la première fois par un agent vierge.** Ce terrain
+  portait une instrumentation **antérieure retirée du dépôt** — exactement le cas
+  du point. L'agent a appliqué le **couple** sans qu'on le lui souffle : ancres
+  de l'ancienne instrumentation à **0**, les siennes à **2**.
+- ✅ **526 et 527 une seconde fois** : `make argus-debts-write` employé, dette
+  « jamais collée à la main », 45 clés.
+- ✅ **522** : `brandedSplashMs: 2000` **mesuré** dans le code de l'app
+  (`_kMinSplashDuration`), pas choisi pour que le budget passe.
+- ✅ **508** : le second canal sortant trouvé SEUL (vérification de version du
+  magasin), classé, laissé ouvert et **inscrit** dans `telemetry.leftOpen` avec
+  sa raison — il apparaît dans la page publiée.
+- ✅ **480** : la locale **non alignée** malgré l'écart `fr_FR` / `fr_CI`, en
+  citant la raison. Aucun run récent n'a repris le raccourci.
+- ✅ La contre-épreuve visuelle porte `threshold not met` — le seuil de pixels
+  **réellement emprunté** — restauration prouvée par empreinte.
+
+⚠️ **Ni le 529 ni le 530 n'ont été exercés**, et la page le dira plutôt que de
+compter une confirmation qui n'a pas eu lieu : ce terrain n'a **aucune
+authentification** (donc aucune saisie), et un run pose le scaffold sans jamais
+le retirer.
+
+⚠️ **Le workflow GitHub sur un projet GitLab : 8ᵉ relais consécutif.** Message
+qui ARRIVE, pas question sans réponse.
+
+### 531. ⚪ OUVERT — sur iOS, le geste du 525 absorbe la mesure que le 517 rendait possible
+
+**Ouvert le 19/09/2026 par le run 93, non traité : arbitrage à prendre à froid.**
+
+Mesuré sur `report.json`, et c'est le relevé le plus net du chantier sur ce
+mécanisme :
+
+    7 flows sur 8    ms  83 –  95    precedeMs 7110 – 7160    absorbed: true
+    resilience       ms      3 490    precedeMs        5       absorbed: false
+
+Le budget de démarrage n'est donc **jugeable sur aucun** des sept, et le seul
+qui mesure le fait par accident de composition.
+
+🔴 **La cause est mon correctif de la veille.** Cette application ne demande
+**aucune** permission — zéro `NS…UsageDescription`, aucun plugin de permission,
+`expectedPermissions` à la valeur livrée. Mais le **525** a décidé que « dès
+qu'iOS est déclaré, on ne décide pas : on joue », la liste dont le **517** dérive
+étant Android par nature. Mesuré sur les artefacts du run : la variable est
+injectée dans **60 fichiers**, condition `undefined || 'true'`, donc le geste
+joue à chaque flow.
+
+🔴 **Et la phrase qui a servi à l'arbitrer est INCOMPLÈTE.** Le 525 chiffre le
+coût à *« un geste inutile coûte 6,4 s et ne casse rien »*. Il casse quelque
+chose : il **absorbe la mesure de démarrage**, c'est-à-dire précisément ce que
+les 516, 517, 522 et 523 ont travaillé à rendre mesurable. Sur Android le geste
+est dérivé, donc il ne joue pas sur une app sans permission ; sur iOS il joue
+**toujours**, donc l'absorption y est **systématique** pour toute cette classe de
+projets.
+
+📌 **Le mécanisme n'est pas muet** — `QAM-START-ABSORBE` est émis, lu, et c'est
+le 522 qui l'a rendu possible. Mais une dimension qui dit « je ne peux pas
+conclure » sur 7 flows sur 8, à chaque run iOS, ne mesure plus rien sur une
+classe entière de projets.
+
+#### Ce que la mesure a corrigé à mon propre diagnostic
+
+J'avais écrit que « faire son propre `launchApp` » suffisait à échapper à
+l'absorption. **Faux** : `i18n` et `lifecycle` en font un et sont absorbés quand
+même. La différence tient à l'endroit :
+
+    resilience   launchApp DIRECT        → le chronomètre repart d'un lancement propre
+    i18n         runFlow launch-clean    → dismiss-system-alerts s'interpose
+    lifecycle    runFlow launch-clean       ENTRE le lancement (l. 66) et
+                                            l'extendedWaitUntil (l. 129)
+
+C'est le **523** à l'identique — *toute stabilisation entre un lancement et le
+chronomètre lui est soustraite en silence* — avec cette fois un geste qui **doit**
+être là (405), sur la plateforme où le remède du 517 ne s'applique pas.
+
+#### Les issues, et pourquoi trois sont déjà écartées
+
+- **Dériver des `NS…UsageDescription`** : écarté **par le 525 lui-même**, qui a
+  mesuré que ce remède raterait *précisément* l'invite de notifications, laquelle
+  n'en porte aucune.
+- **Borner le geste par un `timeout:`** : écarté par le **502** — le moteur rend
+  `Unknown Property`.
+- **Remettre l'ordre** : écarté par le **479** — l'invite recouvre l'écran
+  attendu, et l'inverser casse le **405**.
+
+Reste à trancher ce que le 479 n'avait pas eu à trancher, parce que sur Android
+le geste est conditionnel : *que fait-on quand il est inconditionnel ?* Une piste
+mesurée — le chronomètre pourrait repartir **après** le geste d'outillage, comme
+`resilience` le fait de lui-même — mais c'est un arbitrage sur ce que
+`startup.samples` prétend mesurer, et il se prend à froid.
