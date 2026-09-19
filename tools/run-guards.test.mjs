@@ -17021,6 +17021,61 @@ test('532 — et le marqueur ne rend pas la seconde installation bavarde', () =>
 });
 
 
+// ── Lisibilité des sources Python ───────────────────────────────────────────
+// Un outil d'édition avait échappé TOUS les non-ASCII du harnais de mutation :
+// 62 occurrences dans ses commentaires, 57 dans ses chaînes. Rien ne cassait —
+// Python décode `\u00e8` en `è` au chargement, donc les verdicts s'affichaient
+// justes — et c'est précisément ce qui rend le défaut durable : il ne se voit
+// qu'en OUVRANT le fichier, celui qu'on édite à chaque point fermé et où l'on
+// recopie des motifs à la main.
+//
+// ⚠️ LE CRITÈRE EST TOTAL ET NÉGATIF : zéro échappement, où que ce soit dans les
+// `.py` SUIVIS par git. Une liste d'exceptions deviendrait une permission
+// permanente — c'est la raison pour laquelle les chaînes ont été normalisées
+// elles aussi : leur VALEUR était déjà juste (arbre comparé au commit, 2499
+// constantes identiques), donc plus rien n'excuse leur forme.
+//
+// 📌 Les `.mjs` sont hors périmètre À RAISON, et ce n'est pas un oubli : deux
+// d'entre eux emploient `\u0000` comme séparateur, délibérément — le décoder
+// écrirait un octet nul dans la source. Un garde qui les balaierait aurait
+// besoin d'exceptions, c'est-à-dire de ce qu'on vient d'écarter.
+
+test('aucun .py suivi ne porte d\'échappement unicode littéral', () => {
+  const suivis = execFileSync('git', ['ls-files', '--', '*.py'], { encoding: 'utf8', cwd: RACINE })
+    .split('\n').filter(Boolean);
+
+  // Prouver qu'il a vu quelque chose AVANT de dire qu'il n'a rien vu : sans ce
+  // plancher, un balayage qui ne trouve aucun fichier rend le même vert qu'un
+  // dépôt propre.
+  assert.ok(suivis.length >= 1,
+    'aucun fichier .py suivi par git : ce garde ne mesure rien. Si les outils ont changé '
+    + 'de langage, retire-le ; s\'ils ont bougé, corrige le balayage');
+
+  const motif = /\\u[0-9a-fA-F]{4}/;
+  let lues = 0;
+  const fautifs = [];
+  for (const rel of suivis) {
+    const lignes = readFileSync(join(RACINE, rel), 'utf8').split('\n');
+    lues += lignes.length;
+    lignes.forEach((l, i) => {
+      if (motif.test(l)) fautifs.push(`${rel}:${i + 1}`);
+    });
+  }
+  assert.ok(lues > 100, `${lues} ligne(s) lue(s) au total : le balayage n'a rien ouvert`);
+
+  assert.deepEqual(fautifs, [],
+    `${fautifs.length} ligne(s) portent un échappement unicode littéral : ${fautifs.slice(0, 5).join(', ')}. `
+    + 'Elles se lisent `param\\u00e8tre` au lieu de `paramètre` — Python les décode, donc rien ne '
+    + 'casse et rien ne le signale. Décode-les : dans un commentaire c\'est sans effet, dans une '
+    + 'chaîne la valeur est identique (à prouver en comparant l\'arbre du fichier avant/après), '
+    + 'et les délimiteurs ou caractères non imprimables doivent RESTER échappés');
+
+  // L'autre moitié : sans elle, on ne saurait pas si ce motif sait trouver quoi
+  // que ce soit — un zéro rendu par un instrument mort a la même tête.
+  assert.ok(motif.test('    # La premi\\u00e8re moiti\\u00e9 du rem\\u00e8de'),
+    'le motif ne reconnaît plus la forme qu\'il interdit : ce garde est vacant');
+});
+
 // ── 531 ────────────────────────────────────────────────────────────────────
 // Le 525 avait tranché « dès qu'iOS est déclaré, on joue », sur la direction
 // juste : rater une invite donne un flow ROUGE. Ce qu'il chiffrait — « un geste
