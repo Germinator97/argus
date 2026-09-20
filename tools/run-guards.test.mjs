@@ -10837,12 +10837,18 @@ test('chaque marqueur du backlog LIVRÉ porte son état, et un marqueur muet ARR
   assert.throws(() => numerosOuvertsDu(muet), /marqueur de point non reconnu/,
     'un marqueur sans état passe : il redevient indiscernable d\'un point clos');
 
-  // Et l'état est LU, pas seulement reconnu : passer l'unique ouvert à CLOS doit
-  // vider la liste — sinon la fonction compte des marqueurs, pas des ouverts.
-  const ouverts = numerosOuvertsDu(backlog);
-  assert.ok(ouverts.length >= 1, 'ce garde a besoin d\'au moins un point ouvert pour mesurer');
-  const clos = backlog.replace(/^(\*\*Ouvert le \d{2}\/\d{2}\/\d{4} · )OUVERT\*\*/gm, '$1CLOS**');
-  assert.deepEqual(numerosOuvertsDu(clos), [], 'l\'état n\'est pas lu : tout marqueur compte comme ouvert');
+  // ⚠️ ET L'ÉTAT EST LU — prouvé SANS dépendre du backlog du jour. Exiger
+  // qu'il porte un point ouvert rendrait ce garde rouge chaque fois que le
+  // dépôt est SAIN, c'est-à-dire précisément quand il n'y a rien à signaler ;
+  // il est tombé comme ça à la première clôture qui a suivi son écriture.
+  // On fabrique donc les deux cas depuis le fichier livré, en ne faisant
+  // varier QUE l'état : un attendu qui suivrait la même source que la mesure
+  // ne garderait rien.
+  const enOuvert = backlog.replace(marqueurs[0], '**Ouvert le 01/01/2026 · OUVERT**');
+  const enClos = backlog.replace(marqueurs[0], '**Ouvert le 01/01/2026 · CLOS**');
+  assert.equal(numerosOuvertsDu(enOuvert).length, numerosOuvertsDu(enClos).length + 1,
+    'l\'état n\'est pas lu : passer un marqueur de CLOS à OUVERT ne change pas le compte, '
+    + 'donc la fonction compte des marqueurs et non des points ouverts');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -17329,4 +17335,66 @@ test('531 — la clé est LIVRÉE, et le scaffold ne change le verdict de person
   // sur un scaffold neuf lèverait sur le refus qu'on vient d'écrire.
   assert.ok(String(livree) in ETATS_INVITES_SYSTEME,
     'la valeur livrée n\'est pas un état admis : un scaffold neuf lèverait au premier run (531)');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 536 — Deux comptes de findings, même forme, deux périmètres.
+// `report.json → summary.findings` porte les cinq sévérités des FLOWS seuls ;
+// `summary.json → counts` porte l'agrégé de toutes les dimensions. Rien ne les
+// distinguait, et les noms de fichiers sont croisés. Le remède est celui que le
+// dépôt avait déjà choisi pour `startup.measures` : la donnée porte son
+// périmètre. Ces gardes le DÉRIVENT des deux sources — citer « info: 1 » ou
+// « info: 2 » figerait les valeurs d'un run, pas la règle.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le compte des flows NOMME le fichier qui porte l\'agrégé (536)', () => {
+  const SCAFFOLD = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const report = readFileSync(join(SCAFFOLD, 'report.mjs'), 'utf8');
+  const run = readFileSync(join(SCAFFOLD, 'run.mjs'), 'utf8');
+
+  // 1. Le nom du fichier d'agrégé est DÉRIVÉ de qui l'écrit, jamais écrit ici :
+  //    le jour où `report.mjs` le renomme, ce garde doit tomber, pas mentir.
+  const ecrit = report.match(/writeJson\(join\(dir, '([\w.-]+)'\)/);
+  assert.ok(ecrit, 'report.mjs n\'écrit plus de fichier d\'agrégé par writeJson(join(dir, …)) : '
+    + 'si la forme a changé, c\'est ce motif qu\'il faut mettre à jour — sans lui ce garde ne garde rien');
+  const agrege = ecrit[1];
+
+  // 2. La mise en garde vit dans la DONNÉE, à côté du compte qu'elle qualifie.
+  const mesure = run.match(/summary: \{[\s\S]{0,2000}?measures: ([\s\S]{0,400}?),\n\s+findings:/);
+  assert.ok(mesure, 'summary de report.json ne porte plus de clé `measures` juste avant son compte : '
+    + 'le compte des flows redevient indiscernable de l\'agrégé, qui est le défaut 536');
+
+  // 3. Et elle NOMME l'autre fichier — sans quoi elle avertit sans dire où aller.
+  assert.ok(mesure[1].includes(agrege),
+    `la mise en garde de summary.measures ne cite pas « ${agrege} », le fichier qui porte `
+    + 'réellement l\'agrégé : un lecteur averti ne saurait toujours pas quoi lire à la place');
+
+  // ⚠️ L'AUTRE MOITIÉ : le modèle dont ce remède est copié doit tenir lui aussi.
+  // S'il disparaît, c'est que la convention a changé et que ce garde-ci juge
+  // seul une règle qui n'existe plus ailleurs.
+  assert.match(run, /startup: \{[\s\S]{0,1200}?measures:/,
+    'startup.measures a disparu : le remède du 536 était calqué sur lui, vérifie que la '
+    + 'convention « la donnée porte son périmètre » tient encore');
+});
+
+test('la doc décrit le fichier d\'agrégé, et pas seulement report.json (536)', () => {
+  const SCAFFOLD = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus');
+  const report = readFileSync(join(SCAFFOLD, 'report.mjs'), 'utf8');
+  const doc = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/references/report-format-mobile.md'), 'utf8');
+  const ecrit = report.match(/writeJson\(join\(dir, '([\w.-]+)'\)/);
+  assert.ok(ecrit, 'le fichier d\'agrégé n\'est plus repérable dans report.mjs');
+  const agrege = ecrit[1];
+
+  // Le défaut d'origine : ce fichier était écrit par le code et cité NULLE PART
+  // dans la doc, pendant que celui qui l'était portait un compte partiel.
+  assert.ok(doc.includes(agrege),
+    `${agrege} est écrit par le code et absent de la doc du format : c'est l'état exact `
+    + 'qui a fait publier un compte de findings faux (536)');
+  // Et la doc dit ce qu'il PORTE, pas seulement qu'il existe : « counts » doit
+  // apparaître dans la SECTION qui le décrit, bornée par le titre suivant. Une
+  // fenêtre à longueur fixe sur de la prose se périme au premier paragraphe
+  // légitime qu'on y ajoute (510) — elle rougirait alors sur un dépôt sain, à
+  // un endroit qu'elle ne surveillait pas.
+  assert.ok(sectionDepuis(doc, doc.indexOf(agrege)).includes('counts'),
+    `la doc nomme ${agrege} sans dire que c'est « counts » qui y porte l'agrégé`);
 });
