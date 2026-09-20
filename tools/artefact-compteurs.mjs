@@ -268,6 +268,9 @@ export function pointsOuvertsDu(backlog) {
   return numerosOuvertsDu(backlog).length;
 }
 
+/** Les états qu'un marqueur peut déclarer. Seul `OUVERT` compte comme ouvert. */
+export const ETATS_DE_POINT = ['OUVERT', 'CLOS', 'DÉMENTI'];
+
 /**
  * Les NUMÉROS des points ouverts, et pas seulement leur compte.
  *
@@ -284,8 +287,30 @@ export function pointsOuvertsDu(backlog) {
 export function numerosOuvertsDu(backlog) {
   const titres = [...backlog.matchAll(/^### (\d+)(?:-(\d+))?\.\s/gm)]
     .map((m) => ({ index: m.index ?? 0, num: Number(m[2] ?? m[1]) }));
-  return [...backlog.matchAll(/^\*\*Ouvert le \d{2}\/\d{2}\/\d{4}/gm)]
+  // 🔴 537 — DEUX MOTIFS, ET C'EST TOUT LE CORRECTIF. Le large reconnaît qu'une
+  // ligne EST un marqueur ; le strict lit son état. Une seule expression ne peut
+  // pas faire les deux : celle d'avant exigeait `**Ouvert le JJ/MM/AAAA` et
+  // n'avait, sur les NEUF marqueurs du fichier livré, JAMAIS matché une seule
+  // ligne — le fichier écrivait « Ouvert et fermé le … », « Ouvert par le run N
+  // le … ». Elle rendait donc `[]`, qui se lit « aucun point ouvert », pendant
+  // que la consigne du backlog décrivait déjà le format attendu et qu'un garde
+  // la vérifiait sur une FIXTURE qui, elle, le portait.
+  // ⚠️ D'où la levée : une ligne de marqueur non reconnue ARRÊTE le contrôle au
+  // lieu de la sauter. Un marqueur sauté est indiscernable d'un point clos, et
+  // c'est précisément par là que le défaut a vécu quarante-six passes.
+  const marqueurs = [...backlog.matchAll(/^\*\*Ouverte?\b[^\n]*/gm)];
+  const strict = /^\*\*Ouvert le \d{2}\/\d{2}\/\d{4} · (OUVERT|CLOS|DÉMENTI)\*\*/;
+  return marqueurs
     .map((m) => {
+      const lu = strict.exec(m[0]);
+      if (!lu) {
+        throw new Error(
+          `marqueur de point non reconnu : « ${m[0].slice(0, 72)} ». Écris `
+          + '`**Ouvert le JJ/MM/AAAA · ÉTAT**` avec ÉTAT parmi '
+          + `${ETATS_DE_POINT.join(', ')} — sans état, un point ouvert est `
+          + 'indiscernable d\'un point clos, et le contrôle ne peut pas conclure.');
+      }
+      if (lu[1] !== 'OUVERT') return null;
       const avant = titres.filter((t) => t.index < (m.index ?? 0));
       return avant.length ? avant[avant.length - 1].num : null;
     })
