@@ -13,7 +13,8 @@
 ```jsonc
 {
   "run":     { "startedAt", "platform", "appVersion", "env", "mode", "commit?" },
-  "summary": { "findings": { "blocker", "critical", "major", "minor", "info" },
+  "summary": { "measures": "les findings des FLOWS seuls — voir l'avertissement",
+               "findings": { "blocker", "critical", "major", "minor", "info" },
                "passed", "failed", "flaky", "gate": "pass|fail" },
   "findings": [
     { "id", "title", "severity", "dimension",
@@ -107,6 +108,42 @@ tourné : les métriques ci-dessous sont donc dans **`perf.json`**, et seul le
 rapport HTML les agrège. Un consommateur qui les cherche dans `report.json` les
 trouvera absentes, sans erreur d'aucune sorte — c'est ce que ce paragraphe disait
 avant d'être corrigé.
+
+⚠️ **Et `summary.findings` ne compte PAS ce que le rapport publie** — même
+mécanisme que ci-dessus, dans sa forme la plus dangereuse. `run.mjs` écrit ce
+compte à la fin d'`argus-run`, quand `perf`, `a11y`, `sec` et `sca` n'ont pas
+encore tourné : il ne porte donc que les findings des **flows**. Le total de
+toutes les dimensions vit dans **`summary.json`**, sous `counts`, et c'est lui
+que la page publie.
+
+🔴 **Là où `metrics.perf` manque VISIBLEMENT, ce compte-là ment avec une valeur
+complète** : cinq sévérités, mêmes noms, valeurs plausibles. Rien ne signale
+qu'on en lit une moitié — et les noms de fichiers sont croisés, `report.json`
+portant une clé `summary` quand `summary.json` porte une clé `counts`. Deux
+lecteurs indépendants s'y sont trompés le même jour (536), dont un agent qui a
+publié « info: 1 » pendant que sa propre page affichait « info (2) ».
+
+D'où `summary.measures`, qui dit son périmètre dans la donnée — le même remède
+que `startup.measures`, deux clés plus bas, sur un cas identique.
+
+### `summary.json` — l'agrégé, qu'aucune de ces pages ne décrivait
+
+Écrit par `report.mjs`, **après** que toutes les dimensions ont tourné. C'est la
+seule source du verdict publié :
+
+```jsonc
+{
+  "generatedAt", "gate": "pass|fail",
+  "counts":     { "blocker", "critical", "major", "minor", "info" },  // TOUTES dimensions
+  "findings":   12,                                                    // un NOMBRE, pas la liste
+  "staleParts": ["perf.json"],
+  "dimensions": [{ "source", "state", "reason", "findings", "measuredAt", "stale" }]
+}
+```
+
+⚠️ `findings` y est un **entier**, alors que dans `report.json` c'est un
+**tableau**. Même nom, deux types : lire l'un pour l'autre ne lève pas, ça rend
+`undefined` ou une longueur de chaîne.
 
 Les clés de premier niveau de `report.json` sont : `run`, `summary`, `findings`,
 `coverage`, `startup`, `locale`. Un garde les fige par égalité contre cette liste.
