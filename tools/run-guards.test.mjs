@@ -17759,3 +17759,67 @@ test('le dépôt LIVRÉ ne porte aucun identifiant distinctif de terrain (541)',
   assert.notEqual(code, 2, `le contrôle n'a rien mesuré :\n${lignes.join('\n')}`);
   assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC :\n${lignes.join('\n')}`);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 542 — Le repli du parcours critique est une branche où l'on croit écrire.
+// Sur une app SANS authentification, un run a mis le corps du parcours dans la
+// branche `ARGUS_ANCHOR_AFTER_AUTH === ''`, en raisonnant « pas d'auth ⇒ vide ».
+// Le runner y fait retomber l'ancre d'ACCUEIL : le bloc n'a jamais tourné, et le
+// flow a rendu « 0 failures ». Seul `coverage.notVisited` l'a dit.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('sans ancre d\'auth, le départ retombe sur l\'ACCUEIL — la branche vide est injoignable (542)', async () => {
+  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
+  // Le cas exact du run : aucune ancre d'authentification, un projet instrumenté.
+  const valeur = anchorAfterAuth({ success: '' }, { anchor: 'home_empty_root' });
+  assert.equal(valeur, 'home_empty_root',
+    'le départ ne retombe plus sur l\'accueil : le parcours critique d\'une app sans compte ne partirait de nulle part');
+  assert.notEqual(valeur, '',
+    'la valeur est vide sur un projet INSTRUMENTÉ : un corps écrit dans la branche `=== \'\'` s\'exécuterait, et l\'avertissement livré deviendrait faux');
+});
+
+test('l\'ancre d\'auth déclarée l\'emporte sur l\'accueil (542)', async () => {
+  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
+  assert.equal(anchorAfterAuth({ success: 'dashboard_root' }, { anchor: 'login_root' }), 'dashboard_root',
+    'l\'accueil écrase l\'après-connexion : le parcours partirait de l\'écran de login');
+});
+
+test('rien de déclaré rend \'\' — la branche de repli garde une raison d\'exister (542)', async () => {
+  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
+  // ⚠️ L'AUTRE MOITIÉ. Sans elle, une fonction qui rendrait TOUJOURS quelque
+  // chose passerait le garde ci-dessus — et le `SKIP` livré deviendrait mort.
+  assert.equal(anchorAfterAuth({}, {}), '',
+    'un projet NON instrumenté obtient quand même une ancre : le SKIP ne se déclenche plus et le flow échouerait sur un id inexistant');
+  assert.equal(anchorAfterAuth(undefined, undefined), '',
+    'anchorAfterAuth lève ou invente sur des entrées absentes');
+});
+
+test('le parcours critique LIVRÉ avertit là où le corps s\'écrit (542)', () => {
+  const src = readFileSync(join(SCAFFOLD, '.maestro/journey-critical.yaml'), 'utf8');
+  const lignes = src.split('\n');
+
+  // Le sujet : la branche de repli. On la trouve AVANT de juger — sans ça, une
+  // reformulation ferait rendre « rien trouvé » à un garde qui se croit vert.
+  const iCond = lignes.findIndex((l) => l.includes("ARGUS_ANCHOR_AFTER_AUTH === ''"));
+  assert.notEqual(iCond, -1,
+    'la branche de repli n\'est plus reconnaissable dans le fichier livré : ce garde ne mesure plus rien');
+  let iBloc = iCond;
+  while (iBloc > 0 && !lignes[iBloc].startsWith('- runFlow:')) iBloc -= 1;
+  assert.ok(iBloc > 0, 'la branche de repli n\'est plus un `- runFlow:` : le garde ne sait plus où remonter');
+
+  // Bornée par la STRUCTURE — le bloc de commentaires contigu qui précède —,
+  // jamais par un nombre de lignes : un paragraphe ajouté plus haut pousserait
+  // la phrase hors d'une fenêtre chiffrée et ferait rougir un dépôt sain.
+  const avant = [];
+  for (let i = iBloc - 1; i >= 0 && lignes[i].trimStart().startsWith('#'); i -= 1) avant.unshift(lignes[i]);
+  assert.ok(avant.length > 0,
+    'aucun commentaire ne précède la branche de repli : celui qui écrit son parcours n\'a rien qui l\'avertisse');
+
+  const bloc = avant.join('\n');
+  assert.match(bloc, /N'EST PAS L'ENDROIT/,
+    'l\'avertissement ne dit plus que ce bloc n\'est pas l\'endroit où écrire le parcours');
+  assert.match(bloc, /anchorAfterAuth/,
+    'l\'avertissement ne nomme plus la fonction qui décide : le lecteur ne peut pas le vérifier');
+  assert.match(bloc, /0 failures|même vert/,
+    'l\'avertissement ne dit plus ce que ça COÛTE — un bloc sauté qui rend un vert complet');
+});
