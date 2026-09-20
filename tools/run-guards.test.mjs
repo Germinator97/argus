@@ -17807,3 +17807,47 @@ test('le parcours critique LIVRÉ avertit là où le corps s\'écrit (542)', () 
   assert.match(bloc, /même vert/,
     'l\'avertissement ne dit plus que ce vert-là est indiscernable d\'un vrai');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 543 · 544 — Deux défauts rendus par une passe iOS sur un projet déjà passé
+// en Android. Le premier prescrit un geste qui casserait l'autre plateforme ;
+// le second sort une page dont quatre variables CSS ne sont définies nulle part.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('un projet à deux plateformes ne conclut pas « périmé » depuis une seule (543)', async () => {
+  const { peutConclurePerime } = await import(join(SCAFFOLD, 'scripts/argus/report.mjs'));
+  const deux = { app: { androidPackage: 'com.exemple.app', iosBundleId: 'com.exemple.app' } };
+  assert.equal(peutConclurePerime({ ...deux, platforms: ['ios'] }), false,
+    'un run iOS conclut « périmé » sur un projet qui déclare aussi Android : suivre la prescription casserait le run Android suivant');
+  assert.equal(peutConclurePerime({ ...deux, platforms: ['android'] }), false,
+    'symétrique manquant : le défaut ne vaut pas que dans un sens');
+  // ⚠️ L'AUTRE MOITIÉ — sans elle, un remède qui se tairait TOUJOURS passerait.
+  assert.equal(peutConclurePerime({ ...deux, platforms: ['android', 'ios'] }), true,
+    'une passe qui juge les deux plateformes ne dit plus rien : l\'avertissement périmé a disparu pour tout le monde');
+  assert.equal(peutConclurePerime({ app: { androidPackage: 'com.exemple.app', iosBundleId: '' }, platforms: ['android'] }), true,
+    'un projet MONO-plateforme perd l\'avertissement, qui y est pourtant toujours juste');
+});
+
+test('la page publiée définit chaque variable CSS qu\'elle emploie (544)', async () => {
+  const { renderArtifact } = await import(join(SCAFFOLD, 'scripts/argus/report.mjs'));
+  // On mesure ce qui SORT, pas le gabarit : deux langages se disputent ces
+  // caractères, et la sortie peut être fausse quand la source se lit bien.
+  const record = {
+    at: '2026-09-20T18:00:00Z', platform: 'ios', gate: 'pass',
+    counts: { critical: 0, high: 0, medium: 0, low: 0 }, dimensions: [], findings: [],
+  };
+  const html = renderArtifact({
+    record, historique: [record],
+    run: { platform: 'ios', appId: 'com.exemple.app', devices: [] },
+    counts: { critical: 0, major: 0, minor: 0, info: 0 }, gate: 'pass',
+    parts: [], findings: [], coverage: {}, perf: {}, generatedAt: record.at,
+  });
+  const definies = new Set([...html.matchAll(/(--[a-zA-Z0-9_-]+)\s*:/g)].map((m) => m[1]));
+  const employees = new Set([...html.matchAll(/var\((--[a-zA-Z0-9_-]+)/g)].map((m) => m[1]));
+  // Le garde doit savoir VOIR avant de dire qu'il n'a rien vu.
+  assert.ok(definies.size > 0 && employees.size > 0,
+    `la page ne porte plus de variables CSS reconnaissables (${definies.size} définies, ${employees.size} employées) : ce garde ne mesure plus rien`);
+  const manquantes = [...employees].filter((v) => !definies.has(v)).sort();
+  assert.deepEqual(manquantes, [],
+    `la page publiée emploie des variables CSS que son :root ne définit pas — le navigateur retombe sur ses valeurs par défaut, en silence : ${manquantes.join(', ')}`);
+});
