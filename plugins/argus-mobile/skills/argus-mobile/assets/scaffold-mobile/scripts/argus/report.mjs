@@ -804,15 +804,15 @@ function embarqueHistorique(records) {
 }
 
 const STYLE_ONGLETS = `<style>
-.onglets{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;border-bottom:1px solid var(--bord);padding-bottom:0}
+.onglets{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px;border-bottom:1px solid var(--line);padding-bottom:0}
 .onglets button{font:inherit;font-size:13px;padding:8px 14px;border:1px solid transparent;border-bottom:none;
-  border-radius:6px 6px 0 0;background:none;color:var(--doux);cursor:pointer;margin-bottom:-1px}
-.onglets button:hover{color:var(--texte)}
-.onglets button[aria-selected=true]{background:var(--carte);border-color:var(--bord);color:var(--texte);font-weight:600}
+  border-radius:6px 6px 0 0;background:none;color:var(--muted);cursor:pointer;margin-bottom:-1px}
+.onglets button:hover{color:var(--fg)}
+.onglets button[aria-selected=true]{background:var(--card);border-color:var(--line);color:var(--fg);font-weight:600}
 .onglets .pastille{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
 .pastille.pass{background:#16a34a}.pastille.warn{background:#d97706}.pastille.fail{background:#dc2626}
-.passe-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--doux);margin:0 0 16px}
-.sans-preuve{font-size:13px;color:var(--doux);border-left:3px solid var(--bord);padding:8px 12px;margin:16px 0}
+.passe-meta{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:0 0 16px}
+.sans-preuve{font-size:13px;color:var(--muted);border-left:3px solid var(--line);padding:8px 12px;margin:16px 0}
 </style>`;
 
 /**
@@ -846,6 +846,27 @@ function panneauPasse(r, i) {
     Un seul run porte ses preuves — le courant — parce qu'elles pèsent à elles seules plusieurs
     centaines de kilo-octets et que la page est plafonnée à 16 Mo.</p>
 </div></section>`;
+}
+
+/**
+ * Ce run peut-il conclure qu'un acquittement est PÉRIMÉ ?
+ *
+ * Non quand le projet déclare deux applications (Android ET iOS) et que la
+ * passe n'en teste qu'une : le finding acquitté vit peut-être dans ce que cette
+ * passe ne juge pas. Mesuré sur un run iOS — « PÉRIMÉ : QAM-SEC-BACKUP »
+ * imprimé pendant que le même rapport écrivait « non jugé — le manifeste
+ * Android ». Suivre la prescription aurait cassé le run Android suivant.
+ *
+ * C'est exactement le défaut que le bloc `acquitter` ferme entre DIMENSIONS,
+ * et qui n'avait pas traversé jusqu'aux PLATEFORMES.
+ * @param {any} config la configuration résolue
+ * @returns {boolean}
+ */
+export function peutConclurePerime(config) {
+  const declarees = [config?.app?.androidPackage, config?.app?.iosBundleId]
+    .filter((v) => String(v ?? '').trim() !== '').length;
+  const testees = (config?.platforms ?? []).length;
+  return declarees <= 1 || testees >= declarees;
 }
 
 /**
@@ -1046,10 +1067,15 @@ function main() {
     warn(`acquittement IGNORÉ, forme invalide — ${quoi}. Attendu : « - {id: QAM-…, why: pourquoi} ».`);
     warn('  Tel quel il ne compte pas : le finding reste ouvert alors que tu le crois acquitté.');
   }
-  if (toutesLues) {
+  if (toutesLues && peutConclurePerime(config)) {
     for (const id of perimes) {
       warn(`acquittement PÉRIMÉ : « ${id} » ne correspond à aucun finding de ce run — retire-le de security.acknowledged.`);
     }
+  } else if (toutesLues && perimes.length) {
+    warn(`${perimes.length} acquittement(s) sans finding sur cette plateforme — NE LES RETIRE PAS.`);
+    warn('  Ce projet déclare deux plateformes et ce run n\'en juge qu\'une : le finding acquitté');
+    warn('  vit peut-être dans ce que cette passe ne mesure pas (le manifeste Android depuis iOS,');
+    warn('  typiquement). Le retirer rendrait le finding non acquitté au prochain run de l\'autre.');
   } else if (perimes.length) {
     warn(`${perimes.length} acquittement(s) sans finding, mais une dimension n'a pas tourné : rien n'est conclu.`);
   }
