@@ -11840,3 +11840,101 @@ sans le voir, et c'est la lecture des artefacts qui l'a trouvé. Un run qui ne
 rend rien dans son compte rendu n'ouvre donc pas la sortie à lui seul : c'est
 l'artefact qui décide.
 
+## Rendu par le run 96 — test de sortie déclaré, terrain 2, iOS — 20/09/2026
+
+Prompt **identique au `shasum` près** aux runs 77, 85 et 90 (`b7a57a0a…`). Gate
+`fail` (un `major` de l'application), **7 écrans déclarés = ancrés = visités**,
+`notConfigured []`, 105 dettes, ~15 min de device sur 60. Le critère de sortie
+avait été écrit et commité AVANT le lancement.
+
+### ✅ Ce que la passe confirme, lu sur les artefacts
+
+- 🔴 **Le 536, fermé le matin même, a servi le jour même.** Les deux comptes
+  DIVERGENT sur ce run — `report.json → summary.findings` porte `major: 0`,
+  `summary.json → counts` porte `major: 1` et le gate vaut `fail`. Un lecteur du
+  premier aurait conclu « aucun major » sur un run rouge ; `summary.measures` l'en
+  avertit désormais. *Le correctif a rencontré son cas en moins de quatre heures.*
+- ✅ **Le 522** : `absorbed: false` sur 7 flows portant 7 087 à 7 144 ms
+  d'attente — ce n'est pas une contradiction mais la décision de se taire sans
+  plancher de marque, et `QAM-START-NONJUGEABLE` prend le relais.
+- ✅ **Le garde de police a nommé sa cause** : « le thème demande
+  `packages/<paquet>/<Famille>`, qu'argusFonts ne charge PAS ». 163 échecs
+  d'étage 1 ramenés à 104 par cette seule phrase.
+- ✅ **Le 508** : Sentry prouvé inerte par EXÉCUTION, double condition ; Firebase
+  inscrit dans `telemetry.leftOpen` et publié.
+- ⚠️ Workflow GitHub sur projet GitLab : **10ᵉ relais consécutif** (521).
+
+### 538. Le filtre de dette triait sur la FORME, que le contenu imite
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par le run 96, fermé le jour même.
+
+`make argus-debts-write` a inscrit **2 clés qui étaient du contenu
+d'application** : « Agence CGRAE Plateau », « Rechercher un nom ou un numéro ».
+
+Le filtre cherchait toute ligne quotée suivie d'une virgule. Or le matcher Dart
+formate sa liste `Actual:` **exactement ainsi** — une chaîne par ligne, quotée,
+indentée, suivie d'une virgule :
+
+    Expected: empty
+      Actual: [
+                'Agence CGRAE Plateau',        ← du CONTENU
+                'Rechercher un nom ou un numéro',
+              ]
+    …
+    inscris-le TEL QUEL dans test/argus/known_issues.dart :
+
+          'orders-filled · compact · aucun texte tronqué',    ← une CLÉ
+
+Les deux formes sont **typographiquement identiques**. Aucun motif ne les sépare,
+si dur soit-il : ce qui les distingue est la POSITION, pas la forme.
+
+#### 🔴 Ce que ça coûtait n'était pas l'erreur, mais sa suite
+
+Le garde des clés orphelines les attrape — il a fait son travail. Mais son
+message disait « Colle la clé donnée par le message d'échec » et **ne nommait pas
+`argus-debts-forget`**, qui existe pourtant. L'agent a donc ouvert
+`known_issues.dart` à la main, c'est-à-dire le geste que ce même harnais interdit
+en capitales, vingt lignes plus loin, parce qu'il a détruit trois fichiers.
+
+*Un message qui signale un problème sans nommer le geste outillé qui le répare
+fabrique lui-même le contournement.* C'est la nature 3 du critère de sortie — un
+message qui envoie défaire ce qui marche — et c'est elle qui ferme la sortie.
+
+#### 🔴 ET J'AI CORRIGÉ LE MAUVAIS FICHIER, SUR LA FOI DU RAPPORT
+
+Le compte rendu disait « c'est un défaut du CADRE (`debts.mjs`) : sa dérivation
+prend tout littéral entre apostrophes du journal ». J'ai reproduit le symptôme —
+`clesDe` prend bien le contenu — et j'ai corrigé `clesDe`. **Trois gardes du 526
+sont devenus rouges, et ils avaient raison** : `debts --write` ne reçoit jamais
+le journal brut. Il reçoit la sortie de `argus-debts`, **déjà filtrée par le
+Makefile**. Le motif trop large vivait dans un `grep -oE` de la recette, pas dans
+le moteur.
+
+*Le symptôme d'un rapport est presque toujours juste — il a été observé. Son
+remède désigne le fichier que son auteur regardait.* Correctif défait, écrit au
+bon endroit : un `awk` qui exige l'invitation avant de retenir une ligne.
+
+#### Le remède a deux moitiés, et aucune ne remplace l'autre
+
+1. **Le filtre exige le CONTEXTE** : la clé est la première ligne quotée qui suit
+   l'invitation à l'inscrire — invitation reconnue par le nom du fichier de
+   dette, donc par une valeur que le harnais écrit déjà.
+2. **Le garde des orphelines NOMME `argus-debts-forget`**, dérivé du Makefile et
+   non recopié : si la cible est renommée, le garde tombe au lieu de prescrire un
+   geste mort.
+
+#### Ce que les gardes exercent
+
+Ils **exécutent** le filtre livré au lieu de lire son texte — un motif qu'on
+relit peut être juste et ne rien gouverner. Trois sens : la ligne que le harnais
+émet passe ; le bruit ne passe pas, même précédé de l'invitation ; et la forme
+exacte d'une clé **hors contexte** est écartée, ce dernier cas étant le défaut
+lui-même.
+
+📌 **Quatre montages du 526 et du M5 ont dû devenir fidèles.** Ils fabriquaient un
+faux `flutter` qui imprimait des clés NUES — une sortie que `flutter test` ne
+produit jamais. Tant que le filtre triait sur la forme, l'écart ne se voyait pas ;
+il a rougi d'un coup. *Ils prouvaient la logique de la cible, jamais sa rencontre
+avec le vrai journal.* L'invitation qu'ils émettent est maintenant dérivée du
+harnais livré.
+
