@@ -1540,6 +1540,19 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 548 · le contrôle de police refuse de conclure ───────────────────────
+    # La clause de non-conclusion PART : le contrôle recommence à accuser un
+    # projet qui embarque ses polices en assets — et ce contrôle-là commande
+    # tous les autres gardes de son fichier.
+    ("layout", "548 · le contrôle de police recommence à accuser",
+     "    if (!demandees.any(auBundle.contains) && fichiers.isNotEmpty) {",
+     "    if (false) {"),
+    # Et la seconde source disparaît du harnais : « aucune famille enregistrée »
+    # redevient indiscernable de « pas de police du tout ».
+    ("harness", "548 bis · la seconde source de polices disparaît",
+     "List<String> argusBundledFontFiles() {",
+     "List<String> argusBundledFontFilesRetiree() {"),
+
     # ── 546 · la déclaration par DOSSIER est un câblage ──────────────────────
     # Le contrôle redevient aveugle au dossier : neuf `major` faux reviennent sur
     # un projet dont les polices sont bel et bien dans le paquet.
