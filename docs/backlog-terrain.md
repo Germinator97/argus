@@ -12078,3 +12078,99 @@ plus étroit ; il est simplement débarrassé de ce qu'un backend ajoute.
 a chuté d'un facteur dix depuis les vagues du run 45 (16 à 21 points, contre 1 à
 3), mais il n'a jamais atteint zéro. *Ce run-ci mesure s'il y arrive.*
 
+## Rendu par le run 97 — test de sortie déclaré, terrain 1, Android — 20/09/2026
+
+Prompt **identique au `shasum` près** aux runs 72, 76, 84, 86, 87 et 91
+(`fbc0fceb…`). Gate `fail` (8 `major`, tous de l'application), **11 écrans
+déclarés = ancrés = visités**, `notConfigured []`, 49 dettes, ~16 min de device
+sur 60. Critère de sortie commité AVANT le lancement.
+
+### 🔴 Le 539 confirmé en TRENTE-QUATRE MINUTES
+
+Fermé à 13 h 30, le run lancé à 14 h 04 : l'agent l'a appliqué sur un **autre
+terrain**, pour un **autre geste** (« Effacer mes données », qui vide la base
+sans sauvegarde), avec **les deux moitiés** — l'opt-in, et la branche qui DIT
+l'arrêt. Son commentaire reprend jusqu'à la formulation : *« le défaut est le
+SÛR : il ne se joue pas parce qu'on a lancé le flow, il exige qu'on le
+demande »*. Et les 169 autres lignes du parcours restent jouées à chaque run,
+ce qui est exactement le grain que le point avait ajouté.
+
+*La confirmation la plus rapide du chantier.*
+
+### ✅ Le reste, lu sur les artefacts
+
+- **536, troisième fois** : `summary.measures` présent, et les deux comptes
+  divergent encore (`major: 1` côté flows, `major: 8` agrégé).
+- **535** : le témoin d'instrument joué avant le premier chiffre.
+- **531** : `systemAlerts: never` déclaré, justifié par une mesure des DEUX côtés.
+- **508** : second canal trouvé seul, laissé ouvert, inscrit, publié.
+- Sentry prouvé neutralisé sur l'AOT release dans les **trois encodages**, avec
+  une contre-épreuve **accentuée** (0 en utf-8, 1 en latin-1) — l'instrument
+  prouvé avant qu'on lise son verdict.
+- ⚠️ Workflow GitHub sur projet GitLab : **11ᵉ relais** (521).
+
+### 540. `settings get` rend la chaîne « null », pas une chaîne vide
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par le run 97, fermé le jour même.
+
+Le rapport publiait *« or l'appareil est en « null » »*, puis prescrivait de
+régler cette locale.
+
+**REPRODUIT** : `adb shell settings get system system_locales` ne rend pas une
+chaîne vide quand le réglage n'existe pas — il rend la chaîne littérale
+**`"null"`**, longue de quatre caractères, donc **vraie** en JavaScript.
+
+    "null"              → « l'appareil est en « null » »     ← ce qui arrivait
+    ""                  → « n'a pas pu être lue »            ← la branche honnête
+    "Setting not found" → « l'appareil est en « … » »
+
+#### 🔴 Les deux branches honnêtes existaient, et étaient INATTEIGNABLES
+
+C'est ce qui rend ce point instructif. `localeWarnings` distingue bien le cas
+illisible ; l'identité du device écrit `locale || ''`, qui prévoit la même
+chose. **Les deux sont justes.** La valeur réelle ne les visitait simplement
+jamais. *Le remède était écrit, le chemin n'y menait pas.*
+
+#### Le site le plus grave n'est pas celui qui affiche
+
+`.maestro/_baselines/<device>/.argus-device` **se commite**, et figeait :
+
+    { "model": "…", "os": "android-36", "locale": "null", "source": "mesuré" }
+
+Ce fichier existe pour dire qu'une référence visuelle est née sous un autre
+système. Deux appareils dont la locale est illisible y portent **la même
+valeur** et passent donc pour identiques — un faux vert, figé dans le dépôt du
+projet, sous la mention « mesuré ». *Le site qui parle n'est pas toujours celui
+qui coûte.*
+
+#### Le remède valide la FORME, et il est posé au point de LECTURE
+
+Une liste de valeurs à rejeter ne connaît que ce qu'on y a mis, et `settings
+get` n'est pas seul à répondre en prose. `localeLue` n'accepte donc que ce qui a
+la forme d'une locale — `xx`, `xx-YY`, `xx_YY`, et leurs listes — et rend `null`
+pour tout le reste. Elle enveloppe **la lecture**, pas les consommateurs : une
+normalisation posée en aval laisse la valeur brute voyager, et le prochain
+consommateur la reprendra telle quelle.
+
+📌 **Les trois échelles d'animation lisent la même commande et n'ont PAS été
+touchées** : mesurées, elles rendent `1.0`. Le motif les rapportait, elles ne
+présentent pas le phénomène. *Un site rapporté par un motif n'est pas un site
+atteint par le défaut.*
+
+#### ⚠️ L'agent avait le symptôme juste et l'explication fausse
+
+Il conclut que l'AVD est une image dont la locale serait « immuable ». Mesuré :
+`setprop` échoue bien (build `-user`), mais le remède ne prescrit pas `setprop`
+— il dit de régler la locale, ce que l'interface permet. *Le symptôme d'un
+rapport a été observé ; son explication est une hypothèse.*
+
+#### Le garde m'a repris deux fois
+
+Il **appelle** la normalisation plutôt que de la relire, et vérifie le
+**câblage** des deux lectures. En l'écrivant : il a d'abord exigé la
+normalisation sur la même LIGNE que la lecture — tort sur la forme, raison sur
+le fond, puisque le remède était alors posé en aval ; puis il s'est **accusé
+lui-même**, le dartdoc de `localeLue` citant `system_locales` en prose. Il vise
+désormais les appels (`'system_locales'` entre quotes) et borne par
+l'instruction.
+
