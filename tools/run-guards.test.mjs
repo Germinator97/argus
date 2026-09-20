@@ -17881,12 +17881,18 @@ test('le harnais CAPTURE le widget fautif au lieu de l\'annoncer (545)', () => {
     'le harnais n\'installe plus de gestionnaire : le coupable ne peut plus être capté');
   assert.match(h, /precedent\?\.call\(details\)/,
     'le gestionnaire du binding n\'est plus relayé : takeException() ne verrait plus rien et tous les gardes de disposition passeraient à vide');
+  // ⚠️ SA LIMITE, ÉCRITE : ce garde lit du TEXTE, donc il ne voit pas une valeur
+  // NEUTRALISÉE — `if (false) precedent?.call(details);` le laisse vert. La
+  // propriété réelle (« le binding reçoit toujours les détails ») ne s'exerce
+  // qu'en Dart, que cette suite ne peut pas lancer. La mutation qui le prouve
+  // RETIRE donc la ligne, ce qui est la forme qu'a l'oubli dans la vraie vie.
   assert.match(h, /addTearDown\(\(\) => FlutterError\.onError = precedent\)/,
     'le gestionnaire n\'est plus restauré : il fuirait d\'un test au suivant');
   // ⚠️ La chaîne de création, pas le nom nu : `debugTransformDebugCreator` rend
   // « Column », qui ne désigne rien dans une application qui en compte cent.
-  assert.match(h, /debugGetCreatorChain/,
-    'le harnais est revenu au nom nu du widget : « Column » ne désigne aucun fichier');
+  assert.match(h, /v\.element\.debugGetCreatorChain\(/,
+    'le harnais est revenu au nom nu du widget : « Column » ne désigne aucun fichier. '
+    + '⚠️ Ancré sur l\'USAGE : le commentaire qui explique ce choix nomme la méthode, et suffisait à satisfaire un motif écrit sur le nom nu.');
 });
 
 // 📌 Le message lui-même est gardé par « le message de débordement n'annonce

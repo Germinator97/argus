@@ -1545,8 +1545,8 @@ MUTATIONS = [
     # ne rend plus rien et TOUS les gardes de disposition passent à vide — le
     # défaut le plus cher de la famille, puisqu'il rend la suite verte.
     ("harness", "545 · le harnais ne relaie plus le gestionnaire du binding",
-     "\n    precedent?.call(details);",
-     "\n    if (false) precedent?.call(details);"),
+     "\n    precedent?.call(details);\n",
+     "\n"),
     # Et le coupable redevient un NOM NU : « Column », que l'application porte
     # cinquante fois — donc un renseignement qui ne désigne aucun fichier.
     ("harness", "545 bis · le coupable redevient un nom nu",
