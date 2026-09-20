@@ -12175,3 +12175,62 @@ lui-même**, le dartdoc de `localeLue` citant `system_locales` en prose. Il vise
 désormais les appels (`'system_locales'` entre quotes) et borne par
 l'instruction.
 
+### 541. La liste des noms interdits est tenue à la main, donc elle vieillit
+
+**Ouvert le 20/09/2026 · CLOS** — trouvé en préparant le premier `git push`,
+fermé le jour même.
+
+Le 20/09, en rédigeant un compte rendu de run, j'ai recopié la phrase d'un garde
+qui nommait le **paquet partagé** et la **famille de police** d'un projet sous
+contrat. La règle l'interdit en toutes lettres — « ni ses polices ». Personne ne
+l'a vu : *un compte rendu n'est jamais relu pour ça*. Découvert au balayage
+manuel fait juste avant de pousser, c'est-à-dire par chance, et à la dernière
+seconde où c'était encore gratuit.
+
+#### 🔴 Le garde existait. J'ai d'abord cru que non.
+
+Le **255** pose déjà deux contrôles, dont un « liste tenue HORS du dépôt » qui
+est exactement l'idée. *J'ai commencé par écrire un remède pour un trou qui
+n'était pas là* — troisième fois dans la journée, après le 536 et le 539.
+
+La vraie question n'était donc pas « pourquoi n'y a-t-il pas de garde » mais
+**« pourquoi celui-ci n'a-t-il rien vu »**. Mesuré :
+
+    la liste manuelle              5 termes
+    ce que les terrains déclarent  8 identifiants
+    combien des 8 y figurent       0
+
+*Une liste ne connaît que ce qu'on y a mis.* Elle ignorait la police et le
+paquet, parce que personne n'avait pensé à les y inscrire — et un nom de police
+n'a aucune forme reconnaissable, donc aucun motif ne pouvait les rattraper.
+
+#### ✅ Le remède DÉRIVE au lieu d'énumérer
+
+Un second contrôle lit les **fichiers de déclaration des terrains présents sur
+la machine** — `pubspec.yaml`, `build.gradle`, `Info.plist` — et en tire ce
+qu'ils s'appellent vraiment : nom de paquet, `applicationId`, bundle, **polices
+déclarées**, paquets voisins. Ce que le dépôt invente ne ressemble à rien de
+réel ; ce qu'il recopie se reconnaît à coup sûr.
+
+⚠️ **Il REFUSE de conclure sans terrain** (code 2). Un poste qui n'en a aucun
+rendrait « 0 fuite », c'est-à-dire un vert qui ne mesure rien.
+
+⚠️ **Et `artefact-confidentialite.mjs` ne convenait PAS**, mesuré plutôt que
+supposé : il détecte bundle ids, AVD, chemins et hôtes — donc **pas** cette
+fuite-là — et appliqué aux fichiers du dépôt il rend **53 signalements, tous des
+exemples fictifs**. Sa place est la page publiée, où tout identifiant est
+suspect ; ici les exemples inventés sont légitimes et nombreux.
+
+#### Le piège que la mesure a révélé : un nom de projet peut être un mot
+
+Le premier balayage a rendu **5 signalements, tous légitimes** — un terrain
+s'appelle du même mot que le `focus` du clavier. Le critère sépare donc par la
+**FORME**, jamais par une liste de mots courants qu'il faudrait tenir en deux
+langues : un identifiant distinctif porte un séparateur, une majuscule interne,
+ou assez de longueur. Les ambigus sont **rapportés à part, sans faire échouer** —
+les taire referait le trou, les compter rendrait l'outil inutilisable.
+
+📌 Les deux contrôles se complètent et ne se remplacent pas : la liste manuelle
+couvre ce qui ne se dérive d'aucun fichier, la dérivation couvre ce que personne
+n'a pensé à inscrire.
+
