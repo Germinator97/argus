@@ -582,11 +582,11 @@ MUTATIONS = [
     # sur le défaut d'origine ET sur le correctif qui « marche ». Interpoler
     # pour de bon doublerait ce que `Actual:` affiche déjà.
     ("layout", "le message de débordement réimprime le nom de la variable",
-     '                    "le widget fautif n\'est presque jamais celui de l\'écran.",',
-     '                    "le widget fautif n\'est presque jamais celui de l\'écran.\\n\\$thrown",'),
+     "                    'hauteur figée trois niveaux plus bas.',",
+     "                    'hauteur figée trois niveaux plus bas.\\n\\$thrown',"),
     ("layout", "le message double ce que `Actual:` affiche déjà",
-     '                    "le widget fautif n\'est presque jamais celui de l\'écran.",',
-     '                    "le widget fautif n\'est presque jamais celui de l\'écran.\\n$thrown",'),
+     "                    'hauteur figée trois niveaux plus bas.',",
+     "                    'hauteur figée trois niveaux plus bas.\\n$thrown',"),
     # ── Vingt-neuvième run — le premier terrain qui consomme une API ────────
     ("login", "le parcours d'authentification redevient propriété du CADRE",
      "# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.",
@@ -1540,6 +1540,24 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 545 · le message de débordement PORTE le coupable ────────────────────
+    # Le harnais cesse de relayer le gestionnaire du binding : `takeException()`
+    # ne rend plus rien et TOUS les gardes de disposition passent à vide — le
+    # défaut le plus cher de la famille, puisqu'il rend la suite verte.
+    ("harness", "545 · le harnais ne relaie plus le gestionnaire du binding",
+     "\n    precedent?.call(details);",
+     "\n    if (false) precedent?.call(details);"),
+    # Et le coupable redevient un NOM NU : « Column », que l'application porte
+    # cinquante fois — donc un renseignement qui ne désigne aucun fichier.
+    ("harness", "545 bis · le coupable redevient un nom nu",
+     "      return v.element.debugGetCreatorChain(8).replaceAll('\\n', ' ').trim();",
+     "      return v.element.widget.runtimeType.toString();"),
+    # Et le message cesse de le porter : il redevient le renvoi vers une ligne
+    # que sa propre sortie ne contient jamais.
+    ("layout", "545 ter · le message redevient un renvoi",
+     "'${argusDernierCoupable.isEmpty ? \"Flutter n'a nommé aucun widget fautif pour ce débordement.\" : \"Widget fautif : $argusDernierCoupable\"}\\n'",
+     "'Cherche « The relevant error-causing widget was » dans la sortie.\\n'"),
+
     # ── 543 · un run mono-plateforme ne conclut pas « périmé » ───────────────
     # La décision redevient inconditionnelle : le run iOS represcrit de retirer
     # un acquittement qui garde le manifeste Android, et casse le run suivant.

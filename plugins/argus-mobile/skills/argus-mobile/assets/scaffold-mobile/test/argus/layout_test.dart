@@ -19,8 +19,12 @@
 //
 // ⚠️ QUAND UN DÉBORDEMENT EST SIGNALÉ, LIS SON `creator`, PAS L'ÉCRAN.
 // `RenderFlex overflowed` nomme la page qu'on regarde ; le coupable est souvent
-// une carte à hauteur figée trois niveaux plus bas. La ligne à chercher dans la
-// sortie est « The relevant error-causing widget was ».
+// une carte à hauteur figée trois niveaux plus bas. Le message le DONNE :
+// « Widget fautif : Column ← Padding ← Center ← Semantics ← _EmptyState ».
+// Il a longtemps dit d'aller chercher « The relevant error-causing widget was »
+// dans la sortie — une ligne que cette sortie ne porte JAMAIS, parce que
+// `takeException()` ne rend que l'exception et que le binding consomme les
+// détails. Mesuré : 15 débordements, 15 renvois, zéro section de diagnostic.
 //
 // À brancher dans test/argus/harness.dart — rien à modifier dans ce fichier.
 
