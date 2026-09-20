@@ -10733,7 +10733,7 @@ test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
   // rien devoir aux commits. Sans elle, ouvrir un point rend le dépôt rouge en
   // permanence et le message envoie réparer ce qui n'est pas cassé.
   const backlog = '## Run 10 — x\n### 1-10. x\n### 11. le point du jour\n\n'
-    + '**Ouvert le 04/09/2026, sur une question.** rien n\'est clos ici.\n';
+    + '**Ouvert le 04/09/2026 · OUVERT** — sur une question, rien n\'est clos ici.\n';
   assert.equal(pointsOuvertsDu(backlog), 1, 'le marqueur d\'ouverture n\'est plus lu');
   assert.deepEqual(
     ecartsDe(pageFictive({ libre: 12 }), depotFictif({ backlog, sujets: ['docs: close 1-10'] })).length,
@@ -10743,7 +10743,7 @@ test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
   // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui garde la valeur du contrôle : une
   // clôture NON commitée doit toujours faire rougir. Un remède qui rendrait le
   // garde tolérant à tout aurait exactement l'air de celui-ci.
-  const sansMarqueur = backlog.replace('**Ouvert le 04/09/2026, sur une question.**', 'Corrigé.');
+  const sansMarqueur = backlog.replace('**Ouvert le 04/09/2026 · OUVERT**', 'Corrigé.');
   assert.equal(pointsOuvertsDu(sansMarqueur), 0, 'un texte sans marqueur ne compte aucun ouvert');
   assert.ok(
     ecartsDe(pageFictive({ libre: 12 }), depotFictif({ backlog: sansMarqueur, sujets: ['docs: close 1-10'] }))
@@ -10765,7 +10765,7 @@ test('un point OUVERT ne réclame pas de commit de clôture (373)', () => {
     'une mention en cours de ligne est comptée comme une ouverture');
   // Et l'autre moitié : sans elle, on ne saurait pas si ce montage sait compter
   // quoi que ce soit — un zéro rendu par un instrument mort a la même tête.
-  assert.equal(pointsOuvertsDu('### 7. Un point\n\n**Ouvert le 01/01/2026.** vraiment ouvert.\n'), 1,
+  assert.equal(pointsOuvertsDu('### 7. Un point\n\n**Ouvert le 01/01/2026 · OUVERT** — vraiment ouvert.\n'), 1,
     'un marqueur en DÉBUT de ligne, après un titre, doit compter — sans ce jumeau, '
     + 'le cas ci-dessus ne prouve rien');
 });
@@ -10805,6 +10805,44 @@ test('un backlog qui porte des points OUVERTS ne peut pas s\'annoncer vide (373)
     + 'Écris « N POINT(S) OUVERT(S) » en tête de « Ce qui reste »');
   assert.equal(Number(annonce[1]), ouverts,
     `la tête annonce ${annonce[1]} point(s) ouvert(s), le corps en porte ${ouverts}`);
+});
+
+test('chaque marqueur du backlog LIVRÉ porte son état, et un marqueur muet ARRÊTE (537)', () => {
+  // 🔴 POURQUOI CE GARDE EXISTE, et pourquoi il lit le fichier LIVRÉ. La consigne
+  // « un point qui reste OUVERT l'annonce » vit en tête du backlog depuis le 373.
+  // Un garde la vérifiait — sur une FIXTURE qui la portait — pendant que les NEUF
+  // marqueurs du fichier réel écrivaient autre chose : « Ouvert et fermé le … »,
+  // « Ouvert puis FERMÉ le … », « Ouvert par le run N le … ». Le motif strict n'a
+  // donc JAMAIS matché une seule ligne du dépôt, et `numerosOuvertsDu` rendait
+  // `[]` — un « aucun point ouvert » indiscernable d'un fichier sain. La consigne
+  // était juste, le garde était juste, la fixture était juste ; c'est leur
+  // RENCONTRE avec le fichier qui n'avait jamais eu lieu.
+  const backlog = readFileSync(join(RACINE, 'docs/backlog-terrain.md'), 'utf8');
+  const marqueurs = backlog.match(/^\*\*Ouverte?\b[^\n]*/gm) ?? [];
+  // ⚠️ D'ABORD que le motif TROUVE : un garde qui boucle sur zéro marqueur est
+  // vert en ne vérifiant rien, ce qui est exactement le défaut qu'il ferme.
+  assert.ok(marqueurs.length >= 9,
+    `le backlog doit porter ses marqueurs de point, ${marqueurs.length} lu(s) — `
+    + 'si la forme a changé, c\'est ce motif qu\'il faut mettre à jour');
+
+  // Le fichier livré ne fait pas lever : tous ses marqueurs portent leur état.
+  assert.doesNotThrow(() => numerosOuvertsDu(backlog),
+    'un marqueur du backlog ne porte pas son état — le message de la levée dit lequel');
+
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui prouve que le garde sait dire non : une
+  // SEULE ligne remise à la forme d'avant doit arrêter le contrôle. Sans elle, un
+  // `doesNotThrow` est vert sur une fonction qui ne lève jamais.
+  const muet = backlog.replace(marqueurs[0], '**Ouvert et fermé le 18/09/2026.**');
+  assert.notEqual(muet, backlog, 'la mutation du garde n\'a rien muté');
+  assert.throws(() => numerosOuvertsDu(muet), /marqueur de point non reconnu/,
+    'un marqueur sans état passe : il redevient indiscernable d\'un point clos');
+
+  // Et l'état est LU, pas seulement reconnu : passer l'unique ouvert à CLOS doit
+  // vider la liste — sinon la fonction compte des marqueurs, pas des ouverts.
+  const ouverts = numerosOuvertsDu(backlog);
+  assert.ok(ouverts.length >= 1, 'ce garde a besoin d\'au moins un point ouvert pour mesurer');
+  const clos = backlog.replace(/^(\*\*Ouvert le \d{2}\/\d{2}\/\d{4} · )OUVERT\*\*/gm, '$1CLOS**');
+  assert.deepEqual(numerosOuvertsDu(clos), [], 'l\'état n\'est pas lu : tout marqueur compte comme ouvert');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -11022,7 +11060,7 @@ test('un point ouvert ANTÉRIEUR à la dernière clôture ne décale rien (373)'
   // ouvert, puis 374-379 clos — la soustraction invente un écart d'un et réclame
   // une clôture déjà commitée. Seuls les ouverts POSTÉRIEURS expliquent un retard.
   const backlog = '## Run 10 — x\n### 11. le point resté ouvert\n\n'
-    + '**Ouvert le 04/09/2026, sur une question.** rien n\'est clos ici.\n\n'
+    + '**Ouvert le 04/09/2026 · OUVERT** — sur une question, rien n\'est clos ici.\n\n'
     + '### 12-15. fermés depuis\n';
   assert.deepEqual(numerosOuvertsDu(backlog), [11], 'le numéro du point ouvert n\'est plus lu');
 
@@ -11033,7 +11071,7 @@ test('un point ouvert ANTÉRIEUR à la dernière clôture ne décale rien (373)'
 
   // ⚠️ L'AUTRE MOITIÉ : un ouvert POSTÉRIEUR doit toujours expliquer le retard.
   const apres = '## Run 10 — x\n### 12-15. fermés\n\n### 16. le point du jour\n\n'
-    + '**Ouvert le 04/09/2026, sur une question.** ouvert.\n';
+    + '**Ouvert le 04/09/2026 · OUVERT** — ouvert.\n';
   assert.deepEqual(numerosOuvertsDu(apres), [16]);
   assert.deepEqual(
     ecartsDe(pageFictive({ libre: 17 }), depotFictif({ backlog: apres, sujets: ['docs: close 12-15'] }))
