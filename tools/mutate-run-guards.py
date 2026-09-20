@@ -49,6 +49,10 @@ CIBLES = {
     # STRUCTURE de branches — quelle condition décide quoi —, donc rien d'autre
     # ne peut dire s'ils gardent encore.
     "goto": FLOWS / "_subflows/goto.yaml",
+    # Depuis le run 98 : le PARCOURS CRITIQUE. Son garde ne lit pas un
+    # comportement mais une PROXIMITÉ — l'avertissement doit rester collé à la
+    # branche de repli où l'on croit écrire son corps.
+    "journey": FLOWS / "journey-critical.yaml",
     # Depuis le run 23 : le GABARIT DE PROMPT. Son bloc de cadrage doit porter ce
     # que la méthodologie exige de trancher — un écart entre deux textes n'a
     # aucun comportement à casser, donc rien d'autre ne peut le voir.
@@ -1551,13 +1555,13 @@ MUTATIONS = [
      "  return String(anchors?.success || home?.anchor || 'home');"),
     # L'avertissement cesse de citer la MESURE : il reste une recommandation de
     # style, et personne ne sait plus ce qu'un bloc sauté coûte vraiment.
-    ("skill", "542 ter · l'avertissement ne cite plus « 0 failures »",
+    ("journey", "542 ter · l'avertissement ne cite plus « 0 failures »",
      "et le flow rend « 0 failures »,",
      "et le flow passe,"),
     # ⚠️ Et la PROXIMITÉ, qui est le vrai sujet : une ligne vide de plus, et le
     # bloc d'avertissement n'est plus contigu à la branche qu'il protège. Rien
     # ne casse, le texte est intact — il a juste cessé d'être là où on lit.
-    ("skill", "542 quater · l'avertissement se décolle de la branche",
+    ("journey", "542 quater · l'avertissement se décolle de la branche",
      "# condition est `!== ''`.\n- runFlow:",
      "# condition est `!== ''`.\n\n- runFlow:"),
 
