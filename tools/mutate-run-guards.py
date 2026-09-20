@@ -133,6 +133,9 @@ CIBLES = {
     # se contredire sans que rien ne lève, et c'est arrivé pendant une soirée.
     "backlog": ROOT / "docs/backlog-terrain.md",
     "methodo": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md",
+    # 536 — la page du FORMAT. Sa cible manquait, donc rien ne pouvait dire si
+    # le garde qui exige qu'elle décrive le fichier d'agrégé garde encore.
+    "reportformat": ROOT / "plugins/argus-mobile/skills/argus-mobile/references/report-format-mobile.md",
     # Et l'autre moitié de la même parité : le skill WEB est la SOURCE dont le
     # garde dérive les conditions. Muter le mobile prouve qu'il voit un manque ;
     # muter le web prouve qu'il REFUSE DE CONCLURE quand il ne lit plus rien —
@@ -1527,6 +1530,23 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 536 · le compte des flows porte son périmètre ────────────────────
+    # La donnée cesse de dire ce qu'elle mesure : le compte des flows redevient
+    # indiscernable de l'agrégé, qui est exactement ce qui a fait publier
+    # « info: 1 » quand la page affichait « info (2) ».
+    ("run", "536 · le compte des flows ne dit plus son périmètre",
+     "\n      measures: 'les findings des FLOWS seuls",
+     "\n      measuresRetire: 'les findings des FLOWS seuls"),
+    # Elle avertit encore, mais sans dire OÙ lire le bon chiffre — un avertissement
+    # qui ne nomme pas son remplaçant laisse le lecteur exactement où il était.
+    ("run", "536 bis · la mise en garde ne nomme plus le fichier d'agrégé",
+     "+ 'de summary.json, qui agrège toutes les dimensions",
+     "+ 'de l'autre fichier, qui agrège toutes les dimensions"),
+    # Et la doc cesse de dire QUI porte l'agrégé : elle nomme le fichier sans
+    # nommer sa clé, donc elle envoie lire un fichier sans dire quoi y lire.
+    ("reportformat", "536 ter · la doc nomme le fichier d'agrégé sans sa clé",
+     "vit dans **`summary.json`**, sous `counts`, et c'est lui",
+     "vit dans **`summary.json`**, et c'est lui"),
     ("artefact", "537 bis · l'état du marqueur n'est plus lu",
      "      if (lu[1] !== 'OUVERT') return null;",
      "      if (lu[1] !== 'JAMAIS') return null;"),
