@@ -2854,6 +2854,23 @@ async function main() {
     },
     summary: {
       flowsExecuted: bundles.length,
+      // ⚠️ CE COMPTE N'EST PAS CELUI DU RAPPORT, et les lire côte à côte sans le
+      // dire fait publier un chiffre faux. Ici on compte les findings des FLOWS,
+      // parce que ce fichier est écrit à la fin d'`argus-run`, quand `perf`,
+      // `a11y`, `sec` et `sca` n'ont pas encore tourné. Le total de TOUTES les
+      // dimensions vit dans `summary.json`, sous `counts` — c'est lui que la
+      // page publie, et c'est lui qu'il faut citer.
+      // 🔴 536 — DEUX LECTEURS INDÉPENDANTS S'Y SONT TROMPÉS LE MÊME JOUR. La
+      // structure est identique à celle de l'agrégé : cinq sévérités, mêmes
+      // noms, valeurs plausibles. Rien ne signale qu'on en lit une moitié, et
+      // les noms de fichiers sont croisés — `report.json` porte une clé
+      // `summary`, `summary.json` porte une clé `counts`. Un agent a publié
+      // « info: 1 » quand sa propre page affichait « info (2) ».
+      // 📌 Même remède que `startup.measures`, deux clés plus bas, sur un cas
+      // identique (« CE TEMPS N'EST PAS coldStartMs ») : la donnée porte son
+      // périmètre, au lieu d'être renommée ou expliquée ailleurs.
+      measures: 'les findings des FLOWS seuls — à ne pas confondre avec `counts` '
+        + 'de summary.json, qui agrège toutes les dimensions et que le rapport publie',
       findings: Object.fromEntries(['blocker', 'critical', 'major', 'minor', 'info'].map((s) => [s, findings.filter((f) => f.severity === s).length])),
     },
     findings,
