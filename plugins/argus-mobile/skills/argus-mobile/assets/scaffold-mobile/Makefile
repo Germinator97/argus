@@ -173,6 +173,19 @@ argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # supposition sur le format de `flutter test` : le garde du dépôt croise les
 # deux, pour qu'ils ne puissent pas diverger.
 argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'étage 1
+# 🔴 538 — LE FILTRE EXIGE LE CONTEXTE, PAS SEULEMENT LA FORME. Il cherchait
+# toute ligne quotée suivie d'une virgule. Or le matcher Dart formate sa liste
+# `Actual:` exactement ainsi, une chaîne par ligne : un échec de troncature y
+# déverse donc le CONTENU de l'application, et `--write` l'inscrivait comme
+# dette. Mesuré sur un run réel : 4 clés dérivées, dont 2 qui étaient des
+# libellés d'écran (« Agence CGRAE Plateau »).
+# Le harnais précède chaque clé de l'invitation à l'inscrire, qui nomme le
+# fichier de dette — c'est ce voisinage qu'on exige, et non un motif plus dur :
+# la forme ne distingue pas une clé d'un libellé, la POSITION si.
+# ⚠️ Ce que ça coûtait n'était pas l'erreur mais sa suite : le garde des clés
+# orphelines les attrapait sans nommer `argus-debts-forget`, donc on ouvrait
+# known_issues.dart à la main — le geste que ce Makefile interdit vingt lignes
+# plus bas, et qui a détruit trois fichiers.
 # ⚠️ LE REPLI ÉTAIT UNE BRANCHE MORTE. Le `|| echo` portait sur le DERNIER
 # élément du pipeline — un `sed`, qui rend 0 même sur une entrée vide — donc le
 # message ne s'affichait jamais. Une suite verte et une suite qui n'a pas tourné
@@ -180,7 +193,8 @@ argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'
 # phrase existe pour séparer. On capture, puis on décide.
 	@dettes="$$($(FLUTTER) test test/argus 2>&1 \
 	  | sed -e 's/\x1b\[[0-9;]*m//g' \
-	  | grep -oE "^ +'[^']+',$$" \
+	  | awk '/known_issues\.dart/ { f = 4; next } \
+	         f > 0 { f--; if ($$0 ~ /^ +\047[^\047]+\047,$$/) { print; f = 0 } }' \
 	  | sed -e 's/^ *//' \
 	  | sort -u \
 	  | sed -e 's/^/  /')"; \
