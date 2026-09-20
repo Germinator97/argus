@@ -1534,12 +1534,12 @@ MUTATIONS = [
     # Le filtre retombe sur la FORME seule — exactement ce qu'il était. Le
     # matcher Dart imprimant ses listes avec la même typographie qu'une clé, le
     # contenu de l'application redevient de la dette.
-    ("makefile", "538 \u00b7 le filtre de dette retrie sur la forme",
+    ("makefile", "538 · le filtre de dette retrie sur la forme",
      "\n\t  | awk '/known_issues",
      "\n\t  | grep -oE \"^ +'[^']+',$$\" # awk '/known_issues"),
     # Et le message cesse de nommer la cible qui RETIRE : on rouvre la porte de
-    # l'\u00e9dition \u00e0 la main, qui a d\u00e9truit trois fichiers.
-    ("anchorsdart", "538 bis \u00b7 le garde des orphelines ne nomme plus le geste outill\u00e9",
+    # l'édition à la main, qui a détruit trois fichiers.
+    ("anchorsdart", "538 bis · le garde des orphelines ne nomme plus le geste outillé",
      "      make argus-debts-forget KEY=",
      "      retire-la KEY="),
     # ── 536 · le compte des flows porte son périmètre ────────────────────
