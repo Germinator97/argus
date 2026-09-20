@@ -11329,7 +11329,12 @@ test('le skill dit quoi FAIRE d\'un parcours à usage unique, et pas seulement d
   const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
   const i = skill.indexOf('consomme-t-il quelque chose que le serveur ne rend pas');
   assert.ok(i !== -1, 'la question du cadrage a disparu : mets ce motif à jour');
-  const bloc = skill.slice(i, i + 3200);
+  // ⚠️ BORNÉ PAR LA STRUCTURE, plus par 3200 caractères (510). Le nombre a tenu
+  // quinze jours, puis le 539 a ajouté un quatrième point à cette liste — de la
+  // prose parfaitement légitime — et la leçon finale est passée hors fenêtre :
+  // le garde a rougi sur un SKILL sain, à un endroit qu'il ne surveillait pas.
+  // C'est le défaut du 510 vécu par un garde du 373.
+  const bloc = sectionDepuis(skill, i);
 
   // Les trois issues doivent être NOMMÉES — poser la question sans dire quoi
   // faire de la réponse laisse l'agent exactement où il était.
@@ -16029,11 +16034,16 @@ test('le relevé des fenêtres à longueur fixe ne croît pas en silence (510)',
     'aucune fenêtre à longueur fixe trouvée : le motif ne matche plus rien, et un '
     + 'zéro se lirait comme un dépôt assaini. Mets ce motif à jour avant de baisser le compte.');
 
-  // 📌 L'une des 38 est la contre-épreuve du garde voisin, qui DOIT fenêtrer par
+  // 📌 L'une des 37 est la contre-épreuve du garde voisin, qui DOIT fenêtrer par
   // un nombre puisque c'est ce qu'elle démontre. Elle est légitime, et la masquer
   // rendrait ce relevé faux : on la compte, et on écrit pourquoi.
-  assert.equal(fixes.length, 38,
-    `${fixes.length} fenêtre(s) à longueur fixe dans ce fichier, le relevé en fige 38.\n`
+  // 📉 38 → 37 le 20/09 : la fenêtre de 3200 caractères d'un garde du 373 est
+  // passée à `sectionDepuis`. Elle avait tenu quinze jours, puis le 539 a ajouté
+  // un point à la liste qu'elle lisait — de la prose légitime — et la phrase
+  // requise est sortie du cadre. Le garde a rougi sur un SKILL sain. *C'est
+  // exactement le défaut que ce relevé existe pour faire décroître.*
+  assert.equal(fixes.length, 37,
+    `${fixes.length} fenêtre(s) à longueur fixe dans ce fichier, le relevé en fige 37.\n`
     + '  · Tu en as CORRIGÉ une ? baisse le chiffre — c\'est le seul endroit qui compte le progrès.\n'
     + '  · Tu en AJOUTES une ? emploie `sectionDepuis(texte, i)`, qui borne par le titre suivant.\n'
     + '    Si la fenêtre porte du CODE et non de la prose, le nombre peut être juste :\n'
@@ -17534,4 +17544,66 @@ test('le garde des clés orphelines NOMME le geste outillé (538)', () => {
     `le message des clés orphelines ne nomme pas « ${cible[1]} » : il envoie donc éditer `
     + 'known_issues.dart à la main, c\'est-à-dire le geste que le harnais interdit en '
     + 'capitales — et c\'est exactement ce qui est arrivé au run 96');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 539 — Un geste sans retour se DÉCOUPE, et son opt-in porte le geste LUI-MÊME.
+// Le skill prescrivait déjà (373) de sortir un parcours à usage unique de la
+// suite ; il ne disait pas que l'irréversible tient presque toujours dans le
+// dernier pas, et que tout ce qui précède s'éprouve gratuitement. Ce garde lit
+// la STRUCTURE du bloc prescrit : un `when:` qui ne contiendrait pas le geste
+// se relit comme correct et ne protège rien.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le bloc prescrit met le geste sans retour SOUS son opt-in (539)', () => {
+  const skill = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+
+  const i = skill.indexOf('MAIS DÉCOUPE-LE');
+  assert.ok(i > 0, 'la prescription du découpage a disparu du SKILL : si elle a été '
+    + 'reformulée, mets ce motif à jour — sinon ce garde ne garde plus rien');
+  const section = sectionDepuis(skill, i);
+
+  // Le bloc exécutable, pas la prose qui l'entoure.
+  const bloc = /```yaml\n([\s\S]*?)```/.exec(section);
+  assert.ok(bloc, 'la prescription ne porte plus de bloc YAML : elle décrit le remède sans '
+    + 'le montrer, et un lecteur devra l\'inventer');
+  const lignes = bloc[1].split('\n').filter((l) => l.trim());
+
+  const iWhen = lignes.findIndex((l) => /^\s*when:/.test(l));
+  const iCmds = lignes.findIndex((l) => /^\s*commands:/.test(l));
+  const iGeste = lignes.findIndex((l) => /^\s*-\s*tapOn:/.test(l));
+  assert.ok(iWhen >= 0 && iCmds >= 0 && iGeste >= 0,
+    `le bloc ne porte plus les trois éléments (when ${iWhen}, commands ${iCmds}, geste ${iGeste})`);
+
+  // 🔴 LE CRITÈRE : le geste vit SOUS `commands:`, qui vit sous le même
+  // `runFlow` que `when:`. Un bloc où le geste suivrait le `when:` au lieu d'en
+  // dépendre se lit exactement pareil et ne protège rien.
+  const indent = (l) => l.length - l.trimStart().length;
+  assert.equal(indent(lignes[iWhen]), indent(lignes[iCmds]),
+    '`when:` et `commands:` ne sont plus frères : ils n\'appartiennent plus au même runFlow, '
+    + 'donc la condition ne gouverne plus le geste');
+  assert.ok(indent(lignes[iGeste]) > indent(lignes[iCmds]),
+    'le geste sans retour n\'est plus SOUS `commands:` — il s\'exécuterait quoi qu\'il arrive, '
+    + 'ce qui est exactement le défaut que ce bloc existe pour montrer comment éviter');
+  assert.ok(iGeste > iCmds && iCmds > iWhen,
+    'l\'ordre du bloc ne montre plus la dépendance : when → commands → geste');
+
+  // ⚠️ L'AUTRE MOITIÉ, et elle n'est pas déductible de la première : sans
+  // opt-in, le flow doit DIRE qu'il s'est arrêté. Un parcours qui saute sa
+  // dernière étape en silence rend le même vert que celui qui l'a jouée.
+  assert.match(section, /DIRE qu'il s'est arrêté/,
+    'la prescription ne demande plus au flow d\'annoncer son arrêt : deux verts redeviennent '
+    + 'indiscernables sur le seul geste qui ne se défait pas');
+
+  // Et la contre-épreuve du garde lui-même : sur un bloc où le geste est SORTI
+  // du runFlow, le critère doit refuser.
+  const faux = ['- runFlow:', '    when:', '      true: "${X === \'1\'}"', '    commands:',
+    '      - assertVisible: { id: rien }', '- tapOn: { id: le_geste_sans_retour }'];
+  const iw = faux.findIndex((l) => /^\s*when:/.test(l));
+  const ig = faux.findIndex((l) => /^\s*-\s*tapOn:/.test(l));
+  const ic = faux.findIndex((l) => /^\s*commands:/.test(l));
+  assert.ok(!(indent(faux[ig]) > indent(faux[ic])),
+    'le critère accepte un bloc où le geste est hors du runFlow : il ne mesure pas ce qu\'il croit');
+  assert.ok(iw >= 0 && ig >= 0, 'la contre-épreuve elle-même ne trouve plus ses repères');
 });
