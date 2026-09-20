@@ -12046,3 +12046,35 @@ l'exécuter, puisqu'administrer les données du terrain n'est pas son rôle ?
 Déclarer sans exécuter est exactement ce que fait déjà `telemetry.leftOpen`
 pour les canaux qu'on ne peut pas couper.
 
+## Le critère de sortie du run 97 — écrit AVANT de le lancer, 20/09/2026
+
+**Même critère qu'aux runs 90 et 96**, réappliqué et non réinventé. Le run 97
+(terrain 1, Android) confirme les 529 à 539. **On publie si les points qu'il rend
+ne sont d'AUCUNE de ces trois natures :**
+
+1. un **faux vert** — un verdict, un gate ou une dimension qui rassure sans
+   avoir mesuré ;
+2. une **perte de temps de device** — un geste livré qui attend sa borne, coupe
+   une passe, ou fait payer un flow pour rien ;
+3. un **message qui accuse à tort** — un échec, un finding ou un remède qui
+   désigne quelque chose de correct, ou qui envoie défaire ce qui marche.
+
+📌 **Contre-épreuve du seuil, posée d'avance** — appliqué aux trois derniers
+runs, il aurait **bloqué les trois** :
+
+| run | point | nature |
+|---|---|---|
+| 94 | **535** — un comptage rendant zéro sur l'échec de l'outil | faux vert |
+| 95 | **536** — deux comptes de findings indiscernables | faux vert : « info: 1 » publié quand la page affichait « info (2) » |
+| 96 | **538** — la dette dérivée du contenu de l'app | message qui envoie défaire : il faisait éditer à la main le fichier que le harnais interdit d'éditer à la main |
+
+⚠️ **Ce que ce run teste et que le 96 n'a pas pu tester** : le 96 portait sur un
+terrain **avec API**, celui-ci sur un projet **sans API ni authentification**.
+Les trois derniers constats coûteux venaient tous de mécanismes que ce terrain-ci
+exerce aussi — dette, comptes de findings, filtre — donc le périmètre n'est pas
+plus étroit ; il est simplement débarrassé de ce qu'un backend ajoute.
+
+📌 **Neuf runs d'affilée ont rendu un constat coûteux** (88 à 96). Le rendement
+a chuté d'un facteur dix depuis les vagues du run 45 (16 à 21 points, contre 1 à
+3), mais il n'a jamais atteint zéro. *Ce run-ci mesure s'il y arrive.*
+
