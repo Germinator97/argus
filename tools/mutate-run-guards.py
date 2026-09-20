@@ -1530,6 +1530,21 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 539 · un geste sans retour vit SOUS son opt-in ───────────────────
+    # Le geste sort du `runFlow` : le bloc se relit exactement pareil — `when:`
+    # est toujours là, l'opt-in toujours écrit — et le geste s'exécute quoi qu'il
+    # arrive. C'est le défaut que ce bloc existe pour montrer comment éviter.
+    # ⚠️ Ancrée sur le SAUT DE LIGNE qui précède : sans lui, un motif de neuf
+    # espaces matche aussi une ligne qui en porte plus, et la substitution frappe
+    # ailleurs qu'on croit.
+    ("skill", "539 · le geste sans retour sort de son opt-in",
+     "\n         - tapOn: { id: le_geste_sans_retour }",
+     "\n   - tapOn: { id: le_geste_sans_retour }"),
+    # Et l'exigence d'ANNONCER l'arrêt disparaît : deux verts redeviennent
+    # indiscernables sur le seul geste qui ne se défait pas.
+    ("skill", "539 bis · le flow n'a plus à dire qu'il s'est arrêté",
+     "le flow doit DIRE qu'il s'est arrêté",
+     "le flow peut s'arrêter sans rien dire"),
     # ── 538 · le filtre de dette exige le contexte ───────────────────────
     # Le filtre retombe sur la FORME seule — exactement ce qu'il était. Le
     # matcher Dart imprimant ses listes avec la même typographie qu'une clé, le
