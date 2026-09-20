@@ -12234,3 +12234,59 @@ les taire referait le trou, les compter rendrait l'outil inutilisable.
 couvre ce qui ne se dérive d'aucun fichier, la dérivation couvre ce que personne
 n'a pensé à inscrire.
 
+
+### 542. Le repli du parcours critique est une branche où l'on croit écrire
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par un run sur une application **sans
+authentification**, fermé le jour même.
+
+L'agent a écrit le corps du parcours critique dans la branche
+`ARGUS_ANCHOR_AFTER_AUTH === ''` de `journey-critical.yaml`, en raisonnant
+« pas d'authentification, donc la variable est vide ». Le runner l'y fait
+retomber sur l'**ancre d'accueil** (`anchorAfterAuth = anchors.success ||
+home.anchor || ''`), qui n'est jamais vide sur un projet instrumenté. Le bloc
+entier a donc été **sauté**, et le flow a rendu :
+
+    6 tests, 0 failures
+
+c'est-à-dire **le même vert que s'il avait tout joué**. Rien ne lève, rien ne
+manque dans le JUnit. Seule la ligne `coverage.notVisited` l'a dit, en listant
+les écrans que ce parcours est censé atteindre.
+
+#### 🔴 L'explication existait — posée hors du chemin
+
+`argus.mobile.yaml` la porte en toutes lettres, et depuis longtemps : « le
+runner fait retomber cette variable sur l'ancre d'accueil quand aucune ancre
+d'auth n'est déclarée ». Elle vit à côté de `auth.anchors` — donc là où l'on
+**configure** l'authentification, pas là où l'on **écrit** le parcours. Celui
+qui rédige son flow ouvre `journey-critical.yaml` et n'a aucune raison d'aller
+lire la section d'un mécanisme que son app n'a pas.
+
+*Un remède exact posé hors du chemin ne se distingue pas d'un remède absent.*
+
+#### ✅ Le remède va au point d'écriture, et le garde APPELLE
+
+L'avertissement est désormais dans `journey-critical.yaml`, immédiatement
+au-dessus de la branche de repli : elle n'est pas l'endroit où écrire, sa
+condition est fausse dès qu'une ancre d'accueil existe, et ce que ça coûte est
+nommé — « 0 failures », le vert complet.
+
+Trois gardes **appellent** `anchorAfterAuth` et lisent ce qui revient, plutôt
+que de lire le texte d'un fichier : un garde de texte ne verrait pas une branche
+devenue morte. Le quatrième lit le fichier livré, mais il **trouve d'abord** la
+branche — en l'assertant — puis remonte le bloc de commentaires **contigu** :
+borné par la structure, jamais par un nombre de lignes, qui ferait rougir un
+dépôt sain au premier paragraphe ajouté plus haut.
+
+⚠️ **Portée du remède : les installations NEUVES.** `journey-critical.yaml` est
+`ARGUS:OWNED` — l'installeur ne l'écrase jamais —, donc un projet déjà installé
+ne recevra pas l'avertissement. C'est le bon arbitrage (le fichier porte le
+parcours métier de quelqu'un), mais c'est un fait, pas une omission.
+
+#### Le piège que la passe a révélé sur moi
+
+J'ai commencé par **exporter** `anchorAfterAuth` pour que le garde puisse
+l'appeler. Elle l'était déjà, dans la liste d'exports de fin de fichier — `node`
+a rendu `Duplicate export`. *Quatrième fois de la journée qu'un remède est écrit
+pour un trou qui n'existe pas.* Le geste qui coûte dix secondes : `grep` le
+symbole **dans tout le fichier**, pas seulement à sa déclaration.
