@@ -17820,6 +17820,8 @@ test('le parcours critique LIVRÉ avertit là où le corps s\'écrit (542)', () 
     'l\'avertissement ne dit plus que ce bloc n\'est pas l\'endroit où écrire le parcours');
   assert.match(bloc, /anchorAfterAuth/,
     'l\'avertissement ne nomme plus la fonction qui décide : le lecteur ne peut pas le vérifier');
-  assert.match(bloc, /0 failures|même vert/,
-    'l\'avertissement ne dit plus ce que ça COÛTE — un bloc sauté qui rend un vert complet');
+  assert.match(bloc, /0 failures/,
+    'l\'avertissement ne cite plus la MESURE — « 0 failures », le vert que rend un bloc sauté');
+  assert.match(bloc, /même vert/,
+    'l\'avertissement ne dit plus que ce vert-là est indiscernable d\'un vrai');
 });

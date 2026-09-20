@@ -1536,6 +1536,31 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 542 · le repli du parcours critique n'est pas un endroit où écrire ──
+    # Le départ cesse de retomber sur l'accueil : la branche `=== ''` redevient
+    # atteignable sur un projet instrumenté, donc un corps écrit dedans a l'air
+    # de tourner — et l'avertissement livré devient un mensonge.
+    ("run", "542 · le départ ne retombe plus sur l'accueil",
+     "  return String(anchors?.success || home?.anchor || '');",
+     "  return String(anchors?.success || '');"),
+    # ⚠️ L'AUTRE MOITIÉ, et elle mute la MÊME ligne : la fonction rend toujours
+    # quelque chose. Le garde du dessus reste vert — c'est celui du repli qui
+    # tombe, sans quoi le `SKIP` livré serait mort sans que rien ne le dise.
+    ("run", "542 bis · un projet sans rien de déclaré obtient quand même une ancre",
+     "  return String(anchors?.success || home?.anchor || '');",
+     "  return String(anchors?.success || home?.anchor || 'home');"),
+    # L'avertissement cesse de citer la MESURE : il reste une recommandation de
+    # style, et personne ne sait plus ce qu'un bloc sauté coûte vraiment.
+    ("skill", "542 ter · l'avertissement ne cite plus « 0 failures »",
+     "et le flow rend « 0 failures »,",
+     "et le flow passe,"),
+    # ⚠️ Et la PROXIMITÉ, qui est le vrai sujet : une ligne vide de plus, et le
+    # bloc d'avertissement n'est plus contigu à la branche qu'il protège. Rien
+    # ne casse, le texte est intact — il a juste cessé d'être là où on lit.
+    ("skill", "542 quater · l'avertissement se décolle de la branche",
+     "# condition est `!== ''`.\n- runFlow:",
+     "# condition est `!== ''`.\n\n- runFlow:"),
+
     # ── 541 · les noms interdits se DÉRIVENT des terrains ───────────────
     # Le contrôle cesse de refuser quand aucun terrain n'est lisible : il rend
     # alors « 0 fuite », un vert qui ne mesure rien — exactement l'état dans
