@@ -11949,9 +11949,17 @@ harnais livré.
 
 L'agent du run 96 a écrit un parcours de création de code secret et **a décidé
 seul de ne pas le lancer** — à raison : le geste est irréversible depuis
-l'application, aucun écran ne le défait, et le back-office ne sait pas le
-réinitialiser *en l'état* (vérifié auprès de Germinator). Il l'a donc taggé
-`manual`, que `config.yaml` exclut de toute exécution.
+l'application, et aucun écran ne le défait. Il l'a donc taggé `manual`, que
+`config.yaml` exclut de toute exécution.
+
+⚠️ **CORRECTION, le jour même : « irréversible depuis l'application » ne veut pas
+dire « irréversible ».** J'avais conclu que le parcours ne valait qu'une
+validation unique, parce que l'interface d'administration ne sait pas défaire le
+geste. Le propriétaire du terrain a fourni la remise à neuf : **deux écritures en
+base**, qui rendent le compte à son état d'avant. *Je n'avais interrogé qu'un
+chemin et j'en avais tiré une impossibilité.* Le parcours est donc **rejouable**,
+au prix d'un geste de préparation qui n'appartient pas au harnais — ce qui change
+ce qu'on peut en attendre, mais rien au point ci-dessous.
 
 C'était le bon jugement. Mais rien dans le skill ne le lui demandait, et rien
 n'aurait signalé l'inverse : **un flow qui brûle un compte rend exactement le
@@ -12000,4 +12008,11 @@ dont une commande porte un marqueur d'irréversibilité sans `when:` ? La
 troisième est la seule qui tienne sans discipline, mais elle suppose de
 reconnaître un geste irréversible — ce qu'aucun signal du flow ne dit
 aujourd'hui, sinon un commentaire.
+
+📌 **Et une question que la correction ci-dessus rouvre** : un parcours dont la
+remise à neuf existe hors du harnais doit-il rester `manual`, ou le skill
+doit-il prévoir un endroit où DÉCLARER ce geste de préparation — sans jamais
+l'exécuter, puisqu'administrer les données du terrain n'est pas son rôle ?
+Déclarer sans exécuter est exactement ce que fait déjà `telemetry.leftOpen`
+pour les canaux qu'on ne peut pas couper.
 
