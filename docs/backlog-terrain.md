@@ -11796,3 +11796,47 @@ passer l'unique `OUVERT` à `CLOS` doit vider la liste.
 📌 **Ce que ce point partage avec le 536, ouvert le même jour** : le remède
 existait déjà — écrit en toutes lettres dans le fichier qu'il devait gouverner.
 
+## Le critère de sortie du run 96 — écrit AVANT de le lancer, 20/09/2026
+
+Demandé par Germinator, qui a posé la question « est-il nécessaire de lancer un
+nouveau run ? ». La réponse est venue d'une mesure, pas d'une impression : sur
+les runs **88 à 95, huit sur huit** ont rendu au moins un constat qui coûte une
+mauvaise décision. La sortie n'a donc jamais été ouverte — mais le rendement a
+chuté d'un facteur dix (les vagues du run 45 rendaient 16 à 21 points, les runs
+récents en rendent 1 à 3).
+
+**Le critère n'est pas neuf** : c'est celui arrêté le 18/09 pour le run 90, et
+il est réappliqué tel quel plutôt que réinventé. Le run 96 (terrain 2, iOS)
+confirme les 529 à 537. **On publie si les points qu'il rend ne sont d'AUCUNE de
+ces trois natures :**
+
+1. un **faux vert** — un verdict, un gate ou une dimension qui rassure sans
+   avoir mesuré ;
+2. une **perte de temps de device** — un geste livré qui attend sa borne, coupe
+   une passe, ou fait payer un flow pour rien ;
+3. un **message qui accuse à tort** — un échec, un finding ou un remède qui
+   désigne quelque chose de correct, ou qui envoie défaire ce qui marche.
+
+📌 **Contre-épreuve du seuil, posée d'avance** — appliqué aux trois derniers
+runs, il aurait **bloqué les trois** :
+
+| run | point | nature |
+|---|---|---|
+| 93 | **531** — la mesure de démarrage absorbée | perte de temps de device : le budget n'était jugeable sur aucun flow, dix runs durant |
+| 94 | **535** — un comptage rendant zéro sur l'échec de l'outil | faux vert : un zéro d'instrument mort lu comme une mesure |
+| 95 | **536** — deux comptes indiscernables | faux vert : un agent a publié « info: 1 » quand sa page affichait « info (2) » |
+
+*Un seuil qui n'aurait rien bloqué hier ne mesurerait rien demain.*
+
+⚠️ **Ce que ce run teste et que les cinquante précédents n'ont pas testé** : la
+proposition du run 45 — « un run sur une combinaison déjà vue ; s'il ne produit
+aucun constat coûteux, la sortie est ouverte » — a été écrite, jamais tranchée,
+et cinquante runs ont été joués sans jamais dire à l'avance ce qui déclencherait
+l'arrêt. Celui-ci le dit.
+
+📌 **Et le dépouillement compte autant que le run.** Le 536 n'a pas été *rendu*
+par l'agent du run 95 : il a été **subi** par lui — il a publié le chiffre faux
+sans le voir, et c'est la lecture des artefacts qui l'a trouvé. Un run qui ne
+rend rien dans son compte rendu n'ouvre donc pas la sortie à lui seul : c'est
+l'artefact qui décide.
+
