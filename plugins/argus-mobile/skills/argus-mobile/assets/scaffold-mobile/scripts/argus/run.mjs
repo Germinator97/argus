@@ -57,6 +57,41 @@ import { caveatDebug } from './perf.mjs';
  * @param {string|null} surDevice ce que l'appareil rend, `null` si illisible
  * @returns {string[]} les lignes à avertir, vide si le silence est justifié
  */
+/**
+ * La locale LUE sur l'appareil — ou `null` quand il n'y en a pas.
+ *
+ * 🔴 POURQUOI CETTE FONCTION EXISTE (540). `adb shell settings get system
+ * system_locales` ne rend pas une chaîne vide quand le réglage n'existe pas :
+ * il rend la chaîne littérale **`"null"`**, longue de quatre caractères et donc
+ * VRAIE en JavaScript. Les deux consommateurs la prenaient pour une locale.
+ *
+ * Ce qu'elle coûtait, mesuré sur un run réel :
+ *   · le rapport publiait « l'appareil est en « null » » — une valeur présentée
+ *     comme MESURÉE, qui n'existe pas — puis prescrivait de la corriger ;
+ *   · `.maestro/_baselines/<device>/.argus-device`, un fichier qui SE COMMITE,
+ *     figeait `"locale": "null", "source": "mesuré"`. Deux appareils dont la
+ *     locale est illisible y portent la même valeur et passent pour identiques :
+ *     c'est précisément ce que ce fichier existe pour empêcher.
+ *
+ * ⚠️ Les deux appelants avaient DÉJÀ leur branche pour le cas illisible — un
+ * `'n\'a pas pu être lue'` d'un côté, un `locale || ''` de l'autre. Elles
+ * étaient justes, et INATTEIGNABLES : la valeur réelle ne les visitait jamais.
+ * *Le remède était écrit, le chemin n'y menait pas.*
+ *
+ * 📌 On valide la FORME plutôt que d'écarter des valeurs connues. Une liste de
+ * mots interdits ne connaît que ce qu'on y a mis — et `settings get` n'est pas
+ * seul à répondre en prose : `Setting not found`, un message d'erreur, une
+ * sortie vide. Ce qui n'a pas la forme d'une locale n'en est pas une.
+ *
+ * @param {string|null|undefined} sortie ce que la commande a rendu
+ * @returns {string|null} la locale, ou `null` si ce n'en est pas une
+ */
+export function localeLue(sortie) {
+  const v = String(sortie ?? '').trim();
+  const UNE = '[A-Za-z]{2,3}([-_][A-Za-z0-9]{2,8})*';
+  return new RegExp(`^${UNE}(,${UNE})*$`).test(v) ? v : null;
+}
+
 export function localeWarnings(demandee, autoStart, surDevice, platform = 'android') {
   if (!demandee || autoStart) return [];
   const normaliser = (/** @type {string} */ v) => v.trim().toLowerCase().replace(/_/g, '-').split(',')[0];
@@ -2120,8 +2155,12 @@ export function deviceStamp(platform, udid, spec, lire = adbShell, resolu = null
   // système ANGLAIS et rien ne l'enregistrait. Qui les régénère plus tard sur un
   // appareil français obtient des diffs (formats système, éléments natifs) sans
   // qu'aucune trace n'explique l'écart.
-  const locale = lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim();
-  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesuré' };
+  // 540 — `locale || ''` prévoyait le cas illisible, et ne le voyait jamais :
+  // `settings get` rend la chaîne « null », qui est vraie. Ce fichier SE COMMITE
+  // et porte « source: mesuré » — y figer une valeur qu'on n'a pas lue fait
+  // passer deux appareils différents pour le même.
+  const locale = localeLue(lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout);
+  return { model, os: `android-${sdk}`, locale: locale ?? '', source: 'mesuré' };
 }
 
 /**
@@ -2567,20 +2606,26 @@ async function main() {
     // et il emmène les autres avec lui : c'est la leçon du 291, ici appliquée à
     // un message qui accusait l'appareil d'être muet quand c'est nous qui ne
     // l'interrogions pas.
-    const lue = !resolved.udid || opts.dryRun ? '' : (
+    // 540 — NORMALISÉE AU POINT DE LECTURE. `settings get` rend la chaîne
+    // « null » quand le réglage n'existe pas : la laisser voyager jusqu'aux
+    // consommateurs rendait leurs branches « illisible » inatteignables.
+    const lue = !resolved.udid || opts.dryRun ? null : localeLue(
       platform === 'android'
-        ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim()
-        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()
+        ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout
+        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout,
     );
+    // 540 — `lue` peut valoir la chaîne « null » : on ne la croit que si elle a
+    // la forme d'une locale, sans quoi la branche « n'a pas pu être lue » reste
+    // inatteignable et le rapport publie une valeur qu'il n'a pas mesurée.
     avertissementsLocale = localeWarnings(
-      String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue || null, platform,
+      String(config.locale?.deviceLocale ?? ''), Boolean(spec.autoStart), lue, platform,
     );
     for (const ligne of avertissementsLocale) warn(ligne);
     // 🔴 ET L'AUTRE MOITIÉ (480) : quand il n'y a PAS d'avertissement, c'est
     // soit un projet sain, soit quelqu'un qui vient d'aligner sa déclaration
     // sur l'appareil pour faire taire la ligne. `localeWarnings` ne peut pas
     // les distinguer — elle est déjà sortie. La note, elle, atteint cet état.
-    alignementLocale = localeAlignment(String(config.locale?.deviceLocale ?? ''), lue || null);
+    alignementLocale = localeAlignment(String(config.locale?.deviceLocale ?? ''), lue);
     if (avertissementsLocale.length === 0 && alignementLocale.note) log(alignementLocale.note);
   }
 
