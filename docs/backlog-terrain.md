@@ -12495,3 +12495,36 @@ les objets** et pas seulement sur l'atteignable — **0**.
 interprétés par le shell (`command not found`), laissant une expression vide et
 un `refs/original` à nettoyer. Le filtre a été réécrit **dans un fichier** et
 éprouvé sur une entrée témoin avant d'être lancé sur l'historique.
+
+### 548. Le contrôle de police accusait l'app de ne pas embarquer ce qu'elle embarque
+
+**Ouvert le 20/09/2026 · CLOS** — second site du **546**, trouvé en corrigeant
+les dettes du même terrain, fermé le jour même.
+
+`FontManifest.json` ne liste que ce que `pubspec.yaml → flutter: fonts:`
+déclare. Un projet qui embarque ses polices en **assets** et les enregistre à
+l'exécution n'y figure donc pas — et le contrôle rendait « Familles
+enregistrées : MaterialIcons » sur un projet dont **onze TTF** sont dans l'APK.
+
+🔴 **Et celui-là COMMANDE tous les autres gardes de son fichier** : son en-tête
+dit que quand il tombe, chaque mesure de disposition « décrit un écran que
+personne ne voit ». Un faux rouge ici invalide quarante gardes justes.
+
+#### ✅ Il refuse de conclure, au lieu d'accuser
+
+Le harnais lit une **seconde source, extérieure** : les FICHIERS de police que
+`flutter test` recopie dans `build/unit_test_assets/`. Leur présence ne dit pas
+quelle famille est enregistrée — elle dit que **ce chemin ne peut pas conclure**.
+Le critère est dérivé, sans nombre deviné : *aucune des familles demandées n'est
+enregistrée ET des fichiers de police sont pourtant dans le bundle*.
+
+Et le refus **compte ce qu'il a vu** (« les 11 police(s) de ce projet… ») : un
+« non mesuré » muet se relit comme un « conforme ».
+
+⚠️ **Les deux moitiés sont mesurées sur des projets RÉELS**, pas sur un montage :
+celui qui déclare par dossier se saute désormais avec son compte, celui qui
+déclare nom par nom continue de juger et passe (`+1`, pas `~1`).
+
+📌 Le garde du plugin lit du texte, et sa limite est écrite dedans : il ne
+verrait pas une condition neutralisée. La mutation qui le prouve **retire** la
+clause — la forme qu'a l'oubli dans la vraie vie.
