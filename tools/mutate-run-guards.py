@@ -35,6 +35,9 @@ CIBLES = {
     # pouvait le dire.
     "checkartefact": ROOT / "tools/check-artefact.mjs",
     "confid": ROOT / "tools/artefact-confidentialite.mjs",
+    # 541 — le contrôle qui DÉRIVE les noms interdits des terrains. Sa cible
+    # manquait, donc rien ne pouvait dire si ses gardes gardent encore.
+    "confiddepot": ROOT / "tools/confidentialite-depot.mjs",
     # Le contrat d'injection a DEUX bouts, et le garde ne vaut que s'il voit
     # bouger les deux : le producteur (run.mjs) et le consommateur (le flow).
     "visual": FLOWS / "visual.yaml",
@@ -1533,6 +1536,18 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 541 · les noms interdits se DÉRIVENT des terrains ───────────────
+    # Le contrôle cesse de refuser quand aucun terrain n'est lisible : il rend
+    # alors « 0 fuite », un vert qui ne mesure rien — exactement l'état dans
+    # lequel une police et un paquet sont entrés dans ce dépôt public.
+    ("confiddepot", "541 · le contrôle conclut sans terrain",
+     "\n    return { code: 2, lignes: [\n      '⚠️  AUCUN TERRAIN LISIBLE",
+     "\n    return { code: 0, lignes: [\n      '⚠️  AUCUN TERRAIN LISIBLE"),
+    # Et tout identifiant devient distinctif : les mots ordinaires redeviennent
+    # des fuites, le contrôle crie au loup et on apprend à l'ignorer.
+    ("confiddepot", "541 bis · un mot ordinaire redevient un identifiant distinctif",
+     "  return /[._-]/.test(v) || /[a-z][A-Z]/.test(v) || v.length >= 8;",
+     "  return v.length >= 1;"),
     # ── 540 · la locale n'est crue que si elle a la forme d'une locale ───
     # Le filtre accepte tout : la chaîne « null » redevient une locale mesurée,
     # et les deux branches « illisible » retombent hors d'atteinte.
