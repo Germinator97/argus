@@ -1540,6 +1540,18 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 549 · `- back` ne fait rien sur iOS ──────────────────────────────────
+    # Le contrôle cesse de regarder la plateforme visée : il accuse alors TOUS
+    # les projets, y compris ceux en Android seul, où un `back` nu est juste.
+    ("config", "549 · le back nu est refusé même sur un projet Android seul",
+     "  if (!(plateformes ?? []).map(String).includes('ios')) return [];",
+     "  if (false) return [];"),
+    # ⚠️ ET L'AUTRE SENS : il ne signale plus jamais rien, donc le défaut qu'il
+    # existe pour voir repasse en silence.
+    ("config", "549 bis · plus aucun back nu n'est signalé",
+     "      if (!garde) nus.push({ flow: nom, ligne: i + 1 });",
+     "      if (false) nus.push({ flow: nom, ligne: i + 1 });"),
+
     # ── 548 · le contrôle de police refuse de conclure ───────────────────────
     # La clause de non-conclusion PART : le contrôle recommence à accuser un
     # projet qui embarque ses polices en assets — et ce contrôle-là commande

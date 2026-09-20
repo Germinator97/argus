@@ -17972,3 +17972,28 @@ test('le contrôle de police REFUSE de conclure au lieu d\'accuser (548)', () =>
   // s'exerce qu'en Dart, que cette suite ne lance pas. La mutation qui le
   // prouve RETIRE la clause — la forme qu'a l'oubli dans la vraie vie.
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 549 — `back` ne fait RIEN sur iOS, et l'étape passe au vert. Le scaffold le
+// savait (`resilience.yaml` garde le sien par plateforme) ; le fichier que
+// l'utilisateur écrit ne le disait pas, et le SKILL ne mentionne pas `back`
+// une seule fois. Dix `- back` nus mesurés sur un projet réel.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('un `- back` nu est signalé quand iOS est visé (549)', async () => {
+  const { backNonGardes } = await import(join(SCAFFOLD, 'scripts/argus/config.mjs'));
+  const nu = { 'goto.yaml': '- tapOn:\n    id: x\n- back\n- tapOn:\n    id: y\n' };
+  assert.deepEqual(backNonGardes(nu, ['ios']), [{ flow: 'goto.yaml', ligne: 3 }],
+    'un `- back` nu passe : sur iOS l\'étape sera VERTE et l\'écran ne bougera pas, et le flow accusera une ancre correcte trois étapes plus loin');
+  // ⚠️ L'AUTRE MOITIÉ, et sans elle le remède ferait rougir tous les projets
+  // Android : là-bas un `back` nu est JUSTE.
+  assert.deepEqual(backNonGardes(nu, ['android']), [],
+    'un projet Android seul est accusé : le contrôle crie au loup sur la forme normale');
+  // Et la forme que le scaffold emploie déjà doit passer, sinon le remède
+  // condamne son propre exemple.
+  const garde = {
+    'resilience.yaml': '- runFlow:\n    when:\n      platform: Android\n    commands:\n      - back\n',
+  };
+  assert.deepEqual(backNonGardes(garde, ['ios', 'android']), [],
+    'la forme gardée par plateforme est refusée — c\'est celle que `resilience.yaml` livre');
+});
