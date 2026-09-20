@@ -61,6 +61,16 @@ tags:
       #     id: confirmation_unique
       #     label: Une seule confirmation après deux appuis
 
+# ⚠️ LE BLOC CI-DESSOUS N'EST PAS L'ENDROIT OÙ ÉCRIRE TON PARCOURS.
+# C'est le repli du cas « rien n'est instrumenté », et sa condition est FAUSSE
+# dès que ton app porte une ancre d'accueil : le runner fait retomber
+# `ARGUS_ANCHOR_AFTER_AUTH` sur elle quand aucune ancre d'auth n'est déclarée
+# (`anchorAfterAuth`, scripts/argus/run.mjs). Sur une app SANS authentification,
+# un corps écrit ici ne s'exécute donc JAMAIS — et le flow rend « 0 failures »,
+# le même vert que s'il avait tout joué. Vécu sur un projet réel : seule la
+# ligne `coverage.notVisited` l'a dit, en listant les écrans que le parcours
+# était censé atteindre. Ton corps va dans le bloc du DESSUS, celui dont la
+# condition est `!== ''`.
 - runFlow:
     when:
       true: "${typeof ARGUS_ANCHOR_AFTER_AUTH === 'undefined' || ARGUS_ANCHOR_AFTER_AUTH === ''}"

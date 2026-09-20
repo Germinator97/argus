@@ -1663,6 +1663,21 @@ export function visitedScreens(bundles, screens) {
  * remède qui viserait toujours `success` casserait toutes les apps locales.
  * @param {any} anchors @param {any} home @returns {string}
  */
+/**
+ * L'ancre d'où part le parcours critique — l'après-connexion s'il y en a une,
+ * sinon l'ACCUEIL.
+ *
+ * ⚠️ Le nom dit « after auth » et la valeur n'en vient pas toujours : sur une
+ * app sans compte, elle vaut l'ancre d'accueil, donc elle n'est JAMAIS vide dès
+ * que le projet est instrumenté. La branche `=== ''` de `journey-critical.yaml`
+ * est alors injoignable — un corps écrit dedans ne s'exécute pas et le flow
+ * rend « 0 failures ». Exportée pour qu'un garde APPELLE cette décision au lieu
+ * de lire le fichier : un garde de texte ne verrait pas une branche morte.
+ * @param {any} anchors les ancres d'authentification déclarées
+ * @param {any} home l'écran d'accueil déclaré
+ * @returns {string} l'ancre de départ, ou '' si rien n'est instrumenté
+ * (l'export vit dans la liste de fin de fichier, avec ses voisins)
+ */
 function anchorAfterAuth(anchors, home) {
   return String(anchors?.success || home?.anchor || '');
 }
