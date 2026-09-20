@@ -11861,9 +11861,10 @@ avait été écrit et commité AVANT le lancement.
 - ✅ **Le 522** : `absorbed: false` sur 7 flows portant 7 087 à 7 144 ms
   d'attente — ce n'est pas une contradiction mais la décision de se taire sans
   plancher de marque, et `QAM-START-NONJUGEABLE` prend le relais.
-- ✅ **Le garde de police a nommé sa cause** : « le thème demande
-  `packages/<paquet>/<Famille>`, qu'argusFonts ne charge PAS ». 163 échecs
-  d'étage 1 ramenés à 104 par cette seule phrase.
+- ✅ **Le garde de police a nommé sa cause** : le thème demandait la police sous
+  son nom **préfixé par le paquet** (`packages/<paquet>/<Famille>`), qu'`argusFonts`
+  chargeait sous le nom nu. 163 échecs d'étage 1 ramenés à 104 par cette seule
+  phrase. *Formulé sans nommer le projet : ce dépôt est public.*
 - ✅ **Le 508** : Sentry prouvé inerte par EXÉCUTION, double condition ; Firebase
   inscrit dans `telemetry.leftOpen` et publié.
 - ⚠️ Workflow GitHub sur projet GitLab : **10ᵉ relais consécutif** (521).

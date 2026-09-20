@@ -1432,7 +1432,7 @@ export function undeclaredAnchors(root, config) {
  *
  * ⚠️ LE SKILL PRESCRIVAIT LA MAUVAISE SOURCE, et son gabarit le disait en
  * toutes lettres : « Nom du paquet Dart (pubspec.yaml → name) ». Ce nom-là est
- * un identifiant technique — `acme_colis`, `focus` — et il se retrouve
+ * un identifiant technique — `acme_colis`, `zen_timer` — et il se retrouve
  * dans le TITRE de la page publiée, c'est-à-dire dans la seule chose qui
  * distingue deux rapports dans une galerie. Vu par Germinator sur une page
  * publiée : le titre disait « Colis » quand l'app s'appelle

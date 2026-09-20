@@ -53,8 +53,8 @@ app:
   # Le nom que l'application AFFICHE — pas celui du paquet Dart.
   # ⚠️ C'est lui qui va dans le TITRE de la page publiée, donc la seule chose qui
   # distingue ton rapport des autres dans une galerie. `acme_colis` et
-  # `focus` sont des identifiants techniques ; « Acme Colis » et
-  # « Focus » sont des noms. Vécu : un titre publié disait « Colis ».
+  # `zen_timer` sont des identifiants techniques ; « Acme Colis » et
+  # « Zen Timer » sont des noms. Vécu : un titre publié disait « Colis ».
   # Où le lire : ios/Runner/Info.plist → CFBundleDisplayName, ou côté Android
   # `resValue("string", "app_name", …)` du build.gradle, ou <string name="app_name">
   # d'un strings.xml, ou android:label s'il porte un littéral.
