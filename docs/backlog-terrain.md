@@ -12528,3 +12528,54 @@ déclare nom par nom continue de juger et passe (`+1`, pas `~1`).
 📌 Le garde du plugin lit du texte, et sa limite est écrite dedans : il ne
 verrait pas une condition neutralisée. La mutation qui le prouve **retire** la
 clause — la forme qu'a l'oubli dans la vraie vie.
+
+### 549. `back` ne fait RIEN sur iOS, et l'étape passe quand même au vert
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par une passe iOS sur un projet déjà
+passé en Android, fermé le jour même.
+
+Mesuré dans le **bytecode du pilote livré** : `IOSDriver.backPress()` a un corps
+**vide** (`0: return`), contre 28 instructions côté Android — et 178 autres
+`invokevirtual` dans le même dump servent de contre-épreuve à l'instrument.
+
+Il ne lève pas, il ne prévient pas : **l'étape passe au VERT et l'écran ne bouge
+pas**. Le flow échoue alors **trois étapes plus loin**, en accusant une ancre
+parfaitement correcte — le diagnostic part au mauvais endroit et y reste.
+
+#### 🔴 Le scaffold le SAVAIT, dans un fichier que l'utilisateur n'écrit pas
+
+`resilience.yaml` garde le sien sous `when: platform: Android`, avec « Retour
+système (Android uniquement) » écrit à côté. Mais ce fichier appartient au
+plugin. Celui que l'utilisateur écrit — `_subflows/goto.yaml` — n'en disait rien,
+et le SKILL ne mentionne **pas une seule fois** le mot `back` :
+
+    grep -c "\- back\|backPress\|bouton retour" SKILL.md   →   0
+
+*La connaissance vivait hors du chemin où la faute se commet.* Mesuré sur un
+projet réel : **dix** `- back` nus, écrits pendant une passe Android, tous
+inertes à la passe iOS suivante — dont neuf blocs recopiés.
+
+⚠️ **Et la passe Android l'avait ÉCRIT**, en commentaire : « le jour où iOS entre
+dans le périmètre, cette branche passera au VERT sans rien tester ». La phrase
+était juste. *Elle n'était pas un garde.*
+
+#### ✅ Une DÉTECTION, pas un avertissement
+
+`make argus-lint` refuse désormais un `- back` qu'aucun garde de plateforme ne
+protège — et **seulement quand iOS est visé** : sur un projet Android seul, un
+`back` nu est juste, et l'accuser ferait crier au loup.
+
+Éprouvé sur le projet réel : `exit 0` sur l'arbre corrigé, puis un `- back` nu
+réintroduit → `exit 2` avec le fichier et la ligne, puis **restauration prouvée
+par hash** et `exit 0` de nouveau.
+
+⚠️ **La portée se lit dans la STRUCTURE, et ma première version se trompait** :
+`platform: Android` n'est pas un **ancêtre** du `- back`, c'est son **frère**,
+sous le `when:` du même `- runFlow:`. Remonter par l'indentation ne le trouve
+jamais — et cette version-là rejetait la forme que `resilience.yaml` livre,
+c'est-à-dire son propre exemple. Le contrôle remonte maintenant jusqu'à
+l'élément de liste englobant et relit son bloc.
+
+📌 Et un garde du dépôt a attrapé mon premier exemple de remède : il montrait une
+**map en flow**, que le parseur du skill refuse. L'exemple écrit pour aider
+aurait été inutilisable.
