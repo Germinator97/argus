@@ -297,6 +297,44 @@ const Duration argusSettleTimeout = Duration(seconds: 5);
 ///
 /// [debugLabel] sert uniquement aux messages — donne l'`id` de l'écran, sinon
 /// un avertissement d'animation perpétuelle ne dira pas de qui il parle.
+/// Le widget que Flutter a nommé COUPABLE du dernier défaut de disposition.
+///
+/// ⚠️ POURQUOI IL FAUT LE CAPTURER SOI-MÊME. `tester.takeException()` ne rend
+/// que l'EXCEPTION ; la ligne « The relevant error-causing widget was » vit dans
+/// les `FlutterErrorDetails`, que le binding de test consomme. Le message du
+/// garde envoyait donc chercher dans sa propre sortie une ligne qu'elle ne
+/// porte JAMAIS — mesuré sur un projet réel : 15 débordements, 15 renvois vers
+/// cette ligne, **zéro** section de diagnostic dans le journal.
+///
+/// Et c'est la seule information qui compte : `RenderFlex overflowed` nomme la
+/// page qu'on regarde, le coupable est souvent trois niveaux plus bas.
+String argusDernierCoupable = '';
+
+/// Le nom du widget fautif, ou `''` si Flutter ne l'a pas nommé.
+///
+/// La transformation est nécessaire : `informationCollector` rend un
+/// `DiagnosticsDebugCreator` brut, et c'est `debugTransformDebugCreator` qui en
+/// tire le bloc lisible. Lire les nœuds sans elle ne trouve rien.
+String _argusCoupableDe(FlutterErrorDetails details) {
+  final Iterable<DiagnosticsNode>? brut = details.informationCollector?.call();
+  if (brut == null) return '';
+  // 🔴 LA CHAÎNE DE CRÉATION, PAS LE NOM NU. `debugTransformDebugCreator` rend
+  // « Column » — le nom d'un widget dont une application compte des dizaines
+  // d'exemplaires, donc un renseignement qui ne DÉSIGNE rien. L'emplacement
+  // qu'il promet (`fichier:ligne`) n'arrive que si le binaire porte le suivi de
+  // création, ce qui n'est pas le cas ici : mesuré, il rend une chaîne vide.
+  // `debugGetCreatorChain` ne dépend pas de ce suivi et nomme les widgets DE
+  // L'APPLICATION qui enveloppent le coupable — « Column ← Padding ←
+  // _StreakCard ». C'est ce qui permet d'aller au bon fichier.
+  for (final DiagnosticsNode n in brut) {
+    final Object? v = n.value;
+    if (v is DebugCreator) {
+      return v.element.debugGetCreatorChain(8).replaceAll('\n', ' ').trim();
+    }
+  }
+  return '';
+}
+
 Future<void> pumpArgus(
   WidgetTester tester,
   Widget child, {
@@ -311,6 +349,19 @@ Future<void> pumpArgus(
   tester.view.padding = viewport.padding;
   tester.view.viewPadding = viewport.padding;
   addTearDown(tester.view.reset);
+
+  // On s'insère devant le gestionnaire du binding — sans le remplacer : il doit
+  // continuer d'enregistrer l'échec, sinon `takeException()` ne rendrait plus
+  // rien et TOUS les gardes de disposition deviendraient vacants d'un coup.
+  argusDernierCoupable = '';
+  final void Function(FlutterErrorDetails)? precedent = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (argusDernierCoupable.isEmpty) {
+      argusDernierCoupable = _argusCoupableDe(details);
+    }
+    precedent?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = precedent);
 
   await tester.pumpWidget(
     MaterialApp(

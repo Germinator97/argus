@@ -235,8 +235,10 @@ void main() {
                 isNull,
                 reason:
                     'Débordement sur ${screen.id} en $label.\n'
-                    'Cherche « The relevant error-causing widget was » dans la sortie : '
-                    "le widget fautif n'est presque jamais celui de l'écran.",
+                    '${argusDernierCoupable.isEmpty ? "Flutter n'a nommé aucun widget fautif pour ce débordement." : "Widget fautif : $argusDernierCoupable"}\n'
+                    "Le coupable n'est presque jamais celui de l'écran : "
+                    'un `RenderFlex overflowed` nomme la page, pas la carte à '
+                    'hauteur figée trois niveaux plus bas.',
               );
             });
           }, skip: argusShouldSkip);
