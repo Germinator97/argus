@@ -17390,11 +17390,16 @@ test('la doc décrit le fichier d\'agrégé, et pas seulement report.json (536)'
   assert.ok(doc.includes(agrege),
     `${agrege} est écrit par le code et absent de la doc du format : c'est l'état exact `
     + 'qui a fait publier un compte de findings faux (536)');
-  // Et la doc dit ce qu'il PORTE, pas seulement qu'il existe : « counts » doit
-  // apparaître dans la SECTION qui le décrit, bornée par le titre suivant. Une
-  // fenêtre à longueur fixe sur de la prose se périme au premier paragraphe
-  // légitime qu'on y ajoute (510) — elle rougirait alors sur un dépôt sain, à
-  // un endroit qu'elle ne surveillait pas.
-  assert.ok(sectionDepuis(doc, doc.indexOf(agrege)).includes('counts'),
-    `la doc nomme ${agrege} sans dire que c'est « counts » qui y porte l'agrégé`);
+  // Et la doc lui consacre une SECTION qui dit ce qu'il porte. Viser la
+  // première mention ne suffisait pas : le mot « counts » y apparaît deux
+  // fois, donc aucune mutation d'une ligne ne pouvait faire tomber ce garde —
+  // il acceptait une alternative, et c'est le garde qu'on resserre, jamais la
+  // mutation qu'on élargit. La section est bornée par le titre suivant (510).
+  const titre = doc.indexOf(`### \`${agrege}\``);
+  assert.ok(titre > 0,
+    `la doc ne consacre plus de section à ${agrege} : elle le mentionne peut-être en `
+    + 'passant, ce qui est l\'état exact d\'où vient le 536');
+  assert.ok(sectionDepuis(doc, titre).includes('"counts"'),
+    `la section de ${agrege} ne montre plus « counts » : elle envoie lire un fichier `
+    + 'sans dire quoi y lire');
 });
