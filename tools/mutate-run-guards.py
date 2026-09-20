@@ -370,7 +370,9 @@ MUTATIONS = [
      "      if (String(step?.metadata?.status ?? '').toUpperCase() !== 'COMPLETED') continue;",
      "      if (false) continue;"),
     ("run", "la marque d'appareil cesse de graver la locale",
-     "  return { model, os: `android-${sdk}`, locale: locale || '', source: 'mesure' };".replace('mesure', 'mesuré'),
+     # 540 — ré-ancrée : `locale || ''` est devenu `locale ?? ''`, la lecture
+     # étant désormais normalisée en amont par `localeLue`.
+     "  return { model, os: `android-${sdk}`, locale: locale ?? '', source: 'mesure' };".replace('mesure', 'mesuré'),
      "  return { model, os: `android-${sdk}`, source: 'mesure' };".replace('mesure', 'mesuré')),
     ("skill", "les deux modes de build annoncent le meme encodage",
      "| debug | `assets/flutter_assets/kernel_blob.bin` | **UTF-8** |",
@@ -1063,8 +1065,9 @@ MUTATIONS = [
      "  if (atteints.length === 0) {",
      "  if (false) {"),
     ("run", "la locale iOS redevient illisible",
-     "        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout.trim()",
-     "        : ''"),
+     # 540 — ré-ancrée : `.trim()` a disparu du site, `localeLue` s'en charge.
+     "        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout,",
+     "        : '',"),
     ("config", "les gabarits d'ancres retombent dans les opaques",
      "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu) || parametreDAncre.test(nu);",
      "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu);"),
@@ -1530,6 +1533,17 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 540 · la locale n'est crue que si elle a la forme d'une locale ───
+    # Le filtre accepte tout : la chaîne « null » redevient une locale mesurée,
+    # et les deux branches « illisible » retombent hors d'atteinte.
+    ("run", "540 · la locale n'est plus validée par sa forme",
+     "  return new RegExp(`^${UNE}(,${UNE})*$`).test(v) ? v : null;",
+     "  return v || null;"),
+    # Et la lecture de l'IDENTITÉ cesse d'être normalisée : `.argus-device`, qui
+    # se commite, regrave « null » sous « source: mesuré ».
+    ("run", "540 bis · l'identité du device relit la locale sans la normaliser",
+     "  const locale = localeLue(lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout);",
+     "  const locale = lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim();"),
     # ── 539 · un geste sans retour vit SOUS son opt-in ───────────────────
     # Le geste sort du `runFlow` : le bloc se relit exactement pareil — `when:`
     # est toujours là, l'opt-in toujours écrit — et le geste s'exécute quoi qu'il
