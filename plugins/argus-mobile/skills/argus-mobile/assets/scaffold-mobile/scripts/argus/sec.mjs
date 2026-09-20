@@ -226,12 +226,34 @@ function drapeauxFindings(xml, rel, sec) {
 }
 
 /**
+ * Les permissions que le manifeste FUSIONNÉ portera réellement.
+ *
+ * ⚠️ `tools:node="remove"` RETIRE une permission héritée d'une dépendance : le
+ * paquet publié ne la porte pas. La lire comme une déclaration accuse un projet
+ * de ce qu'il vient précisément d'empêcher — mesuré sur un projet réel, trois
+ * permissions publicitaires signalées que `aapt2 dump permissions` ne trouve
+ * PAS dans l'APK.
+ *
+ * 📌 Le chemin qui lit l'APK, lui, le savait : son message propose déjà
+ * `<uses-permission tools:node="remove">` comme remède. La décision était prise,
+ * elle n'avait pas traversé jusqu'au chemin qui lit les SOURCES.
+ * @param {string} xml le manifeste source
+ * @returns {string[]}
+ */
+export function permissionsDeclarees(xml) {
+  return [...String(xml).matchAll(/<uses-permission\b([^>]*)>/g)]
+    .filter((m) => !/tools:node\s*=\s*"remove"/.test(m[1]))
+    .map((m) => /android:name\s*=\s*"([^"]+)"/.exec(m[1])?.[1] ?? '')
+    .filter((p) => p !== '');
+}
+
+/**
  * Permissions déclarées vs attendues. Une permission accordée « au cas où » est
  * une surface d'attaque et un motif de rejet sur les stores.
  * @param {string} xml @param {string} rel @param {any} sec @returns {any[]}
  */
 function auditPermissions(xml, rel, sec) {
-  const declared = [...xml.matchAll(/<uses-permission[^>]*android:name\s*=\s*"([^"]+)"/g)].map((m) => m[1]);
+  const declared = permissionsDeclarees(xml);
   const expected = new Set(sec.expectedPermissions ?? []);
   const forbidden = new Set(sec.forbiddenPermissions ?? []);
   const findings = [];

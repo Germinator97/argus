@@ -1630,6 +1630,35 @@ export const CONFIG_FILES = [
 ];
 
 /**
+ * Ce fichier est-il CÂBLÉ par la déclaration qu'on vient de lire ?
+ *
+ * ⚠️ DEUX FAÇONS DE DÉCLARER, et la seconde manquait. Un projet peut nommer
+ * chaque police une à une (`fonts:`), ou déclarer le DOSSIER qui les contient
+ * (`assets:\n  - assets/fonts/`) et laisser `google_fonts` les enregistrer au
+ * démarrage — la forme standard de ce couple. Le contrôle ne cherchait que le
+ * nom du fichier : il rendait **neuf `major` faux** sur un projet dont les
+ * onze TTF sont bel et bien embarqués (mesuré dans l'APK), avec un remède qui
+ * envoyait corriger un montage qui marche.
+ *
+ * ⚠️ Et c'est le dossier PARENT IMMÉDIAT, pas n'importe quel ancêtre :
+ * `- assets/` n'embarque PAS `assets/fonts/X.ttf`, Flutter ne descend pas dans
+ * les sous-dossiers. Accepter l'ancêtre rendrait un vert sur un fichier
+ * réellement absent du paquet — le défaut inverse, et le plus coûteux.
+ * @param {string} texte le contenu de la déclaration (pubspec.yaml, build.gradle…)
+ * @param {string} fichier le chemin trouvé, relatif à la racine du projet
+ * @param {string} [motifFixe] le motif imposé par la règle, s'il y en a un
+ * @returns {boolean}
+ */
+export function estCable(texte, fichier, motifFixe) {
+  if (motifFixe) return texte.includes(motifFixe);
+  const parts = String(fichier).split('/');
+  const nom = parts[parts.length - 1];
+  if (nom && texte.includes(nom)) return true;
+  if (parts.length < 2) return false;
+  return texte.includes(`${parts.slice(0, -1).join('/')}/`);
+}
+
+/**
  * Les fichiers de configuration présents dans les sources que RIEN ne câble.
  *
  * Le mécanisme est unique et la table est de la donnée : pour chaque règle, le
@@ -1692,8 +1721,7 @@ export function configNonEmbarquee(root, config) {
     for (const f of trouves) {
       // Le motif est fixe quand la règle en donne un, sinon c'est le NOM du
       // fichier trouvé — c'est ce que porte une déclaration d'asset ou de police.
-      const motif = regle.motif ?? f.split('/').pop();
-      if (motif && !texte.includes(motif)) {
+      if (!estCable(texte, f, regle.motif)) {
         orphelins.push({ id: regle.id, fichier: f, cable: declaration, casse: regle.casse });
       }
     }
