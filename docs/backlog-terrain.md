@@ -12290,3 +12290,24 @@ l'appeler. Elle l'était déjà, dans la liste d'exports de fin de fichier — `
 a rendu `Duplicate export`. *Quatrième fois de la journée qu'un remède est écrit
 pour un trou qui n'existe pas.* Le geste qui coûte dix secondes : `grep` le
 symbole **dans tout le fichier**, pas seulement à sa déclaration.
+
+🔴 **Et ça a recommencé, plus bas, sur le même point.** J'avais écrit trois
+gardes de comportement autour de `anchorAfterAuth`. Le dépôt en portait déjà un,
+`anchorAfterAuth vise la session ouverte, et retombe sur le départ sans auth`,
+qui couvre **les trois cas**, mot pour mot — et l'une de mes deux mutations était
+le **doublon caractère pour caractère** d'une mutation écrite des mois plus tôt.
+
+Ce n'est pas seulement du gras : c'est un garde qui **n'aurait jamais été mis à
+l'épreuve**. Le harnais crédite le PREMIER test qui rougit, et le voisin vient
+plus haut dans le fichier — le verdict affichait donc son nom, pas le mien. Le
+jour où le neuf serait devenu vacant, la mutation serait restée verte grâce à
+l'ancien, ce qu'on croyait justement avoir écarté.
+
+📌 **Le tell est dans le verdict du harnais, et il est gratuit** : il imprime le
+nom du test qui tombe. *Le lire* — pas se contenter du `✔` — sépare « ma
+mutation prouve mon garde » de « elle prouve celui d'à côté ». Ici le nom affiché
+n'était pas celui que je venais d'écrire, et c'est la seule chose qui l'a dit.
+
+Ce qui reste du point est donc une seule chose, mais elle est neuve : la
+**proximité** de l'avertissement et de la branche qu'il protège. Le dépôt n'avait
+aucun garde de proximité sur ce fichier.
