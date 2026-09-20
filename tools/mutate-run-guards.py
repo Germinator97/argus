@@ -1534,9 +1534,15 @@ MUTATIONS = [
     # Le filtre retombe sur la FORME seule — exactement ce qu'il était. Le
     # matcher Dart imprimant ses listes avec la même typographie qu'une clé, le
     # contenu de l'application redevient de la dette.
+    # ⚠️ ELLE VISE LA CONDITION DE CONTEXTE, PAS LE FILTRE ENTIER. Remplacer tout
+    # le `awk` faisait tomber un garde VOISIN (« argus-debts DIT qu'il n'y a rien
+    # à inscrire »), parce que plus rien n'était retenu du tout : verdict juste,
+    # appariement faux. Ici les clés légitimes passent toujours — le voisin reste
+    # vert — et seule la forme HORS contexte redevient de la dette, ce que seul
+    # le garde du 538 lit.
     ("makefile", "538 · le filtre de dette retrie sur la forme",
-     "\n\t  | awk '/known_issues",
-     "\n\t  | grep -oE \"^ +'[^']+',$$\" # awk '/known_issues"),
+     "f > 0 { f--; if ($$0 ~",
+     "1 { if ($$0 ~"),
     # Et le message cesse de nommer la cible qui RETIRE : on rouvre la porte de
     # l'édition à la main, qui a détruit trois fichiers.
     ("anchorsdart", "538 bis · le garde des orphelines ne nomme plus le geste outillé",
