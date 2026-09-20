@@ -6042,10 +6042,23 @@ test('le message de débordement n\'annonce pas ce que `Actual:` dit déjà', ()
   assert.ok(debut > 0,
     'le test « rien ne déborde » a été renommé : ce garde ne trouve plus ce qu\'il mesure, '
     + 'mets son ancre à jour plutôt que de le supprimer');
-  const bloc = src.slice(debut).match(/reason:\s*\n([\s\S]{0,400}?)\);/);
-  assert.ok(bloc, 'le `reason:` du test de débordement a disparu — mets ce garde à jour');
-  assert.match(bloc[1], /error-causing widget/,
-    'le message doit continuer de dire où chercher le vrai coupable');
+  const apres = src.slice(debut);
+  const iReason = apres.indexOf('reason:');
+  assert.ok(iReason > 0, 'le `reason:` du test de débordement a disparu — mets ce garde à jour');
+  const lignes = apres.slice(iReason).split('\n');
+  const fin = lignes.findIndex((l) => /^\s*\);\s*$/.test(l));
+  assert.ok(fin > 0, 'la fermeture de l\'`expect` n\'est plus reconnaissable : ce garde ne sait plus où s\'arrêter');
+  const bloc = [null, lignes.slice(0, fin).join('\n')];
+  // 🔴 545 — LE CRITÈRE A BOUGÉ AVEC LE CORRECTIF, il ne se supprime pas.
+  // Ce garde exigeait que le message dise OÙ CHERCHER le coupable (« The
+  // relevant error-causing widget was »). Mesuré : cette ligne n'apparaît
+  // JAMAIS dans la sortie du garde — 15 débordements, 15 renvois, zéro section
+  // de diagnostic. Le message PORTE désormais le coupable, capté par le
+  // harnais. C'est la même exigence, un cran plus loin.
+  assert.match(bloc[1], /Widget fautif : \$argusDernierCoupable/,
+    'le message ne porte plus le coupable capté par le harnais — il redeviendrait un renvoi vers une ligne que sa sortie ne contient pas');
+  assert.ok(!/error-causing widget/.test(bloc[1]),
+    'le message renvoie de nouveau vers « The relevant error-causing widget was », que sa propre sortie ne porte jamais');
   assert.ok(!/thrown/.test(bloc[1]),
     'l\'exception est déjà rendue par `Actual:` — la citer une seconde fois est du bruit');
 });
@@ -17851,3 +17864,33 @@ test('la page publiée définit chaque variable CSS qu\'elle emploie (544)', asy
   assert.deepEqual(manquantes, [],
     `la page publiée emploie des variables CSS que son :root ne définit pas — le navigateur retombe sur ses valeurs par défaut, en silence : ${manquantes.join(', ')}`);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 545 — Le garde de disposition renvoyait à une ligne que sa sortie ne porte
+// jamais. Mesuré sur un projet réel : 15 débordements, 15 renvois vers « The
+// relevant error-causing widget was », ZÉRO section de diagnostic Flutter —
+// `takeException()` ne rend que l'exception, le binding consomme les détails.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le harnais CAPTURE le widget fautif au lieu de l\'annoncer (545)', () => {
+  const h = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  // Il s'insère DEVANT le gestionnaire du binding sans le remplacer : sans le
+  // relais, `takeException()` ne rendrait plus rien et TOUS les gardes de
+  // disposition deviendraient vacants d'un coup.
+  assert.match(h, /FlutterError\.onError = \(FlutterErrorDetails details\)/,
+    'le harnais n\'installe plus de gestionnaire : le coupable ne peut plus être capté');
+  assert.match(h, /precedent\?\.call\(details\)/,
+    'le gestionnaire du binding n\'est plus relayé : takeException() ne verrait plus rien et tous les gardes de disposition passeraient à vide');
+  assert.match(h, /addTearDown\(\(\) => FlutterError\.onError = precedent\)/,
+    'le gestionnaire n\'est plus restauré : il fuirait d\'un test au suivant');
+  // ⚠️ La chaîne de création, pas le nom nu : `debugTransformDebugCreator` rend
+  // « Column », qui ne désigne rien dans une application qui en compte cent.
+  assert.match(h, /debugGetCreatorChain/,
+    'le harnais est revenu au nom nu du widget : « Column » ne désigne aucun fichier');
+});
+
+// 📌 Le message lui-même est gardé par « le message de débordement n'annonce
+// pas ce que `Actual:` dit déjà », plus haut dans ce fichier : son critère a été
+// mis à jour le 20/09 plutôt que dédoublé ici. Deux gardes pour un message ne
+// gardent pas deux fois — le harnais crédite le PREMIER qui rougit, et le neuf
+// ne serait jamais mis à l'épreuve.
