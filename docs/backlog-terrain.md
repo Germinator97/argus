@@ -12311,3 +12311,68 @@ n'était pas celui que je venais d'écrire, et c'est la seule chose qui l'a dit.
 Ce qui reste du point est donc une seule chose, mais elle est neuve : la
 **proximité** de l'avertissement et de la branche qu'il protège. Le dépôt n'avait
 aucun garde de proximité sur ce fichier.
+
+### 543. Le « périmé » d'un acquittement se juge sans regarder la plateforme
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par une passe **iOS sur un projet déjà
+passé en Android**, fermé le jour même.
+
+Le rapport a imprimé :
+
+    ⚠️ acquittement PÉRIMÉ : « QAM-SEC-BACKUP » ne correspond à aucun finding
+       de ce run — retire-le de security.acknowledged.
+
+…pendant que le **même rapport**, deux lignes plus haut, écrivait *« non jugé —
+le manifeste Android »*. Le finding acquitté vit dans ce que la passe iOS ne
+juge pas. Suivre la prescription l'aurait rendu **non acquitté au prochain run
+Android** : l'outil disait de casser l'autre plateforme pour faire taire une
+ligne sur celle-ci.
+
+#### 🔴 Le remède existait, entre DIMENSIONS, et n'avait pas traversé
+
+Le bloc qui juge ces acquittements porte déjà, en commentaire, le récit du même
+défaut : *« chacun déclarait donc périmés les acquittements de l'autre — mesuré
+sur un run : "PÉRIMÉ : QAM-SEC-CLEAR" annoncé par `sca` pendant que `sec`
+l'honorait dans le même rapport »*. La conclusion en avait été tirée — un
+acquittement est une propriété de **l'union** des dimensions — et elle est
+juste. Elle n'a simplement jamais été portée d'un axe à l'autre.
+
+*C'est la troisième fois dans la même journée qu'un remède exact ne couvre pas
+son voisin le plus proche* : après le **542** (l'avertissement posé là où l'on
+configure, pas là où l'on écrit), et après les trois gardes redondants qui
+l'accompagnaient.
+
+#### ✅ Le remède, et pourquoi il ne vit pas dans une nouvelle clé
+
+`peutConclurePerime(config)` dérive la réponse de ce que le projet **déclare
+déjà** : deux identifiants d'application renseignés et une seule plateforme
+testée ⇒ ce run ne peut pas conclure. Pas de clé nouvelle, donc pas de surface
+d'API en plus — et rien à tenir à jour.
+
+L'avertissement n'est pas supprimé, il est **remplacé** par celui qui dit quoi
+faire : « sans finding sur cette plateforme — NE LES RETIRE PAS ».
+
+⚠️ **Les deux sens sont gardés, et c'est ce qui compte ici.** Un remède qui se
+tairait toujours passerait un garde écrit d'un seul côté — et il supprimerait
+l'avertissement pour les projets mono-plateforme, où il est juste. Deux
+mutations sur la **même ligne**, en sens inverses, le prouvent.
+
+### 544. La page publiée employait quatre variables CSS qu'elle ne définit pas
+
+**Ouvert le 20/09/2026 · CLOS** — même passe, même jour.
+
+Le bloc de style des onglets était écrit en français — `--bord`, `--doux`,
+`--carte`, `--texte` — pendant que le `:root` définit la palette en anglais —
+`--line`, `--muted`, `--card`, `--fg`. Le navigateur retombe alors **en silence**
+sur ses propres valeurs : la page s'affiche, rien ne casse, ce n'est simplement
+pas ce qui était voulu. Et le défaut ne se voit qu'à partir de **deux** runs,
+puisque les onglets n'apparaissent pas avant.
+
+Mesuré sur le fichier **PRODUIT**, pas sur le gabarit : **8 définies, 12
+employées, 4 manquantes** — et le même compte sur les deux plateformes.
+
+📌 Le garde **appelle** `renderArtifact` et analyse ce qui revient. Un garde qui
+lirait le texte du générateur ne verrait pas le défaut : deux langages se
+disputent ces caractères, et la sortie peut être fausse quand la source se lit
+bien. Il asserte d'abord qu'il **voit** des variables — sans quoi un jour où la
+page n'en porterait plus, « aucune manquante » se lirait comme une page saine.
