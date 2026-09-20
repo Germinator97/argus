@@ -71,6 +71,42 @@ plus fort qu'une paire de runs sache donner :
    raison, et c'est ce qui rend cette issue inatteignable sans toi.
 3. **Le jouer une seule fois en EXPLORE**, jamais en REGRESS — une suite de
    non-régression suppose la rejouabilité, et celui-ci ne l'a pas.
+4. 🔴 **MAIS DÉCOUPE-LE : « ne le lance pas » coûte plus cher qu'il n'en a
+   l'air.** Le geste sans retour est presque toujours le DERNIER pas, et tout ce
+   qui le précède se rejoue à volonté. Mesuré sur un parcours de création de code
+   secret : l'irréversible tenait en **deux commandes sur cent soixante-et-onze**.
+   Sortir le fichier entier de la suite revient donc à ne jamais éprouver les
+   cent soixante-neuf lignes qui ne coûtent rien — *et c'est là que vivent les
+   défauts qu'on attrape* : une ancre qui ne répond pas, une assertion posée du
+   mauvais côté d'un tap, un nœud fusionné qu'on croyait tapable.
+
+   Mets le dernier pas derrière un **opt-in explicite**, et laisse le reste
+   jouable :
+
+   ```yaml
+   - runFlow:
+       when:
+         true: "${typeof MON_OPT_IN !== 'undefined' && MON_OPT_IN === '1'}"
+       commands:
+         - tapOn: { id: le_geste_sans_retour }
+   ```
+
+   ⚠️ **ET L'AUTRE MOITIÉ, sans laquelle le premier garde ne vaut rien : quand
+   l'opt-in manque, le flow doit DIRE qu'il s'est arrêté.** Un parcours qui saute
+   sa dernière étape en silence rend exactement le même vert que celui qui l'a
+   jouée — donc on ne sait plus lequel des deux on vient de faire, sur le seul
+   geste du fichier qui ne se défait pas. Une assertion suffit : le bouton est
+   actif, et il n'a pas été tapé.
+
+   📌 **Le défaut par défaut est le SÛR.** Un flow qui porte un geste sans retour
+   ne doit pas le jouer parce qu'on l'a lancé : il doit exiger qu'on le demande.
+   C'est la règle que ce document applique déjà aux OUTILS — « un outil qui mute
+   ne démarre pas sur un argument qu'il ne comprend pas » —, portée aux parcours.
+
+   *Exercé avant d'être prescrit* : deux passages sans opt-in (geste sauté,
+   arrêt annoncé, compte intact — vérifié en y retournant), un passage avec
+   (geste joué), puis un quatrième qui échoue sur l'écran devenu inatteignable.
+   Les deux branches prouvées dans les deux sens.
 
 ⚠️ **ET NE POSE PAS « JOUÉ PUIS REJOUÉ » COMME CRITÈRE DE PREUVE.** C'est
 exactement l'erreur qu'a faite le suivi de ce chantier : la condition de clôture
