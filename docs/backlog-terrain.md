@@ -5097,13 +5097,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 536**, rendu par le run 95 — `report.json` et
-`summary.json` portent le même compte de findings sous deux périmètres, et rien
-ne les distingue. Il n'est pas traité : le format de rapport est l'API publique
-du plugin, donc le remède est un arbitrage, pas un correctif évident. Les trois
-voies sont posées au point lui-même.
-
-Les trois points du run 94 sont traités : le **533** est
+✅ **Rien d'ouvert.** Le 536 est fermé sans arbitrage : le dépôt l'avait déjà
+rendu deux clés plus bas, sur un cas identique. Les trois points du run 94 sont
+traités : le **533** est
 fermé — son remède compose désormais
 la même construction que son voisin — et le **534** est **démenti** : la sonde a
 montré que la liste n'y est pour rien, et que le remède du skill tient. *La
@@ -11671,7 +11667,7 @@ qui ARRIVE, pas question sans réponse.
 
 ### 536. Deux comptes de findings, même forme, deux périmètres
 
-**Ouvert le 19/09/2026 · OUVERT** — par le run 95. Non traité.
+**Ouvert le 19/09/2026 · CLOS** — par le run 95, fermé le 20/09/2026.
 
     report.json   → summary.findings = {blocker,critical,major,minor, info: 1}   ← les flows SEULS
     summary.json  → counts           = {blocker,critical,major,minor, info: 2}   ← l'AGRÉGÉ
@@ -11711,23 +11707,44 @@ avec une valeur **complète et plausible**. Et `summary.json` n'est documenté
 *C'est le motif du 488 pour la quatrième fois de la journée : le remède est dans
 le dépôt, le voisin ne l'a jamais reçu.*
 
-#### L'arbitrage, qui n'est pas au correctif
+#### ✅ Ce qui l'a fermé : la décision était déjà dans le fichier
 
-Le format de rapport est l'**API publique** du plugin — des consommateurs lisent
-`summary.findings`. Trois voies, à trancher avant d'écrire :
+Trois voies semblaient ouvertes — une clé additive, un renommage, une note de
+doc — et le format de rapport étant l'API publique du plugin, l'arbitrage
+paraissait revenir à l'humain. **Il avait déjà été rendu, deux clés plus bas,
+dans le même objet** :
 
-1. **Additive** — poser un `scope: "flows"` dans `report.json.summary`, pour que
-   la structure dise son périmètre à l'endroit exact où on se trompe. Ne casse
-   aucun consommateur.
-2. **Rupture** — renommer en `flowFindings`, ce qui rend l'erreur impossible mais
-   change une clé que le garde de `report-format-mobile.md` fige par égalité.
-3. **Documentaire seule** — étendre l'avertissement `perf` aux findings et
-   documenter `summary.json`. La moins chère, et *un panneau n'est pas un
-   garde-fou* : c'est le barreau le plus faible des trois.
+```js
+startup: {
+  measures: "attente de l'écran de départ exploitable (splash et init compris)
+             — à ne pas confondre avec thresholds.coldStartMs, qui juge la première frame",
+```
 
-⚠️ Quelle que soit la voie, le garde doit **dériver** les deux comptes des deux
-fichiers et exiger qu'ils se distinguent — jamais citer `info: 1` ni `info: 2`,
-qui sont les valeurs d'un run et pas une règle.
+avec, en commentaire : *« CE TEMPS N'EST PAS `coldStartMs`, et les lire côte à
+côte sans le dire fait conclure à une contradiction. »* Deux grandeurs voisines,
+même forme, périmètres différents : le 536 mot pour mot. Le dépôt n'avait choisi
+ni le renommage ni la note lointaine, mais **une clé de donnée qui porte son
+propre périmètre**. `summary` est son voisin immédiat, et ne l'avait jamais reçu.
+
+D'où `summary.measures`, écrit sur le même modèle. Deux mesures confirment que
+rien ne casse : `report.json.summary` **n'a aucun lecteur dans le code** — le
+seul `.summary` lu est un champ de vulnérabilité sans rapport —, et l'ajout se
+fait DANS `summary`, alors que le garde fige les clés de **premier niveau**.
+
+La doc reçoit les deux moitiés qui lui manquaient : l'avertissement de
+`metrics.perf` étendu aux findings — *là où `perf` manque visiblement, ce
+compte-là ment avec une valeur complète* — et une section décrivant
+`summary.json`, qui n'était **cité nulle part** alors que le code l'écrit.
+
+⚠️ Les deux gardes **dérivent** des deux sources : le nom du fichier d'agrégé
+est lu chez celui qui l'écrit, jamais écrit dans le test. Citer `info: 1` ou
+`info: 2` aurait figé les valeurs d'un run au lieu de la règle. Le second exige
+que la doc nomme ce fichier ET dise que `counts` y porte l'agrégé, dans la
+section qui le décrit — bornée par le titre suivant, pas par un nombre (510).
+
+📌 **La leçon n'est pas le correctif, c'est le geste qui l'a trouvé** : avant de
+faire trancher un arbitrage, chercher si le dépôt ne l'a pas déjà rendu. Ici la
+réponse vivait à douze lignes du défaut.
 
 ### 537. Le marqueur de point ouvert était écrit nulle part, et gardé sur une fixture
 
