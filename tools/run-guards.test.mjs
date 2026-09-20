@@ -8071,24 +8071,47 @@ test('la cible qui agrège les dettes lit le format que le harnais ÉMET (316)',
     'la ligne émise n\'est plus indentée : le motif du Makefile, ancré sur `^ +`, ne la verra plus');
 
   // Et le motif du Makefile doit accepter cette forme-là.
-  const cible = makefile.slice(makefile.indexOf('argus-debts:'), makefile.indexOf('argus-debts:') + 600);
-  assert.match(cible, /grep -oE/, 'la cible n\'extrait plus rien');
-  const motif = /grep -oE "([^"]+)"/.exec(cible);
-  assert.ok(motif, 'le motif d\'extraction est illisible — ce garde ne peut plus le croiser');
-  // ⚠️ ON L'EXÉCUTE sur la ligne que le code émet, plutôt que de comparer deux
-  // textes : c'est la seule façon de savoir qu'il matche.
+  // La cible, bornée par la STRUCTURE — la suivante —, jamais par un nombre :
+  // le filtre a grandi en devenant un programme, et une fenêtre de 600
+  // caractères l'aurait tronqué sans rien dire (510).
+  const depart = makefile.indexOf('argus-debts:');
+  const apres = makefile.slice(depart);
+  const finCible = apres.slice(1).search(/\n[a-z][\w-]*:/);
+  const cible = finCible > 0 ? apres.slice(0, finCible + 1) : apres;
+
+  // 🔴 538 — LE FILTRE N'EST PLUS UNE REGEX MAIS UN PROGRAMME, et ce n'est pas
+  // un détail d'écriture : la FORME ne distingue pas une clé d'un libellé, car
+  // le matcher Dart imprime ses listes `Actual:` avec la même typographie —
+  // une chaîne par ligne, quotée, suivie d'une virgule. Il a donc fallu trier
+  // sur la POSITION, ce qu'une expression seule ne sait pas faire.
+  const prog = /awk '([\s\S]*?)'\s*\\/.exec(cible);
+  assert.ok(prog, 'la cible n\'extrait plus rien par awk : si le filtre a changé de forme, '
+    + 'c\'est ce garde qu\'il faut réécrire — tel quel il ne mesure plus rien');
+  const programme = prog[1].replace(/\$\$/g, '$').replace(/\\\n\s*/g, '\n');
+  const filtrer = (entree) => execFileSync('awk', [programme], { input: entree, encoding: 'utf8' }).trim();
+
+  // ⚠️ ON L'EXÉCUTE sur la ligne que le code émet, dans le contexte qu'il émet.
   const ligneEmise = `${' '.repeat(indentation)}'home:overflow:13px',`;
-  const rx = new RegExp(motif[1].replace(/\$\$/g, '$'));
-  assert.match(ligneEmise, rx,
-    `le motif du Makefile (${motif[1]}) ne matche pas la ligne que le harnais émet `
+  const invite = /inscris-le TEL QUEL dans ([\w/.]+)/.exec(harnais);
+  assert.ok(invite, 'le harnais n\'invite plus à inscrire la clé dans un fichier nommé — '
+    + 'or c\'est cette phrase que le filtre cherche pour situer la clé');
+  assert.equal(filtrer(`inscris-le TEL QUEL dans ${invite[1]} :\n\n${ligneEmise}\n`), ligneEmise.trim(),
+    `le filtre du Makefile ne retient pas la ligne que le harnais émet `
     + `(${JSON.stringify(ligneEmise)}) : la cible rendrait vide sur une suite pleine de dettes`);
 
-  // ⚠️ L'AUTRE MOITIÉ : il ne doit pas matcher n'importe quelle ligne de sortie,
-  // sinon le bloc « prêt à coller » se remplit de bruit.
+  // ⚠️ L'AUTRE MOITIÉ : il ne doit pas retenir n'importe quelle ligne, sinon le
+  // bloc « prêt à coller » se remplit de bruit — même précédée de l'invitation.
   for (const bruit of ['All tests passed!', '00:03 +12 -1: layout home', "  final x = 'abc';"]) {
-    assert.ok(!rx.test(bruit),
-      `le motif attrape une ligne qui n'est pas une dette (${JSON.stringify(bruit)})`);
+    assert.equal(filtrer(`inscris-le TEL QUEL dans ${invite[1]} :\n\n${bruit}\n`), '',
+      `le filtre attrape une ligne qui n'est pas une dette (${JSON.stringify(bruit)})`);
   }
+
+  // ⚠️ ET LA MOITIÉ QUE LE 538 A AJOUTÉE : la FORME exacte d'une clé, mais sans
+  // l'invitation, doit être écartée. C'est ce cas-là qui déversait le contenu
+  // de l'application dans la dette.
+  assert.equal(filtrer(`    Actual: [\n${ligneEmise}\n            ]\n`), '',
+    'une ligne de la forme d\'une clé est retenue hors de son contexte : le filtre trie '
+    + 'encore sur la forme, et la liste `Actual:` du matcher redevient de la dette');
 
   // La couleur doit être retirée avant : `flutter test` colore ses échecs, et
   // un code ANSI collé au début de ligne casse l'ancrage `^ +`.
@@ -9450,7 +9473,7 @@ test('argus-debts DIT qu\'il n\'y a rien à inscrire quand la suite est verte (M
 
 test('argus-debts rend le bloc prêt à coller quand il y a des dettes (M5, l\'autre moitié)', () => {
   // Sans ce cas, « toujours afficher le repli » passerait pour un correctif.
-  const dir = terrainMake("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  const dir = terrainMake(journalDeDettes('home · cibles tactiles ≥ 48 dp (Android)', 'panier · texte ×2.0'));
   const sortie = faireDettes(dir);
   assert.match(sortie, /'home · cibles tactiles/);
   assert.match(sortie, /'panier · texte/);
@@ -9468,6 +9491,27 @@ test('argus-debts rend le bloc prêt à coller quand il y a des dettes (M5, l\'a
 const DECL_DETTE = 'const Set<String> argusKnownIssues';
 const DETTE_LIVREE = join(RACINE,
   'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/known_issues.dart');
+
+/**
+ * Le journal TEL QUE LE HARNAIS L'ÉMET autour de ces clés.
+ *
+ * 🔴 538 — ces montages passaient des clés NUES, c'est-à-dire une sortie que
+ * `flutter test` ne produit jamais. Tant que le filtre triait sur la FORME
+ * (toute ligne quotée suivie d'une virgule), l'écart ne se voyait pas ; le jour
+ * où il a exigé le CONTEXTE, les quatre sont devenus rouges d'un coup. Ils
+ * prouvaient la logique de la cible, jamais sa rencontre avec le vrai journal.
+ *
+ * ⚠️ L'invitation est DÉRIVÉE du harnais livré, jamais recopiée : si le message
+ * Dart change, ces montages changent avec lui ou ce garde tombe.
+ */
+const journalDeDettes = (...cles) => {
+  const harnais = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/argus_harness.dart'), 'utf8');
+  const invite = /inscris-le TEL QUEL dans ([\w/.]+)/.exec(harnais);
+  assert.ok(invite, 'le harnais n\'invite plus à inscrire la clé dans un fichier nommé : '
+    + 'le filtre de dette s\'ancre sur cette phrase, et ces montages la dérivent d\'ici');
+  return cles.map((c) => `inscris-le TEL QUEL dans ${invite[1]} :\n\n      '${c}',\n`).join('\n');
+};
 
 /** Le terrain de M5, plus le moteur et le fichier de dette tel qu'il est livré. */
 const terrainWrite = (sortieDeFlutter) => {
@@ -9499,7 +9543,7 @@ test('argus-debts-write écrit dans le SET et laisse le dartdoc intact (526)', (
     'la PREMIÈRE occurrence n\'est plus celle du dartdoc : le naïf ne frappe plus un commentaire, '
     + 'donc l\'écart que ce garde mesure a disparu');
 
-  const dir = terrainWrite("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  const dir = terrainWrite(journalDeDettes('home · cibles tactiles ≥ 48 dp (Android)', 'panier · texte ×2.0'));
   const sortie = ecrireDettes(dir);
   const apres = readFileSync(join(dir, 'test/argus/known_issues.dart'), 'utf8');
 
@@ -9520,13 +9564,13 @@ test('argus-debts-write AJOUTE à la dette assumée, il ne la remplace pas (526,
   // Sans cette moitié, « réécrire le fichier avec le bloc reçu » passerait pour
   // un correctif — alors qu'une clé déjà inscrite ne fait plus échouer la suite,
   // donc n'est plus dérivée : le deuxième lancement VIDERAIT la dette.
-  const dir = terrainWrite("      'home · cibles tactiles ≥ 48 dp (Android)',\n      'panier · texte ×2.0',");
+  const dir = terrainWrite(journalDeDettes('home · cibles tactiles ≥ 48 dp (Android)', 'panier · texte ×2.0'));
   ecrireDettes(dir);
 
   // Deuxième passe : une clé neuve, une déjà assumée, et la troisième a disparu
   // de ce que la suite rend — c'est le cas réel.
   writeFileSync(join(dir, 'bin/flutter'),
-    "#!/bin/sh\ncat <<'EOF'\n      'reglages · contraste',\n      'panier · texte ×2.0',\nEOF\n");
+    `#!/bin/sh\ncat <<'EOF'\n${journalDeDettes('reglages · contraste', 'panier · texte ×2.0')}\nEOF\n`);
   chmodSync(join(dir, 'bin/flutter'), 0o755);
   const sortie = ecrireDettes(dir);
   assert.match(sortie, /1 clé\(s\) inscrite\(s\) · 2 déjà assumée\(s\) · 3 au total/,
@@ -9592,7 +9636,7 @@ test('argus-debts-write REFUSE quand le marqueur ne précède plus la déclarati
   // Le marqueur est la seule chose qui distingue le code du commentaire qui le
   // cite. Sans lui, écrire quand même reviendrait à deviner lequel des deux on
   // réécrit — et le fichier dit que l'ambiguïté revient dès qu'on cite.
-  const dir = terrainWrite("      'home · cibles tactiles',");
+  const dir = terrainWrite(journalDeDettes('home · cibles tactiles'));
   const cible = join(dir, 'test/argus/known_issues.dart');
   const sans = readFileSync(cible, 'utf8').split('\n').filter((l) => !l.includes('ARGUS:DECLARATION')).join('\n');
   assert.ok(!sans.includes('ARGUS:DECLARATION'), 'le montage n\'a pas retiré le marqueur — il n\'arme rien');
@@ -17402,4 +17446,92 @@ test('la doc décrit le fichier d\'agrégé, et pas seulement report.json (536)'
   assert.ok(sectionDepuis(doc, titre).includes('"counts"'),
     `la section de ${agrege} ne montre plus « counts » : elle envoie lire un fichier `
     + 'sans dire quoi y lire');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 538 — Le filtre de dette exige le CONTEXTE, pas seulement la forme.
+// Il retenait toute ligne quotée suivie d'une virgule ; le matcher Dart
+// formate sa liste `Actual:` exactement ainsi, donc un échec de troncature y
+// déversait le CONTENU de l'application. Ce garde EXÉCUTE le filtre livré au
+// lieu de lire son texte : un motif qu'on relit peut être juste et ne rien
+// gouverner, c'est le barreau qu'on croit tenir et qui cède.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le filtre de dette retient la clé et ÉCARTE le contenu (538)', () => {
+  const makefile = readFileSync(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile'), 'utf8');
+
+  // La cible, bornée par la STRUCTURE : jusqu'à la suivante, jamais un nombre.
+  const debut = makefile.indexOf('\nargus-debts:');
+  assert.ok(debut > 0, 'la cible `argus-debts` a disparu du Makefile livré : '
+    + 'si elle a été renommée, mets ce motif à jour — sinon ce garde ne garde plus rien');
+  const suite = makefile.slice(debut + 1);
+  const finCible = suite.search(/\n[a-z][\w-]*:/);
+  const cible = finCible > 0 ? suite.slice(0, finCible) : suite;
+
+  // Le programme awk, extrait de ce que Make exécute VRAIMENT.
+  const prog = cible.match(/awk '([\s\S]*?)'\s*\\/);
+  assert.ok(prog, 'la cible `argus-debts` ne passe plus par awk : le filtre a changé de forme, '
+    + 'et ce garde doit être réécrit sur la nouvelle — il ne mesure rien tel quel');
+  // Make double ses `$` ; le shell reçoit l'original.
+  const programme = prog[1].replace(/\$\$/g, '$').replace(/\\\n\s*/g, '\n');
+
+  // Un journal RÉEL porte les deux formes : la liste du matcher, et la clé que
+  // le harnais invite à inscrire. Elles sont typographiquement IDENTIQUES.
+  const journal = [
+    '  Expected: empty',
+    '    Actual: [',
+    "              'Agence CGRAE Plateau',",
+    "              'Rechercher un nom ou un numéro',",
+    '            ]',
+    '',
+    'inscris-le TEL QUEL dans test/argus/known_issues.dart :',
+    '',
+    "      'orders-filled · compact · aucun texte tronqué',",
+    '',
+  ].join('\n');
+
+  const retenu = execFileSync('awk', [programme], { input: journal, encoding: 'utf8' })
+    .split('\n').map((l) => l.trim()).filter(Boolean);
+
+  // Les deux moitiés, et aucune ne se déduit de l'autre.
+  assert.deepEqual(retenu, ["'orders-filled · compact · aucun texte tronqué',"],
+    'le filtre ne retient pas exactement la clé : soit il a pris du contenu d\'application '
+    + '(les libellés de la liste `Actual:`), soit il a perdu la clé que le harnais désigne');
+
+  // ⚠️ Et la contre-épreuve qui prouve que ce n'est pas la FORME qui trie : les
+  // mêmes lignes quotées, sans l'invitation, ne doivent rien rendre. Sans elle,
+  // un filtre qui garderait « la dernière ligne quotée » passerait aussi.
+  const sansInvitation = journal.split('\n').filter((l) => !l.includes('known_issues.dart')).join('\n');
+  const rien = execFileSync('awk', [programme], { input: sansInvitation, encoding: 'utf8' }).trim();
+  assert.equal(rien, '',
+    'des lignes quotées sans invitation sont retenues : le filtre trie encore sur la FORME, '
+    + 'et le contenu de l\'application redevient de la dette');
+});
+
+test('le garde des clés orphelines NOMME le geste outillé (538)', () => {
+  const SCAFFOLD = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const test_ = readFileSync(join(SCAFFOLD, 'test/argus/anchors_test.dart'), 'utf8');
+  const makefile = readFileSync(join(SCAFFOLD, 'Makefile'), 'utf8');
+
+  // La cible de retrait est DÉRIVÉE du Makefile, jamais écrite ici : si elle est
+  // renommée, ce garde tombe au lieu de prescrire un geste qui n'existe plus.
+  const cible = makefile.match(/^(argus-debts-\w+):.*RETIRE/m);
+  assert.ok(cible, 'le Makefile n\'expose plus de cible qui RETIRE une dette : '
+    + 'ce garde prescrivait un geste outillé, vérifie qu\'il existe encore');
+
+  const i = test_.indexOf('ne commencent par l\\\'id d\\\'aucun écran');
+  assert.ok(i > 0, 'le message du garde des clés orphelines a été reformulé : '
+    + 'relis-le, il doit toujours nommer le geste outillé');
+  // Bornée par la STRUCTURE du bloc Dart — la fin de l'appel `expect(` —, jamais
+  // par un nombre : un message qui grandit d'un paragraphe légitime ferait
+  // rougir ce garde à un endroit qu'il ne surveille pas (510).
+  const finDuBloc = test_.indexOf('\n    );', i);
+  assert.ok(finDuBloc > i, 'le message du garde des clés orphelines ne se termine plus par un '
+    + '`expect(` fermé : la structure a changé, et ce fenêtrage avec elle');
+  const message = test_.slice(i, finDuBloc);
+  assert.ok(message.includes(cible[1]),
+    `le message des clés orphelines ne nomme pas « ${cible[1]} » : il envoie donc éditer `
+    + 'known_issues.dart à la main, c\'est-à-dire le geste que le harnais interdit en '
+    + 'capitales — et c\'est exactement ce qui est arrivé au run 96');
 });
