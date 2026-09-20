@@ -5097,9 +5097,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le 536 est fermé sans arbitrage : le dépôt l'avait déjà
-rendu deux clés plus bas, sur un cas identique. Les trois points du run 94 sont
-traités : le **533** est
+🔴 **1 POINT OUVERT — le 539** : un parcours qui porte un geste sans retour
+n'exige pas qu'on le demande. Le skill ne prescrit l'opt-in nulle part, alors
+que la règle équivalente est écrite pour les OUTILS depuis longtemps. Non
+traité : le remède touche ce que le skill prescrit aux parcours, et il mérite
+d'être écrit une fois pour toutes plutôt que rattrapé projet par projet.
+
+Le 536 est fermé sans arbitrage : le dépôt l'avait déjà rendu deux clés plus
+bas, sur un cas identique. Les trois points du run 94 sont traités : le **533** est
 fermé — son remède compose désormais
 la même construction que son voisin — et le **534** est **démenti** : la sonde a
 montré que la liste n'y est pour rien, et que le remède du skill tient. *La
@@ -11937,4 +11942,62 @@ produit jamais. Tant que le filtre triait sur la forme, l'écart ne se voyait pa
 il a rougi d'un coup. *Ils prouvaient la logique de la cible, jamais sa rencontre
 avec le vrai journal.* L'invitation qu'ils émettent est maintenant dérivée du
 harnais livré.
+
+### 539. Un parcours peut porter un geste SANS RETOUR sans jamais le demander
+
+**Ouvert le 20/09/2026 · OUVERT** — né du run 96, non traité.
+
+L'agent du run 96 a écrit un parcours de création de code secret et **a décidé
+seul de ne pas le lancer** — à raison : le geste est irréversible depuis
+l'application, aucun écran ne le défait, et le back-office ne sait pas le
+réinitialiser *en l'état* (vérifié auprès de Germinator). Il l'a donc taggé
+`manual`, que `config.yaml` exclut de toute exécution.
+
+C'était le bon jugement. Mais rien dans le skill ne le lui demandait, et rien
+n'aurait signalé l'inverse : **un flow qui brûle un compte rend exactement le
+même vert que celui qui n'en brûle aucun.**
+
+#### Ce que la mesure a montré, et qui change le remède
+
+Sur les **171 lignes** du parcours, l'irréversible tient en **deux commandes, à
+la toute fin**. Tout ce qui précède — identification, OTP, écran de création,
+écran de confirmation, activation du bouton — se rejoue autant qu'on veut tant
+que « Valider » n'est pas tapé.
+
+*Le tout-ou-rien n'était donc pas la bonne granularité.* Un parcours à geste
+irréversible se découpe presque toujours : une partie éprouvable à volonté, et
+un dernier pas qui engage. Le tagger `manual` en entier revient à ne jamais
+éprouver les 168 lignes qui ne coûtent rien — et c'est là que vivent les défauts
+qu'on attrape (une ancre qui ne répond pas, une assertion posée du mauvais côté
+d'un tap : l'agent a fait exactement cette erreur sur trois autres flows).
+
+#### La forme du remède, exercée sur le terrain avant d'être prescrite
+
+    - runFlow:
+        when:
+          true: "${typeof ARGUS_SECRET_COMMIT !== 'undefined' && ARGUS_SECRET_COMMIT === '1'}"
+        commands:
+          - tapOn: { id: auth_secret_submit }
+
+Le défaut par défaut devient le **sûr** : sans l'opt-in, le flow s'arrête juste
+avant et le compte reste intact. ⚠️ **Et la moitié qu'on oublie** — il doit
+**DIRE** qu'il s'est arrêté, par une assertion qui constate que le bouton est
+actif et n'a pas été tapé : un flow qui saute sa dernière étape en silence rend
+le même vert que celui qui l'a jouée, c'est-à-dire qu'on ne sait plus lequel des
+deux on vient de faire, sur le seul geste qui ne se défait pas.
+
+📌 **La règle existe déjà pour les OUTILS, jamais pour les PARCOURS.** Le dépôt
+a fermé « un outil qui MUTE ne doit pas démarrer sur un argument qu'il ne
+comprend pas » — un `--help` avait lancé quatre-vingts mutations. C'est le même
+énoncé, appliqué à ce que le skill fait écrire aux autres. *Le motif du 488,
+une cinquième fois : le remède est dans le dépôt, le voisin ne l'a pas reçu.*
+
+#### Ce qui reste à trancher
+
+Où prescrire, et avec quelle force : une mention dans la méthodologie ? une
+section du SKILL sur les parcours non rejouables ? un garde qui refuse un flow
+dont une commande porte un marqueur d'irréversibilité sans `when:` ? La
+troisième est la seule qui tienne sans discipline, mais elle suppose de
+reconnaître un geste irréversible — ce qu'aucun signal du flow ne dit
+aujourd'hui, sinon un commentaire.
 
