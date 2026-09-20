@@ -120,8 +120,19 @@ void main() {
           'déclaré. Elles ne seront donc JAMAIS réconciliées — ni confirmées, ni '
           'retirées — et le relevé cesse de mesurer ce qu\'il prétend figer :\n'
           '  ${orphelines.join('\n  ')}\n\n'
-          'Écrans déclarés : ${ids.join(', ')}.\n'
-          'Colle la clé donnée par le message d\'échec, ne la réécris pas.',
+          'Écrans déclarés : ${ids.join(', ')}.\n\n'
+          // 🔴 538 — CE MESSAGE ENVOYAIT ÉDITER À LA MAIN. Il disait « colle la
+          // clé » et ne nommait pas la cible qui RETIRE, alors qu'elle existe.
+          // Quelqu'un a donc ouvert known_issues.dart à la main, c'est-à-dire le
+          // geste que le harnais interdit en capitales trois fichiers plus loin.
+          // Un message qui signale un problème doit nommer le geste OUTILLÉ qui
+          // le répare, sinon il fabrique lui-même le contournement.
+          '🔴 NE LES RETIRE PAS À LA MAIN : le dartdoc de ce fichier porte la '
+          'ligne de déclaration mot pour mot et PLUS HAUT que la vraie. Emploie, '
+          'une clé à la fois :\n'
+          "      make argus-debts-forget KEY='<une des lignes ci-dessus>'\n\n"
+          'Et pour AJOUTER une dette, colle la clé donnée par le message '
+          'd\'échec, ne la réécris pas.',
     );
   });
 
