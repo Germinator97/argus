@@ -12376,3 +12376,63 @@ lirait le texte du générateur ne verrait pas le défaut : deux langages se
 disputent ces caractères, et la sortie peut être fausse quand la source se lit
 bien. Il asserte d'abord qu'il **voit** des variables — sans quoi un jour où la
 page n'en porterait plus, « aucune manquante » se lirait comme une page saine.
+
+### 545. Le garde de disposition renvoyait à une ligne que sa sortie ne porte jamais
+
+**Ouvert le 20/09/2026 · CLOS** — trouvé en corrigeant les dettes d'un terrain,
+fermé le jour même.
+
+Devant chaque débordement, le message disait :
+
+    Cherche « The relevant error-causing widget was » dans la sortie :
+    le widget fautif n'est presque jamais celui de l'écran.
+
+Le conseil est juste — c'est l'anti-pattern que le fichier existe pour fermer.
+Mais cette ligne **n'apparaît jamais** dans la sortie du garde. Mesuré :
+**15 débordements, 15 renvois, ZÉRO** section de diagnostic Flutter.
+`tester.takeException()` ne rend que l'**exception** ; la ligne vit dans les
+`FlutterErrorDetails`, que le binding de test consomme.
+
+*Une prescription qui désigne ce que l'outil supprime lui-même.* Et le coût est
+réel : j'ai cherché cette ligne dans le journal avant de comprendre qu'elle ne
+pouvait pas y être.
+
+#### ✅ Le message PORTE le coupable au lieu de le désigner
+
+Le harnais s'insère **devant** le gestionnaire du binding — sans le remplacer,
+et c'est la moitié qui compte : sans le relais, `takeException()` ne rendrait
+plus rien et **tous** les gardes de disposition deviendraient vacants d'un coup.
+
+⚠️ **Pas le nom nu.** `debugTransformDebugCreator` rend « Column » — le nom d'un
+widget dont une application compte cinquante exemplaires, donc un renseignement
+qui ne désigne aucun fichier. Et l'emplacement qu'il promet (`fichier:ligne`)
+exige le suivi de création, absent de ce binaire : mesuré, il rend une chaîne
+vide. `debugGetCreatorChain` n'en dépend pas et nomme les widgets **de
+l'application** :
+
+    Widget fautif : Column ← Padding ← Center ← Semantics ← _EmptyState
+    Widget fautif : Column ← Stack ← Padding ← Semantics ← _HomeEmpty
+
+Mesuré sur le même terrain : **28 échecs avant, 28 après** — rien n'a été perdu,
+seul le message a changé, et 15 nomment désormais le coupable.
+
+#### Trois choses que la fermeture a coûté, et qui valent d'être écrites
+
+1. 🔴 **Un `FlutterExceptionHandler` non importé a rendu « +0 -3 ».** Le type vit
+   dans `foundation.dart`, que ce fichier n'importe pas : la suite n'a pas
+   compilé, et le relevé est passé de 28 échecs à **4**. Lu vite, ça se lit
+   « les défauts ont disparu ». *Un effondrement de compte après un changement
+   d'INSTRUMENT n'est jamais une amélioration.*
+2. 🔴 **Un garde existait déjà sur ce message, et il est tombé — à raison.** Il
+   exigeait la phrase que le correctif venait de retirer : c'est la cinquième
+   façon d'être vacant, celle où *le correctif déplace le phénomène*. Il a été
+   **mis à jour**, pas supprimé — sinon son autre moitié (« ne cite pas
+   l'exception que `Actual:` imprime déjà ») partait avec lui. Et sa fenêtre,
+   bornée par **400 caractères**, avait cessé de contenir le message : re-bornée
+   par la structure.
+3. 🔴 **Mes deux gardes sont nés VACANTS, chacun d'une façon déjà écrite.** Le
+   premier matchait `debugGetCreatorChain` **dans le commentaire qui l'explique**
+   — ancré sur l'usage depuis. Le second ne peut pas voir un
+   `if (false) precedent?.call(details)` : sa limite est désormais **écrite dans
+   le garde**, et la mutation qui le prouve RETIRE la ligne, ce qui est la forme
+   qu'a l'oubli dans la vraie vie.
