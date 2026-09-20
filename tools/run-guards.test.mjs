@@ -17607,3 +17607,74 @@ test('le bloc prescrit met le geste sans retour SOUS son opt-in (539)', () => {
     'le critère accepte un bloc où le geste est hors du runFlow : il ne mesure pas ce qu\'il croit');
   assert.ok(iw >= 0 && ig >= 0, 'la contre-épreuve elle-même ne trouve plus ses repères');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 540 — `adb settings get` rend la chaîne « null », pas une chaîne vide.
+// Les deux consommateurs avaient DÉJÀ leur branche pour le cas illisible ; elles
+// étaient inatteignables. Ces gardes APPELLENT la normalisation, puis vérifient
+// qu'elle est CÂBLÉE aux deux sites — un remède qu'on relit peut être juste et
+// n'être jamais emprunté.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('la locale n\'est crue que si elle a la FORME d\'une locale (540)', async () => {
+  const { localeLue, localeWarnings } = await import(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'));
+
+  // Ce que les outils rendent vraiment, et qui n'est pas une locale.
+  for (const faux of ['null', 'Setting not found', '', '   ', 'error: device offline']) {
+    assert.equal(localeLue(faux), null,
+      `« ${faux} » est pris pour une locale : le rapport publierait une valeur qu'il n'a pas mesurée`);
+  }
+  // ⚠️ L'AUTRE MOITIÉ : un filtre qui rejette tout serait vert sur la première.
+  for (const vraie of ['fr-FR', 'fr_FR', 'en-US', 'und', 'fr-FR,en-US']) {
+    assert.equal(localeLue(vraie), vraie,
+      `« ${vraie} » est écartée : le filtre coupe trop, et l'avertissement de locale se tait à tort`);
+  }
+
+  // Et le CONSOMMATEUR atteint enfin sa branche honnête.
+  const avecNull = localeWarnings('fr_FR', false, localeLue('null'), 'android');
+  assert.ok(avecNull.some((l) => l.includes('n\'a pas pu être lue')),
+    'le message ne dit toujours pas que la locale est illisible : la branche reste inatteignable');
+  assert.ok(!avecNull.some((l) => l.includes('« null »')),
+    'le message publie encore « null » comme si c\'était une locale mesurée');
+  // … sans se taire pour autant : l'avertissement doit rester.
+  assert.ok(avecNull.length > 0,
+    'plus aucun avertissement : le remède a fait taire le signal au lieu de le corriger');
+});
+
+test('les DEUX lecteurs de locale passent par la normalisation (540)', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+
+  // 🔴 LE CÂBLAGE, et c'est lui qui manquait. Chaque lecture de `system_locales`
+  // doit être enveloppée : le site du MESSAGE et celui de l'IDENTITÉ FIGÉE, qui
+  // se commite dans `.argus-device` sous « source: mesuré ».
+  // ⚠️ Deux précautions, et chacune a été payée en écrivant ce garde.
+  // 1. On vise les APPELS — `'system_locales'` entre quotes — et non le mot nu :
+  //    le dartdoc de `localeLue` le cite en prose, et le garde s'est d'abord
+  //    accusé lui-même.
+  // 2. On borne par l'INSTRUCTION, pas par la ligne : la normalisation enveloppe
+  //    un ternaire de trois lignes, et un garde ligne-à-ligne l'a déclarée
+  //    absente — tort sur la forme, raison sur le fond.
+  const lectures = [...src.matchAll(/'system_locales'/g)].map((m) => {
+    const i = m.index ?? 0;
+    const ouvre = src.lastIndexOf('const ', i);
+    const fin = src.indexOf(';', i);
+    return src.slice(ouvre >= 0 ? ouvre : Math.max(0, i - 300), fin > 0 ? fin : i + 200);
+  });
+  assert.ok(lectures.length >= 2,
+    `seulement ${lectures.length} lecture(s) de system_locales trouvée(s) : si la forme de l'appel `
+    + 'a changé, ce garde ne voit plus les sites qu\'il doit couvrir');
+
+  for (const l of lectures) {
+    assert.match(l, /localeLue\(/,
+      `une lecture de system_locales n'est pas normalisée :\n      ${l.trim()}\n`
+      + '  la chaîne « null » y repasserait pour une locale mesurée');
+  }
+
+  // ⚠️ Et le site de l'identité ne doit plus retomber sur `|| ''`, qui masquait
+  // le défaut en donnant l'air d'un cas illisible traité.
+  assert.ok(!/locale:\s*locale\s*\|\|\s*''/.test(src),
+    'l\'identité du device retombe encore sur `locale || \'\'` : cette branche existait déjà et '
+    + 'n\'était jamais atteinte — c\'est elle qui a fait croire que le cas était couvert');
+});
