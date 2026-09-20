@@ -103,6 +103,33 @@ List<String> argusBundledFontFamilies() {
   }
 }
 
+/// Les FICHIERS de police présents dans le bundle de test, quelle que soit la
+/// façon dont ils y sont entrés.
+///
+/// 🔴 POURQUOI CETTE SECONDE SOURCE. `FontManifest.json` ne liste que ce que
+/// `pubspec.yaml → flutter: fonts:` déclare. Un projet peut parfaitement
+/// embarquer ses polices en ASSETS — `assets:\n  - assets/fonts/` — et les
+/// enregistrer à l'exécution (`google_fonts` avec `allowRuntimeFetching =
+/// false`, la forme standard de ce couple). Le manifeste est alors vide de ses
+/// familles, et le confronter au thème accuse l'application de ne pas embarquer
+/// ce qu'elle embarque. Mesuré sur un projet réel : onze TTF dans l'APK, un
+/// `major` pour chacun, et un remède qui envoyait corriger un montage qui
+/// marche.
+///
+/// Les fichiers, eux, sont là : `flutter test` recopie les assets dans
+/// `build/unit_test_assets/`. Leur présence ne dit pas QUELLE famille est
+/// enregistrée — elle dit que ce chemin de contrôle ne peut pas conclure.
+List<String> argusBundledFontFiles() {
+  final Directory d = Directory('build/unit_test_assets');
+  if (!d.existsSync()) return const <String>[];
+  return <String>[
+    for (final FileSystemEntity e in d.listSync(recursive: true))
+      if (e is File &&
+          (e.path.endsWith('.ttf') || e.path.endsWith('.otf')))
+        e.path,
+  ];
+}
+
 /// Les familles que le THÈME RÉEL de l'application demande.
 ///
 /// Vide quand le projet n'a pas renseigné [argusTheme] : il n'y a alors rien à

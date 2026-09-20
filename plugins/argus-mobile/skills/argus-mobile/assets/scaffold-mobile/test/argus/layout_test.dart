@@ -149,6 +149,23 @@ void main() {
       );
       return;
     }
+    // ⚠️ AVANT D'ACCUSER, VÉRIFIER QUE CE CHEMIN PEUT CONCLURE. Une police
+    // déclarée en ASSETS et enregistrée à l'exécution n'entre pas dans
+    // `FontManifest.json` : la confronter au thème rend un défaut de
+    // l'APPLICATION pour un montage parfaitement valide. Le critère est dérivé,
+    // sans nombre deviné — aucune des familles demandées n'est enregistrée ET
+    // des fichiers de police sont pourtant dans le bundle.
+    final Set<String> auBundle = argusBundledFontFamilies().toSet();
+    final List<String> fichiers = argusBundledFontFiles();
+    if (!demandees.any(auBundle.contains) && fichiers.isNotEmpty) {
+      markTestSkipped(
+        'les ${fichiers.length} police(s) de ce projet sont embarquées en ASSETS '
+        "et enregistrées à l'exécution : `FontManifest.json` ne les liste pas, "
+        'donc ce chemin ne peut pas confronter la résolution. '
+        "Ce n'est pas « conforme » — c'est « non mesuré par ici ».",
+      );
+      return;
+    }
     final String? defaut = argusFontResolutionIssue();
     expect(defaut, isNull, reason: defaut ?? '');
   });

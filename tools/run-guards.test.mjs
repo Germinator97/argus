@@ -17942,3 +17942,33 @@ test('une permission retirée par tools:node="remove" n\'est pas déclarée (547
   assert.equal(permissionsDeclarees('<uses-permission android:name="android.permission.CAMERA"/>').length, 1,
     'plus aucune permission n\'est lue : toute la dimension devient muette');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 548 — Second site du 546, et celui-là COMMANDE tous les autres gardes de son
+// fichier. Une police embarquée en ASSETS et enregistrée à l'exécution n'entre
+// pas dans `FontManifest.json` : le contrôle accusait l'application de ne pas
+// embarquer ce qu'elle embarque — onze TTF mesurés dans l'APK.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le contrôle de police REFUSE de conclure au lieu d\'accuser (548)', () => {
+  const l = readFileSync(join(SCAFFOLD, 'test/argus/layout_test.dart'), 'utf8');
+  const h = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  assert.match(h, /List<String> argusBundledFontFiles\(\)/,
+    'la seconde source a disparu : le contrôle n\'a plus que `FontManifest.json`, qui ignore les polices enregistrées à l\'exécution');
+  assert.match(h, /build\/unit_test_assets/,
+    'la source extérieure n\'est plus lue : sans elle, « aucune famille enregistrée » et « pas de police du tout » redeviennent le même verdict');
+  assert.match(l, /!demandees\.any\(auBundle\.contains\) && fichiers\.isNotEmpty/,
+    'le critère de non-conclusion a disparu — le contrôle recommence à accuser un montage valide');
+  assert.match(l, /markTestSkipped\(\s*\n\s*'les \$\{fichiers\.length\} police/,
+    'le refus ne DIT plus combien de polices il a vues : « non mesuré » se relirait comme « conforme »');
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui décide si le contrôle sert encore : il
+  // doit continuer d'ACCUSER quand le manifeste, lui, peut trancher. Vérifié
+  // sur un projet réel qui déclare ses polices nom par nom — le garde y passe
+  // (+1), il ne s'y saute pas.
+  assert.match(l, /final String\? defaut = argusFontResolutionIssue\(\);\n\s*expect\(defaut, isNull/,
+    'la confrontation elle-même a disparu : le contrôle ne juge plus jamais rien');
+  // ⚠️ SA LIMITE, ÉCRITE : ce garde lit du TEXTE. Il ne verrait pas une
+  // condition neutralisée (`if (false && …)`), et la propriété réelle ne
+  // s'exerce qu'en Dart, que cette suite ne lance pas. La mutation qui le
+  // prouve RETIRE la clause — la forme qu'a l'oubli dans la vraie vie.
+});
