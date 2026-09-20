@@ -998,8 +998,8 @@ MUTATIONS = [
     # ── 297 : le contrôle de configuration non embarquée ─────────────────
     # Celle-ci le vide de sa substance sans toucher au motif que le garde lit.
     ("config", "le contrôle de config ne regarde plus la déclaration",
-     "      if (motif && !texte.includes(motif)) {",
-     "      if (false && motif && !texte.includes(motif)) {"),
+     "      if (!estCable(texte, f, regle.motif)) {",
+     "      if (false) {"),
     # Et celle-ci coupe l'extensibilité — la moitié qui répond à « et les autres
     # fichiers de config ? ».
     ("config", "un projet ne peut plus déclarer ses propres fichiers",
@@ -1540,6 +1540,25 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 546 · la déclaration par DOSSIER est un câblage ──────────────────────
+    # Le contrôle redevient aveugle au dossier : neuf `major` faux reviennent sur
+    # un projet dont les polices sont bel et bien dans le paquet.
+    ("config", "546 · seul le nom du fichier compte de nouveau",
+     "  if (parts.length < 2) return false;\n  return texte.includes(`${parts.slice(0, -1).join('/')}/`);",
+     "  return false;"),
+    # ⚠️ ET L'AUTRE SENS, le plus coûteux : n'importe quel ANCÊTRE suffit. Le
+    # contrôle rend alors vert sur une police que Flutter n'embarque pas — il ne
+    # descend pas dans les sous-dossiers.
+    ("config", "546 bis · un ancêtre suffit à déclarer câblé",
+     "  return texte.includes(`${parts.slice(0, -1).join('/')}/`);",
+     "  return parts.slice(0, -1).some((_, i) => texte.includes(`${parts.slice(0, i + 1).join('/')}/`));"),
+    # ── 547 · `tools:node=\"remove\"` retire la permission ──────────────────────
+    # Le filtre saute : le projet est de nouveau accusé des permissions qu'il
+    # retire lui-même du manifeste fusionné.
+    ("sec", "547 · les permissions retirées redeviennent déclarées",
+     "    .filter((m) => !/tools:node\\s*=\\s*\"remove\"/.test(m[1]))\n",
+     ""),
+
     # ── 545 · le message de débordement PORTE le coupable ────────────────────
     # Le harnais cesse de relayer le gestionnaire du binding : `takeException()`
     # ne rend plus rien et TOUS les gardes de disposition passent à vide — le
