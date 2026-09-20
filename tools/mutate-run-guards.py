@@ -1516,8 +1516,20 @@ MUTATIONS = [
     # phrase serait comptée comme une ouverture, et le contrôle deviendrait
     # tolérant sans que personne l'ait décidé.
     ("artefact", "373 ter · le marqueur d'ouverture n'est plus borné au début de ligne",
-     "  return [...backlog.matchAll(/^\\*\\*Ouvert le",
-     "  return [...backlog.matchAll(/\\*\\*Ouvert le"),
+     "  const marqueurs = [...backlog.matchAll(/^\\*\\*Ouverte?",
+     "  const marqueurs = [...backlog.matchAll(/\\*\\*Ouverte?"),
+    # ── 537 · le marqueur porte son ÉTAT ─────────────────────────────────
+    # La levée redevient un saut : un marqueur que le motif strict ne reconnaît
+    # pas repasse pour un point clos, et `[]` se relit « aucun point ouvert » —
+    # le silence exact qui a duré quarante-six passes.
+    ("artefact", "537 · un marqueur non reconnu est SAUTÉ au lieu d'arrêter",
+     "      const lu = strict.exec(m[0]);\n      if (!lu) {",
+     "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
+    # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
+    # points ouverts — neuf au lieu d'un sur le fichier livré.
+    ("artefact", "537 bis · l'état du marqueur n'est plus lu",
+     "      if (lu[1] !== 'OUVERT') return null;",
+     "      if (lu[1] !== 'JAMAIS') return null;"),
     # ── Runs 55 et 56 · 400-405 ──────────────────────────────────────────
     # 400 — le garde de cadrage cesse de drainer : une exception laissée en
     # attente le ferait échouer au démontage, hors d'argusCheck, sans clé de dette.
