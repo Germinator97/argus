@@ -12436,3 +12436,62 @@ seul le message a changé, et 15 nomment désormais le coupable.
    `if (false) precedent?.call(details)` : sa limite est désormais **écrite dans
    le garde**, et la mutation qui le prouve RETIRE la ligne, ce qui est la forme
    qu'a l'oubli dans la vraie vie.
+
+### 546. Le contrôle de câblage ignorait la déclaration par DOSSIER
+
+**Ouvert le 20/09/2026 · CLOS** — rendu par une passe sur un jeu qui déclare ses
+polices par dossier, fermé le jour même.
+
+Une police se déclare de deux façons : nom par nom sous `fonts:`, ou en
+déclarant le **dossier** sous `assets:` et en laissant `google_fonts` les
+enregistrer au démarrage (`allowRuntimeFetching = false`) — la forme standard de
+ce couple. Le contrôle ne cherchait que le **nom du fichier** dans `pubspec.yaml`.
+
+Résultat : **neuf findings `major` FAUX**, avec un remède qui envoyait corriger
+un montage qui marche. La mesure qui tranche tient en une commande :
+
+    unzip -l app-debug.apk | grep -c 'flutter_assets/assets/fonts/.*ttf'  →  11
+
+⚠️ **C'est le dossier PARENT IMMÉDIAT, jamais un ancêtre.** Flutter ne descend
+pas dans les sous-dossiers : `- assets/` n'embarque PAS `assets/fonts/X.ttf`.
+Accepter l'ancêtre rendrait **vert sur une police absente du paquet** — le
+défaut inverse, et le plus coûteux des deux, puisqu'il rassure. Les deux sens
+sont gardés, par deux mutations.
+
+📌 La décision est extraite dans `estCable` pour qu'un garde l'**appelle** et
+lise ce qui revient, plutôt que de lire le texte du fichier.
+
+### 547. Une permission retirée par `tools:node="remove"` était comptée déclarée
+
+**Ouvert le 20/09/2026 · CLOS** — même passe, même jour.
+
+`tools:node="remove"` **retire** une permission héritée d'une dépendance : le
+paquet publié ne la porte pas. La lire comme une déclaration accuse un projet de
+ce qu'il vient précisément d'empêcher. Mesuré : trois permissions publicitaires
+signalées, et `aapt2 dump permissions` n'en trouve **aucune** dans l'APK.
+
+🔴 **Le chemin qui lit l'APK, lui, le savait** : son propre message propose déjà
+`<uses-permission tools:node="remove">` comme remède. La décision était prise et
+écrite — elle n'avait pas traversé jusqu'au chemin qui lit les **sources**.
+*Quatrième parité manquée de la journée*, après les 542, 543 et 546.
+
+#### Le prix de la fermeture : un gabarit pris pour une fuite, en boucle
+
+Le message de commit du garde citait un identifiant pointé de trois lettres pour
+expliquer ce que le détecteur de confidentialité attrape. Le détecteur l'a
+attrapé — à raison, son motif ne peut pas distinguer un gabarit d'un vrai paquet.
+
+L'inscrire dans la liste des fuites légitimes **remet la chaîne dans le dépôt**,
+que le garde voisin refuse à son tour : deux gardes qui se renvoient la même
+valeur, et aucune liste ne peut les satisfaire ensemble. *La sortie n'était pas
+d'autoriser mais de RETIRER.* Le dépôt n'ayant jamais été poussé, réécrire le
+message ne casse aucun clone — c'est exactement la fenêtre que le **500**
+décrit. Séquence complète jouée : `filter-branch`, suppression de
+`refs/original`, `reflog expire`, `gc --prune=now`, puis le contrôle sur **tous
+les objets** et pas seulement sur l'atteignable — **0**.
+
+📌 Et le premier essai a échoué d'une façon qui mérite d'être écrite : les
+**backticks** du motif, dans une commande `sed` passée en argument, ont été
+interprétés par le shell (`command not found`), laissant une expression vide et
+un `refs/original` à nettoyer. Le filtre a été réécrit **dans un fichier** et
+éprouvé sur une entrée témoin avant d'être lancé sur l'historique.
