@@ -1540,6 +1540,25 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 543 · un run mono-plateforme ne conclut pas « périmé » ───────────────
+    # La décision redevient inconditionnelle : le run iOS represcrit de retirer
+    # un acquittement qui garde le manifeste Android, et casse le run suivant.
+    ("report", "543 · le « périmé » redevient inconditionnel",
+     "  return declarees <= 1 || testees >= declarees;",
+     "  return true;"),
+    # ⚠️ L'AUTRE SENS : la décision se tait toujours. L'avertissement périmé
+    # disparaît pour tout le monde, y compris sur les projets mono-plateforme où
+    # il est juste — le remède qui « corrige » en supprimant le signal.
+    ("report", "543 bis · le « périmé » ne se dit plus jamais",
+     "  return declarees <= 1 || testees >= declarees;",
+     "  return false;"),
+    # ── 544 · la page publiée définit ce qu'elle emploie ─────────────────────
+    # Une seule variable redevient orpheline : le navigateur retombe sur son
+    # défaut, la page s'affiche, et rien ne le dit.
+    ("report", "544 · une variable CSS de la page redevient orpheline",
+     "border-bottom:1px solid var(--line);padding-bottom:0}",
+     "border-bottom:1px solid var(--bord);padding-bottom:0}"),
+
     # ── 542 · le repli du parcours critique n'est pas un endroit où écrire ──
     # Le départ cesse de retomber sur l'accueil : la branche `=== ''` redevient
     # atteignable sur un projet instrumenté, donc un corps écrit dedans a l'air
