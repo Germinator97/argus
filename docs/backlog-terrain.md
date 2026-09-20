@@ -5097,11 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT — le 539** : un parcours qui porte un geste sans retour
-n'exige pas qu'on le demande. Le skill ne prescrit l'opt-in nulle part, alors
-que la règle équivalente est écrite pour les OUTILS depuis longtemps. Non
-traité : le remède touche ce que le skill prescrit aux parcours, et il mérite
-d'être écrit une fois pour toutes plutôt que rattrapé projet par projet.
+✅ **Rien d'ouvert.** Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
+le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
+Ce qui manquait n'était pas la règle mais son GRAIN — le geste sans retour tient
+dans le dernier pas, et tout ce qui le précède s'éprouve gratuitement.
 
 Le 536 est fermé sans arbitrage : le dépôt l'avait déjà rendu deux clés plus
 bas, sur un cas identique. Les trois points du run 94 sont traités : le **533** est
@@ -11945,7 +11944,7 @@ harnais livré.
 
 ### 539. Un parcours peut porter un geste SANS RETOUR sans jamais le demander
 
-**Ouvert le 20/09/2026 · OUVERT** — né du run 96, non traité.
+**Ouvert le 20/09/2026 · CLOS** — né du run 96, fermé le jour même.
 
 L'agent du run 96 a écrit un parcours de création de code secret et **a décidé
 seul de ne pas le lancer** — à raison : le geste est irréversible depuis
@@ -11961,9 +11960,17 @@ chemin et j'en avais tiré une impossibilité.* Le parcours est donc **rejouable
 au prix d'un geste de préparation qui n'appartient pas au harnais — ce qui change
 ce qu'on peut en attendre, mais rien au point ci-dessous.
 
-C'était le bon jugement. Mais rien dans le skill ne le lui demandait, et rien
-n'aurait signalé l'inverse : **un flow qui brûle un compte rend exactement le
-même vert que celui qui n'en brûle aucun.**
+C'était le bon jugement — et 🔴 **contrairement à ce que ce point affirmait en
+s'ouvrant, le skill le lui demandait.** La prescription existe depuis le **05/09**
+(clôture du 373) : écrire le parcours, le sortir de la suite avec `manual`, sa
+commande dans l'en-tête ; la remise à zéro **déclarée par l'utilisateur**, jamais
+découverte ; le jouer une fois en EXPLORE, jamais en REGRESS. L'agent a SUIVI une
+règle vieille de quinze jours, il ne l'a pas inventée.
+
+*J'ai ouvert un point sur du déjà-prescrit, faute d'avoir cherché — le geste
+exact que j'avais payé le matin même en posant trois options sur le 536 alors que
+la décision vivait douze lignes plus bas.* Reste ce qui était réellement neuf, et
+que la mesure a établi : **le grain**.
 
 #### Ce que la mesure a montré, et qui change le remède
 
@@ -12000,14 +12007,37 @@ comprend pas » — un `--help` avait lancé quatre-vingts mutations. C'est le m
 énoncé, appliqué à ce que le skill fait écrire aux autres. *Le motif du 488,
 une cinquième fois : le remède est dans le dépôt, le voisin ne l'a pas reçu.*
 
-#### Ce qui reste à trancher
+#### ✅ Ce qui l'a fermé : un quatrième point, pas une nouvelle règle
 
-Où prescrire, et avec quelle force : une mention dans la méthodologie ? une
-section du SKILL sur les parcours non rejouables ? un garde qui refuse un flow
-dont une commande porte un marqueur d'irréversibilité sans `when:` ? La
-troisième est la seule qui tienne sans discipline, mais elle suppose de
-reconnaître un geste irréversible — ce qu'aucun signal du flow ne dit
-aujourd'hui, sinon un commentaire.
+La prescription du 373 gagne son grain. « Ne le lance pas » coûte plus cher qu'il
+n'en a l'air : sortir le fichier entier revient à ne jamais éprouver les **169
+lignes sur 171** qui ne coûtent rien, et c'est là que vivent les défauts qu'on
+attrape. Le dernier pas passe derrière un **opt-in**, le reste reste jouable —
+et ⚠️ **sans opt-in le flow doit DIRE qu'il s'est arrêté**, sans quoi deux verts
+redeviennent indiscernables sur le seul geste qui ne se défait pas.
+
+**Exercé avant d'être prescrit** — c'est ce qui distingue ce point d'une idée :
+
+| passage | opt-in | exit | ce qu'il prouve |
+|---|---|---|---|
+| 1 et 2 | non | 0 | geste **SKIPPED**, arrêt annoncé, compte intact (vérifié en y retournant) |
+| 3 | oui | 0 | geste **COMPLETED**, l'app enchaîne sur l'écran de connexion |
+| 4 | non | **1** | l'écran n'est plus atteignable — *le second run accuse une ancre sans rien qui le distingue d'une régression* |
+
+Le 4ᵉ passage établit par l'observation ce que le 373 avait raisonné : voilà
+pourquoi un tel parcours ne rejoint pas la suite.
+
+#### Le garde lit la STRUCTURE du bloc, pas sa prose
+
+Un `when:` qui ne contiendrait pas le geste se relit comme correct et ne protège
+rien. Le garde vérifie donc que `when:` et `commands:` sont frères, que le geste
+est **sous** `commands:`, et que l'ordre montre la dépendance — avec sa
+contre-épreuve sur un bloc où le geste est sorti du `runFlow`.
+
+⚠️ **Et il a fait rougir un garde du 373** : celui-ci fenêtrait par 3200
+caractères, mon quatrième point a poussé sa phrase requise hors du cadre, et il
+a accusé un SKILL sain. Borné par la structure — *le relevé du 510 passe de 38 à
+37, et c'est le seul endroit qui compte ce progrès.*
 
 📌 **Et une question que la correction ci-dessus rouvre** : un parcours dont la
 remise à neuf existe hors du harnais doit-il rester `manual`, ou le skill
