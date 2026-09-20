@@ -17900,3 +17900,45 @@ test('le harnais CAPTURE le widget fautif au lieu de l\'annoncer (545)', () => {
 // mis à jour le 20/09 plutôt que dédoublé ici. Deux gardes pour un message ne
 // gardent pas deux fois — le harnais crédite le PREMIER qui rougit, et le neuf
 // ne serait jamais mis à l'épreuve.
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 546 · 547 — Deux contrôles qui accusaient un projet de ce qu'il fait BIEN.
+// Rendus par une passe sur un jeu qui déclare ses polices par DOSSIER et retire
+// trois permissions publicitaires par `tools:node="remove"`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('une police déclarée par son DOSSIER est câblée (546)', async () => {
+  const { estCable } = await import(join(SCAFFOLD, 'scripts/argus/config.mjs'));
+  const parDossier = 'flutter:\n  assets:\n    - assets/fonts/\n';
+  assert.equal(estCable(parDossier, 'assets/fonts/Cinzel.ttf', undefined), true,
+    'la déclaration par dossier n\'est plus reconnue : neuf `major` faux reviennent sur un projet dont les polices sont bel et bien embarquées');
+  const parNom = 'flutter:\n  fonts:\n    - family: X\n      fonts:\n        - asset: assets/fonts/Cinzel.ttf\n';
+  assert.equal(estCable(parNom, 'assets/fonts/Cinzel.ttf', undefined), true,
+    'la déclaration nom par nom a cessé d\'être reconnue — c\'est la forme la plus courante');
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui décide si le contrôle sert encore :
+  // Flutter NE DESCEND PAS dans les sous-dossiers. `- assets/` n'embarque pas
+  // `assets/fonts/X.ttf`. Accepter l'ancêtre rendrait un vert sur un fichier
+  // absent du paquet — le défaut inverse, et le plus coûteux des deux.
+  assert.equal(estCable('flutter:\n  assets:\n    - assets/\n', 'assets/fonts/Cinzel.ttf', undefined), false,
+    'un ancêtre suffit désormais : le contrôle rendrait vert sur une police que le paquet ne porte pas');
+  assert.equal(estCable('rien du tout', 'assets/fonts/Cinzel.ttf', undefined), false,
+    'tout est câblé : le contrôle ne mesure plus rien');
+  // Et le motif imposé continue de l'emporter, sinon la règle `google-services` change de sens.
+  assert.equal(estCable('apply plugin: google-services', 'android/app/google-services.json', 'google-services'), true,
+    'le motif imposé par la règle n\'est plus honoré');
+});
+
+test('une permission retirée par tools:node="remove" n\'est pas déclarée (547)', async () => {
+  const { permissionsDeclarees } = await import(join(SCAFFOLD, 'scripts/argus/sec.mjs'));
+  const xml = '<manifest>\n'
+    + '  <uses-permission android:name="android.permission.INTERNET" />\n'
+    + '  <uses-permission android:name="exemple.pub.permission.IDENTIFIANT" tools:node="remove" />\n'
+    + '</manifest>';
+  const lues = permissionsDeclarees(xml);
+  assert.deepEqual(lues, ['android.permission.INTERNET'],
+    `une permission retirée du manifeste fusionné est comptée comme déclarée : le projet est accusé de ce qu'il vient d'empêcher. Lues : ${lues.join(', ')}`);
+  // ⚠️ Il doit continuer de VOIR : un remède qui ne rend plus rien passerait ce
+  // garde s'il n'exigeait que l'absence.
+  assert.equal(permissionsDeclarees('<uses-permission android:name="android.permission.CAMERA"/>').length, 1,
+    'plus aucune permission n\'est lue : toute la dimension devient muette');
+});
