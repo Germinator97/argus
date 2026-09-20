@@ -2485,6 +2485,71 @@ export function flowCycles(flows) {
  * @param {Record<string,string>} flows nom → contenu
  * @returns {Array<{flow:string, ligne:number, segment:string, texte:string}>}
  */
+/**
+ * Les `- back` qu'aucun garde de plateforme ne protège.
+ *
+ * 🔴 `back` NE FAIT RIEN SUR iOS. Mesuré dans le bytecode du pilote livré :
+ * `IOSDriver.backPress()` a un corps VIDE (`0: return`), contre 28 instructions
+ * côté Android. Il ne lève pas, il ne prévient pas — l'étape passe au vert et
+ * l'écran ne bouge pas. Le flow échoue alors **trois étapes plus loin**, en
+ * accusant une ancre parfaitement correcte : le diagnostic part au mauvais
+ * endroit et y reste.
+ *
+ * 📌 Le scaffold le SAVAIT : `resilience.yaml` garde le sien sous
+ * `when: platform: Android`, avec « Retour système (Android uniquement) » écrit
+ * à côté. Mais ce fichier-là appartient au plugin — celui que l'utilisateur
+ * écrit, `_subflows/goto.yaml`, n'en dit rien, et le SKILL ne mentionne pas
+ * `back` une seule fois. La connaissance vivait hors du chemin où la faute se
+ * commet. Mesuré sur un projet réel : **dix** `- back` nus, écrits pendant une
+ * passe Android, tous inertes à la passe iOS suivante.
+ *
+ * Le garde ne se déclenche que si `ios` est visé : sur un projet Android seul,
+ * un `back` nu est juste.
+ * @param {Record<string,string>} flows
+ * @param {string[]} plateformes les plateformes que ce run vise
+ * @returns {Array<{flow:string, ligne:number}>}
+ */
+export function backNonGardes(flows, plateformes) {
+  if (!(plateformes ?? []).map(String).includes('ios')) return [];
+  /** @type {Array<{flow:string, ligne:number}>} */
+  const nus = [];
+  for (const [nom, contenu] of Object.entries(flows)) {
+    const lignes = contenu.split('\n');
+    lignes.forEach((texte, i) => {
+      if (!/^\s*-\s*back\s*$/.test(texte)) return;
+      // Remonter tant que l'indentation reste STRICTEMENT plus profonde que
+      // celle d'un `- runFlow:` de tête : c'est la portée du `when:`, et elle
+      // se lit dans la structure, jamais dans un nombre de lignes.
+      // ⚠️ `platform: Android` n'est pas un ANCÊTRE du `- back` : c'est son
+      // FRÈRE, sous le `when:` du même `- runFlow:`. Remonter par
+      // l'indentation ne le trouve donc jamais. Il faut remonter jusqu'à
+      // l'élément de liste qui ENGLOBE, puis relire son bloc.
+      const creux = texte.length - texte.trimStart().length;
+      let debut = -1;
+      for (let j = i - 1; j >= 0; j -= 1) {
+        const l = lignes[j];
+        if (l.trim() === '' || l.trimStart().startsWith('#')) continue;
+        const c = l.length - l.trimStart().length;
+        if (c < creux && /^\s*-\s/.test(l)) { debut = j; break; }
+        if (c === 0) break;
+      }
+      let garde = false;
+      if (debut >= 0) {
+        const creuxBloc = lignes[debut].length - lignes[debut].trimStart().length;
+        for (let k = debut; k < i; k += 1) {
+          const l = lignes[k];
+          if (l.trim() === '') continue;
+          const c = l.length - l.trimStart().length;
+          if (k > debut && c <= creuxBloc) break;   // le bloc est fini
+          if (/platform:\s*Android/.test(l)) { garde = true; break; }
+        }
+      }
+      if (!garde) nus.push({ flow: nom, ligne: i + 1 });
+    });
+  }
+  return nus;
+}
+
 export function mapsEnFlowSuspectes(flows) {
   /** @type {Array<{flow:string, ligne:number, segment:string, texte:string}>} */
   const suspects = [];
@@ -2724,6 +2789,20 @@ function main() {
       err('  qui appartiennent à un libellé. Maestro dira « Unknown Property » en citant la FIN');
       err('  de ta phrase, ce qui n\'aide pas. Deux issues : quoter la valeur, ou écrire la');
       err('  commande en bloc comme le scaffold le fait — une clé par ligne, où la virgule passe.');
+      process.exit(1);
+    }
+    // 549 — `back` est un NO-OP sur iOS : l'étape passe au vert et l'écran ne
+    // bouge pas. Ici on a les flows ET les plateformes visées sous la main.
+    const backNus = backNonGardes(flows, (loadConfig().platforms ?? []));
+    for (const b of backNus) {
+      err(`${b.flow}:${b.ligne} — « - back » n'est gardé par aucune plateforme, et il NE FAIT RIEN sur iOS.`);
+    }
+    if (backNus.length) {
+      err('  `IOSDriver.backPress()` a un corps vide : l\'étape passe au VERT et l\'écran ne bouge pas.');
+      err('  Le flow échouera trois étapes plus loin, en accusant une ancre correcte.');
+      err('  Enveloppe-le dans `- runFlow: { when: { platform: Android }, commands: [...] }`,');
+      err('  comme `resilience.yaml` le fait déjà, et donne à iOS son équivalent — un glissement');
+      err('  depuis le bord gauche, ou une ancre de retour dans ton app.');
       process.exit(1);
     }
     const cycles = flowCycles(flows);

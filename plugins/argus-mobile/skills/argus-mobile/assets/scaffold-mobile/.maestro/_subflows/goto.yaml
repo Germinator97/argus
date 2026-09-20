@@ -6,6 +6,21 @@ appId: ${APP_ID}
 # (« Config Section Required »). Le glob `flows` de config.yaml décide de ce qui
 # s'EXÉCUTE, pas de ce qui se PARSE.
 ---
+# 🔴 N'ÉCRIS PAS `- back` ICI SANS LE GARDER PAR PLATEFORME.
+# `back` NE FAIT RIEN sur iOS : `IOSDriver.backPress()` a un corps vide. Il ne
+# lève pas, il ne prévient pas — l'étape passe au VERT et l'écran ne bouge pas,
+# si bien que le flow échoue trois étapes plus loin en accusant une ancre
+# parfaitement correcte. Mesuré sur un projet réel : dix `- back` nus écrits
+# pendant une passe Android, tous inertes à la passe iOS suivante.
+# La forme juste est celle de `resilience.yaml` :
+#     - runFlow:
+#         when:
+#           platform: Android
+#         commands:
+#           - back
+# …et iOS a besoin de son équivalent : un glissement depuis le bord gauche, ou
+# une ancre de retour dans ton app. `make argus-lint` le refuse désormais.
+
 # Aiguillage de navigation : amène l'app sur l'écran `${SCREEN_ID}`,
 # QUEL QUE SOIT L'ENDROIT D'OÙ ELLE PART.
 #
