@@ -30,8 +30,9 @@ clos sans qu'aucun d'eux ait jamais eu de titre — c'est arrivé aux 347-365. E
 sont donc de la donnée pour l'instrument et du bruit pour le lecteur : d'où cet
 avertissement plutôt qu'une purge.
 
-📌 **Un point qui reste OUVERT l'annonce**, en début de ligne, en gras et daté :
-`**Ouvert le JJ/MM/AAAA…**`. Ce n'est pas décoratif. Le contrôleur des compteurs
+📌 **Tout point annonce son ÉTAT**, en début de ligne, en gras et daté :
+`**Ouvert le JJ/MM/AAAA · ÉTAT**`, où ÉTAT vaut `OUVERT`, `CLOS` ou `DÉMENTI`.
+Ce n'est pas décoratif. Le contrôleur des compteurs
 s'en sert pour ne PAS réclamer un commit de clôture qui n'existe pas — il a
 confondu « le numéro est pris » et « le point est clos » pendant quarante-six
 passes, faute d'avoir jamais rencontré l'un sans l'autre.
@@ -5096,7 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les trois points du run 94 sont traités : le **533** est
+🔴 **1 POINT OUVERT — le 536**, rendu par le run 95 — `report.json` et
+`summary.json` portent le même compte de findings sous deux périmètres, et rien
+ne les distingue. Il n'est pas traité : le format de rapport est l'API publique
+du plugin, donc le remède est un arbitrage, pas un correctif évident. Les trois
+voies sont posées au point lui-même.
+
+Les trois points du run 94 sont traités : le **533** est
 fermé — son remède compose désormais
 la même construction que son voisin — et le **534** est **démenti** : la sonde a
 montré que la liste n'y est pour rien, et que le remède du skill tient. *La
@@ -10230,7 +10237,7 @@ a fait écarter `--check-reachability` (voir 515).
 
 ### 514. L'étage 1 n'entre dans aucun rapport de CI
 
-**Ouvert puis FERMÉ le 18/09/2026.** Ouvert le matin faute d'arbitrage sur la
+**Ouvert le 18/09/2026 · CLOS** — fermé le jour même. Ouvert le matin faute d'arbitrage sur la
 structure des jobs ; tranché l'après-midi.
 
 `--file-reporter` : Makefile **2**, workflow **0**. En local, `argus-guards`
@@ -10265,7 +10272,7 @@ n'a pas tourné reste « jamais lancé », comme avant.
 
 ### 515. `--check-anchors` est un gate que la CI ne joue pas
 
-**Ouvert puis FERMÉ le 18/09/2026.**
+**Ouvert le 18/09/2026 · CLOS** — fermé le jour même.
 
 Mesuré : une ancre posée dans `lib/` que rien ne déclare → **exit 1** ; aucune
 ancre orpheline → exit 0 ; `lib/` absent → exit 2, il refuse de conclure. C'est
@@ -10419,7 +10426,7 @@ dépassement que l'absorption masquait depuis 87 runs.
 
 ### 518. Les autres interrogations de l'arbre, hors du chemin de lancement
 
-**Ouvert et fermé le 18/09/2026**, l'arbitrage étant de Germinator — trouvé en
+**Ouvert le 18/09/2026 · CLOS** — fermé le jour même, l'arbitrage étant de Germinator — trouvé en
 écrivant le garde du 517, qui les a nommées
 avant qu'on ait décidé quoi en faire. Le garde est donc borné au chemin de
 lancement, et ce point porte le reste.
@@ -10482,7 +10489,7 @@ voisin accepte —, sans quoi les deux gardes mesureraient la même chose.
 
 ### 519. Le CTA flottant remonté par le clavier : un défaut que les DEUX étages sont aveugles à voir
 
-**Ouvert et TRANCHÉ le 18/09/2026** — signalé par l'agent lui-même, qui l'a
+**Ouvert le 18/09/2026 · CLOS** — tranché le jour même — signalé par l'agent lui-même, qui l'a
 rencontré sans pouvoir le garder, et l'a dit plutôt que de le taire.
 
 Sur un formulaire, le clavier remonte le bouton d'action flottant, qui recouvre
@@ -10519,7 +10526,7 @@ dette. Il n'y a pas de correctif de skill à écrire ici.
 
 ### 520. Le garde des ancres ne distingue pas un paramètre d'ANCRE d'un paramètre de PRÉFIXE
 
-**Ouvert et fermé le 18/09/2026.** L'agent a déclaré dans `anchors.paramNames` un
+**Ouvert le 18/09/2026 · CLOS** — fermé le jour même. L'agent a déclaré dans `anchors.paramNames` un
 paramètre qui porte un **préfixe** et non une ancre. Le contrôle a aussitôt
 réclamé cinq ancres inexistantes — il a donc bien réagi, mais son message ne dit
 pas que les deux natures existent, ni laquelle il attend.
@@ -11443,7 +11450,7 @@ tombe toujours sur le garde du 530, vérifié en lisant le nom rouge.
 
 ### 533. Le remède de NONJUGEABLE récitait la cause que son voisin a cessé de réciter
 
-**Ouvert par le run 94 le 19/09/2026 et fermé le jour même.**
+**Ouvert le 19/09/2026 · CLOS** — par le run 94, fermé le jour même.
 
 Le **524** avait corrigé le `suggestedFix` de `QAM-START-ABSORBE` pour qu'il
 DÉRIVE sa branche des permissions déclarées et NOMME le flow fautif. Son voisin
@@ -11504,7 +11511,7 @@ la prochaine mesure pourrait devoir corriger, ce que trois gardes du 531 ont fai
 
 ### 534. ✅ DÉMENTI — la liste n'y est pour rien, et le remède du skill tient
 
-**Ouvert par le run 94 le 19/09/2026, démenti le jour même par une sonde.**
+**Ouvert le 19/09/2026 · DÉMENTI** — par le run 94, démenti le jour même par une sonde.
 
 Mesuré par l'agent sur une sonde à trois formes de liste, la quatrième servant
 de témoin hors liste :
@@ -11569,7 +11576,7 @@ centre.
 
 ### 535. Un comptage prescrit pouvait rendre zéro parce que l'OUTIL avait échoué
 
-**Ouvert par le run 94 le 19/09/2026 et fermé le jour même.**
+**Ouvert le 19/09/2026 · CLOS** — par le run 94, fermé le jour même.
 
 Le §2b prescrit **24 lignes de commande** portant un `grep`. Sur le poste du run,
 `grep` est une fonction de shell qui relaie un autre binaire : le premier
@@ -11617,3 +11624,158 @@ déjà dans le skill — dix-huit mentions de contre-épreuve, dont « un `0` ne
 rien tout seul » — pour le comptage dans un binaire et pour le croisement des
 ancres. *Il n'avait simplement jamais été porté au §2b*, c'est-à-dire là où un
 zéro légitime est attendu et où il est donc le plus nécessaire.
+
+## Rendu par le run 95 — confirmation iOS du terrain 1 — 19/09/2026
+
+Prompt **identique au `shasum` près** à ceux des runs 74, 78, 82, 89 et 93
+(`a70918cf…`) : seule variable, le plugin. Gate `pass`, **10 écrans déclarés =
+ancrés = VISITÉS**, `notConfigured []` et `notVisited []`, 2 findings *info*,
+612 tests du projet, 369 gardes d'étage 1, **13 min 39 s** de device sur 60.
+Instrumentation partie de **zéro ancre** — 44 posées.
+
+### ✅ Ce que la passe confirme, lu sur les artefacts
+
+- 🔴 **Le 531, et c'est le gain le plus visible du chantier sur ce terrain.**
+  Les **dix** runs archivés portaient tous `QAM-START-ABSORBE` : le geste
+  d'invite système consommait 7 110 à 7 160 ms avant le chronomètre, et le
+  budget de démarrage n'était jugeable sur aucun flow. L'agent a déclaré
+  `security.systemAlerts: never` — justifié, `Info.plist` ne porte aucune
+  `NS*UsageDescription` et `lib/` n'appelle aucun plugin de permission.
+  Mesuré après : `absorbed: false` sur **10/10** échantillons, `precedeMs` de
+  **6 à 32 ms**, budget jugeable à 3 596 ms contre 4 000. Le finding a disparu.
+  *Ce que le plugin ne peut pas découvrir, l'utilisateur le déclare : le remède
+  fait exactement ce qu'il promettait.*
+- ✅ **Le 530 et le 532, exercés par la DÉSINSTALLATION** — c'est elle qui les
+  porte, donc aucun run ne pouvait les confirmer avant qu'on remette le terrain
+  à neuf. `.gitignore` : **1662 o sans saut de ligne final** → 3789 après le run
+  → **1662 o, empreinte `a656b5b9…` identique** après `--uninstall`. Zéro dossier
+  vide, zéro ligne vide, fichier non modifié au sens de git. *Ce terrain était le
+  seul capable d'exercer le 532 : celui du terrain 2 finit par un saut de ligne.*
+- ✅ **Le 529** : `eraseText` en tête de chaque saisie de `retry`, dans les trois
+  flows livrés qui en portent une.
+- ✅ **Le 533** : le `suggestedFix` du non-jugeable **compose** (985 caractères
+  dérivés des deux cas) au lieu de réciter — et l'agent l'a suivi jusqu'à
+  **refuser** de faire taire le signal de locale, ce que le remède lui demande
+  en toutes lettres. *Un remède qui est lu et appliqué par quelqu'un qui ne sait
+  pas qu'il est neuf.*
+- ✅ **Le 535, exercé pour la première fois par un agent vierge** : le témoin
+  d'instrument joué avant le premier chiffre, rendant **2** comme attendu.
+- ✅ **Le 508** : le second canal sortant trouvé seul (vérification de version du
+  magasin, `NewVersionPlus`), classé, laissé ouvert et inscrit dans
+  `telemetry.leftOpen` — publié sous « Canaux laissés ouverts (1) ».
+- ✅ **Le 480** : locale non alignée malgré l'écart `fr_FR` / `fr_CI`, avec sa
+  raison. Le `QAM-LOCALE-INERTE` restant est voulu.
+
+⚠️ **Le workflow GitHub sur un projet GitLab : 9ᵉ relais consécutif.** Message
+qui ARRIVE, pas question sans réponse.
+
+### 536. Deux comptes de findings, même forme, deux périmètres
+
+**Ouvert le 19/09/2026 · OUVERT** — par le run 95. Non traité.
+
+    report.json   → summary.findings = {blocker,critical,major,minor, info: 1}   ← les flows SEULS
+    summary.json  → counts           = {blocker,critical,major,minor, info: 2}   ← l'AGRÉGÉ
+
+Mêmes cinq clés, mêmes noms de sévérité, valeurs plausibles : **rien ne dit
+lequel est l'agrégé**. Et les noms de fichiers sont **croisés** — le fichier
+`report.json` porte une clé `summary`, le fichier `summary.json` porte une clé
+`counts`. Celui qui cherche le résumé ouvre le premier, y trouve une structure
+complète en forme, et lit un compte partiel.
+
+#### Ce qui en fait un point et non une maladresse : deux lecteurs indépendants
+
+- **L'agent du run 95** a publié `{blocker:0, critical:0, major:0, minor:0,
+  info:1}` dans son compte rendu, quand sa **propre page** affiche `info (2)`.
+  Le finding perdu est `QAM-SCA-OUTDATED` — 78 dépendances Dart en retard.
+- **Moi, le 19/09 au run 94** : « j'ai failli inscrire un manque en lisant le
+  mauvais fichier ». Aucun des deux ne savait ce qu'avait vécu l'autre.
+
+*Deux lecteurs qui s'ignorent butant sur le même endroit est le signal le plus
+fort qu'une passe sache donner.*
+
+#### Le remède existait déjà, à côté
+
+`references/report-format-mobile.md` porte **déjà** l'avertissement pour la
+dimension voisine :
+
+> ⚠️ `metrics.perf` ne vit PAS dans `report.json`, et ne le peut pas. […] Un
+> consommateur qui les cherche dans `report.json` les trouvera absentes, **sans
+> erreur d'aucune sorte**.
+
+Il n'a jamais été étendu aux **findings**, où le défaut est pourtant **pire** :
+`perf` manque *visiblement* — une clé absente se voit —, quand `findings` ment
+avec une valeur **complète et plausible**. Et `summary.json` n'est documenté
+**nulle part** : zéro mention dans les `.md` du skill, alors que le code l'écrit
+(`report.mjs`, là où `writeJson(join(dir, 'summary.json'), …)`).
+
+*C'est le motif du 488 pour la quatrième fois de la journée : le remède est dans
+le dépôt, le voisin ne l'a jamais reçu.*
+
+#### L'arbitrage, qui n'est pas au correctif
+
+Le format de rapport est l'**API publique** du plugin — des consommateurs lisent
+`summary.findings`. Trois voies, à trancher avant d'écrire :
+
+1. **Additive** — poser un `scope: "flows"` dans `report.json.summary`, pour que
+   la structure dise son périmètre à l'endroit exact où on se trompe. Ne casse
+   aucun consommateur.
+2. **Rupture** — renommer en `flowFindings`, ce qui rend l'erreur impossible mais
+   change une clé que le garde de `report-format-mobile.md` fige par égalité.
+3. **Documentaire seule** — étendre l'avertissement `perf` aux findings et
+   documenter `summary.json`. La moins chère, et *un panneau n'est pas un
+   garde-fou* : c'est le barreau le plus faible des trois.
+
+⚠️ Quelle que soit la voie, le garde doit **dériver** les deux comptes des deux
+fichiers et exiger qu'ils se distinguent — jamais citer `info: 1` ni `info: 2`,
+qui sont les valeurs d'un run et pas une règle.
+
+### 537. Le marqueur de point ouvert était écrit nulle part, et gardé sur une fixture
+
+**Ouvert le 20/09/2026 · CLOS** — trouvé en inscrivant le 536, fermé dans la foulée.
+
+Le backlog annonce en tête, depuis le 373, qu'**un point qui reste OUVERT
+l'annonce** — « en début de ligne, en gras et daté : `**Ouvert le JJ/MM/AAAA…**`.
+Ce n'est pas décoratif. » Le contrôleur des compteurs s'en sert pour ne pas
+réclamer un commit de clôture qui n'existe pas.
+
+**Aucune des neuf lignes de marqueur du fichier ne suivait cette consigne.**
+
+    **Ouvert puis FERMÉ le 18/09/2026.**
+    **Ouvert et fermé le 18/09/2026**
+    **Ouvert et TRANCHÉ le 18/09/2026**
+    **Ouvert par le run 94 le 19/09/2026 et fermé le jour même.**
+    …
+
+Le motif `^\*\*Ouvert le \d{2}/\d{2}/\d{4}` n'a donc jamais matché **une seule
+ligne du dépôt**. `numerosOuvertsDu` rendait `[]` — et un `[]` se lit « aucun
+point ouvert », c'est-à-dire un fichier sain.
+
+#### Ce qui l'a caché : la consigne, le garde et la fixture étaient tous justes
+
+Le garde qui exige « qu'un vrai marqueur, lui, COMPTE » existe et il est bon. Il
+s'exerce sur un `depotFictif` **écrit à la main**, qui porte le format de la
+consigne. La logique était donc prouvée, et sa **rencontre avec le fichier** ne
+l'avait jamais été. *Un montage propre prouve la logique, jamais le réel.*
+
+Le défaut ne pouvait se manifester qu'au premier point laissé ouvert — le 536,
+quarante-six passes plus tard. Il se serait alors montré à l'envers de ce que le
+373 avait corrigé : en réclamant un `docs: close` qui aurait menti.
+
+#### Le remède : deux motifs, et une levée plutôt qu'une liste vide
+
+Un motif **large** reconnaît qu'une ligne EST un marqueur ; un motif **strict**
+lit son état. Une seule expression ne peut pas faire les deux — c'est ce qui
+rendait le silence possible.
+
+    **Ouvert le JJ/MM/AAAA · ÉTAT**      ÉTAT ∈ OUVERT | CLOS | DÉMENTI
+
+⚠️ **Une ligne non reconnue ARRÊTE le contrôle** au lieu d'être sautée. Un
+marqueur sauté est indiscernable d'un point clos, et c'est par là que le défaut
+a vécu. Les neuf lignes sont normalisées, la consigne de tête dit désormais
+l'état, et le garde neuf lit le **fichier livré** — pas une fixture — avec ses
+deux contre-épreuves : une ligne remise à la forme d'avant doit faire lever, et
+passer l'unique `OUVERT` à `CLOS` doit vider la liste.
+
+📌 **Ce que ce point partage avec le 536, ouvert le même jour** : le remède
+existait déjà — écrit en toutes lettres dans le fichier qu'il devait gouverner.
+
