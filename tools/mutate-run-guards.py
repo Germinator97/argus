@@ -1544,13 +1544,10 @@ MUTATIONS = [
     # Le départ cesse de retomber sur l'accueil : la branche `=== ''` redevient
     # atteignable sur un projet instrumenté, donc un corps écrit dedans a l'air
     # de tourner — et l'avertissement livré devient un mensonge.
-    ("run", "542 · le départ ne retombe plus sur l'accueil",
-     "  return String(anchors?.success || home?.anchor || '');",
-     "  return String(anchors?.success || '');"),
     # ⚠️ L'AUTRE MOITIÉ, et elle mute la MÊME ligne : la fonction rend toujours
     # quelque chose. Le garde du dessus reste vert — c'est celui du repli qui
     # tombe, sans quoi le `SKIP` livré serait mort sans que rien ne le dise.
-    ("run", "542 bis · un projet sans rien de déclaré obtient quand même une ancre",
+    ("run", "542 · un projet sans rien de déclaré obtient quand même une ancre",
      "  return String(anchors?.success || home?.anchor || '');",
      "  return String(anchors?.success || home?.anchor || 'home');"),
     # L'avertissement cesse de citer la MESURE : il reste une recommandation de

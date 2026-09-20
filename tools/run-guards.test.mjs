@@ -17768,31 +17768,13 @@ test('le dépôt LIVRÉ ne porte aucun identifiant distinctif de terrain (541)',
 // flow a rendu « 0 failures ». Seul `coverage.notVisited` l'a dit.
 // ═══════════════════════════════════════════════════════════════════════════
 
-test('sans ancre d\'auth, le départ retombe sur l\'ACCUEIL — la branche vide est injoignable (542)', async () => {
-  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
-  // Le cas exact du run : aucune ancre d'authentification, un projet instrumenté.
-  const valeur = anchorAfterAuth({ success: '' }, { anchor: 'home_empty_root' });
-  assert.equal(valeur, 'home_empty_root',
-    'le départ ne retombe plus sur l\'accueil : le parcours critique d\'une app sans compte ne partirait de nulle part');
-  assert.notEqual(valeur, '',
-    'la valeur est vide sur un projet INSTRUMENTÉ : un corps écrit dans la branche `=== \'\'` s\'exécuterait, et l\'avertissement livré deviendrait faux');
-});
-
-test('l\'ancre d\'auth déclarée l\'emporte sur l\'accueil (542)', async () => {
-  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
-  assert.equal(anchorAfterAuth({ success: 'dashboard_root' }, { anchor: 'login_root' }), 'dashboard_root',
-    'l\'accueil écrase l\'après-connexion : le parcours partirait de l\'écran de login');
-});
-
-test('rien de déclaré rend \'\' — la branche de repli garde une raison d\'exister (542)', async () => {
-  const { anchorAfterAuth } = await import(join(SCAFFOLD, 'scripts/argus/run.mjs'));
-  // ⚠️ L'AUTRE MOITIÉ. Sans elle, une fonction qui rendrait TOUJOURS quelque
-  // chose passerait le garde ci-dessus — et le `SKIP` livré deviendrait mort.
-  assert.equal(anchorAfterAuth({}, {}), '',
-    'un projet NON instrumenté obtient quand même une ancre : le SKIP ne se déclenche plus et le flow échouerait sur un id inexistant');
-  assert.equal(anchorAfterAuth(undefined, undefined), '',
-    'anchorAfterAuth lève ou invente sur des entrées absentes');
-});
+// 🔴 Les trois gardes de COMPORTEMENT qui vivaient ici ont été retirés le jour
+// même : `anchorAfterAuth vise la session ouverte, et retombe sur le départ sans
+// auth` les portait déjà tous les trois, et mieux. Deux gardes pour une décision
+// ne gardent pas deux fois — le harnais crédite le PREMIER qui tombe, donc le
+// neuf n'aurait jamais été mis à l'épreuve. Ce qui suit est la seule chose que
+// le run 98 a rendue et que le dépôt n'avait pas : la PROXIMITÉ de
+// l'avertissement et de la branche qu'il protège.
 
 test('le parcours critique LIVRÉ avertit là où le corps s\'écrit (542)', () => {
   const src = readFileSync(join(SCAFFOLD, '.maestro/journey-critical.yaml'), 'utf8');
