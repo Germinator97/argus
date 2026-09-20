@@ -1541,12 +1541,12 @@ MUTATIONS = [
     # qui ne nomme pas son remplaçant laisse le lecteur exactement où il était.
     ("run", "536 bis · la mise en garde ne nomme plus le fichier d'agrégé",
      "+ 'de summary.json, qui agrège toutes les dimensions",
-     "+ 'de l'autre fichier, qui agrège toutes les dimensions"),
+     "+ 'de ce fichier-la, qui agrege toutes les dimensions"),
     # Et la doc cesse de dire QUI porte l'agrégé : elle nomme le fichier sans
     # nommer sa clé, donc elle envoie lire un fichier sans dire quoi y lire.
     ("reportformat", "536 ter · la doc nomme le fichier d'agrégé sans sa clé",
-     "vit dans **`summary.json`**, sous `counts`, et c'est lui",
-     "vit dans **`summary.json`**, et c'est lui"),
+     "  \"counts\":     { \"blocker\"",
+     "  \"totaux\":     { \"blocker\""),
     ("artefact", "537 bis · l'état du marqueur n'est plus lu",
      "      if (lu[1] !== 'OUVERT') return null;",
      "      if (lu[1] !== 'JAMAIS') return null;"),
