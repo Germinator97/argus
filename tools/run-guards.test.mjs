@@ -17678,3 +17678,84 @@ test('les DEUX lecteurs de locale passent par la normalisation (540)', () => {
     'l\'identité du device retombe encore sur `locale || \'\'` : cette branche existait déjà et '
     + 'n\'était jamais atteinte — c\'est elle qui a fait croire que le cas était couvert');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 541 — Le dépôt est PUBLIC, et rien ne contrôlait ce qu'il nomme.
+// La règle « aucun nom de projet testé » vivait en mémoire seule. Une fuite y
+// est entrée le 20/09 — une police et un paquet, recopiés d'un garde — et n'a
+// été vue qu'au balayage manuel fait juste avant le premier push.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('le contrôle de confidentialité REFUSE de conclure sans terrain (541)', async () => {
+  const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const { code, lignes } = controler(['/aucun/terrain/ici']);
+  assert.equal(code, 2,
+    'sans terrain lisible, le contrôle rend un code de succès : un « 0 fuite » qui ne mesure rien');
+  assert.match(lignes.join('\n'), /n'a rien mesuré/,
+    'il ne DIT pas qu\'il n\'a rien mesuré — un silence se lit comme un dépôt propre');
+});
+
+test('un identifiant DISTINCTIF se sépare d\'un mot ordinaire, par sa forme (541)', async () => {
+  const { estDistinctif } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  // Ce qu'un vrai projet s'appelle : séparateur, majuscule interne, ou longueur.
+  for (const v of ['socle_partage', 'PoliceMaison', 'com.exemple.app', 'mon_app_livreur', 'MonThemeSombre']) {
+    assert.ok(estDistinctif(v), `« ${v} » n'est plus vu comme distinctif : une vraie fuite passerait`);
+  }
+  // ⚠️ L'AUTRE MOITIÉ, et c'est elle qui décide si l'outil sera employé : un
+  // nom de projet qui est aussi un mot courant ne peut pas être tranché par le
+  // texte. Le compter comme fuite ferait rougir cinq emplois légitimes.
+  for (const v of ['focus', 'zen', 'timer', 'notes']) {
+    assert.ok(!estDistinctif(v), `« ${v} » est traité comme distinctif : le contrôle criera au loup`);
+  }
+});
+
+test('les identifiants sont DÉRIVÉS des déclarations du terrain (541)', async () => {
+  const { identifiantsDe } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const dir = mkdtempSync(join(tmpdir(), 'argus-terrain-'));
+  mkdirSync(join(dir, 'android/app'), { recursive: true });
+  writeFileSync(join(dir, 'pubspec.yaml'),
+    'name: mon_app_secrete\nflutter:\n  fonts:\n    - family: PoliceMaison\n'
+    + 'dependencies:\n  socle:\n    path: ../socle_partage\n');
+  writeFileSync(join(dir, 'android/app/build.gradle'), 'applicationId "com.exemple.app"\n');
+
+  const trouves = identifiantsDe(dir).map((i) => i.valeur);
+  // Les quatre natures que la règle interdit de recopier, et aucune n'est écrite ici.
+  for (const attendu of ['mon_app_secrete', 'PoliceMaison', 'socle_partage', 'com.exemple.app']) {
+    assert.ok(trouves.includes(attendu),
+      `« ${attendu} » n'est plus dérivé : cette nature de nom pourrait fuiter sans que rien le voie. Trouvés : ${trouves.join(', ')}`);
+  }
+  // ⚠️ Et il ne ramasse pas n'importe quoi : un mot de trois lettres n'est pas
+  // un identifiant, et un contrôle qui les prend rougit sur tout.
+  assert.ok(!trouves.some((v) => v.length < 4), `un identifiant trop court a été retenu : ${trouves.join(', ')}`);
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('une fuite fabriquée est VUE dans le dépôt (541)', async () => {
+  const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const dir = mkdtempSync(join(tmpdir(), 'argus-terrain-'));
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: nom_bidon_qui_ne_fuit_pas\n');
+
+  // 🔴 LA CONTRE-ÉPREUVE QUI COMPTE : sans elle, « 0 fuite » pourrait venir d'un
+  // instrument qui ne sait pas chercher. On lui donne un fichier qui contient le
+  // nom, et il doit le nommer avec sa ligne.
+  const faux = (/** @type {string} */ f) => (f.endsWith('SALE.md')
+    ? 'du texte, puis nom_bidon_qui_ne_fuit_pas, puis du texte'
+    : 'rien ici');
+  const vu = controler([dir], faux, () => ['PROPRE.md', 'SALE.md']);
+  assert.equal(vu.code, 1, 'la fuite fabriquée n\'est pas vue : le contrôle ne sait pas chercher');
+  assert.match(vu.lignes.join('\n'), /SALE\.md:1/, 'il ne dit pas OÙ, donc on ne peut pas corriger');
+  assert.ok(!vu.lignes.join('\n').includes('PROPRE.md'), 'il accuse un fichier qui ne porte rien');
+
+  // … et sur les mêmes fichiers sans le nom, il se tait.
+  const propre = controler([dir], () => 'rien ici', () => ['PROPRE.md', 'SALE.md']);
+  assert.equal(propre.code, 0, 'il rougit sur un dépôt propre');
+  rmSync(dir, { recursive: true, force: true });
+});
+
+test('le dépôt LIVRÉ ne porte aucun identifiant distinctif de terrain (541)', async () => {
+  const { controler, LISTE } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  if (!existsSync(LISTE)) return;   // poste sans terrains : le contrôle le dit lui-même
+  const { code, lignes } = controler([]);
+  assert.notEqual(code, 2, `le contrôle n'a rien mesuré :\n${lignes.join('\n')}`);
+  assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC :\n${lignes.join('\n')}`);
+});
