@@ -52,11 +52,17 @@ ailleurs. Les autres portent du code et des parcours :
 | Fichier | Ce qu'on y met |
 |---|---|
 | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
-| `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
+| `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes — **seul fichier retiré par `--uninstall`**, voir plus bas |
 | `.maestro/*.yaml` marqués `ARGUS:OWNED` | les parcours métier |
 
 Tous portent le marqueur `ARGUS:OWNED` : l'installeur ne les écrase jamais, et
 il te les liste en sortant avec les `TODO(argus)` qui restent dans chacun.
+
+⚠️ `known_issues.dart` porte en plus `ARGUS:PURGE`, et c'est le seul :
+`--uninstall` le RETIRE. Les deux autres décrivent ton application, tu les
+retrouves si tu réinstalles ; celui-là décrit ce que nos gardes ont relevé sur
+elle, et sans eux il fige un verdict que plus rien ne peut rejouer.
+`make argus-debts-write` le régénère en une commande.
 
 Il est parsé par un **sous-ensemble strict de YAML** (`scripts/argus/config.mjs`)
 plutôt que par une dépendance : un projet Flutter n'a ni `package.json` ni
@@ -298,9 +304,11 @@ bash <SKILL_DIR>/scripts/install-mobile.sh . --update   # remet le cadre à nive
 
 La frontière est **dérivée de la source**, pas d'une liste : chaque fichier du
 scaffold se déclare dans ses vingt premières lignes. `ARGUS:OWNED` t'appartient
-(config, ancres, parcours métier) et n'est jamais touché ; `ARGUS:MERGE` est à
-fusionner à la main dans ton homonyme ; tout le reste est du cadre — scripts,
-suites de test, CI — et se remplace.
+(config, ancres, parcours métier) et n'est jamais touché ; `ARGUS:PURGE` s'y
+ajoute pour ce qui est à toi tant qu'Argus est là mais part avec lui (le relevé
+de dette, et lui seul) ; `ARGUS:MERGE` est à fusionner à la main dans ton
+homonyme ; tout le reste est du cadre — scripts, suites de test, CI — et se
+remplace.
 
 Les marqueurs sont réservés et bornés à l'en-tête pour qu'un fichier puisse en
 **parler** sans être classé par ce qu'il dit — cette page-ci les cite, et reste

@@ -2,6 +2,13 @@
 // Argus Mobile — la dette que les gardes ont RÉVÉLÉE, et que tu n'as pas encore
 // corrigée.
 // ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
+// ARGUS:PURGE — …mais il le RETIRE à la désinstallation, et c'est le seul fichier
+// dans ce cas. Les autres décrivent TON application — tes écrans, tes parcours, ta
+// config — et tu les retrouves si tu réinstalles. Celui-ci décrit ce que NOS gardes
+// ont relevé sur elle : les gardes partis, il fige un verdict que plus rien ne peut
+// rejouer, en Dart, dans `test/`, où il continue de compiler sans rien garder. Et
+// `make argus-debts-write` le régénère en une commande — c'est la seule chose de toi
+// qui vive ici, et la seule qui ne coûte rien à refaire.
 //
 // À QUOI ÇA SERT. Installer l'étage 1 sur une application existante ne crée
 // aucun défaut : il en découvre. Sur un projet réel, la première exécution a

@@ -31,6 +31,13 @@
 # chaque fichier du scaffold se déclare, dans ses 20 premières lignes :
 #   « ARGUS:OWNED »  → il T'APPARTIENT (config, ancres, parcours métier) :
 #                      jamais écrasé, jamais comparé.
+#   « ARGUS:PURGE »  → s'AJOUTE à OWNED, et ne change rien à --update : à toi
+#                      tant qu'Argus est là, RETIRÉ quand il part. Pour ce qui
+#                      ne décrit pas ton application mais ce que nos gardes ont
+#                      relevé sur elle — un relevé figé ne survit pas au harnais
+#                      qui l'a produit, et la désinstallation le dit déjà : elle
+#                      promet de garder « la config, les ancres, les parcours,
+#                      les références visuelles et les rapports », pas la dette.
 #   « ARGUS:MERGE »  → à FUSIONNER dans un homonyme du projet (.gitignore,
 #                      snippet npm) : jamais écrasé, jamais comparé.
 #   « ARGUS:CADRE »  → au PLUGIN (scripts, suites de test, CI) : comparable et
@@ -343,6 +350,22 @@ uninstall_project() {
     dest="$target/$rel"
     [ -e "$dest" ] || continue
 
+    # 552 · PURGE s'ajoute à OWNED et se lit AVANT lui, sinon OWNED gagne et la
+    # branche est morte. Le marqueur se cherche dans le GABARIT et non dans la
+    # copie : un hôte installé avant ce jour ne l'a pas, et comme `--update`
+    # n'écrase jamais un OWNED, il ne l'aurait JAMAIS reçu — le remède n'aurait
+    # atteint personne. Mais on n'efface que ce qui porte notre signature, pour
+    # la même raison que le cadre : un homonyme du projet reste où il est.
+    if head -20 "$src" | grep -qF 'ARGUS:PURGE'; then
+      if head -20 "$dest" | grep -qF 'ARGUS:'; then
+        rm -f "$dest"
+        echo "  🗑️  retiré : $rel (un relevé de dette ne survit pas aux gardes qui l'ont produit)"
+        retires=$((retires + 1))
+      else
+        liste="$liste  ⏭️  pas d'origine Argus   : $rel"$'\n'; gardes=$((gardes + 1))
+      fi
+      continue
+    fi
     if head -20 "$src" | grep -qF 'ARGUS:OWNED'; then
       liste="$liste  ⏭️  à toi, gardé          : $rel"$'\n'; gardes=$((gardes + 1)); continue
     fi
