@@ -15443,12 +15443,16 @@ test('la désinstallation retire le cadre et GARDE tout le travail du projet (49
       'des fichiers de cadre survivent à la désinstallation : elle laisse derrière elle un '
       + 'outil à moitié retiré (498)');
 
-    // 2. …et RIEN du travail n'a été touché. C'est l'autre moitié, et la seule
-    //    qui ne se répare pas : une désinstallation trop zélée est définitive.
-    for (const [rel, marque] of Object.entries(travail)) {
-      assert.ok(existsSync(join(projet, rel)), `${rel} a été SUPPRIMÉ : c'est du travail perdu`);
-      assert.match(readFileSync(join(projet, rel), 'utf8'), new RegExp(marque),
-        `${rel} existe mais a été réécrit : le travail qu'il portait est perdu (498)`);
+    // 2. 553 — ET CE QUI PORTAIT DU TRAVAIL EST PARTI AUSSI. Ces trois fichiers
+    //    ont été POSÉS par l'installation : elle les reprend, ce que le projet y
+    //    a écrit avec. L'assertion disait l'inverse jusqu'au 21/09/2026, au nom
+    //    de « garder de trop se répare à la main » — et ce qu'elle gardait ne
+    //    compilait plus, puisque les fichiers de cadre dont il dépend venaient
+    //    de partir. Ce qui compte vit dans `lib/`, où rien n'a jamais été posé.
+    for (const rel of Object.keys(travail)) {
+      assert.ok(!existsSync(join(projet, rel)),
+        `${rel} a survécu à la désinstallation : il avait été POSÉ par l'installation, donc elle `
+        + 'le reprend — le camp dit qui écrase qui pendant la vie de l\'outil, pas à son départ (553)');
     }
     for (const rel of ['lib/main.dart', 'pubspec.yaml', '.maestro/_baselines/home.png',
       'argus-mobile-report/report.json']) {
@@ -15477,11 +15481,17 @@ test('elle ne retire pas un homonyme, et le gabarit ne part que s\'il est vierge
     assert.match(readFileSync(join(projet, 'Makefile'), 'utf8'), /a-moi/,
       'le Makefile du projet a été supprimé par la désinstallation : il ne portait pas notre '
       + 'signature, donc il ne nous appartenait pas (498)');
-    assert.ok(existsSync(join(projet, 'package.snippet.json')),
-      'un gabarit que le projet avait annoté a été supprimé');
 
-    // Le jumeau : vierge, il doit partir — sinon la désinstallation laisse
-    // derrière elle un fichier qui parle d'un outil qu'on vient de retirer.
+    // 553 — le gabarit annoté part MAINTENANT lui aussi : il a été posé par
+    // l'installation. Ce qui le distingue du Makefile ci-dessus n'est pas
+    // d'avoir été touché, c'est d'avoir été POSÉ. La différence se lit à
+    // l'en-tête, seul endroit qui dise d'où vient un fichier.
+    assert.ok(!existsSync(join(projet, 'package.snippet.json')),
+      'un gabarit annoté a survécu : il portait notre en-tête, donc l\'installation l\'avait '
+      + 'posé, donc elle le reprend (553)');
+
+    // Le jumeau, laissé vierge : même verdict, et c'est ce qui prouve que le
+    // critère n'est plus « a-t-il été modifié ».
     const vierge = mkdtempSync(join(tmpdir(), 'argus-vierge-'));
     writeFileSync(join(vierge, 'pubspec.yaml'), 'name: hote\n');
     installe(vierge);
@@ -18045,199 +18055,243 @@ test('tout le Dart livré est déjà formaté par `dart format` (550)', () => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 552 · Un relevé de dette ne survit pas aux gardes qui l'ont produit
+// 553 · La désinstallation reprend TOUT ce qu'elle a posé, et rien d'autre
 // ═══════════════════════════════════════════════════════════════════════════
-// `--uninstall` finit en promettant ce qu'il garde : « la config, les ancres,
-// les parcours, les références visuelles et les rapports ». Il en gardait SIX,
-// et la sixième n'est dans aucune de ces cinq catégories — `known_issues.dart`,
-// le relevé de dette. La promesse était écrite, le comportement ne la suivait
-// pas, et rien ne pouvait le voir : le fichier est OWNED, donc épargné par
-// construction, et une désinstallation qui garde de trop ne lève rien.
+// Elle gardait ce que le projet avait rempli — le harnais, les parcours, la
+// config — au nom de « garder de trop se répare à la main ». L'intention était
+// juste et le résultat était un projet CASSÉ, mesuré sur un projet jetable :
 //
-// Ce que ça laissait derrière : un fichier Dart dans `test/`, qui compile, qui
-// fige un verdict que plus rien ne peut rejouer — les gardes qui l'ont produit
-// viennent de partir — et qui ressemble assez à du code du projet pour se
-// faire commiter. C'est arrivé : sur un terrain réel il est parti dans un
-// commit dont le sujet était une phase Xcode.
+//     test/argus/harness.dart  survit avec  import 'argus_types.dart'  → MORT
+//     a11y · i18n · journey-critical · lifecycle → _subflows/launch-clean.yaml
+//     resilience                                 → _subflows/disable-animations.yaml
 //
-// D'où `ARGUS:PURGE`, qui s'AJOUTE à `ARGUS:OWNED` au lieu de le remplacer :
-// `--update` ne l'écrase toujours pas (le travail est à toi tant qu'Argus est
-// là), `--uninstall` le retire (il part avec lui). Les deux axes sont gardés
-// ci-dessous, parce que fermer l'un en ouvrant l'autre serait pire que le
-// défaut : un `known_issues.dart` devenu du cadre serait écrasé à chaque
-// `--update`, donc la dette du projet détruite sans un mot.
+// `flutter analyze` rouge, aucun parcours jouable. Un fichier gardé « pour ne
+// pas perdre ton travail » que le projet ne peut plus compiler n'est pas du
+// travail gardé : c'est une panne laissée derrière soi.
+//
+// Le principe, tranché par Germinator : ce que l'installation a POSÉ repart,
+// ce qu'elle n'a jamais touché reste. Les camps (OWNED / MERGE / CADRE) disent
+// qui écrase qui pendant la VIE de l'outil ; ils ne disent rien de son départ.
+// Et ce qui compte ne passe pas par là : l'instrumentation vit dans `lib/`,
+// dans les fichiers du projet, où l'installation n'a jamais écrit.
+//
+// ⚠️ Le seul fichier qu'elle ne pose pas est le `.gitignore` : elle y insère un
+// bloc. C'est donc le bloc qui s'en va, et le fichier reste.
 
-/** Le camp du gabarit, PURGE compris, lu comme l'installeur le lit (`head -20`). */
-const campAvecPurge = (texte) => {
-  const entete = texte.split('\n').slice(0, 20).join('\n');
-  if (entete.includes('ARGUS:PURGE')) return 'PURGE';
-  if (entete.includes('ARGUS:OWNED')) return 'OWNED';
-  if (entete.includes('ARGUS:MERGE')) return 'MERGE';
-  return 'CADRE';
+const SCAFFOLD_553 = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+
+/** Tous les fichiers livrés, dérivés de la source — jamais une liste tenue à la main. */
+const fichiersLivres = () => {
+  const out = execFileSync('bash', ['-c',
+    `cd "${SCAFFOLD_553}" && find . -type f | sed 's|^\\./||'`], { encoding: 'utf8' })
+    .split('\n').filter(Boolean);
+  assert.ok(out.length > 0, 'aucun fichier lu dans le scaffold — le garde ne mesure rien');
+  return out;
 };
 
-const SCAFFOLD_552 = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
-
-/** Les fichiers du scaffold, par camp — dérivé de la SOURCE, jamais recopié. */
-function parCamp() {
-  const fichiers = execFileSync('bash', ['-c',
-    `cd "${SCAFFOLD_552}" && find . -type f | sed 's|^\\./||'`], { encoding: 'utf8' })
-    .split('\n').filter(Boolean);
-  assert.ok(fichiers.length > 0, 'aucun fichier lu dans le scaffold — le garde ne mesure rien');
-  /** @type {Record<string, string[]>} */
-  const out = { PURGE: [], OWNED: [], MERGE: [], CADRE: [] };
-  for (const rel of fichiers) out[campAvecPurge(readFileSync(join(SCAFFOLD_552, rel), 'utf8'))].push(rel);
-  return out;
-}
-
-test('552 — `ARGUS:PURGE` existe, et il est porté par le relevé de dette', () => {
-  const camps = parCamp();
-  // Non-vacance des DEUX côtés : le marqueur doit exister (sinon tout ce qui
-  // suit mesure un monde sans PURGE), et ne pas avoir tout avalé.
-  assert.deepEqual(camps.PURGE, ['test/argus/known_issues.dart'],
-    'la liste des fichiers PURGE a changé. Ce n\'est pas un relevé de forme : un fichier qui '
-    + 'gagne le marqueur DISPARAÎT chez tous les hôtes à la désinstallation, et un qui le perd '
-    + 'y reste pour toujours. Choisis le camp en écrivant ici, pas en oubliant un en-tête (552)');
-  assert.ok(camps.OWNED.length > 0,
-    'plus aucun fichier OWNED sans PURGE : la désinstallation ne garderait plus rien du projet');
-
-  // Et PURGE doit s'AJOUTER à OWNED dans le gabarit, pas le remplacer : c'est
-  // ce qui tient l'autre axe (`--update` ne l'écrase pas).
-  const entete = readFileSync(join(SCAFFOLD_552, 'test/argus/known_issues.dart'), 'utf8')
-    .split('\n').slice(0, 20).join('\n');
-  assert.ok(entete.includes('ARGUS:OWNED'),
-    'known_issues.dart a perdu ARGUS:OWNED en gagnant ARGUS:PURGE — il est donc redevenu du '
-    + 'cadre pour `--update`, qui écrasera la dette du projet à la prochaine mise à jour (552)');
-});
-
-test('552 — la désinstallation retire la dette et RIEN d\'autre du projet (l\'effet)', () => {
-  const projet = mkdtempSync(join(tmpdir(), 'argus-purge-'));
+test('553 — tout ce que l\'installation a posé repart, MÊME REMPLI', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-553-'));
   try {
     writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
     mkdirSync(join(projet, 'lib'));
-    writeFileSync(join(projet, 'lib/main.dart'), 'void main() {}\n');
+    writeFileSync(join(projet, 'lib/main.dart'), "void main() {} // semanticIdentifier: home\n");
+    mkdirSync(join(projet, 'test'), { recursive: true });
+    writeFileSync(join(projet, 'test/mon_test.dart'), 'void main() {}\n');
+    writeFileSync(join(projet, '.gitignore'), 'a-moi/\n');
     installe(projet);
 
-    const camps = parCamp();
-    const poses = [...camps.PURGE, ...camps.OWNED, ...camps.MERGE, ...camps.CADRE]
-      .filter((rel) => existsSync(join(projet, rel)));
-    assert.equal(poses.length, camps.PURGE.length + camps.OWNED.length
-      + camps.MERGE.length + camps.CADRE.length,
-    'l\'installation n\'a pas posé tout le scaffold : c\'est le montage qui est cassé, pas la '
-    + 'désinstallation — ne pas lire le verdict ci-dessous');
+    const livres = fichiersLivres();
+    const poses = livres.filter((rel) => existsSync(join(projet, rel)));
+    assert.equal(poses.length, livres.length,
+      'l\'installation n\'a pas posé tout le scaffold : c\'est le montage qui est cassé, pas la '
+      + 'désinstallation — ne pas lire le verdict ci-dessous');
 
-    // Le travail du projet, y compris DANS le fichier de dette : c'est le cas
-    // qui compte, puisqu'un fichier resté au gabarit partirait de toute façon
-    // par la règle des gabarits vierges. Ajouté en FIN, l'en-tête reste intact.
-    const TEMOIN = 'ARGUS-TEMOIN-552';
+    // Le travail du projet DANS les fichiers posés — c'est le cas qui compte,
+    // puisque c'est celui qu'on gardait avant. Ajouté en fin, l'en-tête reste
+    // intact : ce n'est donc pas la reconnaissance qu'on mesure ici.
+    const TEMOIN = 'ARGUS-TEMOIN-553';
     for (const rel of poses) {
       const f = join(projet, rel);
       writeFileSync(f, `${readFileSync(f, 'utf8')}\n# ${TEMOIN}\n`);
     }
+    // …et les artefacts PRODUITS, que l'installation n'a jamais posés.
+    mkdirSync(join(projet, '.maestro/_baselines'), { recursive: true });
+    writeFileSync(join(projet, '.maestro/_baselines/home.png'), 'PNG');
+    mkdirSync(join(projet, 'argus-mobile-report'), { recursive: true });
+    writeFileSync(join(projet, 'argus-mobile-report/report.json'), '{}');
 
     const r = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
     assert.equal(r.status, 0, `la désinstallation a échoué : ${r.stderr}`);
     const retires = Number(/(\d+) retiré\(s\)/.exec(r.stdout)?.[1] ?? 0);
     assert.ok(retires > 10,
       `seulement ${retires} fichier(s) retiré(s) : la désinstallation n'a pas eu lieu, donc ce `
-      + 'garde ne mesure rien (552)');
+      + 'garde ne mesure rien (553)');
 
+    // 1. Tout ce qui a été posé est parti — sauf le `.gitignore`, qui est au
+    //    projet et dont seul notre bloc s'en va.
     const survivants = poses.filter((rel) => existsSync(join(projet, rel))).sort();
-    // L'attendu est DÉRIVÉ des marqueurs, pas listé ici : deux relevés du même
-    // fait dérivent l'un de l'autre, et c'est celui qu'on oublie qui ment.
-    const attendus = [...camps.OWNED, ...camps.MERGE].sort();
-    assert.deepStrictEqual(survivants, attendus,
-      'ce qui survit à la désinstallation n\'est plus ce que les marqueurs annoncent. Un fichier '
-      + 'du projet emporté est du travail perdu ; un fichier PURGE qui reste est un relevé figé '
-      + 'que plus aucun garde ne peut rejouer (552)');
+    assert.deepStrictEqual(survivants, ['.gitignore'],
+      'des fichiers posés par l\'installation survivent à la désinstallation. Le camp dit qui '
+      + 'écrase qui pendant la vie de l\'outil ; il ne dit rien de son départ (553)');
+    const gi = readFileSync(join(projet, '.gitignore'), 'utf8');
+    assert.match(gi, /a-moi/, 'le .gitignore du projet a été réécrit');
+    assert.ok(!gi.includes('Argus Mobile'), 'le bloc géré est resté dans le .gitignore');
 
-    // L'autre moitié, et la seule qui ne se répare pas : ce qui reste porte
-    // encore le travail. Un correctif qui coupe trop passerait le test ci-dessus.
-    for (const rel of camps.OWNED) {
-      assert.match(readFileSync(join(projet, rel), 'utf8'), new RegExp(TEMOIN),
-        `${rel} a survécu mais a été RÉÉCRIT : le travail qu'il portait est perdu (552)`);
+    // 2. L'AUTRE MOITIÉ, et la seule qui ne se répare pas : ce que
+    //    l'installation n'a jamais posé n'a pas bougé d'un octet.
+    for (const [rel, attendu] of [['lib/main.dart', 'semanticIdentifier'],
+      ['test/mon_test.dart', 'void main'], ['.maestro/_baselines/home.png', 'PNG'],
+      ['argus-mobile-report/report.json', '{}']]) {
+      assert.ok(existsSync(join(projet, rel)),
+        `${rel} a disparu : l'installation ne l'avait jamais posé, elle n'avait pas à le reprendre`);
+      assert.match(readFileSync(join(projet, rel), 'utf8'), new RegExp(attendu),
+        `${rel} existe mais a été réécrit — c'est du travail du projet (553)`);
     }
   } finally {
     rmSync(projet, { recursive: true, force: true });
   }
 });
 
-test('552 — `--update` n\'écrase toujours PAS la dette (l\'autre axe)', () => {
-  // Le remède le plus court aurait été de passer le fichier en CADRE. Il aurait
-  // fait partir la dette à la désinstallation — et l'aurait détruite à chaque
-  // mise à jour, chez des hôtes qui n'ont rien demandé. Ce garde est ce qui
-  // empêche ce raccourci d'être vert.
-  const projet = mkdtempSync(join(tmpdir(), 'argus-purge-update-'));
+test('553 — et ce qui reste ne référence plus rien de parti', () => {
+  // ⚠️ C'EST LE GARDE DU PHÉNOMÈNE, pas du site. Les deux précédents comptent
+  // des fichiers ; celui-ci vérifie que le projet TIENT DEBOUT après coup —
+  // c'est le défaut réel, et il se serait reproduit à chaque fichier ajouté au
+  // scaffold qu'on aurait décidé de garder.
+  const projet = mkdtempSync(join(tmpdir(), 'argus-553-debout-'));
   try {
     writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    mkdirSync(join(projet, 'lib'));
+    writeFileSync(join(projet, 'lib/main.dart'), 'void main() {}\n');
     installe(projet);
-    const dette = join(projet, 'test/argus/known_issues.dart');
-    assert.ok(existsSync(dette), 'le scaffold ne pose plus le fichier de dette : montage cassé');
-    writeFileSync(dette, `${readFileSync(dette, 'utf8')}\n// MA-DETTE-552\n`);
-
-    const sortie = installe(projet, '--update');
-    assert.match(readFileSync(dette, 'utf8'), /MA-DETTE-552/,
-      '`--update` a écrasé le relevé de dette du projet. ARGUS:PURGE ne doit rien changer à la '
-      + 'mise à jour : il ne parle que de la désinstallation (552)');
-    // Non-vacance : prouver que ce `--update` a bien travaillé sur quelque chose.
-    assert.ok(typeof sortie === 'string' && sortie.length > 0,
-      '`--update` n\'a rien imprimé : le geste n\'a pas eu lieu, ce garde ne mesure rien');
-  } finally {
-    rmSync(projet, { recursive: true, force: true });
-  }
-});
-
-test('552 — un homonyme du projet qui ne porte pas notre signature reste', () => {
-  // Même exigence que pour le cadre : on n'efface que ce qu'on reconnaît. Un
-  // projet peut avoir son propre `test/argus/known_issues.dart` — improbable,
-  // mais le coût d'une erreur est la destruction d'un fichier qui n'est pas à
-  // nous, et il ne se répare pas.
-  const projet = mkdtempSync(join(tmpdir(), 'argus-purge-homonyme-'));
-  try {
-    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
-    installe(projet);
-    const dette = join(projet, 'test/argus/known_issues.dart');
-    writeFileSync(dette, '// a moi, rien a voir avec le plugin\nconst x = 1;\n');
-
+    const poses = fichiersLivres().filter((rel) => existsSync(join(projet, rel)));
+    assert.ok(poses.length > 10, 'le scaffold n\'a pas été posé : montage cassé');
     spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
-    assert.ok(existsSync(dette),
-      'un fichier qui ne porte AUCUN marqueur Argus a été supprimé par la désinstallation : '
-      + 'il ne nous appartenait pas (552)');
-    assert.match(readFileSync(dette, 'utf8'), /a moi/, 'le fichier de l\'hôte a été réécrit');
+
+    /** Tous les fichiers encore présents sous les racines qu'Argus a touchées. */
+    const restants = execFileSync('bash', ['-c',
+      `cd "${projet}" && find .maestro test scripts .github -type f 2>/dev/null | sed 's|^\\./||' || true`],
+    { encoding: 'utf8' }).split('\n').filter(Boolean);
+
+    const casses = [];
+    for (const rel of restants) {
+      const texte = readFileSync(join(projet, rel), 'utf8');
+      // Un import Dart relatif, ou un sous-flow Maestro : les deux formes par
+      // lesquelles un fichier gardé peut pointer vers un fichier parti.
+      for (const m of texte.matchAll(/^\s*import\s+'(?!package:)([^']+)';/gm)) {
+        if (!existsSync(join(projet, dirname(rel), m[1]))) casses.push(`${rel} → ${m[1]}`);
+      }
+      for (const m of texte.matchAll(/(?:runFlow|file):\s*([^\s"']+\.yaml)/g)) {
+        if (!existsSync(join(projet, dirname(rel), m[1]))) casses.push(`${rel} → ${m[1]}`);
+      }
+    }
+    assert.deepStrictEqual(casses, [],
+      'après désinstallation, des fichiers gardés pointent vers des fichiers partis. Le projet '
+      + 'ne compile plus, ou ses parcours ne sont plus jouables — un fichier gardé « pour ne pas '
+      + `perdre ton travail » que rien ne peut plus exécuter est une panne laissée derrière : ${casses.join(', ')} (553)`);
   } finally {
     rmSync(projet, { recursive: true, force: true });
   }
 });
 
-test('552 — la promesse de fin et le comportement, lus sur la MÊME exécution', () => {
-  // ⚠️ LA PREMIÈRE VERSION DE CE GARDE LISAIT LA SOURCE, et elle est née rouge
-  // sur un dépôt sain : son motif attrapait le COMMENTAIRE que je venais
-  // d'écrire au-dessus du correctif, lequel cite la promesse ET le mot
-  // « dette ». Un garde qui lit du texte ne distingue pas ce que le programme
-  // DIT de ce qu'on a écrit à côté. Celui-ci exécute et lit la sortie.
-  const projet = mkdtempSync(join(tmpdir(), 'argus-purge-promesse-'));
+test('553 — la désinstallation est PLUS STRICTE que la mise à jour, et c\'est voulu', () => {
+  // ⚠️ MON PREMIER GESTE A ÉTÉ D'UNIFIER LES DEUX SEUILS, et c'était défaire un
+  // arbitrage que le dépôt avait déjà rendu — écrit en toutes lettres dans
+  // l'en-tête de la fonction que j'allais modifier : « là-bas, ne pas
+  // reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à
+  // tort la DÉTRUIT ». Il n'y avait aucun garde, et c'est pour ça que j'ai pu
+  // le faire en une ligne.
+  //
+  // ⚠️ ET LA PREMIÈRE VERSION DE CE GARDE MESURAIT UN CAS QUI N'EXISTE PAS.
+  // Elle fabriquait une « copie ancienne » en retirant le marqueur d'un fichier
+  // posé, et attendait que `--update` la reconnaisse par sa prose. Mesuré :
+  // pour les ONZE fichiers de cadre, la première ligne de la source qui se
+  // nomme EST celle du marqueur — le repli de prose ne reconnaît donc rien que
+  // le marqueur ne reconnaisse déjà. Le garde porte maintenant sur la décision
+  // elle-même, en l'APPELANT, ce qui est la seule façon d'exercer un cas que le
+  // scaffold du jour ne produit pas.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-553-seuil-'));
+  try {
+    // La fonction, extraite du script et appelée pour de vrai.
+    const fn = execFileSync('bash', ['-c',
+      `awk '/^est_notre_copie\\(\\)/,/^}/' "${INSTALLEUR}"`], { encoding: 'utf8' });
+    assert.match(fn, /^est_notre_copie\(\)/,
+      'la fonction est_notre_copie est introuvable dans l\'installeur — ce garde ne mesure rien');
+
+    const ecrire = (nom, texte) => { writeFileSync(join(dir, nom), texte); return join(dir, nom); };
+    // ⚠️ La ligne de PROSE précède le marqueur, et il le faut : `est_notre_copie`
+    // dérive la signature de la PREMIÈRE ligne de la source qui se nomme. Si le
+    // marqueur venait en premier — c'est le cas des onze fichiers de cadre
+    // d'aujourd'hui — la signature SERAIT le marqueur, et le cas « reconnue par
+    // la prose seule » n'existerait pas. Le montage le fabrique donc exprès.
+    const src = ecrire('src', '// Argus Mobile — le moteur\n// ARGUS:CADRE — a nous\nconst x = 1;\n');
+    const cas = {
+      // dest marqué : notre copie, quel que soit le seuil.
+      marque: ecrire('marque', '// ARGUS:CADRE — a nous\nconst x = 2;\n'),
+      // dest SANS marqueur mais portant la ligne de prose — une copie posée
+      // avant que le marqueur n'existe. C'est ici, et ici seulement, que les
+      // deux seuils doivent diverger.
+      prose: ecrire('prose', '// Argus Mobile — le moteur\nconst x = 3;\n'),
+      // dest étranger : au projet, à personne d'autre.
+      etranger: ecrire('etranger', '// mon fichier a moi\nconst x = 4;\n'),
+    };
+    const repond = (dest, strict) => execFileSync('bash', ['-c',
+      `${fn}\nest_notre_copie "${src}" "${dest}" ${strict ? 'strict' : ''} && echo oui || echo non`],
+    { encoding: 'utf8' }).trim();
+
+    assert.equal(repond(cas.marque, false), 'oui', 'un dest marqué doit être reconnu (souple)');
+    assert.equal(repond(cas.marque, true), 'oui', 'un dest marqué doit être reconnu (strict)');
+    assert.equal(repond(cas.etranger, false), 'non', 'un fichier étranger n\'est pas à nous (souple)');
+    assert.equal(repond(cas.etranger, true), 'non', 'un fichier étranger n\'est pas à nous (strict)');
+
+    // L'ASYMÉTRIE, et c'est tout l'objet de ce garde.
+    assert.equal(repond(cas.prose, false), 'oui',
+      '`--update` ne reconnaît plus une copie que seule la prose identifie : elle serait figée à '
+      + 'jamais chez cet hôte, en silence (553)');
+    assert.equal(repond(cas.prose, true), 'non',
+      '`--uninstall` reconnaît une copie sur la seule prose, donc il la SUPPRIME. Là-bas une '
+      + 'erreur fige, ici elle détruit : les deux seuils ne peuvent pas être le même (553)');
+
+    // Et le câblage : c'est la désinstallation qui passe `strict`, pas l'autre.
+    const script = readFileSync(INSTALLEUR, 'utf8');
+    const appels = script.split('\n').filter((l) => /est_notre_copie "\$src"/.test(l));
+    assert.equal(appels.length, 2,
+      `${appels.length} appel(s) à est_notre_copie au lieu de 2 : le relevé ci-dessous ne parle `
+      + 'plus des deux mêmes sites (553)');
+    assert.equal(appels.filter((l) => l.includes('strict')).length, 1,
+      'un seul des deux appels doit passer `strict` — les deux, et une copie ancienne est figée ; '
+      + 'aucun, et elle est détruite (553)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('553 — la promesse de fin dit ce qui reste, lue sur la MÊME exécution', () => {
+  // ⚠️ UNE PREMIÈRE VERSION DE CE GARDE LISAIT LA SOURCE, et elle est née rouge
+  // sur un dépôt sain : son motif attrapait le COMMENTAIRE écrit au-dessus du
+  // correctif, qui cite la promesse. Un garde qui lit du texte ne distingue pas
+  // ce que le programme DIT de ce qu'on a écrit à côté. Celui-ci exécute.
+  const projet = mkdtempSync(join(tmpdir(), 'argus-553-promesse-'));
   try {
     writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
     installe(projet);
     const r = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
     assert.equal(r.status, 0, `la désinstallation a échoué : ${r.stderr}`);
-
     const promesse = r.stdout.split('\n')
-      .filter((l) => !l.includes('🗑️') && !l.includes('⏭️'))
-      .join(' ');
-    assert.match(promesse, /Ce qui reste t'appartient/,
-      'la désinstallation ne promet plus rien : une suppression muette laisse celui qui la '
-      + 'lance sans moyen de savoir ce qu\'il a perdu (552)');
-    assert.ok(!/dette|known_issues/i.test(promesse),
-      `la promesse de fin revendique la dette alors que la désinstallation la retire : `
-      + `« ${promesse.trim()} » (552)`);
+      .filter((l) => !l.includes('🗑️') && !l.includes('⏭️') && !l.includes('🔁')).join(' ');
 
-    // L'autre moitié, sur la MÊME sortie : le fichier de dette doit apparaître
-    // parmi les retirés. Sans elle, une désinstallation qui ne toucherait plus
-    // rien passerait — la promesse serait muette sur la dette, et vraie.
-    assert.match(r.stdout, /🗑️ {2}retiré : test\/argus\/known_issues\.dart/,
-      'le relevé de dette n\'apparaît pas dans ce que la désinstallation annonce retirer : '
-      + 'elle le garde en silence, et la promesse de fin ne le dit pas non plus (552)');
+    assert.match(promesse, /Ce qui reste t'appartient/,
+      'la désinstallation ne promet plus rien : une suppression muette laisse celui qui la lance '
+      + 'sans moyen de savoir ce qu\'il a perdu (553)');
+    // Elle ne doit plus revendiquer ce qu'elle vient d'emporter…
+    for (const mot of ['la config', 'les parcours']) {
+      assert.ok(!promesse.includes(mot),
+        `la promesse revendique « ${mot} » alors que la désinstallation les reprend : « ${promesse.trim()} » (553)`);
+    }
+    // …et elle doit dire que ce qui est parti est repartible, sinon elle laisse
+    // croire à une perte définitive.
+    assert.match(promesse, /[Rr]éinstalle/,
+      'la promesse ne dit pas qu\'une réinstallation rend les gabarits : elle se lit alors comme '
+      + 'une perte définitive du travail (553)');
   } finally {
     rmSync(projet, { recursive: true, force: true });
   }

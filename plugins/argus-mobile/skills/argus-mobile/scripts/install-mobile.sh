@@ -31,19 +31,19 @@
 # chaque fichier du scaffold se déclare, dans ses 20 premières lignes :
 #   « ARGUS:OWNED »  → il T'APPARTIENT (config, ancres, parcours métier) :
 #                      jamais écrasé, jamais comparé.
-#   « ARGUS:PURGE »  → s'AJOUTE à OWNED, et ne change rien à --update : à toi
-#                      tant qu'Argus est là, RETIRÉ quand il part. Pour ce qui
-#                      ne décrit pas ton application mais ce que nos gardes ont
-#                      relevé sur elle — un relevé figé ne survit pas au harnais
-#                      qui l'a produit, et la désinstallation le dit déjà : elle
-#                      promet de garder « la config, les ancres, les parcours,
-#                      les références visuelles et les rapports », pas la dette.
 #   « ARGUS:MERGE »  → à FUSIONNER dans un homonyme du projet (.gitignore,
 #                      snippet npm) : jamais écrasé, jamais comparé.
 #   « ARGUS:CADRE »  → au PLUGIN (scripts, suites de test, CI) : comparable et
 #                      remplaçable par --update.
 #   sinon            → traité comme du cadre, reconnu par la première ligne qui
 #                      se nomme — le repli des copies posées avant le marqueur.
+#
+# ⚠️ CES TROIS CAMPS DISENT QUI ÉCRASE QUI PENDANT LA VIE DE L'OUTIL. Ils ne
+# disent RIEN de son départ : --uninstall reprend TOUT ce que l'installation a
+# posé, quel que soit le camp et quel que soit ce que tu y as écrit. Le seul
+# fichier qu'elle ne pose pas est le .gitignore, où elle insère un bloc — c'est
+# donc le bloc qui s'en va. Ce qui reste est ce qu'elle n'a jamais touché : ton
+# code et ses ancres, tes tests, tes références visuelles, tes rapports.
 # Une liste de noms écrite à la main aurait vieilli au premier fichier ajouté.
 #
 # ⚠️ Les marqueurs sont RÉSERVÉS et bornés à l'en-tête, pour qu'un fichier
@@ -323,18 +323,48 @@ merge_gitignore() {
   return 0
 }
 
-# ── Désinstallation : le SEUL geste qui supprime ────────────────────────────
-# Donc le seul qu'on ne rattrape pas. Retirer le scaffold en bloc effacerait le
-# harnais rempli, les parcours écrits et la config — des jours de travail qui
-# n'ont jamais appartenu au plugin. Ne part d'ici que du CADRE dont la copie
-# locale porte encore la signature, et tout ce qui reste est ÉNUMÉRÉ : une
-# suppression muette laisse celui qui la lance sans moyen de savoir ce qu'il a
-# perdu.
+# Est-ce NOTRE copie de `$1` qui se trouve en `$2` ?
 #
-# ⚠️ AUCUN REPLI DE PROSE ICI, contrairement à --update. Là-bas, ne pas
-# reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à tort
-# la DÉTRUIT. Les deux erreurs n'ont pas le même prix, donc pas le même seuil :
-# un fichier gardé de trop se supprime à la main, l'inverse ne se répare pas.
+# Un projet peut avoir son propre fichier au même nom — un `Makefile`, un
+# `index.ts`. Le supprimer parce qu'il porte le bon chemin détruirait son
+# travail, et le symétrique est tout aussi faux : le compter « en retard »
+# ferait rougir sa CI pour un fichier qui ne nous appartient pas.
+#
+# 553 · Un TROISIÈME argument `strict` parce que les deux appelants n'ont pas le
+# même prix à payer, et c'est l'en-tête de la désinstallation qui l'avait écrit
+# avant moi : là-bas, ne pas reconnaître une copie ancienne la fige à jamais —
+# donc repli de prose ; ici, la reconnaître à tort la DÉTRUIT — donc marqueur
+# seul. Unifier les deux seuils était mon premier geste, et c'était défaire un
+# arbitrage que le dépôt avait déjà rendu, à l'endroit exact où il l'avait écrit.
+est_notre_copie() {
+  local src="$1" dest="$2" strict="${3:-}" signature
+  if head -20 "$src" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'; then
+    head -20 "$dest" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)' && return 0
+  fi
+  [ "$strict" = strict ] && return 1
+  signature="$(grep -m1 -i 'argus' "$src" || true)"
+  [ -z "$signature" ] && return 0
+  grep -qF "$signature" "$dest"
+}
+
+# ── Désinstallation : le SEUL geste qui supprime ────────────────────────────
+# Donc le seul qu'on ne rattrape pas. Elle reprend TOUT ce que l'installation a
+# posé — le harnais rempli, les parcours écrits, la config —, et tout ce qui
+# reste est ÉNUMÉRÉ : une suppression muette laisse celui qui la lance sans
+# moyen de savoir ce qu'il a perdu.
+#
+# 553 · Elle gardait ces trois-là, et l'intention était juste : des jours de
+# travail. Le résultat était un projet CASSÉ — `harness.dart` survivait avec un
+# import vers un fichier parti, cinq parcours appelaient des sous-flows
+# supprimés. Un fichier gardé « pour ne pas perdre ton travail » que le projet
+# ne peut plus compiler n'est pas du travail gardé. Et ce qui compte ne passe
+# pas par ici : l'instrumentation vit dans `lib/`, où rien n'a jamais été posé.
+#
+# ⚠️ AUCUN REPLI DE PROSE ICI, contrairement à --update — d'où le `strict`.
+# Là-bas, ne pas reconnaître une copie ancienne la fige à jamais ; ici, la
+# reconnaître à tort la DÉTRUIT. Les deux erreurs n'ont pas le même prix, donc
+# pas le même seuil : un fichier gardé de trop se supprime à la main, l'inverse
+# ne se répare pas.
 uninstall_project() {
   local target="$1"
   local retires=0 gardes=0
@@ -350,46 +380,33 @@ uninstall_project() {
     dest="$target/$rel"
     [ -e "$dest" ] || continue
 
-    # 552 · PURGE s'ajoute à OWNED et se lit AVANT lui, sinon OWNED gagne et la
-    # branche est morte. Le marqueur se cherche dans le GABARIT et non dans la
-    # copie : un hôte installé avant ce jour ne l'a pas, et comme `--update`
-    # n'écrase jamais un OWNED, il ne l'aurait JAMAIS reçu — le remède n'aurait
-    # atteint personne. Mais on n'efface que ce qui porte notre signature, pour
-    # la même raison que le cadre : un homonyme du projet reste où il est.
-    if head -20 "$src" | grep -qF 'ARGUS:PURGE'; then
-      if head -20 "$dest" | grep -qF 'ARGUS:'; then
-        rm -f "$dest"
-        echo "  🗑️  retiré : $rel (un relevé de dette ne survit pas aux gardes qui l'ont produit)"
-        retires=$((retires + 1))
-      else
-        liste="$liste  ⏭️  pas d'origine Argus   : $rel"$'\n'; gardes=$((gardes + 1))
-      fi
-      continue
-    fi
-    if head -20 "$src" | grep -qF 'ARGUS:OWNED'; then
-      liste="$liste  ⏭️  à toi, gardé          : $rel"$'\n'; gardes=$((gardes + 1)); continue
-    fi
-    if head -20 "$src" | grep -qF 'ARGUS:MERGE'; then
-      # Le fichier est au projet ; seul NOTRE bloc s'en va.
-      if [ "$(basename "$rel")" = ".gitignore" ] && grep -qF "$BLOC_DEBUT" "$dest"; then
-        retirer_bloc_gitignore "$dest"
-        echo "  🔁 bloc retiré du .gitignore (le reste du fichier est intact)"
-        retires=$((retires + 1))
-      elif cmp -s "$src" "$dest"; then
-        # Un gabarit que le projet n'a jamais touché est resté au plugin : le
-        # laisser, c'est laisser derrière soi un fichier qui parle d'un outil
-        # désinstallé. Mais dès qu'il DIFFÈRE, il porte une trace de quelqu'un,
-        # et il reste — garder de trop se répare à la main, l'inverse non.
-        rm -f "$dest"
-        echo "  🗑️  retiré : $rel (gabarit jamais modifié)"
-        retires=$((retires + 1))
-      else
-        liste="$liste  ⏭️  à fusionner, gardé    : $rel"$'\n'; gardes=$((gardes + 1))
-      fi
+    # Le `.gitignore` est le SEUL fichier que l'installation ne pose pas : elle
+    # insère un bloc dans celui du projet. C'est donc le bloc qui s'en va, et le
+    # fichier reste — la seule chose de nous qui survive dans un fichier qui
+    # reste, parce que le fichier n'a jamais été à nous.
+    if [ "$(basename "$rel")" = ".gitignore" ] && grep -qF "$BLOC_DEBUT" "$dest"; then
+      retirer_bloc_gitignore "$dest"
+      echo "  🔁 bloc retiré du .gitignore (le reste du fichier est intact)"
+      retires=$((retires + 1))
       continue
     fi
 
-    if head -20 "$dest" | grep -qF 'ARGUS:CADRE'; then
+    # 553 · TOUT LE RESTE A ÉTÉ POSÉ PAR L'INSTALLATION, DONC ELLE LE REPREND —
+    # y compris ce que tu y as écrit. Le camp (OWNED / MERGE / CADRE) dit qui
+    # écrase qui pendant la VIE de l'outil ; il ne dit rien de son départ.
+    #
+    # Ce qu'on gardait avant : ton harnais rempli, tes parcours, ta config. Ça
+    # partait d'une bonne intention et ça laissait un projet CASSÉ — mesuré :
+    # `test/argus/harness.dart` survivait avec un `import argus_types.dart`
+    # mort, donc `flutter analyze` rouge, et cinq parcours appelaient des
+    # sous-flows qui venaient de partir. Un fichier gardé « pour ne pas perdre
+    # ton travail » que le projet ne peut plus compiler n'est pas du travail
+    # gardé : c'est une panne laissée derrière soi.
+    #
+    # Ce qui compte, lui, ne passe pas par ici : l'instrumentation vit dans
+    # `lib/`, dans TES fichiers, et l'installation n'y a jamais touché. Elle y
+    # reste, avec les corrections qu'elle a rendues possibles.
+    if est_notre_copie "$src" "$dest" strict; then
       rm -f "$dest"
       echo "  🗑️  retiré : $rel"
       retires=$((retires + 1))
@@ -431,9 +448,12 @@ uninstall_project() {
   echo
   echo "  $retires retiré(s) · $gardes gardé(s)"
   echo
-  echo "  Ce qui reste t'appartient : la config, les ancres, les parcours, les"
-  echo "  références visuelles et les rapports déjà produits. Rien de tout cela"
-  echo "  n'a jamais été au plugin."
+  echo "  Ce qui reste t'appartient : ton code et les ancres que tu y as posées,"
+  echo "  tes propres tests, tes références visuelles et les rapports déjà"
+  echo "  produits. Rien de tout cela n'a été posé par l'installation — et tout"
+  echo "  ce qu'elle avait posé vient de repartir, y compris ce que tu y avais"
+  echo "  écrit. Réinstalle et tu retrouves les gabarits ; l'instrumentation de"
+  echo "  ton application, elle, n'a jamais bougé."
 }
 
 
@@ -530,18 +550,11 @@ while IFS= read -r src; do
   # en REPLI, et il le faut : une copie posée AVANT l'introduction du marqueur ne
   # le porte pas, et la « corriger » en la reniant reproduirait exactement le
   # défaut qu'on ferme.
-  marque='ARGUS:CADRE'
-  signature="$(grep -m1 -i 'argus' "$src" || true)"
+  # 553 · La même question que la désinstallation, donc le même code : deux
+  # copies d'une reconnaissance divergent, et c'est celle qu'on ne mesure pas
+  # qui dérive.
   notre_copie=0
-  if head -20 "$src" | grep -qF "$marque"; then
-    if head -20 "$dest" | grep -qF "$marque"; then
-      notre_copie=1                       # posée depuis le marqueur : stable
-    elif [ -n "$signature" ] && grep -qF "$signature" "$dest"; then
-      notre_copie=1                       # posée avant : on la reconnaît encore
-    fi
-  elif [ -z "$signature" ] || grep -qF "$signature" "$dest"; then
-    notre_copie=1                         # source sans marqueur : comportement d'avant
-  fi
+  est_notre_copie "$src" "$dest" && notre_copie=1
   if [ "$notre_copie" -eq 0 ]; then
     echo "  ⏭️  présent chez toi, pas d'origine Argus : $rel"
     foreign=$((foreign + 1))
