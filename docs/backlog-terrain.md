@@ -12617,3 +12617,45 @@ Deux exigences qu'il porte, et les deux ont déjà coûté ailleurs :
 doit faire tourner l'outillage de ce langage sur ce qu'il livre.* Ici la suite
 est en JavaScript et le livrable en Dart — la frontière est exactement l'endroit
 où le contrôle manquait.
+
+### 551. Le contrôle du `back` ne remontait que d'UN niveau
+
+**Ouvert le 21/09/2026 · CLOS** — écrit la veille (**549**), rendu faux par un
+terrain le lendemain.
+
+`make argus-lint` a refusé de démarrer sur un fichier **parfaitement gardé** :
+
+    ✖ login-si-besoin.yaml:62 — « - back » n'est gardé par aucune plateforme
+
+Le `when: platform: Android` était porté par le **grand-parent**, et la
+remontée s'arrêtait au `- runFlow:` le plus proche.
+
+#### 📌 Ce qui a rendu le diagnostic possible : trois formes, pas une relecture
+
+Le run a **exécuté** le détecteur au lieu de lire son code :
+
+    garde sur le GRAND-PARENT (la forme réelle) → SIGNALÉ     ← le faux positif
+    garde sur le PARENT DIRECT                  → pas signalé
+    aucun garde (contre-épreuve)                → SIGNALÉ     ← il discrimine
+
+C'est la troisième ligne qui sépare « il est cassé » de « il ne discrimine
+pas » — sans elle, on aurait pu croire le contrôle inerte et le retirer.
+
+#### 🔴 Pourquoi un faux positif est pire ici qu'un faux négatif
+
+Un linter qui **accuse un fichier juste** n'est pas seulement inexact : *on
+apprend à l'ignorer*, et il cesse alors de garder quoi que ce soit. Le 549
+avait été écrit précisément pour ne pas crier au loup sur les projets Android
+seuls ; il criait sur une autre forme.
+
+La remontée collecte désormais **tous** les éléments de liste englobants, et le
+garde porte la forme du grand-parent à côté des deux qu'il avait déjà.
+
+#### Et ce que le point 549 valait quand même, mesuré
+
+Sa conclusion était juste et sa raison fausse : gardé par plateforme, le `back`
+ne mentait pas — **il ne faisait rien**, donc iOS n'avait aucun moyen de
+dépiler. Coût évité, chiffré par le run : `a11y.yaml` serait mort sur
+« Element not found: home_account » — *une ancre parfaitement correcte, trois
+étapes après la vraie cause*. Une passe device et une demi-heure de mauvais
+diagnostic.
