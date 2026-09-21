@@ -12662,6 +12662,12 @@ diagnostic.
 
 ### 552. La désinstallation gardait un fichier que sa propre promesse ne gardait pas
 
+> ⚠️ **SUPPLANTÉ LE JOUR MÊME par le [553](#553-la-désinstallation-reprend-tout-ce-quelle-a-posé).**
+> Le constat était juste, le remède trop étroit : `ARGUS:PURGE` désignait UN
+> fichier pour une règle qui les couvre tous. Le marqueur a été retiré. Ce qui
+> suit reste parce que c'est le chemin qui a mené au principe — et parce que
+> les deux leçons d'écriture, elles, ne dépendent pas du remède.
+
 **Ouvert le 21/09/2026 · CLOS** — signalé par Germinator en remettant les quatre
 terrains à neuf.
 
@@ -12723,3 +12729,74 @@ alors constatés sur la **même exécution**.
 `ARGUS:PURGE2` contient encore `ARGUS:PURGE`, que l'installeur cherche en
 sous-chaîne (`grep -qF`) : c'est le **séparateur** qu'il fallait changer
 (`ARGUS-PURGE`), pas la longueur du mot. Allonger un marqueur ne le renomme pas.
+
+### 553. La désinstallation reprend tout ce qu'elle a posé
+
+**Ouvert le 21/09/2026 · CLOS** — principe tranché par Germinator : *« la
+désinstallation ne doit retirer que les éléments de l'installation ; par contre
+l'instrumentation et les corrections doivent rester, seuls les fichiers
+installés doivent partir. »*
+
+Le 552 avait corrigé un fichier. Le principe en couvre trente-six.
+
+#### Ce que gardait l'ancien comportement, et pourquoi c'était une panne
+
+Elle épargnait ce que le projet avait rempli — le harnais, les parcours, la
+config — au nom de « garder de trop se répare à la main, l'inverse non ».
+L'intention est juste. Le résultat, mesuré sur un projet jetable :
+
+    test/argus/harness.dart   survit avec  import 'argus_types.dart'  → MORT
+    a11y · i18n · journey-critical · lifecycle → _subflows/launch-clean.yaml
+    resilience                                 → _subflows/disable-animations.yaml
+
+`flutter analyze` rouge, aucun parcours jouable. **Un fichier gardé « pour ne
+pas perdre ton travail » que le projet ne peut plus compiler n'est pas du
+travail gardé : c'est une panne laissée derrière soi.**
+
+Et ce qui compte ne passait pas par là : l'instrumentation vit dans `lib/`, dans
+les fichiers du projet, où l'installation n'a jamais écrit. Elle y reste, avec
+les corrections qu'elle a rendues possibles.
+
+#### Mesuré
+
+    avant : 24 retiré(s) · 12 gardé(s)     (et un projet qui ne compile plus)
+    après : 36 retiré(s) · 0  gardé(s)
+
+    ce qui reste : lib/**  ·  les tests du projet  ·  .maestro/_baselines/
+                   argus-mobile-report/  ·  le .gitignore, allégé de notre bloc
+
+#### 🔴 J'AI DÉFAIT UN ARBITRAGE QUE LE DÉPÔT AVAIT DÉJÀ RENDU
+
+En extrayant la reconnaissance « est-ce notre copie ? » pour qu'un seul site la
+porte — bon geste —, j'ai **unifié les deux seuils**. Or l'en-tête de la
+fonction que je modifiais le disait en toutes lettres :
+
+> ⚠️ AUCUN REPLI DE PROSE ICI, contrairement à `--update`. Là-bas, ne pas
+> reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à tort
+> la **DÉTRUIT**. Les deux erreurs n'ont pas le même prix, donc pas le même
+> seuil.
+
+Rien ne l'aurait dit : le code compile, la suite passait, et le défaut ne se
+serait vu que chez quelqu'un dont un fichier homonyme aurait été supprimé. D'où
+le troisième argument `strict` — et un garde, **qu'il n'y avait pas**. C'est
+précisément pour ça que j'ai pu le défaire en une ligne.
+
+📌 Le tell, pour la prochaine fois : *le commentaire du site qu'on s'apprête à
+modifier a souvent déjà tranché la question qu'on se pose.*
+
+#### 🔴 ET LE GARDE MESURAIT UN CAS QUI N'EXISTE PAS
+
+Sa première version fabriquait une « copie ancienne » en retirant le marqueur
+d'un fichier posé, et attendait que `--update` la reconnaisse **par sa prose**.
+Elle a échoué, et c'est la mesure qui a dit pourquoi :
+
+    les 11 fichiers de cadre : première ligne qui se nomme = la ligne du MARQUEUR
+
+Le repli de prose ne reconnaît donc **rien** que le marqueur ne reconnaisse
+déjà. Le garde appelle maintenant `est_notre_copie` directement, avec des
+fixtures qui construisent le cas que le scaffold du jour ne produit pas — et il
+vérifie en plus le **câblage** : un seul des deux appels passe `strict`.
+
+⚠️ Ce constat sur le repli de prose est **hors périmètre et non traité** : il
+vit dans `--update`, et le corriger changerait qui se fait écraser chez les
+hôtes. Il est écrit ici pour ne pas être redécouvert.
