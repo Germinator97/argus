@@ -1540,6 +1540,14 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 550 · le Dart livré est déjà formaté ─────────────────────────────────
+    # La ligne redevient coupée comme elle l'était : `dart format` la rejoint,
+    # donc tout projet d'accueil qui suit sa pré-commit réécrira ce fichier de
+    # CADRE et `--check` le dira « en retard » pour toujours, sur un blanc.
+    ("harness", "550 · un fichier de cadre n'est plus formaté",
+     "      if (e is File && (e.path.endsWith('.ttf') || e.path.endsWith('.otf')))\n        e.path,",
+     "      if (e is File &&\n          (e.path.endsWith('.ttf') || e.path.endsWith('.otf')))\n        e.path,"),
+
     # ── 549 · `- back` ne fait rien sur iOS ──────────────────────────────────
     # Le contrôle cesse de regarder la plateforme visée : il accuse alors TOUS
     # les projets, y compris ceux en Android seul, où un `back` nu est juste.
