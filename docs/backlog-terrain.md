@@ -12659,3 +12659,67 @@ dépiler. Coût évité, chiffré par le run : `a11y.yaml` serait mort sur
 « Element not found: home_account » — *une ancre parfaitement correcte, trois
 étapes après la vraie cause*. Une passe device et une demi-heure de mauvais
 diagnostic.
+
+### 552. La désinstallation gardait un fichier que sa propre promesse ne gardait pas
+
+**Ouvert le 21/09/2026 · CLOS** — signalé par Germinator en remettant les quatre
+terrains à neuf.
+
+`--uninstall` finit en énumérant ce qu'il laisse : « la config, les ancres, les
+parcours, les références visuelles et les rapports ». Il en gardait **six**, et
+la sixième n'est dans aucune de ces cinq catégories — `test/argus/known_issues.dart`,
+le relevé de dette.
+
+#### 🔴 Pourquoi rien ne pouvait le voir
+
+Le fichier est `ARGUS:OWNED`, donc épargné **par construction** : il n'y a aucun
+comportement à casser, et une désinstallation qui garde de trop ne lève rien, ne
+logue rien, ne fait rougir aucun test. La promesse était écrite — correctement —
+et le comportement ne la suivait pas. C'est l'écart entre les deux qui était le
+défaut, et l'écart n'a pas de symptôme.
+
+#### Ce que ça laissait derrière
+
+Un fichier Dart sous `test/`, qui **compile**, qui fige un verdict que plus rien
+ne peut rejouer — les gardes qui l'ont produit viennent de partir — et qui
+ressemble assez à du code de projet pour se faire commiter. *Ce n'est pas une
+hypothèse* : sur `customer_app` il est parti dans un commit dont le sujet était
+une phase Xcode, 113 lignes glissées sous « fix(ios): the Firebase config phase
+actually runs now ».
+
+#### Le remède : un marqueur qui s'AJOUTE au lieu de remplacer
+
+`ARGUS:PURGE` se pose à côté d'`ARGUS:OWNED` : `--update` n'écrase toujours pas
+le fichier (le travail est à toi tant qu'Argus est là), `--uninstall` le retire
+(il part avec lui). **Les deux axes sont gardés**, parce que le remède court —
+passer le fichier en `CADRE` — aurait fait partir la dette à la désinstallation
+*et* l'aurait détruite à chaque mise à jour, chez des hôtes qui n'ont rien
+demandé.
+
+📌 Et le marqueur se lit dans le **GABARIT**, jamais dans la copie de l'hôte. Un
+projet installé avant ce jour ne le porte pas, et comme `--update` n'écrase
+jamais un `OWNED`, il ne l'aurait **jamais reçu** : lu côté copie, le remède
+n'aurait atteint personne. Mais on n'efface que ce qui porte notre signature —
+un homonyme du projet reste où il est, comme pour le cadre.
+
+#### Mesuré, pas déduit
+
+    projet jetable, dette écrite dans le fichier
+    avant : 24 retiré(s) · 12 gardé(s)
+    après : 25 retiré(s) · 11 gardé(s)
+    harness.dart et argus.mobile.yaml gardent leur marque
+
+#### 🔴 Ce que l'écriture a appris, et qui vaut plus que le correctif
+
+**Le garde de la promesse est né ROUGE sur un dépôt sain.** Sa première version
+cherchait la phrase dans la SOURCE de l'installeur — et son motif a attrapé le
+commentaire que je venais d'écrire au-dessus du correctif, lequel cite la
+promesse *et* le mot « dette ». Un garde qui lit du texte ne distingue pas ce
+que le programme **dit** de ce qu'on a écrit à côté de lui. Réécrit, il exécute
+la désinstallation et lit sa sortie : la promesse et le retrait du fichier sont
+alors constatés sur la **même exécution**.
+
+**Et la troisième mutation aurait été inerte en ayant l'air d'un renommage.**
+`ARGUS:PURGE2` contient encore `ARGUS:PURGE`, que l'installeur cherche en
+sous-chaîne (`grep -qF`) : c'est le **séparateur** qu'il fallait changer
+(`ARGUS-PURGE`), pas la longueur du mot. Allonger un marqueur ne le renomme pas.
