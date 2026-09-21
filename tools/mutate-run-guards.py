@@ -2937,46 +2937,44 @@ MUTATIONS = [
     ("skill", "535 · le témoin d'instrument cesse de porter le motif employé",
      "| grep -c \"identifier: *'\"   # attendu : 2",
      "| grep -c \"identifier\"   # attendu : 2"),
-    # ⚠️ DEUX MUTATIONS DU 498 ONT ÉTÉ RETIRÉES ICI le 21/09/2026, et c'est le
-    # bon geste plutôt qu'un ré-ancrage : « la désinstallation emporte aussi ce
-    # qui est à toi » n'a plus d'objet — c'est le comportement —, et « supprime
-    # sans vérifier la signature » est reprise par la première du 553, le
-    # contrôle ayant été extrait dans `est_notre_copie`. Ré-ancrer une mutation
-    # dont le DÉFAUT a disparu fabrique un garde qui mesure autre chose.
+    # ⚠️ TROIS MUTATIONS DU 498 ET DU 553 ONT ÉTÉ RETIRÉES ICI le 21/09/2026,
+    # et c'est le bon geste plutôt qu'un ré-ancrage. « La désinstallation
+    # emporte aussi ce qui est à toi » n'a plus d'objet — c'est le comportement.
+    # « Supprime sans vérifier la signature » est reprise par la première
+    # ci-dessous, le contrôle ayant été extrait dans `est_notre_copie`. Et « la
+    # désinstallation retombe au seuil de la mise à jour » a disparu avec le
+    # seuil lui-même : le repli de prose retiré (554), il n'y a plus qu'un
+    # critère, donc plus qu'un seuil à écarter. Ré-ancrer une mutation dont le
+    # DÉFAUT a disparu fabrique un garde qui mesure autre chose.
     # ── 553 · la désinstallation reprend tout ce qu'elle a posé ─────────────
-    # Le seuil STRICT de la désinstallation retombe sur celui de la mise à jour :
-    # une copie que seule la prose permet de reconnaître serait alors SUPPRIMÉE.
-    # C'est la moitié qui ne se répare pas, et l'arbitrage était écrit dans le
-    # dépôt avant d'être gardé — sans garde, je l'ai défait en une ligne.
+    # La reconnaissance devient PERMISSIVE côté copie locale : tout fichier
+    # portant le bon chemin est traité comme le nôtre, donc le `Makefile` du
+    # projet est supprimé. C'est la moitié qui ne se répare pas.
     ("installeur", "553 · la reconnaissance accepte ce qui n'est pas à nous",
-     "\n  [ \"$strict\" = strict ] && return 1",
-     "\n  [ \"$strict\" = strict ] && return 0"),
+     "\n    && head -20 \"$2\" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'\n}",
+     "\n    && true\n}"),
     # Le défaut d'origine, exactement : le camp décide encore du DÉPART, donc le
     # harnais rempli et les parcours restent — avec leurs imports et leurs
     # sous-flows partis.
     # 📌 Elle fait tomber PLUSIEURS gardes à la fois (498 et 553), et c'est une
     # propriété du sujet, pas un défaut de visée : le garde du phénomène (« rien
     # ne référence plus ce qui est parti ») ne peut PAS tomber seul, puisqu'il
-    # lui faut un fichier survivant pour avoir quelque chose à mesurer. Le
-    # vérifier à la main quand on touche à l'un des deux.
+    # lui faut un fichier survivant pour avoir quelque chose à mesurer.
     ("installeur", "553 · le camp décide encore de ce qui part",
-     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then",
+     "\n    if est_notre_copie \"$src\" \"$dest\"; then",
      "\n    if head -20 \"$src\" | grep -qF 'ARGUS:OWNED'; then gardes=$((gardes + 1)); continue; fi"
-     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then"),
-    # ⚠️ LA MUTATION CI-DESSUS TOMBE SUR LE GARDE VOISIN (498, l'homonyme), et
-    # c'est correct : elle REMPLACE l'ancienne mutation de ce garde, retirée le
-    # même jour. Mais elle laissait le garde du SEUIL sans rien qui le vise —
-    # le jour où il deviendrait vacant, elle resterait verte grâce au voisin.
-    # Celle-ci vise donc ce que SEUL ce garde lit : le CÂBLAGE. Elle ne casse
-    # pas 498, dont le `Makefile` d'hôte ne porte ni marqueur ni notre ligne de
-    # prose — il reste non reconnu, donc gardé, souple ou strict.
-    ("installeur", "553 · la désinstallation retombe au seuil de la mise à jour",
-     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then",
      "\n    if est_notre_copie \"$src\" \"$dest\"; then"),
+    # 554 · le repli de prose revient. Il ne rattrapait RIEN — la première ligne
+    # de la source qui se nomme est celle du marqueur —, et il rouvre le risque
+    # d'écraser puis de supprimer un fichier du projet. Elle vise le seul garde
+    # qui exerce la décision elle-même, en l'appelant.
+    ("installeur", "554 · la reconnaissance par la prose revient",
+     "\n    && head -20 \"$2\" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'",
+     "\n    && { head -20 \"$2\" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'"
+     " || grep -qF \"$(grep -m1 -i argus \"$1\")\" \"$2\"; }"),
     # Le `.gitignore` perd son traitement de faveur et tombe dans la règle
-    # générale — or sa signature de prose EST dans le fichier de l'hôte (c'est
-    # notre bloc), donc il serait reconnu comme nôtre et SUPPRIMÉ : le
-    # `.gitignore` du projet, effacé par une désinstallation.
+    # générale — mais son en-tête ne porte aucun marqueur, donc il n'est PAS
+    # reconnu et il reste : ce qui casse est le retrait du bloc, jamais fait.
     ("installeur", "553 · le .gitignore perd son traitement de bloc",
      "\n    if [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then",
      "\n    if false && [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then"),
