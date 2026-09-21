@@ -12579,3 +12579,41 @@ l'élément de liste englobant et relit son bloc.
 📌 Et un garde du dépôt a attrapé mon premier exemple de remède : il montrait une
 **map en flow**, que le parseur du skill refuse. L'exemple écrit pour aider
 aurait été inutilisable.
+
+### 550. Le plugin livre du Dart, et rien ne vérifiait qu'il est formaté
+
+**Ouvert le 21/09/2026 · CLOS** — trouvé par un run sur un projet réel, le jour
+même où **je** l'avais introduit.
+
+    fvm dart format --output=none --set-exit-if-changed test/argus/argus_harness.dart
+    → exit 1
+
+Une seule ligne, rejointe par le formateur de Dart 3.8. La conséquence n'est pas
+cosmétique : **tout projet d'accueil dont la pré-commit fait `dart format .`** —
+ce que la règle prescrit — réécrit ce fichier de CADRE, et
+`install-mobile.sh --check` le signale alors « en retard sur le plugin »
+**indéfiniment**, pour un blanc. Le projet ne peut rien y faire : le fichier
+n'est pas à lui.
+
+#### 🔴 Daté plutôt que supposé : c'est moi
+
+Le fichier était conforme au commit d'avant mes ajouts du 20/09 (545 et 548).
+*Je l'ai cassé en écrivant des remèdes, et c'est le terrain qui l'a vu.*
+
+#### ✅ Le remède n'est pas de reformater une fois
+
+La suite passe `dart format` sur **tous** les fichiers Dart que le plugin livre.
+Reformater aurait fermé l'instance ; le garde ferme la classe — et il le fallait,
+puisque chaque correctif écrit à la main dans ces fichiers rouvre le trou.
+
+Deux exigences qu'il porte, et les deux ont déjà coûté ailleurs :
+- il **asserte qu'il voit** des fichiers avant de conclure — un dossier vide
+  rendrait « tout est formaté » ;
+- **`dart` absent n'est pas un sujet fautif** : il dit alors combien de fichiers
+  sont restés NON CONTRÔLÉS, au lieu de les déclarer propres — ou de rougir sur
+  des fichiers parfaits, ce qui apprend à l'ignorer.
+
+📌 Le tell, pour la prochaine fois : *un dépôt qui LIVRE du code d'un langage
+doit faire tourner l'outillage de ce langage sur ce qu'il livre.* Ici la suite
+est en JavaScript et le livrable en Dart — la frontière est exactement l'endroit
+où le contrôle manquait.
