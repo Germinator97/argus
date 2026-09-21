@@ -12846,3 +12846,66 @@ n'y a plus qu'un seuil — `strict` est parti, et son garde avec.
 Le garde qui le remplace exerce la décision en l'**appelant**, et il tombe si
 une reconnaissance approximative revient : ce jour-là, l'asymétrie sera à
 refaire, et le test le dira.
+
+### 555. Le compteur de runs dérivait de ce que les points citent
+
+**Ouvert le 21/09/2026 · CLOS** — arbitrage de Germinator, après que la
+republication de la page a montré l'écart : *« dérive le compteur des étalons
+plutôt que du backlog. »*
+
+Le **438** avait mesuré ce défaut et colmaté la SOURCE : un run sans constat n'a
+rien à inscrire au backlog, donc le compteur reste au précédent — et c'est
+précisément le run qui décide de la sortie. Le colmatage demandait d'écrire ces
+runs-là **à la main**, dans une section dédiée.
+
+#### Une passe de huit runs a suffi à le démentir
+
+    page publiée   97 runs      ← le plus grand run CITÉ par un point
+    disque        105 runs      ← les étalons archivés et contrôlés
+    contrôle       ✔ VERT       ← il comparait la page au dépôt, pas au disque
+
+Aucun des dix points de cette passe ne cite son run — ils n'avaient pas à le
+faire. **Le contrôle mesurait donc fidèlement la mauvaise source**, ce qui est
+la forme la plus discrète du garde vacant : il ne se trompe pas, il regarde
+ailleurs.
+
+#### La dérivation lit l'UNION, jamais un suffixe choisi
+
+Un inventaire dont la **sentinelle de découverte fait partie de ce qu'il
+contrôle** ne voit pas le sujet qui a TOUT perdu — il ne nomme que les
+sujets à moitié cassés. Dériver de `run<N>-base-commit.txt` aurait nommé le run
+amputé de cinq fichiers sur six et rendu invisible celui qui les a tous perdus.
+N'importe lequel des huit fichiers d'un run suffit donc à le faire exister.
+
+#### Les étalons vivent hors du dépôt — d'où un TROISIÈME état
+
+Ils manquent sur tout runner de CI et sur toute autre machine. « Je n'ai **pas
+pu** mesurer » n'est ni un zéro ni un défaut du sujet : la clé est **omise**
+plutôt que mise à zéro — sinon le comparateur accuserait la page — et une clé
+`runsNonMesure` **oblige l'appelant à le dire**. Un compteur sauté sans un mot
+se lirait comme un accord, c'est-à-dire le défaut que ce module existe pour
+fermer.
+
+Le backlog reste lu, en **second relevé** : l'écart entre les deux dit combien
+de runs n'ont rien eu à inscrire. C'est une information, pas une faute.
+
+#### 🔴 Mon changement a cassé le montage de laboratoire, dont le commentaire promettait le contraire
+
+`depotFictif` injecte toutes les I/O — « aucun vrai dépôt n'est lu ». Le jour où
+le compteur s'est mis à lire les étalons, il a commencé à lire le **disque
+réel** : **quatre gardes ont rougi d'un coup sur un dépôt sain**, parce que
+cette machine a 105 étalons et que la page de laboratoire en annonce dix.
+
+*Un montage qui promet d'isoler doit isoler toute source qu'on lui ajoute* —
+sinon c'est lui qu'on mesure, et le rouge accuse des gardes corrects.
+
+#### Ce que le 438 garde, et ce qu'il perd
+
+Son **mécanisme** reste : la section où s'inscrit un run sans constat dit ce
+qu'il a établi, ce qu'aucun étalon ne raconte. Sa **raison** est devenue fausse
+— le compteur ne dépend plus d'elle. Laisser le garde avec la raison d'hier
+aurait figé une phrase périmée, ce qui est exactement ce que ce backlog reproche
+partout ailleurs.
+
+📌 La cible de mutation du module des compteurs **manquait** : rien ne pouvait
+dire si ses gardes gardent encore. Elle est déclarée, avec quatre mutations.
