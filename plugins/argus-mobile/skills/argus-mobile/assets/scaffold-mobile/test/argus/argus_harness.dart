@@ -124,8 +124,7 @@ List<String> argusBundledFontFiles() {
   if (!d.existsSync()) return const <String>[];
   return <String>[
     for (final FileSystemEntity e in d.listSync(recursive: true))
-      if (e is File &&
-          (e.path.endsWith('.ttf') || e.path.endsWith('.otf')))
+      if (e is File && (e.path.endsWith('.ttf') || e.path.endsWith('.otf')))
         e.path,
   ];
 }

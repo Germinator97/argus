@@ -17997,3 +17997,37 @@ test('un `- back` nu est signalé quand iOS est visé (549)', async () => {
   assert.deepEqual(backNonGardes(garde, ['ios', 'android']), [],
     'la forme gardée par plateforme est refusée — c\'est celle que `resilience.yaml` livre');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 550 — Le plugin LIVRE du Dart, et rien ne vérifiait qu'il est formaté.
+// Un fichier de CADRE édité à la main dérive, et tout projet dont la
+// pré-commit fait `dart format .` le bascule — `install-mobile.sh --check` le
+// dit alors « en retard sur le plugin » INDÉFINIMENT, pour un blanc.
+// Introduit le 20/09 par mes propres ajouts ; trouvé par un run, pas par moi.
+// ═══════════════════════════════════════════════════════════════════════════
+
+test('tout le Dart livré est déjà formaté par `dart format` (550)', () => {
+  const dir = join(SCAFFOLD, 'test/argus');
+  const fichiers = readdirSync(dir).filter((f) => f.endsWith('.dart')).sort();
+  // Le garde doit savoir VOIR : un dossier vide rendrait « tout est formaté ».
+  assert.ok(fichiers.length > 0,
+    `aucun fichier Dart trouvé sous ${dir} — ce garde ne mesure rien`);
+
+  // ⚠️ L'OUTIL ABSENT N'EST PAS UN SUJET FAUTIF. Sans `dart`, on ne conclut
+  // pas : on dit qu'on n'a pas mesuré. Un rouge ici accuserait des fichiers
+  // parfaits sur une machine qui n'a pas le SDK.
+  const sonde = spawnSync('fvm', ['dart', '--version'], { encoding: 'utf8' });
+  if (sonde.error || sonde.status !== 0) {
+    console.log(`  ⚠️  (550) \`fvm dart\` indisponible — ${fichiers.length} fichier(s) NON contrôlés.`);
+    return;
+  }
+
+  const sales = fichiers.filter((f) => spawnSync(
+    'fvm', ['dart', 'format', '--output=none', '--set-exit-if-changed', join(dir, f)],
+    { encoding: 'utf8' },
+  ).status !== 0);
+  assert.deepEqual(sales, [],
+    'ces fichiers de CADRE ne sont pas formatés. Le projet d\'accueil qui suit sa pré-commit '
+    + '(`dart format .`) va les réécrire, et `install-mobile.sh --check` les signalera « en retard '
+    + `sur le plugin » pour toujours — sur un blanc. Lance \`fvm dart format\` dessus : ${sales.join(', ')}`);
+});
