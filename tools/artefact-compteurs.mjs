@@ -31,6 +31,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 /** Un chiffre écrit en toutes lettres reste un chiffre : la page alterne les deux. */
@@ -354,6 +355,48 @@ export function dernierRunDu(backlog) {
   return Math.max(...numeros);
 }
 
+/** Le dossier des étalons, hors dépôt : ce dépôt est public, les terrains non. */
+export const RACINE_ETALONS = join(homedir(), '.argus-etalon');
+
+/**
+ * Le dernier run ARCHIVÉ, dérivé des étalons plutôt que du backlog.
+ *
+ * 555 · Le backlog était la mauvaise source, et ça se mesure : un run qui ne
+ * rend aucun constat n'a rien à y inscrire, donc il n'existe pas pour lui — or
+ * c'est précisément le run qui décide de la sortie. Le 438 avait colmaté en
+ * demandant qu'on écrive ces runs-là à la main dans une section dédiée : ça
+ * marche tant que quelqu'un y pense, et une passe de huit runs a suffi à le
+ * démentir — la page annonçait 97 quand 105 étaient archivés et contrôlés.
+ * Le disque, lui, ne dépend de personne.
+ *
+ * ⚠️ La liste se dérive de l'UNION des fichiers `run<N>-*`, jamais d'un suffixe
+ * choisi : un inventaire dont la sentinelle de découverte fait partie de ce
+ * qu'il contrôle ne voit pas le sujet qui a TOUT perdu — il ne nomme que les
+ * sujets à moitié cassés. Ici n'importe lequel des huit fichiers d'un run
+ * suffit à le faire exister.
+ *
+ * ⚠️ Rend `null` quand le dossier est absent — sur un runner de CI, ou chez
+ * quelqu'un d'autre. C'est « je n'ai PAS PU mesurer », qui n'est ni un zéro ni
+ * un défaut du sujet : l'appelant doit le DIRE, et un compteur sauté en silence
+ * se lirait comme un accord.
+ */
+export function dernierRunDesEtalons({
+  racine = RACINE_ETALONS,
+  lister = (chemin) => readdirSync(chemin),
+} = {}) {
+  let entrees;
+  try {
+    entrees = lister(racine);
+  } catch {
+    return null;
+  }
+  const numeros = entrees
+    .map((nom) => /^run(\d+)-/.exec(nom))
+    .filter(Boolean)
+    .map((m) => Number(m[1]));
+  return numeros.length > 0 ? Math.max(...numeros) : null;
+}
+
 /** Le nombre de gardes de la suite : un `test(` par garde, en début de ligne. */
 export function nombreDeGardes(suite) {
   const trouves = suite.match(/^test\(/gm) ?? [];
@@ -370,8 +413,13 @@ export function compteursDuDepot({
   lire = (chemin) => readFileSync(join(racine, chemin), 'utf8'),
   lister = (chemin) => readdirSync(join(racine, chemin)),
   execute = (bin, args) => execFileSync(bin, args, { cwd: racine, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }),
+  racineEtalons = RACINE_ETALONS,
+  listerEtalons = undefined,
 } = {}) {
   const backlog = lire('docs/backlog-terrain.md');
+  const dernierRunArchive = dernierRunDesEtalons(
+    listerEtalons ? { racine: racineEtalons, lister: listerEtalons } : { racine: racineEtalons },
+  );
   const sujets = execute('git', ['log', '--format=%s']).split('\n');
   const clotures = sujets.filter((s) => /^docs: close\b/.test(s));
 
@@ -391,7 +439,18 @@ export function compteursDuDepot({
     // Ce que le backlog doit aux commits de CLÔTURE : les points ouverts n'en ont pas.
     pointsOuverts: pointsOuvertsDu(backlog),
     numerosOuverts: numerosOuvertsDu(backlog),
-    runs: dernierRunDu(backlog),
+    // 555 · La source est le DISQUE, pas le backlog — voir `dernierRunDesEtalons`.
+    // Quand les étalons ne sont pas là, la clé est OMISE plutôt que mise à zéro :
+    // `ecarts` saute alors ce compteur, et c'est `runsNonMesure` qui oblige
+    // l'appelant à le dire. Un compteur sauté sans un mot se lirait comme un
+    // accord — le défaut que tout ce fichier existe pour fermer.
+    ...(dernierRunArchive === null
+      ? { runsNonMesure: `aucun étalon lisible dans ${racineEtalons} — ce compteur n'a pas été contrôlé` }
+      : { runs: dernierRunArchive }),
+    // Second relevé, indicatif : ce que les POINTS citent. Un écart avec le
+    // disque est normal — un run sans constat n'inscrit rien — et c'est
+    // justement ce que le backlog ne pouvait pas voir.
+    runsSelonLeBacklog: dernierRunDu(backlog),
     plugins: lister('plugins').length,
     gardes: nombreDeGardes(lire('tools/run-guards.test.mjs')),
     mutations: nombreDeMutations({ racine, execute }),

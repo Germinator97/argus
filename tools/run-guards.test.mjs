@@ -120,7 +120,7 @@ import { recadragesNonGardes } from '../plugins/argus-mobile/skills/argus-mobile
 import { acquitter } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { partageParAcquittement, mentionDesAcquittes } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { installedVariant } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, rupturesDOrdreDu, texteDeLaPage } from './artefact-compteurs.mjs';
+import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDesEtalons, dernierRunDu, ecarts, nombreFr, numerosOuvertsDu, pointsOuvertsDu, rupturesDOrdreDu, texteDeLaPage } from './artefact-compteurs.mjs';
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -8571,12 +8571,23 @@ test('le geste documenté est le geste outillé : ARGS arrive jusqu\'au rapport 
 // une reformulation de la page rendrait le contrôle vert en ne mesurant plus
 // rien, ce qui est exactement le défaut qu'il existe pour empêcher.
 
-/** Un dépôt de laboratoire : les I/O sont injectées, aucun vrai dépôt n'est lu. */
+/** Un dépôt de laboratoire : les I/O sont injectées, aucun vrai dépôt n'est lu.
+ *
+ * ⚠️ 555 — LES ÉTALONS AUSSI. Ils vivent hors du dépôt, donc le jour où le
+ * compteur de runs s'est mis à les lire, ce montage a commencé à lire le DISQUE
+ * RÉEL pendant que son commentaire promettait le contraire : quatre gardes ont
+ * rougi d'un coup, sur un dépôt sain, parce que la machine du chantier a 105
+ * étalons et que la page de laboratoire en annonce dix. Un montage qui promet
+ * d'isoler doit isoler TOUTE source ajoutée, sans quoi c'est lui qu'on mesure.
+ */
 const depotFictif = ({
   backlog = '## Run 10 — x\n### 1-10. x\n', sujets = ['docs: close 1-10'], commits = 12,
   suite = 'test(\ntest(\n', plugins = ['a', 'b', 'c'], mutations = '  1. m\n  2. m\n',
+  etalons = ['run10-status.txt'],
 } = {}) => compteursDuDepot({
   racine: '/aucune-racine',
+  racineEtalons: '/aucun-etalon',
+  listerEtalons: () => etalons,
   lire: (chemin) => (chemin.includes('backlog') ? backlog : suite),
   lister: () => plugins,
   execute: (bin, args) => {
@@ -8634,7 +8645,9 @@ test('un compteur ancré doit être exact à CHAQUE occurrence (333)', () => {
 });
 
 test('le régime journal tolère un bilan passé et refuse qu\'il DEVANCE (333)', () => {
-  const depot = depotFictif({ sujets: Array.from({ length: 41 }, (_, i) => `docs: close ${i + 1}`), backlog: '## Run 41 — x\n### 41. x\n' });
+  // 555 — les étalons portent le même 41 que la page : ils sont la SOURCE du
+  // compteur de runs depuis ce point, le backlog n'en est plus qu'un écho.
+  const depot = depotFictif({ sujets: Array.from({ length: 41 }, (_, i) => `docs: close ${i + 1}`), backlog: '## Run 41 — x\n### 41. x\n', etalons: ['run41-status.txt'] });
   assert.equal(depot.vidages, 41);
 
   // ⚠️ Le cas qui a failli faire corriger du texte correct : la vraie page dit
@@ -12974,25 +12987,28 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
 // Le garde dérive la liste des canaux du texte lui-même : si `label:` en gagne
 // un demain, la phrase devra le dire ou ce garde tombera.
 // ── 438 ────────────────────────────────────────────────────────────────────
-// Le numéro de run affiché par la page dérive du BACKLOG. Un run sans constat
-// n'a rien à y inscrire — il n'apparaît nulle part, et le compteur reste au
-// précédent. C'est le run qui compte le plus qui est invisible : celui qui
-// remplit le critère de sortie est, par définition, celui qui n'écrit rien.
+// Un run sans constat n'a rien à inscrire au backlog — il n'y apparaît nulle
+// part. C'est le run qui compte le plus : celui qui remplit le critère de
+// sortie est, par définition, celui qui n'écrit rien.
 //
-// 📌 L'instrument n'était PAS en cause, et l'exécution l'a dit : il lit un
-// numéro en prose comme dans un titre de lot. C'est la SOURCE qui ne recevait
-// rien. D'où un garde sur la source, et pas un durcissement du lecteur.
-test('un run sans constat a un endroit où être écrit, et le compteur l\'y lit (438)', () => {
+// ⚠️ SA RAISON A CHANGÉ LE 21/09, ET LE MÉCANISME NON. Le 438 colmatait en
+// demandant qu'on écrive ces runs-là à la main, parce que le compteur de la
+// page dérivait du backlog ; depuis le 555, il dérive du DISQUE, qui ne dépend
+// de personne. La section reste utile — elle dit ce qu'un run sans constat a
+// établi, ce qu'aucun étalon ne raconte — et elle alimente le second relevé,
+// `runsSelonLeBacklog`. Ce qui aurait été fautif est de laisser le garde en
+// place avec sa raison d'hier : il aurait figé une phrase devenue fausse.
+test('un run sans constat a un endroit où être écrit, et le second relevé l\'y lit (438)', () => {
   const backlog = readFileSync(join(RACINE, 'docs/backlog-terrain.md'), 'utf8');
 
   // 1. Sur le fichier RÉEL : la section existe et porte sa RAISON. Sans elle,
   //    la prochaine main la retire comme une liste vide de contenu.
   const i = backlog.indexOf("LES RUNS QUI N'ONT RIEN RENDU");
   assert.ok(i > 0,
-    'la section où s\'inscrit un run sans constat a disparu : le compteur de la page retombera au '
-    + 'dernier run À CONSTAT, et le seul run qui puisse ouvrir la sortie redeviendra invisible (438)');
+    'la section où s\'inscrit un run sans constat a disparu : ce qu\'un tel run a ÉTABLI ne serait '
+    + 'plus écrit nulle part — les étalons donnent son numéro, jamais ce qu\'il a montré (438, 555)');
   const section = backlog.slice(i, i + 2000);
-  assert.match(section, /dernierRunDu|artefact-compteurs/,
+  assert.match(section, /dernierRunDu|artefact-compteurs|étalon/,
     'la section ne dit plus POURQUOI elle existe : une liste dont la raison est ailleurs se supprime');
   // ⚠️ Et le RUN doit être lisible dans le TABLEAU, pas seulement dans la prose
   //    qui l'entoure. Écrit « | **65** | » sans le mot « run », le compteur le
@@ -18289,5 +18305,89 @@ test('553 — la promesse de fin dit ce qui reste, lue sur la MÊME exécution',
       + 'une perte définitive du travail (553)');
   } finally {
     rmSync(projet, { recursive: true, force: true });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 555 · Le compteur de runs dérive du DISQUE, pas de ce que les points citent
+// ═══════════════════════════════════════════════════════════════════════════
+// Le 438 avait mesuré le défaut et colmaté la source : un run sans constat
+// n'inscrit rien au backlog, donc le compteur reste au précédent — et c'est le
+// run qui décide de la sortie. Le colmatage demandait de l'écrire à la main.
+// Une passe de HUIT runs a suffi à le démentir : la page annonçait 97 quand
+// 105 étaient archivés et contrôlés, et le contrôle était VERT — il comparait
+// la page au dépôt, pas au disque, donc il mesurait fidèlement la mauvaise
+// source. Les étalons, eux, existent qu'on y pense ou non.
+//
+// ⚠️ Trois choses se gardent ici, et elles ne se remplacent pas : que la
+// dérivation lise l'UNION des fichiers d'un run (un inventaire dont la
+// sentinelle fait partie de ce qu'il contrôle ne voit pas le sujet qui a tout
+// perdu), que l'absence du dossier rende « je n'ai pas pu mesurer » et non un
+// zéro, et que le CÂBLAGE tienne — la fonction peut être juste pendant que
+// `compteursDuDepot` lit encore le backlog.
+
+test('555 — la dérivation lit l\'UNION des fichiers d\'un run, pas un suffixe choisi', () => {
+  const lister = (fichiers) => () => fichiers;
+
+  // Un run dont il ne reste QU'UN fichier existe — quel qu'il soit. C'est tout
+  // l'objet : dériver de `run*-base-commit.txt` aurait nommé le run amputé de
+  // cinq fichiers sur six, et rendu invisible celui qui les a tous perdus.
+  for (const seul of ['run105-report.tgz', 'run105-constats.md', 'run105-machine.txt']) {
+    assert.equal(dernierRunDesEtalons({ racine: '/x', lister: lister(['run2-status.txt', seul]) }), 105,
+      `un run connu par son seul ${seul} n'est pas vu : la liste dérive d'un suffixe choisi, donc `
+      + 'elle ne verra jamais le run dont ce fichier-là manque (555)');
+  }
+
+  assert.equal(dernierRunDesEtalons({ racine: '/x', lister: lister(['run9-a.txt', 'run104-b.txt', 'run87-c.txt']) }), 104,
+    'le MAXIMUM doit être rendu, et comparé en nombre — pas en texte, sans quoi « run9 » l\'emporte');
+  assert.equal(dernierRunDesEtalons({ racine: '/x', lister: lister(['compare-runs.sh', 'README.md', 'runs.txt']) }), null,
+    'un dossier sans aucun étalon rend null : « rien à mesurer » n\'est pas « run 0 »');
+  assert.equal(dernierRunDesEtalons({ racine: '/x', lister: () => { throw new Error('ENOENT'); } }), null,
+    'un dossier ABSENT doit rendre null au lieu de lever : il manque sur tout runner de CI (555)');
+});
+
+test('555 — le CÂBLAGE : le compteur vient des étalons, le backlog n\'est qu\'un second relevé', () => {
+  // ⚠️ Ce garde est le troisième barreau. Celui du dessus prouve que la
+  // fonction décide juste ; il resterait vert si `compteursDuDepot` continuait
+  // de lire le backlog, ce qui est exactement le défaut qu'on ferme.
+  const etalons = ['run2-status.txt', 'run140-report.tgz'];
+  const depot = compteursDuDepot({
+    racine: RACINE,
+    racineEtalons: '/x',
+    listerEtalons: () => etalons,
+  });
+
+  assert.equal(depot.runs, 140,
+    'le compteur ne vient pas des étalons : rebranché sur le backlog, il ignorera tout run qui '
+    + 'n\'a rien eu à inscrire — c\'est-à-dire celui qui décide de la sortie (555)');
+  assert.ok(typeof depot.runsSelonLeBacklog === 'number' && depot.runsSelonLeBacklog !== 140,
+    'le second relevé a disparu, ou il est devenu le même chiffre : c\'est l\'ÉCART entre les deux '
+    + 'qui dit combien de runs n\'ont rien inscrit, et il n\'est plus lisible (555)');
+});
+
+test('555 — étalons absents : le contrôle DIT qu\'il n\'a pas mesuré, il ne se tait pas', () => {
+  const depot = compteursDuDepot({ racine: RACINE, racineEtalons: '/x', listerEtalons: () => { throw new Error('ENOENT'); } });
+  assert.equal(depot.runs, undefined,
+    'un compteur non mesuré doit être OMIS : à null, `ecarts` le comparerait et accuserait la page');
+  assert.match(depot.runsNonMesure ?? '', /étalon/,
+    'rien ne porte la raison : le compteur serait sauté en silence, ce qui se lit comme un accord (555)');
+
+  // Et l'EFFET, sur la sortie réelle — un garde qui lirait la source resterait
+  // vert le jour où l'affichage cesse d'imprimer cette ligne.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-555-'));
+  try {
+    const page = readFileSync(join(RACINE, 'tools/run-guards.test.mjs'), 'utf8').slice(0, 20000);
+    const f = join(dir, 'p.html');
+    writeFileSync(f, `<html><body><p>${page}</p></body></html>`);
+    const r = spawnSync(process.execPath, [join(RACINE, 'tools/check-artefact.mjs'), f],
+      { encoding: 'utf8', env: { ...process.env, HOME: dir } });
+    const sortie = `${r.stdout}${r.stderr}`;
+    assert.match(sortie, /NON MESURÉ/,
+      'sur une machine sans étalons, le contrôle ne dit pas que le compteur de runs n\'a pas été '
+      + `mesuré — il le saute, et le lecteur croit qu'il a passé : ${sortie.slice(0, 400)} (555)`);
+    assert.ok(!/undefined runs/.test(sortie),
+      'l\'en-tête imprime « undefined runs » : une valeur absente s\'affiche comme une mesure');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });

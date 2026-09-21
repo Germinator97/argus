@@ -81,7 +81,8 @@ const releve = compteursDeLaPage(texte);
 const trouves = ecarts(releve, depot);
 
 process.stdout.write(`Page : ${chemin}\n`);
-process.stdout.write(`${texte.length.toLocaleString('fr-FR')} caractères lisibles · ${depot.commits} commits · ${depot.runs} runs\n\n`);
+process.stdout.write(`${texte.length.toLocaleString('fr-FR')} caractères lisibles · ${depot.commits} commits`
+  + `${depot.runsNonMesure ? '' : ` · ${depot.runs} runs`}\n\n`);
 
 for (const { cle, libelle, regime, valeurs } of releve.values()) {
   const attendu = depot[cle];
@@ -90,6 +91,20 @@ for (const { cle, libelle, regime, valeurs } of releve.values()) {
   const marque = faux ? '✖' : '✔';
   const vues = valeurs.length === 0 ? '(aucune)' : [...new Set(valeurs)].join(', ');
   process.stdout.write(`  ${marque} ${libelle.padEnd(34)} dépôt ${String(attendu).padStart(4)}   page ${vues}${regime === 'journal' ? '  [journal : le max fait foi]' : ''}\n`);
+}
+
+// 555 · LE TROISIÈME ÉTAT, ET IL DOIT SE VOIR. La boucle ci-dessus saute tout
+// compteur que le dépôt n'a pas établi — c'est juste, `ecarts` ne peut rien
+// comparer — mais le sauter SANS UN MOT le ferait passer pour contrôlé. Le
+// dossier des étalons vit hors du dépôt, donc il manque sur un runner de CI et
+// chez quiconque n'est pas la machine du chantier : « je n'ai PAS PU mesurer »
+// n'est ni un zéro ni un défaut du sujet, et c'est l'absence d'affichage qui le
+// transformerait en accord tacite.
+if (depot.runsNonMesure) {
+  const vues = [...new Set(releve.get('runs')?.valeurs ?? [])];
+  process.stdout.write(`  ⚠ runs joués                         NON MESURÉ   page ${vues.length ? vues.join(', ') : '(aucune)'}\n`
+    + `      · ${depot.runsNonMesure}\n`
+    + `      · le backlog en cite ${depot.runsSelonLeBacklog} — c'est un second relevé, pas la source\n`);
 }
 
 // ── Confidentialité, dans le MÊME geste ────────────────────────────────────
