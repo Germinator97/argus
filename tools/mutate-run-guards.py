@@ -2943,6 +2943,33 @@ MUTATIONS = [
     ("skill", "535 · le témoin d'instrument cesse de porter le motif employé",
      "| grep -c \"identifier: *'\"   # attendu : 2",
      "| grep -c \"identifier\"   # attendu : 2"),
+    # ── 552 · la dette part avec les gardes qui l'ont produite ──────────────
+    # Trois sites, trois gardes distincts, et chacune vise ce que SEUL son garde
+    # lit — le premier test rouge que le harnais crédite doit être le bon.
+    #
+    # La première casse le LECTEUR : le gabarit porte toujours son marqueur (le
+    # garde qui le vérifie reste donc vert), mais l'installeur en cherche un
+    # autre, la branche ne matche jamais, et `known_issues.dart` retombe sur
+    # OWNED — c'est-à-dire exactement le défaut d'origine, où la purge n'existait
+    # pas. Elle ne touche pas au camp du fichier, donc le garde 495 ne bouge pas.
+    ("installeur", "552 · la purge cherche un marqueur que le gabarit ne porte pas",
+     "\n    if head -20 \"$src\" | grep -qF 'ARGUS:PURGE'; then",
+     "\n    if head -20 \"$src\" | grep -qF 'ARGUS:PURGED'; then"),
+    # La deuxième ouvre l'AUTRE moitié : on efface sans reconnaître sa copie.
+    # Elle laisse le cas nominal intact — un fichier posé par l'installeur porte
+    # son en-tête —, donc le garde de l'effet reste vert et seul celui de
+    # l'homonyme tombe. C'est la moitié qui ne se répare pas : un fichier du
+    # projet supprimé ne revient pas.
+    ("installeur", "552 · la purge efface ce qui ne porte pas notre signature",
+     "\n      if head -20 \"$dest\" | grep -qF 'ARGUS:'; then",
+     "\n      if true; then"),
+    # La troisième casse le PORTEUR, et le remplacement change le SÉPARATEUR au
+    # lieu d'allonger le mot : `ARGUS:PURGE2` contiendrait encore `ARGUS:PURGE`,
+    # que l'installeur cherche en sous-chaîne (`grep -qF`) — la mutation serait
+    # INERTE tout en ayant l'air d'un renommage. Le tiret, lui, sépare vraiment.
+    ("dette", "552 · le relevé de dette reperd son marqueur de purge",
+     "\n// ARGUS:PURGE — …mais il le RETIRE",
+     "\n// ARGUS-PURGE — …mais il le RETIRE"),
 ]
 
 
