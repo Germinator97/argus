@@ -2521,28 +2521,33 @@ export function backNonGardes(flows, plateformes) {
       // celle d'un `- runFlow:` de tête : c'est la portée du `when:`, et elle
       // se lit dans la structure, jamais dans un nombre de lignes.
       // ⚠️ `platform: Android` n'est pas un ANCÊTRE du `- back` : c'est son
-      // FRÈRE, sous le `when:` du même `- runFlow:`. Remonter par
-      // l'indentation ne le trouve donc jamais. Il faut remonter jusqu'à
-      // l'élément de liste qui ENGLOBE, puis relire son bloc.
+      // FRÈRE, sous le `when:` du même `- runFlow:`. Remonter par la seule
+      // indentation ne le trouve donc jamais.
+      // 🔴 ET IL FAUT REMONTER TOUS LES NIVEAUX, PAS UN SEUL. Première version
+      // écrite le 20/09 : elle s'arrêtait au `- runFlow:` le plus proche, et un
+      // garde porté par le GRAND-PARENT lui échappait. Un terrain l'a rendue
+      // dès le lendemain — elle refusait un fichier parfaitement gardé, ce qui
+      // est le défaut le plus coûteux d'un linter : *on apprend à l'ignorer*.
       const creux = texte.length - texte.trimStart().length;
-      let debut = -1;
-      for (let j = i - 1; j >= 0; j -= 1) {
+      const ancetres = [];
+      let plafond = creux;
+      for (let j = i - 1; j >= 0 && plafond > 0; j -= 1) {
         const l = lignes[j];
         if (l.trim() === '' || l.trimStart().startsWith('#')) continue;
         const c = l.length - l.trimStart().length;
-        if (c < creux && /^\s*-\s/.test(l)) { debut = j; break; }
-        if (c === 0) break;
+        if (c >= plafond) continue;
+        if (/^\s*-\s/.test(l)) { ancetres.push({ ligne: j, creux: c }); plafond = c; }
       }
       let garde = false;
-      if (debut >= 0) {
-        const creuxBloc = lignes[debut].length - lignes[debut].trimStart().length;
-        for (let k = debut; k < i; k += 1) {
+      for (const a of ancetres) {
+        for (let k = a.ligne; k < i && !garde; k += 1) {
           const l = lignes[k];
           if (l.trim() === '') continue;
           const c = l.length - l.trimStart().length;
-          if (k > debut && c <= creuxBloc) break;   // le bloc est fini
-          if (/platform:\s*Android/.test(l)) { garde = true; break; }
+          if (k > a.ligne && c <= a.creux) break;   // le bloc de cet ancêtre est fini
+          if (/platform:\s*Android/.test(l)) garde = true;
         }
+        if (garde) break;
       }
       if (!garde) nus.push({ flow: nom, ligne: i + 1 });
     });

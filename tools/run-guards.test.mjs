@@ -17996,6 +17996,18 @@ test('un `- back` nu est signalé quand iOS est visé (549)', async () => {
   };
   assert.deepEqual(backNonGardes(garde, ['ios', 'android']), [],
     'la forme gardée par plateforme est refusée — c\'est celle que `resilience.yaml` livre');
+  // 🔴 551 — ET LE GARDE PEUT ÊTRE PORTÉ PAR LE GRAND-PARENT. La première
+  // version ne remontait que d'UN niveau : elle refusait un fichier
+  // parfaitement gardé, et un terrain l'a rendue dès le lendemain. Un linter
+  // qui crie au loup est pire qu'un linter absent — on apprend à l'ignorer.
+  const grandParent = {
+    'login-si-besoin.yaml': [
+      '- runFlow:', '    when:', '      platform: Android', '    commands:',
+      '      - runFlow:', '          commands:', '            - back', '',
+    ].join('\n'),
+  };
+  assert.deepEqual(backNonGardes(grandParent, ['ios']), [],
+    'un `- back` gardé par le GRAND-parent est refusé : le contrôle accuse un fichier juste, et c\'est ainsi qu\'on cesse de le lire');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
