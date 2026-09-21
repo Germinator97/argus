@@ -330,21 +330,26 @@ merge_gitignore() {
 # travail, et le symétrique est tout aussi faux : le compter « en retard »
 # ferait rougir sa CI pour un fichier qui ne nous appartient pas.
 #
-# 553 · Un TROISIÈME argument `strict` parce que les deux appelants n'ont pas le
-# même prix à payer, et c'est l'en-tête de la désinstallation qui l'avait écrit
-# avant moi : là-bas, ne pas reconnaître une copie ancienne la fige à jamais —
-# donc repli de prose ; ici, la reconnaître à tort la DÉTRUIT — donc marqueur
-# seul. Unifier les deux seuils était mon premier geste, et c'était défaire un
-# arbitrage que le dépôt avait déjà rendu, à l'endroit exact où il l'avait écrit.
+# LE MARQUEUR EST LE SEUL CRITÈRE, des deux côtés — réservé, borné à l'en-tête,
+# et il ne bouge pas quand la prose change.
+#
+# 554 · Il y avait un REPLI DE PROSE : la première ligne de la source qui se
+# nomme, cherchée dans la copie locale. Il existait pour les copies posées avant
+# que le marqueur n'arrive (le 02/09/2026), et il ne les rattrapait PAS —
+# mesuré : sur les onze fichiers de cadre, cette première ligne EST celle du
+# marqueur, si bien que le repli ne pouvait réussir que là où le marqueur
+# répondait déjà oui. Il ne repliait rien, et un repli qui ne replie rien est
+# pire que pas de repli : on se croit couvert. Retiré — aucun hôte ne porte une
+# installation d'avant cette date, et le plugin n'est pas publié.
+#
+# 📌 C'est ce retrait qui a supprimé le besoin d'un SEUIL par appelant. Tant que
+# la prose comptait, --update devait reconnaître large (ne pas reconnaître fige
+# à jamais) et --uninstall reconnaître étroit (reconnaître à tort DÉTRUIT). Sans
+# elle, les deux n'ont plus qu'un seul critère, donc plus qu'un seul seuil : si
+# une reconnaissance approximative revient un jour, l'asymétrie revient avec.
 est_notre_copie() {
-  local src="$1" dest="$2" strict="${3:-}" signature
-  if head -20 "$src" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'; then
-    head -20 "$dest" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)' && return 0
-  fi
-  [ "$strict" = strict ] && return 1
-  signature="$(grep -m1 -i 'argus' "$src" || true)"
-  [ -z "$signature" ] && return 0
-  grep -qF "$signature" "$dest"
+  head -20 "$1" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)' \
+    && head -20 "$2" | grep -qE 'ARGUS:(OWNED|MERGE|CADRE)'
 }
 
 # ── Désinstallation : le SEUL geste qui supprime ────────────────────────────
@@ -360,11 +365,13 @@ est_notre_copie() {
 # ne peut plus compiler n'est pas du travail gardé. Et ce qui compte ne passe
 # pas par ici : l'instrumentation vit dans `lib/`, où rien n'a jamais été posé.
 #
-# ⚠️ AUCUN REPLI DE PROSE ICI, contrairement à --update — d'où le `strict`.
-# Là-bas, ne pas reconnaître une copie ancienne la fige à jamais ; ici, la
-# reconnaître à tort la DÉTRUIT. Les deux erreurs n'ont pas le même prix, donc
-# pas le même seuil : un fichier gardé de trop se supprime à la main, l'inverse
-# ne se répare pas.
+# ⚠️ ET LE SEUL CRITÈRE EST LE MARQUEUR, ici comme à --update. Ça n'a pas
+# toujours été vrai : tant qu'une reconnaissance par la prose existait, les deux
+# gestes devaient se régler différemment — là-bas ne pas reconnaître fige à
+# jamais, ici reconnaître à tort DÉTRUIT, et les deux erreurs n'ont pas le même
+# prix. Le repli s'étant révélé inerte (554), il n'y a plus qu'un critère, donc
+# plus qu'un seuil. Le jour où une reconnaissance approximative revient, cette
+# asymétrie revient avec elle.
 uninstall_project() {
   local target="$1"
   local retires=0 gardes=0
@@ -406,7 +413,7 @@ uninstall_project() {
     # Ce qui compte, lui, ne passe pas par ici : l'instrumentation vit dans
     # `lib/`, dans TES fichiers, et l'installation n'y a jamais touché. Elle y
     # reste, avec les corrections qu'elle a rendues possibles.
-    if est_notre_copie "$src" "$dest" strict; then
+    if est_notre_copie "$src" "$dest"; then
       rm -f "$dest"
       echo "  🗑️  retiré : $rel"
       retires=$((retires + 1))

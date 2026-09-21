@@ -18193,73 +18193,68 @@ test('553 — et ce qui reste ne référence plus rien de parti', () => {
   }
 });
 
-test('553 — la désinstallation est PLUS STRICTE que la mise à jour, et c\'est voulu', () => {
-  // ⚠️ MON PREMIER GESTE A ÉTÉ D'UNIFIER LES DEUX SEUILS, et c'était défaire un
-  // arbitrage que le dépôt avait déjà rendu — écrit en toutes lettres dans
-  // l'en-tête de la fonction que j'allais modifier : « là-bas, ne pas
-  // reconnaître une copie ancienne la fige à jamais ; ici, la reconnaître à
-  // tort la DÉTRUIT ». Il n'y avait aucun garde, et c'est pour ça que j'ai pu
-  // le faire en une ligne.
+test('554 — la reconnaissance tient au MARQUEUR SEUL, des deux côtés', () => {
+  // Le repli de prose est parti : il cherchait dans la copie locale la première
+  // ligne de la source qui se nomme, pour rattraper les copies posées avant que
+  // le marqueur n'existe (02/09/2026). Mesuré : sur les ONZE fichiers de cadre,
+  // cette première ligne EST celle du marqueur — le repli ne pouvait donc
+  // réussir que là où le marqueur répondait déjà oui. Il ne repliait rien.
   //
-  // ⚠️ ET LA PREMIÈRE VERSION DE CE GARDE MESURAIT UN CAS QUI N'EXISTE PAS.
-  // Elle fabriquait une « copie ancienne » en retirant le marqueur d'un fichier
-  // posé, et attendait que `--update` la reconnaisse par sa prose. Mesuré :
-  // pour les ONZE fichiers de cadre, la première ligne de la source qui se
-  // nomme EST celle du marqueur — le repli de prose ne reconnaît donc rien que
-  // le marqueur ne reconnaisse déjà. Le garde porte maintenant sur la décision
-  // elle-même, en l'APPELANT, ce qui est la seule façon d'exercer un cas que le
-  // scaffold du jour ne produit pas.
-  const dir = mkdtempSync(join(tmpdir(), 'argus-553-seuil-'));
+  // ⚠️ ET C'EST CE RETRAIT QUI A SUPPRIMÉ L'ASYMÉTRIE DES SEUILS. Tant que la
+  // prose comptait, `--update` devait reconnaître large (ne pas reconnaître
+  // fige à jamais) et `--uninstall` étroit (reconnaître à tort DÉTRUIT) : un
+  // garde protégeait cet écart, et il n'a plus d'objet. Le voici remplacé par
+  // celui qui le rendra nécessaire à nouveau — si une reconnaissance
+  // approximative revient, ce test tombe, et l'asymétrie est à refaire.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-554-'));
   try {
-    // La fonction, extraite du script et appelée pour de vrai.
     const fn = execFileSync('bash', ['-c',
-      `awk '/^est_notre_copie\\(\\)/,/^}/' "${INSTALLEUR}"`], { encoding: 'utf8' });
+      `awk '/^est_notre_copie\(\)/,/^}/' "${INSTALLEUR}"`], { encoding: 'utf8' });
     assert.match(fn, /^est_notre_copie\(\)/,
       'la fonction est_notre_copie est introuvable dans l\'installeur — ce garde ne mesure rien');
 
     const ecrire = (nom, texte) => { writeFileSync(join(dir, nom), texte); return join(dir, nom); };
-    // ⚠️ La ligne de PROSE précède le marqueur, et il le faut : `est_notre_copie`
-    // dérive la signature de la PREMIÈRE ligne de la source qui se nomme. Si le
-    // marqueur venait en premier — c'est le cas des onze fichiers de cadre
-    // d'aujourd'hui — la signature SERAIT le marqueur, et le cas « reconnue par
-    // la prose seule » n'existerait pas. Le montage le fabrique donc exprès.
+    // La ligne de prose PRÉCÈDE le marqueur : c'est la seule disposition où un
+    // repli aurait quelque chose à reconnaître que le marqueur ne reconnaît pas.
     const src = ecrire('src', '// Argus Mobile — le moteur\n// ARGUS:CADRE — a nous\nconst x = 1;\n');
+    const sansMarqueur = ecrire('sans', '// juste un fichier\nconst x = 0;\n');
     const cas = {
-      // dest marqué : notre copie, quel que soit le seuil.
       marque: ecrire('marque', '// ARGUS:CADRE — a nous\nconst x = 2;\n'),
-      // dest SANS marqueur mais portant la ligne de prose — une copie posée
-      // avant que le marqueur n'existe. C'est ici, et ici seulement, que les
-      // deux seuils doivent diverger.
       prose: ecrire('prose', '// Argus Mobile — le moteur\nconst x = 3;\n'),
-      // dest étranger : au projet, à personne d'autre.
       etranger: ecrire('etranger', '// mon fichier a moi\nconst x = 4;\n'),
     };
-    const repond = (dest, strict) => execFileSync('bash', ['-c',
-      `${fn}\nest_notre_copie "${src}" "${dest}" ${strict ? 'strict' : ''} && echo oui || echo non`],
-    { encoding: 'utf8' }).trim();
+    const repond = (a, b) => execFileSync('bash', ['-c',
+      `${fn}\nest_notre_copie "${a}" "${b}" && echo oui || echo non`], { encoding: 'utf8' }).trim();
 
-    assert.equal(repond(cas.marque, false), 'oui', 'un dest marqué doit être reconnu (souple)');
-    assert.equal(repond(cas.marque, true), 'oui', 'un dest marqué doit être reconnu (strict)');
-    assert.equal(repond(cas.etranger, false), 'non', 'un fichier étranger n\'est pas à nous (souple)');
-    assert.equal(repond(cas.etranger, true), 'non', 'un fichier étranger n\'est pas à nous (strict)');
+    // L'instrument sait dire OUI — sans cette ligne, une fonction qui refuse
+    // tout passerait les trois suivantes.
+    assert.equal(repond(src, cas.marque), 'oui',
+      'une copie portant le marqueur n\'est plus reconnue : plus rien ne serait jamais mis à '
+      + 'jour ni retiré, en silence (554)');
+    // …et NON, sur les trois façons de ne pas être à nous.
+    assert.equal(repond(src, cas.prose), 'non',
+      'une copie reconnue par sa seule PROSE : le repli est revenu. Il ne rattrapait rien — la '
+      + 'première ligne qui se nomme est celle du marqueur — et il fait courir le risque '
+      + 'd\'écraser, puis de supprimer, un fichier du projet (554)');
+    assert.equal(repond(src, cas.etranger), 'non', 'un fichier étranger est reconnu comme nôtre');
+    assert.equal(repond(sansMarqueur, cas.marque), 'non',
+      'une source SANS marqueur permet de trancher : elle ne le devrait pas. Le garde 495 '
+      + 'interdit d\'en livrer une, mais le jour où l\'un passe, il ne doit rien emporter (554)');
 
-    // L'ASYMÉTRIE, et c'est tout l'objet de ce garde.
-    assert.equal(repond(cas.prose, false), 'oui',
-      '`--update` ne reconnaît plus une copie que seule la prose identifie : elle serait figée à '
-      + 'jamais chez cet hôte, en silence (553)');
-    assert.equal(repond(cas.prose, true), 'non',
-      '`--uninstall` reconnaît une copie sur la seule prose, donc il la SUPPRIME. Là-bas une '
-      + 'erreur fige, ici elle détruit : les deux seuils ne peuvent pas être le même (553)');
-
-    // Et le câblage : c'est la désinstallation qui passe `strict`, pas l'autre.
-    const script = readFileSync(INSTALLEUR, 'utf8');
-    const appels = script.split('\n').filter((l) => /est_notre_copie "\$src"/.test(l));
+    // Le câblage : un seul critère, donc les deux appels sont identiques.
+    const appels = readFileSync(INSTALLEUR, 'utf8').split('\n')
+      .filter((l) => /est_notre_copie "\$src"/.test(l));
     assert.equal(appels.length, 2,
-      `${appels.length} appel(s) à est_notre_copie au lieu de 2 : le relevé ci-dessous ne parle `
-      + 'plus des deux mêmes sites (553)');
-    assert.equal(appels.filter((l) => l.includes('strict')).length, 1,
-      'un seul des deux appels doit passer `strict` — les deux, et une copie ancienne est figée ; '
-      + 'aucun, et elle est détruite (553)');
+      `${appels.length} appel(s) au lieu de 2 : le relevé ne parle plus des deux mêmes sites`);
+    // ⚠️ Comparer les ARGUMENTS, pas les lignes : l'un est un `if … ; then`,
+    // l'autre un `… && notre_copie=1`. La première version de cette assertion
+    // comparait les lignes entières et rougissait sur un dépôt sain.
+    const args = appels.map((l) => (/est_notre_copie((?:\s+"[^"]*"|\s+\w+)*)/.exec(l) ?? [])[1]?.trim());
+    assert.ok(args.every(Boolean), `un appel n'a pas pu être lu : ${appels.join(' | ')}`);
+    assert.equal(new Set(args).size, 1,
+      `les deux appels ne passent plus les mêmes arguments (${args.join(' / ')}). Un seuil par `
+      + 'appelant se justifiait quand la prose comptait ; sans elle, un écart ici est un écart '
+      + 'que rien n\'explique (554)');
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
