@@ -2963,6 +2963,16 @@ MUTATIONS = [
      "\n    if est_notre_copie \"$src\" \"$dest\" strict; then",
      "\n    if head -20 \"$src\" | grep -qF 'ARGUS:OWNED'; then gardes=$((gardes + 1)); continue; fi"
      "\n    if est_notre_copie \"$src\" \"$dest\" strict; then"),
+    # ⚠️ LA MUTATION CI-DESSUS TOMBE SUR LE GARDE VOISIN (498, l'homonyme), et
+    # c'est correct : elle REMPLACE l'ancienne mutation de ce garde, retirée le
+    # même jour. Mais elle laissait le garde du SEUIL sans rien qui le vise —
+    # le jour où il deviendrait vacant, elle resterait verte grâce au voisin.
+    # Celle-ci vise donc ce que SEUL ce garde lit : le CÂBLAGE. Elle ne casse
+    # pas 498, dont le `Makefile` d'hôte ne porte ni marqueur ni notre ligne de
+    # prose — il reste non reconnu, donc gardé, souple ou strict.
+    ("installeur", "553 · la désinstallation retombe au seuil de la mise à jour",
+     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then",
+     "\n    if est_notre_copie \"$src\" \"$dest\"; then"),
     # Le `.gitignore` perd son traitement de faveur et tombe dans la règle
     # générale — or sa signature de prose EST dans le fichier de l'hôte (c'est
     # notre bloc), donc il serait reconnu comme nôtre et SUPPRIMÉ : le
