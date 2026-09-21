@@ -12800,3 +12800,49 @@ vérifie en plus le **câblage** : un seul des deux appels passe `strict`.
 ⚠️ Ce constat sur le repli de prose est **hors périmètre et non traité** : il
 vit dans `--update`, et le corriger changerait qui se fait écraser chez les
 hôtes. Il est écrit ici pour ne pas être redécouvert.
+
+### 554. Le repli de prose ne repliait rien
+
+**Ouvert le 21/09/2026 · CLOS** — trouvé en écrivant le garde du 553, qui a
+échoué sur un dépôt sain et a obligé à mesurer pourquoi.
+
+Pour décider si un fichier trouvé chez l'hôte est NOTRE copie, l'installeur
+avait deux critères : le marqueur `ARGUS:` en en-tête, et un **repli** — la
+première ligne du gabarit qui se nomme, cherchée dans la copie locale.
+
+Le repli existait pour les copies posées **avant** l'arrivée du marqueur, le
+02/09/2026 (commit `6dce7f2`, dont le titre dit lui-même que la signature de
+prose était le défaut qu'il fermait). Mesuré sur `run.mjs` :
+
+    avant 6dce7f2 :   * Argus Mobile — runner de la suite Maestro
+    après         :  // ARGUS:CADRE — au plugin : `install-mobile.sh --update`…
+
+C'est la **seconde** que le repli va chercher. Dans une copie ancienne elle
+n'est pas — par définition, puisqu'une copie ancienne est précisément celle qui
+n'a pas le marqueur. Le repli ne pouvait donc réussir **que** là où le premier
+test avait déjà répondu oui. Vérifié sur les onze fichiers de cadre : pour les
+onze, la première ligne qui se nomme EST celle du marqueur.
+
+📌 Un repli qui ne replie rien est **pire que pas de repli** : on se croit
+couvert, et le cas qu'il devait couvrir échoue en silence.
+
+#### Retirer, et pas réparer — parce que la mesure le permettait
+
+    aucun hôte ne porte une installation d'avant le 02/09  (les 4 terrains à neuf)
+    origin/main ne porte PAS plugins/argus-mobile          (862 commits non poussés)
+
+Donc aucune installation, ni locale ni externe, ne dépend de ce repli. Réparer
+aurait voulu dire **élargir** la reconnaissance — et élargir, c'est risquer de
+reconnaître à tort un fichier du projet, donc de l'écraser puis de le supprimer.
+
+#### 🔴 Et c'est ce retrait qui a supprimé le SEUIL par appelant
+
+Le 553 avait ajouté un argument `strict` parce que les deux gestes ne paient pas
+le même prix : à `--update`, ne pas reconnaître **fige** une copie à jamais ; à
+`--uninstall`, reconnaître à tort la **DÉTRUIT**. Cet écart n'avait de sens que
+tant qu'un critère approximatif existait. Avec le marqueur pour seul critère, il
+n'y a plus qu'un seuil — `strict` est parti, et son garde avec.
+
+Le garde qui le remplace exerce la décision en l'**appelant**, et il tombe si
+une reconnaissance approximative revient : ce jour-là, l'asymétrie sera à
+refaire, et le test le dira.
