@@ -2513,15 +2513,9 @@ MUTATIONS = [
     # soit vraiment irrattrapable. Le harnais rempli, les ancres et les parcours
     # écrits partent avec le cadre, chez quelqu'un qui voulait juste retirer un
     # outil. Aucune erreur, aucun code non nul : la commande réussit.
-    ("installeur", "498 · la désinstallation emporte aussi ce qui est à toi",
-     "      liste=\"$liste  ⏭️  à toi, gardé          : $rel\"$'\\n'; gardes=$((gardes + 1)); continue\n",
-     "      rm -f \"$dest\"; retires=$((retires + 1)); continue\n"),
     # ⚠️ La signature cesse d'être exigée avant de supprimer. Le Makefile du
     # projet, son .gitignore, tout homonyme s'en va — et c'est précisément le
     # fichier dont l'installeur refuse la mise à jour, faute de le reconnaître.
-    ("installeur", "498 · la désinstallation supprime sans vérifier la signature",
-     "    if head -20 \"$dest\" | grep -qF 'ARGUS:CADRE'; then\n      rm -f \"$dest\"\n",
-     "    if true; then\n      rm -f \"$dest\"\n"),
     # ⚠️ La dépose globale cesse de vérifier qu'elle est chez elle : un dossier
     # désigné par ARGUS_MOBILE_HOME est effacé en entier, qu'il porte ou non une
     # installation. `rm -rf` sur un chemin qu'on n'a pas reconnu.
@@ -2943,33 +2937,39 @@ MUTATIONS = [
     ("skill", "535 · le témoin d'instrument cesse de porter le motif employé",
      "| grep -c \"identifier: *'\"   # attendu : 2",
      "| grep -c \"identifier\"   # attendu : 2"),
-    # ── 552 · la dette part avec les gardes qui l'ont produite ──────────────
-    # Trois sites, trois gardes distincts, et chacune vise ce que SEUL son garde
-    # lit — le premier test rouge que le harnais crédite doit être le bon.
-    #
-    # La première casse le LECTEUR : le gabarit porte toujours son marqueur (le
-    # garde qui le vérifie reste donc vert), mais l'installeur en cherche un
-    # autre, la branche ne matche jamais, et `known_issues.dart` retombe sur
-    # OWNED — c'est-à-dire exactement le défaut d'origine, où la purge n'existait
-    # pas. Elle ne touche pas au camp du fichier, donc le garde 495 ne bouge pas.
-    ("installeur", "552 · la purge cherche un marqueur que le gabarit ne porte pas",
-     "\n    if head -20 \"$src\" | grep -qF 'ARGUS:PURGE'; then",
-     "\n    if head -20 \"$src\" | grep -qF 'ARGUS:PURGED'; then"),
-    # La deuxième ouvre l'AUTRE moitié : on efface sans reconnaître sa copie.
-    # Elle laisse le cas nominal intact — un fichier posé par l'installeur porte
-    # son en-tête —, donc le garde de l'effet reste vert et seul celui de
-    # l'homonyme tombe. C'est la moitié qui ne se répare pas : un fichier du
-    # projet supprimé ne revient pas.
-    ("installeur", "552 · la purge efface ce qui ne porte pas notre signature",
-     "\n      if head -20 \"$dest\" | grep -qF 'ARGUS:'; then",
-     "\n      if true; then"),
-    # La troisième casse le PORTEUR, et le remplacement change le SÉPARATEUR au
-    # lieu d'allonger le mot : `ARGUS:PURGE2` contiendrait encore `ARGUS:PURGE`,
-    # que l'installeur cherche en sous-chaîne (`grep -qF`) — la mutation serait
-    # INERTE tout en ayant l'air d'un renommage. Le tiret, lui, sépare vraiment.
-    ("dette", "552 · le relevé de dette reperd son marqueur de purge",
-     "\n// ARGUS:PURGE — …mais il le RETIRE",
-     "\n// ARGUS-PURGE — …mais il le RETIRE"),
+    # ⚠️ DEUX MUTATIONS DU 498 ONT ÉTÉ RETIRÉES ICI le 21/09/2026, et c'est le
+    # bon geste plutôt qu'un ré-ancrage : « la désinstallation emporte aussi ce
+    # qui est à toi » n'a plus d'objet — c'est le comportement —, et « supprime
+    # sans vérifier la signature » est reprise par la première du 553, le
+    # contrôle ayant été extrait dans `est_notre_copie`. Ré-ancrer une mutation
+    # dont le DÉFAUT a disparu fabrique un garde qui mesure autre chose.
+    # ── 553 · la désinstallation reprend tout ce qu'elle a posé ─────────────
+    # Le seuil STRICT de la désinstallation retombe sur celui de la mise à jour :
+    # une copie que seule la prose permet de reconnaître serait alors SUPPRIMÉE.
+    # C'est la moitié qui ne se répare pas, et l'arbitrage était écrit dans le
+    # dépôt avant d'être gardé — sans garde, je l'ai défait en une ligne.
+    ("installeur", "553 · la reconnaissance accepte ce qui n'est pas à nous",
+     "\n  [ \"$strict\" = strict ] && return 1",
+     "\n  [ \"$strict\" = strict ] && return 0"),
+    # Le défaut d'origine, exactement : le camp décide encore du DÉPART, donc le
+    # harnais rempli et les parcours restent — avec leurs imports et leurs
+    # sous-flows partis.
+    # 📌 Elle fait tomber PLUSIEURS gardes à la fois (498 et 553), et c'est une
+    # propriété du sujet, pas un défaut de visée : le garde du phénomène (« rien
+    # ne référence plus ce qui est parti ») ne peut PAS tomber seul, puisqu'il
+    # lui faut un fichier survivant pour avoir quelque chose à mesurer. Le
+    # vérifier à la main quand on touche à l'un des deux.
+    ("installeur", "553 · le camp décide encore de ce qui part",
+     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then",
+     "\n    if head -20 \"$src\" | grep -qF 'ARGUS:OWNED'; then gardes=$((gardes + 1)); continue; fi"
+     "\n    if est_notre_copie \"$src\" \"$dest\" strict; then"),
+    # Le `.gitignore` perd son traitement de faveur et tombe dans la règle
+    # générale — or sa signature de prose EST dans le fichier de l'hôte (c'est
+    # notre bloc), donc il serait reconnu comme nôtre et SUPPRIMÉ : le
+    # `.gitignore` du projet, effacé par une désinstallation.
+    ("installeur", "553 · le .gitignore perd son traitement de bloc",
+     "\n    if [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then",
+     "\n    if false && [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then"),
 ]
 
 
