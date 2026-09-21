@@ -1540,6 +1540,13 @@ MUTATIONS = [
      "      const lu = strict.exec(m[0]);\n      if (!lu) return null;\n      if (false) {"),
     # Et l'état cesse d'être LU : la fonction compte alors des marqueurs, pas des
     # points ouverts — neuf au lieu d'un sur le fichier livré.
+    # ── 551 · la remontée du contrôle `back` est TRANSITIVE ──────────────────
+    # Elle s'arrête au premier ancêtre : un garde porté par le grand-parent
+    # échappe de nouveau, et le linter accuse un fichier juste.
+    ("config", "551 · la remontée s'arrête au premier ancêtre",
+     "        if (/^\\s*-\\s/.test(l)) { ancetres.push({ ligne: j, creux: c }); plafond = c; }",
+     "        if (/^\\s*-\\s/.test(l)) { if (!ancetres.length) ancetres.push({ ligne: j, creux: c }); plafond = c; }"),
+
     # ── 550 · le Dart livré est déjà formaté ─────────────────────────────────
     # La ligne redevient coupée comme elle l'était : `dart format` la rejoint,
     # donc tout projet d'accueil qui suit sa pré-commit réécrira ce fichier de
