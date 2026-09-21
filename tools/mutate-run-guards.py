@@ -33,6 +33,9 @@ CIBLES = {
     # 446 — le CONSOMMATEUR du lecteur d'ordre. Le 439 a rendu ce lecteur
     # bruyant sans que son appelant suive : la cible manquait, donc rien ne
     # pouvait le dire.
+    # 555 — le module qui DÉRIVE les compteurs de la page. Sa cible manquait,
+    # donc rien ne pouvait dire si ses gardes gardent encore.
+    "compteurs": ROOT / "tools/artefact-compteurs.mjs",
     "checkartefact": ROOT / "tools/check-artefact.mjs",
     "confid": ROOT / "tools/artefact-confidentialite.mjs",
     # 541 — le contrôle qui DÉRIVE les noms interdits des terrains. Sa cible
@@ -2978,6 +2981,29 @@ MUTATIONS = [
     ("installeur", "553 · le .gitignore perd son traitement de bloc",
      "\n    if [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then",
      "\n    if false && [ \"$(basename \"$rel\")\" = \".gitignore\" ] && grep -qF \"$BLOC_DEBUT\" \"$dest\"; then"),
+    # ── 555 · le compteur de runs vient du disque ──────────────────────────
+    # La dérivation retombe sur UN suffixe choisi : elle ne voit plus le run
+    # connu par un autre de ses huit fichiers — la sentinelle de découverte
+    # redevient une partie de ce qu'elle contrôle.
+    ("compteurs", "555 · la liste des runs se dérive d'un seul suffixe",
+     "\n    .map((nom) => /^run(\\d+)-/.exec(nom))",
+     "\n    .map((nom) => /^run(\\d+)-base-commit/.exec(nom))"),
+    # Le troisième état disparaît : un dossier absent rend 0 au lieu de null,
+    # donc « je n'ai pas pu mesurer » devient « zéro run », et le contrôle
+    # accuse la page au lieu de dire qu'il n'a rien mesuré.
+    ("compteurs", "555 · l'absence d'étalons devient un zéro",
+     "\n  return numeros.length > 0 ? Math.max(...numeros) : null;",
+     "\n  return numeros.length > 0 ? Math.max(...numeros) : 0;"),
+    # Le CÂBLAGE : la fonction reste juste, et `compteursDuDepot` relit le
+    # backlog. C'est le troisième barreau — le seul que le garde du câblage lit.
+    ("compteurs", "555 · le compteur rebranché sur le backlog",
+     "\n      : { runs: dernierRunArchive }),",
+     "\n      : { runs: dernierRunDu(backlog) }),"),
+    # Et l'affichage se tait sur le troisième état : le compteur est sauté sans
+    # un mot, ce qui se lit exactement comme un compteur contrôlé.
+    ("checkartefact", "555 · le compteur non mesuré est sauté en silence",
+     "\nif (depot.runsNonMesure) {",
+     "\nif (false && depot.runsNonMesure) {"),
 ]
 
 
