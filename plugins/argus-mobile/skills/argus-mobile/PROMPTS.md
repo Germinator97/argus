@@ -19,12 +19,15 @@ Copie le bloc ci-dessous, remplace les `<…>`, supprime ce qui ne s'applique pa
 Pour l'installer, une fois par machine, dans Claude Code :
 
 ```
-/plugin marketplace add https://github.com/Alexwilfriedo/argus-cc
+/plugin marketplace add https://github.com/Germinator97/argus
 /plugin install argus@alexwilfriedo
 ```
 
-⚠️ `/plugin` est une commande de l'interface : **c'est toi qui la tapes**, un
-agent ne peut pas l'exécuter à ta place.
+⚠️ `/plugin` est une commande de l'interface, mais elle a un équivalent en ligne
+de commande — `claude plugin marketplace add …` puis `claude plugin install …` —,
+donc un agent qui a un shell **sait** l'exécuter. Ne le lui laisse pas faire sans
+l'avoir décidé : un plugin s'installe par défaut pour **toutes** tes sessions,
+pas pour celle-ci.
 
 **Si tu n'as pas le plugin** — ou si l'agent tourne ailleurs que dans ta session,
 en CI par exemple —, le bloc ci-dessous porte un repli : il lui fait cloner le
@@ -46,7 +49,7 @@ en bout.
 LE SKILL — deux cas, prends celui qui s'applique
 - Si `/argus-mobile` est disponible dans ta session : invoque-le.
 - Sinon, récupère-le et lis-le directement :
-      git clone --depth 1 https://github.com/Alexwilfriedo/argus-cc <dossier>/argus-cc
+      git clone --depth 1 https://github.com/Germinator97/argus <dossier>/argus-cc
   puis lis `<dossier>/argus-cc/plugins/argus-mobile/skills/argus-mobile/SKILL.md` en entier. Le
   scaffold à poser est dans `assets/scaffold-mobile/`, l'installeur est
   `scripts/install-mobile.sh`.
@@ -56,10 +59,10 @@ testes.** Si tu es en train de faire évoluer le skill sur ta machine et que tes
 commits ne sont pas poussés, la branche « sinon » ci-dessus fera lire à l'agent
 une version d'avant — et **rien ne le signalera** : le run se déroulera
 normalement, l'agent rendra un compte rendu propre, et tu croiras avoir éprouvé
-ce que tu venais d'écrire. Mesuré sur ce dépôt : 404 commits d'écart. Quand tu
-mets un skill à l'épreuve, envoie l'agent lire **ton dépôt de travail**, en
-lecture seule, et garde le clone pour les cas où la version publiée est bien
-celle que tu veux.
+ce que tu venais d'écrire. Mesuré sur ce dépôt le 4 septembre 2026 : 404
+commits d'écart. Quand tu mets un skill à l'épreuve, envoie l'agent lire **ton
+dépôt de travail**, en lecture seule, et garde le clone pour les cas où la
+version publiée est bien celle que tu veux.
 
 Dans les deux cas : lis aussi tout ce que le SKILL.md référence (`references/`,
 `assets/`, `scripts/`) et applique-le comme il le demande — n'improvise pas une

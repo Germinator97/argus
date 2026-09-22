@@ -13,11 +13,12 @@ nommé, l'autorisation d'écrire dans `lib/`, l'identifiant d'app, les secrets p
 l'environnement. Elles sont expliquées une fois pour toutes dans `PROMPTS.md`,
 section « Les cinq lignes qu'on ne supprime pas ». Ne les supprime pas d'ici.
 
-**Le plugin s'installe une fois par machine**, dans Claude Code — `/plugin` est
-une commande de l'interface, un agent ne peut pas l'exécuter à ta place :
+**Le plugin s'installe une fois par machine**, et c'est à toi de le décider : il
+vaut ensuite pour toutes tes sessions. Un agent qui a un shell saurait le faire
+(`claude plugin install …`), mais ce n'est pas sa décision. Dans Claude Code :
 
 ```
-/plugin marketplace add https://github.com/Alexwilfriedo/argus-cc
+/plugin marketplace add https://github.com/Germinator97/argus
 /plugin install argus@alexwilfriedo
 ```
 
@@ -34,7 +35,7 @@ Le cas le plus courant : brancher une garde permanente sur un projet.
 
 ```text
 /argus-mobile
-# absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
+# absent de ta session ? clone https://github.com/Germinator97/argus
 # et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
@@ -62,7 +63,7 @@ Pour mesurer l'existant sur une app déjà installée.
 
 ```text
 /argus-mobile
-# absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
+# absent de ta session ? clone https://github.com/Germinator97/argus
 # et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
@@ -91,7 +92,7 @@ Même audit, avec la mise en scène. À réserver à ce qui sera montré.
 
 ```text
 /argus-mobile
-# absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
+# absent de ta session ? clone https://github.com/Germinator97/argus
 # et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 
@@ -114,7 +115,7 @@ masque tout ce qui ressemble à une donnée réelle.
 
 ```text
 /argus-mobile
-# absent de ta session ? clone https://github.com/Alexwilfriedo/argus-cc
+# absent de ta session ? clone https://github.com/Germinator97/argus
 # et lis plugins/argus-mobile/skills/argus-mobile/SKILL.md — sans le skill, arrête-toi plutôt
 # que d'improviser une méthode à toi.
 

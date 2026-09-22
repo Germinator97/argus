@@ -19,7 +19,7 @@ Trois modes dans les deux cas : **EXPLORE** (audit), **DEMO** (capture vidéo),
 ### Option A — Plugin (recommandé)
 Dans Claude Code :
 ```
-/plugin marketplace add https://github.com/Alexwilfriedo/argus-cc
+/plugin marketplace add https://github.com/Germinator97/argus
 /plugin install argus@alexwilfriedo
 ```
 
@@ -39,6 +39,7 @@ Puis, dans n'importe quel projet : `/argus` ou `/argus-mobile`.
 ### Option B — Copie manuelle du skill
 Chaque skill se suffit à lui-même : copie seulement celui dont tu as besoin.
 ```bash
+git clone --depth 1 https://github.com/Germinator97/argus argus-cc
 cp -R argus-cc/plugins/argus-web/skills/argus       ~/.claude/skills/argus         # web
 cp -R argus-cc/plugins/argus-mobile/skills/argus-mobile ~/.claude/skills/argus-mobile  # Flutter
 ```

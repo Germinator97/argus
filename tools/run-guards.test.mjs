@@ -18391,3 +18391,59 @@ test('555 — étalons absents : le contrôle DIT qu\'il n\'a pas mesuré, il ne
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── 556 · LA DOC D'INSTALLATION DÉSIGNE LE DÉPÔT PUBLIÉ ────────────────────
+// Le plugin est publié depuis le 21/09 sur un fork : le dépôt d'origine
+// appartient à un autre compte, et sa branche par défaut sert toujours la 1.0.0
+// — un seul plugin, `skills/` à la racine. Le README et les deux gabarits de
+// prompt y renvoyaient HUIT fois : le `marketplace add`, puis chaque repli par
+// clone. Qui suivait la doc installait l'ancienne version SANS UNE ERREUR — le
+// marketplace porte le même nom des deux côtés, donc tout réussit.
+//
+// Trouvé en jouant l'installation pour la première fois, pas en relisant.
+//
+// ⚠️ Le critère porte sur TOUTE citation du dépôt dans la doc livrée, pas sur
+// les trois fichiers où on l'a trouvée : un gabarit ajouté demain avec une autre
+// adresse doit rougir de lui-même. Et le dépôt publié est écrit UNE fois, ici :
+// le jour où il change, c'est une décision, et ce garde oblige la doc à suivre.
+test("la doc d'installation désigne le dépôt PUBLIÉ, partout où elle en cite un (556)", () => {
+  const PUBLIE = 'germinator97/argus';
+  // Une citation du dépôt : son nom sous ses deux formes (`argus`, `argus-cc`),
+  // en https ou en ssh, avec ou sans `.git`. La borne de fin écarte les PLUGINS
+  // (`argus-web`, `argus-mobile`), qui ne sont pas le dépôt.
+  const MOTIF = /github\.com[/:]([\w.-]+)\/(argus(?:-cc)?)(?:\.git)?(?![\w-])/gi;
+  const depots = (/** @type {string} */ s) => [...s.matchAll(MOTIF)].map((m) => `${m[1]}/${m[2]}`.toLowerCase());
+
+  // Contre-épreuve : le motif lit les formes qu'on écrit vraiment, et pas celles
+  // qui lui ressemblent. Sans elle, « aucune citation fautive » ne prouverait rien.
+  assert.deepEqual(depots('clone https://github.com/Autre/argus-cc, ou git@github.com:Autre/argus.git'),
+    ['autre/argus-cc', 'autre/argus'], 'le motif ne reconnaît plus une citation du dépôt');
+  assert.deepEqual(depots('https://github.com/Autre/argus-web et https://github.com/Autre/argus-mobile'), [],
+    'le motif prend un PLUGIN pour le dépôt');
+
+  const docs = ['README.md', ...execFileSync('find', ['plugins', '-name', '*.md'], { cwd: RACINE, encoding: 'utf8' })
+    .split('\n').filter(Boolean)].sort();
+  const citations = [];
+  for (const doc of docs) {
+    readFileSync(join(RACINE, doc), 'utf8').split('\n').forEach((ligne, i) => {
+      for (const depot of depots(ligne)) citations.push({ ou: `${doc}:${i + 1}`, depot });
+    });
+  }
+
+  // ⚠️ Prouver qu'il a VU : les trois documents qui enseignent l'installation
+  // doivent figurer parmi ceux qui citent le dépôt. Un balayage qui ne lirait
+  // plus rien rendrait aussi « aucune citation fautive ».
+  const citants = new Set(citations.map((c) => c.ou.replace(/:\d+$/, '')));
+  for (const attendu of ['README.md', 'plugins/argus-mobile/skills/argus-mobile/PROMPTS.md',
+    'plugins/argus-mobile/skills/argus-mobile/PROMPTS-by-mode.md']) {
+    assert.ok(citants.has(attendu),
+      `${attendu} ne cite plus le dépôt — il enseigne l'installation, donc soit le motif ne lit `
+      + 'plus son adresse, soit la doc ne dit plus où trouver le plugin');
+  }
+
+  // Total et négatif : zéro citation d'un autre dépôt, où que ce soit.
+  const fautives = citations.filter((c) => c.depot !== PUBLIE).map((c) => `${c.ou} → ${c.depot}`);
+  assert.deepEqual(fautives, [],
+    `la doc livrée renvoie à un dépôt qui n'est pas celui qui publie le plugin (${PUBLIE}) — `
+    + 'qui la suit installe une autre version, sans erreur :\n  ' + fautives.join('\n  '));
+});
