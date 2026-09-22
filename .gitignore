@@ -2,3 +2,7 @@
 # salissent l' arbre et le harnais de mutation REFUSE de démarrer dessus.
 __pycache__/
 *.py[cod]
+
+# 560 — la chaîne de typage se pose par `npm ci --prefix tools/typage` ;
+# elle ne part jamais dans un commit.
+tools/typage/node_modules/

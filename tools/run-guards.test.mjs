@@ -18544,3 +18544,57 @@ test('chaque déclaration d\'outil vise une mutation qui existe, et un outil qu\
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+// ── 560 · LE TYPAGE A UN LECTEUR LOCAL ──────────────────────────────────────
+// `tsc --checkJs` n'avait qu'un lecteur : la CI du plugin, qui ne tourne que sur
+// `main`. Six erreurs de JSDoc s'y sont accumulées une semaine sans que rien ne
+// puisse les voir (558) — le motif exact du 501 : un contrôle dont le seul
+// lecteur est un événement rare ne garde pas, il attend.
+//
+// La chaîne vit donc dans le dépôt (`tools/typage/` : versions EXACTES, lock,
+// configuration), et DEUX lecteurs la lisent : l'étape de la CI, et ce garde.
+// ⚠️ Comme le 550, il ne conclut pas sans son outil — la chaîne n'est posée que
+// par `npm ci --prefix tools/typage` — et il le DIT au lieu de rendre un vert.
+const TYPAGE = join(RACINE, 'tools/typage');
+const TSC_LOCAL = join(TYPAGE, 'node_modules/.bin/tsc');
+
+test('le typage des scripts a un lecteur LOCAL, et le JSDoc dit ce que le code rend (560)', () => {
+  if (!existsSync(TSC_LOCAL)) {
+    console.log('  ⚠️  (560) chaîne de typage absente — les scripts ne sont PAS typés ici. '
+      + '`npm ci --prefix tools/typage` pour l\'armer.');
+    return;
+  }
+  // ⚠️ Prouver qu'il a VU : une configuration dont l'`include` ne matche rien
+  // typerait zéro fichier, et zéro fichier n'a jamais d'erreur.
+  const liste = spawnSync(TSC_LOCAL, ['-p', TYPAGE, '--listFilesOnly'], { cwd: RACINE, encoding: 'utf8' });
+  const vus = liste.stdout.split('\n').filter((l) => /scaffold-mobile\/scripts\/argus\/[^/]+\.mjs$/.test(l.trim()));
+  const scripts = readdirSync(join(SCAFFOLD, 'scripts/argus')).filter((f) => f.endsWith('.mjs'));
+  assert.equal(vus.length, scripts.length,
+    `le typage voit ${vus.length} script(s) sur ${scripts.length} — son « aucune erreur » ne vaut que pour eux (560)`);
+
+  const r = spawnSync(TSC_LOCAL, ['-p', TYPAGE], { cwd: RACINE, encoding: 'utf8' });
+  assert.equal(r.status, 0,
+    'le JSDoc ne décrit plus ce que le code rend — c\'est ce que la CI refusera au prochain push, '
+    + `et qu'elle seule voyait avant le 560 :\n${`${r.stdout ?? ''}${r.stderr ?? ''}`.slice(0, 1500)}`);
+});
+
+test('la CI type avec la MÊME chaîne et la MÊME configuration que le poste (560)', () => {
+  const wf = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const debut = wf.indexOf('- name: Les JSDoc décrivent ce que le code rend');
+  assert.ok(debut > 0, 'l\'étape de typage a disparu du workflow : plus aucun lecteur en CI (560)');
+  const etape = wf.slice(debut, wf.indexOf('\n      - name:', debut + 1));
+
+  assert.match(etape, /npm ci --prefix tools\/typage/,
+    'la CI n\'installe plus la chaîne du dépôt : ses versions divergeront de celles du poste (560)');
+  assert.match(etape, /tools\/typage\/node_modules\/\.bin\/tsc -p tools\/typage/,
+    'la CI ne type plus avec la configuration du dépôt (560)');
+  // ⚠️ UNE seule copie des options et des versions : celle de `tools/typage/`.
+  // Une seconde copie en ligne dériverait à la première retouche, en silence.
+  assert.doesNotMatch(etape, /--checkJs|npm i(nstall)? -D typescript/,
+    'le workflow porte de nouveau ses propres options ou versions de typage : deux copies, '
+    + 'et celle que rien ne lit localement dérivera (560)');
+
+  // Et la chaîne posée ne doit jamais entrer dans le dépôt.
+  const ignore = spawnSync('git', ['check-ignore', '-q', 'tools/typage/node_modules/x'], { cwd: RACINE });
+  assert.equal(ignore.status, 0, 'tools/typage/node_modules n\'est pas ignoré : la chaîne partirait dans un commit');
+});

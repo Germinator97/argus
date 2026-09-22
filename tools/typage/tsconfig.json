@@ -1,0 +1,20 @@
+{
+  // 560 — la configuration qui type les scripts du harnais, lue par DEUX
+  // lecteurs : l'étape de CI « Les JSDoc décrivent ce que le code rend », et le
+  // garde local du même numéro. Une seule copie des options : une seconde, écrite
+  // en ligne dans le workflow, dériverait à la première retouche sans un mot.
+  //
+  // ⚠️ SANS `strictNullChecks`, et c'est mesuré (558) : l'activer lève ~98
+  // erreurs dans huit fichiers. C'est un chantier, pas une option à cocher. D'où
+  // les `=== false` de debts.mjs, dont le commentaire dit pourquoi.
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "target": "es2022",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true
+  },
+  "include": ["../../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs"]
+}

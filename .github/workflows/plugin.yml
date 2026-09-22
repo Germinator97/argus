@@ -98,13 +98,17 @@ jobs:
       # nommant un paramètre inexistant, un dartdoc orphelin posé deux fonctions
       # trop haut. Aucune n'était un bug d'exécution ; toutes trompaient le
       # lecteur, qui est précisément le rôle d'un JSDoc.
+      #
+      # ⚠️ 560 — CETTE ÉTAPE ÉTAIT LE SEUL LECTEUR DU TYPAGE, et elle ne tourne
+      # que sur `main` : six erreurs s'y sont accumulées une semaine sans que rien
+      # ne puisse les voir (558). La chaîne vit donc dans le dépôt —
+      # `tools/typage/`, versions EXACTES, lock, configuration — et le garde local
+      # du même numéro la lit aussi. Les options et les versions ne s'écrivent
+      # plus ici : une seconde copie dériverait à la première retouche.
       - name: Les JSDoc décrivent ce que le code rend
         run: |
-          mkdir -p /tmp/tsc && cd /tmp/tsc && npm init -y >/dev/null
-          npm i -D typescript@5 @types/node@22 >/dev/null
-          ./node_modules/.bin/tsc --noEmit --allowJs --checkJs --target es2022 \
-            --module esnext --moduleResolution bundler --skipLibCheck \
-            "$GITHUB_WORKSPACE"/plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/*.mjs
+          npm ci --prefix tools/typage >/dev/null
+          tools/typage/node_modules/.bin/tsc -p tools/typage
 
       # `node --check` prouve qu'un fichier parse, jamais qu'il décide juste.
       # Deux défauts ont vécu sous cette seule étape : un rapport qui recopiait

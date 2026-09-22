@@ -1,0 +1,9 @@
+{
+  "name": "argus-typage",
+  "private": true,
+  "description": "La chaîne qui type les scripts du harnais (tsc --checkJs), la MÊME pour la CI et pour le garde local — point 560. Versions EXACTES : un typage qui suivrait la dernière version rougirait un jour sans qu'une ligne du dépôt ait bougé.",
+  "devDependencies": {
+    "@types/node": "22.20.4",
+    "typescript": "5.9.3"
+  }
+}
