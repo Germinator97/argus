@@ -13100,3 +13100,36 @@ ne l'est pas.
 hors du dépôt ne voyait plus `@types/node` et rendait **74** erreurs au lieu de
 six. Deuxième fois dans la séance qu'un typage lancé du mauvais endroit accuse
 le code — *le montage d'abord, toujours*.
+
+### 561. Une mutation ré-ancrée au 531 était VACANTE depuis sa naissance
+
+**Ouvert le 22/09/2026 · CLOS** — trouvé par la première passe COMPLÈTE de la
+CI (run du push `5fa1ef2`) : douze jobs verts sur treize, et la tranche 9/10
+rouge sur **un seul** verdict — « le remède du démarrage absorbé represcrit de
+borner le tap », VACANT. Log collé par Germinator, le journal d'un job exigeant
+un accès admin.
+
+Ce n'était pas une différence de machine. Rejouée sur le poste, avec maestro,
+fvm et les étalons : VACANTE. Rejouée sur `e63dd2e`, le commit du **531** qui
+l'avait ré-ancrée : déjà VACANTE. Le garde, le remède et la mutation sont
+identiques depuis ce jour-là.
+
+Le ré-ancrage visait la **prose** qui précède la clé (« déclare-le : »), si bien
+que `security.systemAlerts: never` survivait à la mutation — et le garde du
+**502** ne lit qu'elle. C'est voulu, et écrit dans ses commentaires : il juge ce
+que le remède PRESCRIT, jamais ce qu'il interdit, pour qu'une reformulation ne
+le périme pas. La faute était donc dans la mutation, pas dans le garde.
+
+- La mutation **remplace la clé elle-même** par le bornage que l'outil refuse :
+  le défaut réel du 502, un remède dont le geste applicable a disparu.
+- Rejouée : TOMBE. Et les rouges se lisent **tous** : deux gardes, le 502
+  (« le remède n'offre plus d'issue qui DÉSARME le geste ») et le 505 (« la
+  branche qui DÉSARME a disparu »), chacun sur l'assertion qui porte le défaut.
+- Suite 603/603, 563 mutations, 0 inerte, partition 1..563 intacte.
+
+⚠️ **Pendant trois jours, `--check-motifs` a dit « 0 inerte »**, et c'était vrai :
+le motif était présent et unique. Un motif présent prouve qu'une mutation
+**mute** ; seule la jouer prouve qu'un garde la **juge**. Le commit du 531
+annonçait la mutation « ré-ancrée comme la règle l'exige » : ré-ancrer rend un
+motif, seul le jeu rend un verdict. Depuis que la CI joue les 563 à chaque push, cette classe a un
+lecteur ; elle n'en avait pas.
