@@ -3004,6 +3004,14 @@ MUTATIONS = [
     ("checkartefact", "555 · le compteur non mesuré est sauté en silence",
      "\nif (depot.runsNonMesure) {",
      "\nif (false && depot.runsNonMesure) {"),
+    # ── 556 · la doc d'installation désigne le dépôt publié ────────────────
+    # Le défaut lui-même, réintroduit sur UN site : le `marketplace add` du
+    # gabarit repart vers le dépôt d'origine, qui sert la 1.0.0. Tout le reste
+    # de la doc reste juste — c'est exactement la forme du voisin oublié, que
+    # le garde doit voir sans qu'on lui désigne le fichier.
+    ("prompts", "556 · le gabarit renvoie de nouveau au dépôt d'origine",
+     "\n/plugin marketplace add https://github.com/Germinator97/argus\n",
+     "\n/plugin marketplace add https://github.com/Alexwilfriedo/argus-cc\n"),
 ]
 
 
