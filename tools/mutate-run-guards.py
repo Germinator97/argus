@@ -2577,9 +2577,18 @@ MUTATIONS = [
     # geste qu'un run a mesuré impraticable (`launch-clean.yaml` est au CADRE),
     # mais déclarer la clé. La mutation vise donc la ligne qui porte désormais
     # l'issue applicable — et rend le bornage que l'outil refuse.
+    # 🔴 561 — CE RÉ-ANCRAGE ÉTAIT VACANT DÈS SA NAISSANCE. Il visait la PROSE
+    # qui précède la clé (« déclare-le : »), si bien que la clé survivait à la
+    # mutation — et le garde du 502 ne lit qu'elle, puisqu'il juge ce que le
+    # remède PRESCRIT et jamais ce qu'il interdit. Trouvée trois jours plus tard
+    # par la première passe COMPLÈTE de la CI (tranche 9/10) ; VACANTE sur le
+    # poste comme sur le runner, et déjà sur le commit même du 531, rejoué.
+    # Un motif présent prouve qu'une mutation mute, pas qu'un garde la juge.
+    # Elle REMPLACE donc la clé par le bornage : le défaut réel du 502, un
+    # remède dont le geste applicable a disparu au profit d'un geste refusé.
     ("run", "le remède du démarrage absorbé represcrit de borner le tap",
-     "pas seulement l\\'un des deux), déclare-le : '",
-     "pas seulement l\\'un des deux), donne un timeout: court : '"),
+     "déclare-le : '\n    + '`security.systemAlerts: never` dans argus.mobile.yaml, et",
+     "donne à son `tapOn` un `timeout:` court : '\n    + 'il cessera d\\'attendre sa borne, et"),
     # 503 — le CÂBLAGE, pas la décision. Retirer l'appel laisse la fonction
     # intacte et juste : c'est exactement le troisième barreau, celui où l'on
     # croit avoir fini parce que la mesure, elle, marche.
