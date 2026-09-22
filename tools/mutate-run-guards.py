@@ -3012,6 +3012,13 @@ MUTATIONS = [
     ("prompts", "556 · le gabarit renvoie de nouveau au dépôt d'origine",
      "\n/plugin marketplace add https://github.com/Germinator97/argus\n",
      "\n/plugin marketplace add https://github.com/Alexwilfriedo/argus-cc\n"),
+    # ── 557 · le garde du vrai dépôt ne dépend plus de la machine ───────────
+    # Le relevé que le dépôt porte TOUJOURS se perd : c'est lui que le garde 333
+    # exige désormais, précisément parce qu'il existe sur un runner — là où le
+    # compteur des étalons, lui, est absent par construction.
+    ("compteurs", "557 · le relevé du backlog se perd",
+     "\n    runsSelonLeBacklog: dernierRunDu(backlog),",
+     "\n    runsSelonLeBacklog: null,"),
 ]
 
 
