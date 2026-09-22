@@ -3019,6 +3019,25 @@ MUTATIONS = [
     ("compteurs", "557 · le relevé du backlog se perd",
      "\n    runsSelonLeBacklog: dernierRunDu(backlog),",
      "\n    runsSelonLeBacklog: null,"),
+    # ── 559 · sans son outil, une mutation n'est pas « vacante » ────────────
+    # La NON JOUABLE redevient exigée : c'est le rouge par construction du
+    # runner, qui accuse un garde sain.
+    ("mutateur", "559 · une mutation sans juge redevient exigée",
+     "\n    exiges = attendu - sans_outil",
+     "\n    exiges = attendu"),
+    # La sonde est ignorée : l'outil passe pour présent partout, et la mutation
+    # redevient VACANTE là où il manque.
+    ("mutateur", "559 · l'outil absent passe pour présent",
+     "\n    return {nom: outil for nom, outil in PREALABLE_DE.items() if not disponibles.get(outil, False)}",
+     "\n    return {nom: outil for nom, outil in PREALABLE_DE.items() if False}"),
+    # Une déclaration qui ne désigne plus aucune mutation passe en silence —
+    # celle qui meurt le jour d'un renommage.
+    # ⚠️ Ces trois motifs vivent DANS la cible qu'ils mutent : écrits nus, ils
+    # figureraient deux fois — dans le code et ici. Le saut de ligne RÉEL qui
+    # les ouvre est ce qui les rend uniques : ici, il est écrit `\n`.
+    ("mutateur", "559 · une déclaration fantôme est acceptée",
+     '\n    fautes = [f"« {n} » ne désigne aucune mutation" for n in PREALABLE_DE if n not in noms]',
+     '\n    fautes = [f"« {n} » ne désigne aucune mutation" for n in PREALABLE_DE if False]'),
 ]
 
 
