@@ -852,8 +852,13 @@ function invitesSystemePossibles(config) {
 /**
  * Coupe les animations système et RELIT la valeur pour le prouver. Un
  * `settings put` peut échouer silencieusement selon l'image de l'émulateur.
+ *
+ * ⚠️ Les trois champs optionnels n'existent que sur le chemin Android MESURÉ :
+ * c'est `verdictAnimations` (507) qui les apporte, plus le relevé d'`avant`.
+ * Le JSDoc disait `{ok, detail}` seul, et l'appelant lisait `aRestaurer` — un
+ * écart que seul `tsc` voit, donc que rien ne voyait hors de la CI.
  * @param {string} platform @param {string} udid @param {boolean} dryRun
- * @returns {{ok:boolean, detail:string}}
+ * @returns {{ok:boolean, detail:string, prouve?:boolean, aRestaurer?:string[]|null, avant?:string[]}}
  */
 function disableAnimations(platform, udid, dryRun) {
   if (platform !== 'android') {

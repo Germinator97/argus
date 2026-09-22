@@ -107,7 +107,12 @@ export function situerLeSet(source) {
  */
 export function fusionner(source, ajouts) {
   const ou = situerLeSet(source);
-  if (!ou.ok) return ou;
+  // ⚠️ `=== false`, jamais `!ou.ok` — ici et aux deux sites qui suivent. La CI
+  // type ces scripts SANS `strictNullChecks`, et TypeScript ne restreint alors
+  // pas une union sur la véracité d'un littéral : sous `!ou.ok`, `ou.pourquoi`
+  // reste inconnu, et le typage échoue. Mesuré sur une sonde : `=== false`
+  // restreint, `!` non. Ce fichier est le seul à rendre une union discriminée.
+  if (ou.ok === false) return ou;
   const avant = new Set(ou.cles);
   const ajoutees = ajouts.filter((c) => !avant.has(c));
   const toutes = [...new Set([...ou.cles, ...ajouts])].sort();
@@ -174,7 +179,7 @@ const retirer = (chemin, clef, ecrit) => {
     return 2;
   }
   const ou = situerLeSet(source);
-  if (!ou.ok) {
+  if (ou.ok === false) {
     console.error(`✖ ${CIBLE} : ${ou.pourquoi}`);
     return 2;
   }
@@ -245,7 +250,7 @@ const main = async () => {
   }
 
   const fusion = fusionner(source, ajouts);
-  if (!fusion.ok) {
+  if (fusion.ok === false) {
     console.error(`✖ ${CIBLE} : ${fusion.pourquoi}`);
     return 2;
   }
