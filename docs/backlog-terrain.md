@@ -13034,3 +13034,68 @@ pas le code.
 qui ne lance pas `tsc`. 🔴 Et la **classe** reste à trancher : un contrôle dont
 le seul lecteur est un événement rare (un push sur `main`) ne garde pas, il
 attend — le motif exact du **501**.
+
+### 559. Sans son outil, une mutation était déclarée VACANTE — la tranche 6/10 rouge par construction
+
+**Ouvert le 22/09/2026 · CLOS** — prévu AVANT que la CI ne le montre, en
+rejouant dans les conditions du runner les mutations dont le garde dépend de la
+machine ; tranché par Germinator (option A).
+
+Le garde **550** refuse À RAISON de conclure sans `fvm dart` : l'outil absent
+n'est pas un sujet fautif. Mais sa mutation restait alors sans juge — suite
+verte, harnais « VACANT » —, et le job de mutation de la CI n'a pas Dart. Mesuré :
+la même mutation rend TOMBE sur le poste et VACANT dans les conditions du
+runner. La tranche 6/10 aurait échoué au premier vrai passage, en accusant un
+garde sain.
+
+#### Un quatrième verdict : NON JOUABLE
+
+Une mutation **déclare** l'outil dont son garde a besoin (`PREALABLE_DE`), sondé
+comme le garde le sonde. Sans lui, elle n'est ni jouée ni accusée : annoncée
+AVANT la passe, comptée à part, **pas exigée**. Ce n'est pas une dispense — la
+passe dit ce qu'elle n'a pas prouvé, et la preuve se fait là où l'outil existe.
+⚠️ Une vraie VACANTE fait toujours échouer la passe : c'est la moitié qu'un
+correctif trop large aurait emportée.
+
+- Les décisions sont des **fonctions pures** (`prealables_manquants`,
+  `conclure`) que la suite APPELLE : le harnais ne peut pas se jouer depuis la
+  suite, puisque chaque mutation la rejoue.
+- `--check-prealables` vérifie la table sans rien muter ; une déclaration qui ne
+  désigne aucune mutation — celle qui meurt le jour d'un renommage — le fait
+  échouer, et le harnais refuse de démarrer dessus.
+- Le câblage de la boucle ne se joue pas depuis la suite : il a été prouvé **de
+  bout en bout**, la 314 annoncée puis rendue NON JOUABLE dans les conditions du
+  runner, et TOMBE sur le poste.
+
+⚠️ **Un piège en écrivant ses mutations** : elles vivent DANS le fichier
+qu'elles mutent. Écrit nu, leur motif y figurait deux fois — dans le code et
+dans la liste — et le harnais exige l'unicité. C'est le saut de ligne RÉEL qui
+les distingue, écrit `\n` dans la liste.
+
+### 560. Le typage n'avait qu'un lecteur — il en a deux, et une seule configuration
+
+**Ouvert le 22/09/2026 · CLOS** — la classe du **558**, tranchée par Germinator.
+
+La chaîne de typage vit dans le dépôt : `tools/typage/`, versions **exactes**
+(typescript 5.9.3, @types/node 22.20.4 — celles que la CI résolvait le jour même)
+avec leur lock, et un `tsconfig` qui porte les options. Deux lecteurs la lisent :
+l'étape de CI, qui ne porte plus ni options ni versions en ligne, et un garde
+local qui lance le même `tsc -p` quand la chaîne est posée — et le DIT quand elle
+ne l'est pas.
+
+- Le garde prouve d'abord qu'il a **vu** chaque script (`--listFilesOnly`) : un
+  `include` qui ne matcherait rien typerait zéro fichier, et zéro fichier n'a
+  jamais d'erreur.
+- Versions exactes, parce qu'un typage qui suivrait la dernière version rougirait
+  un jour sans qu'une ligne du dépôt ait bougé — le **494** du formateur Dart,
+  transposé.
+- Prouvé dans les deux sens avec la configuration partagée : exit 0 sur le code
+  du jour, et exactement les six erreurs d'origine, aux mêmes lignes, sur le code
+  d'avant le 558.
+- Sa mutation — le défaut du 558 réintroduit — déclare la chaîne comme
+  **préalable** (559) : sur un runner qui ne la pose pas, elle est NON JOUABLE.
+
+⚠️ **Ma contre-épreuve a menti d'abord** : une configuration temporaire posée
+hors du dépôt ne voyait plus `@types/node` et rendait **74** erreurs au lieu de
+six. Troisième fois dans la séance qu'un typage lancé du mauvais endroit accuse
+le code — *le montage d'abord, toujours*.
