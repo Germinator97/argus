@@ -3038,6 +3038,18 @@ MUTATIONS = [
     ("mutateur", "559 · une déclaration fantôme est acceptée",
      '\n    fautes = [f"« {n} » ne désigne aucune mutation" for n in PREALABLE_DE if n not in noms]',
      '\n    fautes = [f"« {n} » ne désigne aucune mutation" for n in PREALABLE_DE if False]'),
+    # ── 560 · le typage a un lecteur local ──────────────────────────────────
+    # Le défaut du 558 lui-même : `!ou.ok` ne restreint pas l'union sans
+    # strictNullChecks. Seul `tsc` le voit — d'où son PRÉALABLE : sur un runner
+    # sans la chaîne de typage, elle est NON JOUABLE, et le dit (559).
+    ("debts", "560 · le JSDoc de debts.mjs redevient faux pour tsc",
+     "\n  if (ou.ok === false) return ou;",
+     "\n  if (!ou.ok) return ou;"),
+    # La CI se remet à installer SA chaîne, en ligne : deux copies des versions,
+    # et celle que rien ne lit sur le poste dérive.
+    ("ciplugin", "560 · la CI réinstalle sa propre chaîne de typage",
+     "npm ci --prefix tools/typage >/dev/null",
+     "npm i -D --prefix tools/typage typescript@5 @types/node@22 >/dev/null"),
 ]
 
 
@@ -3070,6 +3082,7 @@ def digest(cible):
 # et c'est exactement ce qu'il faudrait voir.
 PREALABLE_DE = {
     "550 · un fichier de cadre n'est plus formaté": "fvm dart",
+    "560 · le JSDoc de debts.mjs redevient faux pour tsc": "typage",
 }
 
 
@@ -3080,6 +3093,8 @@ def _sonde_fvm_dart():
 
 SONDES = {
     "fvm dart": _sonde_fvm_dart,
+    # La sonde du garde 560, mot pour mot : la chaîne de typage est posée.
+    "typage": lambda: (ROOT / "tools/typage/node_modules/.bin/tsc").exists(),
 }
 
 
