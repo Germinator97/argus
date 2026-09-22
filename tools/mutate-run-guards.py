@@ -3030,6 +3030,68 @@ def digest(cible):
     return hashlib.sha256(cible.read_bytes()).hexdigest()[:12]
 
 
+# ═══════════════════════════════════════════════════════════════════════════
+# 559 · Les mutations qu'un garde ne peut juger QU'AVEC son outil
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# Le garde 550 refuse À RAISON de conclure sans `fvm dart` — l'outil absent
+# n'est pas un sujet fautif. Mais sa mutation restait alors sans juge : suite
+# verte, harnais « VACANT », et sur un runner qui n'a pas l'outil c'est un
+# rouge PAR CONSTRUCTION. Mesuré le 22/09 en rejouant la mutation dans les
+# conditions du runner : VACANT là où le poste rend TOMBE. La tranche qui la
+# porte aurait échoué au premier vrai passage de la CI, en accusant un garde sain.
+#
+# Une mutation déclare donc ici l'outil dont son garde a BESOIN pour juger.
+# Sans lui, le verdict est NON JOUABLE : annoncé, compté à part, pas exigé. Ce
+# n'est pas une dispense — la passe dit ce qu'elle n'a pas prouvé, et la preuve
+# se fait là où l'outil existe.
+#
+# ⚠️ Chaque sonde reproduit CELLE DU GARDE. Si le harnais jugeait l'outil
+# présent quand le garde le juge absent, la mutation redeviendrait VACANTE —
+# et c'est exactement ce qu'il faudrait voir.
+PREALABLE_DE = {
+    "550 · un fichier de cadre n'est plus formaté": "fvm dart",
+}
+
+
+def _sonde_fvm_dart():
+    # La sonde du garde 550, mot pour mot : `fvm dart --version` rend 0.
+    return shutil.which("fvm") is not None and sh(["fvm", "dart", "--version"]).returncode == 0
+
+
+SONDES = {
+    "fvm dart": _sonde_fvm_dart,
+}
+
+
+def prealables_manquants(disponibles):
+    """Les mutations que CE poste ne peut pas juger : {nom: outil absent}."""
+    return {nom: outil for nom, outil in PREALABLE_DE.items() if not disponibles.get(outil, False)}
+
+
+def incoherences_prealables():
+    """Ce qui rendrait la table MUETTE : une déclaration qui ne désigne aucune
+    mutation — elle meurt sans un mot le jour d'un renommage, et la mutation
+    redevient VACANTE sur le runner —, ou un outil que rien ne sait sonder."""
+    noms = {nom for _cle, nom, *_reste in MUTATIONS}
+    fautes = [f"« {n} » ne désigne aucune mutation" for n in PREALABLE_DE if n not in noms]
+    fautes += [f"« {o} » (pour « {n} ») n'a pas de sonde"
+               for n, o in PREALABLE_DE.items() if o not in SONDES]
+    return fautes
+
+
+def conclure(bilan, attendu):
+    """(tombés, exigés, non jouables, code de sortie).
+
+    NON JOUABLE n'est ni TOMBE ni VACANT : la mutation n'est pas exigée, parce
+    que son garde ne peut pas juger ici — mais une vraie VACANTE fait toujours
+    échouer la passe, et c'est la moitié qu'un correctif trop large emporterait."""
+    tombes = sum(1 for etat, *_reste in bilan if etat == "TOMBE")
+    sans_outil = sum(1 for etat, *_reste in bilan if etat == "NON JOUABLE")
+    exiges = attendu - sans_outil
+    return tombes, exiges, sans_outil, (0 if tombes == exiges else 1)
+
+
 def restaure(cle, attendu):
     cible = CIBLES[cle]
     sh(["git", "checkout", "--", str(cible.relative_to(ROOT))])
@@ -3146,8 +3208,21 @@ def main():
         print("                    ajoute --from-head pour lire le dépôt COMMITÉ,")
         print("                    seule façon de le jouer PENDANT une mutation")
         print("                    aucun fichier touché, une seconde au lieu d'heures")
+        print("  --check-prealables  dit quelles mutations ont besoin d'un outil pour être")
+        print("                    jugées, et lesquelles ne sont pas jouables ICI (559)")
         print("  --help, -h        ceci")
         return 0
+    if args == ["--check-prealables"]:
+        # Ne mute rien : vérifie la table, sonde les outils, conclut.
+        fautes = incoherences_prealables()
+        for faute in fautes:
+            print(f"🔴 {faute}")
+        manquants = prealables_manquants({o: sonde() for o, sonde in SONDES.items()})
+        absents = sorted(set(manquants.values()))
+        print(f"\n{len(PREALABLE_DE)} mutation(s) dépendent d'un outil · "
+              f"{len(manquants)} non jouable(s) ici"
+              + (f" — absent : {', '.join(absents)}" if absents else ""))
+        return 1 if fautes else 0
     if args and args[0] == "--check-motifs" and set(args[1:]) <= {"--from-head"}:
         # Ne mute rien, n'écrit rien : compte, compare, conclut.
         # ⚠️ `--from-head` n'est pas une option de confort — voir textes_depuis_head.
@@ -3294,6 +3369,15 @@ def main():
         print(f"⚠  maestro absent du PATH — les {flows} mutations de flow ne seront pas vérifiées")
         print("   syntaxiquement : un YAML cassé s'y lira comme un garde qui tombe.")
 
+    # 559 — une table incohérente rendrait une mutation VACANTE sur le runner
+    # sans que rien ne dise pourquoi : on ne démarre pas sur ce doute-là non plus.
+    fautes = incoherences_prealables()
+    if fautes:
+        print("✖ la table des outils (PREALABLE_DE) est incohérente :")
+        for faute in fautes:
+            print(f"  {faute}")
+        return 2
+
     propres = {k: digest(v) for k, v in CIBLES.items()}
     originaux = {k: v.read_text(encoding="utf-8") for k, v in CIBLES.items()}
     bilan = []
@@ -3310,6 +3394,15 @@ def main():
         print(f"⚠  PASSE PARTIELLE : {len(jouees)}/{len(MUTATIONS)} mutations"
               f" (--only={','.join(map(str, choisies))}) — ce n'est PAS une passe complète.\n")
 
+    # 559 — ce que CE poste ne peut pas juger est dit AVANT de jouer, et non
+    # découvert dans le bilan : une passe qui ne prouve pas tout l'annonce d'entrée.
+    manquants = prealables_manquants({o: sonde() for o, sonde in SONDES.items()})
+    sans_juge = [nom for _cle, nom, *_reste in jouees if nom in manquants]
+    for outil in sorted({manquants[nom] for nom in sans_juge}):
+        combien = sum(1 for nom in sans_juge if manquants[nom] == outil)
+        print(f"⚠  {outil} absent — {combien} mutation(s) NON JOUABLE(S) ici : leur garde ne peut")
+        print("   pas juger sans lui. Elles ne sont ni jouées ni accusées — ni prouvées.\n")
+
     # ⚠️ TOUT CE QUI SUIT MUTE DES FICHIERS SUIVIS. Une sortie brutale — signal,
     # timeout de l'appelant, Ctrl-C — doit laisser l'arbre propre, sinon le
     # fichier muté survit à la séance et le prochain qui le lit croit au code.
@@ -3323,6 +3416,9 @@ def main():
     precedent = signal.signal(signal.SIGTERM, _sigterm)
     try:
       for cle, nom, avant, apres in jouees:
+          if nom in manquants:
+              bilan.append(("NON JOUABLE", nom, f"outil absent : {manquants[nom]}"))
+              continue
           cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
           occurrences = original.count(avant)
           if occurrences != 1:
@@ -3413,18 +3509,19 @@ def main():
     print(f"\n{'':2} {'défaut réintroduit':52} verdict")
     print("─" * 96)
     for etat, nom, detail in bilan:
-        icone = {"TOMBE": "✔", "VACANT": "✖", "HARNAIS": "⚠"}[etat]
-        print(f"{icone}  {nom:52} {etat:8} {detail[:34]}")
+        icone = {"TOMBE": "✔", "VACANT": "✖", "HARNAIS": "⚠", "NON JOUABLE": "○"}[etat]
+        print(f"{icone}  {nom:52} {etat:11} {detail[:34]}")
 
-    tombes = sum(1 for e, _, _ in bilan if e == "TOMBE")
     hashs = " ".join(f"{cle}={digest(v)}" for cle, v in CIBLES.items())
     # ⚠️ L'ATTENDU D'UNE TRANCHE EST SA PROPRE TAILLE, celui de tout le reste est
     # le cardinal ENTIER. C'est la seule ligne qui sépare « la CI assemble N
     # tranches » de « quelqu'un a joué 45 mutations et lu un vert ».
     attendu = len(jouees) if tranche is not None else len(MUTATIONS)
+    tombes, exiges, sans_outil, code = conclure(bilan, attendu)
     ou = f" · tranche {tranche[0]}/{tranche[1]}" if tranche is not None else ""
-    print(f"\n{tombes}/{attendu} défauts détectés{ou} · hashs restaurés : {hashs}")
-    return 0 if tombes == attendu else 1
+    non = f" · {sans_outil} non jouable(s) ici, outil absent" if sans_outil else ""
+    print(f"\n{tombes}/{exiges} défauts détectés{non}{ou} · hashs restaurés : {hashs}")
+    return code
 
 
 if __name__ == "__main__":

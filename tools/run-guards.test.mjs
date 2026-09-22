@@ -18465,3 +18465,82 @@ test("la doc d'installation désigne le dépôt PUBLIÉ, partout où elle en cit
     `la doc livrée renvoie à un dépôt qui n'est pas celui qui publie le plugin (${PUBLIE}) — `
     + 'qui la suit installe une autre version, sans erreur :\n  ' + fautives.join('\n  '));
 });
+
+// ── 559 · SANS SON OUTIL, UNE MUTATION N'EST PAS « VACANTE » ────────────────
+// Le garde 550 refuse À RAISON de conclure sans `fvm dart` : l'outil absent
+// n'est pas un sujet fautif. Mais sa mutation restait alors sans juge — suite
+// verte, harnais « VACANT » —, et sur un runner qui n'a pas l'outil, c'est un
+// rouge PAR CONSTRUCTION. Mesuré le 22/09 en rejouant la mutation dans les
+// conditions du runner : VACANT là où le poste rend TOMBE. La tranche qui la
+// porte aurait échoué au premier vrai passage de la CI, en accusant un garde sain.
+//
+// Une mutation DÉCLARE donc l'outil dont son garde a besoin ; sans lui, le
+// verdict est NON JOUABLE — annoncé, compté à part, et pas exigé.
+// ⚠️ Le harnais ne se joue pas depuis la suite (chaque mutation la rejoue) : on
+// APPELLE ses décisions, extraites en fonctions pures.
+const interrogerLeHarnais = (/** @type {string[]} */ lignes, chemin = join(RACINE, 'tools/mutate-run-guards.py')) => {
+  const script = [
+    'import importlib.util, json',
+    `spec = importlib.util.spec_from_file_location("harnais", ${JSON.stringify(chemin)})`,
+    'h = importlib.util.module_from_spec(spec)',
+    'spec.loader.exec_module(h)',
+    ...lignes,
+  ].join('\n');
+  const r = spawnSync('python3', ['-c', script], { cwd: RACINE, encoding: 'utf8' });
+  assert.equal(r.status, 0, `le harnais n'a pas pu être interrogé :\n${r.stdout ?? ''}${r.stderr ?? ''}`);
+  return JSON.parse(r.stdout.trim().split('\n').pop() ?? 'null');
+};
+
+test('sans son outil, une mutation est NON JOUABLE — ni jouée, ni exigée (559)', () => {
+  const r = interrogerLeHarnais([
+    'print(json.dumps({',
+    '  "sans_fvm": h.prealables_manquants({"fvm dart": False}),',
+    '  "avec_tout": h.prealables_manquants({o: True for o in h.SONDES}),',
+    '  "non_jouable": h.conclure([("TOMBE", "a", ""), ("NON JOUABLE", "b", "outil absent")], 2),',
+    '  "vacant": h.conclure([("TOMBE", "a", ""), ("VACANT", "b", "")], 2),',
+    '}))',
+  ]);
+  // La mutation du 550 est celle que le runner ne peut pas juger — et elle
+  // seule le dit : sans cette déclaration, elle redevient VACANTE là-bas.
+  const dart = Object.keys(r.sans_fvm).filter((n) => n.startsWith('550 ·'));
+  assert.equal(dart.length, 1,
+    'la mutation du 550 ne déclare plus son besoin de `fvm dart` : sur un runner sans Dart, elle '
+    + 'redevient VACANTE et fait échouer sa tranche en accusant un garde sain (559)');
+  assert.deepEqual(r.avec_tout, {}, 'là où tous les outils sont là, TOUTE mutation se joue');
+
+  // [tombés, exigés, non jouables, code]
+  assert.deepEqual(r.non_jouable, [1, 1, 1, 0],
+    'une mutation NON JOUABLE ne doit pas être exigée : la passe qui l\'annonce reste verte (559)');
+  // ⚠️ L'AUTRE MOITIÉ, celle qu'un correctif trop large emporterait : une vraie
+  // VACANTE fait toujours échouer la passe.
+  assert.equal(r.vacant[3], 1, 'une mutation VACANTE doit toujours faire échouer la passe');
+});
+
+test('chaque déclaration d\'outil vise une mutation qui existe, et un outil qu\'on sait sonder (559)', () => {
+  const r = spawnSync('python3', [join(RACINE, 'tools/mutate-run-guards.py'), '--check-prealables'],
+    { cwd: RACINE, encoding: 'utf8' });
+  const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+  assert.match(sortie, /\d+ mutation\(s\) dépendent d'un outil · \d+ non jouable\(s\) ici/,
+    `\`--check-prealables\` n'a pas rendu son relevé : ${sortie.slice(0, 300)}`);
+  assert.equal(r.status, 0, `la table des outils est incohérente :\n${sortie}`);
+
+  // Contre-épreuve : une déclaration qui ne désigne AUCUNE mutation doit être
+  // refusée — sinon le jour où une mutation est renommée, sa déclaration meurt
+  // sans un mot, et la mutation redevient VACANTE sur le runner.
+  const src = readFileSync(join(RACINE, 'tools/mutate-run-guards.py'), 'utf8');
+  const ancre = 'PREALABLE_DE = {';
+  assert.ok(src.includes(ancre), 'la table PREALABLE_DE a disparu : ce garde ne mesure plus rien');
+  const dir = mkdtempSync(join(tmpdir(), 'argus-559-'));
+  try {
+    const copie = join(dir, 'sonde.py');
+    writeFileSync(copie, src
+      .replace('ROOT = pathlib.Path(__file__).resolve().parent.parent', `ROOT = pathlib.Path(${JSON.stringify(RACINE)})`)
+      .replace(ancre, `${ancre}\n    "SONDE — mutation qui n'existe pas": "fvm dart",`));
+    const s = spawnSync('python3', [copie, '--check-prealables'], { cwd: RACINE, encoding: 'utf8' });
+    const dit = `${s.stdout ?? ''}${s.stderr ?? ''}`;
+    assert.match(dit, /SONDE — mutation qui n'existe pas/, `la déclaration fantôme n'est pas nommée :\n${dit}`);
+    assert.notEqual(s.status, 0, 'une table incohérente doit faire sortir le contrôle en échec');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
