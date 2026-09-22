@@ -12968,3 +12968,69 @@ comparées avant et après.
 ⚠️ **Ce qui reste, et n'est pas tranché ici** : le nom du marketplace et les
 adresses d'auteur des trois manifestes restent ceux du dépôt d'origine —
 décision laissée à Germinator, à rouvrir avant tout partage.
+
+### 557. Le garde du vrai dépôt exigeait des étalons que seule cette machine possède
+
+**Ouvert le 22/09/2026 · CLOS** — trouvé par le premier passage de la CI sur
+GitHub : poussé sur le fork le 21/09, le workflow a tourné pour la première fois,
+et la matrice de mutation a refusé ses **dix** tranches.
+
+Depuis le **555**, le compteur de runs vient des étalons, qui vivent **hors du
+dépôt** : sur un runner il n'y en a aucun, donc `runs` est omis et
+`runsNonMesure` le dit — c'était voulu. Le garde 333, lui, exigeait encore
+`runs >= 42` : vrai sur le seul poste qui porte des étalons, rouge partout
+ailleurs. Son message parlait même du backlog, qui n'était plus la source depuis
+la veille.
+
+#### Un défaut de montage qui ressemble à dix gardes vidés
+
+Sur le runner, la suite était donc rouge, et le harnais a fait exactement ce
+qu'il doit : **refuser de muter** (« la suite est DÉJÀ rouge »). Dix fois, dans
+dix jobs. Lu en passant, c'est dix tranches de gardes qui ne tombent plus — et
+c'était une seule assertion qui dépendait de la machine.
+
+#### Le remède exige ce que le dépôt porte TOUJOURS
+
+Le relevé du backlog existe partout : c'est lui que le garde exige. Pour le
+compteur qui dépend de la machine, il exige son **état** — mesuré, il a une
+valeur ; non mesuré, il n'en a **aucune**, et il le dit.
+
+Reproduit AVANT correction, en recréant le runner sur le poste : `HOME` vide,
+`PATH` réduit à node, npm, python3 et git, et `CI=true`, que GitHub pose. 🔴 Ma
+première simulation avait retiré `CI` : elle a aussi fait tomber le **255**, qui
+accepte justement cette variable — un faux coupable fabriqué par le montage.
+*Imiter un environnement, c'est aussi reproduire ce qu'il pose, pas seulement ce
+qu'il retire.*
+
+Mutation : le relevé du backlog se perd → le garde tombe, sur le poste **et**
+dans les conditions du runner.
+
+### 558. La JSDoc avait dérivé là où seul le typage de la CI pouvait la voir
+
+**Ouvert le 22/09/2026 · CLOS** — même passage de CI, étape « Les JSDoc
+décrivent ce que le code rend », six erreurs.
+
+`tsc --checkJs` n'a qu'**un** lecteur : la CI du plugin, qui ne tourne que sur
+`main` — et `main` n'avait jamais été poussé avant le 21/09. Les six erreurs
+s'étaient accumulées depuis le 16/09 sans que rien ne puisse les voir.
+
+- **`debts.mjs`** est le seul script à rendre une union discriminée
+  `{ok:true,…}|{ok:false,pourquoi}`. La CI type **sans** `strictNullChecks`, et
+  TypeScript ne restreint alors pas une union sur la véracité d'un littéral :
+  sous `!ou.ok`, `ou.pourquoi` reste inconnu. Mesuré sur une sonde : `=== false`
+  restreint, `!` non. `strictNullChecks` réglerait les trois sites… et en
+  lèverait **~98** autres dans huit fichiers : un autre chantier.
+- **`run.mjs`** : `disableAnimations` annonçait `{ok, detail}` en rendant aussi
+  `prouve`, `aRestaurer` et `avant` sur le chemin Android mesuré (**507**), et
+  son appelant lisait `aRestaurer`.
+
+Vérifié avec **la commande exacte de la CI**, lancée depuis le dossier qui porte
+les types : exit 0 ; la même commande sur le commit d'avant rend toujours les
+six. ⚠️ Mon premier essai accusait une vingtaine de modules « introuvables » :
+lancé depuis la racine du dépôt, `tsc` ne voyait pas `@types/node`. Le montage,
+pas le code.
+
+⚠️ **Sans mutation, et c'est dit** : le harnais rejoue la suite `node --test`,
+qui ne lance pas `tsc`. 🔴 Et la **classe** reste à trancher : un contrôle dont
+le seul lecteur est un événement rare (un push sur `main`) ne garde pas, il
+attend — le motif exact du **501**.
