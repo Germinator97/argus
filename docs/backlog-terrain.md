@@ -13026,9 +13026,10 @@ s'étaient accumulées depuis le 16/09 sans que rien ne puisse les voir.
 
 Vérifié avec **la commande exacte de la CI**, lancée depuis le dossier qui porte
 les types : exit 0 ; la même commande sur le commit d'avant rend toujours les
-six. ⚠️ Mon premier essai accusait une vingtaine de modules « introuvables » :
-lancé depuis la racine du dépôt, `tsc` ne voyait pas `@types/node`. Le montage,
-pas le code.
+six. ⚠️ Mon premier essai rendait **68** erreurs, dont **41** « module
+introuvable » sur sept modules de node — recompté après coup, l'aperçu n'en
+montrait que cinq : lancé depuis la racine du dépôt, `tsc` ne voyait pas
+`@types/node`. Le montage, pas le code.
 
 ⚠️ **Sans mutation, et c'est dit** : le harnais rejoue la suite `node --test`,
 qui ne lance pas `tsc`. 🔴 Et la **classe** reste à trancher : un contrôle dont
@@ -13097,5 +13098,5 @@ ne l'est pas.
 
 ⚠️ **Ma contre-épreuve a menti d'abord** : une configuration temporaire posée
 hors du dépôt ne voyait plus `@types/node` et rendait **74** erreurs au lieu de
-six. Troisième fois dans la séance qu'un typage lancé du mauvais endroit accuse
+six. Deuxième fois dans la séance qu'un typage lancé du mauvais endroit accuse
 le code — *le montage d'abord, toujours*.
