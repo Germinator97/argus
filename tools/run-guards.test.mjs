@@ -8730,7 +8730,25 @@ test('la dérivation tient sur le VRAI dépôt, et ses deux sources s\'accordent
   assert.ok(vrai.gardes > 250, 'les gardes de cette suite doivent se compter');
   assert.ok(vrai.mutations > 150, 'et les mutations du harnais aussi');
   assert.equal(vrai.plugins, 3, 'trois plugins : argus, argus-mobile, argus-web');
-  assert.ok(vrai.runs >= 42, `le dernier run cité par le backlog, reçu ${vrai.runs}`);
+  // ⚠️ 557 · Depuis le 555, `runs` vient des ÉTALONS, qui vivent HORS du dépôt :
+  // aucun runner de CI n'en a. L'assertion d'avant exigeait `runs >= 42` — vraie
+  // sur le seul poste qui porte des étalons, rouge partout ailleurs. C'est elle
+  // qui a vidé la matrice de mutation au premier passage de la CI sur GitHub :
+  // « la suite est DÉJÀ rouge », dix fois. Son message parlait encore du backlog,
+  // qui n'était plus la source depuis la veille.
+  // Le relevé que le dépôt porte TOUJOURS est celui du backlog : c'est lui qu'on
+  // exige. L'autre dépend de la machine, donc on exige son ÉTAT — mesuré, il a
+  // une valeur ; non mesuré, il n'en a AUCUNE, et il le dit.
+  assert.ok(vrai.runsSelonLeBacklog >= 42,
+    `le dernier run cité par le backlog, reçu ${vrai.runsSelonLeBacklog}`);
+  if (vrai.runsNonMesure === undefined) {
+    assert.ok(vrai.runs >= 42, `le dernier run archivé parmi les étalons, reçu ${vrai.runs}`);
+  } else {
+    assert.equal(vrai.runs, undefined,
+      'un compteur non mesuré ne porte AUCUNE valeur — un zéro se lirait comme un accord');
+    assert.ok(typeof vrai.runsNonMesure === 'string' && vrai.runsNonMesure.length > 0,
+      'le troisième état doit se DIRE, pas seulement s\'omettre');
+  }
 });
 
 test('la confidentialité mesure le PHÉNOMÈNE, pas une liste de noms (333)', () => {
