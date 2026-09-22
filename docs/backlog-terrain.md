@@ -12909,3 +12909,62 @@ partout ailleurs.
 
 📌 La cible de mutation du module des compteurs **manquait** : rien ne pouvait
 dire si ses gardes gardent encore. Elle est déclarée, avec quatre mutations.
+
+### 556. La doc d'installation renvoyait au dépôt qui sert la 1.0.0
+
+**Ouvert le 22/09/2026 · CLOS** — trouvé en jouant l'installation par le
+marketplace pour la première fois ; correction demandée par Germinator :
+*« corrige les docs README et PROMPTS. »*
+
+Le plugin est publié depuis le 21/09 sur un **fork** : le dépôt d'origine
+appartient à un autre compte, et sa branche par défaut sert toujours la
+**1.0.0** — un seul plugin, `skills/` à la racine. Le README et les deux
+gabarits de prompt y renvoyaient **huit fois** : le `marketplace add`, puis
+chaque repli par clone.
+
+#### Rien ne pouvait échouer
+
+Le marketplace porte **le même nom** des deux côtés. Qui suivait la doc
+ajoutait donc un marketplace valide, installait `argus@alexwilfriedo` sans une
+erreur — et obtenait la version d'avant. *Une installation qui réussit en
+servant la mauvaise version ne se voit qu'en comparant ce qui est posé à ce qui
+est publié* : c'est ce qu'a fait l'essai du 22/09 (45 fichiers installés,
+`diff -r` contre l'arbre du commit, contre-épreuve sur un commit plus ancien).
+
+#### Le garde porte sur la CITATION, pas sur les fichiers où on l'a trouvée
+
+Toute citation du dépôt dans la doc livrée — le README et tout `.md` sous
+`plugins/` —, en https ou en ssh, avec ou sans `.git`. Le dépôt publié est
+écrit **une fois**, dans le garde : le changer est une décision, et la doc
+entière doit suivre. Il prouve d'abord qu'il a vu les trois documents qui
+enseignent l'installation, et son motif est contre-éprouvé — `argus-web` est un
+plugin, pas le dépôt. Écrit AVANT la correction : il est tombé sur les huit
+citations, exactement celles qu'un `git grep` relevait.
+
+#### Ce que la correction a trouvé en chemin
+
+- 🔴 **« `/plugin` est une commande de l'interface, un agent ne peut pas
+  l'exécuter à ta place »** — faux, et dans les deux gabarits. `claude plugin
+  marketplace add` et `claude plugin install` font la même chose depuis un
+  shell ; l'installation du 22/09 a été jouée ainsi, par un agent. La phrase dit
+  désormais le vrai, et ce qui reste à l'utilisateur : la **décision**, puisqu'un
+  plugin s'installe par défaut pour toutes ses sessions. ⚠️ Sans garde
+  exécutable — la CI n'a pas `claude` — et c'est dit plutôt que tu.
+- **L'option B du README** copiait depuis `argus-cc/` sans dire d'où venait ce
+  dossier ; le fork s'appelle `argus`, donc un clone par défaut ne le produit
+  plus. Le clone est désormais écrit, dossier compris.
+- **« 404 commits d'écart »** était une mesure non datée : pointée vers le fork,
+  elle se serait lue comme l'écart du jour. Datée du 4 septembre 2026, jour où
+  elle a été prise.
+
+#### Vérifié en exécutant, pas en relisant
+
+Le clone écrit et les chemins qu'il promet ; puis `marketplace add` avec l'URL
+**complète** et `install argus@alexwilfriedo` dans une configuration
+**isolée** — les trois plugins en 1.1.0 au commit publié, **premier exercice
+des dépendances** du méta-plugin —, la configuration réelle intacte, empreintes
+comparées avant et après.
+
+⚠️ **Ce qui reste, et n'est pas tranché ici** : le nom du marketplace et les
+adresses d'auteur des trois manifestes restent ceux du dépôt d'origine —
+décision laissée à Germinator, à rouvrir avant tout partage.
