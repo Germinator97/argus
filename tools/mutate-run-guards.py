@@ -3078,6 +3078,60 @@ def digest(cible):
     return hashlib.sha256(cible.read_bytes()).hexdigest()[:12]
 
 
+def validateur(cible):
+    """La commande qui dit si une cible MUTÉE se lit encore — None : aucun ici.
+
+    Une mutation qui casse le build fait rougir pour une raison sans rapport
+    avec le garde, et ce rouge-là se lit comme un succès. Pour un flow, c'est
+    `maestro check-syntax` qui le dit — aucun parseur d'ici ne les lit, leur
+    `---` sortant du sous-ensemble YAML du harness. Quand maestro manque, on ne
+    vérifie pas : on l'ANNONCE (voir main), plutôt que de laisser croire que ça
+    l'a été.
+    ⚠️ 563 — EXTRAIT DE LA BOUCLE pour qu'un garde l'APPELLE : écrite dedans,
+    la décision n'était gardable qu'en cherchant son texte.
+    """
+    if cible.suffix == ".mjs":
+        return ["node", "--check", str(cible)]
+    if cible.suffix == ".sh":
+        # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
+        # validateur laisse passer une mutation qui casse la syntaxe, et le
+        # rouge qui suit se lit comme un garde qui tombe.
+        return ["bash", "-n", str(cible)]
+    if cible.name == "argus.mobile.yaml":
+        # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
+        # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
+        # section de flow. La cible existait depuis le run 29 sans qu'aucune
+        # mutation ne l'exerce, donc personne ne pouvait le savoir : une
+        # cible sans mutation est vacante, comme un garde sans épreuve.
+        # C'est le parseur du skill qui fait foi ici.
+        return ["node", "-e",
+                "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
+                + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
+                + "')).catch(e => { console.error(e.message); process.exit(1); })"]
+    if cible.name in ("argus-mobile.yml", "plugin.yml") and PYYAML:
+        # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
+        # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
+        # `check-syntax` le rejette toujours et TOUTE mutation rendait
+        # « ne parse pas ». La cible existait sans qu'aucune mutation ne
+        # puisse aboutir. C'est un YAML : on le parse comme tel.
+        return ["python3", "-c",
+                "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
+    if cible.suffix == ".py":
+        # ⚠️ Même exigence que `node --check` pour le JS : une mutation qui
+        # casse la syntaxe fait rougir la suite pour une raison sans
+        # rapport avec le garde, et ce rouge se lit comme un succès.
+        return ["python3", "-m", "py_compile", str(cible)]
+    if cible.suffix == ".json":
+        # ⚠️ 563 — LES PREMIÈRES CIBLES JSON, les manifestes du plugin, et le
+        # garde qui les lit fait un `JSON.parse` : une mutation qui casse la
+        # syntaxe le ferait tomber sur l'EXCEPTION, et ce rouge se lirait comme
+        # le garde qui voit la version revenue.
+        return ["python3", "-m", "json.tool", str(cible)]
+    if cible.suffix in (".yaml", ".yml") and MAESTRO:
+        return [MAESTRO, "check-syntax", str(cible)]
+    return None
+
+
 # ═══════════════════════════════════════════════════════════════════════════
 # 559 · Les mutations qu'un garde ne peut juger QU'AVEC son outil
 # ═══════════════════════════════════════════════════════════════════════════
@@ -3482,46 +3536,9 @@ def main():
               bilan.append(("HARNAIS", nom, "le fichier n'a pas changé"))
               continue
 
-          # Une mutation qui casse le build fait rougir pour une raison sans
-          # rapport avec le garde, et ce rouge-là se lit comme un succès. Pour un
-          # flow, c'est `maestro check-syntax` qui le dit — aucun parseur d'ici ne
-          # les lit, leur `---` sortant du sous-ensemble YAML du harness. Quand
-          # maestro manque, on ne vérifie pas : on l'ANNONCE (voir main), plutôt
-          # que de laisser croire que ça l'a été.
-          verif = None
-          if cible.suffix == ".mjs":
-              verif = ["node", "--check", str(cible)]
-          elif cible.suffix == ".sh":
-              # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
-              # validateur laisse passer une mutation qui casse la syntaxe, et le
-              # rouge qui suit se lit comme un garde qui tombe.
-              verif = ["bash", "-n", str(cible)]
-          elif cible.name == "argus.mobile.yaml":
-              # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
-              # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
-              # section de flow. La cible existait depuis le run 29 sans qu'aucune
-              # mutation ne l'exerce, donc personne ne pouvait le savoir : une
-              # cible sans mutation est vacante, comme un garde sans épreuve.
-              # C'est le parseur du skill qui fait foi ici.
-              verif = ["node", "-e",
-                       "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
-                       + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
-                       + "')).catch(e => { console.error(e.message); process.exit(1); })"]
-          elif cible.name in ("argus-mobile.yml", "plugin.yml") and PYYAML:
-              # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
-              # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
-              # `check-syntax` le rejette toujours et TOUTE mutation rendait
-              # « ne parse pas ». La cible existait sans qu'aucune mutation ne
-              # puisse aboutir. C'est un YAML : on le parse comme tel.
-              verif = ["python3", "-c",
-                       "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
-          elif cible.suffix == ".py":
-              # ⚠️ Même exigence que `node --check` pour le JS : une mutation qui
-              # casse la syntaxe fait rougir la suite pour une raison sans
-              # rapport avec le garde, et ce rouge se lit comme un succès.
-              verif = ["python3", "-m", "py_compile", str(cible)]
-          elif cible.suffix in (".yaml", ".yml") and MAESTRO:
-              verif = [MAESTRO, "check-syntax", str(cible)]
+          # La cible mutée se relit d'abord avec SON validateur : une mutation
+          # qui casse la syntaxe ferait rougir sans rapport avec le garde.
+          verif = validateur(cible)
           if verif is not None:
               check = sh(verif)
               if check.returncode != 0:

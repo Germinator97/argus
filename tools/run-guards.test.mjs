@@ -18624,6 +18624,36 @@ test('chaque déclaration d\'outil vise une mutation qui existe, et un outil qu\
   }
 });
 
+test('une cible JSON mutée est relue avant la suite — cassée, elle est refusée (563)', () => {
+  // ⚠️ Les manifestes du plugin sont les premières cibles JSON du harnais, et le
+  // garde 563 les lit par `JSON.parse` : une mutation qui casserait leur syntaxe
+  // le ferait tomber sur l'EXCEPTION — un rouge qui se lirait comme le garde qui
+  // voit la version revenue. On EXÉCUTE la commande que le harnais choisirait.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-563-'));
+  try {
+    const sain = join(dir, 'sain.json');
+    const casse = join(dir, 'casse.json');
+    writeFileSync(sain, '{\n  "name": "argus-mobile",\n  "version": "1.1.0"\n}\n');
+    writeFileSync(casse, '{\n  "name": "argus-mobile",\n  "version": "1.1.0",\n}\n');   // virgule finale : pas du JSON
+    const r = interrogerLeHarnais([
+      'import pathlib, subprocess',
+      `cibles = ${JSON.stringify({ sain, casse })}`,
+      'res = {}',
+      'for k, p in cibles.items():',
+      '    v = h.validateur(pathlib.Path(p))',
+      '    res[k] = None if v is None else subprocess.run(v, capture_output=True).returncode',
+      'print(json.dumps(res))',
+    ]);
+    assert.notEqual(r.casse, null, 'une cible .json doit avoir un validateur — sinon une mutation qui casse '
+      + 'sa syntaxe passe pour un garde qui tombe');
+    assert.notEqual(r.casse, 0, 'un JSON cassé doit être REFUSÉ');
+    // L'autre moitié : un validateur qui refuse tout rendrait chaque mutation « HARNAIS ».
+    assert.equal(r.sain, 0, 'et un JSON sain doit passer');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ── 560 · LE TYPAGE A UN LECTEUR LOCAL ──────────────────────────────────────
 // `tsc --checkJs` n'avait qu'un lecteur : la CI du plugin, qui ne tourne que sur
 // `main`. Six erreurs de JSDoc s'y sont accumulées une semaine sans que rien ne
