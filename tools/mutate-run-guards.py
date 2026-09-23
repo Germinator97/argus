@@ -3059,6 +3059,14 @@ MUTATIONS = [
     ("ciplugin", "560 · la CI réinstalle sa propre chaîne de typage",
      "npm ci --prefix tools/typage >/dev/null",
      "npm i -D --prefix tools/typage typescript@5 @types/node@22 >/dev/null"),
+    # ── 562 · un onglet archivé compte avec les sévérités du mobile ─────────
+    # Le défaut lui-même, mot pour mot : la ligne de comptes au vocabulaire du
+    # skill web. Le garde lit cette ligne dans un onglet rendu, et la compare
+    # aux métriques du run courant de la même page.
+    ("report", "562 · l'onglet archivé recompte en critical · high · medium · low",
+     "\n  const comptes = SEVERITIES.map((s) => `${Number(cnt[s] || 0)} ${s}`).join(' · ');",
+     "\n  const comptes = `${Number(cnt.critical || 0)} critical · ${Number(cnt.high || 0)} high"
+     " · ${Number(cnt.medium || 0)} medium · ${Number(cnt.low || 0)} low`;"),
 ]
 
 
