@@ -13173,3 +13173,69 @@ devait juger.*
 a été régénérée sans lui le même jour, horloge figée à sa publication d'origine
 (`summary.json` et `report.html` identiques à l'octet). La prochaine
 republication avec `--previous` comptera juste.
+
+### 563. argus-mobile figeait sa version : aucune installation ne recevait un correctif
+
+**Ouvert le 23/09/2026 · CLOS** — trouvé en mettant le plugin installé à jour,
+à la demande de Germinator : `claude plugin update` a répondu `up_to_date`
+(1.1.0 → 1.1.0), exit 0, et le cache est resté à `14abe5b`, deux correctifs en
+arrière. Option tranchée par Germinator : *« Version plugin : (b) »* — la retirer.
+
+La mise à jour compare la **chaîne `version`**, jamais le commit (doc Claude
+Code, plugin-marketplaces, « update detection »). argus-mobile déclarait 1.1.0
+depuis le 22/08, au manifeste et au marketplace : **316 commits** sont passés
+sans qu'une installation en reçoive un. La procédure du README — « bumper
+`version` dans les trois manifestes » — existait ; elle n'a jamais été suivie,
+et rien ne pouvait le dire.
+
+#### Mesuré avant de retirer, dans une configuration isolée
+
+Un dépôt git local servi comme marketplace, `CLAUDE_CONFIG_DIR` jetable
+(`file://` est refusé par le CLI, et `extraKnownMarketplaces` ignoré par ses
+sous-commandes : c'est la source *répertoire* d'un dépôt git qui a porté
+l'essai) :
+
+- sans `version`, Claude Code prend le **commit** pour version
+  (`74d013930ebe`, ses 12 premiers caractères), et range le cache sous ce nom ;
+- un commit dans le plugin → `updated`, et le contenu suit (marqueur relu) ;
+- un commit de **doc seule** → `updated` aussi : la version est le commit du
+  dépôt, pas celui du dossier du plugin ;
+- remise à 1.1.0 → `up_to_date` au commit suivant, marqueur absent : le piège,
+  reproduit ;
+- version posée au **seul** marketplace → `up_to_date 1.2.0 → 1.2.0` : elle
+  gèle tout autant. D'où un garde sur les deux manifestes.
+
+La configuration réelle est restée intacte, empreintes comparées.
+
+#### Ce qui a changé
+
+- `version` retirée du manifeste d'argus-mobile et de son entrée au
+  marketplace. argus-web et argus, **0 commit** depuis le 22/08, gardent la leur.
+- Le garde parse les deux manifestes et refuse une version dans l'un ou
+  l'autre ; il exige aussi que la section « Mises à jour » du README dise
+  pourquoi argus-mobile n'en a pas. Écrit AVANT : tombé sur le manifeste, puis
+  — le correctif posé pas à pas — sur le marketplace, puis sur le README.
+- Le README enseigne le nouveau geste, commandes comprises :
+  `marketplace update` seul ne recopie pas le plugin (mesuré).
+- Les manifestes sont les premières cibles **JSON** du harnais, et le garde les
+  lit par `JSON.parse` : une mutation qui casserait leur syntaxe le ferait
+  tomber sur l'exception. Le choix du validateur sort de la boucle
+  (`validateur()`), inchangé pour les autres types — une mutation témoin par
+  type rejouée, six TOMBE —, plus une branche `.json`. Un garde l'appelle, sur un
+  JSON sain et sur un JSON cassé.
+- Mutations n° 565 à 568 — la version revient au manifeste, au marketplace ; le
+  README represcrit l'ancien geste ; la branche JSON disparaît. TOMBE toutes, et
+  rejouées à la main : **un seul rouge chacune, chacune sur sa propre
+  assertion**, aucune exception.
+- Suite 606/606, 568 mutations, 0 inerte.
+
+⚠️ **`claude plugin validate` avertit** : « No version specified. Consider
+adding a version following semver ». Cet avertissement EST le piège :
+l'appliquer regèle les installations. Le garde le refuse, et son message dit
+pourquoi.
+
+⚠️ Aucun garde n'exécute le **comportement** : la CI n'a pas `claude`. Ce qui
+est gardé est la cause, les deux manifestes ; l'effet est mesuré une fois, ici.
+
+📌 Effet de bord connu : pour qui a installé argus-mobile, chaque push est une
+mise à jour, même un commit de doc — une recopie sans conséquence.
