@@ -13133,3 +13133,43 @@ le motif était présent et unique. Un motif présent prouve qu'une mutation
 annonçait la mutation « ré-ancrée comme la règle l'exige » : ré-ancrer rend un
 motif, seul le jeu rend un verdict. Depuis que la CI joue les 563 à chaque push, cette classe a un
 lecteur ; elle n'en avait pas.
+
+### 562. L'onglet d'un run archivé comptait avec le vocabulaire du web
+
+**Ouvert le 23/09/2026 · CLOS** — trouvé en régénérant la page du run 104,
+demandée par Germinator : son onglet archivé disait « 0 critical · 0 high ·
+0 medium · 0 low » à côté de FAIL, pour un run qui portait 1 blocker, 4 major
+et 4 info. Ouverture demandée par Germinator : *« Oui pour le point 562. »*
+
+Le panneau d'un run passé écrivait ses comptes en `critical · high · medium ·
+low` — le vocabulaire du skill web. Le mobile compte en `blocker · critical ·
+major · minor · info` : trois des quatre cases lisaient une sévérité que le
+mobile ne produit pas, et la quatrième ne voyait ni les blockers ni les majors.
+Né avec les onglets (`50edc79`, 31/08, 245-250), absent avant : trois semaines,
+sur chaque page republiée avec `--previous`.
+
+#### Pourquoi aucun garde ne l'a vu
+
+Le montage `ctxRun`, sur lequel reposent les gardes de l'historique, comptait
+lui aussi en `high`/`medium` et portait un finding `high` — un run que le mobile
+ne produit pas. Le rendu fautif lui donnait raison, et aucun garde ne relisait
+les comptes d'un onglet archivé. *Le montage partageait le défaut du code qu'il
+devait juger.*
+
+- Le panneau compte par `SEVERITIES`, la liste des métriques du run courant :
+  deux surfaces de la même page, une seule décision.
+- Le garde rend un onglet archivé et en relit la ligne de comptes ; sa
+  référence est lue dans les métriques du run courant de la **même** page, jamais
+  dans une liste recopiée. Des comptes tous différents (1 à 5) rendent visible
+  une case lue pour une autre. Écrit AVANT le correctif : tombé sur la parité
+  (`critical, high, medium, low` contre les cinq sévérités mobiles).
+- `ctxRun` décrit un run possible, et le garde le vérifie : entre le correctif
+  et le montage, il est tombé sur cette seconde moitié — elle sait échouer.
+- Mutation n° 564, la ligne fautive mot pour mot : TOMBE. Rejouée à la main pour
+  lire **tous** les rouges : un seul garde, le 562, sur l'assertion de parité.
+- Suite 604/604, 564 mutations, 0 inerte ; typage de la CI vert.
+
+📌 La page du run 104 — la seule de la passe 98-105 à porter un onglet archivé —
+a été régénérée sans lui le même jour, horloge figée à sa publication d'origine
+(`summary.json` et `report.html` identiques à l'octet). La prochaine
+republication avec `--previous` comptera juste.
