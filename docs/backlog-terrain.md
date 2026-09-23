@@ -13239,3 +13239,21 @@ est gardé est la cause, les deux manifestes ; l'effet est mesuré une fois, ici
 
 📌 Effet de bord connu : pour qui a installé argus-mobile, chaque push est une
 mise à jour, même un commit de doc — une recopie sans conséquence.
+
+✅ **Exercé sur le vrai marketplace, une fois poussé (23/09, 12 h 34)** :
+`marketplace update` puis `plugin update` rendent **`updated 1.1.0 →
+b0cfdc6281ea`**. Le cache se range sous ce nom, identique à `git archive b0cfdc6`
+(45 fichiers sur 45), et la contre-épreuve sur l'ancien commit ne fait apparaître
+que les deux fichiers attendus — le manifeste et `report.mjs`. `update` ne
+réactive pas un plugin désactivé ; l'installation, elle, le réactivait. L'ancien
+cache est marqué orphelin. La mesure faite en configuration isolée tient donc
+sur une source GitHub, plugin à chemin relatif compris.
+
+📌 **Le fork a ensuite été synchronisé avec le dépôt source** (« Update
+branch », 13 h 19). Les deux commits « en retard » sont le commit initial du
+dépôt source et sa fusion : le même `LICENSE` que le nôtre, sous une empreinte
+réécrite le 10/09. Fusion simulée avant d'être faite — arbre identique à
+l'octet —, CI verte 13/13 sur la fusion, puis `feat/argus-mobile` avancée en
+fast-forward : les deux branches portent de nouveau le même commit. Sous la
+convention de ce point, cette fusion est elle aussi une mise à jour pour qui a
+installé argus-mobile — une recopie de fichiers identiques.
