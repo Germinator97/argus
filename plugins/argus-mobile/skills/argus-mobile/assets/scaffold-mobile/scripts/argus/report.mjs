@@ -831,13 +831,19 @@ function panneauPasse(r, i) {
   }).join('');
   const finds = (r.findings || []).map((f) => `<tr><td>${esc(f.id)}</td><td>${esc(f.severity)}</td>`
     + `<td>${esc(f.title)}</td><td>${esc(f.dimension)}</td><td>${esc(f.screen)}</td></tr>`).join('');
+  // ⚠️ 562 — LES COMPTES SE LISENT AVEC LA LISTE DU RUN COURANT. Cette ligne
+  // écrivait « critical · high · medium · low », le vocabulaire du skill web :
+  // le mobile ne produit ni `high`, ni `medium`, ni `low`, si bien qu'un run à
+  // 1 blocker et 4 major s'archivait en « 0 critical · 0 high · 0 medium ·
+  // 0 low », à côté de FAIL. Deux surfaces de la même page, une seule décision.
+  const comptes = SEVERITIES.map((s) => `${Number(cnt[s] || 0)} ${s}`).join(' · ');
   return `<section id="passe-${i}" role="tabpanel" hidden><div class="wrap">
   <p class="passe-meta"><span><strong>${esc(badge.toUpperCase())}</strong></span>
     <span>${esc(String(r.at || '').replace('T', ' ').slice(0, 16))}</span>
     <span>plateforme ${esc(r.platform || '?')}</span>
     <span>${esc(r.appId || '')}</span>
     <span>portée ${esc(r.scope || 'complet')}</span></p>
-  <p>${Number(cnt.critical || 0)} critical · ${Number(cnt.high || 0)} high · ${Number(cnt.medium || 0)} medium · ${Number(cnt.low || 0)} low</p>
+  <p>${comptes}</p>
   <h2>Dimensions</h2><table><tr><th>source</th><th>état</th></tr>${dims || '<tr><td colspan="2">—</td></tr>'}</table>
   <h2>Findings</h2>${finds
     ? `<table><tr><th>id</th><th>sévérité</th><th>titre</th><th>dimension</th><th>écran</th></tr>${finds}</table>`

@@ -6364,14 +6364,19 @@ test('le gabarit demande si l\'agent peut écrire dans un paquet voisin', () => 
 // La page publiée : une PAR PLATEFORME, et elle garde ses runs passés (245-250)
 // ═══════════════════════════════════════════════════════════════════════════
 
-/** Un contexte de run minimal, mais complet pour ce que la page en tire. */
+/**
+ * Un contexte de run minimal, mais complet pour ce que la page en tire.
+ * ⚠️ 562 — il compte en sévérités MOBILES. Il comptait en high/medium, un run
+ * que le mobile ne produit pas, et c'est ce qui a laissé l'onglet archivé
+ * compter faux trois semaines : le montage partageait le défaut du rendu.
+ */
 function ctxRun({ plateforme = 'android', gate = 'pass', quand = '2026-08-31T10:00:00.000Z' } = {}) {
   return {
     generatedAt: quand, gate, shots: new Map(), evidenceNote: '', coverage: null, perf: null,
     run: { platform: plateforme, appId: 'com.exemple', scope: 'complet', devices: [], startup: {} },
-    counts: { critical: 0, high: 1, medium: 0, low: 0 },
+    counts: { blocker: 0, critical: 0, major: 1, minor: 0, info: 0 },
     parts: [{ file: 'a11y.json', state: 'ok', findings: [1] }],
-    findings: [{ id: 'Q-1', severity: 'high', title: 'un défaut', dimension: 'a11y', screen: 'accueil', evidence: ['/tmp/x.png'] }],
+    findings: [{ id: 'Q-1', severity: 'major', title: 'un défaut', dimension: 'a11y', screen: 'accueil', evidence: ['/tmp/x.png'] }],
   };
 }
 const pageDe = (o, historique = []) => renderArtifact({ ...ctxRun(o), record: runRecord(ctxRun(o)), historique });
@@ -8518,6 +8523,43 @@ test('le plafond retient 30 runs et ANNONCE ce qu\'il retire (248)', () => {
   // L'autre moitié : sous le plafond, aucune coupe à annoncer.
   assert.doesNotMatch(pageDe({}, h.slice(0, 3)), /plus ancien\(s\) retiré/,
     'ne pas annoncer une coupe qui n\'a pas eu lieu');
+});
+
+test('un onglet archivé compte avec les sévérités du run courant (562)', () => {
+  // ⚠️ Le défaut fermé : l'onglet d'un run passé écrivait « critical · high ·
+  // medium · low » — le vocabulaire du skill web — quand le mobile compte en
+  // blocker · critical · major · minor · info. Le premier run 104 (1 blocker,
+  // 4 major, 4 info) s'y lisait « 0 critical · 0 high · 0 medium · 0 low », à
+  // côté de FAIL. Né avec les onglets (245-250), vu trois semaines plus tard en
+  // régénérant la page du run 104 : aucun garde ne rendait un onglet archivé
+  // pour en LIRE les comptes.
+  // ⚠️ La référence se lit dans la MÊME page — les métriques du run courant —,
+  // jamais dans une liste recopiée ici : deux surfaces d'une page comptent avec
+  // la même décision, et c'est cette parité qu'on garde.
+  const comptes = { blocker: 1, critical: 2, major: 3, minor: 4, info: 5 };   // tous différents : une
+  const passe = { ...ctxRun({ gate: 'fail', quand: '2026-09-21T02:08:44.000Z' }), counts: comptes };   // case lue pour une autre se voit
+  const page = pageDe({ gate: 'fail' }, [runRecord(passe)]);
+  const courant = [...page.matchAll(/<div class="l">(\w+)<\/div>/g)].map((m) => m[1]);
+  assert.deepEqual(courant, Object.keys(comptes),
+    'le run courant doit compter en sévérités MOBILES — sinon la référence de ce garde ne vaut rien');
+  const onglet = (page.match(/<section id="passe-1"[\s\S]*?<\/section>/) ?? [''])[0];
+  assert.ok(onglet, 'un run archivé doit donner un onglet — sinon ce garde ne mesure rien');
+  const ligne = (onglet.match(/<p>(\d+ \w+(?: · \d+ \w+)*)<\/p>/) ?? [])[1] ?? '';
+  assert.ok(ligne, 'l\'onglet archivé doit porter sa ligne de comptes');
+  const lus = [...ligne.matchAll(/(\d+) (\w+)/g)].map((m) => [m[2], Number(m[1])]);
+  assert.deepEqual(lus.map(([s]) => s), courant,
+    'l\'onglet archivé doit compter avec les MÊMES sévérités que le run courant, dans le même ordre');
+  assert.deepEqual(Object.fromEntries(lus), comptes,
+    'et rendre les nombres de l\'enregistrement, chacun sous sa sévérité');
+
+  // ⚠️ ET LE MONTAGE PARTAGEAIT LE DÉFAUT. `ctxRun` comptait en high/medium et
+  // portait un finding `high` : tous les gardes de l'historique décrivaient un
+  // run que le mobile ne produit pas, et le rendu fautif leur donnait raison.
+  // Le montage doit décrire un run POSSIBLE.
+  const monte = ctxRun();
+  assert.deepEqual(Object.keys(monte.counts), courant, 'ctxRun doit compter en sévérités mobiles');
+  assert.deepEqual(monte.findings.filter((f) => !courant.includes(f.severity)), [],
+    'et ne porter que des findings de sévérité mobile');
 });
 
 test('sans --previous, la republication AVERTIT qu\'elle va effacer (249)', () => {
