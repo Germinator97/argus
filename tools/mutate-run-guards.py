@@ -165,6 +165,14 @@ CIBLES = {
     # (le dartdoc en porte une autre, plus haut) et faire l'UNION plutôt que
     # remplacer. Les deux se cassent sans rien faire lever.
     "debts": SCAFFOLD / "debts.mjs",
+    # 563 — les deux manifestes d'argus-mobile, et le README qui enseigne la
+    # livraison. Une version qui revient dans l'un ou l'autre gèle toute
+    # installation sans une erreur : leurs cibles manquaient, donc rien ne
+    # pouvait dire si le garde le voit. ⚠️ Ce `readme` racine n'est PAS la cible
+    # `readme`, qui désigne la doc du harness posée chez le projet d'accueil.
+    "manifestemobile": ROOT / "plugins/argus-mobile/.claude-plugin/plugin.json",
+    "marketplace": ROOT / ".claude-plugin/marketplace.json",
+    "readmeracine": ROOT / "README.md",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3067,6 +3075,25 @@ MUTATIONS = [
      "\n  const comptes = SEVERITIES.map((s) => `${Number(cnt[s] || 0)} ${s}`).join(' · ');",
      "\n  const comptes = `${Number(cnt.critical || 0)} critical · ${Number(cnt.high || 0)} high"
      " · ${Number(cnt.medium || 0)} medium · ${Number(cnt.low || 0)} low`;"),
+    # ── 563 · argus-mobile ne fige aucune version ───────────────────────────
+    # La version revient, dans chacun des deux manifestes : chacune, seule,
+    # gèle les installations (mesuré le 23/09). Le JSON muté reste valide — le
+    # validateur le relit avant la suite.
+    ("manifestemobile", "563 · la version revient dans le manifeste d'argus-mobile",
+     '\n  "name": "argus-mobile",\n',
+     '\n  "name": "argus-mobile",\n  "version": "1.1.0",\n'),
+    ("marketplace", "563 · la version revient dans l'entrée argus-mobile du marketplace",
+     '\n      "source": "./plugins/argus-mobile",\n',
+     '\n      "source": "./plugins/argus-mobile",\n      "version": "1.1.0",\n'),
+    # Le README represcrit le geste qui a figé la version pendant 316 commits.
+    ("readmeracine", "563 · le README represcrit de monter la version dans les trois manifestes",
+     "- **argus-mobile ne déclare pas de `version`** (point 563) : Claude Code prend",
+     "- Bumper `version` dans les trois `plugins/*/.claude-plugin/plugin.json` : Claude Code prend"),
+    # La branche JSON du validateur disparaît : une mutation qui casse un
+    # manifeste passerait pour le garde qui voit la version revenue.
+    ("mutateur", "563 · une cible JSON mutée n'est plus relue",
+     '\n    if cible.suffix == ".json":',
+     '\n    if cible.suffix == ".json" and False:'),
 ]
 
 
