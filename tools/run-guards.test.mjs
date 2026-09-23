@@ -18508,6 +18508,43 @@ test("la doc d'installation désigne le dépôt PUBLIÉ, partout où elle en cit
     + 'qui la suit installe une autre version, sans erreur :\n  ' + fautives.join('\n  '));
 });
 
+test('argus-mobile ne fige aucune version, ni dans son manifeste ni au marketplace (563)', () => {
+  // ⚠️ Le défaut fermé : `claude plugin update` compare la chaîne `version`,
+  // jamais le commit (doc Claude Code, plugin-marketplaces, « update
+  // detection »). Figée à 1.1.0 depuis le 22/08, elle a gelé toute installation
+  // d'argus-mobile pendant 316 commits : le 23/09, `update` rendait
+  // `up_to_date`, exit 0, le cache resté à un commit périmé.
+  // Sans `version`, Claude Code prend le COMMIT du dépôt. Mesuré le 23/09 sur un
+  // marketplace git, dans une configuration isolée : chaque commit met à jour
+  // (même un commit de doc seule) ; remise à 1.1.0, la mise à jour se fige de
+  // nouveau. Choix de Germinator (option b), le même jour.
+  // ⚠️ LES DEUX MANIFESTES comptent : une version posée au seul marketplace gèle
+  // tout autant — mesuré, `up_to_date 1.2.0 → 1.2.0`, le cache inchangé.
+  const lire = (/** @type {string} */ f) => JSON.parse(readFileSync(join(RACINE, f), 'utf8'));
+  const manifeste = lire('plugins/argus-mobile/.claude-plugin/plugin.json');
+  assert.equal(manifeste.name, 'argus-mobile', 'ce n\'est plus le manifeste d\'argus-mobile — ce garde lit le mauvais fichier');
+  const entrees = lire('.claude-plugin/marketplace.json').plugins
+    .filter((/** @type {any} */ p) => p.name === 'argus-mobile');
+  assert.equal(entrees.length, 1, 'le marketplace doit déclarer argus-mobile une fois — sinon ce garde ne lit rien');
+  assert.equal(entrees[0].source, './plugins/argus-mobile', 'et désigner le manifeste que ce garde lit');
+  const REMEDE = ' — retire-la : sans elle, Claude Code prend le commit pour version, et chaque push met à jour';
+  assert.ok(!('version' in manifeste),
+    `plugins/argus-mobile/.claude-plugin/plugin.json déclare « ${manifeste.version} » : \`plugin update\` `
+    + 'ne compare que cette chaîne, donc toute installation se fige à ce commit' + REMEDE);
+  assert.ok(!('version' in entrees[0]),
+    `l'entrée argus-mobile du marketplace déclare « ${entrees[0].version} » : sans version au manifeste, `
+    + 'c\'est elle que Claude Code lit, et elle gèle tout autant' + REMEDE);
+
+  // Le README enseigne le geste de livraison : il ne doit pas represcrire celui
+  // qui a figé la version — « monter `version` dans les trois manifestes ».
+  const readme = readFileSync(join(RACINE, 'README.md'), 'utf8');
+  const i = readme.indexOf('\n## Mises à jour\n');
+  assert.ok(i >= 0, 'le README n\'a plus de section « Mises à jour » — ce garde ne lit plus rien');
+  assert.match(sectionDepuis(readme, i + 1), /argus-mobile ne déclare pas de `version`/,
+    'la section « Mises à jour » du README doit dire qu\'argus-mobile n\'a pas de version, '
+    + 'sinon elle enseigne le geste qui gèle ses installations');
+});
+
 // ── 559 · SANS SON OUTIL, UNE MUTATION N'EST PAS « VACANTE » ────────────────
 // Le garde 550 refuse À RAISON de conclure sans `fvm dart` : l'outil absent
 // n'est pas un sujet fautif. Mais sa mutation restait alors sans juge — suite

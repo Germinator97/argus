@@ -5,7 +5,6 @@
   },
   "license": "MIT",
   "name": "argus-mobile",
-  "version": "1.1.0",
   "description": "Argus Mobile — agent QA/QE pour applications Flutter (Android et iOS). Parcours E2E Maestro sur le binaire compilé, régression visuelle par device, accessibilité et disposition à grande police sans émulateur, démarrage à froid, sécurité OWASP MASVS. Rapports JSON/JUnit/HTML et gating CI.",
   "keywords": [
     "qa",

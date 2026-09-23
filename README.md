@@ -148,9 +148,17 @@ Détails : `plugins/argus-web/skills/argus/references/methodology.md` et
 
 ## Mises à jour
 
-Bumper `version` dans les trois `plugins/*/.claude-plugin/plugin.json` **et**
-`.claude-plugin/marketplace.json`, puis commit/push. Les utilisateurs font
-`/plugin marketplace update alexwilfriedo`.
+- **argus-mobile ne déclare pas de `version`** (point 563) : Claude Code prend
+  alors le commit du dépôt pour version, donc chaque push est une mise à jour —
+  un commit de doc seule compris. Ne lui en remets pas : la mise à jour ne
+  compare que cette chaîne, et une version figée gèle toutes les installations,
+  sans erreur. Un garde refuse son retour, au manifeste comme au marketplace.
+- **argus-web et argus** gardent la leur : la monter dans leur
+  `plugins/*/.claude-plugin/plugin.json` **et** dans leur entrée de
+  `.claude-plugin/marketplace.json`, puis commit/push.
+- Côté utilisateur : `claude plugin marketplace update alexwilfriedo`, puis
+  `claude plugin update argus-mobile@alexwilfriedo` — le premier rafraîchit le
+  catalogue, le second recopie le plugin ; le premier seul ne suffit pas.
 
 ## Contenu
 
