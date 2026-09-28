@@ -710,6 +710,17 @@ telemetry:
   #     to: apple-app-store
   #     why: no-build-flag
 
+# Ce qu'un run COMPLET a le droit de coûter. Les dépasser avertit, sans faire
+# échouer : c'est une information de capacité, pas un défaut de l'application.
+# ⚠️ `maxMinutes` A DEUX LECTEURS, et le second ne se devine pas (571) :
+#   · le runner avertit quand un run le dépasse (« budget de durée dépassé ») ;
+#   · le RAPPORT en fait son seuil de péremption : un relevé plus vieux que
+#     `maxMinutes` par rapport au plus récent est marqué « périmé », puisqu'il ne
+#     peut pas venir du même run.
+# Règle-le donc sur la durée RÉELLE d'un run complet chez toi : trop bas, les
+# relevés d'un même run long se disent périmés entre eux ; trop haut, un relevé
+# de la veille passe pour frais. Un run l'a laissé à 25 pour un run de 60.
+# `maxFlows` : le runner avertit au-delà de ce nombre de flows exécutés.
 budget:
   maxMinutes: 25
   maxFlows: 40

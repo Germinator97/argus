@@ -1744,6 +1744,54 @@ test('570 — les motifs de secrets ne lisent que les sources versionnées, et l
     + 'sources : un agent croira le binaire couvert (570)');
 });
 
+// ── 571 · `budget.maxMinutes` DIT CHACUN DE SES LECTEURS ──────────────────
+//
+// Au run 106, l'agent a laissé la clé à 25 quand son run en prenait 60, parce
+// qu'il avait lu dans `report.mjs` que le seuil de péremption du rapport en
+// dépend — ce que la clé, dans la configuration livrée, ne disait nulle part :
+// le bloc `budget:` n'avait aucun commentaire. Information juste, rangée là où
+// l'on ne la cherche pas.
+// ⚠️ Les lecteurs se DÉRIVENT du code et se figent par égalité : un troisième
+// venu oblige à écrire son rôle dans la configuration, sans quoi il redevient
+// le défaut de ce point.
+test('571 — la clé du budget dit chacun de ses lecteurs, et chacun agit', () => {
+  const dossier = join(SCAFFOLD, 'scripts/argus');
+  const lecteurs = readdirSync(dossier).filter((f) => f.endsWith('.mjs')).filter((f) => {
+    const code = readFileSync(join(dossier, f), 'utf8').split('\n')
+      .filter((l) => !/^\s*(?:\/\/|\*|\/\*\*)/.test(l)).join('\n');
+    return /budget\?\.maxMinutes/.test(code);
+  }).sort();
+  /** Chaque lecteur, et le mot qui nomme son rôle dans la configuration. */
+  const ROLES = { 'report.mjs': /périm/i, 'run.mjs': /dépass/i };
+  assert.deepEqual(lecteurs, Object.keys(ROLES).sort(),
+    `\`budget.maxMinutes\` est lu par ${lecteurs.join(', ')}. Écris le rôle de chaque lecteur dans le `
+    + 'commentaire de `budget:` (argus.mobile.yaml), puis mets ce relevé à jour (571)');
+
+  // Les deux rôles AGISSENT — la phrase ne décrit pas une intention.
+  const parts = [{ file: 'a.json', at: new Date('2026-09-28T10:00:00Z') },
+    { file: 'b.json', at: new Date('2026-09-28T10:40:00Z') }];
+  assert.deepEqual(stalenessOf(parts, { budget: { maxMinutes: 25 } }).stale, ['a.json'],
+    'à 25 min de budget, un relevé vieux de 40 min n\'est plus dit périmé : le seuil ne suit plus la clé (571)');
+  assert.deepEqual(stalenessOf(parts, { budget: { maxMinutes: 60 } }).stale, [],
+    'à 60 min de budget, un relevé vieux de 40 min est dit périmé : le seuil ne suit plus la clé (571)');
+  const depasse = budgetVerdict({ budget: { maxMinutes: 25 } }, new Date(Date.now() - 30 * 60000), 1);
+  assert.ok(depasse.warnings.some((w) => /budget\.maxMinutes/.test(w)),
+    'un run de 30 min sous un budget de 25 ne produit plus d\'avertissement : la clé ne gouverne plus le runner (571)');
+
+  // Et la configuration livrée le DIT, là où l'on règle la clé.
+  const yaml = readFileSync(join(SCAFFOLD, 'argus.mobile.yaml'), 'utf8').split('\n');
+  const i = yaml.findIndex((l) => /^budget:/.test(l));
+  assert.ok(i > 0, 'le bloc `budget:` a disparu de la configuration livrée : le motif est périmé (571)');
+  let j = i - 1;
+  while (j >= 0 && /^\s*#/.test(yaml[j])) j -= 1;
+  const phrase = yaml.slice(j + 1, i).join('\n');
+  for (const [lecteur, role] of Object.entries(ROLES)) {
+    assert.match(phrase, role,
+      `le commentaire de \`budget:\` ne dit pas ce que ${lecteur} fait de \`maxMinutes\` : la clé se règle `
+      + 'alors sans savoir ce qu\'elle gouverne — le run 106 l\'a laissée à 25 pour un run de 60 (571)');
+  }
+});
+
 // ── 569 · DANS UN MONOREPO, LA CI SE CHERCHE À LA RACINE DU DÉPÔT ─────────
 //
 // Au run 106, l'application vivait dans un sous-dossier du dépôt. Le workflow a
