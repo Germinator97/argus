@@ -13363,11 +13363,17 @@ test('572 — les sous-flows touchent le bouton système par IDENTIFIANT sur And
   for (const l of ['Allow', 'Allow While Using App', 'Autoriser', 'Autoriser pendant l’utilisation de l’app']) {
     assert.ok(oui.test(l), `« ${l} » n'est pas accepté`);
   }
-  for (const l of ['Don’t Allow', 'Allow Once', 'Ne pas autoriser', 'Autoriser une fois', 'Autoriser les notifications ?', 'OK']) {
+  // ⚠️ Un texte PRÉFIXÉ (« Tout autoriser ») ne se rejette que par l'ancre de
+  // TÊTE ; un texte suffixé (« … ? »), par celle de FIN. Chacune son cas, sinon
+  // retirer l'une passe inaperçu — la mutation du refus l'a montré.
+  for (const l of ['Don’t Allow', 'Allow Once', 'Ne pas autoriser', 'Autoriser une fois', 'Autoriser les notifications ?',
+    'Tout autoriser', 'OK']) {
     assert.ok(!oui.test(l), `« ${l} » est pris pour le bouton qui ACCEPTE`);
   }
   for (const l of ['Don’t Allow', 'Ne pas autoriser', 'Refuser']) assert.ok(non.test(l), `« ${l} » n'est pas refusé`);
-  for (const l of ['Allow', 'Refuser l\'accès ?']) assert.ok(!non.test(l), `« ${l} » est pris pour le bouton qui REFUSE`);
+  for (const l of ['Allow', 'Refuser l\'accès ?', 'Tout refuser']) {
+    assert.ok(!non.test(l), `« ${l} » est pris pour le bouton qui REFUSE`);
+  }
 });
 
 test('572 — le gabarit prescrit `all: allow` AVANT la permission remise à demander, et tient debout vide', () => {
