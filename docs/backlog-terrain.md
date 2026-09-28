@@ -5097,11 +5097,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
-et tranché le 28/09 par Germinator : un parcours dédié aux fenêtres de permission ;
-et le **577**, trouvé en écrivant le 573 : le plancher Flutter annoncé est faux
-(section « Rendu par le run 106 », en fin de fichier). Les **573** à **576** sont
-fermés.
+🔴 **1 POINT OUVERT** — le **577**, trouvé en écrivant le 573 : le plancher Flutter
+annoncé est faux (section « Rendu par le run 106 », en fin de fichier). Son remède
+se tranche à froid. Les **564** à **576** sont fermés.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13624,7 +13622,7 @@ complet.
 
 ### 572. Après le lancement « tout refusé » de `resilience`, une invite naît et rien ne la ferme
 
-**Ouvert le 28/09/2026 · OUVERT** — voisin du **565**, mesuré par la même sonde :
+**Ouvert le 28/09/2026 · CLOS** — voisin du **565**, mesuré par la même sonde :
 après `all: deny`, l'application qui demande sa permission au lancement ouvre
 l'invite système, et `resilience.yaml` attend ensuite l'ancre d'accueil — que
 l'invite recouvre. **Non rencontré par un run** : le terrain ne demande pas sa
@@ -13663,6 +13661,49 @@ qui répondrait seul à la fenêtre du lancement — il ne couvre que les
 permissions demandées au démarrage, et une permission demandée derrière un
 bouton passerait pour couverte. ⚠️ À mesurer avant d'écrire : l'identifiant du
 bouton système tel que Maestro le lit, et le libellé français des deux invites.
+
+#### ✅ Fermé le jour même — un flow dédié, deux gestes du cadre, et le runner qui les lit
+
+- **`permissions.yaml`** (gabarit `ARGUS:OWNED`) : par permission demandée, une
+  branche qui accepte et une qui refuse — un `launchApp` qui accorde tout sauf
+  elle (`all: allow` puis `<permission>: unset`), le geste qui la fait demander,
+  le geste du cadre, ce que l'application montre ensuite. Un garde-place inerte
+  le fait parser vide : Maestro refuse un flow sans commande — mesuré.
+- **`permission-accepter.yaml` / `permission-refuser.yaml`** (cadre) : sur
+  Android par **identifiant** de ressource, relevé sur Android 16 —
+  `permission_allow_button` (notifications),
+  `permission_allow_foreground_only_button` (caméra, position),
+  `permission_deny_button` —, en un seul `tapOn`, sans `when: visible:` ; sur
+  iOS par libellé anglais et français, en forme encadrée ancrée à l'intérieur —
+  forme éprouvée dans le moteur de Maestro sur les boutons Android, libellés
+  **non mesurés sur simulateur** : à éprouver au prochain run iOS.
+- Le runner compare le gabarit aux permissions déclarées :
+  **`QAM-PERM-NON-EXERCEE`** pour toute permission sans ses deux branches —
+  seulement celles que Maestro sait remettre à « demander », table relevée dans
+  son bytecode (`AndroidDriver.translatePermissionName`, 2.8.0).
+- Une branche **sans geste déclencheur** dit « demandée au lancement » :
+  `ARGUS_INVITES_AU_LANCEMENT` en compte les permissions, et `resilience.yaml`
+  refuse autant de fenêtres avant d'attendre l'accueil — zéro pour presque
+  toutes les applications, sans rien coûter. **Le 572 d'origine est fermé** :
+  sur une sonde qui demande six permissions au lancement, cinq fenêtres
+  refermées et l'accueil atteint ; sans la boucle, l'accueil introuvable.
+- 🔴 **Deux mesures ont changé le plan.** `<permission>: unset` seul n'accorde
+  pas les autres : sur la sonde, la fenêtre de la caméra s'est ouverte avant
+  celle des notifications, d'où `all: allow` d'abord. Et un `when: visible:`
+  pour choisir entre deux boutons aurait coûté sa borne, ~7 s (486), à chaque
+  acceptation — d'où un seul `tapOn` sur une alternative d'identifiants.
+- Mesuré sur la sonde (Android 16, Maestro 2.8.0) : accepter et refuser, sur les
+  notifications et la caméra, laissent la permission accordée ou refusée — lu
+  dans `dumpsys`, y compris demandées au lancement ; contre-épreuve : accepter
+  en attendant « refusée » échoue.
+- 🔴 **Une mutation a trouvé un trou du garde** : retirer l'ancrage de tête du
+  refus iOS passait — aucun libellé essayé n'était préfixé. « Tout refuser » et
+  « Tout autoriser » l'exigent désormais. Les deux relevés tenus par égalité
+  (classification du scaffold, table des camps) et le compteur de flows du SKILL
+  et du README suivent ; la mutation de ce compteur est réancrée.
+- Onze mutations, plus le compteur réancré et les deux de `resilience` :
+  **14/14 TOMBE**, la vacante comprise une fois le garde corrigé.
+- Suite 641/641, 646 mutations, 0 inerte.
 
 ### 573. Le contraste d'Argus se juge sur les pixels : un faux positif, et un verdict qui dépend du moment
 
