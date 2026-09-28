@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **9 POINTS OUVERTS** — les **564 à 572**, rendus par le run 106 (section « Rendu
+🔴 **8 POINTS OUVERTS** — les **565 à 572** (le 564 est fermé), rendus par le run 106 (section « Rendu
 par le run 106 », en fin de fichier). Ils se ferment un par un dans la passe qui
 suit ; le **572** reste ouvert délibérément, son remède se tranchant à froid.
 
@@ -13305,7 +13305,7 @@ rassurer sans avoir mesuré).
 
 ### 564. La locale d'un appareil jamais réglé n'était pas lue
 
-**Ouvert le 28/09/2026 · OUVERT** — le runner a écrit « la locale de l'appareil
+**Ouvert le 28/09/2026 · CLOS** — le runner a écrit « la locale de l'appareil
 n'a pas pu être lue » sur un émulateur dont la langue se lit en une commande.
 
 Il ne lit que `settings get system system_locales`. Sur un appareil dont la langue
@@ -13320,6 +13320,30 @@ son réglage vivait dans un instantané, purgé depuis.
 sur lui le message ment. Pire : un projet qui déclare la locale que l'appareil
 porte déjà recevrait `QAM-LOCALE-INERTE` — « la locale déclarée n'a pas été
 appliquée » —, un message qui accuse à tort.
+
+#### ✅ Fermé le jour même — une seule lecture, trois sources
+
+`localeAndroid` lit `system_locales`, puis `persist.sys.locale`, puis
+`ro.product.locale`, chacune normalisée par `localeLue` : ce que l'utilisateur a
+réglé prime sur l'usine, et le cas vraiment illisible le reste. Les **deux**
+consommateurs — l'avertissement et l'identité gravée dans `.argus-device` —
+l'APPELLENT : écrite deux fois, la chaîne de repli aurait divergé à la première
+retouche, et le 540 avait déjà dû câbler deux sites un par un.
+
+- Deux gardes écrits AVANT, tombés sur le code d'alors : la fonction exercée sur
+  les valeurs MESURÉES d'un appareil neuf, l'ordre dans les deux sens, le cas
+  illisible, et les deux verdicts du message (déclarée = portée → silence ;
+  déclarée ≠ portée → la langue lue, jamais « illisible ») ; puis `deviceStamp`
+  exercé sur ce même appareil.
+- 🔴 **Le correctif a déplacé le phénomène, et le garde du 540 l'a suivi** : il
+  exigeait « au moins deux lectures, chacune normalisée ». Il exige désormais
+  UNE lecture, trois sources normalisées, et DEUX appels — une seconde lecture de
+  `system_locales` serait un consommateur revenu à la lecture nue.
+- Deux mutations anciennes ré-ancrées dans le commit du correctif, qui avait
+  déplacé leur cible (540 bis, et la locale iOS) ; trois neuves — le repli
+  d'usine, le repli `persist`, et le câblage du site d'avertissement, qui vit au
+  milieu de `main` et que seul le garde de câblage peut voir. **TOMBE** toutes.
+- Suite 608/608, 571 mutations, 0 inerte ; typage du dépôt : 0 erreur.
 
 ### 565. Sur Android, le geste d'invite système ne peut rien trouver au lancement
 
