@@ -5097,10 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
-(section « Rendu par le run 106 », en fin de fichier). Il reste ouvert
-délibérément — élargi le 28/09 à un parcours dédié aux fenêtres de permission,
-son remède se tranche à froid.
+🔴 **4 POINTS OUVERTS** — le **572** (les 564 à 571 sont fermés), rendu par le run 106, et
+les **573** à **575**, rendus par la correction du terrain qui l'a suivi (section « Rendu
+par le run 106 », en fin de fichier). Le 572 reste ouvert délibérément — élargi le
+28/09 à un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13646,3 +13646,62 @@ refuse, c'est la bonne question. Et deux mesures : l'invite Android en anglais
 (« While using the app », « Only this time », « Don’t allow ») est reconnue par
 le sélecteur livré, Maestro ignorant la casse ; le libellé français n'a pas été
 relevé.
+
+### 573. Le contraste d'Argus se juge sur les pixels : un faux positif, et un verdict qui dépend du moment
+
+**Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain, après le
+run 106. `a11y_test.dart` (cadre) juge le contraste par
+`meetsGuideline(textContrastGuideline)`, c'est-à-dire sur les **pixels
+rendus**. Deux mesures sur le même terrain :
+
+- **Un faux positif, établi.** Le libellé non sélectionné d'une carte de choix :
+  3,38:1 et 3,52:1 mesurés, inscrits comme dette de contraste. Sur les couleurs **résolues** —
+  celles que WCAG définit —, le même nom est à **8,42:1** en clair et
+  **10,08:1** en sombre. Un texte fin, rétréci par un `FittedBox`, ne garde
+  presque aucun pixel à sa vraie couleur : l'anticrénelage le mélange au fond,
+  et le ratio mesuré tombe. Le projet avait déjà écarté cette méthode (« s'est
+  trompée deux fois et a été retirée »).
+- **Un verdict qui dépend du moment.** Un bouton de texte clair posé sur le
+  fond **peint** de l'onboarding : 4,37:1, rouge joué seul et sous la suite
+  parallèle, vert dans le fichier entier — y compris dans l'état exact du run,
+  reconstruit dans un worktree jetable. Le fond est une image chargée de façon
+  asynchrone : selon l'instant, les pixels mesurés ne sont pas les mêmes.
+
+Le remède se tranche à froid : mesurer sur les couleurs résolues quand le fond
+en a une (le style du texte contre le premier ancêtre opaque), ne garder les
+pixels que pour un fond peint, et alors après avoir attendu l'image
+(`precacheImage`), en le disant.
+
+### 574. `argusFonts` se recopie à la main, et hérite des trous du chargeur qu'il copie
+
+**Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain. La
+table `argusFonts` du `harness.dart` du projet est remplie par l'agent, qui l'a
+recopiée du chargeur de polices des tests du projet — « même table que » le
+chargeur, écrit-elle. Or ce chargeur portait **9** familles pour
+**11** TTF embarqués : `CormorantGaramond_regular` et
+`CormorantGaramond_500italic`, celle de la carte question, manquaient.
+**Mesuré dans les tests du projet** : le premier test d'un fichier qui rend
+cette carte la mesurait en police de repli — 811 dp contre 300 au montage
+suivant, pour un contenu identique —, et les suivants passaient, parce que
+`google_fonts` avait fini de charger l'asset entre-temps. Un verdict qui
+dépendait de l'ordre. Le chargeur du projet dérive désormais ses familles des
+TTF embarqués ; `argusFonts`, lui, porte encore les neuf.
+⚠️ L'effet d'ordre est mesuré sur les tests du **projet**, pas sur ceux
+d'Argus. Le remède se tranche à froid : dériver `argusFonts` des TTF (table
+suffixe → variante `google_fonts`, qui lève sur l'inconnu), ou un garde qui la
+confronte aux familles que l'application emploie.
+
+### 575. Le garde de confidentialité range un nom de terrain court parmi les « ambigus »
+
+**Ouvert le 28/09/2026 · OUVERT** — en consignant le 574, j'ai écrit le nom
+d'un fichier de test du terrain, qui porte le nom de l'application, dans ce
+dépôt public. Relu et retiré avant tout commit — mais le garde
+(`tools/confidentialite-depot.mjs`) ne l'aurait pas fait échouer :
+`estDistinctif` juge un identifiant sur sa FORME (séparateur, majuscule
+interne, 8 lettres ou plus), et un nom d'application court et inventé n'en a
+aucune. **Mesuré** : `estDistinctif` rend `false` pour ce nom, comme pour
+`focus`. Il est donc rapporté parmi les mentions « ambiguës », sans échec,
+dans une liste que sa propre sortie dit « à relire une fois, pas à chaque
+passe » — où une fuite neuve se lirait comme une mention de plus. Le remède se
+tranche à froid : figer par égalité les mentions ambiguës déjà relues, pour
+qu'une mention NEUVE fasse échouer.
