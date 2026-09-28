@@ -1950,9 +1950,11 @@ MUTATIONS = [
     # ── Run 62 · 429-433 ─────────────────────────────────────────────────
     # 429 — le message d'exécution reperd le cas de la dépendance : la dimension
     # se saute et le compte de skips se lit comme un projet sans police.
+    # ⚠️ Ré-ancrée le 28/09 (574) : le message ne dit plus « recopie », il dit
+    # qu'une police de DÉPENDANCE est dérivée si son pubspec la déclare.
     ("harness", "429 · le message de saut reperd le cas de la dépendance",
-     "de police : elle vient alors d'une DÉPENDANCE. Cherche `fonts:` dans ",
-     "de police : cherche `fonts:` dans "),
+     "\"⚠️ Une police qui vient d'une DÉPENDANCE est dérivée elle aussi, si le \"",
+     "\"⚠️ Une police est dérivée elle aussi, si le \""),
     # 430 — la puce reperd le canal des pixels : le secret repart en clair dans
     # la page avec le finding, masqué partout ailleurs.
     ("skill", "430 · la mise en garde reperd le canal des captures",

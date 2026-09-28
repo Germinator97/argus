@@ -75,18 +75,22 @@ import 'argus_types.dart';
 final List<ArgusScreen> argusScreens =
     <ArgusScreen>[]; // TODO(argus): tes écrans
 
-/// les polices du projet, recopiées de la section `fonts:` du
-/// `pubspec.yaml` — une entrée par FAMILLE, avec ses fichiers.
+/// FACULTATIF depuis le 574 : le cadre DÉRIVE les polices du bundle de test —
+/// les `fonts:` de ton `pubspec.yaml` et de ceux de tes dépendances, et les TTF
+/// d'assets nommés à la façon de `google_fonts` (`Famille-Variante.ttf`). Rien
+/// à recopier : une table recopiée héritait des trous de sa source, et un
+/// verdict de disposition a dépendu de l'ordre des tests à cause d'elle.
 ///
-/// ⚠️ ET SI TON `pubspec.yaml` N'A AUCUNE SECTION `fonts:`, CE N'EST PAS QUE LE
-/// PROJET N'A PAS DE POLICE. Elle vient alors d'une DÉPENDANCE — un design
-/// system partagé, un paquet voisin — et l'absence se lit « rien à déclarer »,
-/// ce qui est faux. Vécu : la dimension de disposition s'est sautée en entier,
-/// **371 tests sur 401**, et le compte de skips ressemblait à un projet sans
-/// police. Cherche `fonts:` dans le pubspec des paquets dont tu dépends, et
-/// donne ici le chemin relatif de leurs `.ttf`.
+/// Ne déclare ici QUE ce que la dérivation ne voit pas — une entrée par
+/// FAMILLE, avec ses fichiers, sous le nom que l'application DEMANDE :
+///   · une police qui vient d'une DÉPENDANCE dont le pubspec ne la déclare pas
+///     (`fonts:`) : donne le chemin relatif de ses `.ttf` ;
+///   · un TTF d'assets qui ne suit pas la convention de `google_fonts` : le
+///     cadre LÈVE sur un tel fichier plutôt que de deviner son nom, et c'est ici
+///     qu'on le nomme.
+/// Une famille déclarée ici l'emporte sur la même famille dérivée.
 ///
-/// ⚠️ SANS ELLES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
+/// ⚠️ SANS POLICES, AUCUNE MESURE DE DISPOSITION N'A DE VALEUR. La police par
 /// défaut de `flutter_test` rend chaque glyphe dans un carré d'un cadratin : un
 /// texte y est jusqu'à deux fois plus large qu'en Inter ou en Roboto, il replie
 /// sur deux lignes, et le test déclare intenable une rangée qui tient très bien.
@@ -102,19 +106,20 @@ final List<ArgusScreen> argusScreens =
 /// défaut qu'on croyait écarter.
 ///
 ///     const Map<String, List<String>> argusFonts = <String, List<String>>{
-///       'FamilleTexte': <String>['assets/fonts/texte/Texte-Variable.ttf'],
-///       'FamilleChiffres': <String>['assets/fonts/chiffres/Chiffres-Variable.ttf'],
+///       'FamilleDuSocle': <String>['../socle/fonts/Famille-Variable.ttf'],
 ///     };
 const Map<String, List<String>> argusFonts =
-    <String, List<String>>{}; // TODO(argus): tes polices
+    <String, List<String>>{}; // facultatif depuis le 574
 
 /// la famille appliquée par défaut au thème de test — celle que
-/// `ThemeData.fontFamily` porte dans l'app. DOIT être une clé de [argusFonts] :
-/// un nom qui n'y figure pas retombe en silence sur la police de test.
+/// `ThemeData.fontFamily` porte dans l'app. DOIT être une famille CHARGÉE —
+/// dérivée du bundle ou déclarée dans [argusFonts] (avec `google_fonts`, sous
+/// la forme `Famille_variante`) : un nom qui n'y figure pas retombe en silence
+/// sur la police de test.
 ///
-/// 🔴 ET CE N'EST QUE LA MOITIÉ DU PIÈGE. Être une clé de [argusFonts] garantit
-/// que la police est chargée EN TEST — le harnais lit le `.ttf` par son CHEMIN,
-/// donc il le trouve toujours. Ça ne dit rien de ce que l'APPLICATION résout :
+/// 🔴 ET CE N'EST QUE LA MOITIÉ DU PIÈGE. Être une famille chargée garantit que
+/// la police l'est EN TEST — le harnais lit le `.ttf` par son CHEMIN, donc il le
+/// trouve toujours. Ça ne dit rien de ce que l'APPLICATION résout :
 /// elle, elle demande une famille par son NOM.
 ///
 /// L'écart apparaît dès que la police vient d'une DÉPENDANCE : le bundle

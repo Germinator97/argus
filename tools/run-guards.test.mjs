@@ -13196,7 +13196,9 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
   const gabarit = readFileSync(join(argus, 'harness.dart'), 'utf8');
 
   // Le message d'exécution : la branche qui saute doit dire où chercher.
-  const i = cadre.indexOf('argusFonts.isEmpty');
+  // 574 — le saut lit l'ensemble CHARGÉ (dérivé du bundle, complété par
+  // argusFonts), plus la seule table : c'est sur lui que ce garde s'ancre.
+  const i = cadre.indexOf('polices.isEmpty');
   assert.ok(i > 0, 'la branche qui saute sur des polices absentes a disparu : ce garde ne mesure rien');
   const message = cadre.slice(i, cadre.indexOf('argusFontFamily.isEmpty', i));
   assert.match(message, /DÉPENDANCE/,
@@ -13218,6 +13220,91 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
     assert.match(texte, /pubspec/,
       `le ${nom} ne nomme plus le pubspec, où la section se cherche des deux côtés`);
   }
+});
+
+// ── 574 · LES POLICES SE DÉRIVENT DU BUNDLE ──────────────────────────────
+// `argusFonts` se recopiait à la main, du chargeur de polices des tests du
+// projet, dont il héritait les trous : neuf familles pour onze TTF embarqués,
+// et une carte mesurée 811 dp puis 300 selon l'ordre des tests. Le cadre dérive
+// désormais : `FontManifest.json` et les TTF d'assets à la façon de google_fonts.
+// ⚠️ Ces gardes LISENT le Dart — ce dépôt n'est pas un projet Flutter. Ce qu'il
+// fait vraiment se mesure dans la sonde (`tools/fonts-probe.sh`), que la CI joue.
+
+/** Le corps d'une déclaration Dart de premier niveau, jusqu'à la suivante. */
+function corpsDart(source, signature) {
+  const debut = source.indexOf(signature);
+  assert.ok(debut >= 0, `« ${signature} » a disparu du cadre : ce garde ne mesure plus rien`);
+  const suite = source.slice(debut + signature.length).search(/\n(?:\/\/\/|[A-Za-z])/);
+  return source.slice(debut, suite < 0 ? undefined : debut + signature.length + suite);
+}
+
+test('574 — le cadre DÉRIVE les polices du bundle, et LÈVE sur un nom qu\'il ne sait pas traduire', () => {
+  const cadre = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  const derivation = corpsDart(cadre, 'Map<String, List<String>> argusDerivedFonts() {');
+  // Les DEUX sources d'où l'application tire ses polices.
+  assert.match(derivation, /File\('\$racine\/FontManifest\.json'\)/,
+    'la dérivation ne lit plus FontManifest.json : les polices des pubspec, dépendances comprises, ne sont plus chargées (574)');
+  assert.match(derivation, /argusBundledFontFiles\(\)/,
+    'la dérivation ne lit plus les TTF d\'assets : le cas google_fonts — celui du terrain — n\'est plus couvert (574)');
+  // Un nom qu'elle ne sait pas traduire LÈVE, il n'est ni deviné ni sauté.
+  assert.match(derivation, /if \(variante == null\) \{\s*throw StateError\(argusPoliceInconnue\(chemin\)\);/,
+    'un TTF au nom inconnu ne lève plus : chargé sous un nom deviné, il ferait mesurer la police de repli '
+    + 'pendant que la suite la croirait chargée (574)');
+  // Un fichier déjà déclaré dans argusFonts n'est pas retraduit : c'est l'issue.
+  assert.match(derivation, /for \(final List<String> fichiers in argusFonts\.values\)/,
+    'les fichiers déclarés dans argusFonts ne sont plus exclus : l\'issue offerte au nom inconnu lève quand même (574)');
+
+  // Le CÂBLAGE : ce qui est dérivé est ce qui est chargé, sauté, confronté.
+  assert.match(cadre, /argusFontsToLoad\(\) => <String, List<String>>\{\s*\.\.\.argusDerivedFonts\(\),\s*\.\.\.argusFonts,\s*\};/,
+    'argusFontsToLoad ne compose plus la dérivation PUIS argusFonts : la déclaration explicite ne l\'emporte plus, '
+    + 'ou l\'une des deux sources a disparu (574)');
+  assert.match(corpsDart(cadre, 'Future<int> loadArgusFonts() async {'),
+    /in argusFontsToLoad\(\)\.entries/,
+    'loadArgusFonts ne charge plus que la table recopiée : la dérivation existe et ne sert à rien (574)');
+  const saut = corpsDart(cadre, 'String? argusSkipReason() {');
+  assert.match(saut, /final Map<String, List<String>> polices = argusFontsToLoad\(\);/,
+    'le saut ne lit plus l\'ensemble chargé : un projet aux polices dérivées serait sauté faute de table (574)');
+  assert.match(saut, /!polices\.containsKey\(argusFontFamily\)/,
+    'argusFontFamily n\'est plus confrontée aux familles CHARGÉES (574)');
+});
+
+test('574 — la table de suffixes est celle de google_fonts : neuf graisses, droites et italiques', () => {
+  const cadre = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  const bloc = /const Map<String, String> argusGoogleFontsVariants = <String, String>\{([^}]*)\};/.exec(cadre);
+  assert.ok(bloc, 'la table argusGoogleFontsVariants a changé de forme — mets ce garde à jour');
+  const lue = Object.fromEntries([...bloc[1].matchAll(/'(\w+)': '(\w+)'/g)].map((m) => [m[1], m[2]]));
+  // L'attendu vient des NOMS DE GRAISSE du CSS et de la règle de google_fonts
+  // (`toApiFilenamePart`, `toString`) — pas d'une copie de la table : 400 se
+  // nomme « Regular » et devient « regular », son italique « Italic »/« italic » ;
+  // toute autre graisse garde son nombre, suffixé « italic » en italique.
+  const graisses = [['Thin', 100], ['ExtraLight', 200], ['Light', 300], ['Regular', 400],
+    ['Medium', 500], ['SemiBold', 600], ['Bold', 700], ['ExtraBold', 800], ['Black', 900]];
+  const attendue = {};
+  for (const [nom, g] of graisses) {
+    attendue[nom] = g === 400 ? 'regular' : String(g);
+    attendue[g === 400 ? 'Italic' : `${nom}Italic`] = g === 400 ? 'italic' : `${g}italic`;
+  }
+  assert.deepStrictEqual(lue, attendue,
+    'la table des suffixes n\'est plus celle de google_fonts : une police chargée sous un nom que '
+    + 'google_fonts ne demande pas retombe en silence sur la police de test (574)');
+});
+
+test('574 — la CI JOUE la sonde des polices, en dernier', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const job = ci.slice(ci.indexOf('\n  harness:'));
+  assert.ok(job.length > 20, 'le job `harness` a disparu de la CI');
+  const sonde = job.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.ok(sonde > 0,
+    'la CI ne joue plus la sonde des polices : la dérivation n\'est plus exécutée nulle part — ce dépôt '
+    + 'n\'est pas un projet Flutter, ses gardes ne font que la LIRE (574)');
+  // ⚠️ Elle modifie le projet d'accueil : placée avant une autre étape, elle
+  // fausserait ce que celle-ci mesure.
+  assert.ok(!/\n      - name:/.test(job.slice(sonde)),
+    'une étape suit la sonde des polices : elle hérite d\'un projet d\'accueil modifié (574)');
+  // Et la sonde livrée existe, avec sa contre-épreuve.
+  const script = readFileSync(join(RACINE, 'tools/fonts-probe.sh'), 'utf8');
+  assert.match(script, /Roboto-VariableFont_wght\.ttf/, 'la sonde a perdu sa contre-épreuve du nom inconnu');
+  assert.match(script, /grep -q 'ne sait pas nommer'/, 'la sonde ne vérifie plus que l\'échec dit POURQUOI');
 });
 
 // ── 430 · `label:` PROTÈGE TROIS CANAUX, PAS LE QUATRIÈME ────────────────
@@ -13318,7 +13405,7 @@ test('la résolution de police confronte les TROIS termes, pas deux (437)', () =
 
   // 2. Le CÂBLAGE du troisième terme. La fonction peut rester parfaite pendant
   //    que l'appelant ne lui passe plus ce que le harnais charge.
-  assert.match(mecanique, /chargeesParLeHarnais:\s*argusFonts\.keys\.toSet\(\)/,
+  assert.match(mecanique, /chargeesParLeHarnais:\s*argusFontsToLoad\(\)\.keys\.toSet\(\)/,
     'argusFontResolutionIssue ne passe plus ce que le harnais CHARGE : la décision garde ses trois '
     + 'paramètres et n\'en reçoit que deux utiles, ce qui la rend verte sur le cas du 437');
 

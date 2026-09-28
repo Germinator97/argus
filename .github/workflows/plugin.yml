@@ -295,3 +295,12 @@ jobs:
           # panne qu'il existe pour éviter.
           grep -q "argusTheme() ne rend pas le thème de l'app" /tmp/sortie.txt \
             || { echo "✖ le contrôle de résolution des polices (436) ne dit pas pourquoi il n'a rien mesuré"; exit 1; }
+
+      # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
+      # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
+      # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas
+      # un projet Flutter. La sonde pose une famille par source, mesure une
+      # largeur de texte contre celle de la police de repli, puis vérifie qu'un
+      # nom inconnu LÈVE. En DERNIER : elle modifie le projet d'accueil.
+      - name: Il dérive les polices du bundle, et les rend
+        run: bash tools/fonts-probe.sh /tmp/accueil

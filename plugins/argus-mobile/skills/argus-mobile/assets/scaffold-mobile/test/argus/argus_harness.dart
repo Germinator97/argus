@@ -41,7 +41,140 @@ export 'known_issues.dart';
 // 3. Mécanique
 // ───────────────────────────────────────────────────────────────────────────
 
-/// Charge chaque famille déclarée dans [argusFonts] sous SON nom.
+/// La table de `google_fonts` : la partie du NOM DE FICHIER d'une police
+/// embarquée → la variante que sa famille porte à l'exécution. `Cinzel-Bold.ttf`
+/// se charge sous `Cinzel_700`, `…-Italic.ttf` sous `…_italic`,
+/// `…-Regular.ttf` sous `…_regular`.
+///
+/// 📌 Relue dans la source de `google_fonts` 8.2.1 — `toApiFilenamePart` pour
+/// le fichier, `toString` pour la famille —, pas devinée : neuf graisses,
+/// droites et italiques, dix-huit entrées.
+const Map<String, String> argusGoogleFontsVariants = <String, String>{
+  'Thin': '100',
+  'ThinItalic': '100italic',
+  'ExtraLight': '200',
+  'ExtraLightItalic': '200italic',
+  'Light': '300',
+  'LightItalic': '300italic',
+  'Regular': 'regular',
+  'Italic': 'italic',
+  'Medium': '500',
+  'MediumItalic': '500italic',
+  'SemiBold': '600',
+  'SemiBoldItalic': '600italic',
+  'Bold': '700',
+  'BoldItalic': '700italic',
+  'ExtraBold': '800',
+  'ExtraBoldItalic': '800italic',
+  'Black': '900',
+  'BlackItalic': '900italic',
+};
+
+/// Le message d'une police embarquée que le harnais ne sait pas nommer.
+String argusPoliceInconnue(String chemin) =>
+    "Police embarquée que le harnais ne sait pas nommer : '$chemin'. Elle "
+    "n'est ni déclarée dans un pubspec (FontManifest.json), ni nommée à la "
+    'façon de google_fonts — Famille-Variante.ttf, variantes : '
+    '${argusGoogleFontsVariants.keys.join(', ')}.\n'
+    "📌 Si l'application l'emploie, déclare-la dans argusFonts "
+    "(test/argus/harness.dart) sous le nom de famille qu'elle DEMANDE ; sinon, "
+    'retire-la des assets. La charger sous un nom deviné ferait mesurer un '
+    "rendu que l'appareil ne produit pas.";
+
+/// Les polices du BUNDLE de test, dérivées sans rien recopier (574).
+///
+/// 🔴 POURQUOI. [argusFonts] se remplissait à la main, recopié du chargeur de
+/// polices des tests du projet — dont il héritait les trous : sur un terrain,
+/// neuf familles pour onze TTF embarqués. Une carte s'y mesurait en police de
+/// repli dans le PREMIER test d'un fichier (811 dp), puis en vraie police au
+/// montage suivant (300 dp), `google_fonts` ayant fini de charger l'asset entre
+/// les deux : un verdict qui dépendait de l'ordre des tests.
+///
+/// Deux sources, celles d'où l'application tire ses polices :
+///   1. `FontManifest.json` — les `fonts:` des pubspec, dépendances comprises
+///      (`packages/<paquet>/<famille>`), avec leurs fichiers ;
+///   2. les TTF/OTF des ASSETS que le manifeste ne liste pas, nommés à la façon
+///      de `google_fonts` (`Famille-Variante.ttf`), chargés sous le nom que
+///      `google_fonts` demandera (`Famille_variante`).
+///
+/// ⚠️ UN NOM QU'ELLE NE SAIT PAS TRADUIRE LÈVE. Deviner chargerait la police
+/// sous un nom que personne ne demande : le texte retomberait sur la police de
+/// test pendant que la suite la croirait chargée. Un fichier déjà déclaré dans
+/// [argusFonts] n'est pas retraduit — c'est l'issue offerte.
+///
+/// Rend une table vide sans bundle (`build/unit_test_assets`), c'est-à-dire
+/// hors de `flutter test` : [argusFonts] reste alors la seule source.
+Map<String, List<String>> argusDerivedFonts() {
+  const String racine = 'build/unit_test_assets';
+  String normalise(String chemin) => chemin.replaceAll(r'\', '/');
+  final Map<String, List<String>> derivees = <String, List<String>>{};
+  final Set<String> couverts = <String>{
+    for (final List<String> fichiers in argusFonts.values)
+      for (final String f in fichiers) normalise('$racine/$f'),
+  };
+
+  // 1. Le manifeste : ce que les pubspec déclarent, dépendances comprises.
+  final File manifeste = File('$racine/FontManifest.json');
+  if (manifeste.existsSync()) {
+    final dynamic brut = jsonDecode(manifeste.readAsStringSync());
+    if (brut is List<dynamic>) {
+      for (final dynamic entree in brut) {
+        if (entree is! Map<String, dynamic> || entree['family'] is! String) {
+          continue;
+        }
+        final dynamic polices = entree['fonts'];
+        final List<String> fichiers = <String>[
+          if (polices is List<dynamic>)
+            for (final dynamic p in polices)
+              if (p is Map<String, dynamic> && p['asset'] is String)
+                normalise('$racine/${Uri.decodeFull(p['asset'] as String)}'),
+        ];
+        couverts.addAll(fichiers);
+        if (fichiers.isNotEmpty) {
+          derivees
+              .putIfAbsent(entree['family'] as String, () => <String>[])
+              .addAll(fichiers);
+        }
+      }
+    }
+  }
+
+  // 2. Les assets que le manifeste ne liste pas : la convention google_fonts.
+  final List<String> embarquees = <String>[
+    for (final String f in argusBundledFontFiles()) normalise(f),
+  ]..sort();
+  for (final String chemin in embarquees) {
+    if (couverts.contains(chemin)) {
+      continue;
+    }
+    final String nom = chemin
+        .split('/')
+        .last
+        .replaceFirst(RegExp(r'\.(ttf|otf)$'), '');
+    final int tiret = nom.lastIndexOf('-');
+    final String? variante = tiret > 0
+        ? argusGoogleFontsVariants[nom.substring(tiret + 1)]
+        : null;
+    if (variante == null) {
+      throw StateError(argusPoliceInconnue(chemin));
+    }
+    derivees
+        .putIfAbsent('${nom.substring(0, tiret)}_$variante', () => <String>[])
+        .add(chemin);
+  }
+  return derivees;
+}
+
+/// Les polices que la suite CHARGE : celles du bundle, dérivées, puis
+/// [argusFonts], qui les complète. Une famille présente des deux côtés garde
+/// les fichiers d'[argusFonts] : la déclaration explicite l'emporte.
+Map<String, List<String>> argusFontsToLoad() => <String, List<String>>{
+  ...argusDerivedFonts(),
+  ...argusFonts,
+};
+
+/// Charge chaque famille de [argusFontsToLoad] — dérivée du bundle, complétée
+/// par [argusFonts] — sous SON nom.
 ///
 /// ⚠️ Un fichier déclaré mais absent fait ÉCHOUER le chargement, il n'est pas
 /// sauté : une police qui manque en silence, c'est la police de test qui prend
@@ -51,7 +184,8 @@ export 'known_issues.dart';
 /// Rend le nombre de fichiers chargés.
 Future<int> loadArgusFonts() async {
   int loaded = 0;
-  for (final MapEntry<String, List<String>> family in argusFonts.entries) {
+  for (final MapEntry<String, List<String>> family
+      in argusFontsToLoad().entries) {
     final FontLoader loader = FontLoader(family.key);
     for (final String assetPath in family.value) {
       final File file = File(assetPath);
@@ -181,7 +315,7 @@ Set<String> argusThemeFontFamilies() {
 /// faux positif sur un projet sain qui fait les choses correctement.
 String? argusFontResolutionIssue() => argusFontMismatch(
   demandeesParLeTheme: argusThemeFontFamilies(),
-  chargeesParLeHarnais: argusFonts.keys.toSet(),
+  chargeesParLeHarnais: argusFontsToLoad().keys.toSet(),
   enregistreesAuBundle: argusBundledFontFamilies(),
 );
 
@@ -277,25 +411,28 @@ String? argusSkipReason() {
   if (argusScreens.isEmpty) {
     return 'aucun écran déclaré — remplis argusScreens dans test/argus/harness.dart';
   }
-  if (argusFonts.isEmpty) {
-    return 'argusFonts est vide : sans les vraies polices, la mesure de disposition '
+  // 574 — les polices se DÉRIVENT du bundle : ce saut ne dit plus « recopie »,
+  // il dit qu'il n'y a rien à charger, ni d'un côté ni de l'autre.
+  final Map<String, List<String>> polices = argusFontsToLoad();
+  if (polices.isEmpty) {
+    return "aucune police à charger : le bundle de test n'en porte aucune (ni "
+        "FontManifest.json, ni TTF d'assets sous build/unit_test_assets) et "
+        'argusFonts est vide. Sans les vraies polices, la mesure de disposition '
         'ne vaut rien (la police de flutter_test rend chaque glyphe dans un carré '
-        "d'un cadratin). Recopie la section fonts: du pubspec dans "
-        'test/argus/harness.dart.\n'
-        "⚠️ Si ton pubspec n'en a AUCUNE, ce n'est PAS que le projet n'a pas "
-        "de police : elle vient alors d'une DÉPENDANCE. Cherche `fonts:` dans "
-        'le pubspec des paquets dont tu dépends, et donne ici le chemin '
-        'relatif de leurs .ttf — sinon cette dimension entière se saute, et '
-        'un « 371 skippés » se lit comme un projet sans police.';
+        "d'un cadratin).\n"
+        "⚠️ Une police qui vient d'une DÉPENDANCE est dérivée elle aussi, si le "
+        'pubspec de ce paquet la déclare (`fonts:`). Sinon, donne dans argusFonts '
+        'le chemin relatif de ses .ttf — sans quoi cette dimension entière se '
+        'saute, et un « 371 skippés » se lit comme un projet sans police.';
   }
   if (argusFontFamily.isEmpty) {
     return 'argusFontFamily est vide : indique la famille par défaut du thème.';
   }
-  if (!argusFonts.containsKey(argusFontFamily)) {
+  if (!polices.containsKey(argusFontFamily)) {
     // Le piège exact qu'on veut écarter : un nom qui ne correspond à rien
     // retombe EN SILENCE sur la police de test.
-    return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une clé de "
-        'argusFonts (${argusFonts.keys.join(', ')}). Un nom qui ne correspond à '
+    return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une famille "
+        'chargée (${polices.keys.join(', ')}). Un nom qui ne correspond à '
         'aucune famille chargée retombe en silence sur la police de test.';
   }
   return null;
