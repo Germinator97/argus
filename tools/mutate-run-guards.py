@@ -3267,6 +3267,20 @@ MUTATIONS = [
     ("sec", "570 ter · le scanner de secrets lit une forme binaire",
      "'.aab', '.so', '.ipa'",
      "'.aab', '.ipa'"),
+    # ── 571 · `budget.maxMinutes` dit chacun de ses lecteurs ───────────────
+    # Le défaut du run 106 lui-même : la configuration tait le rôle du rapport.
+    ("yamlconf", "571 · la configuration tait que le rapport lit le budget",
+     "\n#   · le RAPPORT en fait son seuil de péremption : un relevé plus vieux que\n",
+     "\n#   · le rapport s'en sert aussi : un relevé plus vieux que\n"),
+    # Le seuil de péremption ne suit plus la clé : la phrase décrirait une
+    # intention que le code a abandonnée.
+    ("report", "571 bis · le seuil de péremption ne suit plus la clé",
+     "\n  const budgetMin = Math.max(1, Number(config?.budget?.maxMinutes ?? 25));",
+     "\n  const budgetMin = 25;"),
+    # Le runner ne lit plus le budget : la clé ne gouverne plus que le rapport.
+    ("run", "571 ter · le runner ne lit plus le budget de durée",
+     "\n  const maxMinutes = Number(config.budget?.maxMinutes ?? 0);",
+     "\n  const maxMinutes = 0;"),
 ]
 
 
