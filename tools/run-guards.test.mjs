@@ -97,6 +97,8 @@ import { LIGHTBOX, STYLE, findingCards, perfRows } from '../plugins/argus-mobile
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identitePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { dettesAssumees } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { fusionner } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/debts.mjs';
 import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, raisonSansDump, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
@@ -17818,6 +17820,98 @@ test('567 — chaque `make … ARGS=` que la doc prescrit arrive au moteur', () 
     assert.match(makeAVide([cible, 'ARGS=--sonde-567']), /--sonde-567\b/,
       `la doc prescrit \`make ${cible} ARGS=…\`, et la cible ne le transmet pas au moteur : la `
       + 'promesse est fausse, et rien ne le dit à qui l\'applique (567)');
+  }
+});
+
+// ── 568 · LA DETTE ASSUMÉE SE VOIT SUR LA PAGE ─────────────────────────────
+//
+// « Gardes d'étage 1 — exécutée, aucun finding », sur un projet dont
+// `known_issues.dart` porte 31 clés : la dette assumée n'apparaissait nulle part
+// sur la page publiée. C'est la parité du 443 — un acquittement de sécurité
+// honoré s'affiche, barré, avec sa raison ; une dette d'étage 1, non.
+// Arbitrage de Germinator : le COMPTE, et la liste REPLIÉE.
+
+/** Le fichier de dette LIVRÉ, dont on part pour fabriquer les montages. */
+const detteLivree = () => readFileSync(join(SCAFFOLD, 'test/argus/known_issues.dart'), 'utf8');
+
+test('568 — la dette assumée se lit dans le fichier que l\'outil écrit', () => {
+  assert.equal(dettesAssumees(null), null, 'pas de fichier de dette : rien à dire');
+  // Le fichier LIVRÉ : son dartdoc cite la déclaration mot pour mot, plus haut
+  // que la vraie — le piège qui a détruit trois fichiers. Il doit rendre zéro clé.
+  assert.deepEqual(dettesAssumees(detteLivree()), { cles: [] },
+    'le fichier livré, vide, ne rend pas zéro dette : la lecture tombe dans le dartdoc (568)');
+  // Un fichier ÉCRIT par l'outil lui-même, pas par une fixture idéalisée.
+  const ecrit = fusionner(detteLivree(), ['cle-b', 'cle-a', 'cle-c']);
+  assert.ok(ecrit.ok, 'l\'outil de dette ne sait plus écrire le fichier livré : le montage est cassé');
+  assert.deepEqual(dettesAssumees(/** @type {any} */ (ecrit).source), { cles: ['cle-a', 'cle-b', 'cle-c'] },
+    'les clés que l\'outil vient d\'écrire ne sont pas relues (568)');
+  // Illisible n'est pas vide : se taire ferait disparaître la dette de la page.
+  const sansMarqueur = dettesAssumees("const Set<String> argusKnownIssues = <String>{\n  'x',\n};\n");
+  assert.ok(sansMarqueur && 'illisible' in sansMarqueur,
+    'un fichier de dette illisible est lu comme vide : la page dirait « aucune dette » sur une dette '
+    + 'qu\'elle n\'a pas su lire (568)');
+});
+
+test('568 — la page porte le compte de la dette, et sa liste repliée', () => {
+  const partEtage1 = (/** @type {any} */ dettes) => ({
+    file: 'stage1.jsonl', label: 'Gardes d\'étage 1 (sans device)', dimensions: 'a11y · disposition · ancres',
+    state: 'ok', reason: '', findings: [], data: { findings: [] }, at: null, dettes,
+  });
+  const page = (/** @type {any} */ dettes) => renderArtifact({
+    ...ctxRun(), parts: [partEtage1(dettes)], findings: [],
+    counts: { blocker: 0, critical: 0, major: 0, minor: 0, info: 0 }, historique: [],
+  });
+
+  const avec = page({ cles: ['cle-a', 'cle<b>'] });
+  assert.match(avec, /2 dettes assumées/,
+    'la page ne dit pas combien de dettes l\'étage 1 assume : « aucun finding » se lit alors comme un '
+    + 'étage propre (568)');
+  const replie = avec.match(/<details class="dettes">[\s\S]*?<\/details>/);
+  assert.ok(replie, 'la liste des dettes n\'est pas REPLIÉE dans un <details> : l\'arbitrage était le '
+    + 'compte, et la liste repliée (568)');
+  assert.ok(replie[0].includes('cle-a'), 'une clé assumée manque à la liste repliée (568)');
+  assert.ok(replie[0].includes('cle&lt;b&gt;') && !replie[0].includes('cle<b>'),
+    'une clé est publiée sans échappement : la page porte ce que les noms de tests contiennent (568)');
+  assert.doesNotMatch(avec, /exécutée, aucun finding<\/span>/,
+    'la ligne « ce qui fonctionne » dit encore « aucun finding » tout court, à côté d\'une dette '
+    + 'assumée : c\'est la phrase que le run 106 a publiée (568)');
+
+  // L'AUTRE MOITIÉ : sans dette, la page ne change pas — pas d'aveu à faire.
+  const sans = page({ cles: [] });
+  assert.match(sans, /exécutée, aucun finding<\/span>/, 'sans dette, la ligne a changé : le correctif coupe trop large (568)');
+  assert.doesNotMatch(sans, /class="dettes"/, 'sans dette, la page affiche un bloc de dette vide (568)');
+  // Et l'illisible se DIT.
+  assert.match(page({ illisible: 'le marqueur manque' }), /le marqueur manque/,
+    'un fichier de dette illisible disparaît de la page au lieu d\'être dit (568)');
+});
+
+test('568 — de bout en bout, le rapport lit la dette du projet', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-568-'));
+  try {
+    writeFileSync(join(projet, 'argus.mobile.yaml'), 'platforms:\n  - android\napp:\n  androidPackage: com.exemple.app\n');
+    mkdirSync(join(projet, 'argus-mobile-report'), { recursive: true });
+    writeFileSync(join(projet, 'argus-mobile-report', 'stage1.jsonl'), [
+      { type: 'testStart', test: { id: 1, name: 'garde exemple' } },
+      { type: 'testDone', testID: 1, result: 'success', hidden: false, skipped: false },
+      { type: 'done', success: true },
+    ].map((e) => JSON.stringify(e)).join('\n') + '\n');
+    mkdirSync(join(projet, 'test', 'argus'), { recursive: true });
+    const ecrit = fusionner(detteLivree(), ['dette-une', 'dette-deux']);
+    assert.ok(ecrit.ok, 'l\'outil de dette ne sait plus écrire le fichier livré : le montage est cassé');
+    writeFileSync(join(projet, 'test', 'argus', 'known_issues.dart'), /** @type {any} */ (ecrit).source);
+
+    spawnSync('node', [join(SCAFFOLD, 'scripts/argus/report.mjs')], { cwd: projet, encoding: 'utf8' });
+    const chemin = join(projet, 'argus-mobile-report', 'report.html');
+    assert.ok(existsSync(chemin), 'le rapport n\'a pas été écrit : le montage ne mesure rien (568)');
+    const html = readFileSync(chemin, 'utf8');
+    assert.match(html, /Gardes d'étage 1/, 'l\'étage 1 n\'est pas lu par le rapport : le montage ne mesure rien (568)');
+    assert.match(html, /2 dettes assumées/,
+      'le rapport exécuté ne lit pas `known_issues.dart` : la dette est calculée nulle part, et la page '
+      + 'dit « aucun finding » sur un étage qui en assume (568)');
+    assert.ok(html.includes('dette-une') && html.includes('dette-deux'),
+      'le rapport exécuté ne liste pas les dettes assumées (568)');
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
   }
 });
 

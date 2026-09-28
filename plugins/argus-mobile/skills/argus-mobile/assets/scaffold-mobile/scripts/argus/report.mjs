@@ -24,6 +24,9 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
 import { acquitter, artifactFor, artifactsDir, canauxOuvertsDe, exitCodeFor, loadConfig, log, err, partageParAcquittement, warn, writeJson } from './config.mjs';
+// 568 — la dette se lit avec l'outil qui l'ÉCRIT : son fichier porte la
+// déclaration deux fois, et une seconde lecture divergerait au premier piège.
+import { CIBLE as FICHIER_DETTE, situerLeSet } from './debts.mjs';
 
 const SEVERITIES = ['blocker', 'critical', 'major', 'minor', 'info'];
 
@@ -86,6 +89,55 @@ export function readStage1(path) {
       + `${echecs.slice(0, 5).join(' · ')}${echecs.length > 5 ? ` … et ${echecs.length - 5} autres` : ''}. `
       + 'Relance la cible pour la liste complète : ses messages donnent la ligne à corriger.',
   }] };
+}
+
+/**
+ * La dette d'étage 1 que le projet ASSUME : les clés de `known_issues.dart`.
+ *
+ * 🔴 568 — ELLE N'APPARAISSAIT NULLE PART. Une clé inscrite ne fait plus échouer
+ * sa garde : l'étage 1 sortait donc « exécutée, aucun finding » sur un projet qui
+ * en assumait 31. C'est la parité du 443 — un acquittement de sécurité honoré se
+ * voit sur la page, barré, avec sa raison ; une dette d'étage 1, non.
+ * ⚠️ Illisible n'est pas vide : se taire ferait dire « aucune dette » à la page
+ * sur une dette qu'elle n'a pas su lire.
+ * @param {string|null} source le contenu du fichier, ou null s'il est absent
+ * @returns {{cles:string[]}|{illisible:string}|null}
+ */
+export function dettesAssumees(source) {
+  if (source === null) return null;
+  const ou = situerLeSet(source);
+  if (ou.ok === false) return { illisible: ou.pourquoi };
+  return { cles: ou.cles };
+}
+
+/**
+ * Le compte de la dette, et sa liste REPLIÉE — l'arbitrage de Germinator (568).
+ * @param {any} dettes ce que `dettesAssumees` a rendu
+ * @returns {string}
+ */
+function dettesHtml(dettes) {
+  if (!dettes) return '';
+  if ('illisible' in dettes) {
+    return ` <span class="badge warn">dette illisible</span> ${esc(FICHIER_DETTE)} : ${esc(dettes.illisible)}`;
+  }
+  const n = dettes.cles.length;
+  if (n === 0) return '';
+  const s = n > 1 ? 's' : '';
+  return `<details class="dettes"><summary><strong>${n} dette${s} assumée${s}</strong> — ${esc(FICHIER_DETTE)}</summary>`
+    + `<ul>${dettes.cles.map((/** @type {string} */ c) => `<li><code>${esc(c)}</code></li>`).join('')}</ul></details>`;
+}
+
+/**
+ * Ce que la ligne « ce qui fonctionne » doit AVOUER d'une dimension sans finding.
+ * @param {any} part @returns {string}
+ */
+function aveuDette(part) {
+  const d = part.dettes;
+  if (!d) return '';
+  if ('illisible' in d) return ' · dette assumée illisible, voir la couverture';
+  const n = d.cles.length;
+  if (n === 0) return '';
+  return ` hors dette assumée · <strong>${n} dette${n > 1 ? 's' : ''} assumée${n > 1 ? 's' : ''}</strong>, listées dans la couverture`;
 }
 
 /** @param {string} path @returns {any} */
@@ -249,7 +301,7 @@ function coverageRows(parts) {
     return `<tr><td>${esc(part.label)}</td><td class="muted">${esc(part.dimensions)}</td>`
       + `<td><span class="badge ${badge}">${state}</span>${perime}</td>`
       + `<td class="muted">${esc(age)}</td>`
-      + `<td class="muted">${esc(part.reason)}</td></tr>`;
+      + `<td class="muted">${esc(part.reason)}${dettesHtml(part.dettes)}</td></tr>`;
   }).join('');
 }
 
@@ -521,6 +573,8 @@ export const STYLE = `<style>
   .lb img{max-width:92vw;max-height:88vh;object-fit:contain;border-radius:6px}
   .lb-x{position:absolute;top:12px;right:16px;font:inherit;font-size:26px;line-height:1;color:#fff;background:rgba(0,0,0,.55);border:1px solid var(--line);border-radius:6px;padding:2px 12px;cursor:pointer}
   .ok-list{list-style:none;padding:0}.ok-list li{margin:4px 0}
+  /* 568 — la dette assumée : le compte en clair, la liste repliée. */
+  details.dettes summary{cursor:pointer}details.dettes ul{margin:4px 0 0 18px;padding:0}
   .muted{color:var(--muted)}footer{margin-top:40px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:16px}
 </style>`;
 
@@ -578,7 +632,7 @@ function renderBody(context) {
 
   ${canauxOuvertsBloc(context.canauxOuverts ?? [])}
   <h2>✅ Ce qui fonctionne</h2>
-  ${ok.length ? `<ul class="ok-list">${ok.map((/** @type {any} */ p) => `<li>${esc(p.label)} <span class="muted">— exécutée, aucun finding</span></li>`).join('')}</ul>` : '<p class="muted">Aucune dimension n\'a tourné sans finding.</p>'}
+  ${ok.length ? `<ul class="ok-list">${ok.map((/** @type {any} */ p) => `<li>${esc(p.label)} <span class="muted">— exécutée, aucun finding${aveuDette(p)}</span></li>`).join('')}</ul>` : '<p class="muted">Aucune dimension n\'a tourné sans finding.</p>'}
 
   <footer>Généré par Argus Mobile (Claude Code) · ${esc(generatedAt)}</footer>
 </div>
@@ -1040,6 +1094,15 @@ function main() {
 
   const dir = artifactsDir(config);
   const parts = collect(dir);
+
+  // 🔴 568 — LA DETTE ASSUMÉE SE LIT ICI, pour l'étage 1 qui a tourné. Une clé
+  // inscrite ne fait plus échouer sa garde : sans cette lecture, la page publiait
+  // « exécutée, aucun finding » sur un projet qui en assumait 31.
+  const etage1 = parts.find((p) => p.file === 'stage1.jsonl' && p.state === 'ok');
+  if (etage1) {
+    /** @type {any} */ (etage1).dettes = dettesAssumees(
+      existsSync(FICHIER_DETTE) ? readFileSync(FICHIER_DETTE, 'utf8') : null);
+  }
 
   // Un rapport agrège ce qu'il TROUVE, et rien ne garantit que ce soit du même
   // run. Le dire est peu de chose ; ne pas le dire produit une page qui décrit

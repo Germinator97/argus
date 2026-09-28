@@ -38,7 +38,7 @@ import { fileURLToPath } from 'node:url';
 const MOI = fileURLToPath(import.meta.url);
 
 /** Le fichier de dette, relatif à la racine du projet. */
-const CIBLE = join('test', 'argus', 'known_issues.dart');
+export const CIBLE = join('test', 'argus', 'known_issues.dart');
 
 /** Ce sans quoi on n'écrit pas : le marqueur doit PRÉCÉDER la déclaration. */
 const MARQUEUR = 'ARGUS:DECLARATION';
