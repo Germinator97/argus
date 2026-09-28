@@ -31,6 +31,17 @@
  *
  *   node tools/confidentialite-depot.mjs             # les terrains de ~/.argus-etalon/terrains.txt
  *   node tools/confidentialite-depot.mjs <dossier>…  # ceux-là
+ *
+ * 🔴 575 — ET CE QUE LA FORME NE PEUT PAS TRANCHER, ON LE CLASSE UNE FOIS. Un nom
+ * d'application court et inventé n'a ni séparateur, ni majuscule interne, ni
+ * huit lettres : il passait pour un mot ordinaire, et sa fuite n'aurait été
+ * qu'une ligne « ambiguë » de plus, dans une liste que la sortie disait « à
+ * relire une fois ». Mesuré en écrivant le 574 : le nom d'un fichier du
+ * terrain, qui porte celui de l'application, écrit dans ce dépôt sans que rien
+ * échoue. Chaque identifiant ambigu se classe donc dans ~/.argus-etalon/
+ * identifiants-classes.txt — `mot` ou `distinctif` —, et un identifiant NON
+ * classé fait échouer : un nouveau terrain force la décision au lieu de
+ * rejoindre les ambigus en silence.
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -41,6 +52,15 @@ const RACINE = join(new URL('.', import.meta.url).pathname, '..');
 
 /** Là où l'on déclare ses terrains — hors dépôt, puisqu'il est public. */
 export const LISTE = join(homedir(), '.argus-etalon', 'terrains.txt');
+
+/**
+ * Là où l'on CLASSE, une fois, chaque identifiant ambigu — hors dépôt lui aussi :
+ * il nomme ce que ce contrôle interdit d'écrire ici.
+ */
+export const CLASSEMENT = join(homedir(), '.argus-etalon', 'identifiants-classes.txt');
+
+/** Les deux classes qu'un identifiant ambigu peut recevoir. */
+export const CLASSES = ['mot', 'distinctif'];
 
 /**
  * Ce qu'un terrain s'appelle : tout ce que la règle interdit de recopier.
@@ -96,13 +116,59 @@ export function identifiantsDe(dossier) {
  * interne, ou assez de longueur pour n'être plus un mot. `common_app_core`,
  * `WorkSans`, `com.exemple.app` en ont ; `focus` n'en a pas.
  *
- * 📌 Les ambigus ne sont pas jetés — ils sont RAPPORTÉS À PART, sans faire
- * échouer. Les taire referait le trou ; les compter avec les autres rendrait le
- * contrôle inutilisable.
+ * 📌 Les ambigus ne sont pas jetés — ils sont CLASSÉS (575). Les taire
+ * referait le trou ; les compter avec les autres rendrait le contrôle
+ * inutilisable ; les rapporter à part, comme avant, laissait un nom inventé se
+ * lire comme un mot. La forme dit « je ne sais pas », le classement tranche.
  * @param {string} v
  */
 export function estDistinctif(v) {
   return /[._-]/.test(v) || /[a-z][A-Z]/.test(v) || v.length >= 8;
+}
+
+/**
+ * Le classement privé : `mot <valeur>` ou `distinctif <valeur>`, une ligne
+ * chacun, `#` pour commenter. La valeur est le reste de la ligne — un nom de
+ * police peut porter une espace.
+ *
+ * ⚠️ UNE LIGNE ILLISIBLE ARRÊTE, elle n'est pas sautée. `distinctf kwz` sauté,
+ * c'est un identifiant qu'on croit classé et qui ne l'est pas : il échouerait
+ * comme non classé, mais avec un message qui accuse l'absence d'une ligne que
+ * l'on a sous les yeux.
+ * @param {string} texte @returns {{classes: Map<string, string>, erreurs: string[]}}
+ */
+export function classementDe(texte) {
+  /** @type {Map<string, string>} */
+  const classes = new Map();
+  /** @type {string[]} */
+  const erreurs = [];
+  texte.split('\n').forEach((brute, i) => {
+    const l = brute.replace(/#.*$/, '').trim();
+    if (!l) return;
+    const m = /^(\S+)\s+(.+)$/.exec(l);
+    if (!m || !CLASSES.includes(m[1])) {
+      erreurs.push(`ligne ${i + 1} non reconnue : « ${l} » — attendu « mot <valeur> » ou « distinctif <valeur> »`);
+      return;
+    }
+    classes.set(m[2].trim(), m[1]);
+  });
+  return { classes, erreurs };
+}
+
+/**
+ * La première ligne (1-indexée) qui porte la valeur, 0 si aucune.
+ *
+ * ⚠️ Un `distinctif` classé se cherche SANS la casse : c'est un nom, et il fuit
+ * aussi bien capitalisé en tête de phrase qu'en minuscules dans un chemin.
+ * Mesuré en écrivant ce correctif : un chemin de police d'un terrain, en
+ * minuscules, vivait dans ce dépôt pendant que le paquet se cherchait avec sa
+ * majuscule. Un identifiant distinctif par sa FORME garde la casse : c'est sa
+ * forme exacte qui le rend sûr, et l'élargir ferait crier au loup.
+ * @param {string} texte @param {string} valeur @param {boolean} insensible
+ */
+function ligneDe(texte, valeur, insensible) {
+  const cherche = insensible ? valeur.toLowerCase() : valeur;
+  return texte.split('\n').findIndex((l) => (insensible ? l.toLowerCase() : l).includes(cherche)) + 1;
 }
 
 /** Les dossiers à inspecter : l'argument, sinon la liste déclarée. */
@@ -113,9 +179,16 @@ export function terrainsDe(args) {
     .map((l) => l.replace(/#.*$/, '').trim()).filter(Boolean);
 }
 
-/** @param {string[]} args @returns {{code: number, lignes: string[]}} */
+/**
+ * @param {string[]} args
+ * @param {(chemin: string, enc: 'utf8') => string | Buffer} [lire]
+ * @param {() => string[]} [lister]
+ * @param {() => string | null} [lireClassement] le classement privé, `null` s'il n'existe pas
+ * @returns {{code: number, lignes: string[]}}
+ */
 export function controler(args, lire = readFileSync, lister = () =>
-  execFileSync('git', ['ls-files'], { cwd: RACINE, encoding: 'utf8' }).trim().split('\n')) {
+  execFileSync('git', ['ls-files'], { cwd: RACINE, encoding: 'utf8' }).trim().split('\n'),
+lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {
   const dossiers = terrainsDe(args).filter((d) => existsSync(d));
   if (dossiers.length === 0) {
     return { code: 2, lignes: [
@@ -129,6 +202,17 @@ export function controler(args, lire = readFileSync, lister = () =>
     return { code: 2, lignes: [`⚠️  ${dossiers.length} terrain(s) lus, AUCUN identifiant dérivé : `
       + 'les fichiers de déclaration ont changé de forme, et ce contrôle ne mesure plus rien.'] };
   }
+  // 575 — ce que la forme ne tranche pas, le classement le tranche. Il ne peut
+  // que DURCIR : un `mot` posé sur un identifiant distinctif par sa forme est
+  // sans effet, sinon une ligne du fichier privé suffirait à taire une fuite.
+  const brut = lireClassement();
+  const { classes, erreurs } = classementDe(brut ?? '');
+  const ambigusDerives = [...new Map(attendus.filter((a) => !estDistinctif(a.valeur))
+    .map((a) => [a.valeur, a])).values()];
+  const nonClasses = ambigusDerives.filter((a) => !classes.has(a.valeur));
+  const estNomClasse = (/** @type {string} */ v) => classes.get(v) === 'distinctif';
+  const estFuite = (/** @type {string} */ v) => estDistinctif(v) || estNomClasse(v);
+
   const fichiers = lister().filter((/** @type {string} */ f) => f && !f.startsWith('.git/'));
   /** @type {string[]} */
   const fuites = [];
@@ -137,20 +221,46 @@ export function controler(args, lire = readFileSync, lister = () =>
   for (const f of fichiers) {
     let t; try { t = String(lire(join(RACINE, f), 'utf8')); } catch { continue; }
     for (const a of attendus) {
-      if (!t.includes(a.valeur)) continue;
-      const ligne = t.split('\n').findIndex((l) => l.includes(a.valeur)) + 1;
+      const ligne = ligneDe(t, a.valeur, estNomClasse(a.valeur));
+      if (!ligne) continue;
       const ou = `${f}:${ligne} — « ${a.valeur} » (${a.quoi})`;
-      (estDistinctif(a.valeur) ? fuites : ambigus).push(ou);
+      (estFuite(a.valeur) ? fuites : ambigus).push(ou);
     }
   }
-  const note = ambigus.length
-    ? ['', `⚪ ${ambigus.length} mention(s) d'un identifiant AMBIGU — il ressemble à un mot ordinaire,`,
-       '   donc on ne peut pas trancher par le texte. À relire une fois, pas à chaque passe :',
-       ...ambigus.slice(0, 5).map((x) => `   ${x}`)]
-    : [];
-  return fuites.length
-    ? { code: 1, lignes: [...fuites, '', `${fuites.length} fuite(s) DISTINCTIVE(s) · ${attendus.length} identifiant(s) dérivé(s) de ${dossiers.length} terrain(s)`, ...note] }
-    : { code: 0, lignes: [`✔ aucun identifiant DISTINCTIF de terrain dans le dépôt · ${attendus.length} dérivé(s) de ${dossiers.length} terrain(s) · ${fichiers.length} fichiers`, ...note] };
+
+  const aClasser = [
+    ...erreurs.map((e) => `✖ classement illisible — ${e}`),
+    ...nonClasses.map((a) => `✖ identifiant AMBIGU non classé : « ${a.valeur} » (${a.quoi})`),
+  ];
+  if (aClasser.length) {
+    aClasser.push(`   → une ligne par identifiant dans ${CLASSEMENT}${brut === null ? ' (le fichier n\'existe pas encore)' : ''} :`,
+      '     « mot <valeur> »        un mot ordinaire : ses mentions sont rapportées, sans échec ;',
+      '     « distinctif <valeur> » un nom : la moindre mention échoue, quelle que soit sa casse.',
+      '   La forme ne peut pas trancher, toi si — une fois par identifiant.');
+  }
+  const derives = new Set(attendus.map((a) => a.valeur));
+  const orphelins = [...classes.keys()].filter((v) => !derives.has(v));
+  const sansEffet = [...classes].filter(([v, c]) => c === 'mot' && estDistinctif(v)).map(([v]) => v);
+  const note = [
+    ...(ambigus.length
+      ? ['', `⚪ ${ambigus.length} mention(s) d'un identifiant AMBIGU qui n'est pas tenu pour un nom`,
+         '   (classé « mot », ou pas encore classé) — pas une fuite par le texte :',
+         ...ambigus.slice(0, 5).map((x) => `   ${x}`)]
+      : []),
+    ...(orphelins.length
+      ? ['', `⚪ ${orphelins.length} classement(s) sans identifiant dérivé — terrain absent ou renommé : `
+         + orphelins.map((v) => `« ${v} »`).join(', ')]
+      : []),
+    ...(sansEffet.length
+      ? ['', `⚪ classé « mot » mais distinctif par sa forme, donc sans effet : ${sansEffet.map((v) => `« ${v} »`).join(', ')}`]
+      : []),
+  ];
+  const bilan = `${attendus.length} identifiant(s) dérivé(s) de ${dossiers.length} terrain(s) · ${fichiers.length} fichiers`;
+  if (fuites.length || aClasser.length) {
+    return { code: 1, lignes: [...fuites, ...(fuites.length && aClasser.length ? [''] : []), ...aClasser, '',
+      `${fuites.length} fuite(s) · ${aClasser.length ? `${nonClasses.length} identifiant(s) à classer · ` : ''}${bilan}`, ...note] };
+  }
+  return { code: 0, lignes: [`✔ aucun identifiant de terrain dans le dépôt · ${bilan}`, ...note] };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

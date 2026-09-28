@@ -18501,13 +18501,15 @@ test('une fuite fabriquée est VUE dans le dépôt (541)', async () => {
   const faux = (/** @type {string} */ f) => (f.endsWith('SALE.md')
     ? 'du texte, puis nom_bidon_qui_ne_fuit_pas, puis du texte'
     : 'rien ici');
-  const vu = controler([dir], faux, () => ['PROPRE.md', 'SALE.md']);
+  // `() => null` : aucun classement — ce garde-ci ne doit pas dépendre du fichier
+  // privé du poste qui le joue (575).
+  const vu = controler([dir], faux, () => ['PROPRE.md', 'SALE.md'], () => null);
   assert.equal(vu.code, 1, 'la fuite fabriquée n\'est pas vue : le contrôle ne sait pas chercher');
   assert.match(vu.lignes.join('\n'), /SALE\.md:1/, 'il ne dit pas OÙ, donc on ne peut pas corriger');
   assert.ok(!vu.lignes.join('\n').includes('PROPRE.md'), 'il accuse un fichier qui ne porte rien');
 
   // … et sur les mêmes fichiers sans le nom, il se tait.
-  const propre = controler([dir], () => 'rien ici', () => ['PROPRE.md', 'SALE.md']);
+  const propre = controler([dir], () => 'rien ici', () => ['PROPRE.md', 'SALE.md'], () => null);
   assert.equal(propre.code, 0, 'il rougit sur un dépôt propre');
   rmSync(dir, { recursive: true, force: true });
 });
@@ -18517,7 +18519,99 @@ test('le dépôt LIVRÉ ne porte aucun identifiant distinctif de terrain (541)',
   if (!existsSync(LISTE)) return;   // poste sans terrains : le contrôle le dit lui-même
   const { code, lignes } = controler([]);
   assert.notEqual(code, 2, `le contrôle n'a rien mesuré :\n${lignes.join('\n')}`);
-  assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC :\n${lignes.join('\n')}`);
+  // ⚠️ Depuis le 575, ce rouge peut aussi dire « un identifiant ambigu n'est pas
+  // CLASSÉ » : un nouveau terrain force la décision ici, sur le poste qui le porte.
+  assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC, ou un identifiant `
+    + `ambigu n'est pas classé (575) :\n${lignes.join('\n')}`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 575 — Ce que la FORME ne tranche pas, on le CLASSE, une fois.
+// Un nom d'application court et inventé passait pour un mot ordinaire : sa fuite
+// n'aurait été qu'une ligne « ambiguë » de plus. Mesuré en écrivant le 574 — et
+// en écrivant ce correctif : un chemin de police d'un terrain vivait dans le
+// backlog, en minuscules, pendant que le contrôle cherchait avec la casse.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Un terrain dont le seul identifiant est AMBIGU : court, sans séparateur. */
+const terrainAmbigu = () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-terrain-'));
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: zorblo\n');
+  return dir;
+};
+
+test('un identifiant AMBIGU non classé fait échouer le contrôle, et dit où le classer (575)', async () => {
+  const { controler, CLASSEMENT, estDistinctif } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  // D'abord que le montage monte ce qu'il prétend : un identifiant qui aurait la
+  // forme d'un nom rendrait tout ce qui suit vrai pour une autre raison.
+  assert.ok(!estDistinctif('zorblo'), 'le montage suppose un identifiant AMBIGU : « zorblo » ne l\'est plus');
+  const dir = terrainAmbigu();
+  try {
+    const rien = () => 'rien ici';
+    const liste = () => ['A.md'];
+    for (const [cas, classement] of [['absent', null], ['vide', ''], ['qui classe un autre nom', 'mot autre']]) {
+      const r = controler([dir], rien, liste, () => classement);
+      assert.equal(r.code, 1, `classement ${cas} : un identifiant ambigu NON classé passe — `
+        + 'un nouveau terrain rejoindrait les ambigus en silence, le trou exact du 575');
+      const texte = r.lignes.join('\n');
+      assert.match(texte, /non classé : « zorblo »/, `classement ${cas} : il ne nomme pas l'identifiant à classer`);
+      assert.ok(texte.includes(CLASSEMENT), `classement ${cas} : il ne dit pas OÙ classer`);
+    }
+    // ⚠️ L'AUTRE MOITIÉ : classé, dans l'une ou l'autre classe, il ne demande
+    // plus rien. Sans elle, un contrôle qui échoue toujours passerait ce garde.
+    for (const classement of ['mot zorblo', 'distinctif zorblo', '# un commentaire\n\nmot zorblo  # et un autre\n']) {
+      const r = controler([dir], rien, liste, () => classement);
+      assert.equal(r.code, 0, `« ${classement.trim()} » est un classement valide, et le contrôle rougit :\n${r.lignes.join('\n')}`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('un identifiant classé DISTINCTIF échoue à la moindre mention, quelle que soit sa casse (575)', async () => {
+  const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const dir = terrainAmbigu();
+  try {
+    const liste = () => ['PROPRE.md', 'SALE.md'];
+    const avec = (/** @type {string} */ mention) => (/** @type {string} */ f) =>
+      (f.endsWith('SALE.md') ? `ligne un\nle terrain ${mention} a rendu\n` : 'rien ici');
+    // 🔴 Le chemin en minuscules est le cas RENCONTRÉ en écrivant ce correctif :
+    // le nom d'une police, recopié dans un chemin d'assets.
+    for (const mention of ['zorblo', 'Zorblo', 'ZORBLO', 'assets/fonts/zorblo/']) {
+      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo');
+      const texte = r.lignes.join('\n');
+      assert.equal(r.code, 1, `« ${mention} » : un nom classé distinctif fuit sans que rien échoue`);
+      assert.match(texte, /SALE\.md:2/, `« ${mention} » : il ne dit pas OÙ, donc on ne peut pas corriger`);
+      assert.ok(!texte.includes('PROPRE.md:'), `« ${mention} » : il accuse un fichier qui ne porte rien`);
+    }
+    // ⚠️ ET LE MÊME TEXTE, CLASSÉ « mot », NE FAIT PAS ÉCHOUER — il est RAPPORTÉ.
+    // Un contrôle qui rougirait sur toute mention passerait la moitié d'au-dessus.
+    const mot = controler([dir], avec('zorblo'), liste, () => 'mot zorblo');
+    assert.equal(mot.code, 0, `classé « mot », une mention fait échouer :\n${mot.lignes.join('\n')}`);
+    assert.match(mot.lignes.join('\n'), /SALE\.md:2/,
+      'classé « mot », la mention n\'est même plus rapportée : le silence d\'avant le 541 revient');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('le classement ne peut que DURCIR, et une ligne illisible l\'arrête (575)', async () => {
+  const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  // Un identifiant distinctif par sa FORME : aucune ligne du fichier privé ne
+  // doit pouvoir le taire, sinon une ligne suffit à désarmer le contrôle.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-terrain-'));
+  writeFileSync(join(dir, 'pubspec.yaml'), 'name: nom_bidon_qui_ne_fuit_pas\n');
+  const ambigu = terrainAmbigu();
+  try {
+    const sale = (/** @type {string} */ f) => (f.endsWith('SALE.md') ? 'nom_bidon_qui_ne_fuit_pas' : 'rien');
+    const adouci = controler([dir], sale, () => ['SALE.md'], () => 'mot nom_bidon_qui_ne_fuit_pas');
+    assert.equal(adouci.code, 1, 'un « mot » a tu une fuite distinctive par sa forme');
+
+    // Une faute de frappe dans une classe n'est pas sautée : on croirait classé
+    // ce qui ne l'est pas, et le message accuserait une ligne qu'on a sous les yeux.
+    const r = controler([ambigu], () => 'rien', () => ['A.md'], () => 'distinctf zorblo');
+    assert.equal(r.code, 1, 'une ligne de classement illisible passe');
+    assert.match(r.lignes.join('\n'), /ligne 1 non reconnue/, 'il ne dit pas QUELLE ligne est illisible');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(ambigu, { recursive: true, force: true });
+  }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
