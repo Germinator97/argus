@@ -3281,6 +3281,37 @@ MUTATIONS = [
     ("run", "571 ter · le runner ne lit plus le budget de durée",
      "\n  const maxMinutes = Number(config.budget?.maxMinutes ?? 0);",
      "\n  const maxMinutes = 0;"),
+    # ── 575 · ce que la forme ne tranche pas, on le classe une fois ────────
+    # Un identifiant ambigu non classé redevient une simple mention : un nouveau
+    # terrain rejoint les ambigus en silence — le trou exact du 575.
+    ("confiddepot", "575 · un identifiant ambigu non classé ne fait plus échouer",
+     "  const nonClasses = ambigusDerives.filter((a) => !classes.has(a.valeur));",
+     "  const nonClasses = ambigusDerives.filter(() => false);"),
+    # Un nom classé « distinctif » redevient un mot : sa fuite n'est plus
+    # qu'une mention rapportée.
+    ("confiddepot", "575 bis · un nom classé distinctif redevient un mot",
+     "  const estFuite = (/** @type {string} */ v) => estDistinctif(v) || estNomClasse(v);",
+     "  const estFuite = (/** @type {string} */ v) => estDistinctif(v);"),
+    # La casse cache de nouveau un nom : le chemin de police en minuscules,
+    # trouvé par ce correctif dès sa première passe, redevient invisible.
+    ("confiddepot", "575 ter · la casse cache de nouveau une mention distinctive",
+     "      const ligne = ligneDe(t, a.valeur, estNomClasse(a.valeur));",
+     "      const ligne = ligneDe(t, a.valeur, false);"),
+    # Une ligne de classement illisible est sautée : on croit classé ce qui ne
+    # l'est pas, et le message accuse une ligne qu'on a sous les yeux.
+    ("confiddepot", "575 quater · une ligne de classement illisible est sautée",
+     "      erreurs.push(`ligne ${i + 1} non reconnue : « ${l} » — attendu « mot <valeur> » ou « distinctif <valeur> »`);\n",
+     ""),
+    # Le classement ADOUCIT : une ligne « mot » tait un identifiant distinctif
+    # par sa forme — une ligne du fichier privé suffit à désarmer le contrôle.
+    ("confiddepot", "575 quinquies · un « mot » tait une fuite distinctive par sa forme",
+     "  const estFuite = (/** @type {string} */ v) => estDistinctif(v) || estNomClasse(v);",
+     "  const estFuite = (/** @type {string} */ v) => classes.get(v) !== 'mot' && (estDistinctif(v) || estNomClasse(v));"),
+    # Le câblage : le classement privé n'est plus lu par défaut. Sur le poste qui
+    # porte des terrains, le dépôt livré doit alors échouer, identifiants non classés.
+    ("confiddepot", "575 sexies · le classement privé n'est plus lu",
+     "lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {",
+     "lireClassement = () => null) {"),
 ]
 
 
