@@ -9,9 +9,11 @@
 #   --update   met à jour les fichiers de CADRE, sans jamais toucher aux
 #              fichiers que tu édites.
 #   --uninstall
-#              retire les fichiers de CADRE que ce plugin a posés et qui
-#              portent encore sa signature. Ce qui est à toi reste, et la
-#              commande énumère ce qu'elle garde.
+#              retire tout ce qu'Argus a fait naître : ce que l'installation a
+#              posé et qui porte encore sa signature, ce qu'on a écrit pour
+#              lui sous ses racines (marqué ARGUS:OWNED), ce qu'il a produit
+#              (rapports, références visuelles). Ce qui reste sous ses racines
+#              est nommé, fichier par fichier.
 #
 # Et deux gestes qui ne concernent pas un projet mais la machine :
 #
@@ -42,8 +44,11 @@
 # disent RIEN de son départ : --uninstall reprend TOUT ce que l'installation a
 # posé, quel que soit le camp et quel que soit ce que tu y as écrit. Le seul
 # fichier qu'elle ne pose pas est le .gitignore, où elle insère un bloc — c'est
-# donc le bloc qui s'en va. Ce qui reste est ce qu'elle n'a jamais touché : ton
-# code et ses ancres, tes tests, tes références visuelles, tes rapports.
+# donc le bloc qui s'en va. Depuis le 576, ce qu'Argus a fait ÉCRIRE pour lui
+# (marqué ARGUS:OWNED sous ses racines) et ce qu'il a PRODUIT (rapports,
+# références visuelles) repartent aussi. Ce qui reste est ce que ni
+# l'installation ni Argus n'ont fait naître — ton code et ses ancres, tes tests —
+# et tout fichier resté sous ses racines est nommé.
 # Une liste de noms écrite à la main aurait vieilli au premier fichier ajouté.
 #
 # ⚠️ Les marqueurs sont RÉSERVÉS et bornés à l'en-tête, pour qu'un fichier
@@ -242,6 +247,17 @@ BLOC_FIN_SANS_SAUT=' ARGUS:NO-EOL'
 # un dossier vide n'étant suivi par aucun git.
 DOSSIERS_CREES=(argus-mobile-report .maestro/_baselines)
 
+# ── Les racines d'Argus chez l'hôte : là où l'on écrit POUR lui ──────────────
+# 576 · UNE SEULE DÉCLARATION POUR LES DEUX INVENTAIRES. Celui de l'installation
+# parcourait déjà la cible sous ces deux racines, pour nommer les fichiers que
+# le SKILL fait marquer ARGUS:OWNED (des doubles de test, des sous-flows du
+# projet) ; la désinstallation ne parcourait que le SCAFFOLD. Deux inventaires
+# tirés du même marqueur ne voyaient donc pas la même chose : ces fichiers
+# étaient listés à l'installation, puis ni retirés ni nommés au départ — morts,
+# puisque ce qui les importait venait de partir. Mesuré sur un terrain : 148
+# fichiers restés, dont un rapport de 69 Mo.
+RACINES_ARGUS=(test/argus .maestro)
+
 # ── Retirer NOTRE bloc d'un fichier de l'hôte, la ligne vide comprise ───────
 # ⚠️ L'insertion pose `\n` DEVANT le bloc ; un retrait qui ne reprend pas cette
 # ligne vide laisse le fichier de l'hôte MODIFIÉ — `git status` le montre changé
@@ -372,6 +388,14 @@ est_notre_copie() {
 # prix. Le repli s'étant révélé inerte (554), il n'y a plus qu'un critère, donc
 # plus qu'un seuil. Le jour où une reconnaissance approximative revient, cette
 # asymétrie revient avec elle.
+#
+# 576 · ET CE QU'ARGUS A FAIT NAÎTRE SANS L'INSTALLATION REPART AUSSI. Le même
+# raisonnement que le 553, porté un cran plus loin : les fichiers que le SKILL
+# fait écrire pour Argus (marqués ARGUS:OWNED sous ses racines) et les dossiers
+# que l'installation a créés pour ses produits (rapports, références visuelles)
+# ne servent qu'à lui. Les garder laissait un terrain encombré de fichiers
+# morts, qu'aucune ligne ne nommait — alors que l'en-tête promettait de dire ce
+# qui reste. Ce qui reste sous ses racines, désormais, est NOMMÉ un par un.
 uninstall_project() {
   local target="$1"
   local retires=0 gardes=0
@@ -422,9 +446,40 @@ uninstall_project() {
     fi
   done < <(find "$SCAFFOLD_DIR" -type f)
 
+  # 576 · CE QU'ARGUS A PRODUIT : les dossiers que l'installation a créés pour
+  # lui, contenu compris — un rapport, des références visuelles. Nommés par
+  # dossier avec leur compte : cent quarante lignes de rapport noieraient ce
+  # qui compte. Un dossier vide est laissé au `rmdir` qui suit.
+  local d n
+  for d in "${DOSSIERS_CREES[@]}"; do
+    [ -d "$target/$d" ] || continue
+    n="$(find "$target/$d" -type f | wc -l | tr -d ' ')"
+    [ "$n" -gt 0 ] || continue
+    rm -rf "${target:?}/$d"
+    echo "  🗑️  retiré, produit par Argus : $d/ ($n fichier(s))"
+    retires=$((retires + n))
+  done
+
+  # 576 · CE QU'ON A ÉCRIT POUR ARGUS, que l'installation n'a pas posé : les
+  # fichiers marqués ARGUS:OWNED sous ses racines — la déclaration même que
+  # l'inventaire de l'installation lit pour les nommer. Un chemin du scaffold
+  # a déjà été jugé par la boucle d'au-dessus, avec la reconnaissance stricte.
+  local r f rel
+  for r in "${RACINES_ARGUS[@]}"; do
+    [ -d "$target/$r" ] || continue
+    while IFS= read -r -d '' f; do
+      rel="${f#"$target"/}"
+      [ -e "$SCAFFOLD_DIR/$rel" ] && continue
+      head -20 "$f" 2>/dev/null | grep -qF 'ARGUS:OWNED' || continue
+      rm -f "$f"
+      echo "  🗑️  retiré, écrit pour Argus : $rel"
+      retires=$((retires + 1))
+    done < <(find "$target/$r" -type f -print0)
+  done
+
   # Les dossiers devenus vides, et EUX SEULS : rmdir refuse tout le reste, ce
-  # qui protège les références visuelles et les rapports déjà produits sans
-  # qu'on ait à les nommer.
+  # qui protège ce que le projet a posé sous nos racines sans qu'on ait à le
+  # deviner — il est nommé plus bas.
   #
   # ⚠️ MAIS LA LISTE DES CANDIDATS ÉTAIT ÉCRITE À LA MAIN, et elle a vieilli —
   # exactement ce que le commentaire d'origine disait vouloir éviter. Elle
@@ -450,17 +505,31 @@ uninstall_project() {
         rmdir "$target/$d" 2>/dev/null || true
       done
 
+  # 576 · ET CE QUI RESTE SOUS SES RACINES EST NOMMÉ, un fichier par ligne : ce
+  # sont les fichiers du projet (ses propres flows Maestro, non marqués), et
+  # c'est la seule liste qui dise à celui qui désinstalle ce qu'il garde. Un
+  # chemin du scaffold y est déjà, nommé par la boucle d'au-dessus.
+  for r in "${RACINES_ARGUS[@]}"; do
+    [ -d "$target/$r" ] || continue
+    while IFS= read -r -d '' f; do
+      rel="${f#"$target"/}"
+      [ -e "$SCAFFOLD_DIR/$rel" ] && continue
+      liste="$liste  ⏭️  resté sous $r/, sans marque Argus : $rel"$'\n'; gardes=$((gardes + 1))
+    done < <(find "$target/$r" \( -type f -o -type l \) -print0)
+  done
+
   echo
   printf '%s' "$liste"
   echo
   echo "  $retires retiré(s) · $gardes gardé(s)"
   echo
   echo "  Ce qui reste t'appartient : ton code et les ancres que tu y as posées,"
-  echo "  tes propres tests, tes références visuelles et les rapports déjà"
-  echo "  produits. Rien de tout cela n'a été posé par l'installation — et tout"
-  echo "  ce qu'elle avait posé vient de repartir, y compris ce que tu y avais"
-  echo "  écrit. Réinstalle et tu retrouves les gabarits ; l'instrumentation de"
-  echo "  ton application, elle, n'a jamais bougé."
+  echo "  tes propres tests, et chaque fichier nommé ci-dessus. Tout ce qu'Argus"
+  echo "  a fait naître vient de repartir : ce que l'installation avait posé, ce"
+  echo "  qu'on a écrit pour lui (marqué ARGUS:OWNED), ce qu'il a produit —"
+  echo "  rapports, références visuelles —, y compris ce que tu y avais écrit."
+  echo "  Réinstalle et tu retrouves les gabarits ; l'instrumentation de ton"
+  echo "  application, elle, n'a jamais bougé."
 }
 
 
@@ -662,7 +731,8 @@ inventaire_owned() {
   # c'est la copie posée chez l'hôte qui fait foi, puisque c'est elle qu'on ouvrira.
   OWNED_LIST="$(mktemp)"
   trap 'rm -f "$OWNED_LIST"' EXIT
-  for d in "$TARGET/test/argus" "$TARGET/.maestro"; do
+  for r in "${RACINES_ARGUS[@]}"; do
+    d="$TARGET/$r"
     [ -d "$d" ] || continue
     find "$d" -type f -print0 | while IFS= read -r -d '' f; do
       printf '%s\t%s\n' "${f#"$TARGET"/}" "$f"

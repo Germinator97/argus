@@ -15715,10 +15715,15 @@ test('la désinstallation retire le cadre et GARDE tout le travail du projet (49
         `${rel} a survécu à la désinstallation : il avait été POSÉ par l'installation, donc elle `
         + 'le reprend — le camp dit qui écrase qui pendant la vie de l\'outil, pas à son départ (553)');
     }
-    for (const rel of ['lib/main.dart', 'pubspec.yaml', '.maestro/_baselines/home.png',
-      'argus-mobile-report/report.json']) {
+    for (const rel of ['lib/main.dart', 'pubspec.yaml']) {
       assert.ok(existsSync(join(projet, rel)),
         `${rel} a disparu : il n'a jamais appartenu au plugin`);
+    }
+    // 576 — ET CE QU'ARGUS A PRODUIT PART AVEC LUI : le rapport et les références
+    //    visuelles ne servent qu'à lui. Ce garde exigeait l'inverse jusqu'au 28/09.
+    for (const rel of ['.maestro/_baselines', 'argus-mobile-report']) {
+      assert.ok(!existsSync(join(projet, rel)),
+        `${rel}/ a survécu à la désinstallation : Argus l'a produit, il repart avec lui (576)`);
     }
     // 3. Le .gitignore garde sa ligne, et perd notre bloc.
     const gi = readFileSync(join(projet, '.gitignore'), 'utf8');
@@ -17355,8 +17360,12 @@ test('530 — et ce qui appartient au projet SURVIT à la désinstallation', () 
     ...PROJET_NU,
     'scripts/deploy.sh': '#!/bin/sh\n',
     '.github/workflows/ci.yml': 'on: push\n',
-    '.maestro/_baselines/home.png': 'png\n',
-    'argus-mobile-report/report.json': '{}\n',
+    // 576 — le rapport et les références visuelles ne sont plus « au projet » :
+    // Argus les a produits, ils repartent avec lui. Ce qui reste au projet sous
+    // ses racines, ce sont ses propres fichiers, NON marqués — posés ici, dans
+    // les dossiers mêmes que le `rmdir` visite.
+    '.maestro/mon-parcours.yaml': 'appId: demo\n---\n- tapOn: go\n',
+    'test/argus/mes-notes.md': 'à moi\n',
   };
   const { cible } = installerPuisDesinstaller(aLHote);
 
@@ -18945,11 +18954,8 @@ test('553 — tout ce que l\'installation a posé repart, MÊME REMPLI', () => {
       const f = join(projet, rel);
       writeFileSync(f, `${readFileSync(f, 'utf8')}\n# ${TEMOIN}\n`);
     }
-    // …et les artefacts PRODUITS, que l'installation n'a jamais posés.
-    mkdirSync(join(projet, '.maestro/_baselines'), { recursive: true });
-    writeFileSync(join(projet, '.maestro/_baselines/home.png'), 'PNG');
-    mkdirSync(join(projet, 'argus-mobile-report'), { recursive: true });
-    writeFileSync(join(projet, 'argus-mobile-report/report.json'), '{}');
+    // Les artefacts PRODUITS n'ont plus leur place ici : depuis le 576 ils
+    // repartent aussi, et c'est son garde qui le mesure.
 
     const r = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
     assert.equal(r.status, 0, `la désinstallation a échoué : ${r.stderr}`);
@@ -18971,8 +18977,7 @@ test('553 — tout ce que l\'installation a posé repart, MÊME REMPLI', () => {
     // 2. L'AUTRE MOITIÉ, et la seule qui ne se répare pas : ce que
     //    l'installation n'a jamais posé n'a pas bougé d'un octet.
     for (const [rel, attendu] of [['lib/main.dart', 'semanticIdentifier'],
-      ['test/mon_test.dart', 'void main'], ['.maestro/_baselines/home.png', 'PNG'],
-      ['argus-mobile-report/report.json', '{}']]) {
+      ['test/mon_test.dart', 'void main']]) {
       assert.ok(existsSync(join(projet, rel)),
         `${rel} a disparu : l'installation ne l'avait jamais posé, elle n'avait pas à le reprendre`);
       assert.match(readFileSync(join(projet, rel), 'utf8'), new RegExp(attendu),
@@ -19118,6 +19123,124 @@ test('553 — la promesse de fin dit ce qui reste, lue sur la MÊME exécution',
     assert.match(promesse, /[Rr]éinstalle/,
       'la promesse ne dit pas qu\'une réinstallation rend les gabarits : elle se lit alors comme '
       + 'une perte définitive du travail (553)');
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 576 · Ce qu'Argus a fait naître repart avec lui, et ce qui reste est NOMMÉ
+// ═══════════════════════════════════════════════════════════════════════════
+// Après `--uninstall`, un terrain gardait 148 fichiers : les doubles de test et
+// les sous-flows que le SKILL fait marquer ARGUS:OWNED, un rapport de 69 Mo, les
+// références visuelles. Rien ne les nommait, alors que l'en-tête promettait
+// d'énumérer ce qui reste — et l'inventaire de l'INSTALLATION, lui, voyait les
+// fichiers marqués : deux inventaires du même marqueur, qui ne voyaient pas la
+// même chose. Trouvé par une question, pas par un garde.
+
+test('576 — ce qu\'Argus a fait naître repart avec lui, et ce qui reste sous ses racines est NOMMÉ', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-576-'));
+  try {
+    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    mkdirSync(join(projet, 'lib'));
+    writeFileSync(join(projet, 'lib/main.dart'), 'void main() {}\n');
+    // Un HOMONYME posé avant l'installation : à un chemin du scaffold, sans notre
+    // en-tête. Il doit rester, et n'être nommé qu'UNE fois.
+    mkdirSync(join(projet, '.maestro'), { recursive: true });
+    writeFileSync(join(projet, '.maestro/smoke.yaml'), 'appId: hote\n---\n- tapOn: a-moi\n');
+    installe(projet);
+
+    const ecrire = (/** @type {string} */ rel, /** @type {string} */ contenu) => {
+      mkdirSync(join(projet, dirname(rel)), { recursive: true });
+      writeFileSync(join(projet, rel), contenu);
+    };
+    // Ce qu'un run laisse, tel que le terrain l'a laissé.
+    ecrire('test/argus/argus_fakes.dart', '// ARGUS:OWNED — à toi\nimport \'harness.dart\';\n');
+    ecrire('.maestro/_subflows/entrer-accueil.yaml', 'appId: hote\n# ARGUS:OWNED — à toi\n---\n- tapOn: go\n');
+    ecrire('argus-mobile-report/report.json', '{}\n');
+    ecrire('argus-mobile-report/maestro/flow/capture.png', 'PNG\n');
+    ecrire('.maestro/_baselines/android-emu/home.png', 'PNG\n');
+    ecrire('.maestro/_baselines/android-emu/.argus-device', '{}\n');
+    // Ce qui est au projet : non marqué sous nos racines, ou hors d'elles.
+    const aGarder = {
+      '.maestro/mon-parcours.yaml': 'appId: hote\n---\n- tapOn: b\n',
+      'test/argus/mes-notes.md': 'à moi\n',
+      // ⚠️ MARQUÉ mais HORS des racines : le marqueur ne suffit pas, sinon la
+      // désinstallation irait chercher dans le code de l'application.
+      'lib/argus_note.dart': '// ARGUS:OWNED — à toi\n',
+      '.maestro/smoke.yaml': 'appId: hote\n---\n- tapOn: a-moi\n',
+      'lib/main.dart': 'void main() {}\n',
+    };
+    for (const [rel, contenu] of Object.entries(aGarder)) {
+      if (!existsSync(join(projet, rel))) ecrire(rel, contenu);
+    }
+
+    const r = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
+    assert.equal(r.status, 0, `la désinstallation a échoué : ${r.stderr}`);
+    const sortie = r.stdout;
+
+    // 1. Ce qu'Argus a fait ÉCRIRE ou PRODUIRE est parti, et chaque retrait est dit.
+    for (const rel of ['test/argus/argus_fakes.dart', '.maestro/_subflows/entrer-accueil.yaml']) {
+      assert.ok(!existsSync(join(projet, rel)),
+        `${rel} a survécu : il était marqué ARGUS:OWNED sous une racine d'Argus, et plus rien ne l'importe (576)`);
+      assert.ok(sortie.includes(`retiré, écrit pour Argus : ${rel}`), `le retrait de ${rel} n'est pas dit`);
+    }
+    for (const rel of ['argus-mobile-report', '.maestro/_baselines']) {
+      assert.ok(!existsSync(join(projet, rel)),
+        `${rel}/ a survécu : Argus l'a produit, il repart avec lui (576)`);
+      assert.ok(sortie.includes(`retiré, produit par Argus : ${rel}/`), `le retrait de ${rel}/ n'est pas dit`);
+    }
+
+    // 2. L'AUTRE MOITIÉ, la seule qui ne se répare pas : ce qui est au projet
+    //    n'a pas bougé d'un octet.
+    for (const [rel, contenu] of Object.entries(aGarder)) {
+      assert.ok(existsSync(join(projet, rel)), `${rel} a été DÉTRUIT : il appartient au projet (576)`);
+      assert.equal(readFileSync(join(projet, rel), 'utf8'), contenu, `${rel} a été réécrit (576)`);
+    }
+
+    // 3. Et ce qui reste sous nos racines est NOMMÉ — une fois chacun : le compte
+    //    « gardé(s) » est celui des fichiers restés, pas des lignes écrites.
+    const restes = ['.maestro/mon-parcours.yaml', 'test/argus/mes-notes.md', '.maestro/smoke.yaml'];
+    for (const rel of restes) {
+      const fois = sortie.split('\n').filter((l) => l.includes('⏭️') && l.endsWith(`: ${rel}`)).length;
+      assert.equal(fois, 1, `${rel} est resté sous une racine d'Argus et il est nommé ${fois} fois, `
+        + 'au lieu d\'une : celui qui désinstalle ne sait pas ce qu\'il garde (576)');
+    }
+    assert.match(sortie, new RegExp(`${restes.length} gardé\\(s\\)`),
+      `le compte des fichiers gardés n'est pas celui des fichiers restés :\n${sortie}`);
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+});
+
+test('576 — l\'inventaire de l\'installation et la désinstallation lisent les MÊMES racines', () => {
+  // ⚠️ DÉRIVÉ de la déclaration : une racine ajoutée d'un seul côté serait le
+  // défaut exact du 576, et un garde qui citerait les racines ne le verrait pas.
+  const sh = readFileSync(INSTALLEUR, 'utf8');
+  const decl = /^RACINES_ARGUS=\(([^)]*)\)$/m.exec(sh);
+  assert.ok(decl, 'l\'installeur ne déclare plus RACINES_ARGUS : ce garde en dérive ses racines, '
+    + 'donc il ne mesure plus rien. Ré-ancre-le sur la déclaration du jour (576)');
+  const racines = decl[1].trim().split(/\s+/);
+  assert.ok(racines.length >= 2, `racines lues : ${racines.join(', ')} — le montage suppose au moins test/argus et .maestro`);
+
+  const projet = mkdtempSync(join(tmpdir(), 'argus-576-parite-'));
+  try {
+    writeFileSync(join(projet, 'pubspec.yaml'), 'name: hote\n');
+    installe(projet);
+    const temoins = racines.map((r) => `${r}/zz-parite-576.txt`);
+    for (const rel of temoins) {
+      mkdirSync(join(projet, dirname(rel)), { recursive: true });
+      writeFileSync(join(projet, rel), '# ARGUS:OWNED — écrit pour Argus\n');
+    }
+    const check = spawnSync('bash', [INSTALLEUR, projet, '--check'], { encoding: 'utf8' });
+    const desinstall = spawnSync('bash', [INSTALLEUR, projet, '--uninstall'], { encoding: 'utf8' });
+    assert.equal(desinstall.status, 0, `la désinstallation a échoué : ${desinstall.stderr}`);
+    for (const rel of temoins) {
+      assert.ok(check.stdout.includes(rel),
+        `--check ne nomme pas ${rel} parmi les fichiers à toi : l'inventaire de l'installation ne lit plus cette racine (576)`);
+      assert.ok(!existsSync(join(projet, rel)),
+        `${rel} est inventorié à l'installation mais survit à la désinstallation — les deux ne lisent plus les mêmes racines (576)`);
+    }
   } finally {
     rmSync(projet, { recursive: true, force: true });
   }

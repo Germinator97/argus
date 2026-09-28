@@ -763,6 +763,9 @@ Mets-les dans un fichier voisin — `test/argus/argus_fakes.dart` est le nom que
 terrain a choisi — et **déclare-le `ARGUS:OWNED` en en-tête** : sans ce marqueur,
 il n'apparaît ni dans la liste que l'installeur imprime en sortant, ni dans son
 `--check`. Il disparaît alors du seul inventaire que la personne suivante lira.
+Le marqueur dit aussi qu'il **sert Argus** : `--uninstall` le reprend avec le reste,
+puisque rien d'autre ne l'importe (576). Un fichier que le projet garderait sans
+Argus ne se marque pas — et il vit hors de `test/argus/` et de `.maestro/`.
 **Vérifie-le plutôt que de le supposer** — `install-mobile.sh <TARGET> --check`
 imprime cet inventaire, en retard ou non : ton fichier doit s'y voir nommément.
 ⚠️ Cette seconde moitié a été fausse pendant plusieurs runs (le mode `--check`
@@ -1582,8 +1585,11 @@ depuis n'importe quel projet installé — `argus-mobile run --tags=smoke`,
 c'est délibéré : un runner de CI n'a aucune installation globale, donc un projet
 dont le moteur vivrait dans la maison n'aurait plus rien à appeler en
 intégration — et le dev exécuterait une autre version que son intégration.
-Pour retirer : `install-mobile.sh <TARGET> --uninstall` ne reprend que le cadre
-qui porte encore la signature et **énumère ce qu'il garde** ;
+Pour retirer : `install-mobile.sh <TARGET> --uninstall` reprend tout ce qu'Argus a
+fait naître — ce que l'installation a posé et qui porte encore sa signature, ce que
+tu as écrit pour lui et marqué `ARGUS:OWNED` sous `test/argus/` et `.maestro/`, les
+rapports et les références visuelles — et **nomme, un par un, les fichiers qui
+restent** sous ses racines ;
 `--uninstall-global` retire la maison et la commande, et rien d'autre.
 
 **c. Paramétrer.** Il n'y a pas UN fichier à éditer, il y en a une dizaine, et
