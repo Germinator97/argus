@@ -105,9 +105,17 @@ void main() {
             debugLabel: screen.id,
           );
           argusDrainMountException(tester);
+          // 573 — sur les COULEURS RÉSOLUES, plus sur les pixels : un texte
+          // fin ou rétréci n'y a presque aucun pixel à sa vraie couleur, et un
+          // fond d'image y rendait un verdict qui dépendait de l'instant. Les
+          // fonds peints repassent aux pixels, images chargées, et le disent.
+          // La CLÉ ne change pas : les dettes déjà inscrites s'y retrouvent.
           await argusCheck(
             '${screen.id} · contraste du texte (WCAG AA)',
-            () => expectLater(tester, meetsGuideline(textContrastGuideline)),
+            () => expectLater(
+              tester,
+              meetsGuideline(const ArgusTextContrastGuideline()),
+            ),
           );
           handle.dispose();
         },

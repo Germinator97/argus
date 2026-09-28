@@ -296,6 +296,15 @@ jobs:
           grep -q "argusTheme() ne rend pas le thème de l'app" /tmp/sortie.txt \
             || { echo "✖ le contrôle de résolution des polices (436) ne dit pas pourquoi il n'a rien mesuré"; exit 1; }
 
+      # 573 — LE CONTRASTE SE JUGE SUR LES COULEURS RÉSOLUES. Six montages au
+      # verdict connu d'avance : le faux positif des pixels sur un texte fin et
+      # rétréci, un fond d'image (repli sur les pixels, images chargées), un
+      # vrai défaut, un voile translucide, une opacité, un `Text.rich`. Avant
+      # celle des polices, qui doit rester la dernière : elle n'ajoute qu'un
+      # fichier de test.
+      - name: Il juge le contraste sur les couleurs résolues
+        run: bash tools/contrast-probe.sh /tmp/accueil
+
       # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
       # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
       # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas

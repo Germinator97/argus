@@ -13307,6 +13307,69 @@ test('574 — la CI JOUE la sonde des polices, en dernier', () => {
   assert.match(script, /grep -q 'ne sait pas nommer'/, 'la sonde ne vérifie plus que l\'échec dit POURQUOI');
 });
 
+// ── 573 · LE CONTRASTE SE JUGE SUR LES COULEURS RÉSOLUES ────────────────
+// `textContrastGuideline` compare les couleurs les plus fréquentes des pixels
+// d'un texte : un libellé fin et rétréci y tombait à 3,38:1 quand ses couleurs
+// faisaient 8,42:1, et un fond d'image rendait un verdict qui dépendait de
+// l'instant. ⚠️ Comme pour le 574, ces gardes LISENT le Dart ; ce qu'il fait se
+// mesure dans la sonde (`tools/contrast-probe.sh`), que la CI joue.
+
+test('573 — le contraste se juge sur les couleurs RÉSOLUES, et la dette garde sa clé', () => {
+  const a11y = readFileSync(join(SCAFFOLD, 'test/argus/a11y_test.dart'), 'utf8');
+  const code = a11y.split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert.match(code, /meetsGuideline\(const ArgusTextContrastGuideline\(\)\)/,
+    'a11y_test ne juge plus le contraste avec la mesure sur couleurs résolues (573)');
+  assert.ok(!/\btextContrastGuideline\b/.test(code),
+    'a11y_test juge encore sur les PIXELS : le faux positif du texte fin et le verdict du fond '
+    + 'd\'image reviennent (573)');
+  // ⚠️ La CLÉ ne bouge pas : les dettes déjà inscrites doivent s'y retrouver.
+  assert.match(a11y, /'\$\{screen\.id\} · contraste du texte \(WCAG AA\)'/,
+    'la clé de la dette de contraste a changé : les dettes déjà inscrites ne s\'y retrouveraient plus (573)');
+});
+
+test('573 — la mesure : le parcours de Flutter, le premier fond opaque, les voiles composés, le repli ANNONCÉ', () => {
+  const cadre = readFileSync(join(SCAFFOLD, 'test/argus/argus_harness.dart'), 'utf8');
+  // Les MÊMES textes que Flutter : seule la mesure change.
+  const parcours = corpsDart(cadre, 'List<_ArgusTexteJuge> _argusTextesJuges(WidgetTester tester) {');
+  for (const [motif, quoi] of [[/find\.text\(texte\)\.hitTestable\(\)/, 'la recherche des textes'],
+    [/flutter\.shouldSkipNode\(data\)/, 'les nœuds écartés'], [/flutter\.targetContrastRatio\(/, 'les seuils']]) {
+    assert.match(parcours, motif, `${quoi} ne sont plus ceux de Flutter : la mesure ne jugerait plus les mêmes textes (573)`);
+  }
+  const mesure = corpsDart(cadre, 'ArgusMesureContraste argusMesureContraste(Element element, TextStyle style) {');
+  assert.match(mesure, /if \(_argusOpaque\(couche\)\) \{\s*opaque = couche;\s*return false;/,
+    'la remontée ne s\'arrête plus au premier fond OPAQUE (573)');
+  assert.match(mesure, /voiles\.add\(couche\)/, 'les fonds translucides ne sont plus retenus (573)');
+  assert.match(mesure, /Color\.alphaBlend\(voile, fond\)/, 'les fonds translucides ne sont plus composés (573)');
+  assert.match(mesure, /opacite \*= w\.opacity;/, 'une Opacity posée sur le texte n\'est plus prise en compte (573)');
+  assert.match(mesure, /_argusFrerePeintDessous\(pile, rendu, zone\)/,
+    'un frère peint dessous, dans un Stack, n\'est plus vu : un fond d\'image passerait pour le fond de la page (573)');
+  // Le repli : les images chargées AVANT les pixels, et le constat qui le dit.
+  const guide = corpsDart(cadre, 'class ArgusTextContrastGuideline extends AccessibilityGuideline {');
+  const charge = guide.indexOf('await argusChargerImages(tester)');
+  const pixels = guide.indexOf('CustomMinimumContrastGuideline(');
+  assert.ok(charge > 0 && pixels > charge,
+    'les images ne sont plus chargées AVANT la mesure de pixels : le verdict dépendrait encore de l\'instant (573)');
+  assert.match(guide, /mesuré sur pixels, fond peint/, 'le repli sur les pixels ne se dit plus (573)');
+  assert.match(guide, /couleurs résolues : texte/, 'le constat ne dit plus sur quelles couleurs il juge (573)');
+});
+
+test('573 — la CI JOUE la sonde du contraste, avant celle des polices', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const job = ci.slice(ci.indexOf('\n  harness:'));
+  const contraste = job.indexOf('run: bash tools/contrast-probe.sh /tmp/accueil');
+  const polices = job.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.ok(contraste > 0,
+    'la CI ne joue plus la sonde du contraste : la mesure n\'est plus exécutée nulle part (573)');
+  assert.ok(polices > contraste,
+    'la sonde du contraste doit passer AVANT celle des polices, qui modifie le projet et reste la dernière (573)');
+  // Les deux cas qui justifient le 573, reproduits par la sonde elle-même.
+  const sonde = readFileSync(join(RACINE, 'tools/contrast-probe.dart'), 'utf8');
+  assert.match(sonde, /expect\(\s*pixels\.passed,\s*isFalse/,
+    'la sonde ne reproduit plus le faux positif des pixels : elle ne prouverait plus que la mesure l\'évite (573)');
+  assert.match(sonde, /expect\(\s*m\.peint,\s*isNotNull/,
+    'la sonde ne vérifie plus qu\'un fond d\'image est vu comme peint (573)');
+});
+
 // ── 430 · `label:` PROTÈGE TROIS CANAUX, PAS LE QUATRIÈME ────────────────
 //
 // Le §5 énumère où un secret passé par `-e` est masqué — console, rapports — et

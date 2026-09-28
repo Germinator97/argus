@@ -21,6 +21,7 @@
 
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 // `RenderParagraph` n'est pas ré-exporté par widgets.dart : sans cet import, la
@@ -1007,3 +1008,467 @@ void _argusLever(String message) {
   }
   collecte.add(message);
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// 6. Le contraste du texte, sur les couleurs RÉSOLUES (573)
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Le contraste du texte, WCAG AA, jugé sur les couleurs RÉSOLUES (573).
+///
+/// 🔴 POURQUOI PAS LES PIXELS. `textContrastGuideline` fait l'histogramme des
+/// pixels du rectangle d'un texte et compare la couleur la plus fréquente de
+/// chaque moitié. Sur un texte fin, ou rétréci par un `FittedBox`, presque aucun
+/// pixel ne garde sa vraie couleur : l'anticrénelage le mélange au fond, et le
+/// ratio chute. Mesuré sur un terrain : un libellé à 3,38:1 par les pixels,
+/// 8,42:1 sur ses couleurs — un faux positif inscrit comme dette. Et sur un fond
+/// PEINT, une image chargée de façon asynchrone, le verdict changeait selon
+/// l'instant : rouge joué seul, vert dans le fichier entier.
+///
+/// La mesure : la couleur du texte (son style résolu, opacités comprises)
+/// contre celle du premier fond opaque au-dessus de lui — `Material`, `Card`,
+/// `ColoredBox`, décoration pleine, `Ink` —, les fonds translucides composés au
+/// passage. C'est la définition de WCAG. Les textes jugés sont ceux que
+/// `textContrastGuideline` juge — même parcours sémantique, mêmes seuils — :
+/// seule la MESURE change.
+///
+/// ⚠️ UN FOND PEINT REPASSE AUX PIXELS, ET LE DIT : image, dégradé, shader, ou
+/// un frère peint dessous dans un `Stack`. Les images de l'arbre sont chargées
+/// AVANT la mesure — sinon le verdict dépend encore de l'instant —, et le
+/// constat porte « mesuré sur pixels, fond peint ».
+class ArgusTextContrastGuideline extends AccessibilityGuideline {
+  /// Le contraste du texte sur les couleurs résolues.
+  const ArgusTextContrastGuideline();
+
+  @override
+  String get description =>
+      'Contraste du texte (WCAG AA), sur les couleurs résolues';
+
+  @override
+  Future<Evaluation> evaluate(WidgetTester tester) async {
+    Evaluation result = const Evaluation.pass();
+    final List<_ArgusTexteJuge> peints = <_ArgusTexteJuge>[];
+    for (final _ArgusTexteJuge juge in _argusTextesJuges(tester)) {
+      final ArgusMesureContraste mesure = argusMesureContraste(
+        juge.element,
+        juge.style,
+      );
+      if (mesure.peint != null) {
+        juge.peint = mesure.peint;
+        peints.add(juge);
+        continue;
+      }
+      final double ratio = mesure.ratio!;
+      if (ratio < juge.cible - 0.01) {
+        result += Evaluation.fail(
+          '« ${juge.texte} » : ${ratio.toStringAsFixed(2)}:1, il en faut '
+          '${juge.cible}:1 — couleurs résolues : texte '
+          '${argusHex(mesure.texte!)} sur fond ${argusHex(mesure.fond!)}.',
+        );
+      }
+    }
+    if (peints.isEmpty) {
+      return result;
+    }
+
+    // Un fond PEINT : les pixels, mais une fois les images chargées.
+    final List<String> nonChargees = await argusChargerImages(tester);
+    for (final _ArgusTexteJuge juge in peints) {
+      final Evaluation pixels = await CustomMinimumContrastGuideline(
+        finder: find.byElementPredicate(
+          (Element e) => identical(e, juge.element),
+        ),
+        minimumRatio: juge.cible,
+      ).evaluate(tester);
+      if (!pixels.passed) {
+        result += Evaluation.fail(
+          '« ${juge.texte} » : mesuré sur pixels, fond peint (${juge.peint})'
+          '${nonChargees.isEmpty ? '' : ' — ⚠️ image(s) non chargée(s) en test : ${nonChargees.join(', ')} ; le fond mesuré n\'est peut-être pas celui de l\'appareil'}.\n'
+          '${pixels.reason}',
+        );
+      }
+    }
+    return result;
+  }
+}
+
+/// Un texte que le contraste juge : son élément, son libellé, son style
+/// effectif et le ratio qu'il lui faut.
+class _ArgusTexteJuge {
+  _ArgusTexteJuge(this.element, this.texte, this.style, this.cible);
+
+  final Element element;
+  final String texte;
+  final TextStyle style;
+  final double cible;
+  String? peint;
+}
+
+/// Les textes que `textContrastGuideline` juge, et rien d'autre : même
+/// parcours de l'arbre sémantique, mêmes nœuds écartés, mêmes seuils. Un
+/// élément trouvé par deux nœuds n'est jugé qu'une fois.
+List<_ArgusTexteJuge> _argusTextesJuges(WidgetTester tester) {
+  const MinimumTextContrastGuideline flutter = MinimumTextContrastGuideline();
+  final List<_ArgusTexteJuge> juges = <_ArgusTexteJuge>[];
+  final Set<Element> vus = <Element>{};
+
+  void visiter(SemanticsNode noeud) {
+    // Le harnais tient dès Flutter 3.19, où `flagsCollection` n'existe pas :
+    // l'ancien `hasFlag` reste, et son avertissement se tait — la décision
+    // prise pour `ArgusSemanticNode`, plus haut, et pour la même raison.
+    // ignore: deprecated_member_use
+    final bool aUnEtat = noeud.hasFlag(SemanticsFlag.hasEnabledState);
+    // ignore: deprecated_member_use
+    final bool actif = noeud.hasFlag(SemanticsFlag.isEnabled);
+    // ignore: deprecated_member_use
+    final bool cache = noeud.hasFlag(SemanticsFlag.isHidden);
+    if (noeud.isInvisible ||
+        noeud.isMergedIntoParent ||
+        cache ||
+        (aUnEtat && !actif)) {
+      return;
+    }
+    noeud.visitChildren((SemanticsNode enfant) {
+      visiter(enfant);
+      return true;
+    });
+    final SemanticsData data = noeud.getSemanticsData();
+    if (flutter.shouldSkipNode(data)) {
+      return;
+    }
+    final String texte = data.label.isEmpty ? data.value : data.label;
+    for (final Element element in find.text(texte).hitTestable().evaluate()) {
+      if (!vus.add(element)) {
+        continue;
+      }
+      final Widget widget = element.widget;
+      final TextStyle style;
+      if (widget is Text) {
+        final TextStyle base = DefaultTextStyle.of(element).style;
+        final TextStyle? propre = widget.style;
+        style = propre == null || propre.inherit ? base.merge(propre) : propre;
+      } else if (widget is EditableText) {
+        style = widget.style;
+      } else {
+        continue;
+      }
+      juges.add(
+        _ArgusTexteJuge(
+          element,
+          texte,
+          style,
+          flutter.targetContrastRatio(
+            style.fontSize,
+            bold: style.fontWeight == FontWeight.bold,
+          ),
+        ),
+      );
+    }
+  }
+
+  for (final RenderView vue in tester.binding.renderViews) {
+    final SemanticsNode? racine = vue.owner?.semanticsOwner?.rootSemanticsNode;
+    if (racine != null) {
+      visiter(racine);
+    }
+  }
+  return juges;
+}
+
+/// Ce que la mesure d'un texte rend : un ratio sur les couleurs résolues, ou
+/// la raison pour laquelle son fond est PEINT.
+class ArgusMesureContraste {
+  /// Un ratio, et les deux couleurs qui l'ont donné.
+  const ArgusMesureContraste.resolue(
+    double this.ratio,
+    Color this.texte,
+    Color this.fond,
+  ) : peint = null;
+
+  /// Un fond peint : la raison, et aucun ratio.
+  const ArgusMesureContraste.peinte(String this.peint)
+    : ratio = null,
+      texte = null,
+      fond = null;
+
+  final double? ratio;
+  final Color? texte;
+  final Color? fond;
+  final String? peint;
+}
+
+/// La mesure d'UN texte : sa couleur la plus défavorable contre son fond
+/// résolu. Publique pour que la sonde du dépôt (`tools/contrast-probe.dart`)
+/// l'exerce sur des montages dont le résultat est connu.
+ArgusMesureContraste argusMesureContraste(Element element, TextStyle style) {
+  final List<Color>? couleurs = _argusCouleursDuTexte(element, style);
+  if (couleurs == null) {
+    return const ArgusMesureContraste.peinte(
+      'texte peint par un Paint, sans couleur',
+    );
+  }
+
+  // Remonter les ancêtres jusqu'au premier fond OPAQUE, en retenant les voiles
+  // translucides et les opacités qui ne touchent que le texte.
+  final RenderObject? rendu = element.renderObject;
+  final Rect zone = rendu is RenderBox && rendu.hasSize
+      ? MatrixUtils.transformRect(rendu.getTransformTo(null), rendu.paintBounds)
+      : Rect.zero;
+  double opacite = 1;
+  final List<Color> voiles = <Color>[];
+  Color? opaque;
+  String? peint;
+  element.visitAncestorElements((Element a) {
+    final Widget w = a.widget;
+    Color? couche;
+    if (w is Opacity) {
+      opacite *= w.opacity;
+    } else if (w is FadeTransition) {
+      opacite *= w.opacity.value;
+    } else if (w is ShaderMask) {
+      peint = 'un ShaderMask';
+    } else if (w is ColorFiltered) {
+      peint = 'un ColorFiltered';
+    } else if (w is BackdropFilter) {
+      peint = 'un BackdropFilter';
+    } else if (w is CustomPaint && w.painter != null) {
+      peint = 'un CustomPaint dessous';
+    } else if (w is ColoredBox) {
+      couche = w.color;
+    } else if (w is DecoratedBox) {
+      if (w.position == DecorationPosition.background) {
+        couche = _argusCouleurDecoree(w.decoration, (String p) => peint = p);
+      }
+    } else if (w is Ink) {
+      couche = _argusCouleurDecoree(w.decoration, (String p) => peint = p);
+    } else if (w is PhysicalModel) {
+      couche = w.color;
+    } else if (w is PhysicalShape) {
+      couche = w.color;
+    }
+    // Un frère peint DESSOUS, dans un `Stack` : le fond n'est plus un ancêtre.
+    final RenderObject? pile = a is RenderObjectElement ? a.renderObject : null;
+    if (peint == null &&
+        pile is RenderStack &&
+        pile is! RenderIndexedStack &&
+        rendu != null &&
+        _argusFrerePeintDessous(pile, rendu, zone)) {
+      peint = 'un élément peint dessous, dans un Stack';
+    }
+    if (peint != null) {
+      return false;
+    }
+    if (couche != null && !_argusInvisible(couche)) {
+      if (_argusOpaque(couche)) {
+        opaque = couche;
+        return false;
+      }
+      voiles.add(couche);
+    }
+    return true;
+  });
+
+  final String? raison = peint;
+  if (raison != null) {
+    return ArgusMesureContraste.peinte(raison);
+  }
+  final Color? socle = opaque;
+  if (socle == null) {
+    return const ArgusMesureContraste.peinte(
+      'aucun fond opaque au-dessus du texte',
+    );
+  }
+  Color fond = socle;
+  for (final Color voile in voiles.reversed) {
+    fond = Color.alphaBlend(voile, fond);
+  }
+  // La couleur la plus défavorable d'un `Text.rich` décide.
+  double pire = double.infinity;
+  Color pireTexte = couleurs.first;
+  for (final Color couleur in couleurs) {
+    // Composer puis atténuer revient à composer avec l'alpha atténué : sans
+    // `withValues` (3.27+), que le plancher 3.19 n'a pas.
+    final Color visible = Color.lerp(
+      fond,
+      Color.alphaBlend(couleur, fond),
+      opacite,
+    )!;
+    final double ratio = argusContraste(visible, fond);
+    if (ratio < pire) {
+      pire = ratio;
+      pireTexte = visible;
+    }
+  }
+  return ArgusMesureContraste.resolue(pire, pireTexte, fond);
+}
+
+/// Les couleurs du texte telles que le moteur les peint : celle du style, et
+/// celles des fragments d'un `Text.rich`. `null` si un fragment visible est
+/// peint par un `Paint` (dégradé, shader) : sa couleur ne se résout pas.
+List<Color>? _argusCouleursDuTexte(Element element, TextStyle style) {
+  final RenderObject? rendu = element.renderObject;
+  if (rendu is! RenderParagraph) {
+    final Color? couleur = style.color;
+    return style.foreground != null || couleur == null
+        ? null
+        : <Color>[couleur];
+  }
+  final List<Color> couleurs = <Color>[];
+  bool sansCouleur = false;
+  void parcourir(InlineSpan span, Color? herite, bool peintHerite) {
+    final TextStyle? s = span.style;
+    final bool peint = peintHerite || s?.foreground != null;
+    final Color? couleur = s?.color ?? herite;
+    if (span is TextSpan) {
+      if ((span.text ?? '').trim().isNotEmpty) {
+        if (peint || couleur == null) {
+          sansCouleur = true;
+        } else {
+          couleurs.add(couleur);
+        }
+      }
+      for (final InlineSpan enfant in span.children ?? const <InlineSpan>[]) {
+        parcourir(enfant, couleur, peint);
+      }
+    }
+  }
+
+  parcourir(rendu.text, null, false);
+  return sansCouleur || couleurs.isEmpty ? null : couleurs;
+}
+
+/// La couleur d'un fond décoré, ou `null` — et [peint] appelé — s'il est peint.
+Color? _argusCouleurDecoree(Decoration? d, void Function(String) peint) {
+  if (d == null) {
+    return null;
+  }
+  if (d is BoxDecoration) {
+    if (d.image != null) {
+      peint('une image de fond');
+      return null;
+    }
+    if (d.gradient != null) {
+      peint('un dégradé');
+      return null;
+    }
+    return d.color;
+  }
+  if (d is ShapeDecoration) {
+    if (d.image != null) {
+      peint('une image de fond');
+      return null;
+    }
+    if (d.gradient != null) {
+      peint('un dégradé');
+      return null;
+    }
+    return d.color;
+  }
+  peint('une décoration ${d.runtimeType}');
+  return null;
+}
+
+/// Vrai si un enfant du `Stack`, peint AVANT la branche du texte, recouvre sa
+/// zone : c'est lui, et non un ancêtre, qui fait le fond.
+bool _argusFrerePeintDessous(RenderStack pile, RenderObject texte, Rect zone) {
+  RenderObject? branche = texte;
+  while (branche != null && branche.parent != pile) {
+    branche = branche.parent;
+  }
+  if (branche == null) {
+    return false;
+  }
+  RenderBox? enfant = pile.firstChild;
+  while (enfant != null && enfant != branche) {
+    if (enfant.hasSize &&
+        MatrixUtils.transformRect(
+          enfant.getTransformTo(null),
+          enfant.paintBounds,
+        ).overlaps(zone)) {
+      return true;
+    }
+    enfant = pile.childAfter(enfant);
+  }
+  return false;
+}
+
+/// Charge les images de l'arbre AVANT une mesure de pixels : sans ça, le
+/// verdict dépend de l'instant où l'image arrive — rouge joué seul, vert dans
+/// le fichier entier, mesuré sur un terrain. Rend les images qui n'ont pas pu
+/// l'être : le constat doit le dire, pas le taire.
+Future<List<String>> argusChargerImages(WidgetTester tester) async {
+  final List<String> echecs = <String>[];
+  final List<_ArgusImageACharger> aCharger = <_ArgusImageACharger>[];
+  for (final Element e in tester.allElements) {
+    final Widget w = e.widget;
+    ImageProvider<Object>? image;
+    if (w is Image) {
+      image = w.image;
+    } else if (w is DecoratedBox) {
+      image = _argusImageDecoree(w.decoration);
+    } else if (w is Ink) {
+      image = _argusImageDecoree(w.decoration);
+    }
+    if (image != null) {
+      aCharger.add(_ArgusImageACharger(image, e));
+    }
+  }
+  if (aCharger.isEmpty) {
+    return echecs;
+  }
+  await tester.runAsync(() async {
+    for (final _ArgusImageACharger c in aCharger) {
+      await precacheImage(
+        c.image,
+        c.contexte,
+        onError: (Object erreur, StackTrace? pile) => echecs.add('${c.image}'),
+      );
+    }
+  });
+  await tester.pump();
+  return echecs;
+}
+
+/// Une image de l'arbre, et l'élément dont le contexte la charge.
+class _ArgusImageACharger {
+  _ArgusImageACharger(this.image, this.contexte);
+
+  final ImageProvider<Object> image;
+  final Element contexte;
+}
+
+ImageProvider<Object>? _argusImageDecoree(Decoration? d) {
+  if (d is BoxDecoration) {
+    return d.image?.image;
+  }
+  if (d is ShapeDecoration) {
+    return d.image?.image;
+  }
+  return null;
+}
+
+/// Le ratio de contraste WCAG entre deux couleurs opaques.
+double argusContraste(Color a, Color b) {
+  final double la = a.computeLuminance();
+  final double lb = b.computeLuminance();
+  return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+}
+
+/// `#RRGGBB`, pour un message qu'on puisse recopier dans un outil de contraste.
+String argusHex(Color c) {
+  // `toARGB32` n'existe qu'à partir de 3.27 ; le harnais tient dès 3.19.
+  // ignore: deprecated_member_use
+  final int argb = c.value;
+  final String rgb = (argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
+  return '#${rgb.toUpperCase()}';
+}
+
+/// Opaque : la couleur rend la même chose sur noir et sur blanc. Ni `Color.a`
+/// (3.27+) ni `Color.alpha` (déprécié depuis) : le harnais tient dès 3.19.
+bool _argusOpaque(Color c) =>
+    Color.alphaBlend(c, const Color(0xFF000000)) ==
+    Color.alphaBlend(c, const Color(0xFFFFFFFF));
+
+/// Invisible : la couleur ne change ni le noir ni le blanc.
+bool _argusInvisible(Color c) =>
+    Color.alphaBlend(c, const Color(0xFF000000)) == const Color(0xFF000000) &&
+    Color.alphaBlend(c, const Color(0xFFFFFFFF)) == const Color(0xFFFFFFFF);
