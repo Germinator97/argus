@@ -87,6 +87,11 @@ appId: ${APP_ID}
 # `extendedWaitUntil` — les deux moments sont nécessaires, et ils ne se
 # remplacent pas : un remède ne supprime pas toujours un mode de panne, il le
 # déplace. Si ton app demande à un troisième moment, appelle-le là aussi.
+#
+# 📌 565 — SUR ANDROID, CET APPEL NE JOUE RIEN, ET C'EST VOULU. Le `launchApp`
+# ci-dessus vient d'accorder toutes les permissions : aucune invite ne peut
+# naître ici, et le runner le dit au sous-flow (`ARGUS_SYSTEM_ALERTS=false` en
+# `auto`). L'appel reste pour iOS, où la modale des notifications y échappe.
 - runFlow: dismiss-system-alerts.yaml
 
 # 🔴 L'ORDRE DE CES DEUX ATTENTES EST UNE MESURE, PAS UN STYLE (460).

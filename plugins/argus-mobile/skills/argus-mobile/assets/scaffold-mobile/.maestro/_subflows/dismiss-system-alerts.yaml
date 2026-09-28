@@ -62,7 +62,9 @@ appId: ${APP_ID}
 # ⚠️ Et `timeout:` est refusé dans un `when:` (`Unknown Property: timeout`) : la
 # borne n'est pas réglable, il faut donc ne PAS poser la question quand aucune
 # invite ne peut naître. C'est ce que fait le `when: true:` extérieur ci-dessous,
-# dont la valeur est dérivée de `security.expectedPermissions` par le runner.
+# dont le runner dérive la valeur de la plateforme du run et de
+# `security.systemAlerts` — en `auto`, jamais sur Android, où le lancement a
+# déjà accordé toutes les permissions (565).
 # ⚠️ Et le sélecteur est ENCADRÉ (`(?s).*…*`) : un sélecteur porte sur le nœud
 # ENTIER, et un nœud fusionne le texte qu'il recouvre.
 # TODO(argus): adapte les libellés à ta langue et ajoute les autres invites que

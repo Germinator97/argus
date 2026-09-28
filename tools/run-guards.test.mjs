@@ -111,7 +111,7 @@ import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceSta
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { anchorAfterAuth, animationsApplicables, invitesSystemePossibles, inviteSystemeInerte } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -397,10 +397,14 @@ test('le remède du démarrage absorbé prescrit un geste APPLICABLE (502)', () 
   // deux runs ont réellement joués — et non sur ce qu'il interdit : un garde
   // qui nomme la forme fautive se périme à la première reformulation, et
   // réintroduit dans le dépôt la chaîne qu'il sert à en sortir.
+  // ⚠️ 565 — SUR iOS, parce que c'est là que le geste joue au lancement. Sur
+  // Android, le lancement a déjà tout accordé : le remède y dit que ce n'est pas
+  // lui, et ce garde-ci n'aurait plus rien à lire (c'est le garde du 565 qui
+  // porte cette branche-là).
   const [f] = startupFindings(
     startupSamples([bundleLance('smoke', { lancementMs: 441, avantMs: 7355, mesureMs: 58 })],
       'home_root', 2000),
-    { id: 'emulator-5554', os: 'android-36' }, 'android', CFG_SPLASH);
+    { id: 'iPhone-17', os: 'ios-26.3' }, 'ios', CFG_SPLASH);
 
   assert.ok(f, 'aucun finding produit : ce garde ne mesure rien');
   assert.equal(f.id, 'QAM-START-ABSORBE');
@@ -543,24 +547,29 @@ test('522 — sans plancher de marque, l\'attente se DIT au lieu de ne rien prod
 // rouges, 159 s de device, sur une ancre parfaitement correcte.
 //
 // ⚠️ LE CRITÈRE EST L'ÉCART, jamais un libellé : deux configs qui ne diffèrent
-// QUE par les permissions doivent produire deux remèdes DIFFÉRENTS. Un garde qui
-// citerait la bonne phrase se périmerait à la première reformulation, et pire —
-// il figerait un texte que la prochaine mesure pourrait devoir corriger, ce que
-// trois gardes du 531 ont fait.
+// QUE par ce qui décide du geste doivent produire deux remèdes DIFFÉRENTS. Un
+// garde qui citerait la bonne phrase se périmerait à la première reformulation,
+// et pire — il figerait un texte que la prochaine mesure pourrait devoir
+// corriger, ce que trois gardes du 531 ont fait.
+// 🔴 565 — ET CE QUI DÉCIDE A CHANGÉ, CE QUI A RÉÉCRIT CE GARDE. Il faisait
+// varier les permissions déclarées sur Android ; or sur Android le lancement a
+// déjà tout accordé, le geste n'y joue plus, et les deux remèdes y sont devenus
+// identiques — à raison. La décision tient désormais à la plateforme et à la
+// déclaration : les deux configs ne diffèrent donc plus que par
+// `systemAlerts`, sur iOS où le geste joue au lancement.
 
-test('533 — le remède du non-jugeable DÉRIVE des permissions, il ne récite pas', () => {
+test('533 — le remède du non-jugeable DÉRIVE de la décision du geste, il ne récite pas', () => {
   const NU = { thresholds: { coldStartMs: 2000, brandedSplashMs: 0 } };
+  const IOS = { id: 'iPhone-17', os: 'ios-26.3' };
   const attente = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7054, absorbed: false };
-  const avec = (/** @type {string[]} */ perms) => ({
-    ...NU, platforms: ['android'], security: { expectedPermissions: perms },
-  });
-  const remede = (/** @type {object} */ cfg) => startupFindings([attente], DEVICE, 'android', cfg)
+  const avec = (/** @type {string} */ etat) => ({ ...NU, security: { systemAlerts: etat } });
+  const remede = (/** @type {object} */ cfg) => startupFindings([attente], IOS, 'ios', cfg)
     .find((x) => x.id === 'QAM-START-NONJUGEABLE')?.suggestedFix ?? '';
 
-  // Le terrain du run 94 : une permission qui ouvre une invite. Le geste sert.
-  const sert = remede(avec(['android.permission.INTERNET', 'android.permission.CAMERA']));
-  // La valeur LIVRÉE par le scaffold : inerte, donc le geste ne joue pas.
-  const inerte = remede(avec(['android.permission.INTERNET']));
+  // Le défaut sur iOS : la modale des notifications échappe au lancement, le geste sert.
+  const sert = remede(avec('auto'));
+  // La déclaration qui le désarme : il ne joue pas.
+  const inerte = remede(avec('never'));
 
   assert.ok(sert && inerte, 'le finding n\'est plus produit : ce garde ne mesure plus rien (533)');
 
@@ -575,9 +584,8 @@ test('533 — le remède du non-jugeable DÉRIVE des permissions, il ne récite 
   // Et l'ACCORD avec le voisin prouve la source unique : le segment dérivé est
   // le sien, mot pour mot, parce que c'est la même fonction qui le produit.
   const absorbe = startupFindings(
-    [{ ...attente, absorbed: true }], DEVICE, 'android',
-    { ...avec(['android.permission.INTERNET', 'android.permission.CAMERA']),
-      thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } },
+    [{ ...attente, absorbed: true }], IOS, 'ios',
+    { ...avec('auto'), thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 } },
   ).find((x) => x.id === 'QAM-START-ABSORBE')?.suggestedFix ?? '';
   assert.ok(absorbe, 'le voisin ne produit plus son remède : la comparaison ne mesure rien');
   assert.ok(sert.includes(absorbe),
@@ -1903,7 +1911,8 @@ function varsUsedInFlows() {
 }
 
 /** Le contrat produit par le runner pour une config donnée. */
-const contrat = (/** @type {any} */ config) => buildEnv(config, 'com.exemple.app');
+// 565 — la plateforme du run est exigée : sans elle, `buildEnv` lève.
+const contrat = (/** @type {any} */ config) => buildEnv(config, 'com.exemple.app', 'android');
 
 test('toute variable ARGUS_ citée par un flow est produite par le runner', () => {
   const used = [...varsUsedInFlows()].filter((v) => v === 'APP_ID' || v.startsWith('ARGUS_'));
@@ -3941,7 +3950,7 @@ test('buildEnv expose l\'id de l\'écran de départ, pas seulement son ancre', (
       { id: 'home-empty', anchor: 'home_empty_root', start: true },
       { id: 'home-filled', anchor: 'home_filled_root' },
     ],
-  }, 'com.exemple.app');
+  }, 'com.exemple.app', 'android');
   assert.equal(env.ARGUS_START_SCREEN, 'home-empty',
     'sans cet id, goto.yaml ne peut que deviner par préfixe');
   assert.equal(env.ARGUS_ANCHOR_HOME, 'home_empty_root', 'et l\'ancre reste exposée');
@@ -3950,7 +3959,7 @@ test('buildEnv expose l\'id de l\'écran de départ, pas seulement son ancre', (
 test('la condition dérivée sert le départ et laisse passer son voisin de famille', () => {
   const env = buildEnv({
     screens: [{ id: 'home-empty', anchor: 'a', start: true }, { id: 'home-filled', anchor: 'b' }],
-  }, 'app');
+  }, 'app', 'android');
   const rienANaviguer = (/** @type {string} */ id) => id === '' || id === env.ARGUS_START_SCREEN;
   assert.ok(rienANaviguer('home-empty'), 'le lancement y mène déjà');
   assert.ok(rienANaviguer(''), 'aucun écran demandé : on est là où le lancement laisse');
@@ -15919,8 +15928,10 @@ test('le remède chiffre les DEUX branches, pas seulement celle qui arrange (505
   // rien du coût de garder quand elle n'en demande AUCUNE : le seul cas où il
   // est intégral, et celui où le lecteur hésite. Un remède qui laisse le choix
   // ouvert sans chiffrer les deux branches départage par le tempérament.
+  // ⚠️ 565 — SUR iOS : sur Android le geste ne joue pas au lancement, et la
+  // branche qu'on lit ici n'y est plus rendue.
   const absorbe = { flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7355, absorbed: true };
-  const [f] = startupFindings([absorbe], DEVICE, 'android', CFG_SPLASH);
+  const [f] = startupFindings([absorbe], { id: 'iPhone-17', os: 'ios-26.3' }, 'ios', CFG_SPLASH);
   assert.ok(f, 'aucun finding produit : ce garde ne mesure rien');
   assert.equal(f.id, 'QAM-START-ABSORBE');
 
@@ -16884,19 +16895,23 @@ test('le remède d\'absorption nomme la cause MESURÉE, pas une cause supposée 
 // la rend exerçable, elle ne garantit pas que le finding s'en serve — le site
 // d'appel pourrait être rebranché sur un littéral figé et la suite resterait
 // verte. Ce garde exerce donc `startupFindings` de bout en bout, sur deux
-// configs qui ne diffèrent QUE par la permission déclarée.
+// configs qui ne diffèrent QUE par ce qui décide du geste.
+// 🔴 565 — Il faisait varier la permission déclarée, sur un run iOS où la
+// dérivation Android décidait encore. Depuis le 565, un run iOS joue le geste
+// quelle que soit cette liste — c'est le fait mesuré —, et les deux remèdes y
+// étaient devenus identiques. La variable qui décide est la déclaration.
 test('le finding d\'absorption fait varier son remède avec la config (524)', () => {
   const samples = [
     { flow: 'resilience', ms: 121, status: 'COMPLETED', precedeMs: 5334, absorbed: true },
     { flow: 'smoke', ms: 3599, status: 'COMPLETED', precedeMs: 8, absorbed: false },
   ];
   const base = { thresholds: { brandedSplashMs: 2000, coldStartMs: 2000 } };
-  // INTERNET n'ouvre aucune invite → le geste est inerte (vérifié à l'exécution).
+  // `never` le désarme → le geste ne joue pas (vérifié à l'exécution).
   const sansInvite = startupFindings(samples, 'ios-sim', 'ios',
-    { ...base, security: { expectedPermissions: ['android.permission.INTERNET'] } });
-  // CAMERA en ouvre une → le geste joue.
+    { ...base, security: { systemAlerts: 'never' } });
+  // Le défaut sur iOS → le geste joue.
   const avecInvite = startupFindings(samples, 'ios-sim', 'ios',
-    { ...base, security: { expectedPermissions: ['android.permission.CAMERA'] } });
+    { ...base, security: { systemAlerts: 'auto' } });
 
   const absorbe = (/** @type {any[]} */ fs) => fs.find((f) => f.id === 'QAM-START-ABSORBE');
   assert.ok(absorbe(sansInvite),
@@ -16906,7 +16921,7 @@ test('le finding d\'absorption fait varier son remède avec la config (524)', ()
 
   assert.notEqual(absorbe(sansInvite).suggestedFix, absorbe(avecInvite).suggestedFix,
     'le remède du finding ne bouge plus quand la config change : la décision a été débranchée '
-    + 'de `invitesSystemePossibles`, et le texte est redevenu un littéral figé (524)');
+    + 'de `gesteInviteAuLancement`, et le texte est redevenu un littéral figé (524, 565)');
   assert.ok(absorbe(sansInvite).suggestedFix.includes('resilience'),
     'le remède ne nomme plus le flow que la mesure a pourtant identifié comme le pire (524)');
 });
@@ -17488,6 +17503,163 @@ test('531 — la clé est LIVRÉE, et le scaffold ne change le verdict de person
   // sur un scaffold neuf lèverait sur le refus qu'on vient d'écrire.
   assert.ok(String(livree) in ETATS_INVITES_SYSTEME,
     'la valeur livrée n\'est pas un état admis : un scaffold neuf lèverait au premier run (531)');
+});
+
+// ── 565 · SUR ANDROID, LE LANCEMENT A DÉJÀ TOUT ACCORDÉ ───────────────────
+//
+// Le 517 faisait dériver le geste d'invite des permissions DÉCLARÉES : « l'app
+// peut-elle demander quelque chose ? ». Au lancement, sur Android, ce n'était
+// pas la question. `launch-clean.yaml` lance avec `permissions.all: allow`, et
+// Maestro accorde alors TOUTES les permissions avant que l'app ne démarre.
+// Mesuré sur une application sonde qui en demande six dangereuses à son premier
+// `onCreate` — notifications, caméra, localisation fine et grossière, micro,
+// contacts :
+//
+//     all: allow           6/6 accordées   l'application au premier plan
+//     sans permissions     6/6 accordées   l'application au premier plan
+//     all: deny            0/6             l'invite système au premier plan
+//     all: unset           0/6             l'invite système au premier plan
+//
+// Aucune invite ne peut donc naître au lancement sur Android, quoi qu'on
+// déclare, et le run 106 a payé la dérivation : 8 flows sur 9 absorbés, ~7,1 s
+// d'attente chacun, sur une application qui déclare les notifications. Sur
+// iOS, la modale des notifications échappe à `permissions` (382) : le geste y
+// reste nécessaire.
+//
+// ⚠️ La règle des permissions déclarées n'est pas FAUSSE : elle répond à une
+// autre question — après un lancement qui REFUSE tout, une invite peut-elle
+// naître ? C'est celle du parcours dédié aux permissions (572), et elle est
+// gardée pour lui, par décision du 28/09/2026.
+
+test('565 — au lancement, le geste d\'invite suit la PLATEFORME, pas les permissions déclarées', () => {
+  const PERMS = ['android.permission.POST_NOTIFICATIONS', 'android.permission.CAMERA'];
+  const geste = (/** @type {any} */ plateforme, /** @type {object} */ security = {}) =>
+    gesteInviteAuLancement({ platforms: ['android', 'ios'], security }, plateforme);
+
+  // 1. Le fait mesuré — QUOI QU'ON DÉCLARE, puisque c'est la dérivation que le
+  //    run 106 a payée.
+  for (const expectedPermissions of [[], ['android.permission.INTERNET'], PERMS]) {
+    assert.equal(geste('android', { expectedPermissions }), false,
+      `sur Android, le geste joue au lancement avec ${JSON.stringify(expectedPermissions)} : or `
+      + '`launch-clean` vient d\'accorder TOUTES les permissions, aucune invite ne peut naître. Il '
+      + 'attend sa borne (~7 s) à chaque flow et absorbe la mesure de démarrage (565)');
+  }
+  // 2. L'autre moitié : iOS joue, quoi que dise une liste qui est Android par nature.
+  for (const expectedPermissions of [['android.permission.INTERNET'], PERMS]) {
+    assert.equal(geste('ios', { expectedPermissions }), true,
+      'sur iOS, le geste ne joue plus au lancement : la modale des notifications n\'est pas couverte '
+      + 'par `permissions`, et les flows rougiront sur une ancre correcte (382, 525)');
+  }
+  // 3. Les déclarations tranchent sur les DEUX plateformes. `always` promet « joué
+  //    quoi qu'il arrive » : une plateforme qui l'ignorerait rendrait la promesse fausse.
+  assert.equal(geste('android', { systemAlerts: 'always', expectedPermissions: PERMS }), true,
+    '`always` ne fait plus jouer le geste sur Android : la déclaration est devenue un mensonge (565)');
+  assert.equal(geste('ios', { systemAlerts: 'never' }), false,
+    '`never` ne désarme plus le geste sur iOS : la mesure de démarrage reste absorbée (531)');
+  // 4. La casse de la plateforme n'est pas une décision.
+  assert.equal(geste('iOS'), true, 'la plateforme écrite `iOS`, sa casse usuelle, n\'est plus reconnue');
+  // 5. REFUSER, jamais replier. Une plateforme absente est un câblage oublié, et
+  //    retomber sur l'un des deux sens le rendrait SILENCIEUX — c'est ce que le
+  //    517 craignait d'un paramètre de plus. La réponse est de le faire lever.
+  for (const absente of [undefined, '', 'web']) {
+    assert.throws(() => geste(absente), /plateforme du run/i,
+      `la plateforme « ${absente} » est acceptée en silence : un câblage oublié doit LEVER, pas `
+      + 'retomber sur un sens par défaut (565)');
+  }
+});
+
+test('565 — le geste d\'invite n\'est appelé qu\'après un lancement qui accorde TOUT', () => {
+  // La décision du runner ne vaut que si c'est vrai. Un appel posé après
+  // `all: deny` aurait besoin de l'autre question, celle du 572.
+  const fichiers = [
+    ...readdirSync(FLOWS_DIR).filter((f) => f.endsWith('.yaml')),
+    ...readdirSync(join(FLOWS_DIR, '_subflows')).filter((f) => f.endsWith('.yaml')).map((f) => `_subflows/${f}`),
+  ];
+  assert.ok(fichiers.length >= 10,
+    `seulement ${fichiers.length} flow(s) livré(s) trouvé(s) : le balayage ne mesure plus rien (565)`);
+  // Commentaires dépouillés : ces fichiers EXPLIQUENT le geste en prose.
+  const pas = (/** @type {string} */ f) => readFileSync(join(FLOWS_DIR, f), 'utf8')
+    .split('\n').map((l) => (/^\s*#/.test(l) ? '' : l)).join('\n');
+
+  const appelants = fichiers.filter((f) => /(?:runFlow|file):\s*(?:_subflows\/)?dismiss-system-alerts\.yaml\b/.test(pas(f)));
+  assert.deepEqual(appelants.sort(), ['_subflows/launch-clean.yaml', '_subflows/login.yaml'],
+    `le geste d'invite est appelé depuis ${appelants.join(', ') || 'nulle part'}. Chaque site doit `
+    + 'suivre un lancement qui accorde toutes les permissions : c\'est ce qui rend juste « jamais '
+    + 'sur Android » (565). Un site posé après `all: deny` a besoin de l\'autre question, celle du '
+    + 'parcours dédié (572) — décide-le, puis mets ce relevé à jour');
+
+  // Prémisse 1 : le lancement de `launch-clean` accorde tout.
+  const lancement = pas('_subflows/launch-clean.yaml').split('\n- ').find((b) => b.startsWith('launchApp:'));
+  assert.ok(lancement, 'aucun bloc `launchApp` lu dans launch-clean.yaml : le motif de ce garde est périmé (565)');
+  assert.match(lancement, /\n\s+permissions:\s*\n\s+all:\s*allow\s*(\n|$)/,
+    'launch-clean.yaml ne lance plus avec `permissions.all: allow` : sur Android une invite peut '
+    + 'de nouveau naître au lancement, et le runner ne joue plus le geste qui la fermerait (565)');
+
+  // Prémisse 2 : la connexion ne se joue qu'APRÈS ce lancement, sans lancement
+  // qui refuse entre les deux.
+  const connexions = fichiers.filter((f) => /runFlow:\s*_subflows\/login\.yaml\b/.test(pas(f)));
+  assert.ok(connexions.length >= 1, 'aucun flow livré ne se connecte : la seconde prémisse ne mesure rien (565)');
+  for (const f of connexions) {
+    const t = pas(f);
+    const iLancement = t.indexOf('_subflows/launch-clean.yaml');
+    const iConnexion = t.indexOf('_subflows/login.yaml');
+    assert.ok(iLancement !== -1 && iLancement < iConnexion,
+      `${f} se connecte sans être passé par launch-clean.yaml : le geste de login.yaml n'y suit plus `
+      + 'un lancement qui a tout accordé (565)');
+    assert.doesNotMatch(t.slice(iLancement, iConnexion), /all:\s*(?:deny|unset)\b/,
+      `${f} relance en refusant avant de se connecter : le geste de login.yaml y a besoin de l'autre `
+      + 'question (572)');
+  }
+});
+
+test('565 — la variable injectée aux flows suit la plateforme du RUN', () => {
+  // Le cas du run 106 : un projet qui déclare les deux plateformes et les notifications.
+  const cfg = { platforms: ['android', 'ios'],
+    security: { expectedPermissions: ['android.permission.INTERNET', 'android.permission.POST_NOTIFICATIONS'] } };
+  assert.equal(buildEnv(cfg, 'com.exemple.app', 'android').ARGUS_SYSTEM_ALERTS, 'false',
+    'un run Android injecte encore `ARGUS_SYSTEM_ALERTS=true` : le geste attend sa borne sur chaque '
+    + 'flow, pour une invite que le lancement a rendue impossible (565)');
+  assert.equal(buildEnv(cfg, 'com.exemple.app', 'ios').ARGUS_SYSTEM_ALERTS, 'true',
+    'un run iOS n\'injecte plus `ARGUS_SYSTEM_ALERTS=true` : la modale des notifications restera '
+    + 'ouverte sur l\'écran attendu (382)');
+  assert.throws(() => buildEnv(cfg, 'com.exemple.app'), /plateforme du run/i,
+    'buildEnv sans plateforme retombe sur un sens par défaut : un câblage oublié doit LEVER (565)');
+
+  // 🔴 LE CÂBLAGE, qui est le troisième barreau : chaque site de production doit
+  // passer la plateforme DU RUN, pas une valeur tirée de la config.
+  const source = readFileSync(join(SCAFFOLD, 'scripts/argus/run.mjs'), 'utf8')
+    .split('\n').filter((l) => !/^\s*(?:\*|\/\/)/.test(l));
+  const appels = source.filter((l) => /\bbuildEnv\(/.test(l) && !/function buildEnv\(/.test(l));
+  assert.ok(appels.length >= 2,
+    `seulement ${appels.length} appel(s) à buildEnv lu(s) dans le runner : le motif est périmé (565)`);
+  assert.deepEqual(appels.filter((l) => !/\bbuildEnv\(config, appId, platform\b/.test(l)), [],
+    'un appel à buildEnv ne passe pas la plateforme du run : l\'invite y serait décidée pour une '
+    + 'autre plateforme que celle qu\'on teste (565)');
+});
+
+test('565 — sur Android, le remède d\'absorption n\'accuse plus le geste d\'invite', () => {
+  // De bout en bout, sur la config du run 106 : une absorption mesurée sur
+  // Android ne peut plus venir du geste, qui n'y joue pas au lancement.
+  const cfg = { platforms: ['android', 'ios'], thresholds: { coldStartMs: 2000, brandedSplashMs: 2000 },
+    security: { expectedPermissions: ['android.permission.INTERNET', 'android.permission.POST_NOTIFICATIONS'] } };
+  const absorbe = [{ flow: 'smoke', ms: 58, status: 'COMPLETED', precedeMs: 7100, absorbed: true }];
+  const remede = (/** @type {string} */ plateforme) => startupFindings(absorbe, DEVICE, plateforme, cfg)
+    .find((f) => f.id === 'QAM-START-ABSORBE')?.suggestedFix ?? '';
+  const android = remede('android');
+  const ios = remede('ios');
+  assert.ok(android && ios, 'le finding d\'absorption n\'est plus produit : ce garde ne mesure rien (565)');
+
+  assert.equal(android, remedeAbsorption(false, 'smoke', 'android'),
+    'sur Android, le remède accuse encore le geste d\'invite : il envoie désarmer ou déplacer un geste '
+    + 'qui ne joue pas au lancement, et le finding reviendra au run suivant (565)');
+  assert.equal(ios, remedeAbsorption(true, 'smoke', 'ios'),
+    'sur iOS, le remède n\'accuse plus le geste, qui y joue pourtant : le correctif a coupé trop large (565)');
+
+  // Et la branche Android nomme SA raison : sans elle, le lecteur lit « il ne
+  // joue pas » sur un projet qui déclare les notifications, et ne le croit pas.
+  assert.notEqual(remedeAbsorption(false, 'smoke', 'android'), remedeAbsorption(false, 'smoke', 'ios'),
+    'le remède donne la même raison sur les deux plateformes : sur Android c\'est le lancement qui a '
+    + 'tout accordé, sur iOS c\'est une déclaration `never` — deux causes, deux phrases (565)');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

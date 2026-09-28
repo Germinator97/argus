@@ -578,8 +578,11 @@ security:
   # l'utilisateur ne recevra jamais — et tait ce qu'il recevra.
   #   aapt2 dump permissions build/app/outputs/flutter-apk/app-release.apk
   # 531 — Les invites système peuvent-elles naître pendant un run ?
-  #   auto   : dérivé des permissions ci-dessous (Android) · toujours joué sur
-  #            iOS, où le plugin n'a AUCUNE source à dériver
+  #   auto   : jamais joué sur Android · toujours joué sur iOS. Sur Android, le
+  #            lancement accorde TOUTES les permissions avant que l'app ne
+  #            démarre : aucune invite ne peut y naître (565). Sur iOS, la
+  #            modale des notifications y échappe, et rien ne permet de la
+  #            prévoir.
   #   always : joué quoi qu'il arrive
   #   never  : jamais joué
   # ⚠️ `never` est une DÉCLARATION, pas une optimisation : ne l'écris que si ton

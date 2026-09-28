@@ -826,10 +826,19 @@ function inviteSystemeInerte(flow) {
     + '`ARGUS_SYSTEM_ALERTS` : ce geste attend donc sa borne à CHAQUE flow (~6,4 s mesurés, '
     + '~44 s par suite) même quand aucune invite ne peut naître. Ce fichier t\'appartient, '
     + 'l\'installeur ne le remplace pas — reprends la forme livrée dans le scaffold (517), '
-    + 'qui enveloppe l\'interrogation dans un `when: true:` dérivé de tes permissions.';
+    + 'qui enveloppe l\'interrogation dans un `when: true:` que le runner dérive de ta plateforme et de '
+    + '`security.systemAlerts` (565).';
 }
 
 function invitesSystemePossibles(config) {
+  // 📌 565 — PLUS AUCUN LECTEUR DE PRODUCTION DEPUIS LE 28/09/2026, ET C'EST
+  // UNE DÉCISION. Le scaffold ne joue le geste qu'après un lancement qui a tout
+  // accordé, et là c'est `gesteInviteAuLancement` qui répond — sur Android, ce
+  // lancement ne laisse naître aucune invite. Cette dérivation répond à une
+  // AUTRE question, juste celle-là : après un lancement qui REFUSE tout, une
+  // invite peut-elle naître ? C'est la question du parcours dédié aux
+  // permissions (572), et elle est gardée pour lui plutôt que réécrite.
+  //
   // ⚠️ 525 — CETTE LISTE EST ANDROID PAR NATURE, et son commentaire le dit : il
   // prescrit de la dériver de `aapt2 dump permissions … app-release.apk`. Un
   // projet iOS n'a aucun APK dont la tirer, donc elle reste à la valeur LIVRÉE
@@ -845,6 +854,8 @@ function invitesSystemePossibles(config) {
   // notifications n'en portant aucune.
   // 📌 La plateforme se lit dans `config` et non en paramètre : le 517 avait
   // raison de refuser un câblage de plus, qui peut s'oublier en silence.
+  // ⚠️ 565 — c'était vrai d'un câblage qui REPLIE. `gesteInviteAuLancement`
+  // prend la plateforme du run, et LÈVE si elle manque : l'oubli n'est plus muet.
   //
   // 🔴 531 — ET CE QUE LE PLUGIN NE PEUT PAS DÉCOUVRIR, L'UTILISATEUR LE DÉCLARE.
   // Le run 93 a mesuré ce que « un geste inutile ne casse rien » taisait : sur
@@ -854,15 +865,7 @@ function invitesSystemePossibles(config) {
   // puisqu'elle est le seul endroit où la réponse existe sur cette plateforme.
   // Le défaut est `auto`, c'est-à-dire le comportement d'hier : aucun projet
   // déjà installé ne change de verdict sans l'avoir écrit.
-  const etat = String(config.security?.systemAlerts ?? 'auto');
-  // ⚠️ REFUSER, jamais replier : une faute de frappe qui retomberait sur `auto`
-  // rendrait la déclaration inerte en silence — et le lecteur croirait avoir
-  // désarmé le geste pendant qu'il continue de coûter. C'est la forme du 508.
-  if (!(etat in ETATS_INVITES_SYSTEME)) {
-    throw new Error(`argus.mobile.yaml — \`security.systemAlerts: ${etat}\` n'est pas un état admis. `
-      + `Choisis parmi ${Object.keys(ETATS_INVITES_SYSTEME).join(' | ')} : c'est une énumération, `
-      + 'pas une phrase. ' + Object.entries(ETATS_INVITES_SYSTEME).map(([k, d]) => `${k} = ${d}`).join(' · '));
-  }
+  const etat = etatInvitesSysteme(config);
   if (etat === 'never') return false;
   if (etat === 'always') return true;
   const plateformes = (config.platforms ?? []).map((p) => String(p).toLowerCase());
@@ -872,6 +875,63 @@ function invitesSystemePossibles(config) {
   const inerte = (/** @type {string} */ p) => PERMISSIONS_SANS_INVITE.has(p)
     || SUFFIXES_SANS_INVITE.some((s) => p.endsWith(s));
   return declarees.map(String).some((/** @type {string} */ p) => !inerte(p));
+}
+
+/**
+ * L'état DÉCLARÉ de `security.systemAlerts` (531), validé. Les deux décisions
+ * qui le lisent passent par ici : deux copies d'une validation divergent à la
+ * première retouche, et c'est le refus qui divergerait le premier.
+ * @param {any} config
+ * @returns {string}
+ */
+function etatInvitesSysteme(config) {
+  const etat = String(config.security?.systemAlerts ?? 'auto');
+  // ⚠️ REFUSER, jamais replier : une faute de frappe qui retomberait sur `auto`
+  // rendrait la déclaration inerte en silence — et le lecteur croirait avoir
+  // désarmé le geste pendant qu'il continue de coûter. C'est la forme du 508.
+  if (!(etat in ETATS_INVITES_SYSTEME)) {
+    throw new Error(`argus.mobile.yaml — \`security.systemAlerts: ${etat}\` n'est pas un état admis. `
+      + `Choisis parmi ${Object.keys(ETATS_INVITES_SYSTEME).join(' | ')} : c'est une énumération, `
+      + 'pas une phrase. ' + Object.entries(ETATS_INVITES_SYSTEME).map(([k, d]) => `${k} = ${d}`).join(' · '));
+  }
+  return etat;
+}
+
+/**
+ * Le geste d'invite joue-t-il APRÈS LE LANCEMENT ? C'est la seule question que
+ * le scaffold pose : `dismiss-system-alerts.yaml` n'est appelé que par
+ * `launch-clean.yaml`, qui lance avec `permissions.all: allow`, et par
+ * `login.yaml`, qui le suit.
+ *
+ * 🔴 565 — SUR ANDROID, CE LANCEMENT A DÉJÀ TOUT ACCORDÉ. Mesuré sur une
+ * application sonde qui demande six permissions dangereuses à son premier
+ * `onCreate` : avec `all: allow` comme sans `permissions`, 6/6 accordées et
+ * l'application au premier plan ; avec `all: deny` ou `unset`, 0/6 et l'invite
+ * au premier plan. Aucune invite ne peut donc naître au lancement, quoi qu'on
+ * déclare — et la dérivation par les permissions déclarées (517) y faisait
+ * jouer le geste pour rien : 8 flows sur 9 absorbés au run 106, ~7,1 s chacun,
+ * sur une application qui déclare les notifications. Sur iOS, la modale des
+ * notifications échappe à `permissions` (382) : le geste y joue.
+ *
+ * Les déclarations tranchent sur les deux plateformes : `always` promet « joué
+ * quoi qu'il arrive », `never` désarme.
+ *
+ * ⚠️ LA PLATEFORME EST CELLE DU RUN, ET ELLE EST OBLIGATOIRE. Le 517 refusait
+ * un paramètre de plus parce que son oubli serait silencieux ; celui-ci LÈVE.
+ * `config.platforms` dit ce que le projet VISE, jamais ce qu'on teste : un
+ * projet qui vise les deux jouait le geste sur ses runs Android (525).
+ * @param {any} config
+ * @param {string} platform la plateforme du run
+ * @returns {boolean}
+ */
+function gesteInviteAuLancement(config, platform) {
+  const plateforme = String(platform ?? '').toLowerCase();
+  if (plateforme !== 'android' && plateforme !== 'ios') {
+    throw new Error(`Plateforme du run inconnue (« ${platform ?? ''} ») — attendu android ou ios. `
+      + 'Si elle ne vient pas de ton `--platform`, c\'est un câblage du runner qui manque (565).');
+  }
+  const etat = etatInvitesSysteme(config);
+  return etat === 'auto' ? plateforme === 'ios' : etat === 'always';
 }
 
 /**
@@ -1062,10 +1122,12 @@ function startTimeoutMs(config) {
  * Contrat d'injection consommé par les flows (`${…}`). Toutes les clés sont
  * toujours présentes, même vides : un flow doit pouvoir se garder sur une valeur
  * vide plutôt que sur une variable absente.
- * @param {any} config @param {string} appId @param {Record<string,string>} [extra]
+ * @param {any} config @param {string} appId
+ * @param {string} platform la plateforme du RUN — obligatoire, elle décide l'invite (565)
+ * @param {Record<string,string>} [extra]
  * @returns {Record<string,string>}
  */
-function buildEnv(config, appId, extra = {}) {
+function buildEnv(config, appId, platform, extra = {}) {
   const home = startScreen(config).screen;
   const anchors = config.auth?.anchors ?? {};
   /** @type {Record<string,string>} */
@@ -1126,7 +1188,11 @@ function buildEnv(config, appId, extra = {}) {
     // donc la valeur ne peut pas manquer à un site d'appel. Le 486, lui, dépend
     // de `platform` et doit être passé trois fois : un câblage de plus est un
     // câblage qui peut s'oublier, et son oubli est SILENCIEUX (repli légal).
-    ARGUS_SYSTEM_ALERTS: String(invitesSystemePossibles(config)),
+    // 🔴 565 — ET LA DÉCISION DÉPEND DE LA PLATEFORME DU RUN : sur Android, le
+    // lancement a déjà tout accordé, aucune invite ne peut y naître. `buildEnv`
+    // l'exige donc en paramètre, et la décision LÈVE si elle manque — c'est ce
+    // qui rend ce câblage-ci bruyant là où celui du 486 replie.
+    ARGUS_SYSTEM_ALERTS: String(gesteInviteAuLancement(config, platform)),
     ...extra,
   };
   // Secrets : uniquement depuis l'environnement, jamais depuis le fichier.
@@ -1727,25 +1793,42 @@ function anchorAfterAuth(anchors, home) {
  */
 /**
  * Le remède d'une absorption dépend de CE QUI a fait attendre — et le runner le
- * sait déjà : si aucune permission déclarée n'ouvre d'invite, le geste d'invite
- * ne joue pas, donc ce n'est pas lui. Prescrire de le retirer enverrait alors
- * défaire un appel déjà inerte (524, rendu par le run 89).
+ * sait déjà : quand le geste d'invite ne joue pas au lancement, ce n'est pas
+ * lui. Prescrire de le retirer enverrait alors défaire un appel déjà inerte
+ * (524, rendu par le run 89).
+ * 🔴 565 — ET LA RAISON DÉPEND DE LA PLATEFORME. Sur Android, le lancement a
+ * déjà tout accordé : le geste ne joue pas même quand l'app déclare les
+ * notifications, et un lecteur qui les voit dans son manifeste ne croira pas
+ * « il ne joue pas » sans le POURQUOI. Sur iOS, seule une déclaration `never`
+ * le désarme. Deux causes, deux phrases.
  * ⚠️ Extraite pour que le garde l'APPELLE et lise ce qui revient : un garde qui
  * lirait le texte du fichier ne verrait pas une branche devenue morte.
- * @param {boolean} invitePossible une permission déclarée peut-elle ouvrir une invite
+ * @param {boolean} invitePossible le geste d'invite joue-t-il au lancement
  * @param {string} flow le flow qui a le plus attendu — celui qu'il faut ouvrir
+ * @param {string} [platform] la plateforme du run
  * @returns {string}
  */
-function remedeAbsorption(invitePossible, flow) {
+function remedeAbsorption(invitePossible, flow, platform = '') {
   const ici = flow ? `« ${flow} »` : 'le flow qui a le plus attendu';
+  const android = String(platform).toLowerCase() === 'android';
   if (!invitePossible) {
-    return `Ce n'est PAS le geste d'invite système : aucune de tes permissions déclarées `
-      + `n'ouvre d'invite, il ne joue donc pas — et les autres flows le prouvent, ils mesurent `
-      + `sans attendre. Le retard vient d'AILLEURS, dans ${ici} : ouvre-le et cherche, entre son `
+    const pourquoi = android
+      ? 'sur Android, le lancement accorde toutes les permissions avant que l\'app ne démarre, '
+        + 'aucune invite ne peut donc y naître et il n\'y est pas joué (565)'
+      : '`security.systemAlerts: never` le désarme, il ne joue donc pas';
+    return `Ce n'est PAS le geste d'invite système : ${pourquoi} — et les autres flows le prouvent, `
+      + `ils mesurent sans attendre. Le retard vient d'AILLEURS, dans ${ici} : ouvre-le et cherche, entre son `
       + '`launchApp` et sa première attente d\'ancre, toute commande qui patiente. Le cas connu '
       + 'est `waitForAnimationToEnd`, dont la place est APRÈS l\'attente d\'ancre et non avant : '
       + '`startup.samples` chronomètre cette attente-là, donc tout ce qui patiente devant elle '
       + 'lui est soustrait en silence. Ce flow t\'appartient, l\'installeur ne le remplacera pas.';
+  }
+  if (android) {
+    return `Le geste qui précède l'attente d'ancre attend sa BORNE quand il n'a rien à fermer — `
+      + `~7 s par flow, mesuré, et c'est ${ici} qui a le plus attendu. Sur Android, il n'a JAMAIS `
+      + 'rien à fermer à ce moment-là : le lancement vient d\'accorder toutes les permissions (565). '
+      + 'C\'est `security.systemAlerts: always` qui le fait jouer — repasse à `auto`, et la mesure '
+      + 'de démarrage redevient propre.';
   }
   return `Le geste qui précède l'attente d'ancre attend sa BORNE quand il n'a rien à fermer — `
     + `~7 s par flow, mesuré, et c'est ${ici} qui a le plus attendu. Si ton app ne demande aucune `
@@ -1849,7 +1932,7 @@ function startupFindings(samples, device, platform, config, variante = '') {
         // flows mesuraient à 8-32 ms). Le lecteur qui l'applique retire un
         // appel inerte, et le finding revient au run suivant. La MESURE était
         // juste et nommait le flow ; c'est le REMÈDE qui était mono-cause.
-        suggestedFix: remedeAbsorption(invitesSystemePossibles(config), pire.flow),
+        suggestedFix: remedeAbsorption(gesteInviteAuLancement(config, platform), pire.flow, platform),
         severity: 'info',
         dimension: 'performance',
         screen: 'démarrage',
@@ -1920,7 +2003,7 @@ function startupFindings(samples, device, platform, config, variante = '') {
         // retouche, et c'est exactement ce qui s'est produit ici. Ce qui reste
         // en propre est le plancher — la raison d'être de ce finding-ci.
         suggestedFix: 'Deux gestes, et le premier suffit souvent. (1) '
-          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)
+          + remedeAbsorption(gesteInviteAuLancement(config, platform), pire.flow, platform)
           + ' (2) Si ton app impose une durée d\'affichage à son écran de marque, déclare-la dans '
           + '`thresholds.brandedSplashMs` : c\'est ce plancher qui permet de dire si une mesure '
           + 'CONTIENT le démarrage ou s\'est déroulée pendant l\'attente. Sans lui, ce relevé ne '
@@ -2746,7 +2829,7 @@ async function main() {
 
   const excludeTags = [...new Set([...configExcludeTags(), ...opts.excludeTags.split(',').filter(Boolean)])];
   const includeTags = opts.tags.split(',').filter(Boolean);
-  const baseEnv = buildEnv(config, appId, {
+  const baseEnv = buildEnv(config, appId, platform, {
     ARGUS_ANIMATIONS_DISABLED: String(animations.ok),
     ARGUS_ANIMATIONS_APPLICABLE: String(animationsApplicables(platform)),
   });
@@ -2828,7 +2911,7 @@ async function main() {
       runs.push(runMaestro({
         udid: resolved.udid, target: '.maestro/visual.yaml',
         junitPath: join(reportDir, `report.visual-${screen.id}.junit.xml`), outputDir,
-        env: buildEnv(config, appId, {
+        env: buildEnv(config, appId, platform, {
           ARGUS_ANIMATIONS_DISABLED: String(animations.ok),
           ARGUS_ANIMATIONS_APPLICABLE: String(animationsApplicables(platform)),
           ARGUS_SCREEN_ID: screen.id, ARGUS_SCREEN_ANCHOR: screen.anchor,
@@ -3114,6 +3197,6 @@ if (invokedDirectly) {
 // — quel device, quel verdict — et qui n'ont aucun autre lecteur automatique.
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
-  anchorAfterAuth, animationsApplicables, invitesSystemePossibles, inviteSystemeInerte,
+  anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte,
   remedeAbsorption, resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

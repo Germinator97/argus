@@ -275,11 +275,17 @@ qui mesure le fait par accident, parce qu'il relance l'application lui-même. Le
 rapport le DIT (`QAM-START-ABSORBE`) au lieu de conclure sur du néant, mais une
 dimension qui ne peut jamais conclure ne mesure plus rien.
 
-⚠️ **Sur Android, le runner le dérive de `security.expectedPermissions`** : si
-tout ce que tu déclares est inerte, le geste ne joue pas et la mesure est
-propre. **Sur iOS il n'a AUCUNE source à dériver** — cette liste est Android par
-nature, et lire les `NS*UsageDescription` raterait précisément l'invite de
-notifications, qui n'en porte aucune. Il joue donc toujours.
+⚠️ **Sur Android, le geste ne joue pas au lancement (565)** : la séquence de
+lancement accorde **toutes** les permissions avant que l'application ne démarre
+— mesuré, six permissions dangereuses sur six —, aucune invite ne peut donc y
+naître, et la mesure est propre quoi que tu déclares. **Sur iOS, il joue
+toujours** : la modale des notifications échappe à cet accord, et rien ne permet
+de la prévoir — lire les `NS*UsageDescription` la raterait précisément, elle
+n'en porte aucune.
+
+📌 Ces flows ne testent donc **pas** tes fenêtres de permission : ils les
+contournent pour mesurer autre chose. Ne conclus pas d'un run vert que la
+demande de permission de ton application a été éprouvée.
 
 **Ce que le plugin ne peut pas découvrir, tu le DÉCLARES :**
 

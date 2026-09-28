@@ -2627,7 +2627,7 @@ export function mapsEnFlowSuspectes(flows) {
 // distinguable de `always`, sans quoi on ne saurait plus si le geste joue parce
 // qu'on l'a voulu ou parce qu'on n'a rien dit.
 export const ETATS_INVITES_SYSTEME = Object.freeze({
-  auto: 'dérivé des permissions déclarées (Android) · toujours joué (iOS, faute de source)',
+  auto: 'jamais joué sur Android, où le lancement a déjà tout accordé · toujours joué sur iOS',
   always: 'joué quoi qu\'il arrive',
   never: 'jamais joué — à ne déclarer que si l\'app ne demande AUCUNE permission',
 });
