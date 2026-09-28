@@ -17737,6 +17737,90 @@ test('566 — un arbre illisible dit ce que la coupure des animations en sait', 
     'une autre cause de refus est réécrite comme une affaire d\'animation : le message ment (566)');
 });
 
+// ── 567 · `ARGS` ARRIVE AU MOTEUR, PAR TOUTE CIBLE QUI L'APPELLE ──────────
+//
+// Le SKILL prescrit `--no-install` « pour TOUTE commande du runner —
+// `argus-baselines` compris », et `make argus-run ARGS="--verbose"` pour voir
+// Maestro en direct. Une seule cible transmettait `$(ARGS)` : le rapport.
+// `make argus-baselines ARGS="--tags=visual --no-install"` régénérait donc TOUTES
+// les références et reposait le binaire, sans un mot — l'agent a dû appeler le
+// moteur directement.
+// ⚠️ ET LA CIBLE AGRÉGÉE NE DOIT PAS SUIVRE. `make argus ARGS=--previous=…` est
+// l'usage prévu pour le rapport, et `run`, `perf`, `a11y`, `sec` REFUSENT toute
+// option inconnue : transmettre partout aurait fait échouer chaque dimension.
+
+/** Les cibles du Makefile livré et leurs lignes de recette (commentaires `@#` exclus). */
+const recettesMakefile = () => {
+  /** @type {Map<string, string[]>} */
+  const cibles = new Map();
+  /** @type {string|null} */
+  let courante = null;
+  for (const l of readFileSync(join(SCAFFOLD, 'Makefile'), 'utf8').split('\n')) {
+    const m = l.match(/^([a-z][a-z0-9-]*):/);
+    if (m) { courante = m[1]; cibles.set(courante, []); continue; }
+    if (courante === null) continue;
+    if (l.startsWith('\t')) { if (!/^\t@?#/.test(l)) cibles.get(courante)?.push(l); continue; }
+    if (l.trim() !== '' && !l.startsWith('#')) courante = null;
+  }
+  return cibles;
+};
+
+/** `make -n` sur le Makefile LIVRÉ : ce que make exécuterait, sans rien exécuter. */
+const makeAVide = (/** @type {string[]} */ args) => execFileSync('make',
+  ['-n', '--no-print-directory', '-C', SCAFFOLD, ...args], { encoding: 'utf8' });
+
+test('567 — toute cible qui appelle le moteur d\'une seule ligne transmet ARGS', () => {
+  const recettes = recettesMakefile();
+  assert.ok(recettes.size >= 15, `seulement ${recettes.size} cible(s) lue(s) dans le Makefile : le motif est périmé (567)`);
+  const uneLigne = [...recettes].filter(([, r]) => r.length === 1 && /^\t@\$\(ARGUS\) /.test(r[0]));
+  assert.ok(uneLigne.length >= 10,
+    `seulement ${uneLigne.length} cible(s) d'une ligne appellent le moteur : le relevé ne mesure plus rien (567)`);
+  const muettes = uneLigne.filter(([, r]) => !/ \$\(ARGS\)\s*$/.test(r[0])).map(([c]) => c);
+  assert.deepEqual(muettes, [],
+    `ces cibles appellent le moteur sans lui transmettre ARGS : ${muettes.join(', ')}. \`make <cible> `
+    + 'ARGS="--no-install"` y est ignoré EN SILENCE — la commande fait tout ce qu\'on voulait éviter, et '
+    + 'ne dit rien (567)');
+});
+
+test('567 — ARGS arrive jusqu\'au moteur, et la cible agrégée le réserve au rapport', () => {
+  // Le cas du run 106, exécuté par make lui-même : la ligne que make lancerait.
+  const baselines = makeAVide(['argus-baselines', 'ARGS=--tags=visual --no-install']);
+  assert.match(baselines, /argus-mobile\.mjs run --update-baselines --tags=visual --no-install\b/,
+    'make argus-baselines ARGS="--tags=visual --no-install" ne transmet pas ses drapeaux : toutes les '
+    + 'références sont régénérées et le binaire reposé, sans un mot (567)');
+
+  // La cible agrégée : le rapport reçoit ARGS, les dimensions non.
+  const tout = makeAVide(['argus', 'ARGS=--previous=page-567.html']);
+  const moteur = tout.split('\n').filter((l) => /argus-mobile\.mjs (?:run|perf|a11y|sec|sca|report)\b/.test(l));
+  assert.ok(moteur.length >= 5,
+    `seulement ${moteur.length} appel(s) du moteur lu(s) dans \`make -n argus\` : le montage ne mesure rien (567)`);
+  assert.ok(moteur.some((l) => /argus-mobile\.mjs report --previous=page-567\.html\b/.test(l)),
+    'make argus ARGS=--previous=… ne transmet plus ARGS au rapport : les onglets des runs passés disparaissent (567)');
+  const fuite = moteur.filter((l) => !/argus-mobile\.mjs report\b/.test(l) && l.includes('--previous'));
+  assert.deepEqual(fuite, [],
+    'l\'ARGS du rapport fuit vers les dimensions, qui refusent toute option inconnue : chacune '
+    + `sortirait en 2 — ${fuite.join(' · ')} (567)`);
+});
+
+test('567 — chaque `make … ARGS=` que la doc prescrit arrive au moteur', () => {
+  const racine = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const docs = [join(racine, 'SKILL.md'), join(racine, 'PROMPTS.md'),
+    join(racine, 'assets/scaffold-mobile/ARGUS-MOBILE.md'),
+    ...readdirSync(join(racine, 'references')).filter((f) => f.endsWith('.md')).map((f) => join(racine, 'references', f))];
+  /** @type {Set<string>} */
+  const prescrites = new Set();
+  for (const d of docs) {
+    for (const m of readFileSync(d, 'utf8').matchAll(/make (argus-[a-z-]+) ARGS=/g)) prescrites.add(m[1]);
+  }
+  assert.ok(prescrites.size >= 2,
+    `seulement ${prescrites.size} prescription(s) \`make … ARGS=\` lue(s) dans la doc : le balayage ne mesure rien (567)`);
+  for (const cible of prescrites) {
+    assert.match(makeAVide([cible, 'ARGS=--sonde-567']), /--sonde-567\b/,
+      `la doc prescrit \`make ${cible} ARGS=…\`, et la cible ne le transmet pas au moteur : la `
+      + 'promesse est fausse, et rien ne le dit à qui l\'applique (567)');
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 536 — Deux comptes de findings, même forme, deux périmètres.
 // `report.json → summary.findings` porte les cinq sévérités des FLOWS seuls ;

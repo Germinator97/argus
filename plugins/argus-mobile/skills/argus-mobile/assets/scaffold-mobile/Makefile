@@ -22,6 +22,12 @@ FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo fl
 # changent plus jamais, quel que soit l'endroit où il vit.
 ARGUS := node scripts/argus/argus-mobile.mjs
 
+# `ARGS` passe tes drapeaux au moteur, par TOUTE cible qui l'appelle d'une seule
+# ligne : `make argus-baselines ARGS="--tags=visual --no-install"`. 🔴 567 — Seul
+# le rapport le transmettait. Ailleurs il était ignoré EN SILENCE : la commande
+# régénérait toutes les références et reposait le binaire, c'est-à-dire tout ce
+# qu'on avait demandé d'éviter, sans un mot.
+
 .PHONY: argus-help argus argus-lint argus-guards argus-debts argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-anchors argus-reach \
@@ -150,7 +156,7 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 	fi
 
 argus-reach: ## Quels écrans ancrés aucun `goto` ne dessert ? (sans device)
-	@$(ARGUS) config --check-reachability
+	@$(ARGUS) config --check-reachability $(ARGS)
 
 argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # ⚠️ `--file-reporter` EN PLUS de la sortie lisible, pas à sa place : le rapport
@@ -223,33 +229,34 @@ argus-debts-forget: ## RETIRE une dette payée — KEY='<la clé du message d'é
 	@$(ARGUS) debts --remove='$(KEY)' --write
 
 argus-run: ## Étage 2 — suite Maestro sur device
-	@$(ARGUS) run
+	@$(ARGUS) run $(ARGS)
 
 argus-smoke: ## Étage 2 — smoke seul (le plus rapide)
-	@$(ARGUS) run --tags=smoke
+	@$(ARGUS) run --tags=smoke $(ARGS)
 
 argus-visual: ## Étage 2 — régression visuelle seule
-	@$(ARGUS) run --tags=visual
+	@$(ARGUS) run --tags=visual $(ARGS)
 
 argus-baselines: ## (Re)génère les références visuelles — voir l'avertissement du README
-	@$(ARGUS) run --update-baselines
+	@$(ARGUS) run --update-baselines $(ARGS)
 
 argus-perf: ## Démarrage à froid/à chaud, mémoire, taille du binaire
-	@$(ARGUS) perf
+	@$(ARGUS) perf $(ARGS)
 
 argus-a11y: ## Cibles tactiles et labels, sur l'écran affiché
-	@$(ARGUS) a11y
+	@$(ARGUS) a11y $(ARGS)
 
 argus-sec: ## MASVS statique (sources + binaire)
-	@$(ARGUS) sec
+	@$(ARGUS) sec $(ARGS)
 
 argus-sca: ## CVE des dépendances Dart et natives
-	@$(ARGUS) sca
+	@$(ARGUS) sca $(ARGS)
 
 # `ARGS` passe les drapeaux du rapport, `--previous=<page>` en tête : c'est lui
 # qui rend les onglets des runs passés. ⚠️ Une variable donnée EN LIGNE DE
-# COMMANDE descend dans les sous-make, donc `make argus-run ARGS=…` la fait
-# suivre jusqu'ici — c'est ce qui évite d'avoir à relancer le rapport à part.
+# COMMANDE descend dans les sous-make, donc `make argus ARGS=…` la fait suivre
+# jusqu'ici — c'est ce qui évite d'avoir à relancer le rapport à part. Et
+# SEULEMENT ici : la cible agrégée la vide pour les dimensions (567).
 argus-report: ## Agrège tout en rapport HTML (ARGS=--previous=<page publiée>)
 	@$(ARGUS) report $(ARGS)
 
@@ -261,10 +268,16 @@ argus-report: ## Agrège tout en rapport HTML (ARGS=--previous=<page publiée>)
 # On enchaîne donc les dimensions à la main, on retient le pire code, et le
 # rapport sort toujours. Le code de sortie reste celui du gate : produire le
 # rapport ne doit pas verdir un run rouge.
+#
+# ⚠️ `ARGS=` VIDÉ POUR LES DIMENSIONS, ET C'EST VOULU (567). Ici `ARGS` est celui
+# du rapport (`--previous=…`), et `run`, `perf`, `a11y`, `sec` refusent toute
+# option inconnue : hérité, il ferait sortir chaque dimension en 2. Une variable
+# posée sur la ligne du sous-make l'emporte sur celle qui descend — mesuré sur
+# GNU make 3.81, celui de macOS.
 argus: ## Tout, dans l'ordre — le rapport sort même quand une dimension échoue
 	@code=0; \
 	for cible in argus-lint argus-reach argus-guards argus-run argus-perf argus-a11y argus-sec argus-sca; do \
-		$(MAKE) --no-print-directory $$cible || { s=$$?; [ $$s -gt $$code ] && code=$$s; }; \
+		$(MAKE) --no-print-directory $$cible ARGS= || { s=$$?; [ $$s -gt $$code ] && code=$$s; }; \
 	done; \
 	$(MAKE) --no-print-directory argus-report; \
 	[ $$code -eq 0 ] || echo "✖ dimensions en échec — le rapport ci-dessus dit lesquelles."; \

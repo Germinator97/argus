@@ -2567,7 +2567,9 @@ quels tags existent** ; ce n'est pas une raison pour lui donner un nom au hasard
 
 ⚠️ **`--no-install` vaut pour TOUTE commande du runner, pas seulement avec
 `--tags`** — `argus-baselines` compris, où il économise le plus (2 min 28 au
-lieu de 6 sur un terrain mesuré). Un run l'y a transposé sans garantie et a dû
+lieu de 6 sur un terrain mesuré). Par `make`, il passe dans `ARGS` :
+`make argus-baselines ARGS="--tags=visual --no-install"` — toute cible qui
+appelle le moteur d'une seule ligne le transmet (567). Un run l'y a transposé sans garantie et a dû
 vérifier lui-même que le rapport restait `scope: complet`. Il l'est : sauter la
 pose d'un binaire inchangé ne filtre aucun flow, donc ne réduit aucun
 périmètre. ⚠️ **Le rapport d'un run filtré porte
