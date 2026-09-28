@@ -173,6 +173,10 @@ CIBLES = {
     "manifestemobile": ROOT / "plugins/argus-mobile/.claude-plugin/plugin.json",
     "marketplace": ROOT / ".claude-plugin/marketplace.json",
     "readmeracine": ROOT / "README.md",
+    # 574 — la sonde des polices, que la CI joue dans un projet Flutter. Sa
+    # contre-épreuve (un nom inconnu doit LEVER) est ce qui la sépare d'une
+    # sonde qui dirait oui à tout : rien ne pouvait dire si le garde la voit.
+    "sondepolices": ROOT / "tools/fonts-probe.sh",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3344,6 +3348,48 @@ MUTATIONS = [
     ("installeur", "576 septies · la marque est cherchée jusque dans lib/",
      "\nRACINES_ARGUS=(test/argus .maestro)\n",
      "\nRACINES_ARGUS=(test/argus .maestro lib)\n"),
+    # ── 574 · les polices se dérivent du bundle ────────────────────────────
+    # Le chargement ne lit plus que la table recopiée : la dérivation existe et
+    # ne sert à rien — l'état exact d'avant le 574.
+    ("harness", "574 · le chargement ne lit plus que la table recopiée",
+     "\n      in argusFontsToLoad().entries) {",
+     "\n      in argusFonts.entries) {"),
+    # La table de suffixes perd une variante : ce TTF-là lève, ou se charge
+    # sous un nom que google_fonts ne demande pas.
+    ("harness", "574 bis · la table de suffixes perd une variante",
+     "\n  'SemiBoldItalic': '600italic',",
+     ""),
+    # Un nom inconnu est sauté au lieu de lever : la police de repli revient en
+    # silence, et la suite la croit chargée.
+    ("harness", "574 ter · un nom inconnu est sauté au lieu de lever",
+     "\n      throw StateError(argusPoliceInconnue(chemin));",
+     "\n      continue;"),
+    # La déclaration explicite ne l'emporte plus sur la famille dérivée.
+    ("harness", "574 quater · argusFonts ne l'emporte plus sur la dérivation",
+     "\n  ...argusDerivedFonts(),\n  ...argusFonts,\n",
+     "\n  ...argusFonts,\n  ...argusDerivedFonts(),\n"),
+    # Le manifeste n'est plus lu : les polices des pubspec, dépendances
+    # comprises, sortent du chargement.
+    ("harness", "574 quinquies · le manifeste des polices n'est plus lu",
+     "\n  final File manifeste = File('$racine/FontManifest.json');",
+     "\n  final File manifeste = File('$racine/AucunManifeste.json');"),
+    # Le saut ne lit plus que la table : un projet aux polices dérivées serait
+    # sauté faute de l'avoir remplie.
+    ("harness", "574 sexies · le saut ne lit plus l'ensemble chargé",
+     "\n  final Map<String, List<String>> polices = argusFontsToLoad();",
+     "\n  final Map<String, List<String>> polices = argusFonts;"),
+    # L'issue offerte au nom inconnu se referme : même déclaré, il lève.
+    ("harness", "574 septies · un fichier déclaré dans argusFonts est retraduit",
+     "\n    for (final List<String> fichiers in argusFonts.values)",
+     "\n    for (final List<String> fichiers in const <List<String>>[])"),
+    # La CI ne joue plus la sonde : la dérivation n'est plus exécutée nulle part.
+    ("ciplugin", "574 octies · la CI ne joue plus la sonde des polices",
+     "\n        run: bash tools/fonts-probe.sh /tmp/accueil",
+     "\n        run: echo sonde-retiree"),
+    # La sonde perd sa contre-épreuve : elle dirait oui à une dérivation qui devine.
+    ("sondepolices", "574 nonies · la sonde ne vérifie plus que l'échec dit pourquoi",
+     "\ngrep -q 'ne sait pas nommer' \"$sortie\" \\\n  || { cat \"$sortie\"; echo \"✖ l'échec ne dit pas pourquoi : il accuserait autre chose que le nom\" >&2; exit 1; }",
+     ""),
 ]
 
 
