@@ -623,7 +623,11 @@ security:
   # contre-épreuve — leur absence dit que la lecture a échoué, et la dimension
   # se marque « non jugée » plutôt que verte.
   requireObfuscation: true
-  # Motifs de secrets cherchés dans le binaire ET dans les sources.
+  # Motifs de secrets cherchés dans les SOURCES VERSIONNÉES (`git ls-files`),
+  # jamais dans le binaire : ni l'APK/AAB/IPA ni `libapp.so` ne sont lus pour
+  # ces motifs (570). Sur le binaire, `argus-sec` juge d'autres choses —
+  # debuggable, obfuscation, permissions. Y chercher des secrets demanderait
+  # d'abord d'écarter les clés publiques par nature, qui y vivent toujours.
   # Repris du harness web (argus.config.ts) + spécifiques mobile.
   secretPatterns:
     - 'AKIA[0-9A-Z]{16}'                                          # AWS access key id

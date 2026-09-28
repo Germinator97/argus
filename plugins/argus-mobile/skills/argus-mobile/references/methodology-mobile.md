@@ -407,7 +407,9 @@ pas confondre — vérifié sur device :
   compare pas à un TotalTime.
 
 ### SECURITY (OWASP MASVS/MASTG) — détection, jamais exploitation, sur TES builds
-- **Statique / binaire** : secrets en dur dans l'APK/IPA ; clés d'API dans
+- **Statique / binaire** : secrets en dur dans l'APK/IPA — ⚠️ `argus-sec` ne
+  cherche les motifs de secrets que dans les **sources versionnées**, jamais dans
+  le binaire (570) : s'il faut le couvrir, c'est un geste à part ; clés d'API dans
   `AndroidManifest.xml` / `Info.plist` ; `android:debuggable`, `allowBackup`,
   `usesCleartextTraffic` ; permissions excessives **au manifeste fusionné** (les
   dépendances en ajoutent que tes sources ne mentionnent pas, et c'est pourtant

@@ -1684,6 +1684,66 @@ test('l\'installeur dit qu\'un workflow posé hors GitHub ne tournera pas (475)'
   rmSync(racine, { recursive: true, force: true });
 });
 
+// ── 570 · `secretPatterns` DIT CE QU'IL SCANNE ────────────────────────────
+//
+// La configuration livrée écrivait « Motifs de secrets cherchés dans le binaire
+// ET dans les sources ». `sec.mjs` les applique aux seuls fichiers VERSIONNÉS,
+// extensions binaires exclues. Une clé publique par nature, présente dans la
+// ressource du paquet, n'a été rapportée par rien — juste pour elle, faux de ce
+// que la phrase promet. Arbitrage de Germinator : CORRIGER LA PROMESSE, gardée ;
+// scanner le binaire reste un chantier différé.
+// ⚠️ Le garde EXÉCUTE le scanner, puis exige que la phrase dise ce qu'il a mesuré :
+// le jour où le binaire sera lu, c'est la mesure qui tombera d'abord, et elle
+// dira de réécrire la phrase avec.
+test('570 — les motifs de secrets ne lisent que les sources versionnées, et la config le dit', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-570-'));
+  try {
+    execFileSync('git', ['init', '-q', projet]);
+    const cle = 'AKIA' + 'ABCDEFGHIJKLMNOP';   // coupée : ce fichier-ci ne doit pas matcher lui-même
+    writeFileSync(join(projet, 'argus.mobile.yaml'), 'platforms:\n  - android\napp:\n  androidPackage: com.exemple.app\n'
+      + "security:\n  secretPatterns:\n    - 'AKIA[0-9A-Z]{16}'\n");
+    mkdirSync(join(projet, 'lib'), { recursive: true });
+    writeFileSync(join(projet, 'lib', 'cle.dart'), `const k = '${cle}';\n`);
+    // Le MÊME secret dans une forme binaire, versionnée elle aussi.
+    mkdirSync(join(projet, 'android', 'app', 'libs'), { recursive: true });
+    writeFileSync(join(projet, 'android', 'app', 'libs', 'libapp.so'), `\u0000\u0001${cle}\u0000`);
+    execFileSync('git', ['-C', projet, 'add', '-A']);
+
+    spawnSync('node', [join(SCAFFOLD, 'scripts/argus/sec.mjs')], { cwd: projet, encoding: 'utf8' });
+    const chemin = join(projet, 'argus-mobile-report', 'sec.json');
+    assert.ok(existsSync(chemin), 'sec.json n\'a pas été écrit : le montage ne mesure rien (570)');
+    const secrets = (JSON.parse(readFileSync(chemin, 'utf8')).findings ?? [])
+      .filter((/** @type {any} */ f) => String(f.id).startsWith('QAM-SEC-SECRET'));
+    const ou = secrets.map((/** @type {any} */ f) => String(f.file ?? f.location ?? f.where ?? JSON.stringify(f)));
+    assert.ok(ou.some((w) => w.includes('lib/cle.dart')),
+      `le secret d'une SOURCE versionnée n'est pas trouvé : le scanner ne mesure plus rien — vus : ${ou.join(' · ') || 'aucun'} (570)`);
+    assert.ok(!ou.some((w) => w.includes('libapp.so')),
+      'le scanner lit désormais le BINAIRE : réécris la phrase de `secretPatterns` dans argus.mobile.yaml (et la '
+      + 'méthodologie) pour le dire, puis ce garde — et écarte d\'abord les clés publiques par nature (570)');
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+
+  // La PHRASE dit ce que la mesure vient de montrer.
+  const yaml = readFileSync(join(SCAFFOLD, 'argus.mobile.yaml'), 'utf8').split('\n');
+  const i = yaml.findIndex((l) => /^\s*secretPatterns:/.test(l));
+  assert.ok(i > 0, 'secretPatterns introuvable dans la configuration livrée : le motif est périmé (570)');
+  let j = i - 1;
+  while (j >= 0 && /^\s*#/.test(yaml[j])) j -= 1;
+  const phrase = yaml.slice(j + 1, i).join('\n');
+  assert.match(phrase, /sources versionnées/i,
+    'le commentaire de `secretPatterns` ne dit plus ce qu\'il scanne : les sources VERSIONNÉES (570)');
+  assert.match(phrase, /jamais dans le binaire/i,
+    'le commentaire de `secretPatterns` ne dit plus que le binaire n\'est pas lu : c\'est la promesse que le '
+    + 'run 106 a démentie (570)');
+  const methodo = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/references/methodology-mobile.md'), 'utf8');
+  const puce = methodo.split('\n- ').find((b) => b.startsWith('**Statique / binaire**'));
+  assert.ok(puce, 'la puce « Statique / binaire » de la méthodologie a disparu : le motif est périmé (570)');
+  assert.match(puce, /sources versionnées/i,
+    'la méthodologie liste les secrets de l\'APK/IPA sans dire qu\'`argus-sec` ne les cherche que dans les '
+    + 'sources : un agent croira le binaire couvert (570)');
+});
+
 // ── 569 · DANS UN MONOREPO, LA CI SE CHERCHE À LA RACINE DU DÉPÔT ─────────
 //
 // Au run 106, l'application vivait dans un sous-dossier du dépôt. Le workflow a
