@@ -1084,8 +1084,11 @@ MUTATIONS = [
      "  if (false) {"),
     ("run", "la locale iOS redevient illisible",
      # 540 — ré-ancrée : `.trim()` a disparu du site, `localeLue` s'en charge.
-     "        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout,",
-     "        : '',"),
+     # 564 — ré-ancrée encore, dans le commit qui a sorti Android du ternaire :
+     # la branche iOS porte désormais son propre `localeLue`. Ancrée sur le saut
+     # de ligne qui précède, pour ne matcher que cette branche.
+     "\n      : localeLue(sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout);",
+     "\n      : null;"),
     ("config", "les gabarits d'ancres retombent dans les opaques",
      "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu) || parametreDAncre.test(nu);",
      "  const gabarit = /'[^']*\\$\\{[^']*'/.test(nu);"),
@@ -1689,8 +1692,11 @@ MUTATIONS = [
      "  return v || null;"),
     # Et la lecture de l'IDENTITÉ cesse d'être normalisée : `.argus-device`, qui
     # se commite, regrave « null » sous « source: mesuré ».
+    # 564 — ré-ancrée dans le commit qui a déplacé sa cible : l'identité passe
+    # désormais par `localeAndroid`. La mutation la fait relire `system_locales`
+    # NUE — sans normalisation ni repli, le défaut du 540 et celui du 564 à la fois.
     ("run", "540 bis · l'identité du device relit la locale sans la normaliser",
-     "  const locale = localeLue(lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout);",
+     "  const locale = localeAndroid((args) => lire(udid, args).stdout);",
      "  const locale = lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout.trim();"),
     # ── 539 · un geste sans retour vit SOUS son opt-in ───────────────────
     # Le geste sort du `runFlow` : le bloc se relit exactement pareil — `when:`

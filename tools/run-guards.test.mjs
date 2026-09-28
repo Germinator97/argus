@@ -17741,9 +17741,11 @@ test('la locale n\'est crue que si elle a la FORME d\'une locale (540)', async (
     'plus aucun avertissement : le remède a fait taire le signal au lieu de le corriger');
 });
 
-test('les DEUX lecteurs de locale passent par la normalisation (540)', () => {
+test('les DEUX lecteurs de locale passent par la normalisation (540), par UNE seule lecture (564)', () => {
   const src = readFileSync(join(RACINE,
     'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  // Les commentaires citent `system_locales` en prose : on ne compte que le CODE.
+  const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l)).join('\n');
 
   // 🔴 LE CÂBLAGE, et c'est lui qui manquait. Chaque lecture de `system_locales`
   // doit être enveloppée : le site du MESSAGE et celui de l'IDENTITÉ FIGÉE, qui
@@ -17755,27 +17757,87 @@ test('les DEUX lecteurs de locale passent par la normalisation (540)', () => {
   // 2. On borne par l'INSTRUCTION, pas par la ligne : la normalisation enveloppe
   //    un ternaire de trois lignes, et un garde ligne-à-ligne l'a déclarée
   //    absente — tort sur la forme, raison sur le fond.
-  const lectures = [...src.matchAll(/'system_locales'/g)].map((m) => {
-    const i = m.index ?? 0;
-    const ouvre = src.lastIndexOf('const ', i);
-    const fin = src.indexOf(';', i);
-    return src.slice(ouvre >= 0 ? ouvre : Math.max(0, i - 300), fin > 0 ? fin : i + 200);
-  });
-  assert.ok(lectures.length >= 2,
-    `seulement ${lectures.length} lecture(s) de system_locales trouvée(s) : si la forme de l'appel `
-    + 'a changé, ce garde ne voit plus les sites qu\'il doit couvrir');
-
-  for (const l of lectures) {
-    assert.match(l, /localeLue\(/,
-      `une lecture de system_locales n'est pas normalisée :\n      ${l.trim()}\n`
-      + '  la chaîne « null » y repasserait pour une locale mesurée');
+  //
+  // 564 — LE CORRECTIF A DÉPLACÉ LE PHÉNOMÈNE, et ce garde l'a suivi. Il comptait
+  // « au moins deux lectures, chacune normalisée » ; il n'y en a plus qu'UNE, dans
+  // `localeAndroid`, qui porte la chaîne de repli des trois sources et que les
+  // deux consommateurs APPELLENT. Une seconde lecture de `system_locales` serait
+  // un consommateur revenu à la lecture nue : sans repli, donc aveugle aux
+  // appareils neufs — et peut-être sans normalisation.
+  const lectures = [...code.matchAll(/'system_locales'/g)];
+  assert.equal(lectures.length, 1,
+    `${lectures.length} lecture(s) de system_locales dans le code : il ne doit y en avoir qu'UNE, `
+    + 'dans localeAndroid — une autre est un consommateur qui a quitté la chaîne de repli (564)');
+  const def = code.indexOf('export function localeAndroid(');
+  assert.ok(def !== -1, 'localeAndroid a disparu : si elle a été renommée, mets ce garde à jour, '
+    + 'sinon il ne garde plus rien');
+  const corps = code.slice(def, code.indexOf('\n}', def));
+  for (const source of ["'system_locales'", "'persist.sys.locale'", "'ro.product.locale'"]) {
+    const ligne = corps.split('\n').find((l) => l.includes(source)) ?? '';
+    assert.match(ligne, /localeLue\(/,
+      `la source ${source} n'est pas lue par localeAndroid, ou pas normalisée :\n      ${ligne.trim()}\n`
+      + '  la chaîne « null » y repasserait pour une locale mesurée (540)');
   }
+
+  // Les DEUX consommateurs y passent. Le troisième barreau de l'identité est
+  // ailleurs — `deviceStamp` exercé sur un appareil neuf ; celui du message vit
+  // au milieu de `main`, où rien ne s'appelle seul : ici, on compte ses appels.
+  const appels = [...code.matchAll(/\blocaleAndroid\(\(/g)].length;
+  assert.equal(appels, 2,
+    `${appels} appel(s) de localeAndroid : l'AVERTISSEMENT et l'IDENTITÉ doivent tous deux y passer`);
 
   // ⚠️ Et le site de l'identité ne doit plus retomber sur `|| ''`, qui masquait
   // le défaut en donnant l'air d'un cas illisible traité.
   assert.ok(!/locale:\s*locale\s*\|\|\s*''/.test(src),
     'l\'identité du device retombe encore sur `locale || \'\'` : cette branche existait déjà et '
     + 'n\'était jamais atteinte — c\'est elle qui a fait croire que le cas était couvert');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 564 — La locale d'un appareil JAMAIS RÉGLÉ n'était pas lue.
+// `system_locales` n'existe que si la langue a été changée un jour : sur un
+// appareil neuf — l'état que la procédure prescrit — il rend « null », et la
+// langue vit dans `persist.sys.locale`, puis dans `ro.product.locale`. Mesuré
+// sur l'émulateur d'un run : `null` · vide · `en-US`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Ce qu'un émulateur neuf rend, mesuré le 28/09/2026 — clé : dernier argument. */
+const APPAREIL_NEUF = { system_locales: 'null', 'persist.sys.locale': '', 'ro.product.locale': 'en-US' };
+
+test('la locale d\'un appareil jamais réglé se lit dans ce qu\'il porte d\'usine (564)', async () => {
+  const { localeAndroid, localeWarnings } = await import(
+    join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'));
+  const lecteur = (/** @type {Record<string,string>} */ r) =>
+    (/** @type {string[]} */ args) => r[args[args.length - 1]] ?? '';
+
+  assert.equal(localeAndroid(lecteur(APPAREIL_NEUF)), 'en-US',
+    'sur un appareil neuf, la langue vit dans ro.product.locale : sans ce repli, le runner '
+    + 'écrit « n\'a pas pu être lue » sur une langue qui se lit en une commande');
+  // L'ORDRE, dans les deux sens : ce que l'utilisateur a réglé l'emporte sur l'usine.
+  assert.equal(localeAndroid(lecteur({ ...APPAREIL_NEUF, system_locales: 'fr-FR,en-US' })), 'fr-FR,en-US',
+    'une liste réglée par l\'utilisateur doit primer : c\'est elle que l\'appareil affiche');
+  assert.equal(localeAndroid(lecteur({ ...APPAREIL_NEUF, 'persist.sys.locale': 'fr-FR' })), 'fr-FR',
+    'persist.sys.locale, posée au premier changement de langue, doit primer sur la langue d\'usine');
+  // Et le cas vraiment illisible reste illisible : un repli qui inventerait une
+  // valeur rendrait muet ce que le 540 a appris à dire.
+  assert.equal(localeAndroid(lecteur({})), null,
+    'aucune des trois sources : la locale est illisible, et le rapport doit le dire');
+
+  // 🔴 CE QUE ÇA COÛTAIT : un projet qui déclare la locale que l'appareil porte
+  // DÉJÀ recevait « la locale déclarée n'a pas été appliquée ».
+  assert.deepEqual(localeWarnings('en_US', false, localeAndroid(lecteur(APPAREIL_NEUF)), 'android'), [],
+    'déclarée = portée : le moindre mot ici accuse à tort une configuration juste');
+  const ecart = localeWarnings('fr_FR', false, localeAndroid(lecteur(APPAREIL_NEUF)), 'android');
+  assert.ok(ecart.some((l) => l.includes('en-US')) && !ecart.some((l) => l.includes('n\'a pas pu être lue')),
+    'déclarée ≠ portée : le message doit nommer la langue LUE, pas prétendre qu\'elle est illisible');
+});
+
+test('l\'identité gravée porte la langue d\'un appareil neuf (564)', () => {
+  const stamp = deviceStamp('android', 'emulator-5554', { model: 'p', os: 'android-33' },
+    ADB({ 'ro.product.model': 'Pixel 9a', 'ro.build.version.sdk': '36', ...APPAREIL_NEUF }));
+  assert.equal(stamp.locale, 'en-US',
+    'l\'empreinte se commite dans .argus-device : sur un appareil neuf elle gravait une langue '
+    + 'vide, et deux appareils de langues différentes y passaient pour identiques');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

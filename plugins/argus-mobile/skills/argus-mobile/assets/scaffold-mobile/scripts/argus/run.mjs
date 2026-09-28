@@ -92,6 +92,31 @@ export function localeLue(sortie) {
   return new RegExp(`^${UNE}(,${UNE})*$`).test(v) ? v : null;
 }
 
+/**
+ * La langue EFFECTIVE d'un appareil Android — celle qu'il affiche.
+ *
+ * 🔴 POURQUOI (564). `settings get system system_locales` n'existe que si la
+ * langue a été CHANGÉE un jour. Sur un appareil neuf il rend « null » (540), et
+ * la langue vit ailleurs : `persist.sys.locale`, posée au premier changement,
+ * puis `ro.product.locale`, la langue d'usine de l'image. Ne lire que la
+ * première faisait écrire « la locale de l'appareil n'a pas pu être lue » sur un
+ * émulateur neuf — l'état même que la procédure prescrit —, et aurait accusé à
+ * tort un projet qui déclare la langue que l'appareil porte déjà. Mesuré sur
+ * l'émulateur d'un run : `null` · vide · `en-US`.
+ *
+ * Les deux consommateurs — l'avertissement et l'identité gravée — passent par
+ * ICI : écrite deux fois, cette chaîne de repli divergerait à la première
+ * retouche, et le 540 avait déjà dû câbler deux sites un par un.
+ *
+ * @param {(args: string[]) => string} lire la sortie d'une commande `adb shell`
+ * @returns {string|null} la première des trois sources qui a la forme d'une locale
+ */
+export function localeAndroid(lire) {
+  return localeLue(lire(['settings', 'get', 'system', 'system_locales']))
+    ?? localeLue(lire(['getprop', 'persist.sys.locale']))
+    ?? localeLue(lire(['getprop', 'ro.product.locale']));
+}
+
 export function localeWarnings(demandee, autoStart, surDevice, platform = 'android') {
   if (!demandee || autoStart) return [];
   const normaliser = (/** @type {string} */ v) => v.trim().toLowerCase().replace(/_/g, '-').split(',')[0];
@@ -2179,7 +2204,9 @@ export function deviceStamp(platform, udid, spec, lire = adbShell, resolu = null
   // `settings get` rend la chaîne « null », qui est vraie. Ce fichier SE COMMITE
   // et porte « source: mesuré » — y figer une valeur qu'on n'a pas lue fait
   // passer deux appareils différents pour le même.
-  const locale = localeLue(lire(udid, ['settings', 'get', 'system', 'system_locales']).stdout);
+  // 564 — et sur un appareil neuf, `system_locales` n'existe pas : la langue
+  // vit dans ce qu'il porte d'usine. `localeAndroid` lit les trois sources.
+  const locale = localeAndroid((args) => lire(udid, args).stdout);
   return { model, os: `android-${sdk}`, locale: locale ?? '', source: 'mesuré' };
 }
 
@@ -2629,11 +2656,11 @@ async function main() {
     // 540 — NORMALISÉE AU POINT DE LECTURE. `settings get` rend la chaîne
     // « null » quand le réglage n'existe pas : la laisser voyager jusqu'aux
     // consommateurs rendait leurs branches « illisible » inatteignables.
-    const lue = !resolved.udid || opts.dryRun ? null : localeLue(
-      platform === 'android'
-        ? adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout
-        : sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout,
-    );
+    // 564 — et sur Android, par les TROIS sources : un appareil neuf n'a pas de
+    // `system_locales`, sa langue vit dans ce qu'il porte d'usine.
+    const lue = !resolved.udid || opts.dryRun ? null : platform === 'android'
+      ? localeAndroid((args) => adbShell(resolved.udid, args).stdout)
+      : localeLue(sh('xcrun', ['simctl', 'spawn', resolved.udid, 'defaults', 'read', '-g', 'AppleLocale']).stdout);
     // 540 — `lue` peut valoir la chaîne « null » : on ne la croit que si elle a
     // la forme d'une locale, sans quoi la branche « n'a pas pu être lue » reste
     // inatteignable et le rapport publie une valeur qu'il n'a pas mesurée.
