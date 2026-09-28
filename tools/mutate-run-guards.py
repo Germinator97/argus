@@ -3491,6 +3491,25 @@ MUTATIONS = [
     ("permissionsflow", "572 undecies · une branche de l'exemple perd son all: allow",
      "#       all: allow\n#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml",
      "#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml"),
+    # ── 577 · le plancher annoncé est celui que la CI fait tourner ──────────
+    # Le job épingle une autre version que celle que les documents annoncent.
+    ("ciplugin", "577 · le job plancher épingle une autre version",
+     "\n          flutter-version: 3.27.0",
+     "\n          flutter-version: 3.24.5"),
+    # Le job n'exécute plus l'étage 1 : il ne prouve plus que le plancher compile.
+    ("ciplugin", "577 bis · le job plancher ne fait plus tourner l'étage 1",
+     "flutter test test/argus 2>&1 | tee /tmp/plancher.txt",
+     "flutter analyze test/argus 2>&1 | tee /tmp/plancher.txt"),
+    # Chacun des trois documents revient au plancher faux.
+    ("readmeracine", "577 ter · le README annonce de nouveau 3.19",
+     "Flutter ≥ 3.27 (l'étage 1 emploie",
+     "Flutter ≥ 3.19 (l'étage 1 emploie"),
+    ("skill", "577 quater · le SKILL annonce de nouveau 3.19",
+     "`flutter --version` ≥ **3.27**",
+     "`flutter --version` ≥ **3.19**"),
+    ("readme", "577 quinquies · le guide du harnais annonce de nouveau 3.19",
+     "Flutter >= 3.27 (find.bySemanticsIdentifier)",
+     "Flutter >= 3.19 (find.bySemanticsIdentifier)"),
 ]
 
 
