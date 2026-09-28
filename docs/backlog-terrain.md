@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **7 POINTS OUVERTS** — les **566 à 572** (les 564 et 565 sont fermés), rendus par le run 106
+🔴 **6 POINTS OUVERTS** — les **567 à 572** (les 564 à 566 sont fermés), rendus par le run 106
 (section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
 dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
 un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
@@ -13420,7 +13420,7 @@ autre chose : c'est celui d'un parcours dédié (le **572**, élargi en ce sens)
 
 ### 566. `argus-a11y` ne coupe pas les animations, et la dimension se saute seule
 
-**Ouvert le 28/09/2026 · OUVERT** — « uiautomator n'a pas obtenu d'état stable :
+**Ouvert le 28/09/2026 · CLOS** — « uiautomator n'a pas obtenu d'état stable :
 ERROR: could not get idle state », deux runs de suite sur ce terrain.
 
 Au run 100 la cause était l'application : une animation perpétuelle qui
@@ -13430,6 +13430,42 @@ d'animation, contre **5** dans `run.mjs`, qui les coupe et les RESTAURE (**507**
 La dimension se saute donc sur toute application dont une animation perpétuelle
 honore la coupure — c'est-à-dire sur les applications qui font bien. Et le
 cadrage interdit, à raison, de couper les animations à la main.
+
+#### ✅ Fermé le jour même — couper avant de lire, rendre en sortant
+
+Le mécanisme se lisait dans le code : `run.mjs` coupe les animations avant sa
+suite, puis les **restaure** à sa sortie (507). `a11y.mjs`, lancé ensuite dans un
+autre processus, mesurait donc une application qui anime de nouveau.
+`a11y.mjs` coupe désormais avant son premier dump et arme la restauration sur
+toutes ses sorties, avec les fonctions **du runner**, importées et non
+recopiées : la preuve de coupure du 507 et la restauration viennent avec. Quand
+l'arbre reste illisible, le refus dit ce que la coupure en sait — coupée et
+l'écran bouge encore : une animation de l'application ignore
+`disableAnimations` ; pas coupée : c'est l'appareil d'abord.
+
+- **Reproduit avant d'être corrigé**, sur une sonde dont un texte change à
+  chaque image et s'arrête quand la coupure arrive. ⚠️ La première sonde ne
+  reproduisait rien : une simple rotation laisse `uiautomator` conclure en 2 s.
+  Ce qui l'empêche d'obtenir un état stable, c'est un arbre d'accessibilité qui
+  **change**, pas un écran qui bouge.
+
+  | échelles d'animation | `uiautomator dump` |
+  |---|---|
+  | actives (1.0) | `could not get idle state`, 2 essais sur 2, ~11 s |
+  | coupées par `disableAnimations` du runner | réussi, 2 sur 2, 2 s ; texte figé |
+  | restaurées (1.0) | de nouveau `could not get idle state` |
+
+- **De bout en bout, le vrai script** sur la sonde : la version d'avant saute la
+  dimension avec le message **exact** du run 106 ; la version corrigée coupe
+  (1.0 ×3 → 0), lit 10 nœuds, sort en 0, et rend 1.0 ×3 à l'appareil.
+- Deux gardes écrits avant — le câblage porté sur le **phénomène** (tout script
+  qui interroge l'arbre, relevé figé par égalité : coupe avant le premier dump,
+  restauration armée, refus qui dit ce que la coupure sait), et le message des
+  deux causes ; le premier est tombé sur le code d'alors pour sa propre raison.
+- Cinq mutations — pas de coupure, un dump avant la coupure, restauration non
+  armée, refus qui ne départage plus, départage calculé mais tu : **TOMBE**
+  toutes, chacune sur un garde du 566.
+- Suite 614/614, 584 mutations, 0 inerte ; typage du dépôt : 0 erreur.
 
 ### 567. `ARGS` est ignoré par 17 cibles sur 18, en silence
 
