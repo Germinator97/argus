@@ -2018,9 +2018,11 @@ MUTATIONS = [
     ("installeur", "475 · plus rien ne dit que le workflow ne tournera pas",
      "  echo \"     .github/workflows/argus-mobile.yml vient d'être posé et ne\"\n  echo \"     s'exécutera NULLE PART. Un job qui ne tourne pas ne se voit pas :\"",
      "  echo \"     .github/workflows/argus-mobile.yml a été posé.\""),
+    # ⚠️ 569 — ré-ancrée : la sortie de coexistence vit désormais dans la condition
+    # qui appelle aussi l'avertissement du sous-dossier.
     ("installeur", "475 · l'avertissement crie aussi quand les deux CI coexistent",
-     "  [ \"$avait_github_actions\" -eq 1 ] && return 0",
-     "  [ \"$avait_github_actions\" -eq 2 ] && return 0"),
+     "  if [ -z \"$ci_autres\" ] || [ \"$avait_github_actions\" -eq 1 ]; then",
+     "  if [ -z \"$ci_autres\" ] || [ \"$avait_github_actions\" -eq 2 ]; then"),
     # 474 — les deux moitiés séparément : le verdict (à qui appartient
     # l'exception) et l'itération (le second canal). Chacune laisse l'autre en
     # place, donc chacune se cache derrière un paragraphe qui a l'air complet.
@@ -3229,6 +3231,28 @@ MUTATIONS = [
     ("report", "568 quinquies · les clés de dette partent sans échappement",
      "`<li><code>${esc(c)}</code></li>`",
      "`<li><code>${c}</code></li>`"),
+    # ── 569 · dans un monorepo, la CI se cherche à la racine du dépôt ──────
+    # Le défaut du run 106 lui-même : la CI étrangère de la racine redevient
+    # invisible, le workflow ne tournera nulle part sans un mot.
+    ("installeur", "569 · la CI étrangère de la racine redevient invisible",
+     "\n    if [ -n \"$sous_dossier\" ] && [ -e \"$racine_depot/$f\" ]; then",
+     "\n    if false; then"),
+    # L'autre moitié du défaut : le workflow posé dans le sous-dossier, où
+    # GitHub ne lit pas, n'est plus signalé.
+    ("installeur", "569 bis · le sous-dossier n'est plus signalé",
+     "\n  [ -z \"$sous_dossier\" ] && return 0",
+     "\n  return 0"),
+    # Les workflows de la RACINE ne comptent plus : la coexistence des deux CI
+    # à la racine redevient « nulle part ».
+    ("installeur", "569 ter · les workflows de la racine ne comptent plus",
+     "autres=$(find \"$racine_depot/.github/workflows\" -type f 2>/dev/null | head -1)",
+     "autres=''"),
+    # Les chemins se comparent LOGIQUES : sur macOS, `/tmp` et `/private/tmp`
+    # font croire à un sous-dossier. ⚠️ Mutation propre à macOS — sur un
+    # système sans lien dans le chemin temporaire, elle est sans effet.
+    ("installeur", "569 quater · les chemins se comparent sans résoudre les liens",
+     "\n  cible_physique=$(cd \"$TARGET\" && pwd -P)",
+     "\n  cible_physique=$(cd \"$TARGET\" && pwd)"),
 ]
 
 
