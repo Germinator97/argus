@@ -5097,11 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
-à 571 sont fermés), rendu par le run 106, et les **573** et **574**, rendus par la
-correction du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de
-fichier). Les **575** et **576** sont fermés. Chacun porte le remède choisi ; ils
-se ferment un par un, dans l'ordre 574, 573, 572.
+🔴 **2 POINTS OUVERTS**, tous deux tranchés le 28/09 par Germinator — le **572** (les
+564 à 571 sont fermés), rendu par le run 106, et le **573**, rendu par la correction
+du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de fichier). Les
+**574** à **576** sont fermés. Chacun porte le remède choisi ; ils se ferment dans
+l'ordre 573, 572.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13702,7 +13702,7 @@ du contrôle).
 
 ### 574. `argusFonts` se recopie à la main, et hérite des trous du chargeur qu'il copie
 
-**Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain. La
+**Ouvert le 28/09/2026 · CLOS** — rendu par la correction du terrain. La
 table `argusFonts` du `harness.dart` du projet est remplie par l'agent, qui l'a
 recopiée du chargeur de polices des tests du projet — « même table que » le
 chargeur, écrit-elle. Or ce chargeur portait **9** familles pour
@@ -13727,6 +13727,36 @@ qui LÈVE sur un suffixe inconnu. `argusFonts` devient un complément
 facultatif, et les tables déjà remplies restent chargées. Écarté : garder la
 table recopiée sous un garde d'égalité — le garde dirait l'oubli, la
 dérivation le rend impossible.
+
+#### ✅ Fermé le jour même — les polices se dérivent du bundle, et la CI les rend
+
+Le cadre (`argus_harness.dart`) dérive les polices : les familles de
+`FontManifest.json` (les `fonts:` des pubspec, dépendances comprises) et les
+TTF/OTF d'assets nommés à la façon de `google_fonts`, chargés sous
+`Famille_variante` par une table de dix-huit suffixes relue dans la source de
+`google_fonts` 8.2.1.
+
+- Un nom qu'elle ne sait pas traduire **lève**, avec le geste : le déclarer dans
+  `argusFonts`, devenu un complément facultatif qui l'emporte sur une famille
+  dérivée. Chargement, saut et contrôle de résolution lisent l'ensemble
+  **chargé**.
+- 🔴 **Ce dépôt n'est pas un projet Flutter** : ses gardes ne font que LIRE le
+  Dart. D'où une sonde — `tools/fonts-probe.sh` et `tools/fonts-probe.dart` —
+  qui monte les deux sources dans un projet neuf et mesure une **largeur
+  rendue** contre la police de repli : déclarer ne prouve pas charger. La CI
+  (job `harness`) la joue en dernier. Mesuré à la main sur Flutter 3.32.0 et
+  3.47.5 : dix « i » à 20 px font 200 px en police de repli, 53 en
+  `Roboto_700`, 50,5 en `Roboto_500italic`, 48,5 dans la famille du pubspec ;
+  un nom inconnu échoue en le disant ; déclaré dans `argusFonts`, il passe.
+- Rejoués comme la CI les joue : le format à la version épinglée (3.32.0),
+  l'analyse aux lints par défaut et courants (3.32.0 et 3.47.5), les suites
+  d'un projet neuf, qui se déclarent non branchées.
+- 🔴 `--check-motifs` **avant** le commit a vu la mutation du 429 devenir
+  inerte — elle visait l'ancien message de saut : réancrée dans le commit du
+  correctif, où le garde 471 l'exigeait.
+- Neuf mutations, et les 22 autres du cadre, de la CI et de la sonde rejouées
+  puisque le cadre avait changé : **31/31 TOMBE**.
+- Suite 631/631, 625 mutations, 0 inerte.
 
 ### 575. Le garde de confidentialité range un nom de terrain court parmi les « ambigus »
 
