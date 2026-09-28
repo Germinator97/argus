@@ -1730,7 +1730,16 @@ test('569 — dans un monorepo, l\'installeur cherche la CI à la racine et dit 
     assert.ok(!existsSync(join(bac, 'github', '.github', 'workflows', 'argus-mobile.yml')),
       'l\'installeur a écrit à la racine du dépôt, hors du projet instrumenté : l\'arbitrage était d\'avertir (569)');
 
-    // 3. L'AUTRE MOITIÉ : l'application À LA RACINE du dépôt. Rien de neuf à dire.
+    // 3. Les deux CI coexistent À LA RACINE : un choix du dépôt, pas un oubli —
+    //    mais le workflow reste posé là où GitHub ne lit pas.
+    const deux = depot('deux', { '.gitlab-ci.yml': 'stages: [test]\n',
+      '.github/workflows/ci.yml': 'on: [push]\n', 'app/pubspec.yaml': 'name: demo\n' });
+    assert.doesNotMatch(deux, /NULLE PART/,
+      'le dépôt a ses workflows GitHub à la racine, À CÔTÉ de sa CI étrangère : ils coexistent par '
+      + 'choix, et « nulle part » est faux — les workflows de la racine ne comptent plus (569)');
+    assert.match(deux, /sous-dossier/i, 'la coexistence fait taire l\'avertissement du sous-dossier, qui reste vrai (569)');
+
+    // 4. L'AUTRE MOITIÉ : l'application À LA RACINE du dépôt. Rien de neuf à dire.
     const aLaRacine = depot('racine', { 'pubspec.yaml': 'name: demo\n' }, '');
     assert.doesNotMatch(aLaRacine, /sous-dossier du dépôt/i,
       'une application à la racine de son dépôt reçoit l\'avertissement du monorepo : il crie à tort (569)');
