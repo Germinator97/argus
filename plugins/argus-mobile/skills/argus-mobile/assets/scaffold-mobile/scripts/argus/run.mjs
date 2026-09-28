@@ -3198,5 +3198,6 @@ if (invokedDirectly) {
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
   anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte,
+  disableAnimations, restoreAnimations,
   remedeAbsorption, resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };

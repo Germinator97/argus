@@ -40,7 +40,9 @@ import {
 // LARGEMENT au-dessus de `coldStartMs`, pour qu'un écran lent sorte en finding
 // de lenteur et non en « ancre introuvable ». Le redériver ici en dupliquerait
 // la règle, donc la ferait diverger au premier ajustement.
-import { startTimeoutMs } from './run.mjs';
+// 566 — et la coupure des animations aussi, avec sa preuve (507) et sa
+// restauration sur toutes les sorties : recopiées, elles divergeraient.
+import { armerRestaurationAnimations, disableAnimations, restoreAnimations, startTimeoutMs } from './run.mjs';
 
 const DUMP_PATH = '/sdcard/argus-a11y-dump.xml';
 
@@ -55,6 +57,29 @@ const DUMP_PATH = '/sdcard/argus-a11y-dump.xml';
 export const ECRAN_COURANT = 'écran courant';
 /** Densité de référence Android : 1 dp = 1 px à 160 dpi. */
 const BASELINE_DPI = 160;
+
+/**
+ * Pourquoi l'arbre n'a pas pu être lu — et ce que la coupure des animations en dit.
+ *
+ * 🔴 566 — DEUX CAUSES, DEUX ENDROITS. `uiautomator dump` renonce quand l'écran
+ * n'est jamais immobile. Si la coupure des animations système a RÉUSSI, c'est
+ * une animation de l'application qui l'ignore : elle doit lire
+ * `MediaQuery.disableAnimationsOf(context)`, et ce harnais n'y peut rien. Si la
+ * coupure a ÉCHOUÉ, c'est l'appareil qu'il faut regarder d'abord. Un message
+ * unique enverrait chercher au hasard.
+ * @param {string} raison ce qu'uiautomator a rendu
+ * @param {{ok:boolean, detail:string}} animations le verdict de la coupure
+ * @returns {string}
+ */
+export function raisonSansDump(raison, animations) {
+  if (!/idle state/i.test(raison)) return raison;
+  return animations.ok
+    ? `${raison} — les animations système sont pourtant coupées (${animations.detail}) : une `
+      + 'animation de l\'application les ignore. Elle doit lire `MediaQuery.disableAnimationsOf(context)` '
+      + 'et s\'arrêter quand il vaut vrai — c\'est dans l\'app qu\'il faut corriger, pas dans ce harnais.'
+    : `${raison} — et les animations système n'ont PAS pu être coupées (${animations.detail}) : `
+      + 'c\'est la première cause à écarter, sur l\'appareil.';
+}
 
 /** @param {string[]} argv */
 export function parseArgs(argv) {
@@ -477,10 +502,22 @@ function main() {
     process.exit(2);
   }
 
+  // 🔴 566 — COUPER LES ANIMATIONS AVANT DE LIRE L'ARBRE, ET LES RENDRE EN SORTANT.
+  // `uiautomator dump` attend un écran immobile, et une animation perpétuelle le
+  // fait renoncer (« could not get idle state »). `run.mjs` coupe les animations
+  // avant sa suite, puis les RESTAURE à sa sortie (507) : ce script, lancé ensuite
+  // dans un autre processus, mesurait donc une application qui anime de nouveau.
+  // Deux runs de suite sur le même terrain, et la dimension sautée sur toute
+  // application qui honore la coupure — c'est-à-dire sur celles qui font bien.
+  const animations = disableAnimations(platform, udid, false);
+  (animations.ok ? log : warn)(`animations : ${animations.detail}`);
+  armerRestaurationAnimations(process, () => restoreAnimations(udid, /** @type {string[]} */ (animations.aRestaurer)), animations.aRestaurer ?? null);
+
   const { xml, reason } = dumpHierarchy(udid);
   if (!xml) {
-    err(`dump d'accessibilité indisponible : ${reason}`);
-    writeJson(reportPath, { platform, skipped: true, skipReason: reason, findings: [] });
+    const pourquoi = raisonSansDump(reason, animations);
+    err(`dump d'accessibilité indisponible : ${pourquoi}`);
+    writeJson(reportPath, { platform, skipped: true, skipReason: pourquoi, findings: [] });
     process.exit(2);
   }
 

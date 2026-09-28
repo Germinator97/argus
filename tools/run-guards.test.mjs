@@ -99,7 +99,7 @@ import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus
 import { identitePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
-import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
+import { ECRAN_COURANT, identifyScreen, parseArgs, plancherMesure, raisonSansDump, relaunchDecision, verdictAttente } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { buildFindings } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { conseilSansLabel } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/a11y.mjs';
 import { auditAndroidManifest, auditApk, auditObfuscation, auditObfuscationIos, verdictObfuscation, exigenceNonTenue, binaryFreshness, binaryScanPlan, binaryToScan, dartPackageName, iosBinarySkipReason } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
@@ -17660,6 +17660,81 @@ test('565 — sur Android, le remède d\'absorption n\'accuse plus le geste d\'i
   assert.notEqual(remedeAbsorption(false, 'smoke', 'android'), remedeAbsorption(false, 'smoke', 'ios'),
     'le remède donne la même raison sur les deux plateformes : sur Android c\'est le lancement qui a '
     + 'tout accordé, sur iOS c\'est une déclaration `never` — deux causes, deux phrases (565)');
+});
+
+// ── 566 · L'ARBRE NE SE LIT PAS PENDANT QUE L'APPLICATION ANIME ───────────
+//
+// `uiautomator dump` attend que l'écran soit IMMOBILE : une animation perpétuelle
+// le fait renoncer (« could not get idle state »), et la dimension a11y se saute.
+// `run.mjs` coupe les animations système avant sa suite — puis les RESTAURE à sa
+// sortie (507). `a11y.mjs`, lancé ensuite dans un autre processus, ne les
+// coupait jamais : il mesurait donc une application qui anime de nouveau. Deux
+// runs de suite sur le même terrain, et la dimension sautée sur toute
+// application dont l'animation perpétuelle honore la coupure — c'est-à-dire sur
+// celles qui font bien.
+//
+// ⚠️ Le garde porte sur le PHÉNOMÈNE : tout script qui interroge l'arbre, pas
+// seulement celui-ci. Le relevé est figé par égalité pour qu'un second venu
+// oblige à trancher.
+
+test('566 — tout script qui interroge l\'arbre coupe les animations AVANT, et les rend', () => {
+  const dossier = join(SCAFFOLD, 'scripts/argus');
+  // Commentaires dépouillés : `a11y.mjs` EXPLIQUE `uiautomator dump` en prose.
+  const code = (/** @type {string} */ f) => readFileSync(join(dossier, f), 'utf8')
+    .split('\n').filter((l) => !/^\s*(?:\/\/|\*|\/\*\*)/.test(l)).join('\n');
+  const scripts = readdirSync(dossier).filter((f) => f.endsWith('.mjs'));
+  assert.ok(scripts.length >= 5, `seulement ${scripts.length} script(s) lu(s) : le balayage ne mesure rien (566)`);
+
+  const interrogent = scripts.filter((f) => /'uiautomator',\s*'dump'/.test(code(f)));
+  assert.deepEqual(interrogent, ['a11y.mjs'],
+    `les scripts qui interrogent l'arbre sont ${interrogent.join(', ') || 'aucun'}. Chacun doit couper `
+    + 'les animations avant son premier dump et les rendre en sortant : décide-le pour le nouveau '
+    + 'venu, puis mets ce relevé à jour (566)');
+
+  for (const f of interrogent) {
+    const src = code(f);
+    const iMain = src.indexOf('function main() {');
+    assert.ok(iMain !== -1, `${f} n'a plus de \`function main()\` : le motif de ce garde est périmé (566)`);
+    const main = src.slice(iMain);
+    const iCoupe = main.search(/\bdisableAnimations\(/);
+    const iDump = main.search(/\bdumpHierarchy\(/);
+    assert.ok(iDump !== -1, `${f} ne lit plus l'arbre par dumpHierarchy : le motif est périmé (566)`);
+    assert.ok(iCoupe !== -1,
+      `${f} lit l'arbre sans couper les animations : une animation perpétuelle empêche uiautomator `
+      + 'd\'obtenir un état stable, et la dimension se saute — mesuré deux runs de suite (566)');
+    assert.ok(iCoupe < iDump,
+      `${f} coupe les animations APRÈS son premier dump : ce dump-là est pris sur une application `
+      + 'qui anime encore (566)');
+    // 507 — ce qu'on prend à l'appareil, on le lui rend, sur TOUTES les sorties.
+    assert.match(main, /armerRestaurationAnimations\(process,\s*\(\)\s*=>\s*restoreAnimations\(/,
+      `${f} coupe les animations sans armer leur restauration : l'appareil garde un réglage SYSTÈME `
+      + 'que personne ne lui a demandé de perdre, et le run suivant ne peut plus prouver sa coupure (507)');
+    // Et le refus DIT ce que la coupure en sait : calculé puis tu, il ne sert à rien.
+    assert.match(main, /\braisonSansDump\(reason, animations\)/,
+      `${f} refuse un arbre illisible sans dire ce que la coupure des animations en sait : le lecteur `
+      + 'ne sait plus s\'il doit corriger son application ou son appareil (566)');
+  }
+});
+
+test('566 — un arbre illisible dit ce que la coupure des animations en sait', () => {
+  const instable = 'uiautomator n\'a pas obtenu d\'état stable : ERROR: could not get idle state';
+  const coupees = raisonSansDump(instable, { ok: true, detail: '3 échelles coupées (étaient 1, 1, 1)' });
+  const intactes = raisonSansDump(instable, { ok: false, detail: '3 échelles → 1, 1, 1' });
+
+  // Les deux causes ne se corrigent pas au même endroit : l'une est dans l'app,
+  // l'autre sur l'appareil. Un message unique enverrait chercher au hasard.
+  assert.notEqual(coupees, intactes,
+    'le refus dit la même chose que la coupure ait réussi ou non : il ne départage plus l\'application '
+    + 'qui anime malgré la coupure de l\'appareil qui l\'a refusée (566)');
+  assert.match(coupees, /disableAnimations/,
+    'coupure réussie et arbre toujours instable : c\'est une animation de l\'APP qui n\'honore pas '
+    + '`disableAnimations`, et le message doit nommer ce qu\'il faut y lire (566)');
+  for (const [nom, texte] of [['coupées', coupees], ['intactes', intactes]]) {
+    assert.ok(texte.includes(instable), `animations ${nom} : le refus ne cite plus ce qu'uiautomator a rendu (566)`);
+  }
+  // Et ce qui n'est pas une instabilité passe tel quel : la coupure n'y explique rien.
+  assert.equal(raisonSansDump('dump illisible', { ok: true, detail: 'x' }), 'dump illisible',
+    'une autre cause de refus est réécrite comme une affaire d\'animation : le message ment (566)');
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
