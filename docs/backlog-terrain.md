@@ -5097,7 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
+🔴 **9 POINTS OUVERTS** — les **564 à 572**, rendus par le run 106 (section « Rendu
+par le run 106 », en fin de fichier). Ils se ferment un par un dans la passe qui
+suit ; le **572** reste ouvert délibérément, son remède se tranchant à froid.
+
+Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
 Ce qui manquait n'était pas la règle mais son GRAIN — le geste sans retour tient
 dans le dernier pas, et tout ce qui le précède s'éprouve gratuitement.
@@ -13257,3 +13261,151 @@ l'octet —, CI verte 13/13 sur la fusion, puis `feat/argus-mobile` avancée en
 fast-forward : les deux branches portent de nouveau le même commit. Sous la
 convention de ce point, cette fusion est elle aussi une mise à jour pour qui a
 installé argus-mobile — une recopie de fichiers identiques.
+
+## Rendu par le run 106 — passe de confirmation, terrain en monorepo, Android — 28/09/2026
+
+Confirmation des **542 à 563** sur le terrain qui avait rendu les 546, 547 et 548 :
+un jeu dont l'application vit dans un sous-dossier du dépôt, qui construit par un
+script imposé et parle à un backend réel. Prompt **identique à celui de la même
+combinaison** (run 100) à quatre changements près, tous mesurés : la page à
+republier une seule fois, deux données de cadrage fausses ou périmées, et une
+contradiction entre deux lignes du prompt. Gate `fail` (2 `major` de mesure : la
+mémoire d'un debug, la taille d'un APK universel), **12 écrans déclarés = ancrés =
+visités**, 9 flows sur 9, 31 dettes, ~19,5 min de device sur 60, 5 dimensions sur 6.
+
+⚠️ **Le critère de sortie des runs 90, 96 et 97 est réappliqué tel quel** — faux
+vert, temps de device perdu, message qui accuse à tort —, mais il n'a pas été
+recommité avant ce lancement : c'est le même texte, jugé après. Et un premier
+lancement a été **arrêté après six minutes**, sans rien avoir écrit : la branche
+du terrain avait 67 commits de retard sur sa branche de travail. Un run mesure le
+skill sur l'application du jour, pas sur un instantané.
+
+### Confirmés, lus sur les ARTEFACTS et non sur le compte rendu
+
+| point | ce que le run 100 avait produit | ce que le run 106 produit |
+|---|---|---|
+| **546** | 9 `major` de polices FAUX (déclaration par dossier) | **0** |
+| **547** | 1 `major` sur trois permissions retirées par le manifeste | **0** (`aapt2` : absentes du paquet) |
+| **548** | le garde de police accusait l'app | « les 12 police(s)… Ce n'est pas « conforme » — c'est « non mesuré par ici » » |
+| **562** | onglet archivé en `critical · high · medium · low` | « 0 blocker · 0 critical · 14 major · 0 minor · 2 info » |
+| **544** | 4 variables CSS non définies | 8 employées, 8 définies, sur la page à deux onglets |
+| **523** | — | le flow qui lance lui-même : 2 562 ms, non absorbé |
+| **527** | — | la dette écrite par la recette, jamais collée à la main |
+| **550** | — | le formateur ne change rien au harnais livré |
+
+Non exercés, et dit plutôt que compté : **549 · 551** (iOS), **552 · 553** (la
+désinstallation — le terrain sera désinstallé à la fin de cette passe),
+**556 à 561** (installation, typage, CI), **563** (le run lit le skill local).
+
+### Ce qu'il rend — neuf points, et la sortie reste fermée
+
+Cinq sont d'une des trois natures du critère : **564** (un message faux), **565**
+(du temps de device perdu à chaque flow), **568, 569 et 570** (trois façons de
+rassurer sans avoir mesuré).
+
+### 564. La locale d'un appareil jamais réglé n'était pas lue
+
+**Ouvert le 28/09/2026 · OUVERT** — le runner a écrit « la locale de l'appareil
+n'a pas pu être lue » sur un émulateur dont la langue se lit en une commande.
+
+Il ne lit que `settings get system system_locales`. Sur un appareil dont la langue
+n'a **jamais été changée**, ce réglage n'existe pas et rend la chaîne littérale
+`"null"` (le **540** l'a appris à écarter) — la langue effective vit alors dans
+`persist.sys.locale`, et à défaut dans `ro.product.locale`, que rien ne lit.
+Mesuré sur l'appareil du run : `system_locales` → `null`, `persist.sys.locale` →
+vide, `ro.product.locale` → `en-US`. Le run 100 lisait `en-US` sur le **même AVD** :
+son réglage vivait dans un instantané, purgé depuis.
+
+🔴 **Un appareil neuf est précisément l'état que la procédure prescrit** — et
+sur lui le message ment. Pire : un projet qui déclare la locale que l'appareil
+porte déjà recevrait `QAM-LOCALE-INERTE` — « la locale déclarée n'a pas été
+appliquée » —, un message qui accuse à tort.
+
+### 565. Sur Android, le geste d'invite système ne peut rien trouver au lancement
+
+**Ouvert le 28/09/2026 · OUVERT** — 8 flows sur 9 absorbés, ~7,1 s d'attente
+chacun, sur une application qui déclare une permission de notifications : le
+**517** dérive « joue », et le geste attend sa borne.
+
+**Mesuré sur une application sonde** (jamais sur le terrain : chaque lancement y
+crée un compte sur le backend réel), qui demande la permission dès son premier
+`onCreate`, quatre formes de `launchApp` avec `clearState` :
+
+| lancement | permission après le lancement | fenêtre au premier plan |
+|---|---|---|
+| `permissions.all: allow` — la forme de `launch-clean` | **accordée** | l'application |
+| sans `permissions` — le défaut de Maestro | **accordée** | l'application |
+| `all: deny` — la forme de `resilience` | refusée | **l'invite système** |
+| `all: unset` — la contre-épreuve | refusée | **l'invite système** |
+
+🔴 **Sur Android, `launch-clean` accorde tout AVANT le lancement** : aucune invite
+ne peut y naître, quelles que soient les permissions déclarées. Le commentaire
+du fichier le disait pour iOS seulement — c'est là qu'il a été mesuré, et là que
+le geste est nécessaire (la modale des notifications n'est pas couverte par
+`permissions`). La dérivation du 517 lit **ce que l'application peut demander**,
+jamais **ce que le lancement vient d'accorder**. Coût : ~7 s par flow, et le
+budget de démarrage jugeable sur aucun.
+
+### 566. `argus-a11y` ne coupe pas les animations, et la dimension se saute seule
+
+**Ouvert le 28/09/2026 · OUVERT** — « uiautomator n'a pas obtenu d'état stable :
+ERROR: could not get idle state », deux runs de suite sur ce terrain.
+
+Au run 100 la cause était l'application : une animation perpétuelle qui
+n'honorait pas la coupure. **Elle l'honore désormais** (`disableAnimations` lu,
+mesuré dans le code). Mais `a11y.mjs` porte **0** occurrence des échelles
+d'animation, contre **5** dans `run.mjs`, qui les coupe et les RESTAURE (**507**).
+La dimension se saute donc sur toute application dont une animation perpétuelle
+honore la coupure — c'est-à-dire sur les applications qui font bien. Et le
+cadrage interdit, à raison, de couper les animations à la main.
+
+### 567. `ARGS` est ignoré par 17 cibles sur 18, en silence
+
+**Ouvert le 28/09/2026 · OUVERT** — le SKILL prescrit `--no-install` « pour TOUTE
+commande du runner — `argus-baselines` compris, où il économise le plus ». Or une
+seule cible du Makefile transmet `$(ARGS)`, `argus-report`. `make argus-baselines
+ARGS="--tags=visual --no-install"` régénère donc **toutes** les références et
+repose le binaire, sans un mot — l'agent a dû appeler le moteur directement.
+
+### 568. La page dit « aucun finding » sur l'étage 1 quand 31 dettes sont assumées
+
+**Ouvert le 28/09/2026 · OUVERT** — « Gardes d'étage 1 — exécutée, aucun finding »,
+sur un projet dont `known_issues.dart` porte **31** clés. La dette assumée
+n'apparaît nulle part sur la page publiée. C'est la parité du **443** : un
+acquittement de sécurité honoré s'affiche, barré, avec sa raison ; une dette
+d'étage 1, non. Arbitrage de Germinator : **le compte, et la liste repliée**.
+
+### 569. Dans un monorepo, la CI de l'hôte est cherchée au mauvais endroit
+
+**Ouvert le 28/09/2026 · OUVERT** — le workflow a été posé dans `<app>/.github/`,
+où GitHub ne le lira jamais (il ne lit que la racine du dépôt), et l'installeur
+n'a rien dit, alors que la CI du dépôt est d'un autre intégrateur, à la racine.
+`avertir_ci_etrangere` ne cherche que dans `$TARGET` : une application en
+sous-dossier le rend aveugle **aux deux défauts à la fois**. Arbitrage de
+Germinator : **avertir**, sans rien écrire hors du projet instrumenté.
+
+### 570. `secretPatterns` promet le binaire, et ne scanne que les sources
+
+**Ouvert le 28/09/2026 · OUVERT** — la configuration livrée écrit « Motifs de
+secrets cherchés dans le binaire ET dans les sources ». `sec.mjs` les applique
+aux seuls fichiers versionnés (`scannableFiles`). Une clé publique par nature,
+présente dans la ressource du paquet, n'a été rapportée par rien — ce qui est
+juste pour elle, mais faux de ce que la phrase promet. Arbitrage de Germinator :
+**corriger la promesse**, gardée ; scanner le binaire reste un chantier différé
+(il faudrait d'abord écarter les clés publiques par nature).
+
+### 571. `budget.maxMinutes` règle aussi la fraîcheur du rapport, et la clé ne le dit pas
+
+**Ouvert le 28/09/2026 · OUVERT** — l'agent a laissé la clé à 25 quand son budget
+était de 60, parce qu'il avait lu que le seuil de péremption du rapport en
+dépend (`report.mjs`) — ce que la clé, dans la configuration livrée, ne dit
+nulle part. Information juste, mais rangée là où l'on ne la cherche pas.
+
+### 572. Après le lancement « tout refusé » de `resilience`, une invite naît et rien ne la ferme
+
+**Ouvert le 28/09/2026 · OUVERT** — voisin du **565**, mesuré par la même sonde :
+après `all: deny`, l'application qui demande sa permission au lancement ouvre
+l'invite système, et `resilience.yaml` attend ensuite l'ancre d'accueil — que
+l'invite recouvre. **Non rencontré par un run** : le terrain ne demande pas sa
+permission au lancement. Laissé ouvert délibérément : le geste de refus dépend
+de la langue du système, et un remède se tranche à froid.
