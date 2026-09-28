@@ -5097,10 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS** — le **572** (les 564 à 571 sont fermés), rendu par le run 106, et
-les **573** à **575**, rendus par la correction du terrain qui l'a suivi (section « Rendu
-par le run 106 », en fin de fichier). Le 572 reste ouvert délibérément — élargi le
-28/09 à un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
+🔴 **4 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
+à 571 sont fermés), rendu par le run 106, et les **573** à **575**, rendus par la
+correction du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de
+fichier). Chacun porte le remède choisi ; il reste à les écrire.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13647,6 +13647,22 @@ refuse, c'est la bonne question. Et deux mesures : l'invite Android en anglais
 le sélecteur livré, Maestro ignorant la casse ; le libellé français n'a pas été
 relevé.
 
+**Tranché le 28/09/2026 par Germinator : un gabarit, et un contrôle de
+couverture.** Un flow `permissions.yaml` livré en gabarit (`ARGUS:OWNED`) :
+pour chaque permission que le projet déclare, deux lancements `clearState` qui
+la remettent à « demander » (`unset`) — l'un ACCEPTE, l'autre REFUSE. L'agent y
+écrit le geste qui fait demander la permission et l'ancre attendue après chaque
+réponse ; les boutons système sont touchés par deux sous-flows du CADRE, sur
+Android par identifiant de ressource (donc quelle que soit la langue), sur iOS
+par libellé FR/EN. Le runner confronte le gabarit aux permissions déclarées —
+la dérivation que le 565 a gardée pour lui — et signale toute permission
+déclarée sans branche. `resilience` referme l'invite née de son `all: deny` par
+le même sous-flow de refus, ce qui ferme le point d'origine. Écarté : un runner
+qui répondrait seul à la fenêtre du lancement — il ne couvre que les
+permissions demandées au démarrage, et une permission demandée derrière un
+bouton passerait pour couverte. ⚠️ À mesurer avant d'écrire : l'identifiant du
+bouton système tel que Maestro le lit, et le libellé français des deux invites.
+
 ### 573. Le contraste d'Argus se juge sur les pixels : un faux positif, et un verdict qui dépend du moment
 
 **Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain, après le
@@ -13672,6 +13688,17 @@ en a une (le style du texte contre le premier ancêtre opaque), ne garder les
 pixels que pour un fond peint, et alors après avoir attendu l'image
 (`precacheImage`), en le disant.
 
+**Tranché le 28/09/2026 par Germinator : les couleurs résolues d'abord, les
+pixels en repli annoncé.** Le ratio se calcule sur la couleur du texte (son
+style résolu, opacités comprises) contre celle du premier ancêtre opaque —
+`Material`, `ColoredBox`, décoration pleine, fond du `Scaffold` —, les fonds
+translucides composés au passage : c'est la définition de WCAG. Un fond PEINT
+(image, dégradé, shader) repasse aux pixels, après chargement des images de
+l'arbre, et le constat le dit (« mesuré sur pixels, fond peint »). Écartés :
+stabiliser les pixels sans changer de mesure (le faux positif resterait un
+« peut-être »), et les couleurs seules (les écrans à fond d'image sortiraient
+du contrôle).
+
 ### 574. `argusFonts` se recopie à la main, et hérite des trous du chargeur qu'il copie
 
 **Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain. La
@@ -13691,6 +13718,15 @@ d'Argus. Le remède se tranche à froid : dériver `argusFonts` des TTF (table
 suffixe → variante `google_fonts`, qui lève sur l'inconnu), ou un garde qui la
 confronte aux familles que l'application emploie.
 
+**Tranché le 28/09/2026 par Germinator : dériver, dans le cadre.** Le cadre
+charge lui-même les polices du bundle : les familles de `FontManifest.json` (le
+`pubspec` et ses dépendances), plus les TTF et OTF d'assets nommés à la façon
+de `google_fonts`, traduits en `Famille_variante` par une table de suffixes
+qui LÈVE sur un suffixe inconnu. `argusFonts` devient un complément
+facultatif, et les tables déjà remplies restent chargées. Écarté : garder la
+table recopiée sous un garde d'égalité — le garde dirait l'oubli, la
+dérivation le rend impossible.
+
 ### 575. Le garde de confidentialité range un nom de terrain court parmi les « ambigus »
 
 **Ouvert le 28/09/2026 · OUVERT** — en consignant le 574, j'ai écrit le nom
@@ -13705,3 +13741,13 @@ dans une liste que sa propre sortie dit « à relire une fois, pas à chaque
 passe » — où une fuite neuve se lirait comme une mention de plus. Le remède se
 tranche à froid : figer par égalité les mentions ambiguës déjà relues, pour
 qu'une mention NEUVE fasse échouer.
+
+**Tranché le 28/09/2026 par Germinator : classer chaque identifiant ambigu,
+une fois.** La liste privée — hors dépôt, à côté de celle des terrains —
+classe chaque identifiant ambigu que le garde dérive : `mot` ou `distinctif`.
+Un identifiant NON classé fait échouer le garde, si bien qu'un nouveau terrain
+force la décision au lieu de rejoindre les « ambigus » en silence ; un
+`distinctif` échoue à la moindre mention. Aujourd'hui : trois identifiants à
+classer. Écarté : figer chaque mention relue — plus fin, puisqu'il verrait un
+mot ordinaire employé comme nom de projet, mais chaque mention légitime
+nouvelle arrêterait la suite.
