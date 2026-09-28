@@ -182,6 +182,13 @@ CIBLES = {
     # cas qui justifient le 573. Aucune n'avait de cible.
     "a11yetage1": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/a11y_test.dart",
     "sondecontraste": ROOT / "tools/contrast-probe.dart",
+    # 572 — le flow dédié aux fenêtres de permission et ses deux gestes du cadre.
+    # Le geste Android se lit par identifiant, l'iOS par libellé ancré : rien ne
+    # pouvait dire si un garde voit l'un revenir au libellé, l'autre perdre son
+    # ancrage.
+    "permissionsflow": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/permissions.yaml",
+    "permaccepter": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-accepter.yaml",
+    "permrefuser": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-refuser.yaml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3438,6 +3445,52 @@ MUTATIONS = [
     ("sondecontraste", "573 decies · la sonde ne reproduit plus le faux positif des pixels",
      "\n        pixels.passed,\n        isFalse,",
      "\n        pixels.passed,\n        isTrue,"),
+    # ── 572 · les fenêtres de permission s'exercent dans un flow dédié ─────
+    # La branche au lancement n'est plus reconnue : resilience n'attend plus rien.
+    ("run", "572 · une branche au lancement n'est plus reconnue",
+     "      if (courante.gestes.size === 0 && !declenchee) courante.auLancement = true;",
+     "      if (false) courante.auLancement = true;"),
+    # Un toucher ne déclenche plus : toute branche passe pour « au lancement ».
+    ("run", "572 bis · un toucher ne déclenche plus la demande",
+     "\n      declenchee = true;",
+     "\n      declenchee = false;"),
+    # Une seule branche suffit de nouveau : le refus redevient facultatif.
+    ("run", "572 ter · une branche qui accepte suffit de nouveau",
+     "['accepter', 'refuser'].filter(",
+     "['accepter'].filter("),
+    # La direction redevient large : une permission sans fenêtre est réclamée.
+    ("run", "572 quater · la couverture réclame une permission sans fenêtre",
+     "\n  const aJuger = declarees.filter((p) => exercables.has(p));",
+     "\n  const aJuger = declarees;"),
+    # `all` compte de nouveau : resilience referme une fenêtre qui ne vient pas.
+    ("run", "572 quinquies · `all` compte de nouveau comme une fenêtre",
+     "if (p !== 'all') noms.add(p);",
+     "noms.add(p);"),
+    # Le nombre ne va plus aux flows : resilience attend l'accueil sous la fenêtre.
+    ("run", "572 sexies · le nombre de fenêtres n'arrive plus aux flows",
+     "\n    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions())),",
+     "\n    ARGUS_INVITES_AU_LANCEMENT: '0',"),
+    # Le constat est calculé et ne va nulle part.
+    ("run", "572 septies · le constat de couverture n'atteint plus le rapport",
+     "\n    ...permissionsNonExercees(config, lireFlowPermissions(), reportDevice, platform),",
+     ""),
+    # Resilience ne referme plus rien : le 572 d'origine revient.
+    ("resilience", "572 octies · resilience ne referme plus les fenêtres du lancement",
+     "\n            - runFlow: _subflows/permission-refuser.yaml",
+     "\n            - waitForAnimationToEnd"),
+    # Android accepte de nouveau par libellé : il dépend alors de la langue.
+    ("permaccepter", "572 nonies · Android accepte de nouveau par libellé",
+     "\n      - tapOn:\n          id: 'permission_allow(_foreground_only)?_button'",
+     "\n      - tapOn:\n          text: 'Allow'"),
+    # Le refus iOS perd son ancrage : « Refuser » prend un texte qui le contient.
+    ("permrefuser", "572 decies · le refus iOS perd son ancrage",
+     "\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Don.t Allow",
+     "\n      - tapOn:\n          text: '(?s).*(Don.t Allow"),
+    # Le gabarit enseigne de nouveau la forme fausse : les autres permissions
+    # restent refusées, et une autre fenêtre s'ouvre en premier.
+    ("permissionsflow", "572 undecies · une branche de l'exemple perd son all: allow",
+     "#       all: allow\n#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml",
+     "#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml"),
 ]
 
 
