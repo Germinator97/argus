@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS** — les **570 à 572** (les 564 à 569 sont fermés), rendus par le run 106
+🔴 **2 POINTS OUVERTS** — les **571 et 572** (les 564 à 570 sont fermés), rendus par le run 106
 (section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
 dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
 un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
@@ -13567,13 +13567,31 @@ projet instrumenté.
 
 ### 570. `secretPatterns` promet le binaire, et ne scanne que les sources
 
-**Ouvert le 28/09/2026 · OUVERT** — la configuration livrée écrit « Motifs de
+**Ouvert le 28/09/2026 · CLOS** — la configuration livrée écrit « Motifs de
 secrets cherchés dans le binaire ET dans les sources ». `sec.mjs` les applique
 aux seuls fichiers versionnés (`scannableFiles`). Une clé publique par nature,
 présente dans la ressource du paquet, n'a été rapportée par rien — ce qui est
 juste pour elle, mais faux de ce que la phrase promet. Arbitrage de Germinator :
 **corriger la promesse**, gardée ; scanner le binaire reste un chantier différé
 (il faudrait d'abord écarter les clés publiques par nature).
+
+#### ✅ Fermé le jour même — la phrase dit ce que le scanner mesure
+
+La configuration livrée dit désormais « cherchés dans les SOURCES VERSIONNÉES
+(`git ls-files`), jamais dans le binaire », et pourquoi ; la méthodologie, qui
+range les secrets de l'APK/IPA parmi les contrôles MASVS statiques, précise
+qu'`argus-sec` ne les cherche que dans les sources.
+
+- Le garde **exécute** `sec.mjs` sur un dépôt jetable : le secret d'une source
+  versionnée est trouvé, le même secret dans un `.so` versionné n'est pas lu —
+  puis il exige que les deux phrases disent exactement ça. Le jour où le
+  binaire sera lu, c'est la mesure qui tombera d'abord, et son message dit de
+  réécrire les phrases avec.
+- Trois mutations — la configuration qui repromet le binaire, la méthodologie
+  qui retait le périmètre, et l'autre sens, le scanner qui se met à lire un
+  `.so` : **TOMBE** toutes. `--check-motifs` joué **avant** le commit du
+  correctif, cette fois.
+- Suite 622/622, 600 mutations, 0 inerte.
 
 ### 571. `budget.maxMinutes` règle aussi la fraîcheur du rapport, et la clé ne le dit pas
 
