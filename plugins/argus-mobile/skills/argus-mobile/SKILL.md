@@ -233,8 +233,10 @@ cas soit cadré d'avance — mais il ne l'est jamais complètement.
 Étape critique qui n'a pas d'équivalent côté web : Maestro ne voit que ce que
 l'app expose à la couche d'accessibilité.
 
-**a. Le projet.** `pubspec.yaml`, `flutter --version` ≥ **3.19**
-(`Semantics(identifier:)` y est apparu), flavors, plateformes présentes.
+**a. Le projet.** `pubspec.yaml`, `flutter --version` ≥ **3.27** — l'étage 1
+emploie `find.bySemanticsIdentifier`, apparu en 3.27 ; `Semantics(identifier:)`,
+que les flows lisent, date de 3.19. Un job de CI fait tourner l'étage 1 à ce
+plancher (577). Flavors, plateformes présentes.
 
 ⚠️ **Cherche `.fvmrc` ou `.fvm/` avant de lancer la moindre commande Flutter.**
 Un projet épinglé par FVM ne se construit PAS avec le `flutter` du PATH : la

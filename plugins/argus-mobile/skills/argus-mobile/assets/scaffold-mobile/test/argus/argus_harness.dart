@@ -699,11 +699,11 @@ List<ArgusSemanticNode> argusNodesById(WidgetTester tester, String identifier) {
           label: data.label,
           actions: data.actions,
           // `flagsCollection` remplace `hasFlag` depuis Flutter 3.32, mais ce
-          // harnais annonce fonctionner à partir de **3.19** : migrer casserait
-          // toute la moitié basse de cette plage, où le nouveau symbole n'existe
-          // pas. On garde donc l'ancien, et on tait l'avertissement plutôt que
-          // de le laisser rougir une CI. À rebasculer le jour où le plancher de
-          // version passe au-dessus de 3.32 — pas avant.
+          // harnais tourne à partir de **3.27** — le plancher annoncé, qu'un job
+          // de CI fait tourner (577) : migrer casserait 3.27 à 3.31, où le
+          // nouveau symbole n'existe pas. On garde donc l'ancien, et on tait
+          // l'avertissement plutôt que de le laisser rougir une CI. À rebasculer
+          // le jour où le plancher de version passe à 3.32 — pas avant.
           // ignore: deprecated_member_use
           hasEnabledState: data.hasFlag(SemanticsFlag.hasEnabledState),
         );
@@ -1112,9 +1112,9 @@ List<_ArgusTexteJuge> _argusTextesJuges(WidgetTester tester) {
   final Set<Element> vus = <Element>{};
 
   void visiter(SemanticsNode noeud) {
-    // Le harnais tient dès Flutter 3.19, où `flagsCollection` n'existe pas :
-    // l'ancien `hasFlag` reste, et son avertissement se tait — la décision
-    // prise pour `ArgusSemanticNode`, plus haut, et pour la même raison.
+    // Le plancher est Flutter 3.27 (577), où `flagsCollection` n'existe pas
+    // encore : l'ancien `hasFlag` reste, et son avertissement se tait — la
+    // décision prise pour `ArgusSemanticNode`, plus haut, et pour la même raison.
     // ignore: deprecated_member_use
     final bool aUnEtat = noeud.hasFlag(SemanticsFlag.hasEnabledState);
     // ignore: deprecated_member_use
@@ -1285,8 +1285,9 @@ ArgusMesureContraste argusMesureContraste(Element element, TextStyle style) {
   double pire = double.infinity;
   Color pireTexte = couleurs.first;
   for (final Color couleur in couleurs) {
-    // Composer puis atténuer revient à composer avec l'alpha atténué : sans
-    // `withValues` (3.27+), que le plancher 3.19 n'a pas.
+    // Composer puis atténuer revient à composer avec l'alpha atténué. Écrit
+    // sans `withValues` quand le plancher annoncé était 3.19 ; juste aussi au
+    // plancher réel, 3.27 (577), donc gardé tel quel.
     final Color visible = Color.lerp(
       fond,
       Color.alphaBlend(couleur, fond),
@@ -1455,15 +1456,17 @@ double argusContraste(Color a, Color b) {
 
 /// `#RRGGBB`, pour un message qu'on puisse recopier dans un outil de contraste.
 String argusHex(Color c) {
-  // `toARGB32` n'existe qu'à partir de 3.27 ; le harnais tient dès 3.19.
+  // Écrit pour un plancher 3.19, où `toARGB32` n'existait pas ; le plancher
+  // réel est 3.27 (577), où il existe — gardé tel quel, il reste juste.
   // ignore: deprecated_member_use
   final int argb = c.value;
   final String rgb = (argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
   return '#${rgb.toUpperCase()}';
 }
 
-/// Opaque : la couleur rend la même chose sur noir et sur blanc. Ni `Color.a`
-/// (3.27+) ni `Color.alpha` (déprécié depuis) : le harnais tient dès 3.19.
+/// Opaque : la couleur rend la même chose sur noir et sur blanc — ni `Color.a`
+/// ni `Color.alpha`. Écrit pour un plancher 3.19 ; juste aussi au plancher
+/// réel, 3.27 (577), donc gardé tel quel.
 bool _argusOpaque(Color c) =>
     Color.alphaBlend(c, const Color(0xFF000000)) ==
     Color.alphaBlend(c, const Color(0xFFFFFFFF));

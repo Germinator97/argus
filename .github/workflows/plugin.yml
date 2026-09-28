@@ -219,6 +219,43 @@ jobs:
       - name: Rien de ce qu'il pose n'est à reformater
         run: cd /tmp/fmt && dart format --output=none --set-exit-if-changed test/argus scripts
 
+  # ── Le plancher de version annoncé tient-il ? (577) ──────────────────────
+  # Le README, le SKILL et le guide du harnais annonçaient Flutter 3.19 ; le
+  # cadre ne compilait pas avant 3.27 (`find.bySemanticsIdentifier`), et rien ne
+  # le disait : aucun job ne tournait à la version annoncée. Celui-ci monte un
+  # projet neuf À CETTE VERSION, y pose le scaffold et fait tourner l'étage 1 —
+  # un plancher qui dérive rougit ici, au lieu de se découvrir chez quelqu'un.
+  # ⚠️ La version épinglée EST le plancher annoncé : un garde exige que les
+  # trois documents disent la même. La relever, c'est les relever tous.
+  plancher:
+    name: L'étage 1 tourne à la version plancher annoncée
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.27.0
+          architecture: x64
+
+      - name: Un projet d'accueil, neuf, à la version plancher
+        run: |
+          flutter create -e /tmp/plancher
+          cd /tmp/plancher && flutter pub add dev:flutter_test --sdk=flutter
+
+      - name: Le scaffold, tel que l'installeur le pose
+        run: bash plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh /tmp/plancher
+
+      # Tourner, pas seulement analyser : les lints d'une version ancienne ne
+      # sont pas ceux du jour, et ce job ne juge que ce qu'il promet — le
+      # plancher COMPILE et TOURNE.
+      - name: L'étage 1 compile et tourne
+        run: |
+          cd /tmp/plancher
+          flutter test test/argus 2>&1 | tee /tmp/plancher.txt
+          grep -q 'SKIP — aucun écran déclaré' /tmp/plancher.txt \
+            || { echo "✖ l'étage 1 ne s'est pas déclaré non branché : a-t-il seulement compilé ?"; exit 1; }
+
   # ── L'étage 1 compile-t-il seulement ? ──────────────────────────────────
   # Rien ici ne compilait le Dart, et ça s'est vu : la séparation du harnais en
   # trois fichiers a d'abord produit un CYCLE d'imports que Dart résout mal —

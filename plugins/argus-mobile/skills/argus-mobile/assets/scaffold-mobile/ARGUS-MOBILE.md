@@ -22,7 +22,7 @@ et atteigne l'OS.
 
 ```bash
 # 1. Prérequis
-#    Node >= 18 · Flutter >= 3.19 (Semantics identifier) · Java 17+ pour Maestro
+#    Node >= 18 · Flutter >= 3.27 (find.bySemanticsIdentifier) · Java 17+ pour Maestro
 curl -fsSL "https://get.maestro.mobile.dev" | bash
 make argus-doctor          # config résolue + outillage détecté
 

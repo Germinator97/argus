@@ -13412,6 +13412,38 @@ test('572 — la table des noms Maestro est celle relevée dans Maestro 2.8.0', 
   });
 });
 
+// ── 577 · LE PLANCHER DE VERSION ANNONCÉ EST CELUI QUE LA CI FAIT TOURNER ──
+// Trois documents annonçaient Flutter 3.19 ; le cadre ne compilait pas avant
+// 3.27, et aucun job ne tournait à la version annoncée. La version épinglée
+// par le job `plancher` est désormais la SOURCE : les documents la suivent.
+
+test('577 — le plancher Flutter annoncé est celui que la CI fait tourner', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const debut = ci.indexOf('\n  plancher:');
+  assert.ok(debut > 0, 'le job `plancher` a disparu de la CI : le plancher annoncé ne tourne plus nulle part (577)');
+  const reste = ci.slice(debut + 1);
+  const fin = reste.search(/\n {2}[a-z][\w-]*:\n/);
+  const job = fin < 0 ? reste : reste.slice(0, fin);
+  const m = /flutter-version:\s*(\d+)\.(\d+)\.(\d+)/.exec(job);
+  assert.ok(m, 'le job `plancher` n\'épingle plus de version : il tournerait sur la stable du jour (577)');
+  assert.match(job, /flutter test test\/argus/,
+    'le job `plancher` ne fait plus tourner l\'étage 1 : il ne prouve plus que le plancher compile (577)');
+  const plancher = `${m[1]}.${m[2]}`;
+
+  const S = 'plugins/argus-mobile/skills/argus-mobile';
+  for (const [fichier, motif] of [
+    ['README.md', /\*\*Prérequis\*\* : [^\n]*Flutter ≥ (\d+\.\d+)/],
+    [`${S}/SKILL.md`, /`flutter --version` ≥ \*\*(\d+\.\d+)\*\*/],
+    [`${S}/assets/scaffold-mobile/ARGUS-MOBILE.md`, /Flutter >= (\d+\.\d+)/],
+  ]) {
+    const annonce = motif.exec(readFileSync(join(RACINE, fichier), 'utf8'));
+    assert.ok(annonce, `${fichier} n'annonce plus de version de Flutter sous sa forme connue — mets ce garde à jour`);
+    assert.equal(annonce[1], plancher,
+      `${fichier} annonce Flutter ${annonce[1]}, la CI fait tourner l'étage 1 à ${plancher} : un plancher `
+      + 'annoncé que rien n\'exécute dérive en silence — le 577 (577)');
+  }
+});
+
 // ── 574 · LES POLICES SE DÉRIVENT DU BUNDLE ──────────────────────────────
 // `argusFonts` se recopiait à la main, du chargeur de polices des tests du
 // projet, dont il héritait les trous : neuf familles pour onze TTF embarqués,

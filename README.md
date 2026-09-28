@@ -118,7 +118,7 @@ Icon(Icons.add, semanticLabel: 'fabAddIcon')                     // ✅
 ElevatedButton(key: const Key('login_button'), …)                // ❌ invisible
 ```
 
-**Prérequis** : Node ≥ 18 · Flutter ≥ 3.19 (`Semantics(identifier:)`) ·
+**Prérequis** : Node ≥ 18 · Flutter ≥ 3.27 (l'étage 1 emploie `find.bySemanticsIdentifier`) ·
 Java 17+ et la CLI Maestro (`curl -fsSL "https://get.maestro.mobile.dev" | bash`) ·
 Android SDK Platform-Tools (`adb`) · Xcode pour iOS · `osv-scanner` et Docker/MobSF
 optionnels. Un outil absent donne une dimension **sautée et mentionnée** dans le
