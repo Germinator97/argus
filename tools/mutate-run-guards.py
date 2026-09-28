@@ -2881,14 +2881,13 @@ MUTATIONS = [
     # ⚠️ LA QUATRIÈME VISE L'AUTRE GARDE, celui de la SURVIE — sans elle il
     # n'aurait aucune mutation, et le site que personne ne mute est le site dont
     # personne n'apprend rien. `rm -rf` là où `rmdir` refusait.
-    # ⚠️ ELLE FAIT TOMBER DEUX GARDES, mesuré en la jouant à la main et en lisant
-    # TOUS les noms rouges : le 498 d'abord — que le harnais crédite, puisqu'il
-    # retient le premier — puis celui du 530. Les deux tombent bel et bien ; ce
-    # qui n'est pas isolé est l'appariement. La part que le 530 garde SEUL est ce
-    # que ce correctif a ajouté aux candidats : le workflow et le dossier
-    # `scripts/` de l'HÔTE, que le 498 ne pose pas. Isoler demanderait de couper
-    # la boucle en deux dans le code livré, ce qui abimerait le sujet pour
-    # arranger la mesure.
+    # ⚠️ ELLE FAISAIT TOMBER DEUX GARDES, le 498 d'abord — que le harnais
+    # créditait, puisqu'il retient le premier — puis celui du 530 : le 498 posait
+    # le rapport et les références dans les dossiers candidats, et exigeait qu'ils
+    # survivent. Depuis le 576 ils repartent avec Argus, donc le 498 ne pose plus
+    # rien du projet sous ces dossiers : c'est le 530 SEUL qui la voit, crédité à
+    # la passe du 28/09 — ses fichiers d'hôte non marqués sous `.maestro/` et
+    # `test/argus/` ont pris la place des produits dans son montage.
     ("installeur", "530 · le retrait des dossiers cesse de refuser le non-vide",
      "\n        rmdir \"$target/$d\" 2>/dev/null || true",
      "\n        rm -rf \"$target/$d\" 2>/dev/null || true"),
