@@ -3161,6 +3161,31 @@ MUTATIONS = [
     ("resilience", "565 octies · le geste est appelé après un lancement qui refuse",
      "\n    label: Lancement toutes permissions refusées\n",
      "\n    label: Lancement toutes permissions refusées\n\n- runFlow: _subflows/dismiss-system-alerts.yaml\n"),
+    # ── 566 · l'arbre ne se lit pas pendant que l'application anime ───────
+    # Le défaut du run 106 lui-même : a11y lit l'arbre sans couper — l'objet
+    # rendu garde la forme du verdict, pour que le reste du script tourne.
+    ("a11y", "566 · a11y ne coupe plus les animations avant de lire l'arbre",
+     "\n  const animations = disableAnimations(platform, udid, false);",
+     "\n  const animations = { ok: false, detail: 'non coupées', aRestaurer: null };"),
+    # La coupure a lieu, mais un dump part AVANT : celui-là mesure une
+    # application qui anime encore.
+    ("a11y", "566 bis · un dump part avant la coupure",
+     "\n  const animations = disableAnimations(platform, udid, false);",
+     "\n  dumpHierarchy(udid);\n  const animations = disableAnimations(platform, udid, false);"),
+    # 507 — la coupure sans la restauration : l'appareil garde un réglage
+    # SYSTÈME, et le run suivant ne peut plus prouver la sienne.
+    ("a11y", "566 ter · la restauration des animations n'est plus armée",
+     "\n  armerRestaurationAnimations(process, () => restoreAnimations(udid, /** @type {string[]} */ (animations.aRestaurer)), animations.aRestaurer ?? null);",
+     "\n  // (restauration non armée)"),
+    # Le refus ne départage plus les deux causes : même phrase que la coupure
+    # ait réussi ou non.
+    ("a11y", "566 quater · le refus ne départage plus l'app de l'appareil",
+     "\n  if (!/idle state/i.test(raison)) return raison;",
+     "\n  return raison;"),
+    # Le départage existe mais n'est plus DIT : calculé, jamais émis.
+    ("a11y", "566 quinquies · le refus tait ce que la coupure en sait",
+     "\n    const pourquoi = raisonSansDump(reason, animations);",
+     "\n    const pourquoi = reason;"),
 ]
 
 
