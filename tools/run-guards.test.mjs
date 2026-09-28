@@ -13372,8 +13372,13 @@ test('572 — les sous-flows touchent le bouton système par IDENTIFIANT sur And
 
 test('572 — le gabarit prescrit `all: allow` AVANT la permission remise à demander, et tient debout vide', () => {
   const gabarit = readFileSync(join(PERM, 'permissions.yaml'), 'utf8');
-  assert.match(gabarit, /^#\s+all: allow\n#\s+notifications: unset$/m,
-    'l\'exemple du gabarit ne met plus `all: allow` avant la permission : les autres resteraient refusées, '
+  // ⚠️ CHAQUE branche de l'exemple, pas une seule : l'exemple en porte deux, et
+  // un motif satisfait par l'une laisserait l'autre enseigner la forme fausse.
+  const remises = (gabarit.match(/^#\s+notifications: unset$/gm) ?? []).length;
+  const precedees = (gabarit.match(/^#\s+all: allow\n#\s+notifications: unset$/gm) ?? []).length;
+  assert.ok(remises >= 2, `l'exemple ne porte plus ses deux branches (${remises}) : ce garde ne mesure plus rien`);
+  assert.equal(precedees, remises,
+    'une branche de l\'exemple ne met plus `all: allow` avant la permission : les autres resteraient refusées, '
     + 'et une AUTRE fenêtre s\'ouvrirait en premier — mesuré');
   assert.match(gabarit, /^\s+- permissions$/m, 'le flow ne porte plus son tag `permissions`');
   // Maestro refuse un flow sans commande : le garde-place est ce qui le fait parser.
