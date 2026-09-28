@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **8 POINTS OUVERTS** — les **565 à 572** (le 564 est fermé), rendus par le run 106 (section « Rendu
-par le run 106 », en fin de fichier). Ils se ferment un par un dans la passe qui
-suit ; le **572** reste ouvert délibérément, son remède se tranchant à froid.
+🔴 **7 POINTS OUVERTS** — les **566 à 572** (les 564 et 565 sont fermés), rendus par le run 106
+(section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
+dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
+un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13347,7 +13348,7 @@ retouche, et le 540 avait déjà dû câbler deux sites un par un.
 
 ### 565. Sur Android, le geste d'invite système ne peut rien trouver au lancement
 
-**Ouvert le 28/09/2026 · OUVERT** — 8 flows sur 9 absorbés, ~7,1 s d'attente
+**Ouvert le 28/09/2026 · CLOS** — 8 flows sur 9 absorbés, ~7,1 s d'attente
 chacun, sur une application qui déclare une permission de notifications : le
 **517** dérive « joue », et le geste attend sa borne.
 
@@ -13369,6 +13370,53 @@ le geste est nécessaire (la modale des notifications n'est pas couverte par
 `permissions`). La dérivation du 517 lit **ce que l'application peut demander**,
 jamais **ce que le lancement vient d'accorder**. Coût : ~7 s par flow, et le
 budget de démarrage jugeable sur aucun.
+
+#### ✅ Fermé le jour même — la décision suit la plateforme du run
+
+🔴 **Le premier remède annoncé était faux.** J'avais retenu une garde
+`when: platform: iOS` sur les deux appels du geste. Elle aurait rendu
+`systemAlerts: always` — « joué quoi qu'il arrive » — mensonger sur Android, et
+laissé intact le `login.yaml` des projets déjà installés, qui leur appartient.
+Et à la question « où trancher ? », Germinator a posé la vraie : *les
+permissions ne devraient-elles pas être exercées, plutôt qu'ignorées ?* Oui — et
+ce n'est pas le travail des flows standards, qui les contournent pour mesurer
+autre chose : c'est celui d'un parcours dédié (le **572**, élargi en ce sens).
+
+- **La mesure étendue avant de trancher.** La sonde demande désormais six
+  permissions dangereuses (notifications, caméra, localisation fine et
+  grossière, micro, contacts). `all: allow` et le défaut : **6/6** accordées,
+  l'application au premier plan ; `deny` et `unset` : 0/6, l'invite
+  (`GrantPermissionsActivity`) au premier plan — la contre-épreuve prouve que
+  l'instrument sait voir une invite.
+- **Le remède.** `gesteInviteAuLancement(config, platform)` : `auto` joue sur iOS
+  seulement, `always` et `never` tiennent leur promesse sur les deux plateformes.
+  `buildEnv` exige la plateforme **du run** — `config.platforms` dit ce que le
+  projet vise, pas ce qu'on teste —, et la décision **lève** si elle manque : le
+  câblage que le 517 refusait parce que son oubli serait muet devient bruyant.
+  Le remède d'absorption suit la même décision et donne à chaque plateforme sa
+  raison.
+- **L'atteinte.** Le runner est au cadre, et le sous-flow des projets installés
+  lit déjà `ARGUS_SYSTEM_ALERTS` (forme du 517) : le correctif les atteint tous
+  au prochain `--update`, `login.yaml` compris, sans toucher un fichier du
+  projet. ⚠️ Seuls les **commentaires** de leurs `argus.mobile.yaml` et
+  `dismiss-system-alerts.yaml` décrivent encore l'ancienne dérivation.
+- **La dérivation par les permissions déclarées est gardée**, sans lecteur de
+  production, par décision : elle répond juste à la question du 572 — après un
+  lancement qui refuse tout, une invite peut-elle naître ?
+- Quatre gardes écrits avant : la décision, les prémisses du scaffold (lancement
+  `all: allow`, appelants du geste figés par égalité, connexion jouée après ce
+  lancement), la variable injectée et son câblage, le remède de bout en bout.
+  Quatre gardes anciens déplacés sur ce qui décide désormais : 502 et 505 sur
+  iOS, 533 et 524 bis sur la déclaration.
+- Huit mutations neuves et deux ré-ancrées (524, 533) : **TOMBE** toutes. Les
+  deux que le harnais crédite à un voisin ont été rejouées dans un worktree
+  jetable pour lire **tous** les noms rouges : les trois gardes du 565 y tombent
+  aussi.
+- 📌 **Mesuré en passant** : Maestro compare le texte **sans tenir compte de la
+  casse** — le sélecteur livré `(Refuser|Don.t Allow)` reconnaît `Don’t allow`
+  sur l'invite Android en anglais. Le libellé français n'a pas été relevé :
+  « Refuser » n'y est pas garanti. C'est pour le 572.
+- Suite 612/612, 579 mutations, 0 inerte ; typage du dépôt : 0 erreur.
 
 ### 566. `argus-a11y` ne coupe pas les animations, et la dimension se saute seule
 
@@ -13433,3 +13481,20 @@ l'invite système, et `resilience.yaml` attend ensuite l'ancre d'accueil — que
 l'invite recouvre. **Non rencontré par un run** : le terrain ne demande pas sa
 permission au lancement. Laissé ouvert délibérément : le geste de refus dépend
 de la langue du système, et un remède se tranche à froid.
+
+**Élargi le 28/09/2026, par décision de Germinator.** Le point n'est plus
+seulement de refermer l'invite de `resilience`. Les flows standards
+**contournent** les fenêtres de permission, puisque le lancement les accorde ;
+le refus n'est exercé que par `resilience`, sans rien refermer ; et le parcours
+« la fenêtre s'affiche, l'utilisateur **accepte**, l'application continue »
+n'est testé **nulle part**. Le remède attendu : un **parcours dédié** qui
+exerce ACCEPTER et REFUSER, sur les deux plateformes, pour les permissions que
+le projet déclare — les flows standards gardent leurs permissions accordées,
+une fenêtre y serait du bruit.
+
+Ce que le 565 lui laisse : la dérivation par les permissions déclarées
+(`invitesSystemePossibles`), gardée pour lui, puisqu'après un lancement qui
+refuse, c'est la bonne question. Et deux mesures : l'invite Android en anglais
+(« While using the app », « Only this time », « Don’t allow ») est reconnue par
+le sélecteur livré, Maestro ignorant la casse ; le libellé français n'a pas été
+relevé.
