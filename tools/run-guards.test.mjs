@@ -1761,8 +1761,10 @@ test('571 — la clé du budget dit chacun de ses lecteurs, et chacun agit', () 
       .filter((l) => !/^\s*(?:\/\/|\*|\/\*\*)/.test(l)).join('\n');
     return /budget\?\.maxMinutes/.test(code);
   }).sort();
-  /** Chaque lecteur, et le mot qui nomme son rôle dans la configuration. */
-  const ROLES = { 'report.mjs': /périm/i, 'run.mjs': /dépass/i };
+  /** Chaque lecteur, et la phrase qui nomme son rôle dans la configuration.
+   * ⚠️ UNE PHRASE, PAS UN MOT : « périmé » revient dans le conseil qui suit, et un
+   * mot seul resterait vert sur un bloc qui aurait perdu la puce du rapport. */
+  const ROLES = { 'report.mjs': /en fait son seuil de péremption/i, 'run.mjs': /avertit quand un run le dépasse/i };
   assert.deepEqual(lecteurs, Object.keys(ROLES).sort(),
     `\`budget.maxMinutes\` est lu par ${lecteurs.join(', ')}. Écris le rôle de chaque lecteur dans le `
     + 'commentaire de `budget:` (argus.mobile.yaml), puis mets ce relevé à jour (571)');
