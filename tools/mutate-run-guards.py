@@ -3312,6 +3312,37 @@ MUTATIONS = [
     ("confiddepot", "575 sexies · le classement privé n'est plus lu",
      "lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {",
      "lireClassement = () => null) {"),
+    # ── 576 · ce qu'Argus a fait naître repart avec lui, le reste est nommé ─
+    # Les produits survivent de nouveau : la ligne dit « retiré », le dossier reste.
+    ("installeur", "576 · les produits d'Argus survivent de nouveau",
+     "\n    rm -rf \"${target:?}/$d\"\n",
+     "\n    :\n"),
+    # Un fichier écrit pour Argus survit, pendant que la sortie annonce son retrait.
+    ("installeur", "576 bis · un fichier écrit pour Argus survit",
+     "\n      rm -f \"$f\"\n      echo \"  🗑️  retiré, écrit pour Argus : $rel\"",
+     "\n      echo \"  🗑️  retiré, écrit pour Argus : $rel\""),
+    # Les deux inventaires divergent de nouveau : celui de l'installation ne lit
+    # plus qu'une racine — le défaut exact du 576, retourné.
+    ("installeur", "576 ter · l'inventaire de l'installation ne lit plus toutes les racines",
+     "\n  for r in \"${RACINES_ARGUS[@]}\"; do\n    d=\"$TARGET/$r\"",
+     "\n  for r in test/argus; do\n    d=\"$TARGET/$r\""),
+    # Ce qui reste sous les racines n'est plus nommé : la promesse redevient fausse.
+    ("installeur", "576 quater · ce qui reste sous les racines n'est plus nommé",
+     "\n      liste=\"$liste  ⏭️  resté sous $r/, sans marque Argus : $rel\"$'\\n'; gardes=$((gardes + 1))",
+     "\n      :"),
+    # Le marqueur n'est plus exigé : tout ce qui est sous nos racines part, les
+    # flows du projet compris — l'erreur qui ne se répare pas.
+    ("installeur", "576 quinquies · le marqueur n'est plus exigé sous les racines",
+     "\n      head -20 \"$f\" 2>/dev/null | grep -qF 'ARGUS:OWNED' || continue\n",
+     "\n"),
+    # Un chemin du scaffold est nommé deux fois : le compte « gardé(s) » ment.
+    ("installeur", "576 sexies · un homonyme du scaffold est nommé deux fois",
+     "\n      [ -e \"$SCAFFOLD_DIR/$rel\" ] && continue\n      liste=\"$liste  ⏭️  resté sous",
+     "\n      liste=\"$liste  ⏭️  resté sous"),
+    # La marque est cherchée hors des racines : le code de l'application y passe.
+    ("installeur", "576 septies · la marque est cherchée jusque dans lib/",
+     "\nRACINES_ARGUS=(test/argus .maestro)\n",
+     "\nRACINES_ARGUS=(test/argus .maestro lib)\n"),
 ]
 
 
