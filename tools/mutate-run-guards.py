@@ -3205,6 +3205,30 @@ MUTATIONS = [
     ("makefile", "567 quater · le rapport ne reçoit plus ARGS",
      "\t@$(ARGUS) report $(ARGS)\n",
      "\t@$(ARGUS) report\n"),
+    # ── 568 · la dette assumée se voit sur la page ─────────────────────────
+    # Le défaut du run 106 lui-même : le rapport ne lit pas la dette, la page
+    # dit « aucun finding » sur un étage qui en assume 31.
+    ("report", "568 · le rapport ne lit plus la dette de l'étage 1",
+     "\n  const etage1 = parts.find((p) => p.file === 'stage1.jsonl' && p.state === 'ok');",
+     "\n  const etage1 = parts.find((p) => p.file === 'stage1.jsonl.x' && p.state === 'ok');"),
+    # L'arbitrage était le compte ET la liste repliée : la liste disparaît.
+    ("report", "568 bis · la liste des dettes n'est plus repliée",
+     "\n  return `<details class=\"dettes\"><summary><strong>${n} dette${s} assumée${s}</strong> — ${esc(FICHIER_DETTE)}</summary>`\n    + `<ul>${dettes.cles.map((/** @type {string} */ c) => `<li><code>${esc(c)}</code></li>`).join('')}</ul></details>`;",
+     "\n  return `<strong>${n} dette${s} assumée${s}</strong>`;"),
+    # La ligne « ce qui fonctionne » retombe sur la phrase que le run 106 a publiée.
+    ("report", "568 ter · la ligne « ce qui fonctionne » retombe sur « aucun finding »",
+     "— exécutée, aucun finding${aveuDette(p)}</span>",
+     "— exécutée, aucun finding</span>"),
+    # Illisible lu comme vide : la page dirait « aucune dette » sur une dette
+    # qu'elle n'a pas su lire.
+    ("report", "568 quater · une dette illisible se lit comme vide",
+     "\n  if (ou.ok === false) return { illisible: ou.pourquoi };",
+     "\n  if (ou.ok === false) return { cles: [] };"),
+    # Les clés partent sans échappement : la page publie ce que les noms de
+    # tests contiennent.
+    ("report", "568 quinquies · les clés de dette partent sans échappement",
+     "`<li><code>${esc(c)}</code></li>`",
+     "`<li><code>${c}</code></li>`"),
 ]
 
 
