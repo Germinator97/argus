@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS** — les **568 à 572** (les 564 à 567 sont fermés), rendus par le run 106
+🔴 **4 POINTS OUVERTS** — les **569 à 572** (les 564 à 568 sont fermés), rendus par le run 106
 (section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
 dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
 un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
@@ -13503,11 +13503,31 @@ avant d'être écrit.
 
 ### 568. La page dit « aucun finding » sur l'étage 1 quand 31 dettes sont assumées
 
-**Ouvert le 28/09/2026 · OUVERT** — « Gardes d'étage 1 — exécutée, aucun finding »,
+**Ouvert le 28/09/2026 · CLOS** — « Gardes d'étage 1 — exécutée, aucun finding »,
 sur un projet dont `known_issues.dart` porte **31** clés. La dette assumée
 n'apparaît nulle part sur la page publiée. C'est la parité du **443** : un
 acquittement de sécurité honoré s'affiche, barré, avec sa raison ; une dette
 d'étage 1, non. Arbitrage de Germinator : **le compte, et la liste repliée**.
+
+#### ✅ Fermé le jour même — le compte dans la ligne, la liste repliée dans la couverture
+
+Le rapport lit la dette de l'étage 1 qui a tourné, avec le lecteur et le chemin
+**de l'outil qui l'écrit** (`situerLeSet`, `CIBLE` désormais exporté) : le
+fichier porte la déclaration deux fois, et une seconde lecture aurait divergé au
+premier piège. La ligne de couverture porte le compte et un `<details>` qui
+liste les clés ; la ligne « ce qui fonctionne » dit « aucun finding **hors dette
+assumée** · N dettes assumées ». Un fichier de dette illisible est **dit**,
+jamais lu comme vide.
+
+- Trois gardes écrits avant : le lecteur sur le fichier **livré** (zéro clé
+  malgré le dartdoc qui cite la déclaration) et sur un fichier **écrit par
+  l'outil lui-même** ; la page (compte, liste repliée et échappée, rien de
+  changé sans dette) ; et `report.mjs` exécuté de bout en bout dans un projet
+  jetable. Les deux derniers sont tombés sur le code d'alors, pour leur raison.
+- Cinq mutations — rapport qui ne lit plus, liste non repliée, ligne qui
+  retombe sur « aucun finding », illisible lu comme vide, clés sans
+  échappement : **TOMBE** toutes, chacune sur son garde.
+- Suite 620/620, 593 mutations, 0 inerte ; typage du dépôt : 0 erreur.
 
 ### 569. Dans un monorepo, la CI de l'hôte est cherchée au mauvais endroit
 
