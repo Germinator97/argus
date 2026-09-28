@@ -4664,7 +4664,7 @@ se diagnostique seul ; l'inclure noierait les trois cas silencieux sous des
 lignes sans valeur. *On ne contrôle que ce qui échoue SANS le dire.*
 
 📌 **Éprouvé sur un projet RÉEL avant d'être écrit** — sans Firebase, trois
-familles de polices déclarées **par dossier** (`assets/fonts/geist/`) : **zéro
+familles de polices déclarées **par dossier** (`assets/fonts/<famille>/`) : **zéro
 finding**. C'est cette mesure qui a corrigé la détection des polices, qu'une
 lecture rapide aurait faite fichier par fichier.
 
