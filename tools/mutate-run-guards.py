@@ -3186,6 +3186,25 @@ MUTATIONS = [
     ("a11y", "566 quinquies · le refus tait ce que la coupure en sait",
      "\n    const pourquoi = raisonSansDump(reason, animations);",
      "\n    const pourquoi = reason;"),
+    # ── 567 · `ARGS` arrive au moteur, par toute cible qui l'appelle ──────
+    # Le défaut du run 106 lui-même : `argus-baselines` avale ses drapeaux,
+    # régénère tout et repose le binaire, sans un mot.
+    ("makefile", "567 · argus-baselines avale ses drapeaux",
+     "\t@$(ARGUS) run --update-baselines $(ARGS)\n",
+     "\t@$(ARGUS) run --update-baselines\n"),
+    # La cible que le SKILL prescrit pour voir Maestro en direct.
+    ("makefile", "567 bis · argus-run ignore ARGS",
+     "\t@$(ARGUS) run $(ARGS)\n",
+     "\t@$(ARGUS) run\n"),
+    # La cible agrégée laisse l'ARGS du rapport descendre dans les dimensions,
+    # qui refusent toute option inconnue : chacune sortirait en 2.
+    ("makefile", "567 ter · l'ARGS du rapport fuit vers les dimensions",
+     "$(MAKE) --no-print-directory $$cible ARGS= ||",
+     "$(MAKE) --no-print-directory $$cible ||"),
+    # Et l'autre sens : le rapport perd ce qui lui rend ses onglets passés.
+    ("makefile", "567 quater · le rapport ne reçoit plus ARGS",
+     "\t@$(ARGUS) report $(ARGS)\n",
+     "\t@$(ARGUS) report\n"),
 ]
 
 
