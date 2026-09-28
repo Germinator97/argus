@@ -3253,6 +3253,20 @@ MUTATIONS = [
     ("installeur", "569 quater · les chemins se comparent sans résoudre les liens",
      "\n  cible_physique=$(cd \"$TARGET\" && pwd -P)",
      "\n  cible_physique=$(cd \"$TARGET\" && pwd)"),
+    # ── 570 · `secretPatterns` dit ce qu'il scanne ─────────────────────────
+    # Le défaut du run 106 lui-même : la configuration repromet le binaire.
+    ("yamlconf", "570 · la configuration repromet le binaire aux motifs de secrets",
+     "\n  # Motifs de secrets cherchés dans les SOURCES VERSIONNÉES (`git ls-files`),\n  # jamais dans le binaire : ni l'APK/AAB/IPA ni `libapp.so` ne sont lus pour\n",
+     "\n  # Motifs de secrets cherchés dans le binaire ET dans les sources.\n  # (ancienne promesse, ni l'APK/AAB/IPA ni `libapp.so` exclus)\n"),
+    # La méthodologie retait le périmètre : un agent croira le binaire couvert.
+    ("methodo", "570 bis · la méthodologie retait que le binaire n'est pas lu",
+     "\n  cherche les motifs de secrets que dans les **sources versionnées**, jamais dans\n",
+     "\n  cherche les motifs de secrets partout, jamais en défaut dans\n"),
+    # L'AUTRE SENS : le scanner se met à lire une forme binaire. C'est la mesure
+    # qui doit tomber d'abord — et dire de réécrire la phrase avec.
+    ("sec", "570 ter · le scanner de secrets lit une forme binaire",
+     "'.aab', '.so', '.ipa'",
+     "'.aab', '.ipa'"),
 ]
 
 
