@@ -3100,6 +3100,22 @@ MUTATIONS = [
     ("mutateur", "563 · une cible JSON mutée n'est plus relue",
      '\n    if cible.suffix == ".json":',
      '\n    if cible.suffix == ".json" and False:'),
+    # ── 564 · la langue d'un appareil neuf se lit où elle vit ─────────────
+    # Le repli sur la langue d'USINE disparaît : c'est le défaut du run 106
+    # lui-même — « n'a pas pu être lue » sur un émulateur neuf.
+    ("run", "564 · la locale ne retombe plus sur la langue d'usine",
+     "\n    ?? localeLue(lire(['getprop', 'ro.product.locale']));",
+     ";"),
+    # Le repli sur `persist.sys.locale` disparaît : l'ordre des trois sources
+    # n'est plus celui qu'on affiche.
+    ("run", "564 bis · la locale ne lit plus persist.sys.locale",
+     "\n    ?? localeLue(lire(['getprop', 'persist.sys.locale']))",
+     ""),
+    # L'AVERTISSEMENT revient à la lecture nue — le site qui vit au milieu de
+    # `main`, que rien n'appelle seul : seul le garde de câblage peut le voir.
+    ("run", "564 ter · l'avertissement de locale relit system_locales sans repli",
+     "\n      ? localeAndroid((args) => adbShell(resolved.udid, args).stdout)",
+     "\n      ? localeLue(adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout)"),
 ]
 
 
