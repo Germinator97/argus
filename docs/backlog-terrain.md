@@ -5097,11 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS**, tous deux tranchés le 28/09 par Germinator — le **572** (les
-564 à 571 sont fermés), rendu par le run 106, et le **573**, rendu par la correction
-du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de fichier). Les
-**574** à **576** sont fermés. Chacun porte le remède choisi ; ils se ferment dans
-l'ordre 573, 572.
+🔴 **1 POINT OUVERT** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
+et tranché le 28/09 par Germinator (section « Rendu par le run 106 », en fin de
+fichier) : un parcours dédié aux fenêtres de permission. Les **573** à **576** sont
+fermés.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13666,7 +13665,7 @@ bouton système tel que Maestro le lit, et le libellé français des deux invite
 
 ### 573. Le contraste d'Argus se juge sur les pixels : un faux positif, et un verdict qui dépend du moment
 
-**Ouvert le 28/09/2026 · OUVERT** — rendu par la correction du terrain, après le
+**Ouvert le 28/09/2026 · CLOS** — rendu par la correction du terrain, après le
 run 106. `a11y_test.dart` (cadre) juge le contraste par
 `meetsGuideline(textContrastGuideline)`, c'est-à-dire sur les **pixels
 rendus**. Deux mesures sur le même terrain :
@@ -13699,6 +13698,38 @@ l'arbre, et le constat le dit (« mesuré sur pixels, fond peint »). Écartés 
 stabiliser les pixels sans changer de mesure (le faux positif resterait un
 « peut-être »), et les couleurs seules (les écrans à fond d'image sortiraient
 du contrôle).
+
+#### ✅ Fermé le jour même — le contraste se juge sur les couleurs résolues
+
+`ArgusTextContrastGuideline` (cadre) juge les textes que `textContrastGuideline`
+juge — même parcours sémantique, mêmes nœuds écartés, mêmes seuils — et ne
+change que la **mesure** : la couleur résolue du texte, opacités comprises,
+contre le premier fond opaque au-dessus de lui (le `PhysicalModel` ou
+`PhysicalShape` d'un `Material`, `ColoredBox`, décoration pleine, `Ink`), les
+fonds translucides composés au passage.
+
+- Un fond **peint** — image, dégradé, shader, ou un frère peint dessous dans un
+  `Stack` — repasse aux pixels, **après chargement des images de l'arbre**, et
+  le constat le dit (« mesuré sur pixels, fond peint ») ; une image qui ne se
+  charge pas en test est nommée.
+- La **clé** de la dette ne change pas : les dettes déjà inscrites s'y
+  retrouvent, et un faux positif d'hier se lira comme une dette payée.
+- 🔴 **Le plancher Flutter 3.19 est tenu par ce code** : chaque API de
+  `flutter_test` qu'il emploie a été relue dans la source 3.19.0 ; l'opacité
+  passe par `Color.lerp`, l'opacité d'un fond par un mélange sur noir et sur
+  blanc, et `hasFlag` garde l'`ignore` que le cadre documente déjà. Ce que
+  cette vérification a trouvé à côté est le **577**.
+- Sonde `tools/contrast-probe.sh`, que la CI joue avant celle des polices : six
+  montages au verdict connu. Mesuré sur Flutter 3.32.0 et 3.47.5 : le texte fin
+  et rétréci échoue aux pixels et passe à 9,74:1 résolu ; avant chargement de
+  l'image, les pixels échouent, et le repli passe une fois l'image chargée ; un
+  gris à 2,68:1, un voile composé en #7F7F7F (4,00:1), une opacité de 50 %
+  (3,98:1) et la couleur la plus faible d'un `Text.rich` (1,88:1) échouent en
+  nommant leurs couleurs.
+- Analyse propre en 3.32.0 et 3.47.5, lints du scaffold compris ; format à la
+  version épinglée ; suites d'un projet neuf qui se déclarent non branchées.
+- Dix mutations, et celle de la CI des polices rejouée : **11/11 TOMBE**.
+- Suite 634/634, 635 mutations, 0 inerte.
 
 ### 574. `argusFonts` se recopie à la main, et hérite des trous du chargeur qu'il copie
 
