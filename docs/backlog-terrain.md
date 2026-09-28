@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS** — les **569 à 572** (les 564 à 568 sont fermés), rendus par le run 106
+🔴 **3 POINTS OUVERTS** — les **570 à 572** (les 564 à 569 sont fermés), rendus par le run 106
 (section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
 dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
 un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
@@ -13531,12 +13531,39 @@ jamais lu comme vide.
 
 ### 569. Dans un monorepo, la CI de l'hôte est cherchée au mauvais endroit
 
-**Ouvert le 28/09/2026 · OUVERT** — le workflow a été posé dans `<app>/.github/`,
+**Ouvert le 28/09/2026 · CLOS** — le workflow a été posé dans `<app>/.github/`,
 où GitHub ne le lira jamais (il ne lit que la racine du dépôt), et l'installeur
 n'a rien dit, alors que la CI du dépôt est d'un autre intégrateur, à la racine.
 `avertir_ci_etrangere` ne cherche que dans `$TARGET` : une application en
 sous-dossier le rend aveugle **aux deux défauts à la fois**. Arbitrage de
 Germinator : **avertir**, sans rien écrire hors du projet instrumenté.
+
+#### ✅ Fermé le jour même — la racine du dépôt, lue ; rien n'y est écrit
+
+L'installeur trouve la racine git du projet (chemins comparés **physiques** :
+git rend `/private/tmp` là où `cd` rend `/tmp` sur macOS). Une CI étrangère à la
+racine déclenche l'avertissement « NULLE PART », en disant où elle a été
+trouvée ; des workflows à la racine comptent comme GitHub Actions ; et quand le
+dépôt est sur GitHub, un avertissement neuf dit que le workflow ne tournera pas
+là où il est posé, et donne le geste — le déplacer à la racine avec
+`defaults.run.working-directory: <sous-dossier>`. Rien n'est écrit hors du
+projet instrumenté.
+
+- Garde écrit avant, en **exécutant** l'installeur sur des dépôts git jetables :
+  CI étrangère à la racine (le cas du run 106, tombé sur le code d'alors),
+  GitHub Actions à la racine, coexistence des deux à la racine, application à la
+  racine de son dépôt (silence).
+- Quatre mutations neuves — CI de la racine invisible, sous-dossier tu,
+  workflows de la racine qui ne comptent plus, chemins comparés sans résoudre
+  les liens (propre à macOS, dit dans son commentaire) : **TOMBE** toutes.
+- 🔴 **Deux accrocs de passe, dits ici.** (1) Le correctif a fusionné une ligne
+  que visait une mutation du **475** ; je ne l'ai vu qu'au garde 471, qui lit le
+  dépôt **commité** — le ré-ancrage aurait dû partir dans le commit du
+  correctif, et `--check-motifs` avant de commiter l'aurait dit. (2) Un commit
+  de garde est parti sur une suite rouge : ma commande enchaînait le commit
+  sans lire le code de sortie. Rien de faux n'a été livré — le rouge était ce
+  même 471 —, mais le commit précède son vert.
+- Suite 621/621, 597 mutations, 0 inerte.
 
 ### 570. `secretPatterns` promet le binaire, et ne scanne que les sources
 
