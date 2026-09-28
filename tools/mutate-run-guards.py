@@ -177,6 +177,11 @@ CIBLES = {
     # contre-épreuve (un nom inconnu doit LEVER) est ce qui la sépare d'une
     # sonde qui dirait oui à tout : rien ne pouvait dire si le garde la voit.
     "sondepolices": ROOT / "tools/fonts-probe.sh",
+    # 573 — la suite d'accessibilité de l'étage 1, qui choisit la mesure du
+    # contraste et porte la CLÉ des dettes ; et la sonde qui reproduit les deux
+    # cas qui justifient le 573. Aucune n'avait de cible.
+    "a11yetage1": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/a11y_test.dart",
+    "sondecontraste": ROOT / "tools/contrast-probe.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3390,6 +3395,48 @@ MUTATIONS = [
     ("sondepolices", "574 nonies · la sonde ne vérifie plus que l'échec dit pourquoi",
      "\ngrep -q 'ne sait pas nommer' \"$sortie\" \\\n  || { cat \"$sortie\"; echo \"✖ l'échec ne dit pas pourquoi : il accuserait autre chose que le nom\" >&2; exit 1; }",
      ""),
+    # ── 573 · le contraste se juge sur les couleurs résolues ───────────────
+    # La suite juge de nouveau sur les pixels : le faux positif revient.
+    ("a11yetage1", "573 · a11y_test juge de nouveau sur les pixels",
+     "meetsGuideline(const ArgusTextContrastGuideline())",
+     "meetsGuideline(textContrastGuideline)"),
+    # La clé de la dette change : les dettes déjà inscrites ne s'y retrouvent plus.
+    ("a11yetage1", "573 bis · la clé de la dette de contraste change",
+     "            '${screen.id} · contraste du texte (WCAG AA)',",
+     "            '${screen.id} · contraste du texte (WCAG AA, couleurs)',"),
+    # La remontée ne s'arrête plus au premier fond opaque : tout finit « peint ».
+    ("harness", "573 ter · la remontée ne s'arrête plus au premier fond opaque",
+     "\n      if (_argusOpaque(couche)) {",
+     "\n      if (false) {"),
+    # Les voiles ne sont plus composés : un voile translucide passe pour absent.
+    ("harness", "573 quater · les voiles translucides ne sont plus composés",
+     "\n    fond = Color.alphaBlend(voile, fond);",
+     "\n    fond = voile;"),
+    # Un frère peint dessous n'est plus vu : un fond d'image passe pour la page.
+    ("harness", "573 quinquies · un frère peint dessous n'est plus vu",
+     "\n        _argusFrerePeintDessous(pile, rendu, zone)) {",
+     "\n        pile.hasSize && false) {"),
+    # Les images ne sont plus chargées avant les pixels : le verdict dépend de
+    # nouveau de l'instant.
+    ("harness", "573 sexies · les images ne sont plus chargées avant les pixels",
+     "\n    final List<String> nonChargees = await argusChargerImages(tester);",
+     "\n    final List<String> nonChargees = <String>[];"),
+    # Le repli ne se dit plus : un rouge sur pixels se lit comme un rouge sûr.
+    ("harness", "573 septies · le repli sur les pixels ne se dit plus",
+     "'« ${juge.texte} » : mesuré sur pixels, fond peint (${juge.peint})'",
+     "'« ${juge.texte} » : (${juge.peint})'"),
+    # L'opacité du texte est ignorée : un texte estompé passe pour plein.
+    ("harness", "573 octies · l'opacité posée sur le texte est ignorée",
+     "\n      opacite *= w.opacity;",
+     "\n      opacite *= 1;"),
+    # La CI ne joue plus la sonde : la mesure n'est plus exécutée nulle part.
+    ("ciplugin", "573 nonies · la CI ne joue plus la sonde du contraste",
+     "\n        run: bash tools/contrast-probe.sh /tmp/accueil",
+     "\n        run: echo sonde-retiree"),
+    # La sonde ne reproduit plus le faux positif : elle ne prouve plus rien.
+    ("sondecontraste", "573 decies · la sonde ne reproduit plus le faux positif des pixels",
+     "\n        pixels.passed,\n        isFalse,",
+     "\n        pixels.passed,\n        isTrue,"),
 ]
 
 
