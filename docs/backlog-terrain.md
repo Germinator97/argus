@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **577**, trouvé en écrivant le 573 : le plancher Flutter
-annoncé est faux (section « Rendu par le run 106 », en fin de fichier). Son remède
-se tranche à froid. Les **564** à **576** sont fermés.
+✅ **Rien d'ouvert.** Les **564** à **577** sont fermés — les huit du run 106 d'abord,
+puis les cinq que sa correction de terrain a rendus, tranchés par Germinator et
+écrits le 28/09 au soir, puis le **577**, trouvé en écrivant le 573 : le plancher
+Flutter annoncé était faux, il est désormais celui qu'un job de CI fait tourner.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13949,7 +13950,7 @@ Les deux inventaires lisent désormais UNE déclaration, `RACINES_ARGUS`
 
 ### 577. Le plancher Flutter annoncé (3.19) est faux : le cadre ne compile pas avant 3.27
 
-**Ouvert le 28/09/2026 · OUVERT** — trouvé en écrivant le 573, qui devait tenir
+**Ouvert le 28/09/2026 · CLOS** — trouvé en écrivant le 573, qui devait tenir
 le plancher déclaré. Le README, le SKILL (§2a) et `ARGUS-MOBILE.md` annoncent
 **Flutter ≥ 3.19** ; le cadre ne compile pas avant **3.27**.
 
@@ -13971,3 +13972,34 @@ Le remède se tranche à froid : annoncer le vrai plancher — mesuré, et gard�
 par une compilation en CI à cette version —, ou tenir 3.19 en remplaçant
 `find.bySemanticsIdentifier` par un filtre sur l'identifiant sémantique que
 3.19 connaît déjà.
+
+**Tranché le 28/09/2026 par Germinator : annoncer le plancher mesuré, et le
+garder en CI** — plutôt que tenir 3.19 (un helper suffisait, mais chaque ligne
+future du cadre aurait dû éviter les API postérieures) ou relever à 3.32.
+
+#### ✅ Fermé le jour même — 3.27, et un job qui le fait tourner
+
+- **Mesuré avant d'écrire** : sur la copie d'un projet 3.24.5, les cinq appels
+  à `find.bySemanticsIdentifier` remplacés par un filtre équivalent — le même
+  prédicat sur `debugSemantics?.identifier`, relu dans la source de
+  `flutter_test` —, le cadre compile et ses suites tournent : c'était le SEUL
+  écart. Sur un projet créé en **3.27.0**, installé par `fvm`, le cadre
+  s'analyse sans un mot et ses suites tournent. Le plancher est donc exactement
+  3.27.0.
+- Les trois déclarations disent **3.27**, avec sa raison
+  (`find.bySemanticsIdentifier`) ; `Semantics(identifier:)`, que les flows
+  lisent, date bien de 3.19, et les phrases qui le disent restent.
+- Un job **`plancher`** crée un projet neuf à Flutter **3.27.0 épinglé**, y pose
+  le scaffold et fait tourner l'étage 1 ; placé avant `harness`, dont la sonde
+  des polices doit rester la dernière étape. Un garde lit la version épinglée et
+  exige que les trois documents annoncent la même : relever le plancher, c'est
+  les relever tous.
+- Les commentaires du cadre qui justifiaient des contournements par « le
+  harnais tient dès 3.19 » disent ce qui est vrai ; le code reste, juste aussi à
+  3.27. `hasFlag` garde son `ignore` : `flagsCollection` n'existe qu'à partir de
+  3.32.
+- Cinq mutations — le job qui épingle une autre version, le job qui analyse au
+  lieu de faire tourner, et chaque document revenu à 3.19 —, plus les six de la
+  CI existantes rejouées : **11/11 TOMBE**.
+- ⚠️ Le job n'a pas encore tourné sur GitHub : il le fera au prochain push.
+- Suite 642/642, 651 mutations, 0 inerte.
