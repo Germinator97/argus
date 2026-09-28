@@ -5097,12 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
-à 571 sont fermés), rendu par le run 106 ; les **573** et **574**, rendus par la
-correction du terrain qui l'a suivi ; et le **576**, rendu par une question sur ce
-que la désinstallation laisse (section « Rendu par le run 106 », en fin de
-fichier). Le **575** est fermé. Chacun porte le remède choisi ; ils se ferment un
-par un, dans l'ordre 576, 574, 573, 572.
+🔴 **3 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
+à 571 sont fermés), rendu par le run 106, et les **573** et **574**, rendus par la
+correction du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de
+fichier). Les **575** et **576** sont fermés. Chacun porte le remède choisi ; ils
+se ferment un par un, dans l'ordre 574, 573, 572.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13783,7 +13782,7 @@ une ligne `mot <valeur>` ou `distinctif <valeur>` par identifiant ambigu.
 
 ### 576. `--uninstall` laisse, sans les nommer, les fichiers qu'Argus a fait naître
 
-**Ouvert le 28/09/2026 · OUVERT** — rendu par une question de Germinator, au
+**Ouvert le 28/09/2026 · CLOS** — rendu par une question de Germinator, au
 moment d'effacer les restes du terrain après le run 106 : « ça ne fait pas
 partie des éléments de la désinstallation ? ». **Mesuré** : après
 `--uninstall`, 148 fichiers non suivis restaient sous les racines d'Argus — les
@@ -13814,3 +13813,33 @@ tout fichier qui reste sous ces racines (des flows Maestro du projet, non
 marqués) est nommé. Dans la ligne du 553 : ce qu'Argus a fait naître repart
 avec lui. Écartés : nommer sans retirer (la promesse tenue, mais un terrain
 encombré de fichiers morts), et une option `--purge` de plus.
+
+#### ✅ Fermé le jour même — ce qu'Argus a fait naître repart, le reste est nommé
+
+Les deux inventaires lisent désormais UNE déclaration, `RACINES_ARGUS`
+(`test/argus`, `.maestro`) — l'écart entre elles était le défaut.
+
+- `--uninstall` retire les dossiers que l'installation a créés pour les
+  produits d'Argus (le rapport, les références visuelles), chacun nommé avec
+  son compte de fichiers — cent quarante lignes de rapport noieraient le reste.
+- Il retire les fichiers marqués `ARGUS:OWNED` sous ces racines, chacun nommé.
+  Un chemin du scaffold reste jugé par la reconnaissance stricte d'au-dessus ;
+  un fichier marqué HORS des racines n'est pas touché — le marqueur ne suffit
+  pas, sinon la désinstallation irait chercher dans le code de l'application.
+- Tout fichier resté sous les racines est **nommé une fois**, et le compte
+  « gardé(s) » est celui des fichiers restés. La phrase de fin ne revendique
+  plus les rapports ni les références ; le SKILL dit que le marqueur signifie
+  désormais « part avec Argus ».
+- 🔴 **Trois gardes figeaient l'ancienne décision** (498, 530, 553 exigeaient
+  que le rapport et les références survivent) : réécrits dans le même commit,
+  les fichiers d'hôte NON marqués prenant la place des produits dans le montage
+  de survie du 530.
+- Sept mutations — les produits qui survivent, le fichier écrit pour Argus qui
+  survit, l'inventaire d'installation qui ne lit plus qu'une racine, le reste
+  qui n'est plus nommé, le marqueur qui n'est plus exigé, l'homonyme nommé deux
+  fois, la marque cherchée jusque dans `lib/` : **TOMBE** toutes.
+- ⚠️ **Et les 31 autres mutations de l'installeur, rejouées** puisque trois
+  montages avaient changé : **38/38 TOMBE**. Une seule a changé de garde — celle
+  qui remplace le `rmdir` par un `rm -rf`, que le 498 ne voit plus : son
+  commentaire le disait, il est corrigé.
+- Suite 628/628, 616 mutations, 0 inerte.
