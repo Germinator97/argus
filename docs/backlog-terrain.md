@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **6 POINTS OUVERTS** — les **567 à 572** (les 564 à 566 sont fermés), rendus par le run 106
+🔴 **5 POINTS OUVERTS** — les **568 à 572** (les 564 à 567 sont fermés), rendus par le run 106
 (section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
 dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
 un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
@@ -13469,11 +13469,37 @@ l'écran bouge encore : une animation de l'application ignore
 
 ### 567. `ARGS` est ignoré par 17 cibles sur 18, en silence
 
-**Ouvert le 28/09/2026 · OUVERT** — le SKILL prescrit `--no-install` « pour TOUTE
+**Ouvert le 28/09/2026 · CLOS** — le SKILL prescrit `--no-install` « pour TOUTE
 commande du runner — `argus-baselines` compris, où il économise le plus ». Or une
 seule cible du Makefile transmet `$(ARGS)`, `argus-report`. `make argus-baselines
 ARGS="--tags=visual --no-install"` régénère donc **toutes** les références et
 repose le binaire, sans un mot — l'agent a dû appeler le moteur directement.
+
+#### ✅ Fermé le jour même — toute cible d'une ligne transmet, l'agrégée réserve
+
+Toute cible dont la recette est un seul appel au moteur transmet désormais
+`$(ARGS)` — dix, dont les quatre qui lancent `run`. Le SKILL avait une seconde
+promesse fausse du même défaut : `make argus-run ARGS="--verbose"`, pour voir
+Maestro en direct, était ignoré lui aussi.
+
+🔴 **Le piège était de transmettre partout.** Dans la cible agrégée, `ARGS` est
+celui du rapport (`make argus ARGS=--previous=…`), et `run`, `perf`, `a11y`,
+`sec` **refusent** toute option inconnue : hérité, il aurait fait sortir chaque
+dimension en 2. La cible agrégée le vide donc pour les dimensions
+(`$(MAKE) … $$cible ARGS=`) — une variable posée sur la ligne du sous-make
+l'emporte sur celle qui descend, **mesuré** sur GNU make 3.81, celui de macOS,
+avant d'être écrit.
+
+- Trois gardes écrits avant, tous tombés sur le Makefile d'alors : la règle
+  statique (9 cibles muettes nommées), `make -n` sur le Makefile **livré** — ce
+  que make lancerait vraiment : `argus-baselines` reçoit ses drapeaux, la cible
+  agrégée donne `--previous` au rapport et à rien d'autre —, et chaque
+  `make … ARGS=` que la doc prescrit doit arriver au moteur.
+- Le SKILL dit désormais la forme `make` de `--no-install`, celle que l'agent
+  du run 106 avait essayée ; le troisième garde la vérifie comme les autres.
+- Quatre mutations — `argus-baselines` qui avale, `argus-run` qui ignore, la
+  fuite vers les dimensions, le rapport qui ne reçoit plus : **TOMBE** toutes.
+- Suite 617/617, 588 mutations, 0 inerte.
 
 ### 568. La page dit « aucun finding » sur l'étage 1 quand 31 dettes sont assumées
 
