@@ -1,0 +1,53 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
+appId: ${APP_ID}
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas.
+---
+# ACCEPTER la fenêtre de permission que le geste d'avant vient d'ouvrir (572).
+# Appelé par `permissions.yaml`, jamais par les flows standards : ceux-là lancent
+# avec tout accordé, et aucune fenêtre n'y naît.
+#
+# ANDROID — par IDENTIFIANT de ressource, donc quelle que soit la langue de
+# l'appareil. Mesuré sur Android 16 (API 36) : la fenêtre des notifications
+# porte `permission_allow_button` (« Allow ») ; celles de la caméra et de la
+# position portent `permission_allow_foreground_only_button` (« While using the
+# app »), à côté de « Only this time ». Aucune fenêtre ne porte les deux : un
+# seul `tapOn` sur l'alternative suffit.
+# ⚠️ PAS de `when: visible:` pour choisir entre les deux : sur un élément absent,
+# il attend sa borne — mesuré à ~7 s (486) —, soit un geste de trop à chaque
+# acceptation.
+#
+# iOS — par LIBELLÉ, anglais et français. ⚠️ NON MESURÉ sur simulateur : ce
+# sont les libellés d'Apple (« Allow While Using App » pour la position,
+# « Allow » ailleurs). Le motif garde la forme encadrée `(?s).*…*` que le dépôt
+# exige de tout sélecteur de texte — elle sert les nœuds Flutter, qui fusionnent
+# leur texte —, mais il s'ANCRE à l'intérieur (`(?<![\s\S])`, `(?![\s\S])`) :
+# un bouton système est natif et porte son seul libellé, et sans ancrage
+# « Allow » prendrait « Don’t Allow », « Autoriser » « Ne pas autoriser », ou
+# un bouton de l'application qui contient ces mots. Même raison pour écarter
+# « OK », qu'un iOS ancien montre pour la caméra.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'permission_allow(_foreground_only)?_button'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La fenêtre de permission s'est ouverte
+      - tapOn:
+          id: 'permission_allow(_foreground_only)?_button'
+          label: Accepter la permission
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: '(?s).*(?<![\s\S])(Allow While Using App|Allow|Autoriser pendant l.utilisation de l.app|Autoriser)(?![\s\S]).*'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La fenêtre de permission s'est ouverte
+      - tapOn:
+          text: '(?s).*(?<![\s\S])(Allow While Using App|Allow|Autoriser pendant l.utilisation de l.app|Autoriser)(?![\s\S]).*'
+          label: Accepter la permission

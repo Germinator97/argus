@@ -878,6 +878,173 @@ function invitesSystemePossibles(config) {
 }
 
 /**
+ * Ce que Maestro remet à « demander » sous chaque nom de `launchApp.permissions`
+ * (572) — RELU dans Maestro 2.8.0, `AndroidDriver.translatePermissionName`, pas
+ * deviné. Un nom absent de la table est passé tel quel : une permission Android
+ * écrite en entier (`android.permission.READ_PHONE_STATE`) vaut pour elle-même.
+ * `all` n'est pas une permission : il ne couvre rien.
+ */
+export const PERMISSIONS_PAR_NOM_MAESTRO = Object.freeze({
+  calendar: ['android.permission.WRITE_CALENDAR', 'android.permission.READ_CALENDAR'],
+  bluetooth: ['android.permission.BLUETOOTH_CONNECT', 'android.permission.BLUETOOTH_SCAN'],
+  phone: ['android.permission.CALL_PHONE', 'android.permission.ANSWER_PHONE_CALLS'],
+  sms: ['android.permission.READ_SMS', 'android.permission.RECEIVE_SMS', 'android.permission.SEND_SMS'],
+  location: ['android.permission.ACCESS_FINE_LOCATION', 'android.permission.ACCESS_COARSE_LOCATION'],
+  storage: ['android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE'],
+  camera: ['android.permission.CAMERA'],
+  microphone: ['android.permission.RECORD_AUDIO'],
+  contacts: ['android.permission.READ_CONTACTS', 'android.permission.WRITE_CONTACTS'],
+  medialibrary: ['android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.READ_EXTERNAL_STORAGE',
+    'android.permission.READ_MEDIA_AUDIO', 'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO'],
+  notifications: ['android.permission.POST_NOTIFICATIONS'],
+});
+
+/** Les gestes qui ne DÉCLENCHENT rien : attendre, constater, couper les animations. */
+const GESTES_NEUTRES = new Set(['waitForAnimationToEnd', 'extendedWaitUntil', 'assertVisible',
+  'assertNotVisible', 'assertTrue', 'takeScreenshot']);
+
+/**
+ * Les branches de `permissions.yaml` (572), lues LIGNE À LIGNE : le parseur du
+ * runner ne couvre qu'un sous-ensemble de YAML, où la forme en ligne
+ * `permissions: { camera: unset }` n'entre pas.
+ *
+ * Une branche commence à un `launchApp` ; elle exerce les permissions qu'il met
+ * en `unset`, par le geste du cadre qu'elle appelle ensuite —
+ * `permission-accepter.yaml` ou `permission-refuser.yaml`. Si rien ne la
+ * DÉCLENCHE entre les deux (un toucher, une saisie, une navigation…), c'est que
+ * l'application demande cette permission AU LANCEMENT.
+ * @param {string} source
+ * @returns {{permissions: string[], gestes: Set<string>, auLancement: boolean}[]}
+ */
+export function branchesDePermissions(source) {
+  /** @type {{permissions: string[], gestes: Set<string>, auLancement: boolean}[]} */
+  const branches = [];
+  /** @type {{permissions: string[], gestes: Set<string>, auLancement: boolean} | null} */
+  let courante = null;
+  let declenchee = false;
+  let indentPermissions = -1;
+  const documents = source.split(/^---[ \t]*$/m);
+  const commandes = documents.length > 1 ? documents.slice(1).join('\n') : source;
+  for (const brute of commandes.split('\n')) {
+    if (/^\s*#/.test(brute) || !brute.trim()) continue;
+    const ligne = brute.replace(/\s+#.*$/, '');
+    const indent = ligne.length - ligne.trimStart().length;
+    if (indentPermissions >= 0) {
+      const cle = /^\s*([\w.]+)\s*:\s*unset\s*$/.exec(ligne);
+      if (indent > indentPermissions) {
+        if (cle && courante) courante.permissions.push(cle[1]);
+        continue;
+      }
+      indentPermissions = -1;
+    }
+    if (/^\s*-\s+launchApp\b/.test(ligne)) {
+      courante = { permissions: [], gestes: new Set(), auLancement: false };
+      branches.push(courante);
+      declenchee = false;
+      continue;
+    }
+    if (!courante) continue;
+    const bloc = /^(\s*)permissions\s*:\s*(\{[^}]*\})?\s*$/.exec(ligne);
+    if (bloc) {
+      if (bloc[2]) {
+        for (const m of bloc[2].matchAll(/([\w.]+)\s*:\s*unset\b/g)) courante.permissions.push(m[1]);
+      } else {
+        indentPermissions = bloc[1].length;
+      }
+      continue;
+    }
+    const geste = /permission-(accepter|refuser)\.yaml/.exec(ligne);
+    if (geste) {
+      if (courante.gestes.size === 0 && !declenchee) courante.auLancement = true;
+      courante.gestes.add(geste[1]);
+      continue;
+    }
+    const commande = /^\s*-\s+(\w+)/.exec(ligne);
+    if (commande && !GESTES_NEUTRES.has(commande[1]) && !/disable-animations\.yaml/.test(ligne)) {
+      declenchee = true;
+    }
+  }
+  return branches;
+}
+
+/**
+ * Combien de fenêtres le lancement « tout refusé » de `resilience.yaml` va
+ * ouvrir : une par permission que `permissions.yaml` dit demandée AU
+ * LANCEMENT. Zéro sans ce fichier, ou quand rien n'y est demandé au lancement.
+ * @param {string | null} source
+ */
+export function invitesAuLancement(source) {
+  if (source === null) return 0;
+  const noms = new Set();
+  for (const b of branchesDePermissions(source)) {
+    // `all` n'est pas une permission : il ne dit pas combien de fenêtres s'ouvrent.
+    if (b.auLancement) for (const p of b.permissions) if (p !== 'all') noms.add(p);
+  }
+  return noms.size;
+}
+
+/** `.maestro/permissions.yaml` du projet, ou `null` s'il n'y en a pas. */
+function lireFlowPermissions() {
+  const chemin = resolve(process.cwd(), '.maestro', 'permissions.yaml');
+  return existsSync(chemin) ? readFileSync(chemin, 'utf8') : null;
+}
+
+/**
+ * Les permissions DÉCLARÉES dont une fenêtre n'est jamais exercée (572).
+ *
+ * ⚠️ LA DIRECTION EST ÉTROITE, à l'inverse d'`invitesSystemePossibles`. Là-bas,
+ * se tromper coûte un geste inutile ; ici, un constat qu'on ne peut pas
+ * satisfaire. Seules sont jugées les permissions que Maestro sait remettre à
+ * « demander » : une branche est alors toujours écrivable.
+ * @param {any} config @param {string | null} source
+ * @param {any} device @param {string} platform
+ */
+export function permissionsNonExercees(config, source, device, platform) {
+  const declarees = [...new Set((config.security?.expectedPermissions ?? []).map(String))];
+  const exercables = new Set(Object.values(PERMISSIONS_PAR_NOM_MAESTRO).flat());
+  const aJuger = declarees.filter((p) => exercables.has(p));
+  if (aJuger.length === 0) return [];
+  /** @type {Map<string, Set<string>>} */
+  const gestes = new Map();
+  for (const b of source === null ? [] : branchesDePermissions(source)) {
+    for (const nom of b.permissions) {
+      const couvertes = /** @type {Record<string, string[]>} */ (PERMISSIONS_PAR_NOM_MAESTRO)[nom] ?? [nom];
+      for (const p of couvertes) {
+        const deja = gestes.get(p) ?? new Set();
+        for (const g of b.gestes) deja.add(g);
+        gestes.set(p, deja);
+      }
+    }
+  }
+  const manques = aJuger
+    .map((p) => ({ p, manque: ['accepter', 'refuser'].filter((g) => !gestes.get(p)?.has(g)) }))
+    .filter((x) => x.manque.length > 0);
+  if (manques.length === 0) return [];
+  return [{
+    id: 'QAM-PERM-NON-EXERCEE',
+    title: `${manques.length} permission(s) déclarée(s) dont la fenêtre n'est pas exercée dans les deux sens`,
+    suggestedFix: (source === null ? '.maestro/permissions.yaml est absent : reprends-le du scaffold. ' : '')
+      + 'Pour chacune, deux branches dans .maestro/permissions.yaml — un `launchApp` qui accorde tout '
+      + 'sauf elle (`all: allow` puis `<permission>: unset`), le geste qui la fait demander, puis '
+      + '`_subflows/permission-accepter.yaml` dans l\'une, `_subflows/permission-refuser.yaml` dans '
+      + 'l\'autre. Nomme-la (`notifications: unset`), `all` ne désigne aucune permission.',
+    severity: 'minor',
+    dimension: 'configuration',
+    screen: '',
+    step: 0,
+    selector: '',
+    device: device?.id ?? '',
+    platform,
+    osVersion: device?.os ?? '',
+    expected: 'une branche qui ACCEPTE et une qui REFUSE, par permission déclarée que Maestro sait exercer',
+    actual: manques.map((x) => `${x.p} (${x.manque.join(' et ')} manquant)`).join(', '),
+    evidence: [],
+    repro: [],
+    status: 'open',
+  }];
+}
+
+/**
  * L'état DÉCLARÉ de `security.systemAlerts` (531), validé. Les deux décisions
  * qui le lisent passent par ici : deux copies d'une validation divergent à la
  * première retouche, et c'est le refus qui divergerait le premier.
@@ -1193,6 +1360,9 @@ function buildEnv(config, appId, platform, extra = {}) {
     // l'exige donc en paramètre, et la décision LÈVE si elle manque — c'est ce
     // qui rend ce câblage-ci bruyant là où celui du 486 replie.
     ARGUS_SYSTEM_ALERTS: String(gesteInviteAuLancement(config, platform)),
+    // 572 — combien de fenêtres le lancement « tout refusé » de `resilience.yaml`
+    // ouvre, lu dans `permissions.yaml`. Zéro, et `resilience` n'attend rien.
+    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions())),
     ...extra,
   };
   // Secrets : uniquement depuis l'environnement, jamais depuis le fichier.
@@ -2968,6 +3138,8 @@ async function main() {
     // ⚠️ Un avertissement de console meurt avec le terminal. Celui-ci dit qu'une
     // dimension ne mesure pas ce qu'elle annonce : il doit atteindre la page.
     ...localeFindings(avertissementsLocale, reportDevice, platform),
+    // 572 — une permission déclarée dont la fenêtre n'est jamais exercée.
+    ...permissionsNonExercees(config, lireFlowPermissions(), reportDevice, platform),
   ];
   const budget = budgetVerdict(config, startedAt, bundles.length);
   for (const line of budget.warnings) warn(line);

@@ -981,9 +981,10 @@ MUTATIONS = [
     ("config", "le rapport d'ancres orphelines n'est plus câblé",
      "    for (const ligne of ancresOrphelinesReport(orphelines, config)) err(ligne);",
      "    err(`${orphelines.length} ancre(s) posée(s) dans lib/ que RIEN ne déclare :`);"),
+    # ⚠️ Ré-ancrée le 28/09 (572) : `permissions.yaml` porte le compte à dix.
     ("skill", "le compteur de flows reperd un fichier",
-     'les parcours métier — neuf fichiers',
-     'les parcours métier — huit fichiers'),
+     'les parcours métier — dix fichiers',
+     'les parcours métier — neuf fichiers'),
     # ── La vague iOS (283-295) ───────────────────────────────────────────
     ("skill", "la consigne de demander reperd son repli",
      "- **Personne ne répond** (agent non interactif, run en aveugle) → **instrumente,",

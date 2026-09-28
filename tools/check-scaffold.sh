@@ -44,11 +44,14 @@ owned	.maestro/_subflows/goto.yaml
 cadre	.maestro/_subflows/launch-clean.yaml
 owned	.maestro/_subflows/login.yaml
 owned	.maestro/_subflows/mask-dynamic.yaml
+cadre	.maestro/_subflows/permission-accepter.yaml
+cadre	.maestro/_subflows/permission-refuser.yaml
 owned	.maestro/a11y.yaml
 cadre	.maestro/config.yaml
 owned	.maestro/i18n.yaml
 owned	.maestro/journey-critical.yaml
 owned	.maestro/lifecycle.yaml
+owned	.maestro/permissions.yaml
 owned	.maestro/resilience.yaml
 cadre	.maestro/smoke.yaml
 cadre	.maestro/visual.yaml

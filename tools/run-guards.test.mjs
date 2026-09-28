@@ -69,6 +69,7 @@ import {
   authAnchorsReady, avdNameFrom, baselineVerdict, budgetVerdict, buildEnv, dimensionsToRun, localeFindings, localeWarnings, resolveByAvd, resolveNamedDevice, startTimeoutMs,
   localeAlignment,
   remedeAbsorption, resetKeychain, startScreen, startupFindings, startupHint, startupSamples, vanishedHint, visitedScreens,
+  branchesDePermissions, invitesAuLancement, permissionsNonExercees, PERMISSIONS_PAR_NOM_MAESTRO,
 } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { androidAvdDeclared, buildCmdForAbi, ciEmulator, deviceAbi, flutterCommand, flutterCommandIn, rankBuildTools, toolPath, usesFvm, validateConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ancresOrphelinesReport } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -13222,6 +13223,184 @@ test('la consigne sur les polices couvre le cas de la dépendance, aux DEUX endr
   }
 });
 
+// ── 572 · LES FENÊTRES DE PERMISSION S'EXERCENT DANS UN FLOW DÉDIÉ ────────
+// Les flows standards lancent avec tout accordé : aucune fenêtre n'y naît, et
+// accepter ou refuser une demande de permission n'était éprouvé nulle part.
+// `resilience`, qui lance « tout refusé », laissait en plus les fenêtres
+// qu'une application ouvre au démarrage recouvrir l'accueil. Mesuré sur une
+// sonde Android 16 : les identifiants des boutons système, la forme de branche
+// `all: allow` + `<permission>: unset`, cinq fenêtres refermées par `repeat`.
+
+const PERM = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro');
+/** Une source de `permissions.yaml`, lignes jointes. */
+const sourcePerm = (/** @type {string[]} */ lignes) => ['appId: x', '---', ...lignes].join('\n');
+const BRANCHE = (/** @type {string} */ nom, /** @type {string} */ geste, declencheur = true) => [
+  '- launchApp:', '    clearState: true', '    permissions:', '      all: allow', `      ${nom}: unset`,
+  '- runFlow: _subflows/disable-animations.yaml',
+  ...(declencheur ? ['- tapOn:', '    id: activer'] : []),
+  `- runFlow: _subflows/permission-${geste}.yaml`,
+  '- extendedWaitUntil:', '    visible:', '      id: suite', '    timeout: ${ARGUS_START_TIMEOUT_MS}',
+];
+
+test('572 — une branche se lit à son launchApp, ses permissions « unset », son geste et son déclencheur', () => {
+  const b = branchesDePermissions(sourcePerm([
+    ...BRANCHE('notifications', 'accepter'),
+    '# - launchApp: une branche en commentaire ne compte pas',
+    '- launchApp:', '    permissions: { all: allow, camera: unset }',
+    '- waitForAnimationToEnd', '- runFlow: _subflows/permission-refuser.yaml  # refus au lancement',
+  ]));
+  assert.equal(b.length, 2, `deux branches attendues, ${b.length} lues : ${JSON.stringify(b)}`);
+  assert.deepEqual(b[0].permissions, ['notifications'], '`all: allow` n\'est pas une permission remise à demander');
+  assert.deepEqual([...b[0].gestes], ['accepter']);
+  assert.equal(b[0].auLancement, false, 'un toucher avant le geste du cadre DÉCLENCHE la demande');
+  assert.deepEqual(b[1].permissions, ['camera'], 'la forme en ligne `{ … }` n\'est pas lue');
+  assert.deepEqual([...b[1].gestes], ['refuser'], 'un commentaire en fin de ligne cache le geste');
+  assert.equal(b[1].auLancement, true,
+    'attendre et couper les animations ne déclenchent rien : cette permission est demandée AU LANCEMENT');
+});
+
+test('572 — une permission déclarée sans ses DEUX branches est signalée, et seulement celles que Maestro sait exercer', () => {
+  const cfg = { security: { expectedPermissions: ['android.permission.INTERNET', 'android.permission.POST_NOTIFICATIONS',
+    'android.permission.CAMERA', 'android.permission.ACCESS_FINE_LOCATION', 'android.permission.READ_PHONE_STATE'] } };
+  const juge = (/** @type {string | null} */ src) => permissionsNonExercees(cfg, src, { id: 'd' }, 'android');
+  const complet = sourcePerm([...BRANCHE('notifications', 'accepter'), ...BRANCHE('notifications', 'refuser'),
+    ...BRANCHE('camera', 'accepter'), ...BRANCHE('camera', 'refuser'),
+    ...BRANCHE('location', 'accepter'), ...BRANCHE('location', 'refuser')]);
+  assert.deepEqual(juge(complet), [], 'tout est exercé dans les deux sens, et un constat sort quand même');
+
+  const sansRefusCamera = sourcePerm([...BRANCHE('notifications', 'accepter'), ...BRANCHE('notifications', 'refuser'),
+    ...BRANCHE('camera', 'accepter'), ...BRANCHE('location', 'accepter'), ...BRANCHE('location', 'refuser')]);
+  const [f] = juge(sansRefusCamera);
+  assert.ok(f, 'la caméra n\'a pas sa branche qui REFUSE, et rien n\'est signalé');
+  assert.equal(f.id, 'QAM-PERM-NON-EXERCEE');
+  assert.equal(f.actual, 'android.permission.CAMERA (refuser manquant)',
+    `le constat doit nommer la seule permission en défaut, et le geste qui manque : « ${f.actual} »`);
+  // ⚠️ LA DIRECTION ÉTROITE : INTERNET n'ouvre aucune fenêtre, et READ_PHONE_STATE
+  // n'a pas de nom Maestro — réclamer leur branche serait un constat impossible.
+  assert.ok(!/INTERNET|READ_PHONE_STATE/.test(f.actual), `une permission hors de portée est réclamée : « ${f.actual} »`);
+
+  // `all` ne couvre rien ; une permission Android écrite en entier vaut pour elle-même.
+  const parAll = sourcePerm([...BRANCHE('all', 'accepter'), ...BRANCHE('all', 'refuser')]);
+  assert.match(juge(parAll)[0]?.actual ?? '', /POST_NOTIFICATIONS/, '`all: unset` passe pour une branche de chaque permission');
+  const brute = { security: { expectedPermissions: ['android.permission.CAMERA'] } };
+  const parNomEntier = sourcePerm([...BRANCHE('android.permission.CAMERA', 'accepter'), ...BRANCHE('android.permission.CAMERA', 'refuser')]);
+  assert.deepEqual(permissionsNonExercees(brute, parNomEntier, { id: 'd' }, 'android'), [],
+    'le nom Android entier, que Maestro passe tel quel, n\'est pas reconnu');
+
+  // Sans fichier, ou avec le gabarit livré — son garde-place seul —, tout manque.
+  assert.match(juge(null)[0]?.suggestedFix ?? '', /permissions\.yaml est absent/);
+  const gabarit = readFileSync(join(PERM, 'permissions.yaml'), 'utf8');
+  assert.match(juge(gabarit)[0]?.actual ?? '', /POST_NOTIFICATIONS \(accepter et refuser manquant\)/,
+    'le gabarit livré passe pour exercer une permission');
+
+  // Et le câblage : le constat part avec les autres, dans le rapport.
+  const runner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(runner, /\.\.\.permissionsNonExercees\(config, lireFlowPermissions\(\), reportDevice, platform\),/,
+    'le constat n\'est plus composé avec les autres : la couverture est calculée et ne va nulle part');
+});
+
+test('572 — le nombre de fenêtres que resilience referme vient de permissions.yaml', () => {
+  assert.equal(invitesAuLancement(null), 0, 'sans fichier, aucune fenêtre annoncée');
+  assert.equal(invitesAuLancement(readFileSync(join(PERM, 'permissions.yaml'), 'utf8')), 0,
+    'le gabarit livré annonce des fenêtres au lancement');
+  const auLancement = sourcePerm([
+    ...BRANCHE('notifications', 'accepter', false), ...BRANCHE('notifications', 'refuser', false),
+    ...BRANCHE('camera', 'refuser', false), ...BRANCHE('location', 'accepter'),
+    ...BRANCHE('all', 'refuser', false)]);
+  assert.equal(invitesAuLancement(auLancement), 2,
+    'une fenêtre par permission demandée AU LANCEMENT — ni la position, déclenchée par un toucher, ni `all`');
+
+  // Le CÂBLAGE : la valeur arrive aux flows par le contrat d'injection.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-572-'));
+  const ici = process.cwd();
+  try {
+    mkdirSync(join(dir, '.maestro'));
+    writeFileSync(join(dir, '.maestro/permissions.yaml'), auLancement);
+    process.chdir(dir);
+    assert.equal(buildEnv({}, 'com.exemple.app', 'android').ARGUS_INVITES_AU_LANCEMENT, '2',
+      'le runner calcule le nombre et ne le transmet pas : resilience attendrait l\'accueil sous une fenêtre');
+  } finally {
+    process.chdir(ici);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('572 — resilience referme les fenêtres de son lancement « tout refusé » AVANT d\'attendre l\'accueil', () => {
+  const flow = readFileSync(join(PERM, 'resilience.yaml'), 'utf8');
+  const utile = flow.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const refus = utile.indexOf('all: deny');
+  const boucle = utile.search(/repeat:\s*\n\s*times: \$\{ARGUS_INVITES_AU_LANCEMENT\}\s*\n\s*commands:\s*\n\s*- runFlow: _subflows\/permission-refuser\.yaml/);
+  const accueil = utile.indexOf('id: ${ARGUS_ANCHOR_HOME}');
+  assert.ok(refus > 0, 'resilience ne lance plus « tout refusé » : ce garde ne mesure plus rien');
+  assert.ok(boucle > refus, 'resilience ne referme plus les fenêtres nées de son lancement — le 572 d\'origine revient');
+  assert.ok(accueil > boucle,
+    'les fenêtres sont refermées APRÈS l\'attente de l\'accueil : elles la recouvrent, et l\'attente échoue en accusant l\'écran');
+});
+
+test('572 — les sous-flows touchent le bouton système par IDENTIFIANT sur Android, par libellé ANCRÉ sur iOS', () => {
+  const lire = (/** @type {string} */ nom) => readFileSync(join(PERM, '_subflows', nom), 'utf8')
+    .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const accepter = lire('permission-accepter.yaml');
+  const refuser = lire('permission-refuser.yaml');
+  assert.match(accepter, /- tapOn:\s*\n\s*id: 'permission_allow\(_foreground_only\)\?_button'/,
+    'Android n\'accepte plus par identifiant : un libellé dépend de la langue de l\'appareil');
+  assert.match(refuser, /- tapOn:\s*\n\s*id: 'permission_deny\(_and_dont_ask_again\)\?_button'/,
+    'Android ne refuse plus par identifiant');
+  // ⚠️ Pas de `when: visible:` pour choisir un bouton : sur un élément absent il
+  // attend sa borne, ~7 s mesurés (486), à chaque acceptation.
+  assert.ok(!/when:\s*\n\s*visible:/.test(accepter), 'un `when: visible:` choisit le bouton : ~7 s perdues par acceptation');
+
+  // Les libellés iOS : la regex EXERCÉE, en correspondance entière et sans la
+  // casse, comme Maestro — pas seulement sa présence.
+  const motif = (/** @type {string} */ src) => {
+    const m = /tapOn:\s*\n\s*text: '([^']+)'/.exec(src);
+    assert.ok(m, 'le geste iOS n\'a plus de sélecteur de texte');
+    return new RegExp(`^(?:${m[1].replace(/^\(\?s\)/, '')})$`, 'is');
+  };
+  const oui = motif(accepter);
+  const non = motif(refuser);
+  for (const l of ['Allow', 'Allow While Using App', 'Autoriser', 'Autoriser pendant l’utilisation de l’app']) {
+    assert.ok(oui.test(l), `« ${l} » n'est pas accepté`);
+  }
+  for (const l of ['Don’t Allow', 'Allow Once', 'Ne pas autoriser', 'Autoriser une fois', 'Autoriser les notifications ?', 'OK']) {
+    assert.ok(!oui.test(l), `« ${l} » est pris pour le bouton qui ACCEPTE`);
+  }
+  for (const l of ['Don’t Allow', 'Ne pas autoriser', 'Refuser']) assert.ok(non.test(l), `« ${l} » n'est pas refusé`);
+  for (const l of ['Allow', 'Refuser l\'accès ?']) assert.ok(!non.test(l), `« ${l} » est pris pour le bouton qui REFUSE`);
+});
+
+test('572 — le gabarit prescrit `all: allow` AVANT la permission remise à demander, et tient debout vide', () => {
+  const gabarit = readFileSync(join(PERM, 'permissions.yaml'), 'utf8');
+  assert.match(gabarit, /^#\s+all: allow\n#\s+notifications: unset$/m,
+    'l\'exemple du gabarit ne met plus `all: allow` avant la permission : les autres resteraient refusées, '
+    + 'et une AUTRE fenêtre s\'ouvrirait en premier — mesuré');
+  assert.match(gabarit, /^\s+- permissions$/m, 'le flow ne porte plus son tag `permissions`');
+  // Maestro refuse un flow sans commande : le garde-place est ce qui le fait parser.
+  const commandes = gabarit.split(/^---\s*$/m)[1].split('\n').filter((l) => /^- /.test(l));
+  assert.ok(commandes.length >= 1, 'le gabarit n\'a plus aucune commande : Maestro refuserait tout le workspace');
+});
+
+test('572 — la table des noms Maestro est celle relevée dans Maestro 2.8.0', () => {
+  // Un RELEVÉ, pas une dérivation : `AndroidDriver.translatePermissionName`,
+  // lu dans son bytecode le 28/09/2026. Figé par égalité — une montée de
+  // Maestro qui la change doit la faire relire, pas la laisser vieillir.
+  assert.deepEqual(Object.fromEntries(Object.entries(PERMISSIONS_PAR_NOM_MAESTRO).map(([k, v]) => [k, [...v].sort()])), {
+    bluetooth: ['android.permission.BLUETOOTH_CONNECT', 'android.permission.BLUETOOTH_SCAN'],
+    calendar: ['android.permission.READ_CALENDAR', 'android.permission.WRITE_CALENDAR'],
+    camera: ['android.permission.CAMERA'],
+    contacts: ['android.permission.READ_CONTACTS', 'android.permission.WRITE_CONTACTS'],
+    location: ['android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION'],
+    medialibrary: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.READ_MEDIA_AUDIO',
+      'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO', 'android.permission.WRITE_EXTERNAL_STORAGE'],
+    microphone: ['android.permission.RECORD_AUDIO'],
+    notifications: ['android.permission.POST_NOTIFICATIONS'],
+    phone: ['android.permission.ANSWER_PHONE_CALLS', 'android.permission.CALL_PHONE'],
+    sms: ['android.permission.READ_SMS', 'android.permission.RECEIVE_SMS', 'android.permission.SEND_SMS'],
+    storage: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE'],
+  });
+});
+
 // ── 574 · LES POLICES SE DÉRIVENT DU BUNDLE ──────────────────────────────
 // `argusFonts` se recopiait à la main, du chargeur de polices des tests du
 // projet, dont il héritait les trous : neuf familles pour onze TTF embarqués,
@@ -15431,11 +15610,14 @@ const CAMPS_DU_SCAFFOLD = [
   ['.maestro/_subflows/launch-clean.yaml', 'CADRE'],
   ['.maestro/_subflows/login.yaml', 'OWNED'],
   ['.maestro/_subflows/mask-dynamic.yaml', 'OWNED'],
+  ['.maestro/_subflows/permission-accepter.yaml', 'CADRE'],
+  ['.maestro/_subflows/permission-refuser.yaml', 'CADRE'],
   ['.maestro/a11y.yaml', 'OWNED'],
   ['.maestro/config.yaml', 'CADRE'],
   ['.maestro/i18n.yaml', 'OWNED'],
   ['.maestro/journey-critical.yaml', 'OWNED'],
   ['.maestro/lifecycle.yaml', 'OWNED'],
+  ['.maestro/permissions.yaml', 'OWNED'],
   ['.maestro/resilience.yaml', 'OWNED'],
   ['.maestro/smoke.yaml', 'CADRE'],
   ['.maestro/visual.yaml', 'CADRE'],

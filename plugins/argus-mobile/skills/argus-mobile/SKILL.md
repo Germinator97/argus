@@ -284,8 +284,29 @@ de la prévoir — lire les `NS*UsageDescription` la raterait précisément, ell
 n'en porte aucune.
 
 📌 Ces flows ne testent donc **pas** tes fenêtres de permission : ils les
-contournent pour mesurer autre chose. Ne conclus pas d'un run vert que la
-demande de permission de ton application a été éprouvée.
+contournent pour mesurer autre chose. **C'est `permissions.yaml` qui les exerce
+(572)** — pour chaque permission que l'application demande à l'exécution, une
+branche qui ACCEPTE et une qui REFUSE :
+
+1. un `launchApp` qui accorde tout **sauf elle** : `all: allow` puis
+   `<permission>: unset`. ⚠️ Sans le `all: allow`, les autres restent refusées —
+   mesuré : une application qui en demande six au lancement a ouvert la fenêtre
+   de la caméra avant celle qu'on voulait ;
+2. le geste qui la fait demander — aucun si elle l'est au lancement ;
+3. `_subflows/permission-accepter.yaml` ou `_subflows/permission-refuser.yaml`,
+   qui touchent le bouton système : sur Android par **identifiant**, donc quelle
+   que soit la langue ; sur iOS par libellé, anglais et français — **non mesuré
+   sur simulateur** ;
+4. ce que l'application montre ensuite.
+
+Le runner compare ce fichier aux permissions **déclarées**
+(`security.expectedPermissions`) et signale par `QAM-PERM-NON-EXERCEE` toute
+permission sans ses deux branches — seulement celles que Maestro sait remettre à
+« demander », pour ne jamais réclamer une branche impossible. Une branche **sans
+geste déclencheur** lui dit que la permission est demandée au lancement :
+`resilience.yaml` referme alors les fenêtres que son lancement « tout refusé »
+ouvre, autant qu'il y en a. Ne conclus pas d'un run vert que la demande de
+permission a été éprouvée tant que ce fichier n'a pas ses branches.
 
 **Ce que le plugin ne peut pas découvrir, tu le DÉCLARES :**
 
@@ -1631,7 +1652,7 @@ pour du travail achevé. Le compteur affichait faux dans les deux sens.
 | **Config** | `argus.mobile.yaml` | app, binaire, devices, `screens[]` et leurs ancres, seuils, sécurité, gate |
 | **Étage 1** | `test/argus/harness.dart` | écrans à monter, polices, thème, delegates |
 | | `test/argus/known_issues.dart` | la dette que les gardes révèlent et que tu assumes |
-| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — neuf fichiers, tous porteurs de `TODO(argus)` |
+| **Étage 2** | les flows `ARGUS:OWNED` | les parcours métier — dix fichiers, tous porteurs de `TODO(argus)` |
 
 ⚠️ **Combien de dettes avant de dire qu'un projet n'est pas prêt ?** Aucun
 seuil, et c'était le trou : sur un projet réel, la première exécution en a

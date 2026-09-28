@@ -1,0 +1,84 @@
+appId: ${APP_ID}
+# ARGUS:OWNED — à toi : l'installeur ne l'écrase ni ne le compare, jamais.
+name: Argus — fenêtres de permission
+tags:
+  - argus
+  - permissions
+---
+# Les flows standards LANCENT AVEC TOUT ACCORDÉ (`launch-clean.yaml`) : aucune
+# fenêtre de permission n'y naît, et c'est voulu — elle y serait du bruit. Ce
+# flow est le seul endroit où elles s'exercent (572) : pour chaque permission
+# que ton application DEMANDE à l'exécution, deux branches — l'une ACCEPTE,
+# l'autre REFUSE —, et ce que l'application doit montrer ensuite.
+#
+# 📌 UNE BRANCHE, C'EST QUATRE GESTES, dans cet ordre :
+#   1. un `launchApp` qui accorde TOUT sauf cette permission-là, remise à
+#      « demander » : `all: allow` PUIS `<permission>: unset`. ⚠️ Sans le
+#      `all: allow`, les autres permissions restent refusées : mesuré sur une
+#      application qui en demande six au lancement, `notifications: unset` seul
+#      a ouvert la fenêtre de la CAMÉRA en premier ;
+#   2. le geste qui fait DEMANDER la permission — aucun si l'application la
+#      demande au lancement ;
+#   3. `_subflows/permission-accepter.yaml` ou `_subflows/permission-refuser.yaml`
+#      (au plugin) : ils touchent le bon bouton système, sur Android par
+#      identifiant — donc quelle que soit la langue —, sur iOS par libellé ;
+#   4. ce que l'application montre ensuite : accordée, la fonction marche ;
+#      refusée, elle l'explique et reste utilisable.
+#
+# 📌 LE RUNNER LIT CE FICHIER, deux fois :
+#   · il le compare aux permissions DÉCLARÉES (`security.expectedPermissions`)
+#     et signale, par QAM-PERM-NON-EXERCEE, toute permission sans ses deux
+#     branches ;
+#   · une branche SANS geste déclencheur dit que l'application demande cette
+#     permission AU LANCEMENT : `resilience.yaml` en déduit combien de fenêtres
+#     son lancement « tout refusé » va ouvrir, et les referme.
+#
+# Noms que Maestro comprend : notifications, camera, location, microphone,
+# contacts, calendar, medialibrary, bluetooth, phone, sms, storage — ou le nom
+# Android entier (`android.permission.READ_PHONE_STATE`). `all` n'en désigne
+# aucune.
+#
+# ── Exemple : des notifications demandées sur un geste ─────────────────────
+# - launchApp:
+#     clearState: true
+#     permissions:
+#       all: allow
+#       notifications: unset
+# - runFlow: _subflows/disable-animations.yaml
+# - tapOn:
+#     id: activer_rappels
+# - runFlow: _subflows/permission-accepter.yaml
+# - extendedWaitUntil:
+#     visible:
+#       id: rappels_actifs
+#     timeout: ${ARGUS_START_TIMEOUT_MS}
+#     label: Accordée, l'application le montre
+#
+# - launchApp:
+#     clearState: true
+#     permissions:
+#       all: allow
+#       notifications: unset
+# - runFlow: _subflows/disable-animations.yaml
+# - tapOn:
+#     id: activer_rappels
+# - runFlow: _subflows/permission-refuser.yaml
+# - extendedWaitUntil:
+#     visible:
+#       id: rappels_explication
+#     timeout: ${ARGUS_START_TIMEOUT_MS}
+#     label: Refusée, l'application l'explique et reste utilisable
+#
+# TODO(argus): une paire de branches par permission que l'application demande,
+# à la place du garde-place ci-dessous — ou SANS OBJET si elle n'en demande
+# aucune à l'exécution.
+
+# Garde-place : Maestro refuse un flow sans commande (« Commands Section
+# Required »). Tant qu'il est seul, ce flow ne lance rien et ne coûte rien.
+- runFlow:
+    when:
+      true: "${false}"
+    commands:
+      - assertTrue:
+          condition: "${false}"
+          label: Garde-place — aucune branche n'est encore écrite

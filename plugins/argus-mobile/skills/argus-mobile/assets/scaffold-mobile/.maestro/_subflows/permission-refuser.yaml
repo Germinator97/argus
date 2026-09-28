@@ -1,0 +1,44 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
+appId: ${APP_ID}
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas.
+---
+# REFUSER la fenêtre de permission que le geste d'avant vient d'ouvrir (572).
+# Appelé par `permissions.yaml` pour la branche qui refuse, et par
+# `resilience.yaml` quand l'application demande une permission AU LANCEMENT :
+# son lancement « tout refusé » ouvre alors une fenêtre qui recouvre l'accueil.
+#
+# ANDROID — par IDENTIFIANT de ressource, quelle que soit la langue. Mesuré sur
+# Android 16 (API 36) : `permission_deny_button` (« Don’t allow ») sur les
+# fenêtres des notifications et de la caméra. Après un premier refus, Android
+# peut proposer `permission_deny_and_dont_ask_again_button` à la place.
+#
+# iOS — par LIBELLÉ, anglais et français. ⚠️ NON MESURÉ sur simulateur : les
+# libellés d'Apple, en forme encadrée ANCRÉE à l'intérieur, comme dans
+# `permission-accepter.yaml` et pour la même raison : sans ancrage, « Refuser »
+# prendrait un texte de l'application qui le contient.
+- runFlow:
+    when:
+      platform: Android
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: 'permission_deny(_and_dont_ask_again)?_button'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La fenêtre de permission s'est ouverte
+      - tapOn:
+          id: 'permission_deny(_and_dont_ask_again)?_button'
+          label: Refuser la permission
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: '(?s).*(?<![\s\S])(Don.t Allow|Ne pas autoriser|Refuser)(?![\s\S]).*'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La fenêtre de permission s'est ouverte
+      - tapOn:
+          text: '(?s).*(?<![\s\S])(Don.t Allow|Ne pas autoriser|Refuser)(?![\s\S]).*'
+          label: Refuser la permission

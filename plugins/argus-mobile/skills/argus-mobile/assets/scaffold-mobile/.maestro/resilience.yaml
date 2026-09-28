@@ -27,6 +27,26 @@ tags:
 
 - runFlow: _subflows/disable-animations.yaml
 
+# 572 — CE LANCEMENT PEUT OUVRIR DES FENÊTRES DE PERMISSION, et elles recouvrent
+# l'accueil : une application qui DEMANDE ses permissions au démarrage en ouvre
+# une par permission refusée, et l'attente de l'ancre ci-dessous échouait en
+# accusant l'écran. Mesuré sur une application sonde qui en demande six au
+# lancement : cinq fenêtres à la suite, l'accueil introuvable sans elles,
+# atteint une fois les cinq refusées.
+# Le NOMBRE vient du runner, qui le lit dans `permissions.yaml` : une branche
+# sans geste déclencheur y dit « demandée au lancement ». Zéro — le cas de
+# presque toutes les applications — et ce bloc ne coûte rien. ⚠️ S'il reste une
+# fenêtre sur l'accueil, c'est qu'une permission demandée au lancement n'a pas
+# sa branche dans `permissions.yaml`.
+- runFlow:
+    when:
+      true: "${typeof ARGUS_INVITES_AU_LANCEMENT !== 'undefined' && Number(ARGUS_INVITES_AU_LANCEMENT) > 0}"
+    commands:
+      - repeat:
+          times: ${ARGUS_INVITES_AU_LANCEMENT}
+          commands:
+            - runFlow: _subflows/permission-refuser.yaml
+
 # 🔴 L'ORDRE DE CES DEUX ATTENTES EST UNE MESURE, PAS UN STYLE (460, puis 523).
 # `startup.samples` chronomètre la PREMIÈRE attente sur l'ancre qui suit le
 # lancement : tout ce qui attend avant elle lui est soustrait, en silence.
