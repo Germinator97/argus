@@ -1684,6 +1684,61 @@ test('l\'installeur dit qu\'un workflow posé hors GitHub ne tournera pas (475)'
   rmSync(racine, { recursive: true, force: true });
 });
 
+// ── 569 · DANS UN MONOREPO, LA CI SE CHERCHE À LA RACINE DU DÉPÔT ─────────
+//
+// Au run 106, l'application vivait dans un sous-dossier du dépôt. Le workflow a
+// été posé dans `<app>/.github/`, où GitHub ne le lira JAMAIS — il ne lit que la
+// racine —, et l'installeur n'a rien dit, alors que la CI du dépôt était d'un
+// autre intégrateur, à la racine. `avertir_ci_etrangere` ne cherchait que dans
+// `$TARGET` : une application en sous-dossier le rendait aveugle aux DEUX
+// défauts à la fois. Arbitrage de Germinator : AVERTIR, sans rien écrire hors du
+// projet instrumenté.
+test('569 — dans un monorepo, l\'installeur cherche la CI à la racine et dit où GitHub lit', () => {
+  const installeur = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/scripts/install-mobile.sh');
+  const bac = mkdtempSync(join(tmpdir(), 'argus-569-'));
+  /** Un dépôt git jetable, et l'installeur lancé sur son sous-dossier `app/` (ou sa racine). */
+  const depot = (/** @type {string} */ nom, /** @type {Record<string,string>} */ fichiers, sousDossier = 'app') => {
+    const racine = join(bac, nom);
+    mkdirSync(racine, { recursive: true });
+    execFileSync('git', ['init', '-q', racine]);
+    for (const [rel, contenu] of Object.entries(fichiers)) {
+      mkdirSync(join(racine, dirname(rel)), { recursive: true });
+      writeFileSync(join(racine, rel), contenu);
+    }
+    return execFileSync('bash', [installeur, sousDossier ? join(racine, sousDossier) : racine], { encoding: 'utf8' });
+  };
+  try {
+    // 1. Le cas du run 106 : une CI étrangère À LA RACINE, l'application en sous-dossier.
+    const etrangere = depot('etrangere', { '.gitlab-ci.yml': 'stages: [test]\n', 'app/pubspec.yaml': 'name: demo\n' });
+    assert.match(etrangere, /NULLE PART/,
+      'la CI étrangère posée à la RACINE du dépôt n\'est pas vue : l\'installeur ne cherche que dans '
+      + 'le sous-dossier de l\'application, et le workflow posé ne tournera nulle part sans un mot (569)');
+    assert.match(etrangere, /\.gitlab-ci\.yml/, 'l\'avertissement ne nomme pas le fichier trouvé à la racine (569)');
+
+    // 2. GitHub Actions À LA RACINE : le projet est bien sur GitHub, mais notre
+    //    workflow est posé là où GitHub ne lit pas. Ce n'est pas « nulle part ».
+    const github = depot('github', { '.github/workflows/ci.yml': 'on: [push]\n', 'app/pubspec.yaml': 'name: demo\n' });
+    assert.doesNotMatch(github, /NULLE PART/,
+      'le dépôt a ses workflows GitHub à la racine : il est bien sur GitHub, dire « nulle part » est faux (569)');
+    assert.match(github, /sous-dossier/i,
+      'le workflow est posé dans le sous-dossier, où GitHub ne le lira jamais, et l\'installeur ne le dit '
+      + 'pas : la garde n\'existe que sur le disque (569)');
+    assert.match(github, /working-directory/,
+      'l\'avertissement ne dit pas comment faire tourner le workflow depuis la racine : il constate sans '
+      + 'donner le geste (569)');
+    // Et rien n'est écrit hors du projet instrumenté : c'était l'arbitrage.
+    assert.ok(!existsSync(join(bac, 'github', '.github', 'workflows', 'argus-mobile.yml')),
+      'l\'installeur a écrit à la racine du dépôt, hors du projet instrumenté : l\'arbitrage était d\'avertir (569)');
+
+    // 3. L'AUTRE MOITIÉ : l'application À LA RACINE du dépôt. Rien de neuf à dire.
+    const aLaRacine = depot('racine', { 'pubspec.yaml': 'name: demo\n' }, '');
+    assert.doesNotMatch(aLaRacine, /sous-dossier du dépôt/i,
+      'une application à la racine de son dépôt reçoit l\'avertissement du monorepo : il crie à tort (569)');
+  } finally {
+    rmSync(bac, { recursive: true, force: true });
+  }
+});
+
 // ── Un canal de plateforme manquant se lit-il comme de la dette ? ─────────
 //
 // Un plugin natif n'a aucune implémentation sous `flutter test`. L'écran qui

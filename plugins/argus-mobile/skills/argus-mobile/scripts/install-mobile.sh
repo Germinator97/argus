@@ -480,6 +480,31 @@ if [ -d "$TARGET/.github/workflows" ]; then
   [ -n "$autres" ] && avait_github_actions=1
 fi
 
+# 🔴 569 — DANS UN MONOREPO, LE DÉPÔT N'EST PAS LE PROJET. Au run 106, l'app vivait
+# dans un sous-dossier : le workflow y a été posé, où GitHub ne le lira JAMAIS (il
+# ne lit que la racine du dépôt), et la CI étrangère, à la racine, n'a pas été vue
+# — les deux défauts à la fois, parce qu'on ne cherchait que dans `$TARGET`.
+# ⚠️ Les chemins se comparent PHYSIQUES : git rend `/private/tmp/…` là où `cd`
+# rend `/tmp/…` sur macOS, et deux écritures du même dossier se liraient alors
+# comme un sous-dossier.
+racine_depot=''
+sous_dossier=''
+if command -v git >/dev/null 2>&1; then
+  racine_depot=$(git -C "$TARGET" rev-parse --show-toplevel 2>/dev/null || true)
+fi
+if [ -n "$racine_depot" ]; then
+  cible_physique=$(cd "$TARGET" && pwd -P)
+  racine_physique=$(cd "$racine_depot" && pwd -P)
+  if [ "$cible_physique" != "$racine_physique" ]; then
+    sous_dossier="${cible_physique#"$racine_physique"/}"
+    # Des workflows à la RACINE : le dépôt est sur GitHub Actions.
+    if [ -d "$racine_depot/.github/workflows" ]; then
+      autres=$(find "$racine_depot/.github/workflows" -type f 2>/dev/null | head -1)
+      [ -n "$autres" ] && avait_github_actions=1
+    fi
+  fi
+fi
+
 if [ "$MODE" = "uninstall" ]; then
   uninstall_project "$TARGET"
   exit 0
@@ -769,6 +794,24 @@ if [ "$foreign" -gt 0 ]; then
   echo
 fi
 
+# 569 — Le projet vit dans un sous-dossier du dépôt, et le dépôt est sur GitHub
+# (ou ne dit rien d'autre) : le workflow est posé là où GitHub ne le lira jamais.
+# L'arbitrage est d'AVERTIR — on n'écrit rien hors du projet instrumenté.
+avertir_sous_dossier() {
+  [ -z "$sous_dossier" ] && return 0
+  echo
+  echo "  ⚠️  CE PROJET VIT DANS UN SOUS-DOSSIER DU DÉPÔT ($sous_dossier/)."
+  echo "     GitHub ne lit les workflows qu'à la RACINE du dépôt : le fichier"
+  echo "     $sous_dossier/.github/workflows/argus-mobile.yml ne s'exécutera pas là où il est."
+  echo "     Pour qu'il tourne, déplace-le dans .github/workflows/ à la racine, et fais"
+  echo "     travailler ses étapes dans le sous-dossier :"
+  echo "       defaults:"
+  echo "         run:"
+  echo "           working-directory: $sous_dossier"
+  echo "     L'installeur n'écrit rien hors du projet instrumenté."
+  echo
+}
+
 # Un workflow posé sur un projet qui n'est pas sur GitHub Actions ne s'exécute
 # nulle part, et une CI qui ne tourne pas ne se voit pas : c'est une absence,
 # donc le plus silencieux des défauts. On ne décide pas à la place du projet —
@@ -778,10 +821,17 @@ avertir_ci_etrangere() {
   for f in .gitlab-ci.yml bitbucket-pipelines.yml .circleci/config.yml \
            azure-pipelines.yml Jenkinsfile .drone.yml; do
     [ -e "$TARGET/$f" ] && ci_autres="$ci_autres $f"
+    # 569 — et à la racine du dépôt, quand le projet vit dans un sous-dossier.
+    if [ -n "$sous_dossier" ] && [ -e "$racine_depot/$f" ]; then
+      ci_autres="$ci_autres $f (racine du dépôt)"
+    fi
   done
-  [ -z "$ci_autres" ] && return 0
-  # Les deux coexistent déjà : c'est un choix du projet, pas un oubli.
-  [ "$avait_github_actions" -eq 1 ] && return 0
+  # Les deux coexistent déjà : c'est un choix du projet, pas un oubli. Mais un
+  # projet en sous-dossier a encore quelque chose à apprendre (569).
+  if [ -z "$ci_autres" ] || [ "$avait_github_actions" -eq 1 ]; then
+    avertir_sous_dossier
+    return 0
+  fi
   echo
   echo "  ⚠️  CE PROJET N'AVAIT AUCUN WORKFLOW GITHUB, et il porte :$ci_autres"
   echo "     .github/workflows/argus-mobile.yml vient d'être posé et ne"
