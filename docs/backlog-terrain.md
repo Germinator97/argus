@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
-à 571 sont fermés), rendu par le run 106 ; les **573** à **575**, rendus par la
+🔴 **4 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
+à 571 sont fermés), rendu par le run 106 ; les **573** et **574**, rendus par la
 correction du terrain qui l'a suivi ; et le **576**, rendu par une question sur ce
 que la désinstallation laisse (section « Rendu par le run 106 », en fin de
-fichier). Chacun porte le remède choisi ; il reste à les écrire.
+fichier). Le **575** est fermé. Chacun porte le remède choisi ; ils se ferment un
+par un, dans l'ordre 576, 574, 573, 572.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13730,7 +13731,7 @@ dérivation le rend impossible.
 
 ### 575. Le garde de confidentialité range un nom de terrain court parmi les « ambigus »
 
-**Ouvert le 28/09/2026 · OUVERT** — en consignant le 574, j'ai écrit le nom
+**Ouvert le 28/09/2026 · CLOS** — en consignant le 574, j'ai écrit le nom
 d'un fichier de test du terrain, qui porte le nom de l'application, dans ce
 dépôt public. Relu et retiré avant tout commit — mais le garde
 (`tools/confidentialite-depot.mjs`) ne l'aurait pas fait échouer :
@@ -13752,6 +13753,33 @@ force la décision au lieu de rejoindre les « ambigus » en silence ; un
 classer. Écarté : figer chaque mention relue — plus fin, puisqu'il verrait un
 mot ordinaire employé comme nom de projet, mais chaque mention légitime
 nouvelle arrêterait la suite.
+
+#### ✅ Fermé le jour même — chaque identifiant ambigu est classé, une fois
+
+`tools/confidentialite-depot.mjs` lit un classement PRIVÉ
+(`~/.argus-etalon/identifiants-classes.txt`, à côté de la liste des terrains) :
+une ligne `mot <valeur>` ou `distinctif <valeur>` par identifiant ambigu.
+
+- Un identifiant ambigu **non classé** fait échouer le contrôle, avec la ligne à
+  écrire et l'endroit où l'écrire : un nouveau terrain force la décision.
+- Un **distinctif** échoue à la moindre mention, **sans la casse** — c'est un
+  nom, il fuit aussi bien capitalisé qu'en minuscules. Un identifiant distinctif
+  par sa FORME garde la casse : c'est elle qui le rend sûr.
+- Le classement ne peut que **durcir** : un `mot` posé sur un identifiant
+  distinctif par sa forme est sans effet. Une ligne illisible **arrête**, elle
+  n'est pas sautée.
+- 🔴 **La première passe a trouvé une fuite** que la casse cachait : le dossier
+  de police d'un terrain, écrit en minuscules dans ce backlog. Neutralisé dans un
+  commit à part, avant le correctif — l'historique déjà publié la garde, et
+  c'est une police publique.
+- Classement du jour, mesuré sur les fichiers suivis : trois identifiants
+  ambigus — le mot du clavier (29 mentions légitimes) classé `mot`, la police
+  et le nom inventé classés `distinctif`.
+- Six mutations — le non-classé qui ne fait plus échouer, le nom qui redevient
+  un mot, la casse qui cache, la ligne illisible sautée, le `mot` qui adoucit,
+  le fichier privé qui n'est plus lu : **TOMBE** toutes, chacune sur son garde.
+- Les gardes du 541 ne lisent plus le classement du poste qui les joue.
+- Suite 626/626, 609 mutations, 0 inerte.
 
 ### 576. `--uninstall` laisse, sans les nommer, les fichiers qu'Argus a fait naître
 
