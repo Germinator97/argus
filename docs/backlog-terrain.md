@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
-à 571 sont fermés), rendu par le run 106, et les **573** à **575**, rendus par la
-correction du terrain qui l'a suivi (section « Rendu par le run 106 », en fin de
+🔴 **5 POINTS OUVERTS**, tous tranchés le 28/09 par Germinator — le **572** (les 564
+à 571 sont fermés), rendu par le run 106 ; les **573** à **575**, rendus par la
+correction du terrain qui l'a suivi ; et le **576**, rendu par une question sur ce
+que la désinstallation laisse (section « Rendu par le run 106 », en fin de
 fichier). Chacun porte le remède choisi ; il reste à les écrire.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
@@ -13751,3 +13752,37 @@ force la décision au lieu de rejoindre les « ambigus » en silence ; un
 classer. Écarté : figer chaque mention relue — plus fin, puisqu'il verrait un
 mot ordinaire employé comme nom de projet, mais chaque mention légitime
 nouvelle arrêterait la suite.
+
+### 576. `--uninstall` laisse, sans les nommer, les fichiers qu'Argus a fait naître
+
+**Ouvert le 28/09/2026 · OUVERT** — rendu par une question de Germinator, au
+moment d'effacer les restes du terrain après le run 106 : « ça ne fait pas
+partie des éléments de la désinstallation ? ». **Mesuré** : après
+`--uninstall`, 148 fichiers non suivis restaient sous les racines d'Argus — les
+doubles de test de l'étage 1 (`test/argus/argus_fakes.dart`, le nom que le
+SKILL suggère), deux sous-flows écrits pour le projet, les références visuelles
+et le rapport (69 Mo). Deux défauts, qui ne se voient qu'ensemble :
+
+- **Les fichiers que le SKILL fait écrire ne sont pas vus.** Le SKILL demande
+  de marquer `ARGUS:OWNED` ce qu'on crée pour Argus (§2b, pour les doubles), et
+  l'inventaire de l'installation les liste : il parcourt la cible.
+  `uninstall_project` ne parcourt que le SCAFFOLD — ces fichiers ne sont ni
+  retirés ni nommés, alors qu'ils meurent avec ce qui les appelait : les
+  doubles étaient importés par `harness.dart`, les sous-flows appelés par des
+  parcours du scaffold, tous retirés. Deux inventaires tirés du même marqueur,
+  qui ne voient pas la même chose.
+- **La promesse d'énumérer est fausse.** L'en-tête de l'installeur (« la
+  commande énumère ce qu'elle garde ») et le SKILL (« énumère ce qu'il garde »)
+  promettent une liste ; la commande ne nomme que les chemins du scaffold dont
+  la copie n'est pas la sienne. Les dossiers qu'elle a créés (le rapport, les
+  références visuelles) survivent au `rmdir` sans être nommés, et sa phrase de
+  fin les range parmi ce qui « t'appartient ».
+
+**Tranché le 28/09/2026 par Germinator : retirer, et nommer le reste.** La
+désinstallation retire aussi les fichiers marqués `ARGUS:OWNED` sous les
+racines d'Argus (`test/argus/`, `.maestro/`) — le marqueur est la déclaration
+« ceci sert Argus » — et les dossiers qu'elle a créés, chaque retrait affiché ;
+tout fichier qui reste sous ces racines (des flows Maestro du projet, non
+marqués) est nommé. Dans la ligne du 553 : ce qu'Argus a fait naître repart
+avec lui. Écartés : nommer sans retirer (la promesse tenue, mais un terrain
+encombré de fichiers morts), et une option `--purge` de plus.
