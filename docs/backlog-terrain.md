@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
-et tranché le 28/09 par Germinator (section « Rendu par le run 106 », en fin de
-fichier) : un parcours dédié aux fenêtres de permission. Les **573** à **576** sont
+🔴 **2 POINTS OUVERTS** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
+et tranché le 28/09 par Germinator : un parcours dédié aux fenêtres de permission ;
+et le **577**, trouvé en écrivant le 573 : le plancher Flutter annoncé est faux
+(section « Rendu par le run 106 », en fin de fichier). Les **573** à **576** sont
 fermés.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
@@ -13904,3 +13905,28 @@ Les deux inventaires lisent désormais UNE déclaration, `RACINES_ARGUS`
   qui remplace le `rmdir` par un `rm -rf`, que le 498 ne voit plus : son
   commentaire le disait, il est corrigé.
 - Suite 628/628, 616 mutations, 0 inerte.
+
+### 577. Le plancher Flutter annoncé (3.19) est faux : le cadre ne compile pas avant 3.27
+
+**Ouvert le 28/09/2026 · OUVERT** — trouvé en écrivant le 573, qui devait tenir
+le plancher déclaré. Le README, le SKILL (§2a) et `ARGUS-MOBILE.md` annoncent
+**Flutter ≥ 3.19** ; le cadre ne compile pas avant **3.27**.
+
+- **Mesuré** : sur un projet créé en Flutter 3.24.5, scaffold installé,
+  `flutter analyze test/argus` rend cinq erreurs — `The method
+  'bySemanticsIdentifier' isn't defined for the type 'CommonFinders'`
+  (`anchors_test` ×2, `argus_harness` ×2, `layout_test` ×1) — et
+  `flutter test test/argus` ne compile pas.
+- `find.bySemanticsIdentifier` apparaît dans `flutter_test` en **3.27.0** :
+  absent de 3.19.0, 3.22.0, 3.24.0 et 3.24.5, présent en 3.27.0, 3.29.0 et
+  3.32.0 — source relue à chaque tag.
+- Ce plancher faux coûte déjà du code : le cadre garde `hasFlag` sous un
+  `ignore` « pour tenir dès 3.19 », une compatibilité qu'il n'a pas.
+- ⚠️ 3.27 est une borne BASSE : la première API qui casse, pas forcément la
+  dernière. Le vrai plancher se mesure en compilant le cadre sur chaque version
+  candidate.
+
+Le remède se tranche à froid : annoncer le vrai plancher — mesuré, et gardé
+par une compilation en CI à cette version —, ou tenir 3.19 en remplaçant
+`find.bySemanticsIdentifier` par un filtre sur l'identifiant sémantique que
+3.19 connaît déjà.
