@@ -2786,9 +2786,11 @@ MUTATIONS = [
     # Le garde qui APPELLE `remedeAbsorption` reste vert sous cette mutation —
     # c'est voulu : seul celui qui exerce `startupFindings` de bout en bout la
     # voit, et c'est lui qu'on prouve ici.
+    # ⚠️ 565 — ré-ancrée : le site passe par `gesteInviteAuLancement`, qui
+    # prend la plateforme du run.
     ("run", "524 · le remede d'absorption cesse de suivre la config",
-     "suggestedFix: remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
-     "suggestedFix: remedeAbsorption(true, pire.flow)"),
+     "suggestedFix: remedeAbsorption(gesteInviteAuLancement(config, platform), pire.flow, platform)",
+     "suggestedFix: remedeAbsorption(true, pire.flow, platform)"),
     # ── 525 — la derivation redevient aveugle a la plateforme ─────────────
     # On vise la GARDE iOS elle-meme : sans elle, la liste Android decide pour
     # iOS, et la valeur livree desarme. Le garde du 517 appelle la fonction sans
@@ -2951,8 +2953,9 @@ MUTATIONS = [
     # harnais crédite le premier test rouge. Verdict juste, appariement faux : le
     # jour où ce garde-ci deviendrait vacant, la mutation resterait verte grâce
     # au voisin. Le geste qui tranche est de changer la VALEUR, pas le garde.
+    # ⚠️ 565 — ré-ancrée sur le site composé, qui passe par la décision du lancement.
     ("run", "533 · le remède du non-jugeable récite au lieu de dériver",
-     "\n          + remedeAbsorption(invitesSystemePossibles(config), pire.flow)",
+     "\n          + remedeAbsorption(gesteInviteAuLancement(config, platform), pire.flow, platform)",
      "\n          + 'Ce qui attend est presque toujours le geste qui ferme une invite "
      "système, dans launch-clean.yaml : retire-le.'"),
     # 535 · le témoin d'instrument perd le motif qu'il doit porter. C'est la
@@ -3116,6 +3119,48 @@ MUTATIONS = [
     ("run", "564 ter · l'avertissement de locale relit system_locales sans repli",
      "\n      ? localeAndroid((args) => adbShell(resolved.udid, args).stdout)",
      "\n      ? localeLue(adbShell(resolved.udid, ['settings', 'get', 'system', 'system_locales']).stdout)"),
+    # ── 565 · sur Android, le lancement a déjà tout accordé ───────────────
+    # Le défaut du run 106 lui-même : `auto` rejoue le geste sur Android, où le
+    # lancement vient de tout accorder — ~7 s par flow, démarrage absorbé.
+    ("run", "565 · auto rejoue le geste d'invite sur Android",
+     "\n  return etat === 'auto' ? plateforme === 'ios' : etat === 'always';",
+     "\n  return etat === 'auto' ? true : etat === 'always';"),
+    # L'AUTRE SENS, celui qui coupe trop : iOS ne joue plus, et la modale des
+    # notifications recouvre l'écran attendu (382).
+    ("run", "565 bis · auto ne joue plus le geste sur iOS",
+     "\n  return etat === 'auto' ? plateforme === 'ios' : etat === 'always';",
+     "\n  return etat === 'auto' ? false : etat === 'always';"),
+    # `always` cesse de jouer sur Android : c'est la forme qu'aurait eue le
+    # remède écarté — une garde de plateforme dans les flows —, une promesse
+    # que la déclaration ne tient plus.
+    ("run", "565 ter · always ne joue plus sur Android",
+     "\n  return etat === 'auto' ? plateforme === 'ios' : etat === 'always';",
+     "\n  return etat === 'auto' ? plateforme === 'ios' : etat === 'always' && plateforme === 'ios';"),
+    # Le refus disparaît : une plateforme absente retombe en silence sur « ne
+    # joue pas » — l'oubli que le 517 craignait, rendu muet.
+    ("run", "565 quater · une plateforme absente retombe au lieu de lever",
+     "\n  if (plateforme !== 'android' && plateforme !== 'ios') {",
+     "\n  if (false) {"),
+    # Le CÂBLAGE : le site principal tire la plateforme de la config, c'est-à-dire
+    # ce que le projet VISE et non ce qu'on teste (525).
+    ("run", "565 quinquies · buildEnv reçoit la plateforme visée, pas celle du run",
+     "\n  const baseEnv = buildEnv(config, appId, platform, {",
+     "\n  const baseEnv = buildEnv(config, appId, (config.platforms ?? ['android'])[0], {"),
+    # Le remède perd sa raison Android : il dit « `never` le désarme » à un
+    # projet qui n'a rien déclaré, et le lecteur ne le croira pas.
+    ("run", "565 sexies · le remède Android reprend la raison iOS",
+     "\n  const android = String(platform).toLowerCase() === 'android';",
+     "\n  const android = false;"),
+    # La PRÉMISSE : le lancement cesse de tout accorder. Sur Android une invite
+    # peut de nouveau y naître, et la décision du runner devient fausse.
+    ("launchclean", "565 septies · le lancement cesse de tout accorder",
+     "\n    permissions:\n      all: allow\n",
+     "\n    permissions:\n      all: unset\n"),
+    # Un appel naît après le lancement qui REFUSE : le relevé des appelants doit
+    # parler, puisque ce site-là a besoin de l'autre question (572).
+    ("resilience", "565 octies · le geste est appelé après un lancement qui refuse",
+     "\n    label: Lancement toutes permissions refusées\n",
+     "\n    label: Lancement toutes permissions refusées\n\n- runFlow: _subflows/dismiss-system-alerts.yaml\n"),
 ]
 
 
