@@ -5097,10 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **571 et 572** (les 564 à 570 sont fermés), rendus par le run 106
-(section « Rendu par le run 106 », en fin de fichier). Ils se ferment un par un
-dans la passe qui suit ; le **572** reste ouvert délibérément — élargi le 28/09 à
-un parcours dédié aux fenêtres de permission, son remède se tranche à froid.
+🔴 **1 POINT OUVERT** — le **572** (les 564 à 571 sont fermés), rendu par le run 106
+(section « Rendu par le run 106 », en fin de fichier). Il reste ouvert
+délibérément — élargi le 28/09 à un parcours dédié aux fenêtres de permission,
+son remède se tranche à froid.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -13595,10 +13595,31 @@ qu'`argus-sec` ne les cherche que dans les sources.
 
 ### 571. `budget.maxMinutes` règle aussi la fraîcheur du rapport, et la clé ne le dit pas
 
-**Ouvert le 28/09/2026 · OUVERT** — l'agent a laissé la clé à 25 quand son budget
+**Ouvert le 28/09/2026 · CLOS** — l'agent a laissé la clé à 25 quand son budget
 était de 60, parce qu'il avait lu que le seuil de péremption du rapport en
 dépend (`report.mjs`) — ce que la clé, dans la configuration livrée, ne dit
 nulle part. Information juste, mais rangée là où l'on ne la cherche pas.
+
+#### ✅ Fermé le jour même — la clé nomme ses deux lecteurs
+
+Le bloc `budget:` n'avait **aucun** commentaire. Il dit désormais ce qu'est un
+budget (un avertissement, jamais un échec), nomme les deux lecteurs de
+`maxMinutes` — le runner avertit quand un run le dépasse ; le rapport en fait
+son seuil de péremption — et comment le régler : sur la durée réelle d'un run
+complet.
+
+- Le garde **dérive** les lecteurs du code (tout script qui lit
+  `budget?.maxMinutes`) et les fige par égalité contre les rôles que la phrase
+  doit nommer : un troisième lecteur obligera à écrire le sien. Les deux rôles
+  sont **exercés** (`stalenessOf` à 25 et 60 min, `budgetVerdict` au-delà de
+  25), puis la configuration livrée doit nommer chacun.
+- 🔴 **Resserré avant de muter** : le garde cherchait un MOT par rôle
+  (« périm », « dépass ») ; « périmés » revient dans le conseil qui suit les
+  puces, si bien qu'une mutation retirant la puce du rapport serait restée
+  verte. Il exige désormais la PHRASE de chaque rôle.
+- Trois mutations — la configuration qui tait le rapport, le seuil qui ne suit
+  plus la clé, le runner qui ne la lit plus : **TOMBE** toutes.
+- Suite 623/623, 603 mutations, 0 inerte.
 
 ### 572. Après le lancement « tout refusé » de `resilience`, une invite naît et rien ne la ferme
 
