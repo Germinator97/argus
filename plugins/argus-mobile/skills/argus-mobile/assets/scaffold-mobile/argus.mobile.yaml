@@ -104,7 +104,7 @@ build:
   # déploiement) avant d'en inventer une, et note ici celle que tu as employée.
   #
   # 🔴 ET IL Y A UNE CLÉ POUR LA PORTER (467) :
-  #   androidScanBuildCmd: flutter build apk --release --obfuscate --split-debug-info=build/sym
+  #   androidScanBuildCmd: flutter build apk --release --obfuscate --split-debug-info=build/argus-sym
   #   iosScanBuildCmd:     flutter build ipa --release --flavor prod
   # Renseignée, elle est rendue TELLE QUELLE par `releaseBuildCmd`, donc c'est
   # elle que le harnais conseille quand une dimension réclame la publication.
@@ -125,6 +125,18 @@ build:
   # La clé porte la commande, elle ne porte pas d'où elle vient — et sans ça, le
   # suivant la cherchera au même endroit que toi, qui n'est jamais le même selon
   # les projets.
+  #
+  # 🔴 586 — LE BUILD DE SCAN : LES FLAGS DE LA PUBLICATION, MAIS PAS SON DOSSIER
+  # DE SYMBOLES. Pointe `--split-debug-info` sur un dossier PROPRE AU SCAN (`build/argus-sym`), jamais
+  # sur celui où la publication range les siens. Le scan construit, sous la vraie
+  # version de l'application, un binaire qui ne sera jamais publié : écrit au
+  # même endroit, il y REMPLACE les symboles et la carte d'obfuscation de la
+  # dernière vraie release, et les envoyer ensuite au monitoring rend illisibles
+  # les erreurs de production. Vécu : un script de build qui écrit lui-même sa
+  # carte (`--save-obfuscation-map`) à un chemin FIXE, que cette clé ne peut pas
+  # déplacer. D'où la règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN
+  # BUILD DE PUBLICATION ET L'ENVOI DE SES SYMBOLES.
+  #
   # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.
   # ⇒ DEMANDE-LE AU DISQUE plutôt que de le deviner, c'est le seul geste sûr :
   #     find build/ios -name Runner.app -maxdepth 2

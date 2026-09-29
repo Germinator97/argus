@@ -19363,6 +19363,35 @@ test('le contrôle lit le classement privé PAR DÉFAUT, et ce garde juge sur to
   }
 });
 
+// ── 586 · LE SCAN RANGE SES SYMBOLES À PART ───────────────────────────────────
+// Le build du scan reprend la commande de publication du projet — et, au run
+// 107, son dossier de symboles avec : il y a réécrit, sous la vraie version, les
+// symboles et la carte d'obfuscation d'un binaire jamais publié. Tranché par
+// Germinator : un dossier propre au scan, et la règle dite là où l'on écrit la
+// commande — une carte qu'un script écrit à un chemin fixe ne se déplace pas.
+test('586 — toute commande de scan suggérée range ses symboles à part, et la règle est dite', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const sites = {
+    'argus.mobile.yaml': readFileSync(join(base, 'assets/scaffold-mobile/argus.mobile.yaml'), 'utf8'),
+    'argus-mobile.yml': readFileSync(join(base, 'assets/scaffold-mobile/.github/workflows/argus-mobile.yml'), 'utf8'),
+  };
+  let vus = 0;
+  for (const [nom, texte] of Object.entries(sites)) {
+    for (const m of texte.matchAll(/--split-debug-info=(\S+)/g)) {
+      vus += 1;
+      assert.equal(m[1], 'build/argus-sym', `${nom} suggère un build de scan qui range ses symboles dans « ${m[1]} » : `
+        + 'c\'est peut-être le dossier des vraies releases (586)');
+    }
+  }
+  assert.ok(vus >= 2, `deux commandes de scan suggérées attendues, ${vus} lue(s) : ce garde ne mesure plus rien`);
+  // La phrase, lignes et marques retirées : elle court sur deux lignes, en commentaire ou en gras.
+  const plat = (/** @type {string} */ t) => t.replace(/\s*\n\s*#?\s*/g, ' ').replace(/\*\*/g, '');
+  const regle = /ne lance jamais le scan entre un build de publication et l'envoi de ses symboles/i;
+  assert.match(plat(sites['argus.mobile.yaml']), regle,
+    'la configuration ne dit plus la règle, là où l\'on écrit la commande du scan (586)');
+  assert.match(plat(readFileSync(join(base, 'SKILL.md'), 'utf8')), regle, 'le SKILL ne dit plus la règle (586)');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

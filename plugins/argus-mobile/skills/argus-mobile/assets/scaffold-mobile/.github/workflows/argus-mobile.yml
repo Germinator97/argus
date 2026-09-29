@@ -600,7 +600,8 @@ jobs:
 #         with:
 #           node-version: '20'
 #       - run: flutter pub get
-#       - run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
+#       # 586 — un dossier de symboles propre au scan, jamais celui de la publication.
+#       - run: flutter build apk --release --obfuscate --split-debug-info=build/argus-sym
 #       - run: $ARGUS sec --binary=build/app/outputs/flutter-apk/app-release.apk --require-tools
 #
 # ⚠️ `--require-tools` a ici son sens plein : sur une release, un scan qui ne

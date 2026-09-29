@@ -3661,6 +3661,23 @@ MUTATIONS = [
     ("ci", "583 quinquies · une étape de version de la CI ne remonte plus au-dessus de son dossier",
      "java-version: '17' # Maestro exige Java 17+\n      - name: Version de Flutter attendue par le projet\n        id: sdk\n        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et\n        # « channel: stable » dérive tout seul : la CI passe au vert un jour et\n        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la\n        # version dans le projet. Absente, la sortie est vide et l'action\n        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.\n        run: |\n          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la\n          # racine du dépôt : dans un monorepo, il vit souvent là seulement.\n          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)",
      "java-version: '17' # Maestro exige Java 17+\n      - name: Version de Flutter attendue par le projet\n        id: sdk\n        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et\n        # « channel: stable » dérive tout seul : la CI passe au vert un jour et\n        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la\n        # version dans le projet. Absente, la sortie est vide et l'action\n        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.\n        run: |\n          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la\n          # racine du dépôt : dans un monorepo, il vit souvent là seulement.\n          top=$(pwd)"),
+    # ── 586 · le scan range ses symboles à part ─────────────────────────────
+    # L'exemple de la configuration revient au dossier que peut employer la publication.
+    ("yamlconf", "586 · l'exemple de commande de scan range ses symboles avec ceux de la publication",
+     "androidScanBuildCmd: flutter build apk --release --obfuscate --split-debug-info=build/argus-sym",
+     "androidScanBuildCmd: flutter build apk --release --obfuscate --split-debug-info=build/symbols"),
+    # L'exemple du workflow aussi.
+    ("ci", "586 bis · le job de scan du workflow range ses symboles avec ceux de la publication",
+     "--release --obfuscate --split-debug-info=build/argus-sym\n",
+     "--release --obfuscate --split-debug-info=build/symbols\n"),
+    # La règle disparaît de la configuration, là où l'on écrit la commande.
+    ("yamlconf", "586 ter · la configuration ne dit plus la règle du scan",
+     "D'où la règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN",
+     "D'où la règle, sans exception : ÉVITE DE LANCER LE SCAN ENTRE UN"),
+    # Et du SKILL.
+    ("skill", "586 quater · le SKILL ne dit plus la règle du scan",
+     "à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de",
+     "à un chemin fixe ne se déplace pas : **évite de lancer le scan entre un build de"),
 ]
 
 

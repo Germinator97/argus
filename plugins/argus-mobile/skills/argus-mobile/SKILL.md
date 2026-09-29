@@ -1868,6 +1868,16 @@ plus chère, au moment où l'échec tombe — un run l'a suivi et a économisé 
 passes device. Le détail de chacune est plus bas dans ce §3g ; **c'est la sortie
 console qui commande**, pas ta lecture de ce document.
 
+🔴 **Le build de scan : les flags de ta publication, mais PAS son dossier de
+symboles (586).** Pointe
+`--split-debug-info` sur un dossier propre au scan (`build/argus-sym`) : le scan
+construit, sous la vraie version de l'app, un binaire qui ne sera jamais publié,
+et écrit au même endroit que la publication il y remplace les symboles et la
+carte d'obfuscation de la dernière vraie release — les envoyer ensuite au
+monitoring rend ses erreurs illisibles. Une carte qu'un script du projet écrit
+à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de
+publication et l'envoi de ses symboles.**
+
 ⚠️ **LA SÉQUENCE PÉRIMAIT SON PROPRE RELEVÉ, ET C'EST ELLE QUI LE DISAIT** (461).
 `argus-guards` est en deuxième position, `argus-report` en dernière : entre les
 deux il y a deux passes device, une boucle visuelle et un build de release.
