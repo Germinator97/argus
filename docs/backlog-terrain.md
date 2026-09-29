@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **588** et **589** (les **583** à **587** sont fermés), rendus par le run 107, la
+🔴 **1 POINT OUVERT** — le **589** (les **583** à **588** sont fermés), rendu par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14479,7 +14479,7 @@ verdict porte sur les autres. Écartés : juger la médiane ; tout garder.
 
 ### 588. `QAM-PERF-SIZE` pèse un APK universel contre un budget pensé pour ce que le store livre
 
-**Ouvert le 29/09/2026 · OUVERT** — deux runs de suite : la release du scan est
+**Ouvert le 29/09/2026 · CLOS** — deux runs de suite : la release du scan est
 un APK à trois ABI, **67,7 Mo**, jugé contre un budget de 60 ; la tranche la plus
 lourde pèse **~30,7 Mo** (28,0 à 32,2 selon l'ABI). Le finding ne dit pas que
 l'APK est universel, et son remède — « profiler le chemin concerné » — ne
@@ -14489,6 +14489,25 @@ s'applique pas à une taille.
 `argus-perf` lit les ABI de l'APK et juge la tranche la plus lourde (l'APK moins
 les bibliothèques natives des autres ABI) ; la taille universelle reste dans le
 texte. Écartés : exiger un binaire par ABI ; le dire seulement.
+
+#### ✅ Fermé le jour même — la tranche la plus lourde, lue dans le répertoire central
+
+- `argus-perf` lit les entrées de l'APK dans son répertoire central — sans
+  dépendance, sans charger le fichier : sa fin, puis le répertoire — et pèse
+  chaque ABI : l'APK moins les bibliothèques natives des AUTRES ABI. Le verdict
+  juge la plus lourde ; le finding dit qu'il juge une tranche d'un APK universel,
+  garde la taille entière dans son texte, et `perf.json` porte
+  `binaryHeaviestAbi`. Un APK à une seule ABI se pèse entier : c'est déjà ce qui
+  est livré ; un zip illisible aussi, plutôt que de peser faux.
+- Le remède d'une taille ne dit plus de « profiler le chemin concerné » : il dit
+  de regarder ce qui pèse, entrées classées par taille compressée.
+- Les gardes tournent sur de VRAIS zips écrits par Python — octets aléatoires,
+  donc incompressibles : les tailles compressées lues égalent celles du zip, la
+  tranche est l'APK moins les autres ABI, le verdict tombe dans les deux sens, un
+  APK à une ABI est pesé entier, et le câblage pèse UNE fois pour le verdict et
+  le relevé.
+- Huit mutations neuves, et une ancienne réancrée sur le bloc du correctif :
+  **9/9 TOMBE**. Suite 662/662, 701 mutations, 0 inerte ; typage 0 erreur.
 
 ### 589. Le garde de troncature compte comme dette un texte replié par conception
 
