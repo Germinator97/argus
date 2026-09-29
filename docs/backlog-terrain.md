@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **6 POINTS OUVERTS** — les **583** et **585** à **589** (le **584** est fermé), rendus par le run 107, la
+🔴 **5 POINTS OUVERTS** — les **585** à **589** (les **583** et **584** sont fermés), rendus par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14309,7 +14309,7 @@ les fonctions serveur du dépôt — hors du périmètre d'un outil mobile.
 
 ### 583. Dans un monorepo, un `.fvmrc` à la seule racine n'est pas vu : Argus lance le Flutter du PATH
 
-**Ouvert le 29/09/2026 · OUVERT** — la détection de FVM ne regarde que le
+**Ouvert le 29/09/2026 · CLOS** — la détection de FVM ne regarde que le
 dossier courant : `[ -f .fvmrc ] || [ -d .fvm ]` dans le `Makefile`, le même
 test dans `package.snippet.json`, `usesFvm()` dans `config.mjs`, et
 `[ -f .fvmrc ]` dans les quatre étapes du workflow qui lisent la version à
@@ -14324,6 +14324,31 @@ installer. Le terrain y échappe parce que son sous-dossier porte aussi un
 - Remède, sans arbitrage à rendre : chercher comme FVM cherche — le dossier
   courant, puis ses parents —, dans les sept sites, avec un garde qui les
   confronte tous au même critère.
+
+#### ✅ Fermé le jour même — le critère de FVM, mesuré, dans les sept sites
+
+- Le critère est celui de FVM, MESURÉ sur FVM 4.0.5 par un monorepo jetable : un
+  `.fvmrc` chez un parent fait lancer la version épinglée ; l'ancien
+  `.fvm/fvm_config.json` aussi (« Using legacy config at… ») ; un simple dossier
+  `.fvm/` se comporte exactement comme l'absence de marque.
+- 🔴 **Un simple dossier `.fvm/` ne compte donc plus.** Il comptait depuis le
+  22/08, recopié du `Makefile` avec la raison « un projet peut n'avoir que lui » :
+  vrai d'un projet de l'ancienne forme, dont le dossier porte `fvm_config.json`
+  — ce que le critère garde. FVM écrit ce fichier à chaque `fvm use`, relevé sur
+  le terrain même.
+- `usesFvm`, le `Makefile` et le script npm cherchent dans le dossier courant
+  puis ses parents ; les quatre étapes de version de la CI lisent le `.fvmrc` le
+  plus proche jusqu'à la racine du dépôt, jamais au-dessus. Le SKILL et
+  `ARGUS-MOBILE.md` disent le même critère.
+- Chaque site a un garde qui l'EXÉCUTE : `usesFvm` sur un monorepo jetable ; le
+  vrai `Makefile` inclus par un `make` qui imprime sa décision ; le script npm
+  lancé avec un faux `fvm` et un faux `flutter` qui disent lequel a été appelé ;
+  l'étape de CI jouée dans un dépôt niché sous un `.fvmrc` étranger, qu'elle ne
+  doit pas lire, et les quatre étapes égales entre elles.
+- L'ancienne mutation (« le dossier .fvm cesse de compter ») réancrée sur ce
+  qu'elle voulait dire — l'ancienne forme cesse de compter —, cinq neuves, et une
+  cible pour le snippet, qu'aucune mutation ne visait : **6/6 TOMBE**. Suite
+  653/653, 682 mutations, 0 inerte ; typage 0 erreur.
 
 ### 584. La recette du diff de jetons échoue depuis un sous-dossier du dépôt
 
