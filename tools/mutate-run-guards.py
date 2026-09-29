@@ -3550,6 +3550,40 @@ MUTATIONS = [
     ("run", "578 duodecies · le constat tait pourquoi le geste commun ne suffit pas",
      "generique: contacts.has(p) && Boolean(gestes.get(p)?.has('accepter')),",
      "generique: false,"),
+    # ── 579 · sur iOS, le lancement « tout refusé » n'ouvre que la fenêtre des notifications ──
+    # iOS compte de nouveau chaque permission du lancement : resilience attend
+    # une fenêtre que la caméra refusée n'ouvre pas.
+    ("run", "579 · iOS compte de nouveau chaque permission du lancement",
+     "\n  if (plateforme === 'ios') return noms.has('notifications') ? 1 : 0;",
+     ""),
+    # Le compte replie sur Android quand la plateforme manque.
+    ("run", "579 bis · le compte replie au lieu de lever sans plateforme",
+     "export function invitesAuLancement(source, platform) {\n  const plateforme = String(platform ?? '').toLowerCase();\n  if (plateforme !== 'android' && plateforme !== 'ios') {",
+     "export function invitesAuLancement(source, platform) {\n  const plateforme = String(platform ?? '').toLowerCase();\n  if (false) {"),
+    # buildEnv ne passe plus la plateforme du run : iOS reçoit le compte d'Android.
+    ("run", "579 ter · buildEnv ne passe plus la plateforme au compte",
+     "String(invitesAuLancement(lireFlowPermissions(), platform))",
+     "String(invitesAuLancement(lireFlowPermissions(), 'android'))"),
+    # Android est averti, où `unset` et `deny` ouvrent les mêmes fenêtres.
+    ("run", "579 quater · Android est averti pour rien",
+     "\n  if (String(platform).toLowerCase() !== 'ios') return null;",
+     ""),
+    # Un lancement qui pose `unset` est averti quand même : le livré compris.
+    ("run", "579 quinquies · un lancement qui pose unset est averti quand même",
+     "if (voisines.some((l) => /^\\s*notifications:\\s*unset\\s*$/.test(l))) return null;",
+     "if (false) return null;"),
+    # Les commentaires ne sont plus dépouillés : une MENTION passe pour une lecture.
+    ("run", "579 sexies · une mention en commentaire passe pour une lecture",
+     "  const lignes = flow.split('\\n').filter((l) => !l.trimStart().startsWith('#'))\n    .map((l) => l.replace(/\\s+#.*$/, ''));",
+     "  const lignes = flow.split('\\n');"),
+    # L'avertissement est calculé et ne part nulle part.
+    ("run", "579 septies · l'avertissement ne part plus",
+     "\n  if (alerteResilience) warn(alerteResilience);",
+     ""),
+    # Le resilience livré refuse de nouveau les notifications par `deny`.
+    ("resilience", "579 octies · resilience rend les notifications au pilote de Maestro",
+     "\n      notifications: unset\n    label: Lancement toutes permissions refusées",
+     "\n    label: Lancement toutes permissions refusées"),
     # ── 577 · le plancher annoncé est celui que la CI fait tourner ──────────
     # Le job épingle une autre version que celle que les documents annoncent.
     ("ciplugin", "577 · le job plancher épingle une autre version",
