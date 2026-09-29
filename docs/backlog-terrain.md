@@ -5097,12 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — le **579** et le **580**, mesurés le 29/09 par la sonde
-iOS du 572 et tranchés le jour même par Germinator (section « Mesuré par la sonde
-iOS du 572 », en fin de fichier) : un compte de fenêtres juste sur Android et faux
-sur iOS, et une fenêtre orpheline qui survit à `clearState`. Le **578** est fermé :
-iOS accepte sur les libellés mesurés, et les contacts en deux gestes. Les **564**
-à **577** sont fermés —
+🔴 **1 POINT OUVERT** — le **580**, mesuré le 29/09 par la sonde iOS du 572
+(section « Mesuré par la sonde iOS du 572 », en fin de fichier) : une fenêtre
+orpheline qui survit à `clearState`. Le **578** et le **579** sont fermés : iOS
+accepte sur les libellés mesurés, les contacts en deux gestes, et `resilience`
+ne compte sur iOS que la fenêtre des notifications. Les **564** à **577** sont
+fermés —
 les huit du run 106 d'abord, puis les cinq que sa correction de terrain a rendus,
 puis le **577** : le plancher Flutter annoncé était faux, il est désormais celui
 qu'un job de CI fait tourner.
@@ -14079,7 +14079,7 @@ gabarit sans atteindre les fichiers déjà écrits.
 
 ### 579. Sur iOS, `resilience` attend des fenêtres que son lancement n'ouvre pas
 
-**Ouvert le 29/09/2026 · OUVERT** — le compte `ARGUS_INVITES_AU_LANCEMENT`
+**Ouvert le 29/09/2026 · CLOS** — le compte `ARGUS_INVITES_AU_LANCEMENT`
 (572) suppose ce que le 565 a mesuré sur Android : après `all: deny`, chaque
 permission demandée au lancement ouvre sa fenêtre. Pas sur iOS.
 
@@ -14108,6 +14108,29 @@ lancement ouvrent une fenêtre. `resilience.yaml` appartenant au projet, le
 runner signale un lancement « tout refusé » qui n'a pas `notifications: unset`.
 Écarté : un refus toléré sur iOS à la place du compte, qui perdait le signal
 strict — « une fenêtre qui reste, c'est une branche qui manque ».
+
+#### ✅ Fermé le jour même — `unset` au lancement, et un compte par plateforme
+
+- `resilience.yaml` lance « tout refusé » avec `notifications: unset` : la
+  fenêtre des notifications reste, et c'est le flow qui la refuse, en anglais
+  comme en français. Sur Android, rien ne change (565).
+- `invitesAuLancement` prend la plateforme du run et **lève** sans elle, comme
+  le geste du 565 ; sur iOS, elle ne compte que les notifications demandées au
+  lancement. `buildEnv` lui passe celle du run.
+- `resilience.yaml` appartient au projet : le runner **avertit** quand le
+  lancement « tout refusé » local n'a pas `notifications: unset`, et se tait là
+  où rien ne peut casser — sur Android, sans notification au lancement, quand
+  le flow ne lit pas le nombre, ou quand la variable n'y est qu'une mention en
+  commentaire.
+- Le SKILL dit l'exception d'iOS et l'avertissement.
+- Remesuré sur la sonde avec le `resilience.yaml` de HEAD et le compte que le
+  runner rend désormais sur iOS, 1 : le flow passe **en français et en
+  anglais**, rotation comprise ; contre-épreuve, 2 échoue sur la seconde
+  fenêtre.
+- Huit mutations, plus deux réancrées — le contrôle de plateforme que mute le
+  565 quater existe désormais deux fois, et son motif nu ne mutait plus rien —
+  et les deux qui visent `resilience.yaml` : **12/12 TOMBE**.
+- Suite 646/646, 671 mutations, 0 inerte.
 
 ### 580. Sur iOS, une fenêtre de permission laissée ouverte survit à `clearState` et recouvre la suite
 
