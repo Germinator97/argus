@@ -46,10 +46,14 @@ appId: ${APP_ID}
 # 🔴 ET IL NE COUVRE PAS L'ALERTE SYSTÈME DES NOTIFICATIONS SUR iOS. Mesuré sur
 # iOS 26.3 avec Maestro 2.8.0 : `permissions.all: allow` accorde les permissions
 # du bac à sable, pas la modale que le SYSTÈME présente au premier
-# `requestAuthorization`. Un seul flow qui la laisse ouverte fait échouer les
-# CINQ suivants — et l'échec accuse l'ancre de l'écran, qui est correcte : la
-# capture montrait l'accueil ENTIÈREMENT rendu derrière l'alerte pendant que le
-# flow rapportait `home_root` introuvable.
+# `requestAuthorization`. ⚠️ Vrai hors de l'anglais seulement (579) : dans un
+# système en anglais, le pilote de Maestro répond seul à la modale des
+# notifications, selon `permissions` — il ne la reconnaît qu'à son titre
+# anglais. Dans toute autre langue, elle reste. Un seul flow qui la laisse
+# ouverte fait échouer les CINQ suivants — elle survit à `clearState`, qui
+# désinstalle et réinstalle l'application (580) — et l'échec accuse l'ancre de
+# l'écran, qui est correcte : la capture montrait l'accueil ENTIÈREMENT rendu
+# derrière l'alerte pendant que le flow rapportait `home_root` introuvable.
 #   Le geste qui la ferme dépend de ta langue et de ton app, donc il ne peut pas
 #   vivre ICI — ce fichier appartient au cadre et serait écrasé. Pose-le dans
 #   `_subflows/goto.yaml`, qui est à toi, juste après le lancement :

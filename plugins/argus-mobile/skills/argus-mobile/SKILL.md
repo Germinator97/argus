@@ -283,7 +283,12 @@ lancement accorde **toutes** les permissions avant que l'application ne démarre
 naître, et la mesure est propre quoi que tu déclares. **Sur iOS, il joue
 toujours** : la modale des notifications échappe à cet accord, et rien ne permet
 de la prévoir — lire les `NS*UsageDescription` la raterait précisément, elle
-n'en porte aucune.
+n'en porte aucune. Seule exception mesurée (579) : dans un système en
+**anglais**, le pilote iOS de Maestro y répond lui-même, selon `permissions` ;
+dans toute autre langue elle reste, et c'est ce geste qui la ferme. 🔴 Une
+fenêtre laissée ouverte **survit à `clearState`** sur iOS (580) et recouvre tous
+les flows suivants : c'est aussi pour elle que ce geste referme « Ne pas
+autoriser ».
 
 📌 Ces flows ne testent donc **pas** tes fenêtres de permission : ils les
 contournent pour mesurer autre chose. **C'est `permissions.yaml` qui les exerce

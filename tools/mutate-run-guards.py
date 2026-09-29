@@ -1453,9 +1453,11 @@ MUTATIONS = [
     # exactement ce qu'on croyait avoir écarté. Elle DÉPLACE donc
     # l'interrogation hors de l'enveloppe en laissant la variable citée — seul
     # le garde de l'atteinte peut voir ça.
+    # ⚠️ Ré-ancrée le 29/09 (580) : le sélecteur est ancré et referme aussi
+    # « Ne pas autoriser ».
     ('dismiss', "388 · l'invite système redevient une attente payée à chaque flow",
-     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - runFlow:\n          when:\n            visible:\n              text: '(?s).*(Refuser|Don.t Allow).*'\n          commands:\n            - tapOn:\n                text: '(?s).*(Refuser|Don.t Allow).*'\n                label: Refermer l'invite système, si elle recouvre l'écran",
-     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - evalScript: ${output.argusSystemAlerts = 1}\n- runFlow:\n    when:\n      visible:\n        text: '(?s).*(Refuser|Don.t Allow).*'\n    commands:\n      - tapOn:\n          text: '(?s).*(Refuser|Don.t Allow).*'\n          label: Refermer l'invite système, si elle recouvre l'écran"),
+     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - runFlow:\n          when:\n            visible:\n              text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'\n          commands:\n            - tapOn:\n                text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'\n                label: Refermer l'invite système, si elle recouvre l'écran",
+     "\n- runFlow:\n    when:\n      true: \"${typeof ARGUS_SYSTEM_ALERTS === 'undefined' || ARGUS_SYSTEM_ALERTS === 'true'}\"\n    commands:\n      - evalScript: ${output.argusSystemAlerts = 1}\n- runFlow:\n    when:\n      visible:\n        text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'\n    commands:\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'\n          label: Refermer l'invite système, si elle recouvre l'écran"),
     # 388 bis — la moitié que le 382 avait manquée : fermer l'alerte ne suffit pas.
     ('launchclean', "388 bis · le lien avec le trousseau disparaît",
      '    clearKeychain: true',

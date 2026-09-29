@@ -5,8 +5,11 @@ appId: ${APP_ID}
 # workspace au démarrage, et rejette celui qui n'en a pas.
 ---
 # Les modales que le SYSTÈME présente lui-même, et que `permissions.all: allow`
-# ne couvre pas — il accorde les permissions du bac à sable, jamais l'alerte que
-# l'OS affiche au premier `requestAuthorization`.
+# ne couvre pas — il accorde les permissions du bac à sable, pas l'alerte que
+# l'OS affiche au premier `requestAuthorization`. ⚠️ Sauf une, et c'est mesuré
+# (579) : sur iOS, dans un système en ANGLAIS, le pilote de Maestro répond seul à
+# celle des notifications, selon cette table — il ne la reconnaît qu'à son titre
+# anglais. Dans toute autre langue elle reste, et c'est ce geste qui la ferme.
 #
 # 🔴 POURQUOI CE FICHIER EXISTE, ET PAS UNE LIGNE DANS goto.yaml (396). Le geste
 # a d'abord été prescrit dans `goto.yaml`, qui appartient bien au projet — mais
@@ -35,8 +38,12 @@ appId: ${APP_ID}
 # différents, sur un simulateur dont SpringBoard venait de tomber.
 #
 # ⚠️ ADAPTE LES LIBELLÉS À TA LANGUE ET À TES PERMISSIONS. Ceux-ci couvrent
-# l'alerte de notifications en français et en anglais. Si ton app demande la
-# localisation, la caméra ou le suivi, ajoute leurs boutons ici.
+# l'alerte de notifications en français et en anglais, et le refus de TOUTES les
+# autres fenêtres de permission en français — « Ne pas autoriser », relevé sur
+# iOS 26.3 (580). 🔴 CE DERNIER N'EST PAS UN LUXE : sur iOS, une fenêtre laissée
+# ouverte par un flow qui a échoué SURVIT à `clearState` — mesuré sur six
+# désinstallations-réinstallations — et recouvre chaque flow suivant, qui
+# échoue en accusant son écran. Sur Android, elle meurt avec l'application.
 # ⚠️ LA TOLÉRANCE EST NÉCESSAIRE, LA FORME NON : l'alerte n'apparaît qu'une fois
 # par installation, donc un tap inconditionnel ferait rougir tous les runs
 # suivants sur un parcours sain. Mais toute forme qui INTERROGE L'ARBRE pour le
@@ -66,7 +73,10 @@ appId: ${APP_ID}
 # `security.systemAlerts` — en `auto`, jamais sur Android, où le lancement a
 # déjà accordé toutes les permissions (565).
 # ⚠️ Et le sélecteur est ENCADRÉ (`(?s).*…*`) : un sélecteur porte sur le nœud
-# ENTIER, et un nœud fusionne le texte qu'il recouvre.
+# ENTIER, et un nœud fusionne le texte qu'il recouvre. Mais il s'ANCRE à
+# l'intérieur (`(?<![\s\S])`, `(?![\s\S])`), comme les sous-flows de permission
+# (580) : un bouton système porte son seul libellé, et sans ancre « Ne pas
+# autoriser » prendrait un texte de l'application qui le contient.
 # TODO(argus): adapte les libellés à ta langue et ajoute les autres invites que
 # ton app déclenche — localisation, caméra, suivi. Retire ce TODO quand c'est
 # fait, ou écris en une ligne pourquoi la valeur livrée te suffit.
@@ -77,8 +87,8 @@ appId: ${APP_ID}
       - runFlow:
           when:
             visible:
-              text: '(?s).*(Refuser|Don.t Allow).*'
+              text: '(?s).*(?<![\s\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\s\S]).*'
           commands:
             - tapOn:
-                text: '(?s).*(Refuser|Don.t Allow).*'
+                text: '(?s).*(?<![\s\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\s\S]).*'
                 label: Refermer l'invite système, si elle recouvre l'écran

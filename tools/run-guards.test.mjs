@@ -13468,6 +13468,42 @@ test('579 — resilience lance « tout refusé » avec `notifications: unset`, e
     'l\'avertissement est calculé et ne part nulle part');
 });
 
+// ── 580 · SUR iOS, UNE FENÊTRE LAISSÉE OUVERTE SURVIT À `clearState` ──────
+// Mesuré sur un simulateur iOS 26.3 : une fenêtre de la caméra laissée ouverte
+// a survécu à six désinstallations-réinstallations et les a fait échouer
+// toutes. Le geste d'invite, qui passe au lancement de chaque flow, ne fermait
+// que « Refuser » et « Don’t Allow » : en français, les autres fenêtres portent
+// « Ne pas autoriser ».
+
+test('580 — le geste d\'invite referme aussi « Ne pas autoriser », ancré, et touche ce qu\'il attend', () => {
+  const src = readFileSync(join(PERM, '_subflows', 'dismiss-system-alerts.yaml'), 'utf8')
+    .split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  const textes = [...src.matchAll(/text: '([^']+)'/g)].map((m) => m[1]);
+  assert.equal(textes.length, 2, `une condition et un toucher attendus, ${textes.length} sélecteur(s) lu(s)`);
+  // ⚠️ LE SENS DE CHAQUE SÉLECTEUR D'ABORD, l'égalité ensuite : sinon l'égalité
+  // tombe la première sous toute mutation d'un seul des deux, et les ancres ne
+  // sont jamais éprouvées.
+  for (const [nom, texte] of [['la condition', textes[0]], ['le toucher', textes[1]]]) {
+    const re = new RegExp(`^(?:${texte.replace(/^\(\?s\)/, '')})$`, 'is');
+    for (const l of ['Refuser', 'Don’t Allow', 'Don’t allow', 'Ne pas autoriser']) {
+      assert.ok(re.test(l), `${nom} ne reconnaît pas « ${l} » — une fenêtre orpheline recouvrirait tous les flows suivants`);
+    }
+    // Chaque ancre son cas : un texte PRÉFIXÉ, un texte SUFFIXÉ.
+    for (const l of ['Tout refuser', 'Refuser la commande', 'Voulez-vous ne pas autoriser', 'Ne pas autoriser les notifications']) {
+      assert.ok(!re.test(l), `${nom} prend « ${l} », un texte de l'application`);
+    }
+  }
+  assert.equal(textes[0], textes[1], 'la condition cherche une chose, et le toucher en touche une autre');
+});
+
+test('580 — la note du lancement dit l\'exception de l\'anglais, et la fenêtre qui survit à clearState', () => {
+  const note = readFileSync(join(PERM, '_subflows', 'launch-clean.yaml'), 'utf8')
+    .split('\n').filter((l) => /^\s*#/.test(l)).join('\n');
+  assert.match(note, /pilote de Maestro répond seul[\s\S]{0,120}\(579\)|\(579\)[\s\S]{0,120}pilote de Maestro répond seul/,
+    'la note affirme de nouveau que `permissions` ne couvre jamais la modale des notifications : faux en anglais (579)');
+  assert.match(note, /survit à `clearState`/, 'la note ne dit plus que la fenêtre survit à `clearState` (580)');
+});
+
 // ── 578 · SUR iOS, LES CONTACTS S'ACCEPTENT EN DEUX GESTES ────────────────
 // Mesuré sur un simulateur iOS 26.3 : la fenêtre des contacts porte « Ne pas
 // autoriser » et « Continuer », et « Continuer » ouvre une feuille où l'on

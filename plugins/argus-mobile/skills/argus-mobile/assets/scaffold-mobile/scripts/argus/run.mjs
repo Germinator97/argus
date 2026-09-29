@@ -1167,7 +1167,10 @@ function etatInvitesSysteme(config) {
  * déclare — et la dérivation par les permissions déclarées (517) y faisait
  * jouer le geste pour rien : 8 flows sur 9 absorbés au run 106, ~7,1 s chacun,
  * sur une application qui déclare les notifications. Sur iOS, la modale des
- * notifications échappe à `permissions` (382) : le geste y joue.
+ * notifications échappe à `permissions` (382) : le geste y joue. (579 : sauf
+ * dans un système en anglais, où le pilote de Maestro y répond seul ; la langue
+ * du simulateur ne se lit pas ici, et un geste inutile coûte moins qu'une
+ * modale ouverte sur tous les flows suivants.)
  *
  * Les déclarations tranchent sur les deux plateformes : `always` promet « joué
  * quoi qu'il arrive », `never` désarme.
