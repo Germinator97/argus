@@ -19220,6 +19220,40 @@ test('le classement ne peut que DURCIR, et une ligne illisible l\'arrête (575)'
   }
 });
 
+// ── 582 · LE CÂBLAGE PAR DÉFAUT DU CLASSEMENT, JUGÉ SUR TOUTE MACHINE ─────────
+// La mutation « le classement privé n'est plus lu » n'avait qu'un juge : le
+// contrôle du dépôt livré, qui lit les fichiers privés de ~/.argus-etalon/ et se
+// tait sans eux. Sur le runner de la CI, elle était VACANTE — et les gardes du
+// 575 injectent tous leur classement : aucun n'exerçait le câblage par défaut.
+// Ici l'outil tourne dans un sous-processus, sous un HOME fabriqué.
+test('le contrôle lit le classement privé PAR DÉFAUT, et ce garde juge sur toute machine (582)', () => {
+  const maison = mkdtempSync(join(tmpdir(), 'argus-582-'));
+  const dir = terrainAmbigu();
+  const outil = join(RACINE, 'tools/confidentialite-depot.mjs');
+  // Aucun classement injecté : c'est le défaut de `controler` qui est jugé.
+  const jouer = () => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e',
+    `const m = await import(${JSON.stringify(outil)});
+     const r = m.controler([${JSON.stringify(dir)}], () => 'rien ici', () => ['A.md']);
+     console.log(JSON.stringify({ code: r.code, classement: m.CLASSEMENT }));`],
+  { env: { ...process.env, HOME: maison }, encoding: 'utf8' }));
+  try {
+    mkdirSync(join(maison, '.argus-etalon'));
+    // D'abord que le montage monte ce qu'il prétend : l'outil lit le HOME
+    // fabriqué, pas celui du poste — sinon ce garde jugerait la machine.
+    const sans = jouer();
+    assert.equal(sans.classement, join(maison, '.argus-etalon', 'identifiants-classes.txt'),
+      'le sous-processus ne lit pas le HOME fabriqué : ce garde jugerait le poste qui le joue');
+    assert.equal(sans.code, 1, 'sans classement, un identifiant ambigu passe : le montage ne mesure rien');
+    writeFileSync(join(maison, '.argus-etalon', 'identifiants-classes.txt'), 'mot zorblo\n');
+    assert.equal(jouer().code, 0,
+      'classé dans le fichier privé, l\'identifiant échoue encore comme non classé : le contrôle ne lit '
+      + 'plus son classement par défaut (582)');
+  } finally {
+    rmSync(maison, { recursive: true, force: true });
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 542 — Le repli du parcours critique est une branche où l'on croit écrire.
 // Sur une app SANS authentification, un run a mis le corps du parcours dans la

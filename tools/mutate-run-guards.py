@@ -3333,8 +3333,9 @@ MUTATIONS = [
     ("confiddepot", "575 quinquies · un « mot » tait une fuite distinctive par sa forme",
      "  const estFuite = (/** @type {string} */ v) => estDistinctif(v) || estNomClasse(v);",
      "  const estFuite = (/** @type {string} */ v) => classes.get(v) !== 'mot' && (estDistinctif(v) || estNomClasse(v));"),
-    # Le câblage : le classement privé n'est plus lu par défaut. Sur le poste qui
-    # porte des terrains, le dépôt livré doit alors échouer, identifiants non classés.
+    # Le câblage : le classement privé n'est plus lu par défaut. 🔴 582 — seul le
+    # contrôle du dépôt livré la jugeait, et il se tait sans les fichiers privés :
+    # VACANTE sur le runner. Un garde la juge désormais sous un HOME fabriqué.
     ("confiddepot", "575 sexies · le classement privé n'est plus lu",
      "lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {",
      "lireClassement = () => null) {"),
