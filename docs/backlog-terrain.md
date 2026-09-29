@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS** — les **587**, **588** et **589** (les **583** à **586** sont fermés), rendus par le run 107, la
+🔴 **2 POINTS OUVERTS** — les **588** et **589** (les **583** à **587** sont fermés), rendus par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14446,7 +14446,7 @@ créés) ; un avertissement seul.
 
 ### 587. Un seul lancement — le premier après l'installation — suffit à rendre `QAM-START` major
 
-**Ouvert le 29/09/2026 · OUVERT** — le verdict tombe dès qu'UN échantillon
+**Ouvert le 29/09/2026 · CLOS** — le verdict tombe dès qu'UN échantillon
 dépasse le budget. Chaque flow repart d'un `clearState`, mais le tout premier
 après l'installation paie en plus ce que l'appareil fait une seule fois :
 **3 396 ms** (2 196 hors splash de marque) contre **1 488 à 1 814 ms** hors
@@ -14458,6 +14458,24 @@ non.
 **Tranché le 29/09/2026 par Germinator : écarter le premier après
 l'installation** — rapporté à part, comme coût unique d'installation ; le
 verdict porte sur les autres. Écartés : juger la médiane ; tout garder.
+
+#### ✅ Fermé le jour même — écarté du verdict, rapporté à part
+
+- Quand le runner a posé le binaire dans ce run (ni `--no-install` ni
+  `--dry-run`), `premierApresInstallation` désigne le premier LANCEMENT du run
+  par son heure, et non le plus ancien échantillon : si le flow lancé en premier
+  est mort avant de mesurer, rien n'est écarté — l'écarter jugerait sans lui.
+  L'ordre des dossiers du rapport n'est pas celui du run.
+- Le verdict ne le juge plus avec les autres ; `QAM-START-PREMIER` (`info`) le
+  rapporte s'il dépasse le budget, et `startup.firstAfterInstall` nomme son flow.
+  Le SKILL et le format du rapport le disent, à côté de `firstLaunchMs`.
+- Trois gardes : la désignation (l'heure, pas l'ordre ; pas d'installation ;
+  premier flow mort ; rien à lire), le verdict dans les deux sens — les valeurs
+  du run 107 ne rendent plus `major`, et un lancement SUIVANT au-dessus du budget
+  le rend toujours —, et le câblage au runner.
+- Six mutations neuves, et trois anciennes réancrées sur les lignes que le
+  correctif a touchées, rejouées dans le même geste : **10/10 TOMBE**. Suite
+  658/658, 693 mutations, 0 inerte ; typage 0 erreur.
 
 ### 588. `QAM-PERF-SIZE` pèse un APK universel contre un budget pensé pour ce que le store livre
 
