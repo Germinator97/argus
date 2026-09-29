@@ -195,6 +195,10 @@ CIBLES = {
     # 583 — le script npm des gardes décide de `fvm` lui aussi, et aucune mutation
     # ne le visait : il pouvait regarder le seul dossier courant sans un mot.
     "snippet": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/package.snippet.json",
+    # 585 — le GABARIT du harnais, que le projet reçoit et remplit : son type de
+    # délégués refusait les listes de Flutter, et aucune mutation ne le visait
+    # (la cible « harness » est le CADRE, argus_harness.dart).
+    "gabaritharness": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/harness.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3678,6 +3682,11 @@ MUTATIONS = [
     ("skill", "586 quater · le SKILL ne dit plus la règle du scan",
      "à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de",
      "à un chemin fixe ne se déplace pas : **évite de lancer le scan entre un build de"),
+    # ── 585 · le gabarit accepte les délégués que Flutter fournit ───────────
+    # Le gabarit revient à `Object` : Dart y refuse les listes de Flutter.
+    ("gabaritharness", "585 · le gabarit type de nouveau ses délégués en Object",
+     "const List<LocalizationsDelegate<Object?>> argusLocalizationsDelegates =\n    <LocalizationsDelegate<Object?>>[];",
+     "const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =\n    <LocalizationsDelegate<Object>>[];"),
 ]
 
 

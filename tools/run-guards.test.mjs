@@ -19392,6 +19392,26 @@ test('586 — toute commande de scan suggérée range ses symboles à part, et l
   assert.match(plat(readFileSync(join(base, 'SKILL.md'), 'utf8')), regle, 'le SKILL ne dit plus la règle (586)');
 });
 
+// ── 585 · LE GABARIT ACCEPTE LES DÉLÉGUÉS QUE FLUTTER FOURNIT ────────────────
+// `List<LocalizationsDelegate<Object>>` refusait `GlobalMaterialLocalizations
+// .delegates` et la liste de `gen-l10n`, typées `<dynamic>` : deux runs ont
+// énuméré les délégués à la main. Mesuré sur Flutter 3.41.9, dans le vrai
+// gabarit posé par l'installeur : `Object` → `invalid_assignment`, `Object?` →
+// aucun problème. Ce dépôt n'exécute pas de Dart : ce garde fige le type prouvé.
+test('585 — le gabarit type ses délégués pour recevoir les listes de Flutter telles quelles', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/harness.dart'), 'utf8');
+  // Le code seul : la doc, elle, a le droit de nommer l'ancienne forme.
+  const code = src.split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
+  const decl = /const List<LocalizationsDelegate<([^>]+)>> argusLocalizationsDelegates =\s*<LocalizationsDelegate<([^>]+)>>\[\];/.exec(code);
+  assert.ok(decl, 'la déclaration des délégués du gabarit a changé de forme : mets ce garde à jour');
+  for (const [quoi, t] of [['le type déclaré', decl[1]], ['le littéral', decl[2]]]) {
+    assert.equal(t, 'Object?', `${quoi} est LocalizationsDelegate<${t}> : Dart y refuse GlobalMaterialLocalizations`
+      + '.delegates et la liste de gen-l10n (invalid_assignment, mesuré) (585)');
+  }
+  assert.doesNotMatch(code, /LocalizationsDelegate<Object>/, 'un LocalizationsDelegate<Object> reste dans le code du gabarit (585)');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

@@ -152,9 +152,17 @@ const String argusFontFamily = ''; // TODO(argus): la famille par défaut
 /// formatage de dates ou de nombres (`DateFormat(…, 'fr_FR')`, pluriels `intl`),
 /// l'alternative sans dépendance reste `initializeDateFormatting('fr_FR')` dans
 /// un `setUpAll` — mais elle ne fournit pas `MaterialLocalizations`.
+///
+/// ⚠️ `Object?`, PAS `Object` (585). Les listes toutes faites —
+/// `GlobalMaterialLocalizations.delegates`, celle que `gen-l10n` génère — sont
+/// typées `LocalizationsDelegate<dynamic>`, et Dart refuse de les affecter à
+/// `LocalizationsDelegate<Object>` (`invalid_assignment`, mesuré sur Flutter
+/// 3.41.9) : deux runs ont dû énumérer les délégués un par un. Avec `Object?`,
+/// elles s'y affectent telles quelles :
+///     `= AppLocalizations.localizationsDelegates;`
 // TODO(argus): les delegates de ton app, ou SANS OBJET si aucun écran n'en a besoin
-const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =
-    <LocalizationsDelegate<Object>>[];
+const List<LocalizationsDelegate<Object?>> argusLocalizationsDelegates =
+    <LocalizationsDelegate<Object?>>[];
 
 /// Locale imposée à la surface de test.
 const Locale argusLocale = Locale('fr', 'FR');
