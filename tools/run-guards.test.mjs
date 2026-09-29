@@ -115,6 +115,7 @@ import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argu
 import { startupMargin, startupMarginWarning } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { resilienceSansUnset } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -13301,14 +13302,14 @@ test('572 — une permission déclarée sans ses DEUX branches est signalée, et
 });
 
 test('572 — le nombre de fenêtres que resilience referme vient de permissions.yaml', () => {
-  assert.equal(invitesAuLancement(null), 0, 'sans fichier, aucune fenêtre annoncée');
-  assert.equal(invitesAuLancement(readFileSync(join(PERM, 'permissions.yaml'), 'utf8')), 0,
+  assert.equal(invitesAuLancement(null, 'android'), 0, 'sans fichier, aucune fenêtre annoncée');
+  assert.equal(invitesAuLancement(readFileSync(join(PERM, 'permissions.yaml'), 'utf8'), 'android'), 0,
     'le gabarit livré annonce des fenêtres au lancement');
   const auLancement = sourcePerm([
     ...BRANCHE('notifications', 'accepter', false), ...BRANCHE('notifications', 'refuser', false),
     ...BRANCHE('camera', 'refuser', false), ...BRANCHE('location', 'accepter'),
     ...BRANCHE('all', 'refuser', false)]);
-  assert.equal(invitesAuLancement(auLancement), 2,
+  assert.equal(invitesAuLancement(auLancement, 'android'), 2,
     'une fenêtre par permission demandée AU LANCEMENT — ni la position, déclenchée par un toucher, ni `all`');
 
   // Le CÂBLAGE : la valeur arrive aux flows par le contrat d'injection.
@@ -13390,6 +13391,81 @@ test('572 — les sous-flows touchent le bouton système par IDENTIFIANT sur And
   for (const l of ['Allow', 'Refuser l\'accès ?', 'Tout refuser']) {
     assert.ok(!non.test(l), `« ${l} » est pris pour le bouton qui REFUSE`);
   }
+});
+
+// ── 579 · SUR iOS, LE LANCEMENT « TOUT REFUSÉ » N'OUVRE QUE LA FENÊTRE DES NOTIFICATIONS ──
+// Mesuré sur une sonde iOS 26.3 qui demande notifications et caméra au
+// lancement : les permissions que Maestro pose par `applesimutils` ou `simctl`
+// sont refusées sans fenêtre, et son pilote répond seul à celle des
+// notifications quand le système est en anglais. Avec `notifications: unset`,
+// une fenêtre dans les deux langues ; en attendre deux faisait échouer resilience.
+
+test('579 — sur iOS, seules les notifications demandées au lancement ouvrent une fenêtre, et la plateforme est exigée', () => {
+  const deux = sourcePerm([...BRANCHE('notifications', 'refuser', false), ...BRANCHE('camera', 'refuser', false)]);
+  const camera = sourcePerm([...BRANCHE('camera', 'refuser', false), ...BRANCHE('location', 'refuser')]);
+  assert.equal(invitesAuLancement(deux, 'android'), 2, 'sur Android, chaque permission refusée au lancement ouvre la sienne (565)');
+  assert.equal(invitesAuLancement(deux, 'ios'), 1,
+    'sur iOS, la caméra refusée au lancement n\'ouvre aucune fenêtre — mesuré : en attendre une seconde faisait échouer resilience');
+  assert.equal(invitesAuLancement(deux, 'iOS'), 1, 'la casse de la plateforme change le compte');
+  assert.equal(invitesAuLancement(camera, 'ios'), 0, 'sans notification au lancement, iOS n\'ouvre aucune fenêtre');
+  assert.equal(invitesAuLancement(camera, 'android'), 1, 'la position, déclenchée par un toucher, n\'est pas au lancement');
+  // ⚠️ LEVER, jamais replier : un repli sur Android referait compter deux fenêtres sur iOS.
+  assert.throws(() => invitesAuLancement(deux, ''), /Plateforme du run inconnue/, 'sans plateforme, le compte replie en silence');
+  assert.throws(() => invitesAuLancement(null, 'web'), /579/, 'une plateforme inconnue passe, faute de fichier');
+
+  // Le CÂBLAGE : `buildEnv` passe la plateforme du run au compte.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-579-'));
+  const ici = process.cwd();
+  try {
+    mkdirSync(join(dir, '.maestro'));
+    writeFileSync(join(dir, '.maestro/permissions.yaml'), deux);
+    process.chdir(dir);
+    assert.equal(buildEnv({}, 'com.exemple.app', 'ios').ARGUS_INVITES_AU_LANCEMENT, '1',
+      'le runner ne passe pas la plateforme du run au compte : resilience attend sur iOS une fenêtre qui ne vient pas');
+    assert.equal(buildEnv({}, 'com.exemple.app', 'android').ARGUS_INVITES_AU_LANCEMENT, '2');
+  } finally {
+    process.chdir(ici);
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('579 — resilience lance « tout refusé » avec `notifications: unset`, et le runner avertit le projet qui ne l\'a pas', () => {
+  const livre = readFileSync(join(PERM, 'resilience.yaml'), 'utf8');
+  const notifs = sourcePerm([...BRANCHE('notifications', 'refuser', false)]);
+  assert.equal(resilienceSansUnset(livre, notifs, 'ios'), null, 'le resilience LIVRÉ est pris pour un lancement sans `unset`');
+  // Le même flow SANS la ligne : sans ce jumeau, le nul ci-dessus ne prouverait rien.
+  const sans = livre.replace(/^ +notifications: unset\n/m, '');
+  assert.notEqual(sans, livre, 'le resilience livré ne pose plus `notifications: unset` sous `all: deny`');
+  const msg = resilienceSansUnset(sans, notifs, 'ios') ?? '';
+  assert.match(msg, /notifications: unset/, 'un lancement sans `unset` passe en silence');
+  assert.match(msg, /\(579\)/, 'l\'avertissement ne dit plus d\'où il vient');
+
+  // Rien à dire quand rien ne peut casser.
+  assert.equal(resilienceSansUnset(sans, notifs, 'android'), null,
+    'Android est averti alors que `unset` et `deny` y ouvrent les mêmes fenêtres (565)');
+  assert.equal(resilienceSansUnset(sans, sourcePerm([...BRANCHE('camera', 'refuser', false)]), 'ios'), null,
+    'averti sans notification demandée au lancement');
+  assert.equal(resilienceSansUnset(sans, null, 'ios'), null, 'averti sans `permissions.yaml`');
+  const sansBoucle = sans.split('\n').filter((l) => !l.includes('ARGUS_INVITES_AU_LANCEMENT')).join('\n');
+  assert.equal(resilienceSansUnset(sansBoucle, notifs, 'ios'), null, 'averti alors que le flow ne lit pas le nombre');
+  const mention = `${sansBoucle}\n# ARGUS_INVITES_AU_LANCEMENT — une mention en prose ne lit rien\n`;
+  assert.equal(resilienceSansUnset(mention, notifs, 'ios'), null, 'une MENTION en commentaire passe pour une lecture du nombre');
+
+  // La forme en ligne ; et une ligne en commentaire ne compte pas.
+  const enLigne = '- launchApp:\n    permissions: { all: deny, notifications: unset }\n'
+    + '- repeat:\n    times: ${ARGUS_INVITES_AU_LANCEMENT}\n';
+  assert.equal(resilienceSansUnset(enLigne, notifs, 'ios'), null, 'la forme en ligne n\'est pas lue');
+  assert.match(resilienceSansUnset(enLigne.replace(', notifications: unset', ''), notifs, 'ios') ?? '', /579/,
+    'la forme en ligne sans `unset` passe en silence');
+  const commentee = sans.replace(/^( +)all: deny$/m, '$1all: deny\n$1# notifications: unset');
+  assert.notEqual(commentee, sans, 'le lancement « tout refusé » n\'a plus la forme que ce garde lit');
+  assert.match(resilienceSansUnset(commentee, notifs, 'ios') ?? '', /579/, 'un `notifications: unset` en commentaire passe pour posé');
+
+  // Le câblage : l'avertissement part au lancement du run.
+  const runner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(runner, /const alerteResilience = resilienceSansUnset\(\n\s*existsSync\(cheminResilience\) \? readFileSync\(cheminResilience, 'utf8'\) : null, lireFlowPermissions\(\), platform\);\n\s*if \(alerteResilience\) warn\(alerteResilience\);/,
+    'l\'avertissement est calculé et ne part nulle part');
 });
 
 // ── 578 · SUR iOS, LES CONTACTS S'ACCEPTENT EN DEUX GESTES ────────────────

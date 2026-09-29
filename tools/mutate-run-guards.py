@@ -3161,9 +3161,11 @@ MUTATIONS = [
      "\n  return etat === 'auto' ? plateforme === 'ios' : etat === 'always' && plateforme === 'ios';"),
     # Le refus disparaît : une plateforme absente retombe en silence sur « ne
     # joue pas » — l'oubli que le 517 craignait, rendu muet.
+    # ⚠️ Ré-ancrée le 29/09 (579) : `invitesAuLancement` porte désormais le MÊME
+    # contrôle, et le motif nu n'était plus unique — donc plus rien ne mutait.
     ("run", "565 quater · une plateforme absente retombe au lieu de lever",
-     "\n  if (plateforme !== 'android' && plateforme !== 'ios') {",
-     "\n  if (false) {"),
+     "function gesteInviteAuLancement(config, platform) {\n  const plateforme = String(platform ?? '').toLowerCase();\n  if (plateforme !== 'android' && plateforme !== 'ios') {",
+     "function gesteInviteAuLancement(config, platform) {\n  const plateforme = String(platform ?? '').toLowerCase();\n  if (false) {"),
     # Le CÂBLAGE : le site principal tire la plateforme de la config, c'est-à-dire
     # ce que le projet VISE et non ce qu'on teste (525).
     ("run", "565 quinquies · buildEnv reçoit la plateforme visée, pas celle du run",
@@ -3472,8 +3474,9 @@ MUTATIONS = [
      "if (p !== 'all') noms.add(p);",
      "noms.add(p);"),
     # Le nombre ne va plus aux flows : resilience attend l'accueil sous la fenêtre.
+    # ⚠️ Ré-ancrée le 29/09 (579) : le compte reçoit la plateforme du run.
     ("run", "572 sexies · le nombre de fenêtres n'arrive plus aux flows",
-     "\n    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions())),",
+     "\n    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions(), platform)),",
      "\n    ARGUS_INVITES_AU_LANCEMENT: '0',"),
     # Le constat est calculé et ne va nulle part.
     ("run", "572 septies · le constat de couverture n'atteint plus le rapport",

@@ -310,7 +310,11 @@ permission sans ses deux branches — seulement celles que Maestro sait remettre
 « demander », pour ne jamais réclamer une branche impossible. Une branche **sans
 geste déclencheur** lui dit que la permission est demandée au lancement :
 `resilience.yaml` referme alors les fenêtres que son lancement « tout refusé »
-ouvre, autant qu'il y en a. Ne conclus pas d'un run vert que la demande de
+ouvre, autant qu'il y en a. ⚠️ **Sur iOS, seules les notifications en ouvrent
+une** (579) : les autres permissions y sont refusées sans fenêtre, et le runner ne
+compte qu'elles. Le lancement pose `notifications: unset`, sans quoi Maestro
+refuserait lui-même la fenêtre sur un système en anglais — le runner avertit si
+ton `resilience.yaml` ne le porte pas. Ne conclus pas d'un run vert que la demande de
 permission a été éprouvée tant que ce fichier n'a pas ses branches.
 
 **Ce que le plugin ne peut pas découvrir, tu le DÉCLARES :**

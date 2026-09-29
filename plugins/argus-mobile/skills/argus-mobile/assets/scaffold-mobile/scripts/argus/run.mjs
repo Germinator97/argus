@@ -979,16 +979,80 @@ export function branchesDePermissions(source) {
  * Combien de fenêtres le lancement « tout refusé » de `resilience.yaml` va
  * ouvrir : une par permission que `permissions.yaml` dit demandée AU
  * LANCEMENT. Zéro sans ce fichier, ou quand rien n'y est demandé au lancement.
- * @param {string | null} source
+ *
+ * 🔴 579 — SUR iOS, SEULES LES NOTIFICATIONS EN OUVRENT UNE. Maestro y pose les
+ * autres permissions par `applesimutils` et `simctl privacy` : refusées ainsi,
+ * l'application reçoit le refus sans fenêtre. Les notifications ne sont dans
+ * aucune des deux listes (relu dans le bytecode de Maestro 2.8.0), et le
+ * lancement de `resilience` les met à `unset` pour que son pilote n'y réponde
+ * pas seul. Mesuré sur une sonde qui en demande deux au lancement : une seule
+ * fenêtre sur iOS, et en compter deux faisait attendre la seconde jusqu'à la
+ * borne. Sur Android, chacune ouvre la sienne (565).
+ * ⚠️ La plateforme est celle du run, et elle LÈVE si elle manque : un repli
+ * silencieux sur Android referait compter deux fenêtres sur iOS (565).
+ * @param {string | null} source @param {string} platform la plateforme du run
+ * @returns {number}
  */
-export function invitesAuLancement(source) {
+export function invitesAuLancement(source, platform) {
+  const plateforme = String(platform ?? '').toLowerCase();
+  if (plateforme !== 'android' && plateforme !== 'ios') {
+    throw new Error(`Plateforme du run inconnue (« ${platform ?? ''} ») — attendu android ou ios. `
+      + 'Le nombre de fenêtres du lancement « tout refusé » en dépend (579).');
+  }
   if (source === null) return 0;
   const noms = new Set();
   for (const b of branchesDePermissions(source)) {
     // `all` n'est pas une permission : il ne dit pas combien de fenêtres s'ouvrent.
     if (b.auLancement) for (const p of b.permissions) if (p !== 'all') noms.add(p);
   }
+  if (plateforme === 'ios') return noms.has('notifications') ? 1 : 0;
   return noms.size;
+}
+
+/**
+ * 579 — `resilience.yaml` t'appartient : l'installeur ne le remplace pas, donc
+ * son lancement « tout refusé » reste celui qu'il avait. Sans
+ * `notifications: unset`, sur iOS dans un système anglais, le pilote de Maestro
+ * refuse lui-même la fenêtre des notifications — et le flow attend jusqu'à sa
+ * borne une fenêtre qui ne viendra pas. Comme au 517, on n'écrit pas chez
+ * l'hôte : on LIT ce qu'il porte, et on ne dit rien quand rien ne peut casser —
+ * sur Android, sans notification demandée au lancement, ou quand le flow ne lit
+ * pas le nombre.
+ * @param {string|null} flow le contenu de `.maestro/resilience.yaml`, ou null
+ * @param {string|null} source le contenu de `.maestro/permissions.yaml`, ou null
+ * @param {string} platform la plateforme du run
+ * @returns {string|null} le message à émettre, ou null s'il n'y a rien à dire
+ */
+function resilienceSansUnset(flow, source, platform) {
+  if (!flow || invitesAuLancement(source, platform) === 0) return null;
+  if (String(platform).toLowerCase() !== 'ios') return null;
+  // Commentaires dépouillés : le flow livré EXPLIQUE `unset` en prose.
+  const lignes = flow.split('\n').filter((l) => !l.trimStart().startsWith('#'))
+    .map((l) => l.replace(/\s+#.*$/, ''));
+  if (!lignes.some((l) => l.includes('ARGUS_INVITES_AU_LANCEMENT'))) return null;
+  const i = lignes.findIndex((l) => /^\s*all:\s*deny\s*$/.test(l) || /\{[^}]*\ball:\s*deny\b/.test(l));
+  if (i === -1) return null;
+  const enLigne = /\{([^}]*)\}/.exec(lignes[i]);
+  const indent = (/** @type {string} */ l) => l.length - l.trimStart().length;
+  /** @type {string[]} */
+  const voisines = [];
+  if (enLigne) voisines.push(...enLigne[1].split(','));
+  else {
+    // Les clés SŒURS de `all: deny`, de part et d'autre, jusqu'à ce qu'on sorte du bloc.
+    const niveau = indent(lignes[i]);
+    for (const pas of [-1, 1]) {
+      for (let j = i + pas; j >= 0 && j < lignes.length; j += pas) {
+        if (!lignes[j].trim()) continue;
+        if (indent(lignes[j]) < niveau) break;
+        if (indent(lignes[j]) === niveau) voisines.push(lignes[j]);
+      }
+    }
+  }
+  if (voisines.some((l) => /^\s*notifications:\s*unset\s*$/.test(l))) return null;
+  return '.maestro/resilience.yaml lance « tout refusé » sans `notifications: unset` : sur iOS, le pilote de '
+    + 'Maestro refuse lui-même la fenêtre des notifications quand le système est en anglais, et resilience '
+    + 'attend alors jusqu\'à sa borne une fenêtre qui ne vient pas (579). Ce fichier t\'appartient, '
+    + 'l\'installeur ne le remplace pas — ajoute `notifications: unset` sous `all: deny`, comme le scaffold le livre.';
 }
 
 /** `.maestro/permissions.yaml` du projet, ou `null` s'il n'y en a pas. */
@@ -1387,7 +1451,8 @@ function buildEnv(config, appId, platform, extra = {}) {
     ARGUS_SYSTEM_ALERTS: String(gesteInviteAuLancement(config, platform)),
     // 572 — combien de fenêtres le lancement « tout refusé » de `resilience.yaml`
     // ouvre, lu dans `permissions.yaml`. Zéro, et `resilience` n'attend rien.
-    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions())),
+    // 579 — et il dépend de la plateforme du run : sur iOS, les notifications seules.
+    ARGUS_INVITES_AU_LANCEMENT: String(invitesAuLancement(lireFlowPermissions(), platform)),
     ...extra,
   };
   // Secrets : uniquement depuis l'environnement, jamais depuis le fichier.
@@ -3017,6 +3082,13 @@ async function main() {
     existsSync(cheminInvite) ? readFileSync(cheminInvite, 'utf8') : null);
   if (alerteInvite) warn(alerteInvite);
 
+  // 579 — le lancement « tout refusé » du resilience local laisse-t-il la fenêtre
+  // des notifications au flow, ou le pilote de Maestro la refuse-t-il avant lui ?
+  const cheminResilience = resolve(process.cwd(), '.maestro/resilience.yaml');
+  const alerteResilience = resilienceSansUnset(
+    existsSync(cheminResilience) ? readFileSync(cheminResilience, 'utf8') : null, lireFlowPermissions(), platform);
+  if (alerteResilience) warn(alerteResilience);
+
   const secretsPassed = (config.auth?.secretsFromEnv ?? []).filter((/** @type {string} */ n) => process.env[n]);
   if (secretsPassed.length) {
     warn(`${secretsPassed.join(', ')} passés à Maestro via -e : visibles dans \`ps\` le temps du run.`);
@@ -3395,6 +3467,7 @@ if (invokedDirectly) {
 export {
   avdNameFrom, budgetVerdict, buildEnv, dimensionsToRun, findingsFrom, resolveByAvd, resolveNamedDevice,
   anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte,
+  resilienceSansUnset,
   disableAnimations, restoreAnimations,
   remedeAbsorption, resetKeychain, startScreen, startTimeoutMs, startupFindings, startupHint, startupSamples, vanishedHint,
 };
