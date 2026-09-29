@@ -5097,10 +5097,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **564** à **577** sont fermés — les huit du run 106 d'abord,
-puis les cinq que sa correction de terrain a rendus, tranchés par Germinator et
-écrits le 28/09 au soir, puis le **577**, trouvé en écrivant le 573 : le plancher
-Flutter annoncé était faux, il est désormais celui qu'un job de CI fait tourner.
+🔴 **3 POINTS OUVERTS** — les **578** à **580**, mesurés le 29/09 par la sonde iOS
+du 572 et tranchés le jour même par Germinator (section « Mesuré par la sonde
+iOS du 572 », en fin de fichier) : trois libellés d'acceptation qui n'étaient pas
+ceux d'Apple, un compte de fenêtres juste sur Android et faux sur iOS, et une
+fenêtre orpheline qui survit à `clearState`. Les **564** à **577** sont fermés —
+les huit du run 106 d'abord, puis les cinq que sa correction de terrain a rendus,
+puis le **577** : le plancher Flutter annoncé était faux, il est désormais celui
+qu'un job de CI fait tourner.
 
 Ce qui précède est le récit des passes d'avant. Le 539 est fermé, et il s'est révélé plus petit qu'annoncé :
 le skill prescrivait déjà quoi faire d'un parcours à usage unique depuis le 373.
@@ -14003,3 +14007,95 @@ future du cadre aurait dû éviter les API postérieures) ou relever à 3.32.
   CI existantes rejouées : **11/11 TOMBE**.
 - ⚠️ Le job n'a pas encore tourné sur GitHub : il le fera au prochain push.
 - Suite 642/642, 651 mutations, 0 inerte.
+
+## Mesuré par la sonde iOS du 572 — simulateur iOS 26.3, français et anglais — 29/09/2026
+
+La sonde des mesures Android du 572, étendue à six permissions — notifications,
+caméra, position, micro, photos, contacts — et à une relecture de leur état qui
+ne dépend pas de la réponse de `request()`. Jouée sur un simulateur iOS 26.3
+dédié, avec Maestro 2.8.0, en français puis en anglais. Les sous-flows joués
+sont ceux du plugin, copiés de HEAD (empreintes égales), sur la forme exacte du
+gabarit : `all: allow` puis `<permission>: unset`.
+
+### 578. Sur iOS, accepter échoue sur trois fenêtres : leurs libellés n'étaient pas ceux qu'on avait écrits
+
+**Ouvert le 29/09/2026 · OUVERT** — le « non mesuré sur simulateur » du 572,
+mesuré. Le refus passe partout, 6/6 dans les deux langues ; l'acceptation, 3/6
+en français et 4/6 en anglais.
+
+| Fenêtre | Accepter, en français | Accepter, en anglais | Refuser |
+|---|---|---|---|
+| notifications | Autoriser | Allow | Refuser · Don’t Allow |
+| caméra, micro | Autoriser | Allow | Ne pas autoriser · Don’t Allow |
+| position | Autoriser lorsque l’app est active (à côté d'Autoriser une fois) | Allow While Using App (à côté d'Allow Once) | idem |
+| photos | Autoriser l’accès complet (à côté de Limiter l’accès…) | Allow Full Access (à côté de Limit Access…) | idem |
+| contacts | Continuer, **puis** Partager les N contacts (ou Sélectionner des contacts) | Continue, **puis** Share All N Contacts (ou Select Contacts) | idem |
+
+- Le libellé français de la position que le sous-flow attendait, « Autoriser
+  pendant l’utilisation de l’app », était **deviné**. Le garde du 572 le figeait
+  comme cas positif : il gardait l'erreur.
+- Les photos et les contacts échouent dans les deux langues. Les contacts
+  demandent **deux gestes** depuis iOS 18, le second sur une feuille qui compte
+  les contacts de l'appareil.
+- Chaque état relu dans la sonde (`granted`, `permanentlyDenied`) ;
+  contre-épreuve : sans fenêtre, le sous-flow échoue au bout de sa borne — il
+  ne passe pas à vide.
+
+**Tranché le 29/09/2026 par Germinator : un sous-flow dédié aux contacts** —
+`permission-accepter-contacts.yaml`, qui fait les deux gestes, et un runner qui
+exige qu'une branche contacts l'appelle. Écartés : un second geste toléré dans
+le sous-flow commun, qui coûterait sa borne (~6 s, 517) à chaque acceptation
+d'une autre permission ; un paramètre `env`, qui changerait le contrat du
+gabarit sans atteindre les fichiers déjà écrits.
+
+### 579. Sur iOS, `resilience` attend des fenêtres que son lancement n'ouvre pas
+
+**Ouvert le 29/09/2026 · OUVERT** — le compte `ARGUS_INVITES_AU_LANCEMENT`
+(572) suppose ce que le 565 a mesuré sur Android : après `all: deny`, chaque
+permission demandée au lancement ouvre sa fenêtre. Pas sur iOS.
+
+- Les permissions que Maestro pose par `applesimutils` (caméra, micro, photos,
+  contacts…) et par `simctl privacy` (position) sont refusées **sans fenêtre** :
+  l'application reçoit le refus directement.
+- Les notifications ne sont dans aucune des deux listes (relu dans le bytecode
+  de Maestro 2.8.0). Mais son pilote XCUITest, `SystemPermissionHelper`,
+  **répond seul** à leur fenêtre selon la table `permissions` du lancement — et
+  ne la reconnaît qu'à son titre **anglais** (« Would Like to Send You
+  Notifications »). Sur `unset`, il n'y touche pas.
+- Mesuré sur une sonde qui demande notifications et caméra au lancement, avec
+  le `resilience.yaml` livré : en anglais, N=1 et N=2 échouent au premier
+  refus, seul N=0 passe ; en français, N=1 passe, N=2 échoue au second.
+- Et le remède, mesuré avant d'être proposé : avec `notifications: unset`
+  ajouté au lancement « tout refusé », N=1 passe dans les **deux** langues — la
+  fenêtre reste, et c'est le flow qui la refuse. Sur Android, `unset` et `deny`
+  ouvrent les mêmes fenêtres (tableau du 565).
+- ⚠️ Le journal de Maestro écrit « Repeat indefinitely » pour `times: 1` : c'est
+  son libellé dès que `times ≤ 1`, il ne joue qu'un tour — relu dans le
+  bytecode. Pas un défaut, mais un journal qui se lit à contresens.
+
+**Tranché le 29/09/2026 par Germinator : `notifications: unset` au lancement,
+et un compte par plateforme** — sur iOS, seules les notifications demandées au
+lancement ouvrent une fenêtre. `resilience.yaml` appartenant au projet, le
+runner signale un lancement « tout refusé » qui n'a pas `notifications: unset`.
+Écarté : un refus toléré sur iOS à la place du compte, qui perdait le signal
+strict — « une fenêtre qui reste, c'est une branche qui manque ».
+
+### 580. Sur iOS, une fenêtre de permission laissée ouverte survit à `clearState` et recouvre la suite
+
+**Ouvert le 29/09/2026 · OUVERT** — mesuré par accident : une fenêtre de la
+caméra laissée ouverte a survécu à **six** `launchApp: clearState` — arrêt,
+désinstallation, réinstallation — et les a fait échouer tous, l'application
+neuve tournant dessous. Sur Android, la fenêtre meurt avec l'application.
+
+- `dismiss-system-alerts.yaml` ne ferme que « Refuser » et « Don’t Allow ». En
+  français, les fenêtres de la caméra, de la position, du micro, des photos et
+  des contacts portent « Ne pas autoriser » : une branche d'acceptation qui
+  échoue (578) laisse une fenêtre que rien ne referme, et chaque flow joué
+  ensuite tombe en accusant son écran.
+- Au passage, deux notes sont fausses en anglais : celle de `launch-clean.yaml`
+  (« `all: allow` ne couvre pas l'alerte des notifications sur iOS ») et celle
+  de `dismiss-system-alerts.yaml` (« jamais l'alerte que l'OS affiche ») — le
+  pilote de Maestro y répond, en anglais (579).
+- Remède, sans arbitrage à rendre : « Ne pas autoriser » dans le sélecteur de
+  `dismiss-system-alerts`, ancré comme ceux des sous-flows — un bouton système
+  porte son seul libellé —, et les deux notes réécrites.
