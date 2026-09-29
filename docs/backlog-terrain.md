@@ -5097,13 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **589** (les **583** à **588** sont fermés), rendu par le run 107, la
+✅ **Rien d'ouvert.** Les **583** à **589**, rendus par le run 107 — la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
-en fin de fichier) : deux endroits où le plugin supposait l'application à la
-racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
-Germinator — les symboles
-que le scan réécrit, le premier lancement après l'installation, la taille d'un
-APK universel, les textes repliés par conception. Les **581** et **582**,
+en fin de fichier) —, sont fermés le jour même : FVM cherché comme FVM le
+cherche, une recette qui part du dossier courant, un type du gabarit élargi, et
+les quatre remèdes tranchés par Germinator — un dossier de symboles propre au
+scan, le premier lancement après l'installation jugé à part, la taille jugée sur
+la plus grosse ABI, les textes repliés par conception déclarés au montage. Les **581** et **582**,
 trouvés le 29/09 par la CI du fork
 (section « Trouvé par la CI du fork »), sont fermés le jour
 même : deux mutations VACANTES sur le runner, parce que leur garde ne jugeait
@@ -14511,7 +14511,7 @@ texte. Écartés : exiger un binaire par ABI ; le dire seulement.
 
 ### 589. Le garde de troncature compte comme dette un texte replié par conception
 
-**Ouvert le 29/09/2026 · OUVERT** — un texte qu'une application replie exprès
+**Ouvert le 29/09/2026 · CLOS** — un texte qu'une application replie exprès
 — une explication derrière « En savoir plus », des fiches repliées à deux lignes
 qui s'ouvrent au toucher — se lit, pour le garde, comme un texte tronqué.
 **16 des 21 dettes** du run 107 sont de cette nature, et 8 des 31 au 106 : la
@@ -14523,3 +14523,28 @@ déclare les textes qu'il replie par conception ; le garde de troncature les
 écarte, et la page les compte à part. Le projet déclare, le garde ne devine
 pas. Écartés : une catégorie « limite du garde » dans les dettes ; garder des
 dettes commentées.
+
+#### ✅ Fermé le jour même — `collapsedByDesign`, une sonde en CI, et la page qui compte à part
+
+- `ArgusScreen(collapsedByDesign: ['<ancre>'])` déclare les conteneurs qui
+  replient. Un texte tronqué dont un ancêtre de RENDU porte l'une de ces ancres
+  — un `Semantics(identifier:)` y devient un `RenderSemanticsAnnotations` — est
+  écarté du garde de troncature, et DIT sur une ligne à marque réservée
+  (`ARGUS·REPLI · `), lue en tête seulement ; le rapport les compte à part des
+  dettes, à côté d'elles. Le SKILL dit de déclarer le conteneur le plus étroit,
+  jamais une racine d'écran, et le gabarit du relevé d'instrumentation a sa case
+  — un garde ancien exigeait que chaque liste du type en ait une.
+- Ce dépôt n'exécute pas de Dart : une sonde (`tools/replis-probe.sh`) le prouve
+  dans le job `harness`, avant celle des polices. MESURÉ sur Flutter 3.41.9 dans
+  un projet neuf : le scaffold modifié s'analyse sans un mot, la sonde passe, et
+  sur un cadre muté pour ignorer l'ancre elle tombe — « un texte replié par
+  conception compte encore comme tronqué ».
+- 🔴 **Deux accrocs de forme, pas de fond** : le Dart édité par script n'était
+  pas au format de la CI (le garde 550 l'a dit ; formaté avec la même version),
+  et le formateur a replié des lignes que les gardes lisaient — leurs motifs
+  tolèrent désormais les blancs, ce qu'ils vérifient est le sens.
+- Quatre gardes — la lecture du rapport (la marque en tête, pas une mention),
+  l'égalité de la marque entre le Dart et le rapport, les câblages, l'étape de
+  CI et les deux moitiés de la sonde. Onze mutations, et une cible pour la
+  sonde : **11/11 TOMBE**. Suite 666/666, 712 mutations, 0 inerte ; typage 0
+  erreur.
