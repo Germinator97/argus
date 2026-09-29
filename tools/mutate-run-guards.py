@@ -3586,6 +3586,28 @@ MUTATIONS = [
     ("resilience", "579 octies · resilience rend les notifications au pilote de Maestro",
      "\n      notifications: unset\n    label: Lancement toutes permissions refusées",
      "\n    label: Lancement toutes permissions refusées"),
+    # ── 580 · une fenêtre laissée ouverte survit à clearState ──────────────
+    # Le toucher ne referme plus « Ne pas autoriser » : l'orpheline recouvre la suite.
+    ("dismiss", "580 · le geste d'invite ne referme plus « Ne pas autoriser »",
+     "            - tapOn:\n                text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'",
+     "            - tapOn:\n                text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow)(?![\\s\\S]).*'"),
+    # Le toucher perd son ancre de tête : « Tout refuser », de l'application, est touché.
+    ("dismiss", "580 bis · le geste d'invite perd son ancre de tête",
+     "            - tapOn:\n                text: '(?s).*(?<![\\s\\S])(Refuser",
+     "            - tapOn:\n                text: '(?s).*(Refuser"),
+    # La condition et le toucher divergent — même sens, texte différent : seule
+    # l'égalité peut le voir.
+    ("dismiss", "580 ter · la condition ne cherche plus ce que le toucher touche",
+     "              text: '(?s).*(?<![\\s\\S])(Refuser|Don.t Allow|Ne pas autoriser)(?![\\s\\S]).*'\n          commands:",
+     "              text: '(?s).*(?<![\\s\\S])(Ne pas autoriser|Refuser|Don.t Allow)(?![\\s\\S]).*'\n          commands:"),
+    # La note affirme de nouveau que `permissions` ne couvre jamais la modale.
+    ("launchclean", "580 quater · la note oublie l'exception de l'anglais",
+     "# système en anglais, le pilote de Maestro répond seul à la modale des\n",
+     "# système en anglais aussi, la modale des\n"),
+    # La note oublie que la fenêtre survit à clearState.
+    ("launchclean", "580 quinquies · la note oublie la fenêtre qui survit à clearState",
+     "ouverte fait échouer les CINQ suivants — elle survit à `clearState`, qui",
+     "ouverte fait échouer les CINQ suivants — elle résiste à `clearState`, qui"),
     # ── 577 · le plancher annoncé est celui que la CI fait tourner ──────────
     # Le job épingle une autre version que celle que les documents annoncent.
     ("ciplugin", "577 · le job plancher épingle une autre version",
