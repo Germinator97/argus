@@ -65,6 +65,10 @@ export function readStage1(path) {
   let done = null;
   const echecs = [];
   const noms = new Map();
+  // 589 — ce que l'application replie par conception, écarté du garde de
+  // troncature et DIT par le cadre : la page le compte à part des dettes.
+  /** @type {string[]} */
+  const replis = [];
   for (const ligne of readFileSync(path, 'utf8').split('\n')) {
     if (!ligne.trim()) continue;
     let e;
@@ -73,13 +77,18 @@ export function readStage1(path) {
     else if (e.type === 'testDone' && !e.hidden && !e.skipped && e.result !== 'success') {
       echecs.push(noms.get(e.testID) ?? `test #${e.testID}`);
     } else if (e.type === 'done') done = e;
+    // ⚠️ La marque est RÉSERVÉE et lue EN TÊTE : un message qui la mentionne
+    // ailleurs n'est pas une déclaration.
+    else if (e.type === 'print' && typeof e.message === 'string' && e.message.startsWith(MARQUE_REPLI)) {
+      replis.push(e.message.slice(MARQUE_REPLI.length));
+    }
   }
   if (!done) {
     return { incomplete: true, status: 'interrompu',
       why: 'le rapport d\'étage 1 n\'a pas de ligne `done` : la suite a été tuée en cours, '
         + 'et ses tests passés ne décrivent pas une exécution complète' };
   }
-  if (echecs.length === 0) return { findings: [] };
+  if (echecs.length === 0) return { findings: [], replis };
   // Un seul finding : 117 lignes noieraient la page, et le détail vit dans la
   // sortie de `make argus-guards`, qui donne la ligne EXACTE à corriger.
   return { findings: [{
@@ -88,7 +97,28 @@ export function readStage1(path) {
     detail: `Mesurés sans device par \`make argus-guards\`. Les premiers : `
       + `${echecs.slice(0, 5).join(' · ')}${echecs.length > 5 ? ` … et ${echecs.length - 5} autres` : ''}. `
       + 'Relance la cible pour la liste complète : ses messages donnent la ligne à corriger.',
-  }] };
+  }], replis };
+}
+
+/**
+ * 589 — La marque RÉSERVÉE que le cadre (`argusMarqueRepli`, dans
+ * `argus_harness.dart`) écrit en tête de chaque texte replié par conception.
+ * Écrite deux fois, une en Dart et une ici : un garde les veut égales.
+ */
+export const MARQUE_REPLI = 'ARGUS·REPLI · ';
+
+/**
+ * 589 — Les textes que l'application replie par conception : écartés du garde
+ * de troncature, comptés À PART des dettes — c'est l'arbitrage de Germinator.
+ * @param {string[]|undefined} replis @returns {string}
+ */
+export function replisHtml(replis) {
+  const n = (replis ?? []).length;
+  if (n === 0) return '';
+  const s = n > 1 ? 's' : '';
+  return `<details class="dettes"><summary><strong>${n} texte${s} replié${s} par conception</strong>`
+    + ` — écarté${s} du garde de troncature, déclaré${s} par l'écran</summary>`
+    + `<ul>${(replis ?? []).map((r) => `<li><code>${esc(r)}</code></li>`).join('')}</ul></details>`;
 }
 
 /**
@@ -136,8 +166,11 @@ function aveuDette(part) {
   if (!d) return '';
   if ('illisible' in d) return ' · dette assumée illisible, voir la couverture';
   const n = d.cles.length;
-  if (n === 0) return '';
-  return ` hors dette assumée · <strong>${n} dette${n > 1 ? 's' : ''} assumée${n > 1 ? 's' : ''}</strong>, listées dans la couverture`;
+  // 589 — les replis déclarés ne sont pas des dettes : ils se disent à part.
+  const r = (part.data?.replis ?? []).length;
+  const replis = r > 0 ? ` · ${r} texte${r > 1 ? 's' : ''} replié${r > 1 ? 's' : ''} par conception, à part` : '';
+  if (n === 0) return replis;
+  return ` hors dette assumée · <strong>${n} dette${n > 1 ? 's' : ''} assumée${n > 1 ? 's' : ''}</strong>, listées dans la couverture${replis}`;
 }
 
 /** @param {string} path @returns {any} */
@@ -301,7 +334,7 @@ function coverageRows(parts) {
     return `<tr><td>${esc(part.label)}</td><td class="muted">${esc(part.dimensions)}</td>`
       + `<td><span class="badge ${badge}">${state}</span>${perime}</td>`
       + `<td class="muted">${esc(age)}</td>`
-      + `<td class="muted">${esc(part.reason)}${dettesHtml(part.dettes)}</td></tr>`;
+      + `<td class="muted">${esc(part.reason)}${dettesHtml(part.dettes)}${replisHtml(part.data?.replis)}</td></tr>`;
   }).join('');
 }
 

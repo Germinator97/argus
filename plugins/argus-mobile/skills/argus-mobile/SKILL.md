@@ -461,6 +461,7 @@ Instrumentation Semantics — parcours critiques
     dont partagées   : <C> composant(s) couvrant <S> call-sites, paramètre(s) `<NOMS>`
   Affichages         : <D> posés   ← ce qu'un flow LIT sans y toucher (`displays:`)
   Sous le pli        : <F> (`commandsAfterScroll:` / `displaysAfterScroll:`)
+  Replis déclarés    : <P> (`collapsedByDesign:`)  ← texte replié PAR CONCEPTION, pas une dette
   Non enveloppables  : <W>  ← des CALL-SITES, pas des composants (voir plus bas)
 ```
 
@@ -1689,6 +1690,17 @@ harnais qu'il faut corriger d'abord. Inscris en une fois ce que la première
 exécution révèle — le relevé est fait pour ça —, mais **rends la liste avec
 le rapport** : cinquante-trois lignes que personne n'a lues ne sont pas une
 dette assumée, c'est une dette cachée.
+
+📌 **Un texte que l'application replie PAR CONCEPTION n'est pas une dette (589).**
+Une explication derrière « En savoir plus », une fiche repliée à deux lignes qui
+s'ouvre au toucher : pour le garde de troncature, c'est un texte tronqué. Sur un
+projet réel, **16 des 21 dettes** inscrites étaient de cette nature, et la page
+annonçait 21 dettes quand l'application en portait cinq. Déclare le conteneur
+qui replie dans `ArgusScreen(collapsedByDesign: ['<son ancre>'])` : le garde
+écarte les textes tronqués sous cette ancre, et le rapport les compte **à part**
+des dettes, avec leur ancre. ⚠️ Le conteneur **le plus étroit** — le widget qui
+replie, jamais la racine de l'écran : tout texte tronqué sous l'ancre déclarée
+est écarté, un vrai défaut compris.
 
 `argus.mobile.yaml` reste la **source unique de la configuration** — c'est là que
 les scripts et les flows lisent. Les autres portent du CODE et des PARCOURS, ce

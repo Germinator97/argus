@@ -46,6 +46,7 @@ class ArgusScreen {
     this.commandsAfterScroll = const <String>[],
     this.displays = const <String>[],
     this.displaysAfterScroll = const <String>[],
+    this.collapsedByDesign = const <String>[],
     this.priority = 'p0',
     this.setUp,
     this.cropRoot = false,
@@ -210,6 +211,22 @@ class ArgusScreen {
   /// gabarit, et **absent** au gabarit de référence — sinon la déclaration est
   /// périmée et le test le dit.
   final List<String> displaysAfterScroll;
+
+  /// Les ancres des conteneurs dont l'application REPLIE le texte par
+  /// conception — une explication derrière « En savoir plus », une fiche
+  /// repliée à deux lignes qui s'ouvre au toucher (589).
+  ///
+  /// ⚠️ Le garde de troncature ne sait pas la différence : pour lui, un texte
+  /// replié exprès EST tronqué. Sur un projet réel, 16 des 21 dettes inscrites
+  /// étaient de cette nature — la page annonçait 21 dettes quand l'application
+  /// en portait cinq, et un défaut réel s'y perdait. Un texte tronqué dont un
+  /// ancêtre porte l'un de ces identifiants est donc ÉCARTÉ du garde, et DIT :
+  /// la page le compte à part, avec son ancre.
+  ///
+  /// 📌 Déclare le conteneur LE PLUS ÉTROIT — le widget qui replie, jamais la
+  /// racine de l'écran : tout texte tronqué sous l'ancre déclarée est écarté, un
+  /// vrai défaut compris. Le projet déclare, le garde ne devine pas.
+  final List<String> collapsedByDesign;
 
   /// Le widget sous test. Fournis-le SANS Scaffold ni MaterialApp : le harnais
   /// pose lui-même la surface (un `Material` transparent), la police et le

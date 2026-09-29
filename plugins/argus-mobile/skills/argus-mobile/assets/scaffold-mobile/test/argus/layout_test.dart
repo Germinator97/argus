@@ -278,7 +278,17 @@ void main() {
             // construit : ce qui suit mesurerait alors autre chose. On la
             // consomme d'abord — le garde ci-dessus est celui qui la rapporte.
             tester.takeException();
-            final List<String> truncated = argusTruncatedTexts(tester);
+            // 589 — ce que l'écran replie par conception est écarté, et DIT.
+            final Set<String> replis = screen.collapsedByDesign.toSet();
+            final List<String> truncated = argusTruncatedTexts(
+              tester,
+              repliesParConception: replis,
+            );
+            argusDireReplis(
+              screen.id,
+              label,
+              argusCollapsedTexts(tester, replis),
+            );
             await argusCheck('${screen.id} · $label · aucun texte tronqué', () async {
               expect(
                 truncated,

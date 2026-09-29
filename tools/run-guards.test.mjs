@@ -99,6 +99,7 @@ import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRe
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { identitePubliee } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { dettesAssumees } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { MARQUE_REPLI, replisHtml } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { fusionner } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/debts.mjs';
 import { notesDePreuve } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { artifactFor, loadConfig } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -19575,6 +19576,82 @@ test('588 — perf pèse UNE fois, et passe la pesée au verdict comme au relev�
   assert.match(src, /sizeFinding\(pese, sizeMb, config, platform, buildRelease, parAbi\),/,
     'le verdict de taille ne reçoit plus la pesée par ABI : il juge l\'APK universel entier (588)');
   assert.match(src, /binaryHeaviestAbi: parAbi,/, 'le relevé ne porte plus la tranche jugée (588)');
+});
+
+// ── 589 · CE QUE L'APPLICATION REPLIE PAR CONCEPTION, ÉCARTÉ ET DIT ──────────
+// 16 des 21 dettes du run 107 étaient des textes que l'application replie exprès.
+// Tranché par Germinator : l'écran déclare, le garde de troncature écarte, la
+// page compte à part. Le Dart ne s'exécute pas ici : la sonde `replis-probe`
+// le prouve en CI (et l'a prouvé sur Flutter 3.41.9, contre-épreuve comprise) ;
+// ces gardes tiennent la lecture du rapport, l'égalité de la marque et les
+// câblages.
+const SCAFFOLD_589 = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+
+test('589 — le rapport compte à part ce que l\'écran replie, sur la marque RÉSERVÉE en tête', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-589-'));
+  try {
+    const f = join(dir, 'stage1.jsonl');
+    const ev = [
+      { type: 'testStart', test: { id: 1, name: 'x' } },
+      { type: 'print', message: `${MARQUE_REPLI}quiz-explication · compact ×2.0 · explication_texte · Le vrai texte…` },
+      // Une MENTION de la marque, pas en tête : ce n'est pas une déclaration.
+      { type: 'print', message: `le cadre écrit « ${MARQUE_REPLI} » en tête de chaque repli` },
+      { type: 'testDone', testID: 1, result: 'success' },
+      { type: 'done', success: true },
+    ];
+    writeFileSync(f, ev.map((e) => JSON.stringify(e)).join('\n'));
+    const lu = readStage1(f);
+    assert.deepEqual(lu.replis, ['quiz-explication · compact ×2.0 · explication_texte · Le vrai texte…'],
+      'le rapport ne lit pas les replis sur la marque en tête, ou compte une simple mention (589)');
+    assert.match(replisHtml(lu.replis), /1 texte replié par conception/, 'la page ne compte plus les replis (589)');
+    assert.equal(replisHtml([]), '', 'sans repli, la page en parle quand même');
+    const src = readFileSync(join(SCAFFOLD_589, 'scripts/argus/report.mjs'), 'utf8');
+    assert.match(src, /\$\{dettesHtml\(part\.dettes\)\}\$\{replisHtml\(part\.data\?\.replis\)\}/,
+      'la ligne de couverture de l\'étage 1 ne montre plus les replis à côté des dettes (589)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('589 — la marque des replis est la même en Dart et dans le rapport', () => {
+  const dart = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  const m = /const String argusMarqueRepli = '([^']+)';/.exec(dart);
+  assert.ok(m, 'la marque des replis n\'est plus déclarée dans le cadre : mets ce garde à jour');
+  assert.equal(m[1], MARQUE_REPLI,
+    'le cadre écrit une marque que le rapport ne lit pas : les replis disparaîtraient de la page en silence (589)');
+});
+
+test('589 — le cadre déclare, écarte et dit : type, ancêtre, garde de disposition', () => {
+  const types = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_types.dart'), 'utf8');
+  assert.match(types, /this\.collapsedByDesign = const <String>\[\],/, 'ArgusScreen ne déclare plus ses replis, ou pas vides par défaut (589)');
+  assert.match(types, /final List<String> collapsedByDesign;/, 'le champ des replis a disparu d\'ArgusScreen (589)');
+  const cadre = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  assert.match(cadre, /if \(noeud is RenderSemanticsAnnotations\) \{\n\s*final String\? id = noeud\.properties\.identifier;\n\s*if \(id != null && ancres\.contains\(id\)\) return id;/,
+    'le cadre ne reconnaît plus l\'ancre déclarée chez un ancêtre du texte (589)');
+  assert.match(cadre, /argusRepliSous\(paragraph, repliesParConception\) == null/,
+    'le garde de troncature n\'écarte plus ce que l\'écran replie (589)');
+  const layout = readFileSync(join(SCAFFOLD_589, 'test/argus/layout_test.dart'), 'utf8');
+  assert.match(layout, /final Set<String> replis = screen\.collapsedByDesign\.toSet\(\);/, 'le garde de disposition ne lit plus les replis de l\'écran (589)');
+  assert.match(layout, /repliesParConception: replis,/, 'le garde de disposition ne passe plus les replis au garde de troncature (589)');
+  assert.match(layout, /argusDireReplis\(\s*screen\.id,\s*label,\s*argusCollapsedTexts\(tester, replis\),?\s*\);/,
+    'ce qui est écarté n\'est plus dit : la page ne pourrait plus le compter (589)');
+});
+
+test('589 — la CI joue la sonde des replis, qui a ses deux moitiés', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const i = ci.indexOf('run: bash tools/replis-probe.sh /tmp/accueil');
+  const j = ci.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.notEqual(i, -1, 'la CI ne joue plus la sonde des replis : son Dart ne s\'exécute nulle part (589)');
+  assert.ok(j !== -1 && i < j, 'la sonde des replis passe après celle des polices, qui modifie le projet d\'accueil');
+  const sonde = readFileSync(join(RACINE, 'tools/replis-probe.dart'), 'utf8');
+  assert.match(sonde, /expect\(\s*argusTruncatedTexts\(tester\),\s*hasLength\(2\)/,
+    'la sonde ne prouve plus que son montage tronque ses deux textes : elle pourrait ne rien mesurer');
+  assert.match(sonde, /expect\(\s*argusTruncatedTexts\(tester, repliesParConception: replis\),\s*hasLength\(1\)/,
+    'la sonde n\'exige plus que le texte déclaré soit écarté (589)');
+  assert.match(sonde, /hasLength\(2\),\s*reason: 'une ancre non déclarée écarte un texte \(589\)'/,
+    'la sonde n\'exige plus qu\'une ancre non déclarée n\'écarte rien');
+  const sh = readFileSync(join(RACINE, 'tools/replis-probe.sh'), 'utf8');
+  assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
 });
 
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────

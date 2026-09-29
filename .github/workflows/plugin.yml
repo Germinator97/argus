@@ -342,6 +342,14 @@ jobs:
       - name: Il juge le contraste sur les couleurs résolues
         run: bash tools/contrast-probe.sh /tmp/accueil
 
+      # 589 — CE QUE L'APPLICATION REPLIE PAR CONCEPTION EST ÉCARTÉ, ET DIT. Deux
+      # textes tronqués, un seul sous une ancre déclarée : le garde de
+      # troncature n'en voit qu'un, et rend l'autre avec son ancre. Sans
+      # déclaration, les deux — sinon le montage ne mesurerait rien. Avant celle
+      # des polices : elle n'ajoute qu'un fichier de test.
+      - name: Il écarte ce que l'app replie par conception, et le dit
+        run: bash tools/replis-probe.sh /tmp/accueil
+
       # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
       # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
       # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas

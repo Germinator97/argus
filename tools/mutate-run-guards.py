@@ -199,6 +199,9 @@ CIBLES = {
     # délégués refusait les listes de Flutter, et aucune mutation ne le visait
     # (la cible « harness » est le CADRE, argus_harness.dart).
     "gabaritharness": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/test/argus/harness.dart",
+    # 589 — la sonde qui prouve en CI que le cadre écarte et dit ce qu'un écran
+    # replie par conception : ce dépôt n'exécute pas de Dart, elle est la preuve.
+    "sondereplis": ROOT / "tools/replis-probe.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3745,6 +3748,51 @@ MUTATIONS = [
     ("perf", "588 octies · le verdict de taille ne reçoit plus la pesée par ABI",
      "    sizeFinding(pese, sizeMb, config, platform, buildRelease, parAbi),",
      "    sizeFinding(pese, sizeMb, config, platform, buildRelease, null),"),
+    # ── 589 · ce que l'application replie par conception, écarté et dit ──────
+    # Le rapport compte une simple MENTION de la marque.
+    ("report", "589 · le rapport compte une mention de la marque, pas seulement la marque en tête",
+     "e.message.startsWith(MARQUE_REPLI)) {",
+     "e.message.includes(MARQUE_REPLI)) {"),
+    # La ligne de l'étage 1 ne montre plus les replis.
+    ("report", "589 bis · la couverture ne montre plus les replis",
+     "${dettesHtml(part.dettes)}${replisHtml(part.data?.replis)}</td></tr>`;",
+     "${dettesHtml(part.dettes)}</td></tr>`;"),
+    # Le rapport lit une autre marque que celle que le cadre écrit.
+    ("report", "589 ter · le rapport lit une autre marque que le cadre",
+     "export const MARQUE_REPLI = 'ARGUS·REPLI · ';",
+     "export const MARQUE_REPLI = 'ARGUS-REPLI · ';"),
+    # Le cadre ne reconnaît plus l'ancre déclarée chez un ancêtre.
+    ("harness", "589 quater · le cadre ne reconnaît plus l'ancre déclarée",
+     "      if (id != null && ancres.contains(id)) return id;",
+     "      if (id != null && ancres.contains(id)) return null;"),
+    # Le cadre écrit une autre marque que celle que le rapport lit.
+    ("harness", "589 quinquies · le cadre écrit une autre marque que le rapport",
+     "const String argusMarqueRepli = 'ARGUS·REPLI · ';",
+     "const String argusMarqueRepli = 'ARGUS·REPLIS · ';"),
+    # ArgusScreen déclare des replis par défaut.
+    ("types", "589 sexies · un écran déclare des replis par défaut",
+     "    this.collapsedByDesign = const <String>[],",
+     "    this.collapsedByDesign = const <String>['*'],"),
+    # Le garde de disposition ne passe plus les replis au garde de troncature.
+    ("layout", "589 septies · le garde de disposition ne passe plus les replis",
+     "              repliesParConception: replis,",
+     "              repliesParConception: const <String>{},"),
+    # Ce qui est écarté n'est plus dit.
+    ("layout", "589 octies · ce qui est écarté n'est plus dit",
+     "            argusDireReplis(\n              screen.id,",
+     "            argusTaireReplis(\n              screen.id,"),
+    # La CI ne joue plus la sonde : le Dart du 589 ne s'exécute plus nulle part.
+    ("ciplugin", "589 nonies · la CI ne joue plus la sonde des replis",
+     "        run: bash tools/replis-probe.sh /tmp/accueil",
+     "        run: echo 'sonde des replis retirée'"),
+    # La sonde ne prouve plus que son montage tronque ses deux textes.
+    ("sondereplis", "589 decies · la sonde perd sa contre-épreuve de montage",
+     "      argusTruncatedTexts(tester),\n      hasLength(2),",
+     "      argusTruncatedTexts(tester),\n      hasLength(anything),"),
+    # Le gabarit du relevé perd la case des replis.
+    ("skill", "589 undecies · le gabarit du relevé perd la case des replis",
+     "  Replis déclarés    : <P> (`collapsedByDesign:`)",
+     "  Replis déclarés    : <P> (`declares:`)"),
 ]
 
 

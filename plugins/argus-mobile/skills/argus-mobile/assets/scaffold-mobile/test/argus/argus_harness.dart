@@ -616,12 +616,68 @@ String argusName(String name) {
 /// et un test qui guette une exception passe sur n'importe quelle largeur, même
 /// absurde. Ce qui casse, c'est la troncature — et c'est `didExceedMaxLines`
 /// qui la voit, pas le mécanisme d'erreur.
-List<String> argusTruncatedTexts(WidgetTester tester) {
+///
+/// 🔴 589 — SAUF CE QUE L'APPLICATION REPLIE PAR CONCEPTION. Un texte dont un
+/// ancêtre porte l'une des ancres de [repliesParConception] est écarté — et rendu
+/// par [argusCollapsedTexts], pour que le garde le DISE au lieu de le taire.
+List<String> argusTruncatedTexts(
+  WidgetTester tester, {
+  Set<String> repliesParConception = const <String>{},
+}) {
   return tester
       .renderObjectList<RenderParagraph>(find.byType(RichText))
       .where((RenderParagraph paragraph) => paragraph.didExceedMaxLines)
+      .where(
+        (RenderParagraph paragraph) =>
+            argusRepliSous(paragraph, repliesParConception) == null,
+      )
       .map((RenderParagraph paragraph) => paragraph.text.toPlainText())
       .toList();
+}
+
+/// L'ancre déclarée « repliée par conception » sous laquelle vit ce paragraphe,
+/// ou `null` (589). On remonte l'arbre de RENDU : un `Semantics(identifier:)`
+/// y devient un `RenderSemanticsAnnotations`, ancêtre du paragraphe.
+String? argusRepliSous(RenderParagraph paragraph, Set<String> ancres) {
+  if (ancres.isEmpty) return null;
+  RenderObject? noeud = paragraph.parent;
+  while (noeud != null) {
+    if (noeud is RenderSemanticsAnnotations) {
+      final String? id = noeud.properties.identifier;
+      if (id != null && ancres.contains(id)) return id;
+    }
+    noeud = noeud.parent;
+  }
+  return null;
+}
+
+/// Les textes tronqués que l'application REPLIE par conception (589), sous la
+/// forme « ancre · texte » : ce que le garde écarte, il le rend ici.
+List<String> argusCollapsedTexts(
+  WidgetTester tester,
+  Set<String> repliesParConception,
+) {
+  if (repliesParConception.isEmpty) return const <String>[];
+  final List<String> dits = <String>[];
+  for (final RenderParagraph paragraph
+      in tester.renderObjectList<RenderParagraph>(find.byType(RichText))) {
+    if (!paragraph.didExceedMaxLines) continue;
+    final String? sous = argusRepliSous(paragraph, repliesParConception);
+    if (sous != null) dits.add('$sous · ${paragraph.text.toPlainText()}');
+  }
+  return dits;
+}
+
+/// La marque RÉSERVÉE, en tête de ligne, que le rapport lit dans l'étage 1
+/// (589) : une mention du mot ailleurs n'est pas une déclaration.
+const String argusMarqueRepli = 'ARGUS·REPLI · ';
+
+/// Dit, dans la sortie de l'étage 1, chaque texte écarté comme replié par
+/// conception — la page le compte à part, avec son ancre (589).
+void argusDireReplis(String ecran, String gabarit, List<String> replis) {
+  for (final String r in replis) {
+    debugPrint('$argusMarqueRepli$ecran · $gabarit · $r');
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
