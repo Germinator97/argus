@@ -158,11 +158,13 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 Si le projet a un `package.json`, `package.snippet.json` expose les mêmes cibles
 en scripts npm.
 
-**FVM** : si le projet porte un `.fvmrc` ou un `.fvm/`, les cibles passent d'elles-mêmes
-par `fvm flutter` — sans quoi la contrainte de SDK du `pubspec.yaml` rejette la
-version globale et tout échoue. `make argus-doctor` affiche la commande retenue
-en première ligne. En CI, la version est lue dans `.fvmrc` et installée
-directement : FVM n'y est pas nécessaire.
+**FVM** : si le projet porte un `.fvmrc` (ou l'ancien `.fvm/fvm_config.json`) —
+dans son dossier ou dans un dossier parent, comme la racine d'un monorepo —, les
+cibles passent d'elles-mêmes par `fvm flutter`, avec le critère de FVM lui-même
+(583) ; sans quoi la contrainte de SDK du `pubspec.yaml` rejette la version
+globale et tout échoue. `make argus-doctor` affiche la commande retenue en
+première ligne. En CI, la version est lue dans le `.fvmrc` le plus proche,
+jusqu'à la racine du dépôt, et installée directement : FVM n'y est pas nécessaire.
 
 ## Publier le rapport
 

@@ -851,9 +851,26 @@ export function sh(bin, args = [], opts = {}) {
  * si bien qu'`argus-doctor` sondait un SDK que le projet n'utilise pas et
  * rendait sa version. Relevé sur un projet réel : 3.32.0 annoncé là où le
  * projet construit en 3.41.9.
+ *
+ * 🔴 583 — ET PAS SEULEMENT DANS LE DOSSIER COURANT. Dans un monorepo, le
+ * `.fvmrc` vit souvent à la racine du dépôt seule : FVM le trouve depuis le
+ * sous-dossier de l'application, puisqu'il REMONTE les dossiers parents, et ce
+ * test ne le trouvait pas — mesuré : le Flutter du PATH (3.32.0) là où FVM
+ * lançait 3.41.9. Le critère est donc celui de FVM, mesuré aussi : un `.fvmrc`,
+ * ou l'ancien `.fvm/fvm_config.json`, ici ou chez un parent. Un simple dossier
+ * `.fvm/` n'en est PAS un — FVM le traite comme l'absence de marque.
+ * @param {string} [depuis] le dossier d'où l'on cherche
  * @returns {boolean}
  */
-export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));
+export function usesFvm(depuis = process.cwd()) {
+  let d = resolve(depuis);
+  for (;;) {
+    if (existsSync(join(d, '.fvmrc')) || existsSync(join(d, '.fvm', 'fvm_config.json'))) return true;
+    const parent = dirname(d);
+    if (parent === d) return false;
+    d = parent;
+  }
+}
 
 /**
  * La décision, séparée de sa mesure.

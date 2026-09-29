@@ -192,6 +192,9 @@ CIBLES = {
     # 578 — le geste des contacts, en deux temps sur iOS : rien ne pouvait dire
     # si un garde voit un temps disparaître, ou un ancrage se perdre.
     "permcontacts": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-accepter-contacts.yaml",
+    # 583 — le script npm des gardes décide de `fvm` lui aussi, et aucune mutation
+    # ne le visait : il pouvait regarder le seul dossier courant sans un mot.
+    "snippet": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/package.snippet.json",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -320,9 +323,11 @@ MUTATIONS = [
     ("config", "flutterCommand ne préfixe plus rien",
      "  return text.replace(/(^|&&|\\|\\||;|\\|)(\\s*)flutter\\s/g, '$1$2fvm flutter ');",
      "  return text;"),
-    ("config", "le dossier .fvm cesse de compter comme un épinglage",
-     "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc')) || existsSync(resolve(process.cwd(), '.fvm'));",
-     "export const usesFvm = () => existsSync(resolve(process.cwd(), '.fvmrc'));"),
+    # 583 — l'ancienne forme de FVM (`.fvm/fvm_config.json`) cesse de compter :
+    # ce que voulait dire « le dossier .fvm », qu'un simple dossier ne dit pas.
+    ("config", "l'ancien .fvm/fvm_config.json cesse de compter comme un épinglage",
+     "    if (existsSync(join(d, '.fvmrc')) || existsSync(join(d, '.fvm', 'fvm_config.json'))) return true;",
+     "    if (existsSync(join(d, '.fvmrc'))) return true;"),
     ("run", "l'indice « ancre disparue » s'affiche partout",
      "  if (!seen) return '';",
      "  if (false) return '';"),
@@ -3634,6 +3639,28 @@ MUTATIONS = [
     ("skill", "584 · la recette du diff de jetons relit depuis la racine du dépôt",
      "git show HEAD:./lib/x.dart | tr",
      "git show HEAD:lib/x.dart | tr"),
+    # ── 583 · FVM se cherche comme FVM le cherche : ici, puis chez les parents ──
+    # `usesFvm` s'arrête au dossier courant : le monorepo retombe sur le PATH.
+    ("config", "583 · usesFvm ne remonte plus aux dossiers parents",
+     "    const parent = dirname(d);\n    if (parent === d) return false;",
+     "    const parent = d;\n    if (parent === d) return false;"),
+    # Un simple dossier `.fvm/` compte de nouveau — FVM, lui, l'ignore.
+    ("config", "583 bis · un simple dossier .fvm compte de nouveau",
+     "existsSync(join(d, '.fvm', 'fvm_config.json'))",
+     "existsSync(join(d, '.fvm'))"),
+    # Le Makefile revient au test du seul dossier courant.
+    ("makefile", "583 ter · le Makefile ne regarde plus que le dossier courant",
+     'FLUTTER := $(shell d=$$(pwd); while :; do if [ -f "$$d/.fvmrc" ] || [ -f "$$d/.fvm/fvm_config.json" ]; then echo "fvm flutter"; exit 0; fi; [ "$$d" = / ] && break; d=$$(dirname "$$d"); done; echo flutter)',
+     'FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo flutter)'),
+    # Le script npm aussi.
+    ("snippet", "583 quater · le script npm ne regarde plus que le dossier courant",
+     '"argus:guards": "d=$(pwd); p=; while :; do if [ -f \\"$d/.fvmrc\\" ] || [ -f \\"$d/.fvm/fvm_config.json\\" ]; then p=fvm; break; fi; [ \\"$d\\" = / ] && break; d=$(dirname \\"$d\\"); done; $p flutter test test/argus",',
+     '"argus:guards": "if [ -f .fvmrc ] || [ -d .fvm ]; then fvm flutter test test/argus; else flutter test test/argus; fi",'),
+    # Une des quatre étapes de version de la CI cesse de remonter : l'égalité
+    # des quatre le voit, et c'est la seule chose qui le peut.
+    ("ci", "583 quinquies · une étape de version de la CI ne remonte plus au-dessus de son dossier",
+     "java-version: '17' # Maestro exige Java 17+\n      - name: Version de Flutter attendue par le projet\n        id: sdk\n        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et\n        # « channel: stable » dérive tout seul : la CI passe au vert un jour et\n        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la\n        # version dans le projet. Absente, la sortie est vide et l'action\n        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.\n        run: |\n          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la\n          # racine du dépôt : dans un monorepo, il vit souvent là seulement.\n          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)",
+     "java-version: '17' # Maestro exige Java 17+\n      - name: Version de Flutter attendue par le projet\n        id: sdk\n        # Un projet épinglé par FVM ne compile pas avec la dernière stable, et\n        # « channel: stable » dérive tout seul : la CI passe au vert un jour et\n        # au rouge le lendemain sans qu'une ligne ait bougé. On lit donc la\n        # version dans le projet. Absente, la sortie est vide et l'action\n        # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.\n        run: |\n          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la\n          # racine du dépôt : dans un monorepo, il vit souvent là seulement.\n          top=$(pwd)"),
 ]
 
 

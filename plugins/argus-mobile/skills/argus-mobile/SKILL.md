@@ -238,11 +238,15 @@ emploie `find.bySemanticsIdentifier`, apparu en 3.27 ; `Semantics(identifier:)`,
 que les flows lisent, date de 3.19. Un job de CI fait tourner l'étage 1 à ce
 plancher (577). Flavors, plateformes présentes.
 
-⚠️ **Cherche `.fvmrc` ou `.fvm/` avant de lancer la moindre commande Flutter.**
-Un projet épinglé par FVM ne se construit PAS avec le `flutter` du PATH : la
-contrainte du `pubspec.yaml` rejette la version globale et **tout** échoue, de
-`pub get` au build. Le Makefile fourni le détecte seul, mais les commandes que
-tu tapes, non — utilise `fvm flutter` partout dès que l'un des deux existe. En
+⚠️ **Cherche `.fvmrc` (ou l'ancien `.fvm/fvm_config.json`) avant de lancer la
+moindre commande Flutter — dans le dossier de l'application ET dans ses dossiers
+parents.** Un projet épinglé par FVM ne se construit PAS avec le `flutter` du
+PATH : la contrainte du `pubspec.yaml` rejette la version globale et **tout**
+échoue, de `pub get` au build. Dans un monorepo, le `.fvmrc` vit souvent à la
+seule racine du dépôt : FVM le trouve depuis le sous-dossier, un `ls` du dossier
+de l'application ne le voit pas (583). Le Makefile fourni le détecte seul, avec
+le critère de FVM, mais les commandes que tu tapes, non — utilise `fvm flutter`
+partout dès que l'un des deux existe. En
 CI, c'est l'inverse : l'action installe la version demandée dans le PATH du
 runner, donc pas de `fvm` là-bas (il n'y est pas installé).
 
@@ -1575,7 +1579,7 @@ d'office dès qu'une ancre de racine est calculée plutôt qu'écrite en dur.
 
 **d. Un binaire installable.** Sinon guide : `make argus-build`, qui dérive la
 commande du projet. ⚠️ N'écris pas `flutter build apk --debug` en clair dès
-qu'un `.fvmrc` ou un `.fvm/` existe : la contrainte de SDK du `pubspec.yaml`
+qu'un `.fvmrc` existe, ici ou dans un dossier parent : la contrainte de SDK du `pubspec.yaml`
 rejette la version globale et le build échoue. Le Makefile et les scripts le
 dérivent ; ta ligne de commande, non.
 

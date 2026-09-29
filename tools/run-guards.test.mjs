@@ -2560,25 +2560,134 @@ test("la contre-épreuve du skill nomme son COUPLE, et le couple tient (482)", (
   assert.equal(avecFiltre, 0, 'et le filtre doit le faire disparaître, sinon la contre-épreuve ne sépare rien');
 });
 
-test('l\'épinglage se lit sur le disque, et les deux marqueurs comptent', () => {
+test('l\'épinglage se lit sur le disque, comme FVM le lit : ici ou chez un parent (583)', () => {
   // Le CÂBLAGE, pas la décision : sans lui, `usesFvm` pourrait rendre `false`
   // partout et les tests ci-dessus resteraient verts.
+  // 🔴 583 — Le critère est celui de FVM, MESURÉ sur FVM 4.0.5 : un `.fvmrc` ou
+  // l'ancien `.fvm/fvm_config.json`, dans le dossier courant OU CHEZ UN PARENT.
+  // Un simple dossier `.fvm/` n'en est pas un : FVM le traite comme l'absence
+  // de marque. (Il comptait depuis le 22/08, « un projet peut n'avoir que lui » :
+  // vrai d'un projet de l'ancienne forme — dont le dossier porte
+  // `fvm_config.json`, et c'est ce qui compte désormais.)
   const base = mkdtempSync(join(tmpdir(), 'argus-fvm-'));
+  const app = join(base, 'app');
+  mkdirSync(app);
   const avant = process.cwd();
   try {
-    process.chdir(base);
+    process.chdir(app);
     assert.equal(usesFvm(), false, 'un dossier nu n\'épingle rien');
 
-    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.32.0"}\n');
-    assert.equal(usesFvm(), true, '.fvmrc suffit');
+    writeFileSync(join(app, '.fvmrc'), '{"flutter":"3.32.0"}\n');
+    assert.equal(usesFvm(), true, '.fvmrc dans le dossier courant suffit');
     assert.equal(flutterCommand('flutter test'), 'fvm flutter test');
+    rmSync(join(app, '.fvmrc'));
 
+    // Le cas du monorepo : le `.fvmrc` à la seule racine du dépôt.
+    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.32.0"}\n');
+    assert.equal(usesFvm(), true,
+      'le .fvmrc d\'un dossier PARENT n\'est pas vu : dans un monorepo, Argus lance le Flutter du PATH (583)');
     rmSync(join(base, '.fvmrc'));
+
     mkdirSync(join(base, '.fvm'));
-    assert.equal(usesFvm(), true, 'le dossier .fvm aussi — un projet peut n\'avoir que lui');
+    assert.equal(usesFvm(), false,
+      'un simple dossier .fvm/ épingle : FVM, lui, le traite comme l\'absence de marque (mesuré, 583)');
+    writeFileSync(join(base, '.fvm', 'fvm_config.json'), '{"flutterSdkVersion":"3.32.0"}\n');
+    assert.equal(usesFvm(), true, 'l\'ancien .fvm/fvm_config.json d\'un parent n\'est pas lu (583)');
   } finally {
     process.chdir(avant);
     rmSync(base, { recursive: true, force: true });
+  }
+});
+
+// ── 583 · LES AUTRES SITES QUI DÉCIDENT DE `fvm` — EXÉCUTÉS, PAS LUS ─────────
+// Sept sites décidaient de `fvm` en ne regardant que le dossier courant : le
+// Makefile, le script npm des gardes, `usesFvm`, et quatre étapes de la CI. Sur
+// un monorepo dont le `.fvmrc` vit à la seule racine, ils lançaient le Flutter
+// du PATH — mesuré : 3.32.0 là où FVM lançait 3.41.9.
+const SCAFFOLD_583 = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+
+/** Un monorepo jetable : le dépôt, et l'application dans `app/`. */
+const monorepo583 = () => {
+  const base = mkdtempSync(join(tmpdir(), 'argus-583-'));
+  const app = join(base, 'app');
+  mkdirSync(app);
+  execFileSync('git', ['init', '-q', base]);
+  return { base, app };
+};
+
+test('583 — le Makefile choisit fvm avec le critère de FVM, la racine du monorepo comprise', () => {
+  const { base, app } = monorepo583();
+  try {
+    cpSync(join(SCAFFOLD_583, 'Makefile'), join(app, 'Makefile'));
+    // Le VRAI Makefile, inclus tel quel : on lit ce qu'il décide, pas son texte.
+    writeFileSync(join(base, 'lire.mk'), 'include Makefile\nargus-lire-flutter:\n\t@echo "FLUTTER=$(FLUTTER)"\n');
+    const lire = () => execFileSync('make', ['--no-print-directory', '-f', join(base, 'lire.mk'), 'argus-lire-flutter'],
+      { cwd: app, encoding: 'utf8' }).trim().split('\n').pop();
+    assert.equal(lire(), 'FLUTTER=flutter', 'sans aucune marque, le Makefile passe quand même par fvm');
+    mkdirSync(join(base, '.fvm'));
+    assert.equal(lire(), 'FLUTTER=flutter', 'un simple dossier .fvm/ chez un parent fait passer par fvm — FVM l\'ignore (583)');
+    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.32.0"}\n');
+    assert.equal(lire(), 'FLUTTER=fvm flutter',
+      'le .fvmrc de la racine du monorepo n\'est pas vu : les cibles lancent le Flutter du PATH (583)');
+    rmSync(join(base, '.fvmrc'));
+    writeFileSync(join(base, '.fvm', 'fvm_config.json'), '{"flutterSdkVersion":"3.32.0"}\n');
+    assert.equal(lire(), 'FLUTTER=fvm flutter', 'l\'ancien .fvm/fvm_config.json d\'un parent n\'est pas vu (583)');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('583 — le script npm des gardes passe par fvm comme le Makefile', () => {
+  const script = JSON.parse(readFileSync(join(SCAFFOLD_583, 'package.snippet.json'), 'utf8')).scripts['argus:guards'];
+  assert.ok(script, 'le snippet n\'a plus de script argus:guards');
+  const { base, app } = monorepo583();
+  const bin = join(base, 'bin');
+  try {
+    mkdirSync(bin);
+    // Deux faux exécutables qui DISENT lequel a été appelé.
+    for (const [nom, mot] of [['fvm', 'FVM'], ['flutter', 'FLUTTER']]) {
+      writeFileSync(join(bin, nom), `#!/bin/sh\necho "${mot} $*"\n`);
+      chmodSync(join(bin, nom), 0o755);
+    }
+    const jouer = () => execFileSync('sh', ['-c', script],
+      { cwd: app, env: { ...process.env, PATH: `${bin}:${process.env.PATH}` }, encoding: 'utf8' }).trim();
+    assert.equal(jouer(), 'FLUTTER test test/argus', 'sans marque, le script passe par fvm');
+    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.32.0"}\n');
+    assert.equal(jouer(), 'FVM flutter test test/argus',
+      'le .fvmrc de la racine du monorepo n\'est pas vu par le script npm (583)');
+  } finally {
+    rmSync(base, { recursive: true, force: true });
+  }
+});
+
+test('583 — la CI lit la version dans le .fvmrc le plus proche, sans sortir du dépôt', () => {
+  const wf = readFileSync(join(SCAFFOLD_583, '.github/workflows/argus-mobile.yml'), 'utf8');
+  const blocs = [...wf.matchAll(/id: sdk\n(?:[ ]+#.*\n)*[ ]+run: \|\n((?:[ ]{10}.*\n)+)/g)].map((m) => m[1]);
+  assert.equal(blocs.length, 4, `quatre étapes de version attendues dans le workflow, ${blocs.length} lue(s)`);
+  for (const b of blocs) assert.equal(b, blocs[0], 'les quatre étapes de version ont divergé : une seule suit le critère');
+  const script = blocs[0].split('\n').map((l) => l.slice(10)).join('\n');
+
+  // Le dépôt vit DANS un dossier qui porte lui-même un `.fvmrc` : la CI ne doit
+  // pas le lire — au-dessus du dépôt, rien n'appartient au projet.
+  const dehors = mkdtempSync(join(tmpdir(), 'argus-583-ci-'));
+  try {
+    const base = join(dehors, 'depot');
+    const app = join(base, 'app');
+    mkdirSync(app, { recursive: true });
+    execFileSync('git', ['init', '-q', base]);
+    writeFileSync(join(dehors, '.fvmrc'), '{"flutter":"9.9.9"}\n');
+    const sortie = join(dehors, 'github-output');
+    const jouer = () => {
+      writeFileSync(sortie, '');
+      execFileSync('bash', ['-c', script], { cwd: app, env: { ...process.env, GITHUB_OUTPUT: sortie }, encoding: 'utf8' });
+      return readFileSync(sortie, 'utf8').trim();
+    };
+    assert.equal(jouer(), '', 'la CI lit un .fvmrc situé AU-DESSUS du dépôt (583)');
+    writeFileSync(join(base, '.fvmrc'), '{"flutter":"3.27.0"}\n');
+    assert.equal(jouer(), 'version=3.27.0',
+      'la CI ne lit pas le .fvmrc de la racine du monorepo : elle installe une autre version que celle épinglée (583)');
+  } finally {
+    rmSync(dehors, { recursive: true, force: true });
   }
 });
 

@@ -103,10 +103,19 @@ jobs:
         # version dans le projet. Absente, la sortie est vide et l'action
         # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
         run: |
-          if [ -f .fvmrc ]; then
-            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la
+          # racine du dépôt : dans un monorepo, il vit souvent là seulement.
+          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+          d=$(pwd); f=
+          while :; do
+            if [ -f "$d/.fvmrc" ]; then f="$d/.fvmrc"; break; fi
+            [ "$d" = "$top" ] || [ "$d" = / ] && break
+            d=$(dirname "$d")
+          done
+          if [ -n "$f" ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f")
             echo "version=$v" >> "$GITHUB_OUTPUT"
-            echo "Version épinglée : ${v:-aucune}"
+            echo "Version épinglée : ${v:-aucune} ($f)"
           fi
       # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
       # version demandée directement dans le PATH du runner. Préfixer les
@@ -205,10 +214,19 @@ jobs:
         # version dans le projet. Absente, la sortie est vide et l'action
         # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
         run: |
-          if [ -f .fvmrc ]; then
-            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la
+          # racine du dépôt : dans un monorepo, il vit souvent là seulement.
+          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+          d=$(pwd); f=
+          while :; do
+            if [ -f "$d/.fvmrc" ]; then f="$d/.fvmrc"; break; fi
+            [ "$d" = "$top" ] || [ "$d" = / ] && break
+            d=$(dirname "$d")
+          done
+          if [ -n "$f" ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f")
             echo "version=$v" >> "$GITHUB_OUTPUT"
-            echo "Version épinglée : ${v:-aucune}"
+            echo "Version épinglée : ${v:-aucune} ($f)"
           fi
       # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
       # version demandée directement dans le PATH du runner. Préfixer les
@@ -286,10 +304,19 @@ jobs:
         # version dans le projet. Absente, la sortie est vide et l'action
         # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
         run: |
-          if [ -f .fvmrc ]; then
-            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la
+          # racine du dépôt : dans un monorepo, il vit souvent là seulement.
+          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+          d=$(pwd); f=
+          while :; do
+            if [ -f "$d/.fvmrc" ]; then f="$d/.fvmrc"; break; fi
+            [ "$d" = "$top" ] || [ "$d" = / ] && break
+            d=$(dirname "$d")
+          done
+          if [ -n "$f" ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f")
             echo "version=$v" >> "$GITHUB_OUTPUT"
-            echo "Version épinglée : ${v:-aucune}"
+            echo "Version épinglée : ${v:-aucune} ($f)"
           fi
       # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
       # version demandée directement dans le PATH du runner. Préfixer les
@@ -457,10 +484,19 @@ jobs:
         # version dans le projet. Absente, la sortie est vide et l'action
         # retombe sur le channel — le comportement d'avant, pour qui n'épingle pas.
         run: |
-          if [ -f .fvmrc ]; then
-            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .fvmrc)
+          # 583 — le `.fvmrc` le plus proche, du dossier de travail jusqu'à la
+          # racine du dépôt : dans un monorepo, il vit souvent là seulement.
+          top=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+          d=$(pwd); f=
+          while :; do
+            if [ -f "$d/.fvmrc" ]; then f="$d/.fvmrc"; break; fi
+            [ "$d" = "$top" ] || [ "$d" = / ] && break
+            d=$(dirname "$d")
+          done
+          if [ -n "$f" ]; then
+            v=$(sed -n 's/.*"flutter"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f")
             echo "version=$v" >> "$GITHUB_OUTPUT"
-            echo "Version épinglée : ${v:-aucune}"
+            echo "Version épinglée : ${v:-aucune} ($f)"
           fi
       # ⚠️ Pas de `fvm` ici, contrairement au Makefile : l'action installe la
       # version demandée directement dans le PATH du runner. Préfixer les

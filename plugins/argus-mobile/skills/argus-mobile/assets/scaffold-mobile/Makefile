@@ -13,7 +13,12 @@
 # PATH : la contrainte du pubspec rejette la version globale, et toutes les
 # cibles ci-dessous échouent. On dérive donc la commande du projet lui-même
 # plutôt que de demander à chacun d'éditer ce fichier.
-FLUTTER := $(shell [ -f .fvmrc ] || [ -d .fvm ] && echo "fvm flutter" || echo flutter)
+# 🔴 583 — Le critère est CELUI DE FVM, mesuré : un `.fvmrc`, ou l'ancien
+# `.fvm/fvm_config.json`, dans ce dossier OU CHEZ UN PARENT. Dans un monorepo, le
+# `.fvmrc` vit souvent à la seule racine du dépôt ; FVM le trouve depuis le
+# sous-dossier de l'application, et ce test ne regardait que `.` — donc le
+# Flutter du PATH. Un simple dossier `.fvm/` ne compte pas : FVM l'ignore aussi.
+FLUTTER := $(shell d=$$(pwd); while :; do if [ -f "$$d/.fvmrc" ] || [ -f "$$d/.fvm/fvm_config.json" ]; then echo "fvm flutter"; exit 0; fi; [ "$$d" = / ] && break; d=$$(dirname "$$d"); done; echo flutter)
 
 # ⚠️ UN SEUL SITE CONNAÎT LE CHEMIN DU MOTEUR, et c'est celui-ci. Le chemin était
 # écrit dix-neuf fois dans ce fichier : autant de copies d'une même décision, que
