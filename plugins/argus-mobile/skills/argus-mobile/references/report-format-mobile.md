@@ -163,6 +163,10 @@ l'avertissement de locale au lieu de le traiter (480).
   "memoryMb": 187, "binarySizeMb": 42.1
 }
 ```
+`binaryHeaviestAbi` (588) : pour un APK à plusieurs ABI, la tranche la plus lourde
+— `{abi, trancheMb, universelMb, nAbi}` —, celle que `QAM-PERF-SIZE` juge ;
+`null` pour un binaire à une ABI, pesé entier.
+
 `firstLaunchMs` est isolé volontairement : c'est un état réel, vécu une fois par
 chaque utilisateur, et le moyenner avec le régime stabilisé ne décrirait ni l'un
 ni l'autre.

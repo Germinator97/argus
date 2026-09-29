@@ -109,6 +109,7 @@ import { auditAndroidManifest, auditApk, auditObfuscation, auditObfuscationIos, 
 import { binaryToWeigh } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { launchOutcome } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { thresholdFinding } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
+import { entreesZip, peseeParAbi, tranchesParAbi } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { caveatDebug, hostContext, launchTimeFindings, startupMetricLabel } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { baselineCropFor, baselineCrops, baselineDeviceDrift, cropFor, deviceStamp, installHint, screensWithMovedCrop } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { buildCoverage, stageOneOnly } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
@@ -19486,6 +19487,94 @@ test('587 — le runner désigne le premier lancement là où il sait s\'il a in
   assert.match(src, /startupFindings\(startup, reportDevice, platform, config,\n\s*platform === 'android' \? installedVariant\(resolved\.udid, appId\) : '', premier\)/,
     'le verdict ne reçoit plus le premier lancement : il le juge avec les autres (587)');
   assert.match(src, /firstAfterInstall: premier \? premier\.flow : null/, 'le rapport ne nomme plus le flow écarté (587)');
+});
+
+// ── 588 · UN APK UNIVERSEL SE JUGE SUR SA TRANCHE LA PLUS LOURDE ─────────────
+// Deux runs de suite : la release du scan est un APK à trois ABI, 67,7 Mo,
+// jugé contre un budget de 60 quand la tranche la plus lourde pèse ~30,7.
+// Tranché par Germinator : peser la plus grosse ABI, la taille universelle
+// restant dans le texte. Les montages sont de VRAIS zips, écrits par Python —
+// des octets aléatoires, donc incompressibles.
+const apk588 = (/** @type {Array<[string, number]>} */ contenu) => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-588-'));
+  const apk = join(dir, 'app-release.apk');
+  const py = 'import os, zipfile, json, sys\n'
+    + 'p, contenu = sys.argv[1], json.loads(sys.argv[2])\n'
+    + 'with zipfile.ZipFile(p, "w", zipfile.ZIP_DEFLATED) as z:\n'
+    + '    for nom, n in contenu:\n'
+    + '        z.writestr(nom, os.urandom(n))\n'
+    + 'with zipfile.ZipFile(p) as z:\n'
+    + '    print(json.dumps({i.filename: i.compress_size for i in z.infolist()}))\n';
+  const tailles = JSON.parse(execFileSync('python3', ['-c', py, apk, JSON.stringify(contenu)], { encoding: 'utf8' }));
+  return { dir, apk, tailles };
+};
+const UNIVERSEL_588 = /** @type {Array<[string, number]>} */ ([['lib/arm64-v8a/libapp.so', 3_000_000],
+  ['lib/armeabi-v7a/libapp.so', 2_000_000], ['lib/x86_64/libapp.so', 2_500_000], ['classes.dex', 1_000_000]]);
+
+test('588 — le répertoire central de l\'APK est lu tel que le zip l\'écrit', () => {
+  const { dir, apk, tailles } = apk588(UNIVERSEL_588);
+  try {
+    const lues = entreesZip(apk);
+    assert.ok(lues, 'le lecteur ne sait pas lire un zip écrit par Python');
+    assert.deepEqual(Object.fromEntries(lues.map((e) => [e.name, e.compressed])), tailles,
+      'les tailles compressées lues diffèrent de celles du zip : la pesée par ABI serait fausse (588)');
+    const autre = join(dir, 'pas-un-zip.apk');
+    writeFileSync(autre, 'ceci n\'est pas un zip');
+    assert.equal(entreesZip(autre), null, 'un fichier qui n\'est pas un zip rend des entrées au lieu de null');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('588 — un APK universel se pèse par tranche, et le verdict juge la plus lourde', () => {
+  const { dir, apk, tailles } = apk588(UNIVERSEL_588);
+  try {
+    const taille = readFileSync(apk).length;
+    const { abis, tranches } = tranchesParAbi(entreesZip(apk) ?? [], taille);
+    assert.deepEqual(abis, ['arm64-v8a', 'armeabi-v7a', 'x86_64'], 'les ABI de l\'APK ne sont pas toutes lues');
+    const natif = tailles['lib/arm64-v8a/libapp.so'] + tailles['lib/armeabi-v7a/libapp.so'] + tailles['lib/x86_64/libapp.so'];
+    assert.equal(tranches['arm64-v8a'], taille - natif + tailles['lib/arm64-v8a/libapp.so'],
+      'la tranche d\'une ABI n\'est pas l\'APK moins les bibliothèques des AUTRES ABI (588)');
+    const p = peseeParAbi(apk);
+    assert.ok(p, 'un APK à trois ABI n\'est pas pesé par tranche (588)');
+    assert.equal(p.abi, 'arm64-v8a', 'la tranche jugée n\'est pas la plus lourde (588)');
+    assert.equal(p.nAbi, 3);
+
+    const pese = { path: 'build/app/outputs/flutter-apk/app-release.apk', isRelease: true };
+    // Un budget entre la tranche et l'universel : la tranche livrée le tient.
+    const entre = { thresholds: { binarySizeMb: (p.trancheMb + p.universelMb) / 2 } };
+    assert.equal(sizeFinding(pese, p.universelMb, entre, 'android', 'x', p), null,
+      'un APK universel est jugé sur sa taille entière, alors que la tranche livrée tient le budget (588)');
+    // L'autre moitié : sans pesée par ABI, le fichier entier est jugé — ce garde mesure bien.
+    assert.ok(sizeFinding(pese, p.universelMb, entre, 'android', 'x', null),
+      'sans pesée par ABI, la taille entière ne rend plus de verdict : ce garde ne mesure rien');
+    const f = sizeFinding(pese, p.universelMb, { thresholds: { binarySizeMb: p.trancheMb / 2 } }, 'android', 'x', p);
+    assert.ok(f, 'une tranche au-dessus du budget passe (588)');
+    assert.match(f.actual, /la tranche arm64-v8a, la plus lourde d'un APK universel à 3 ABI/,
+      'le finding ne dit plus qu\'il juge une tranche d\'un APK universel (588)');
+    assert.doesNotMatch(f.suggestedFix, /Profiler le chemin/, 'le remède d\'une taille dit encore de profiler un chemin (588)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('588 — un APK à une seule ABI se pèse entier', () => {
+  const { dir, apk } = apk588([['lib/arm64-v8a/libapp.so', 1_000_000], ['classes.dex', 500_000]]);
+  try {
+    assert.equal(peseeParAbi(apk), null, 'un APK à une ABI est pesé par tranche : il est déjà ce qui est livré (588)');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('588 — perf pèse UNE fois, et passe la pesée au verdict comme au relevé', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs'), 'utf8');
+  assert.match(src, /const parAbi = pese\.isRelease \? peseeParAbi\(resolve\(process\.cwd\(\), pese\.path\)\) : null;/,
+    'la release n\'est plus pesée par ABI (588)');
+  assert.match(src, /sizeFinding\(pese, sizeMb, config, platform, buildRelease, parAbi\),/,
+    'le verdict de taille ne reçoit plus la pesée par ABI : il juge l\'APK universel entier (588)');
+  assert.match(src, /binaryHeaviestAbi: parAbi,/, 'le relevé ne porte plus la tranche jugée (588)');
 });
 
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────

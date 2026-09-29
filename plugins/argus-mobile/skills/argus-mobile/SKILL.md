@@ -1885,6 +1885,13 @@ monitoring rend ses erreurs illisibles. Une carte qu'un script du projet écrit
 à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de
 publication et l'envoi de ses symboles.**
 
+📌 **Un APK universel se juge sur sa tranche la plus lourde (588).** Il porte les
+bibliothèques natives de chaque ABI ; un appareil n'en reçoit qu'une. `argus-perf`
+lit les ABI dans le répertoire central de l'APK et juge `binarySizeMb` sur la
+tranche la plus lourde — l'APK moins les bibliothèques des autres ABI —, la taille
+universelle restant dans le texte (`metrics.binaryHeaviestAbi`). Mesuré au run
+107 : 67,7 Mo à trois ABI, ~30,7 pour la plus lourde, contre un budget de 60.
+
 ⚠️ **LA SÉQUENCE PÉRIMAIT SON PROPRE RELEVÉ, ET C'EST ELLE QUI LE DISAIT** (461).
 `argus-guards` est en deuxième position, `argus-report` en dernière : entre les
 deux il y a deux passes device, une boucle visuelle et un build de release.

@@ -23,7 +23,7 @@
  * Codes de sortie : 0 vert · 1 major · 2 blocker/critical ou outillage absent.
  */
 
-import { existsSync, realpathSync, statSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, openSync, readSync, realpathSync, statSync } from 'node:fs';
 import { cpus, loadavg } from 'node:os';
 import { join, resolve } from 'node:path';
 import process from 'node:process';
@@ -284,6 +284,92 @@ function binarySizeMb(path) {
   return Number.isFinite(kb) ? Math.round((kb / 1024) * 10) / 10 : null;
 }
 
+/**
+ * 588 — Les entrées d'un zip (un APK), lues dans son RÉPERTOIRE CENTRAL : nom et
+ * taille compressée. Sans dépendance, et sans charger le fichier — seulement sa
+ * fin et le répertoire. `null` si ce n'est pas un zip lisible ici (zip64
+ * compris) : on ne pèse alors pas par ABI, plutôt que de peser faux.
+ * @param {string} path @returns {Array<{name:string, compressed:number}>|null}
+ */
+export function entreesZip(path) {
+  let fd = -1;
+  try {
+    fd = openSync(path, 'r');
+    const taille = fstatSync(fd).size;
+    const queue = Math.min(taille, 22 + 65535);
+    const fin = Buffer.alloc(queue);
+    readSync(fd, fin, 0, queue, taille - queue);
+    let eocd = -1;
+    for (let i = queue - 22; i >= 0; i -= 1) {
+      if (fin.readUInt32LE(i) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd === -1) return null;
+    const total = fin.readUInt16LE(eocd + 10);
+    const tailleRep = fin.readUInt32LE(eocd + 12);
+    const debutRep = fin.readUInt32LE(eocd + 16);
+    if (total === 0xffff || debutRep === 0xffffffff) return null;
+    const rep = Buffer.alloc(tailleRep);
+    readSync(fd, rep, 0, tailleRep, debutRep);
+    /** @type {Array<{name:string, compressed:number}>} */
+    const entrees = [];
+    let q = 0;
+    for (let k = 0; k < total; k += 1) {
+      if (rep.readUInt32LE(q) !== 0x02014b50) return null;
+      const lNom = rep.readUInt16LE(q + 28);
+      entrees.push({ name: rep.toString('utf8', q + 46, q + 46 + lNom), compressed: rep.readUInt32LE(q + 20) });
+      q += 46 + lNom + rep.readUInt16LE(q + 30) + rep.readUInt16LE(q + 32);
+    }
+    return entrees;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== -1) closeSync(fd);
+  }
+}
+
+/**
+ * 588 — Ce que pèse la tranche de chaque ABI d'un APK : le fichier, moins les
+ * bibliothèques natives des AUTRES ABI. C'est ce que le store livre à un
+ * appareil, quand l'APK universel les porte toutes — mesuré au run 107 :
+ * 67,7 Mo à trois ABI, ~30,7 pour la plus lourde, contre un budget de 60.
+ * @param {Array<{name:string, compressed:number}>} entrees @param {number} tailleOctets
+ * @returns {{abis:string[], tranches:Record<string, number>}} tranches en octets
+ */
+export function tranchesParAbi(entrees, tailleOctets) {
+  /** @type {Map<string, number>} */
+  const parAbi = new Map();
+  for (const e of entrees ?? []) {
+    const m = /^lib\/([^/]+)\//.exec(e.name);
+    if (m) parAbi.set(m[1], (parAbi.get(m[1]) ?? 0) + e.compressed);
+  }
+  const abis = [...parAbi.keys()].sort();
+  const natif = [...parAbi.values()].reduce((a, b) => a + b, 0);
+  /** @type {Record<string, number>} */
+  const tranches = {};
+  for (const a of abis) tranches[a] = tailleOctets - (natif - (parAbi.get(a) ?? 0));
+  return { abis, tranches };
+}
+
+/**
+ * 588 — La pesée d'un APK UNIVERSEL : sa taille entière, et sa tranche la plus
+ * lourde. `null` pour un APK à une ABI (ou sans bibliothèque native), qu'on pèse
+ * entier — c'est déjà ce qui est livré — et pour tout ce qui n'est pas un APK
+ * lisible.
+ * @param {string} path
+ * @returns {{universelMb:number, abi:string, trancheMb:number, nAbi:number}|null}
+ */
+export function peseeParAbi(path) {
+  if (!/\.apk$/i.test(String(path ?? '')) || !existsSync(path)) return null;
+  const entrees = entreesZip(path);
+  if (!entrees) return null;
+  const taille = statSync(path).size;
+  const { abis, tranches } = tranchesParAbi(entrees, taille);
+  if (abis.length < 2) return null;
+  const abi = abis.reduce((a, b) => (tranches[b] > tranches[a] ? b : a));
+  const mo = (/** @type {number} */ o) => Math.round((o / MB) * 10) / 10;
+  return { universelMb: mo(taille), abi, trancheMb: mo(tranches[abi]), nAbi: abis.length };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Findings
 // ═══════════════════════════════════════════════════════════════════════════
@@ -423,12 +509,29 @@ export function hostContext(partageLeCpu) {
  * tâche visible.
  * @param {{path:string, isRelease:boolean}} pese @param {number|null} sizeMb
  * @param {any} config @param {string} platform @param {string} buildCmd
+ * @param {{universelMb:number, abi:string, trancheMb:number, nAbi:number}|null} [parAbi] la pesée d'un APK universel (588)
  * @returns {any|null}
  */
-export function sizeFinding(pese, sizeMb, config, platform, buildCmd) {
+export function sizeFinding(pese, sizeMb, config, platform, buildCmd, parAbi = null) {
   const budget = (config?.thresholds ?? {}).binarySizeMb;
   const variante = /-debug\.(apk|aab)$/i.test(String(pese.path ?? '')) ? 'debug' : '';
-  if (pese.isRelease) return thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', sizeMb, budget, 'Mo', 'performance', variante);
+  if (pese.isRelease) {
+    // 🔴 588 — UN APK UNIVERSEL N'EST PAS CE QUE LE STORE LIVRE. Il porte les
+    // bibliothèques de chaque ABI ; un appareil n'en reçoit qu'une. On juge la
+    // tranche la plus lourde, et la taille universelle reste dans le texte.
+    const juge = parAbi ? parAbi.trancheMb : sizeMb;
+    const f = thresholdFinding('QAM-PERF-SIZE', 'Taille du binaire', juge, budget, 'Mo', 'performance', variante);
+    if (!f) return null;
+    if (parAbi) {
+      f.actual = `${parAbi.trancheMb} Mo — la tranche ${parAbi.abi}, la plus lourde d'un APK universel à `
+        + `${parAbi.nAbi} ABI (${parAbi.universelMb} Mo en tout)`;
+    }
+    // Le remède générique — profiler un chemin — ne s'applique pas à une taille.
+    f.suggestedFix = `Regarde ce qui pèse avant de réduire : \`unzip -lv ${pese.path || '<binaire>'} | sort -k3 -n | tail\``
+      + ' classe les entrées par taille compressée — bibliothèques natives, ressources, polices, assets.'
+      + (variante === 'debug' ? `\n${caveatDebug('QAM-PERF-SIZE')}` : '');
+    return f;
+  }
 
   const cle = platform === 'ios' ? 'iosScan' : 'androidScan';
   const declare = String((config?.build ?? {})[cle] ?? '');
@@ -661,6 +764,9 @@ function main() {
   // L'état de l'hôte, relevé À L'INSTANT de la mesure et non après coup. Un
   // `emulator-<port>` partage le CPU de la machine ; un appareil physique non.
   const hote = hostContext(/^emulator-/.test(udid));
+  // 588 — un APK universel se juge sur sa tranche la plus lourde : pesée UNE fois,
+  // pour que le verdict et le relevé parlent de la même tranche.
+  const parAbi = pese.isRelease ? peseeParAbi(resolve(process.cwd(), pese.path)) : null;
   const findings = [
     // ⚠️ `variante` ET `hote` sur les DEUX démarrages : ce sont les métriques
     // les plus sensibles au binaire mesuré comme à la machine qui mesure, et
@@ -668,7 +774,7 @@ function main() {
     // l'autre — pendant que la mémoire, moins grave, portait sa réserve.
     ...launchTimeFindings(cold, warm, thresholds, variante, hote),
     thresholdFinding('QAM-PERF-MEM', 'Mémoire (TOTAL PSS)', memoryMb, thresholds.memoryMb, 'Mo', 'performance', variante),
-    sizeFinding(pese, sizeMb, config, platform, buildRelease),
+    sizeFinding(pese, sizeMb, config, platform, buildRelease, parAbi),
   ].filter(Boolean);
 
   const report = {
@@ -686,6 +792,9 @@ function main() {
       coldStartMs: cold.medianMs, coldStartSamples: cold.samples,
       warmStartMs: warm.medianMs, warmStartSamples: warm.samples, warmStartMetric: warm.metric,
       memoryMb, binarySizeMb: sizeMb,
+      // 588 — la tranche la plus lourde d'un APK universel, celle que le verdict
+      // juge ; `null` pour un binaire à une ABI, pesé entier.
+      binaryHeaviestAbi: parAbi,
       // Combien de lancements ont été tués au plafond : sans ce compte, une
       // médiane calculée sur deux échantillons au lieu de cinq se lit comme
       // n'importe quelle autre.

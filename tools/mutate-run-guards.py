@@ -464,8 +464,8 @@ MUTATIONS = [
     # mais un VERDICT rendu sur le mauvais binaire — d'où des mutations qui
     # portent sur la décision de juger, pas sur la mesure.
     ("perf", "le binaire de test redevient jugé contre le budget",
-     "  if (pese.isRelease) return thresholdFinding(",
-     "  if (true) return thresholdFinding("),
+     "  if (pese.isRelease) {\n    // 🔴 588",
+     "  if (true) {\n    // 🔴 588"),
     ("perf", "la mesure qui reste à prendre redevient bloquante",
      "    dimension: 'performance', severity: 'info',",
      "    dimension: 'performance', severity: 'major',"),
@@ -3712,6 +3712,39 @@ MUTATIONS = [
     ("run", "587 sexies · le premier est désigné sans lire si ce run a installé",
      "  const premier = premierApresInstallation(bundles, startup, opts.install && !opts.dryRun);",
      "  const premier = premierApresInstallation(bundles, startup, true);"),
+    # ── 588 · un APK universel se juge sur sa tranche la plus lourde ────────
+    # Le lecteur prend la taille DÉCOMPRESSÉE pour la taille compressée.
+    ("perf", "588 · le répertoire central est lu à la mauvaise taille",
+     "compressed: rep.readUInt32LE(q + 20) });",
+     "compressed: rep.readUInt32LE(q + 24) });"),
+    # La tranche d'une ABI redevient l'APK entier.
+    ("perf", "588 bis · la tranche d'une ABI redevient l'APK entier",
+     "  for (const a of abis) tranches[a] = tailleOctets - (natif - (parAbi.get(a) ?? 0));",
+     "  for (const a of abis) tranches[a] = tailleOctets;"),
+    # La tranche jugée devient la plus LÉGÈRE.
+    ("perf", "588 ter · la tranche jugée devient la plus légère",
+     "  const abi = abis.reduce((a, b) => (tranches[b] > tranches[a] ? b : a));",
+     "  const abi = abis.reduce((a, b) => (tranches[b] < tranches[a] ? b : a));"),
+    # Un APK à une seule ABI est pesé par tranche.
+    ("perf", "588 quater · un APK à une seule ABI est pesé par tranche",
+     "  if (abis.length < 2) return null;",
+     "  if (abis.length < 1) return null;"),
+    # Le verdict juge de nouveau l'APK universel entier.
+    ("perf", "588 quinquies · le verdict juge de nouveau l'APK universel entier",
+     "    const juge = parAbi ? parAbi.trancheMb : sizeMb;",
+     "    const juge = sizeMb;"),
+    # Le finding ne dit plus ce qu'il juge.
+    ("perf", "588 sexies · le finding ne dit plus qu'il juge une tranche",
+     "    if (parAbi) {\n      f.actual =",
+     "    if (false) {\n      f.actual ="),
+    # Le remède d'une taille redevient « profiler un chemin ».
+    ("perf", "588 septies · le remède d'une taille redevient celui d'un chemin",
+     "    f.suggestedFix = `Regarde ce qui pèse avant de réduire",
+     "    f.suggestedFixAbandonne = `Regarde ce qui pèse avant de réduire"),
+    # Le câblage : le verdict ne reçoit plus la pesée.
+    ("perf", "588 octies · le verdict de taille ne reçoit plus la pesée par ABI",
+     "    sizeFinding(pese, sizeMb, config, platform, buildRelease, parAbi),",
+     "    sizeFinding(pese, sizeMb, config, platform, buildRelease, null),"),
 ]
 
 
