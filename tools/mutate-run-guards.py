@@ -3525,10 +3525,12 @@ MUTATIONS = [
     ("permcontacts", "578 septies · les contacts n'attendent plus le titre de leur fenêtre",
      "text: '(?s).*(souhaite accéder à vos contacts|would like to access your Contacts).*'",
      "text: '(?s).*(?<![\\s\\S])(Continuer|Continue)(?![\\s\\S]).*'"),
-    # Android ne délègue plus au geste commun : il accepte par libellé.
+    # Android ne délègue plus au geste commun : il accepte par libellé. Le
+    # sélecteur muté est ENCADRÉ et ancré — sinon le garde de l'encadrement
+    # tombait le premier, et celui de la délégation n'était jamais éprouvé.
     ("permcontacts", "578 octies · Android accepte les contacts par libellé",
      "\n      platform: Android\n    file: permission-accepter.yaml",
-     "\n      platform: Android\n    commands:\n      - tapOn:\n          text: 'Allow'"),
+     "\n      platform: Android\n    commands:\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Allow|Autoriser)(?![\\s\\S]).*'"),
     # Le runner ne lit plus le geste des contacts : la branche passe pour n'en avoir aucun.
     ("run", "578 nonies · le geste des contacts n'est plus lu",
      "/permission-(accepter-contacts|accepter|refuser)\\.yaml/",
