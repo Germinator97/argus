@@ -5097,12 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **580**, mesuré le 29/09 par la sonde iOS du 572
-(section « Mesuré par la sonde iOS du 572 », en fin de fichier) : une fenêtre
-orpheline qui survit à `clearState`. Le **578** et le **579** sont fermés : iOS
-accepte sur les libellés mesurés, les contacts en deux gestes, et `resilience`
-ne compte sur iOS que la fenêtre des notifications. Les **564** à **577** sont
-fermés —
+✅ **Rien d'ouvert.** Les **578** à **580**, mesurés le 29/09 par la sonde iOS du
+572 (section « Mesuré par la sonde iOS du 572 », en fin de fichier), sont fermés
+le jour même : iOS accepte sur les libellés mesurés et les contacts en deux
+gestes, `resilience` ne compte sur iOS que la fenêtre des notifications, et le
+geste d'invite referme « Ne pas autoriser », puisqu'une fenêtre laissée ouverte
+survit à `clearState`. Les **564** à **577** étaient fermés —
 les huit du run 106 d'abord, puis les cinq que sa correction de terrain a rendus,
 puis le **577** : le plancher Flutter annoncé était faux, il est désormais celui
 qu'un job de CI fait tourner.
@@ -14134,7 +14134,7 @@ strict — « une fenêtre qui reste, c'est une branche qui manque ».
 
 ### 580. Sur iOS, une fenêtre de permission laissée ouverte survit à `clearState` et recouvre la suite
 
-**Ouvert le 29/09/2026 · OUVERT** — mesuré par accident : une fenêtre de la
+**Ouvert le 29/09/2026 · CLOS** — mesuré par accident : une fenêtre de la
 caméra laissée ouverte a survécu à **six** `launchApp: clearState` — arrêt,
 désinstallation, réinstallation — et les a fait échouer tous, l'application
 neuve tournant dessous. Sur Android, la fenêtre meurt avec l'application.
@@ -14151,3 +14151,22 @@ neuve tournant dessous. Sur Android, la fenêtre meurt avec l'application.
 - Remède, sans arbitrage à rendre : « Ne pas autoriser » dans le sélecteur de
   `dismiss-system-alerts`, ancré comme ceux des sous-flows — un bouton système
   porte son seul libellé —, et les deux notes réécrites.
+
+#### ✅ Fermé le jour même — le geste d'invite referme « Ne pas autoriser », ancré
+
+- `dismiss-system-alerts.yaml` referme aussi « Ne pas autoriser », et son
+  sélecteur s'ancre comme ceux des sous-flows de permission : « Tout refuser » ou
+  « Ne pas autoriser les notifications », textes d'application, ne sont plus
+  touchés. Fichier du projet : le correctif atteint les installations neuves, un
+  projet déjà installé garde le sien.
+- Les deux notes disent l'exception de l'anglais (579), et celle de
+  `launch-clean` que la fenêtre survit à `clearState` ; le JSDoc du geste et le
+  SKILL aussi.
+- Remesuré sur la sonde, en français : une fenêtre de la caméra laissée
+  ouverte, puis le vrai `launch-clean` — celui d'avant le correctif échoue sous
+  elle, celui de HEAD la referme et atteint l'accueil.
+- Cinq mutations — le libellé retiré, l'ancre de tête retirée, la condition
+  réordonnée que seule l'égalité peut voir, et chacune des deux phrases de la
+  note —, plus les huit qui visaient déjà ces deux fichiers, le 388 réancré
+  compris : **13/13 TOMBE**.
+- Suite 648/648, 676 mutations, 0 inerte.
