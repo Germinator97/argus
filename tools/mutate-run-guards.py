@@ -189,6 +189,9 @@ CIBLES = {
     "permissionsflow": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/permissions.yaml",
     "permaccepter": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-accepter.yaml",
     "permrefuser": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-refuser.yaml",
+    # 578 — le geste des contacts, en deux temps sur iOS : rien ne pouvait dire
+    # si un garde voit un temps disparaître, ou un ancrage se perdre.
+    "permcontacts": ROOT / "plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/.maestro/_subflows/permission-accepter-contacts.yaml",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3493,6 +3496,55 @@ MUTATIONS = [
     ("permissionsflow", "572 undecies · une branche de l'exemple perd son all: allow",
      "#       all: allow\n#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml",
      "#       notifications: unset\n# - runFlow: _subflows/disable-animations.yaml\n# - tapOn:\n#     id: activer_rappels\n# - runFlow: _subflows/permission-accepter.yaml"),
+    # ── 578 · sur iOS, accepter touche le libellé MESURÉ, et les contacts en deux gestes ──
+    # Le français deviné revient : la position ne s'accepte plus en français.
+    ("permaccepter", "578 · la position française perd son libellé mesuré",
+     "\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Allow While Using App|Allow Full Access|Allow|Autoriser lorsque l.app est active|",
+     "\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Allow While Using App|Allow Full Access|Allow|Autoriser pendant l.utilisation de l.app|"),
+    # Les photos ne s'acceptent plus en anglais.
+    ("permaccepter", "578 bis · les photos perdent leur libellé anglais",
+     "\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Allow While Using App|Allow Full Access|Allow|",
+     "\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Allow While Using App|Allow|"),
+    # Le geste commun touche « Continuer » : la feuille des contacts reste ouverte.
+    ("permaccepter", "578 ter · le geste commun touche le premier temps des contacts",
+     "|Autoriser l.accès complet|Autoriser)(?![\\s\\S]).*'\n          label: Accepter la permission",
+     "|Autoriser l.accès complet|Autoriser|Continuer)(?![\\s\\S]).*'\n          label: Accepter la permission"),
+    # L'attente et le toucher divergent : on attend une chose, on en touche une autre.
+    ("permaccepter", "578 quater · l'attente iOS ne cherche plus ce que le toucher touche",
+     "          visible:\n            text: '(?s).*(?<![\\s\\S])(Allow While Using App|Allow Full Access|",
+     "          visible:\n            text: '(?s).*(?<![\\s\\S])(Allow While Using App|"),
+    # Le second temps des contacts disparaît : la permission n'est jamais accordée.
+    ("permcontacts", "578 quinquies · les contacts perdent leur second geste",
+     "      - extendedWaitUntil:\n          visible:\n            text: '(?s).*(?<![\\s\\S])(Partager les .+ contacts|Share All .+ Contacts)(?![\\s\\S]).*'\n          timeout: ${ARGUS_START_TIMEOUT_MS}\n          label: La feuille de partage des contacts s'est ouverte\n      - tapOn:\n          text: '(?s).*(?<![\\s\\S])(Partager les .+ contacts|Share All .+ Contacts)(?![\\s\\S]).*'\n          label: Partager tous les contacts\n",
+     ""),
+    # « Continuer » perd son ancre de fin : « Continuer plus tard » serait touché.
+    ("permcontacts", "578 sexies · « Continuer » perd son ancrage",
+     "(Continuer|Continue)(?![\\s\\S]).*'",
+     "(Continuer|Continue).*'"),
+    # Le premier temps n'attend plus le TITRE : un « Continuer » de l'application passe.
+    ("permcontacts", "578 septies · les contacts n'attendent plus le titre de leur fenêtre",
+     "text: '(?s).*(souhaite accéder à vos contacts|would like to access your Contacts).*'",
+     "text: '(?s).*(?<![\\s\\S])(Continuer|Continue)(?![\\s\\S]).*'"),
+    # Android ne délègue plus au geste commun : il accepte par libellé.
+    ("permcontacts", "578 octies · Android accepte les contacts par libellé",
+     "\n      platform: Android\n    file: permission-accepter.yaml",
+     "\n      platform: Android\n    commands:\n      - tapOn:\n          text: 'Allow'"),
+    # Le runner ne lit plus le geste des contacts : la branche passe pour n'en avoir aucun.
+    ("run", "578 nonies · le geste des contacts n'est plus lu",
+     "/permission-(accepter-contacts|accepter|refuser)\\.yaml/",
+     "/permission-(accepter|refuser)\\.yaml/"),
+    # Le geste commun accepte de nouveau les contacts.
+    ("run", "578 decies · le geste commun accepte de nouveau les contacts",
+     "(contacts.has(p) ? 'accepter-contacts' : 'accepter')",
+     "('accepter')"),
+    # Le remède ne nomme plus le geste des contacts.
+    ("run", "578 undecies · le remède ne nomme plus le geste des contacts",
+     "const contactsEnDefaut = manques.some((x) => contacts.has(x.p) && x.manque.includes('accepter'));",
+     "const contactsEnDefaut = false;"),
+    # Le constat ne dit plus pourquoi le geste commun ne suffit pas.
+    ("run", "578 duodecies · le constat tait pourquoi le geste commun ne suffit pas",
+     "generique: contacts.has(p) && Boolean(gestes.get(p)?.has('accepter')),",
+     "generique: false,"),
     # ── 577 · le plancher annoncé est celui que la CI fait tourner ──────────
     # Le job épingle une autre version que celle que les documents annoncent.
     ("ciplugin", "577 · le job plancher épingle une autre version",
