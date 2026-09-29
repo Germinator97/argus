@@ -5097,8 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **578** à **580**, mesurés le 29/09 par la sonde iOS du
-572 (section « Mesuré par la sonde iOS du 572 », en fin de fichier), sont fermés
+🔴 **2 POINTS OUVERTS** — les **581** et **582**, trouvés le 29/09 par la CI du fork
+(section « Trouvé par la CI du fork », en fin de fichier) : deux mutations
+VACANTES sur le runner, parce que leur garde ne jugeait qu'avec ce que ce poste
+possède — le lien du dossier temporaire de macOS, les fichiers privés des
+terrains. Les **578** à **580**, mesurés le 29/09 par la sonde iOS du
+572 (section « Mesuré par la sonde iOS du 572 »), sont fermés
 le jour même : iOS accepte sur les libellés mesurés et les contacts en deux
 gestes, `resilience` ne compte sur iOS que la fenêtre des notifications, et le
 geste d'invite referme « Ne pas autoriser », puisqu'une fenêtre laissée ouverte
@@ -14170,3 +14174,60 @@ neuve tournant dessous. Sur Android, la fenêtre meurt avec l'application.
   note —, plus les huit qui visaient déjà ces deux fichiers, le 388 réancré
   compris : **13/13 TOMBE**.
 - Suite 648/648, 676 mutations, 0 inerte.
+
+## Trouvé par la CI du fork — run #8 (`e778d32`), tranche 9/10 — 29/09/2026
+
+Le push du 29/09 — les 53 commits du 28 et les 11 du 29 — a fait tourner le
+workflow du plugin : **13 jobs verts sur 14**. Les trois contrôles du 28 qui
+n'avaient jamais tourné sur GitHub — le job `plancher`, les sondes du contraste
+et des polices — sont verts, et neuf tranches de mutations aussi, jouées en
+entier (de 32 à 45 minutes). La tranche **9/10** est rouge au bout de 41 minutes :
+64 défauts sur 66 détectés, un non jouable annoncé (le typage, 560), et **deux
+mutations VACANTES**. Le journal d'un job exige les droits d'administration :
+c'est Germinator qui l'a collé.
+
+Reproduit sur ce poste dans les conditions du runner — worktree détaché neuf,
+`env -i`, `CI=true`, un `HOME` vide et un dossier temporaire sans lien —, puis en
+ne changeant qu'une variable à la fois :
+
+| Conditions | 569 quater | 575 sexies |
+|---|---|---|
+| runner simulé (`HOME` vide, temporaire sans lien) | VACANT | VACANT |
+| vrai `HOME`, temporaire sans lien | VACANT | TOMBE |
+| `HOME` vide, temporaire à travers un lien | TOMBE | VACANT |
+
+La classe est fermée : seules ces deux mutations se disaient propres au poste
+dans les commentaires du harnais, et le runner a jugé toutes les autres, hors
+celles que le harnais annonce non jouables sans leur outil.
+
+### 581. `569 quater` est VACANTE sur le runner : son garde ne voit le défaut qu'à travers le lien du dossier temporaire de macOS
+
+**Ouvert le 29/09/2026 · OUVERT** — la mutation compare le chemin de la cible
+LOGIQUE (`pwd` au lieu de `pwd -P`) à la racine que rend git, toujours physique.
+Le garde du 569 installe dans des dépôts créés sous `tmpdir()`. Sur macOS, ce
+chemin traverse un lien (`/var` → `/private/var`) : la mutation fait prendre une
+application posée à la racine de son dépôt pour un sous-dossier, et le cas 4 du
+garde rougit. Sous Linux, aucun lien : les deux chemins sont identiques, et la
+mutation ne change rien que le garde puisse voir.
+
+- Le harnais le disait depuis le 28/09, dans le commentaire de la mutation —
+  « Mutation propre à macOS […] elle est sans effet » —, et rien ne l'a traité :
+  une mutation que seul ce poste sait juger ne prouve rien là où la CI la joue.
+- Remède, sans arbitrage à rendre : le garde crée LUI-MÊME un lien vers un dépôt
+  et lance l'installeur à travers lui. Le défaut devient visible sur tout
+  système ; le commentaire de la mutation est réécrit.
+
+### 582. `575 sexies` est VACANTE sur le runner : le seul garde qui la jugeait lit les fichiers privés du poste
+
+**Ouvert le 29/09/2026 · OUVERT** — la mutation fait cesser la lecture du
+classement privé PAR DÉFAUT. Le seul garde qui la voyait est le contrôle du
+dépôt livré (541), qui lit la liste des terrains et le classement dans
+`~/.argus-etalon/` et se tait sans eux — exprès : un poste sans terrain n'a
+rien à mesurer. Sur le runner, il ne mesure donc rien, et la mutation n'a pas
+de juge. Les autres gardes du 575 injectent leur classement : aucun n'exerce
+le câblage par défaut.
+
+- Remède, sans arbitrage à rendre : un garde qui lance l'outil dans un
+  sous-processus, avec un `HOME` fabriqué — un identifiant ambigu inventé,
+  classé ou non —, et qui prouve le câblage par défaut sur toute machine, sans
+  toucher à l'outil. Le contrôle réel, sur ce poste, reste tel quel.
