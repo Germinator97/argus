@@ -14,7 +14,7 @@
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -1855,6 +1855,25 @@ test('569 — dans un monorepo, l\'installeur cherche la CI à la racine et dit 
     const aLaRacine = depot('racine', { 'pubspec.yaml': 'name: demo\n' }, '');
     assert.doesNotMatch(aLaRacine, /sous-dossier du dépôt/i,
       'une application à la racine de son dépôt reçoit l\'avertissement du monorepo : il crie à tort (569)');
+
+    // 5. 581 — LA MÊME, ATTEINTE PAR UN LIEN. Le cas 4 ne voyait des chemins
+    //    comparés sans résoudre les liens que parce que le dossier temporaire de
+    //    macOS en traverse un : sous Linux, sur le runner de la CI, il ne voyait
+    //    rien. Le lien est donc posé ICI, et le cas vaut sur tout système.
+    const cible = join(bac, 'par-un-lien');
+    mkdirSync(cible);
+    execFileSync('git', ['init', '-q', cible]);
+    writeFileSync(join(cible, 'pubspec.yaml'), 'name: demo\n');
+    const lien = join(bac, 'lien-vers-le-depot');
+    symlinkSync(cible, lien);
+    // D'abord que le montage monte ce qu'il prétend : un chemin qui ne serait pas
+    // un lien rendrait ce cas vert pour une autre raison — celle du cas 4.
+    assert.notEqual(lien, realpathSync(lien), 'le chemin passé à l\'installeur ne traverse aucun lien : ce cas ne mesure rien');
+    assert.equal(realpathSync(lien), realpathSync(cible), 'le lien ne mène pas au dépôt monté');
+    const parLeLien = execFileSync('bash', [installeur, lien], { encoding: 'utf8' });
+    assert.doesNotMatch(parLeLien, /sous-dossier du dépôt/i,
+      'une application à la racine de son dépôt, atteinte par un lien, passe pour un sous-dossier : '
+      + 'l\'installeur compare des chemins sans résoudre les liens (581)');
   } finally {
     rmSync(bac, { recursive: true, force: true });
   }

@@ -3272,9 +3272,10 @@ MUTATIONS = [
     ("installeur", "569 ter · les workflows de la racine ne comptent plus",
      "autres=$(find \"$racine_depot/.github/workflows\" -type f 2>/dev/null | head -1)",
      "autres=''"),
-    # Les chemins se comparent LOGIQUES : sur macOS, `/tmp` et `/private/tmp`
-    # font croire à un sous-dossier. ⚠️ Mutation propre à macOS — sur un
-    # système sans lien dans le chemin temporaire, elle est sans effet.
+    # Les chemins se comparent LOGIQUES : une application atteinte par un lien
+    # passe pour un sous-dossier de son propre dépôt. 🔴 581 — elle n'était
+    # jugée qu'à travers le lien du dossier temporaire de macOS, donc VACANTE sur
+    # le runner de la CI : le garde pose désormais son propre lien.
     ("installeur", "569 quater · les chemins se comparent sans résoudre les liens",
      "\n  cible_physique=$(cd \"$TARGET\" && pwd -P)",
      "\n  cible_physique=$(cd \"$TARGET\" && pwd)"),
