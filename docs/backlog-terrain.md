@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS** — les **585**, **587**, **588** et **589** (les **583**, **584** et **586** sont fermés), rendus par le run 107, la
+🔴 **3 POINTS OUVERTS** — les **587**, **588** et **589** (les **583** à **586** sont fermés), rendus par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14379,7 +14379,7 @@ la racine.
 
 ### 585. Le gabarit du harnais refuse les listes de délégués que Flutter fournit
 
-**Ouvert le 29/09/2026 · OUVERT** — `harness.dart` déclare
+**Ouvert le 29/09/2026 · CLOS** — `harness.dart` déclare
 `List<LocalizationsDelegate<Object>>`. Les listes toutes faites —
 `GlobalMaterialLocalizations.delegates`, celle que `gen-l10n` génère — sont
 typées `LocalizationsDelegate<dynamic>`, et Dart refuse l'affectation (le type
@@ -14390,6 +14390,22 @@ la même énumération.
 - Remède, sans arbitrage : `LocalizationsDelegate<Object?>`, qui les accepte
   telles quelles, prouvé par une analyse dans un vrai projet Flutter dans les
   deux sens.
+
+#### ✅ Fermé le jour même — `Object?`, prouvé par l'analyse dans le vrai gabarit
+
+- Mesuré sur Flutter 3.41.9, dans un projet neuf où l'installeur a posé le
+  scaffold, comme le fait la CI : le gabarit tel que posé s'analyse sans un mot ;
+  `GlobalMaterialLocalizations.delegates` affecté tel quel à la liste du gabarit,
+  aucun problème ; le même avec l'ancien type, `invalid_assignment` — le message
+  exact du run.
+- Le commentaire du gabarit dit pourquoi, et la forme idiomatique
+  (`= AppLocalizations.localizationsDelegates;`). Ce dépôt n'exécute pas de
+  Dart : le garde fige le type prouvé, dans la déclaration comme dans le
+  littéral. ⚠️ `harness.dart` appartient au projet : les installations neuves
+  reçoivent le correctif, celles d'avant gardent leur déclaration.
+- Le gabarit n'avait aucune cible dans le harnais — celle nommée « harness » est
+  le CADRE : cible ajoutée, une mutation, **TOMBE**. Suite 655/655, 687
+  mutations, 0 inerte.
 
 ### 586. Le build de scan réécrit les symboles de release du projet
 
