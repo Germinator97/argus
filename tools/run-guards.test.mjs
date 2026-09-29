@@ -13358,22 +13358,112 @@ test('572 — les sous-flows touchent le bouton système par IDENTIFIANT sur And
     assert.ok(m, 'le geste iOS n\'a plus de sélecteur de texte');
     return new RegExp(`^(?:${m[1].replace(/^\(\?s\)/, '')})$`, 'is');
   };
+  // 578 — on attend ce qu'on touche : sur iOS, le sélecteur de l'attente et celui
+  // du toucher sont le MÊME. Rien ne le gardait : les libellés corrigés dans
+  // l'un et oubliés dans l'autre auraient passé ce test, qui ne lit que le toucher.
+  for (const [nom, src] of [['accepter', accepter], ['refuser', refuser]]) {
+    const ios = src.slice(src.search(/platform: iOS/));
+    const textes = [...ios.matchAll(/text: '([^']+)'/g)].map((m) => m[1]);
+    assert.equal(textes.length, 2, `${nom} : une attente et un toucher attendus sur iOS, ${textes.length} sélecteur(s) lu(s)`);
+    assert.equal(textes[0], textes[1], `${nom} : on attend une chose et on en touche une autre`);
+  }
   const oui = motif(accepter);
   const non = motif(refuser);
-  for (const l of ['Allow', 'Allow While Using App', 'Autoriser', 'Autoriser pendant l’utilisation de l’app']) {
+  // 🔴 578 — CES LIBELLÉS SONT RELEVÉS, sur un simulateur iOS 26.3, en français et
+  // en anglais. Ce garde figeait un français DEVINÉ pour la position (« … pendant
+  // l’utilisation de l’app ») comme cas positif : il gardait l'erreur.
+  for (const l of ['Allow', 'Allow While Using App', 'Allow Full Access',
+    'Autoriser', 'Autoriser lorsque l’app est active', 'Autoriser l’accès complet']) {
     assert.ok(oui.test(l), `« ${l} » n'est pas accepté`);
   }
   // ⚠️ Un texte PRÉFIXÉ (« Tout autoriser ») ne se rejette que par l'ancre de
   // TÊTE ; un texte suffixé (« … ? »), par celle de FIN. Chacune son cas, sinon
   // retirer l'une passe inaperçu — la mutation du refus l'a montré.
+  // 578 — et les boutons VOISINS de ceux qu'on veut, relevés sur les mêmes
+  // fenêtres : l'accès limité, l'autorisation d'une fois, et le premier geste
+  // des contacts, qui laisserait leur seconde feuille ouverte.
   for (const l of ['Don’t Allow', 'Allow Once', 'Ne pas autoriser', 'Autoriser une fois', 'Autoriser les notifications ?',
-    'Tout autoriser', 'OK']) {
+    'Tout autoriser', 'OK', 'Limit Access…', 'Limiter l’accès…', 'Continue', 'Continuer']) {
     assert.ok(!oui.test(l), `« ${l} » est pris pour le bouton qui ACCEPTE`);
   }
   for (const l of ['Don’t Allow', 'Ne pas autoriser', 'Refuser']) assert.ok(non.test(l), `« ${l} » n'est pas refusé`);
   for (const l of ['Allow', 'Refuser l\'accès ?', 'Tout refuser']) {
     assert.ok(!non.test(l), `« ${l} » est pris pour le bouton qui REFUSE`);
   }
+});
+
+// ── 578 · SUR iOS, LES CONTACTS S'ACCEPTENT EN DEUX GESTES ────────────────
+// Mesuré sur un simulateur iOS 26.3 : la fenêtre des contacts porte « Ne pas
+// autoriser » et « Continuer », et « Continuer » ouvre une feuille où l'on
+// choisit « Partager les N contacts ». Le geste commun n'en fait qu'un : il
+// échouait, ou laissait la feuille ouverte sur tout ce qui suit.
+
+test('578 — les contacts s\'acceptent en DEUX gestes sur iOS, dans l\'ordre, et Android garde le geste commun', () => {
+  const src = readFileSync(join(PERM, '_subflows', 'permission-accepter-contacts.yaml'), 'utf8');
+  assert.match(src.split('\n').slice(0, 20).join('\n'), /ARGUS:CADRE/,
+    'le geste des contacts n\'est plus au cadre : `--update` ne le remplacerait plus chez personne');
+  const utile = src.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  assert.match(utile, /- runFlow:\s*\n\s*when:\s*\n\s*platform: Android\s*\n\s*file: permission-accepter\.yaml/,
+    'Android ne délègue plus au geste commun, qui touche le bouton par identifiant');
+  // ⚠️ Pas de `when: visible:` : sur un élément absent il attend sa borne (517).
+  assert.ok(!/when:\s*\n\s*visible:/.test(utile), 'un `when: visible:` choisit un geste : sa borne se paie');
+
+  const ios = utile.slice(utile.search(/platform: iOS/));
+  const selecteurs = [...ios.matchAll(/text: '([^']+)'/g)].map((m) => m[1]);
+  assert.equal(selecteurs.length, 4, `le geste iOS attend le titre, touche « Continuer », attend puis touche `
+    + `« Partager… » — quatre sélecteurs attendus, ${selecteurs.length} lus`);
+  const re = (/** @type {string} */ s) => new RegExp(`^(?:${s.replace(/^\(\?s\)/, '')})$`, 'is');
+  const [titre, continuer, feuille, partager] = selecteurs.map(re);
+  assert.equal(selecteurs[2], selecteurs[3], 'on attend une chose et on en touche une autre');
+
+  // Le TITRE d'abord : « Continuer » est un libellé que les applications portent.
+  for (const t of ['« Sonde Invite » souhaite accéder à vos contacts.', '“Sonde Invite” would like to access your Contacts.']) {
+    assert.ok(titre.test(t), `le premier geste n'attend plus le titre de la fenêtre des contacts : « ${t} »`);
+  }
+  assert.ok(!titre.test('« Sonde Invite » souhaite accéder à la caméra.'), 'le titre attendu est celui d\'une autre fenêtre');
+  for (const l of ['Continuer', 'Continue']) assert.ok(continuer.test(l), `« ${l} » n'est pas touché en second`);
+  for (const l of ['Ne pas autoriser', 'Don’t Allow', 'Autoriser', 'Ne pas continuer', 'Continuer plus tard']) {
+    assert.ok(!continuer.test(l), `« ${l} » est pris pour « Continuer »`);
+  }
+  for (const l of ['Partager les 6 contacts', 'Share All 6 Contacts', 'Partager les 1 234 contacts']) {
+    assert.ok(feuille.test(l) && partager.test(l), `« ${l} » n'est pas le second geste`);
+  }
+  for (const l of ['Sélectionner des contacts', 'Select Contacts', 'Comment voulez-vous partager des contacts ?',
+    'Voulez-vous Partager les 6 contacts', 'Partager les 6 contacts ?']) {
+    assert.ok(!partager.test(l), `« ${l} » est pris pour le partage de TOUS les contacts`);
+  }
+});
+
+test('578 — une branche contacts n\'ACCEPTE que par son propre geste, et ce geste se lit', () => {
+  // Le geste se lit SOUS SON NOM — et son `runFlow` n'est pas un déclencheur.
+  const [b] = branchesDePermissions(sourcePerm([...BRANCHE('contacts', 'accepter-contacts', false)]));
+  assert.deepEqual([...(b?.gestes ?? [])], ['accepter-contacts'], 'le geste des contacts n\'est pas lu');
+  assert.equal(b?.auLancement, true,
+    'le `runFlow` du geste des contacts passe pour le toucher qui DÉCLENCHE : une permission demandée au '
+    + 'lancement cesse d\'être comptée, et resilience attend l\'accueil sous sa fenêtre');
+
+  const cfg = { security: { expectedPermissions: ['android.permission.READ_CONTACTS', 'android.permission.CAMERA'] } };
+  const juge = (/** @type {string} */ src) => permissionsNonExercees(cfg, src, { id: 'd' }, 'ios');
+  const dedie = sourcePerm([...BRANCHE('contacts', 'accepter-contacts'), ...BRANCHE('contacts', 'refuser'),
+    ...BRANCHE('camera', 'accepter'), ...BRANCHE('camera', 'refuser')]);
+  assert.deepEqual(juge(dedie), [], 'chaque permission a son geste, et un constat sort quand même');
+
+  const commun = sourcePerm([...BRANCHE('contacts', 'accepter'), ...BRANCHE('contacts', 'refuser'),
+    ...BRANCHE('camera', 'accepter'), ...BRANCHE('camera', 'refuser')]);
+  const [f] = juge(commun);
+  assert.ok(f, 'une branche contacts qui appelle le geste COMMUN passe pour accepter — il échoue sur iOS 18');
+  assert.equal(f.actual, 'android.permission.READ_CONTACTS (accepter manquant : le geste commun ne fait pas les '
+    + 'deux temps d\'iOS)', `le constat doit nommer les contacts, et dire pourquoi : « ${f.actual} »`);
+  assert.match(f.suggestedFix, /_subflows\/permission-accepter-contacts\.yaml/, 'le remède ne nomme pas le geste des contacts');
+
+  // Et l'inverse : le geste des contacts n'accepte rien d'autre.
+  const inverse = sourcePerm([...BRANCHE('contacts', 'accepter-contacts'), ...BRANCHE('contacts', 'refuser'),
+    ...BRANCHE('camera', 'accepter-contacts'), ...BRANCHE('camera', 'refuser')]);
+  const [g] = juge(inverse);
+  assert.equal(g?.actual, 'android.permission.CAMERA (accepter manquant)',
+    'le geste des contacts passe pour accepter la caméra — il attendrait une fenêtre qui ne vient pas');
+  assert.ok(!/permission-accepter-contacts/.test(g?.suggestedFix ?? ''),
+    'le rappel des contacts sort pour une permission qui n\'en est pas');
 });
 
 test('572 — le gabarit prescrit `all: allow` AVANT la permission remise à demander, et tient debout vide', () => {
@@ -15653,6 +15743,7 @@ const CAMPS_DU_SCAFFOLD = [
   ['.maestro/_subflows/launch-clean.yaml', 'CADRE'],
   ['.maestro/_subflows/login.yaml', 'OWNED'],
   ['.maestro/_subflows/mask-dynamic.yaml', 'OWNED'],
+  ['.maestro/_subflows/permission-accepter-contacts.yaml', 'CADRE'],
   ['.maestro/_subflows/permission-accepter.yaml', 'CADRE'],
   ['.maestro/_subflows/permission-refuser.yaml', 'CADRE'],
   ['.maestro/a11y.yaml', 'OWNED'],

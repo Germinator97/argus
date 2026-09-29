@@ -44,6 +44,7 @@ owned	.maestro/_subflows/goto.yaml
 cadre	.maestro/_subflows/launch-clean.yaml
 owned	.maestro/_subflows/login.yaml
 owned	.maestro/_subflows/mask-dynamic.yaml
+cadre	.maestro/_subflows/permission-accepter-contacts.yaml
 cadre	.maestro/_subflows/permission-accepter.yaml
 cadre	.maestro/_subflows/permission-refuser.yaml
 owned	.maestro/a11y.yaml

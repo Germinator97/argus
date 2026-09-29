@@ -18,15 +18,26 @@ appId: ${APP_ID}
 # il attend sa borne — mesuré à ~7 s (486) —, soit un geste de trop à chaque
 # acceptation.
 #
-# iOS — par LIBELLÉ, anglais et français. ⚠️ NON MESURÉ sur simulateur : ce
-# sont les libellés d'Apple (« Allow While Using App » pour la position,
-# « Allow » ailleurs). Le motif garde la forme encadrée `(?s).*…*` que le dépôt
-# exige de tout sélecteur de texte — elle sert les nœuds Flutter, qui fusionnent
-# leur texte —, mais il s'ANCRE à l'intérieur (`(?<![\s\S])`, `(?![\s\S])`) :
-# un bouton système est natif et porte son seul libellé, et sans ancrage
-# « Allow » prendrait « Don’t Allow », « Autoriser » « Ne pas autoriser », ou
-# un bouton de l'application qui contient ces mots. Même raison pour écarter
-# « OK », qu'un iOS ancien montre pour la caméra.
+# iOS — par LIBELLÉ, anglais et français, MESURÉS sur un simulateur iOS 26.3
+# (578) : « Allow » / « Autoriser » pour les notifications, la caméra et le
+# micro ; « Allow While Using App » / « Autoriser lorsque l’app est active »
+# pour la position, à côté de « Allow Once » / « Autoriser une fois » ; « Allow
+# Full Access » / « Autoriser l’accès complet » pour les photos, à côté de
+# « Limit Access… » / « Limiter l’accès… ». Le français de la position avait
+# d'abord été DEVINÉ (« … pendant l’utilisation de l’app ») : il n'existe pas,
+# et le garde qui le figeait comme cas positif gardait l'erreur.
+# ⚠️ LES CONTACTS N'Y SONT PAS, ET C'EST VOULU : depuis iOS 18 ils demandent deux
+# gestes, « Continuer » puis « Partager les N contacts » — c'est
+# `permission-accepter-contacts.yaml`. « Continuer » n'est donc PAS dans ce
+# motif : il laisserait la seconde feuille ouverte sur tout ce qui suit.
+# Le motif garde la forme encadrée `(?s).*…*` que le dépôt exige de tout
+# sélecteur de texte — elle sert les nœuds Flutter, qui fusionnent leur
+# texte —, mais il s'ANCRE à l'intérieur (`(?<![\s\S])`, `(?![\s\S])`) : un
+# bouton système est natif et porte son seul libellé — relevé, son
+# `accessibilityText` est exactement « Autoriser » —, et sans ancrage « Allow »
+# prendrait « Don’t Allow », « Autoriser » « Ne pas autoriser », ou un bouton
+# de l'application qui contient ces mots. Même raison pour écarter « OK », qu'un
+# iOS ancien montre pour la caméra (non mesuré).
 - runFlow:
     when:
       platform: Android
@@ -45,9 +56,9 @@ appId: ${APP_ID}
     commands:
       - extendedWaitUntil:
           visible:
-            text: '(?s).*(?<![\s\S])(Allow While Using App|Allow|Autoriser pendant l.utilisation de l.app|Autoriser)(?![\s\S]).*'
+            text: '(?s).*(?<![\s\S])(Allow While Using App|Allow Full Access|Allow|Autoriser lorsque l.app est active|Autoriser l.accès complet|Autoriser)(?![\s\S]).*'
           timeout: ${ARGUS_START_TIMEOUT_MS}
           label: La fenêtre de permission s'est ouverte
       - tapOn:
-          text: '(?s).*(?<![\s\S])(Allow While Using App|Allow|Autoriser pendant l.utilisation de l.app|Autoriser)(?![\s\S]).*'
+          text: '(?s).*(?<![\s\S])(Allow While Using App|Allow Full Access|Allow|Autoriser lorsque l.app est active|Autoriser l.accès complet|Autoriser)(?![\s\S]).*'
           label: Accepter la permission

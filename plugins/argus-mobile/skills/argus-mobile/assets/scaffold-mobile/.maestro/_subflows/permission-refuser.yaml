@@ -14,10 +14,13 @@ appId: ${APP_ID}
 # fenêtres des notifications et de la caméra. Après un premier refus, Android
 # peut proposer `permission_deny_and_dont_ask_again_button` à la place.
 #
-# iOS — par LIBELLÉ, anglais et français. ⚠️ NON MESURÉ sur simulateur : les
-# libellés d'Apple, en forme encadrée ANCRÉE à l'intérieur, comme dans
-# `permission-accepter.yaml` et pour la même raison : sans ancrage, « Refuser »
-# prendrait un texte de l'application qui le contient.
+# iOS — par LIBELLÉ, anglais et français, MESURÉS sur un simulateur iOS 26.3
+# (578) : « Don’t Allow » sur toutes les fenêtres en anglais ; en français
+# « Refuser » pour les notifications, « Ne pas autoriser » pour la caméra, la
+# position, le micro, les photos et les contacts — 6 fenêtres sur 6 refusées
+# dans chaque langue, l'état relu ensuite. En forme encadrée ANCRÉE à
+# l'intérieur, comme dans `permission-accepter.yaml` et pour la même raison :
+# sans ancrage, « Refuser » prendrait un texte de l'application qui le contient.
 - runFlow:
     when:
       platform: Android

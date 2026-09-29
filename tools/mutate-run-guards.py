@@ -3455,9 +3455,11 @@ MUTATIONS = [
      "\n      declenchee = true;",
      "\n      declenchee = false;"),
     # Une seule branche suffit de nouveau : le refus redevient facultatif.
+    # ⚠️ Ré-ancrée le 29/09 (578) : le geste qui accepte dépend désormais de la
+    # permission, donc la paire refus est écrite à part.
     ("run", "572 ter · une branche qui accepte suffit de nouveau",
-     "['accepter', 'refuser'].filter(",
-     "['accepter'].filter("),
+     "[['accepter', accepte(p)], ['refuser', 'refuser']]",
+     "[['accepter', accepte(p)]]"),
     # La direction redevient large : une permission sans fenêtre est réclamée.
     ("run", "572 quater · la couverture réclame une permission sans fenêtre",
      "\n  const aJuger = declarees.filter((p) => exercables.has(p));",

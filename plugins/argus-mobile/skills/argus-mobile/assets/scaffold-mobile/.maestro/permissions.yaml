@@ -21,7 +21,11 @@ tags:
 #      demande au lancement ;
 #   3. `_subflows/permission-accepter.yaml` ou `_subflows/permission-refuser.yaml`
 #      (au plugin) : ils touchent le bon bouton système, sur Android par
-#      identifiant — donc quelle que soit la langue —, sur iOS par libellé ;
+#      identifiant — donc quelle que soit la langue —, sur iOS par libellé,
+#      français ou anglais. ⚠️ Les CONTACTS s'acceptent par
+#      `_subflows/permission-accepter-contacts.yaml` : depuis iOS 18, leur
+#      fenêtre demande deux gestes (« Continuer », puis « Partager les N
+#      contacts »), que le geste commun ne fait pas (578) ;
 #   4. ce que l'application montre ensuite : accordée, la fonction marche ;
 #      refusée, elle l'explique et reste utilisable.
 #

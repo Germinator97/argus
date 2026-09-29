@@ -297,8 +297,11 @@ branche qui ACCEPTE et une qui REFUSE :
 2. le geste qui la fait demander — aucun si elle l'est au lancement ;
 3. `_subflows/permission-accepter.yaml` ou `_subflows/permission-refuser.yaml`,
    qui touchent le bouton système : sur Android par **identifiant**, donc quelle
-   que soit la langue ; sur iOS par libellé, anglais et français — **non mesuré
-   sur simulateur** ;
+   que soit la langue ; sur iOS par libellé, anglais et français — **mesurés**
+   sur un simulateur iOS 26.3 (578). ⚠️ Les **contacts** s'acceptent par
+   `_subflows/permission-accepter-contacts.yaml` : depuis iOS 18, leur fenêtre
+   demande deux gestes (« Continuer », puis « Partager les N contacts »), que le
+   geste commun ne fait pas — le runner l'exige ;
 4. ce que l'application montre ensuite.
 
 Le runner compare ce fichier aux permissions **déclarées**

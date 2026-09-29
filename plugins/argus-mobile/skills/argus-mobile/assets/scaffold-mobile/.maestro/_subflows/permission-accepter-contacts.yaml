@@ -1,0 +1,59 @@
+# ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
+appId: ${APP_ID}
+# ⚠️ Un sous-flow DOIT porter une section de configuration, même s'il n'est
+# jamais exécuté directement : Maestro valide TOUS les fichiers YAML du
+# workspace au démarrage, et rejette celui qui n'en a pas.
+---
+# ACCEPTER la fenêtre des CONTACTS que le geste d'avant vient d'ouvrir (578).
+# Appelé par `permissions.yaml`, dans la branche qui accepte les contacts, à la
+# place de `permission-accepter.yaml` — le runner le vérifie.
+#
+# 🔴 POURQUOI UN SOUS-FLOW À LUI : DEPUIS iOS 18, ACCEPTER LES CONTACTS, C'EST DEUX
+# GESTES. Mesuré sur un simulateur iOS 26.3 : la fenêtre porte « Ne pas
+# autoriser » et « Continuer » (« Don’t Allow » et « Continue ») ; « Continuer »
+# ouvre une feuille « Comment voulez-vous partager des contacts ? » qui propose
+# « Sélectionner des contacts » et « Partager les 6 contacts » (« Select
+# Contacts », « Share All 6 Contacts ») — le nombre est celui de l'appareil. La
+# permission n'est accordée qu'au second geste : relu, `granted`.
+# ⚠️ Pourquoi pas un second geste TOLÉRÉ dans `permission-accepter.yaml` : un
+# `when: visible:` sur un élément absent attend sa borne (~6 s, 517), et il se
+# serait payé à CHAQUE acceptation d'une autre permission. Ici, les deux gestes
+# sont certains : chacun attend ce qu'il doit trouver, et rien d'autre.
+#
+# iOS — le TITRE d'abord, puis les deux boutons. « Continuer » est un libellé
+# qu'une application porte souvent : attendre le titre de la fenêtre système
+# garantit qu'on touche le sien. Tant qu'elle est ouverte, les boutons de
+# l'application sortent de l'arbre (relevé), donc le toucher ne peut pas se
+# tromper de cible. Les boutons sont en forme encadrée ANCRÉE, comme dans
+# `permission-accepter.yaml` ; le titre, lui, porte le nom de l'application,
+# donc il se cherche SANS ancre.
+# ⚠️ Non mesuré : un iOS antérieur à 18, où la fenêtre n'a qu'un geste, et les
+# formes « Partager le contact » (un seul) ou sans contact du tout.
+#
+# ANDROID — le geste de `permission-accepter.yaml`, par identifiant : la
+# fenêtre des contacts n'y a qu'un bouton qui accepte. (La sonde Android du 572
+# ne demandait pas les contacts : l'identifiant n'y a pas été relevé.)
+- runFlow:
+    when:
+      platform: Android
+    file: permission-accepter.yaml
+- runFlow:
+    when:
+      platform: iOS
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: '(?s).*(souhaite accéder à vos contacts|would like to access your Contacts).*'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La fenêtre des contacts s'est ouverte
+      - tapOn:
+          text: '(?s).*(?<![\s\S])(Continuer|Continue)(?![\s\S]).*'
+          label: Continuer vers le partage des contacts
+      - extendedWaitUntil:
+          visible:
+            text: '(?s).*(?<![\s\S])(Partager les .+ contacts|Share All .+ Contacts)(?![\s\S]).*'
+          timeout: ${ARGUS_START_TIMEOUT_MS}
+          label: La feuille de partage des contacts s'est ouverte
+      - tapOn:
+          text: '(?s).*(?<![\s\S])(Partager les .+ contacts|Share All .+ Contacts)(?![\s\S]).*'
+          label: Partager tous les contacts

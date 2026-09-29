@@ -910,9 +910,17 @@ const GESTES_NEUTRES = new Set(['waitForAnimationToEnd', 'extendedWaitUntil', 'a
  *
  * Une branche commence à un `launchApp` ; elle exerce les permissions qu'il met
  * en `unset`, par le geste du cadre qu'elle appelle ensuite —
- * `permission-accepter.yaml` ou `permission-refuser.yaml`. Si rien ne la
- * DÉCLENCHE entre les deux (un toucher, une saisie, une navigation…), c'est que
- * l'application demande cette permission AU LANCEMENT.
+ * `permission-accepter.yaml`, `permission-accepter-contacts.yaml` (578) ou
+ * `permission-refuser.yaml`. Si rien ne la DÉCLENCHE entre les deux (un
+ * toucher, une saisie, une navigation…), c'est que l'application demande cette
+ * permission AU LANCEMENT.
+ *
+ * ⚠️ 578 — LE GESTE DES CONTACTS SE LIT SOUS SON PROPRE NOM, `accepter-contacts`.
+ * Le motif d'avant, `permission-(accepter|refuser)\.yaml`, ne le voyait pas du
+ * tout : la branche passait pour n'avoir aucun geste, et son `runFlow` pour le
+ * toucher qui DÉCLENCHE la demande — une permission demandée au lancement
+ * cessait donc d'être comptée. C'est `permissionsNonExercees` qui décide quel
+ * geste vaut acceptation pour quelle permission.
  * @param {string} source
  * @returns {{permissions: string[], gestes: Set<string>, auLancement: boolean}[]}
  */
@@ -953,7 +961,7 @@ export function branchesDePermissions(source) {
       }
       continue;
     }
-    const geste = /permission-(accepter|refuser)\.yaml/.exec(ligne);
+    const geste = /permission-(accepter-contacts|accepter|refuser)\.yaml/.exec(ligne);
     if (geste) {
       if (courante.gestes.size === 0 && !declenchee) courante.auLancement = true;
       courante.gestes.add(geste[1]);
@@ -1004,6 +1012,14 @@ export function permissionsNonExercees(config, source, device, platform) {
   const exercables = new Set(Object.values(PERMISSIONS_PAR_NOM_MAESTRO).flat());
   const aJuger = declarees.filter((p) => exercables.has(p));
   if (aJuger.length === 0) return [];
+  // 🔴 578 — LES CONTACTS S'ACCEPTENT PAR LEUR PROPRE GESTE. Depuis iOS 18, leur
+  // fenêtre en demande deux (« Continuer », puis « Partager les N contacts »),
+  // et le geste commun, qui n'en fait qu'un, échoue — ou pire, laisserait la
+  // seconde feuille ouverte. Une branche contacts qui appelle le geste commun
+  // n'ACCEPTE donc pas ; une autre permission qui appelle celui des contacts
+  // non plus : il attendrait une fenêtre qui ne vient pas.
+  const contacts = new Set(PERMISSIONS_PAR_NOM_MAESTRO.contacts);
+  const accepte = (/** @type {string} */ p) => (contacts.has(p) ? 'accepter-contacts' : 'accepter');
   /** @type {Map<string, Set<string>>} */
   const gestes = new Map();
   for (const b of source === null ? [] : branchesDePermissions(source)) {
@@ -1017,9 +1033,15 @@ export function permissionsNonExercees(config, source, device, platform) {
     }
   }
   const manques = aJuger
-    .map((p) => ({ p, manque: ['accepter', 'refuser'].filter((g) => !gestes.get(p)?.has(g)) }))
+    .map((p) => ({
+      p,
+      manque: [['accepter', accepte(p)], ['refuser', 'refuser']]
+        .filter(([, g]) => !gestes.get(p)?.has(g)).map(([nom]) => nom),
+      generique: contacts.has(p) && Boolean(gestes.get(p)?.has('accepter')),
+    }))
     .filter((x) => x.manque.length > 0);
   if (manques.length === 0) return [];
+  const contactsEnDefaut = manques.some((x) => contacts.has(x.p) && x.manque.includes('accepter'));
   return [{
     id: 'QAM-PERM-NON-EXERCEE',
     title: `${manques.length} permission(s) déclarée(s) dont la fenêtre n'est pas exercée dans les deux sens`,
@@ -1027,7 +1049,9 @@ export function permissionsNonExercees(config, source, device, platform) {
       + 'Pour chacune, deux branches dans .maestro/permissions.yaml — un `launchApp` qui accorde tout '
       + 'sauf elle (`all: allow` puis `<permission>: unset`), le geste qui la fait demander, puis '
       + '`_subflows/permission-accepter.yaml` dans l\'une, `_subflows/permission-refuser.yaml` dans '
-      + 'l\'autre. Nomme-la (`notifications: unset`), `all` ne désigne aucune permission.',
+      + 'l\'autre. Nomme-la (`notifications: unset`), `all` ne désigne aucune permission.'
+      + (contactsEnDefaut ? ' Les contacts s\'acceptent par `_subflows/permission-accepter-contacts.yaml` : '
+        + 'depuis iOS 18, leur fenêtre demande deux gestes, que le geste commun ne fait pas (578).' : ''),
     severity: 'minor',
     dimension: 'configuration',
     screen: '',
@@ -1037,7 +1061,8 @@ export function permissionsNonExercees(config, source, device, platform) {
     platform,
     osVersion: device?.os ?? '',
     expected: 'une branche qui ACCEPTE et une qui REFUSE, par permission déclarée que Maestro sait exercer',
-    actual: manques.map((x) => `${x.p} (${x.manque.join(' et ')} manquant)`).join(', '),
+    actual: manques.map((x) => `${x.p} (${x.manque.join(' et ')} manquant`
+      + `${x.generique ? ' : le geste commun ne fait pas les deux temps d\'iOS' : ''})`).join(', '),
     evidence: [],
     repro: [],
     status: 'open',

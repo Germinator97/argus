@@ -185,7 +185,7 @@ plugins/argus-mobile/  .claude-plugin/plugin.json + skills/argus-mobile/   # MOB
   ├── scripts/install-mobile.sh    # copie idempotente du scaffold
   └── assets/scaffold-mobile/      # le harness réel
       ├── argus.mobile.yaml        # LE seul fichier de configuration
-      ├── .maestro/                # 8 flows + 8 sous-flows
+      ├── .maestro/                # 8 flows + 9 sous-flows
       ├── test/argus/              # gardes flutter_test (étage 1)
       ├── scripts/argus/           # runner, perf, a11y, MASVS, SCA, rapport
       ├── .github/workflows/
