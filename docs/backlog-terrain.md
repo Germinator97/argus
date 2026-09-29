@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS** — les **585** à **589** (les **583** et **584** sont fermés), rendus par le run 107, la
+🔴 **4 POINTS OUVERTS** — les **585**, **587**, **588** et **589** (les **583**, **584** et **586** sont fermés), rendus par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14393,7 +14393,7 @@ la même énumération.
 
 ### 586. Le build de scan réécrit les symboles de release du projet
 
-**Ouvert le 29/09/2026 · OUVERT** — le build que le scan de sécurité emploie
+**Ouvert le 29/09/2026 · CLOS** — le build que le scan de sécurité emploie
 passe par la commande du projet : ici elle écrit sa carte d'obfuscation dans
 `build/mapping.json`, et l'agent a pointé `--split-debug-info` sur
 `build/debug-info`, le dossier des vraies releases. Le scan a donc réécrit, sous
@@ -14409,6 +14409,24 @@ l'envoi de ses symboles : la carte qu'impose le script d'un projet ne se
 déplace pas. Écartés : sauvegarder puis restaurer ces fichiers autour du build
 (le runner écrirait dans le `build/` du projet des fichiers qu'il n'a pas
 créés) ; un avertissement seul.
+
+#### ✅ Fermé le jour même — `build/argus-sym`, et la règle là où l'on écrit la commande
+
+- Les deux commandes de scan que le plugin suggère — l'exemple de la
+  configuration et le job de scan commenté du workflow — rangent leurs symboles
+  dans `build/argus-sym`. La configuration et le SKILL disent la règle : ne
+  jamais lancer le scan entre un build de publication et l'envoi de ses symboles.
+  Le conseil du finding `QAM-SEC-OBFUS`, lui, vise la vraie commande de
+  publication du projet : inchangé.
+- 🔴 **Deux gardes anciens mesuraient une DISTANCE**, et la prose neuve les a
+  fait rougir : la forme « construit par : » à moins de 2 600 caractères de la
+  clé `androidScan` (386), et le renvoi vers le diagnostic du runner à moins de
+  40 lignes de la séquence (294). Leur message disait le geste — déplacer la
+  prose, jamais relever la borne : les deux notes vivent après ce qu'ils
+  mesurent.
+- Un garde vérifie toute commande de scan suggérée, et la règle dans les deux
+  documents, lignes et marques retirées. Quatre mutations : **TOMBE**. Suite
+  654/654, 686 mutations, 0 inerte.
 
 ### 587. Un seul lancement — le premier après l'installation — suffit à rendre `QAM-START` major
 
