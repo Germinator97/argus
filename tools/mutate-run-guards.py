@@ -3629,6 +3629,11 @@ MUTATIONS = [
     ("readme", "577 quinquies · le guide du harnais annonce de nouveau 3.19",
      "Flutter >= 3.27 (find.bySemanticsIdentifier)",
      "Flutter >= 3.19 (find.bySemanticsIdentifier)"),
+    # ── 584 · la recette du diff de jetons, jouée depuis un sous-dossier ────
+    # La recette relit son chemin depuis la racine du dépôt : 128 dans un monorepo.
+    ("skill", "584 · la recette du diff de jetons relit depuis la racine du dépôt",
+     "git show HEAD:./lib/x.dart | tr",
+     "git show HEAD:lib/x.dart | tr"),
 ]
 
 

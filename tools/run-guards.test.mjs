@@ -19254,6 +19254,52 @@ test('le contrôle lit le classement privé PAR DÉFAUT, et ce garde juge sur to
   }
 });
 
+// ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
+// `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
+// monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run
+// 107. Ce garde EXÉCUTE la recette du SKILL, telle qu'elle est écrite, depuis le
+// sous-dossier d'un dépôt jetable.
+test('584 — la recette du diff de jetons marche depuis le sous-dossier d\'un monorepo', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const docs = ['SKILL.md', 'PROMPTS.md', 'PROMPTS-by-mode.md',
+    ...readdirSync(join(base, 'references')).map((f) => `references/${f}`)];
+  // La CLASSE d'abord : aucune recette ne lit un chemin depuis la racine du dépôt.
+  for (const d of docs) {
+    const fautes = [...readFileSync(join(base, d), 'utf8').matchAll(/HEAD:(?!\.\/)[\w.-]+\//g)].map((m) => m[0]);
+    assert.deepEqual(fautes, [], `${d} prescrit un chemin lu depuis la racine du dépôt, qui échoue dans un monorepo (584)`);
+  }
+  const recettes = readFileSync(join(base, 'SKILL.md'), 'utf8').split('\n').filter((l) => l.startsWith('git show HEAD:'));
+  assert.equal(recettes.length, 1, `une recette « git show HEAD: » attendue dans le SKILL, ${recettes.length} lue(s)`);
+  const recette = recettes[0].replace('/tmp/avant.txt', '"$SORTIE"');
+  assert.notEqual(recette, recettes[0], 'la recette n\'écrit plus dans /tmp/avant.txt : ce garde ne sait plus où lire');
+
+  const bac = mkdtempSync(join(tmpdir(), 'argus-584-'));
+  try {
+    const app = join(bac, 'app');
+    mkdirSync(join(app, 'lib'), { recursive: true });
+    writeFileSync(join(app, 'lib/x.dart'), 'void principal() { final jeton = 42; }\n');
+    execFileSync('git', ['init', '-q', bac]);
+    execFileSync('git', ['-C', bac, 'add', '.']);
+    execFileSync('git', ['-C', bac, '-c', 'user.name=argus', '-c', 'user.email=argus@exemple.invalid',
+      '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'x']);
+    const sortie = join(bac, 'avant.txt');
+    // `pipefail` : sans lui, le code de sortie serait celui de `sort`, toujours 0.
+    const jouer = (/** @type {string} */ ligne) => spawnSync('bash', ['-c', `set -o pipefail; ${ligne}`],
+      { cwd: app, env: { ...process.env, SORTIE: sortie }, encoding: 'utf8' });
+    // D'abord que le montage monte ce qu'il prétend : sans le `./`, la même ligne
+    // doit y échouer — sinon ce n'est pas un sous-dossier, et le garde ne mesure rien.
+    assert.notEqual(jouer(recette.replace('HEAD:./', 'HEAD:')).status, 0,
+      'la recette sans « ./ » passe : le montage n\'est pas un sous-dossier du dépôt');
+    const r = jouer(recette);
+    assert.equal(r.status, 0, `la recette du SKILL échoue depuis le sous-dossier de l'application (584) : ${r.stderr}`);
+    const jetons = readFileSync(sortie, 'utf8').split('\n');
+    assert.ok(jetons.includes('jeton') && jetons.includes('principal'),
+      'la recette passe mais ne rend pas les jetons du fichier commité');
+  } finally {
+    rmSync(bac, { recursive: true, force: true });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 542 — Le repli du parcours critique est une branche où l'on croit écrire.
 // Sur une app SANS authentification, un run a mis le corps du parcours dans la

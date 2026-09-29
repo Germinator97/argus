@@ -2841,7 +2841,9 @@ lu ici — est un **diff au niveau des JETONS** :
 ```bash
 # Pour chaque fichier touché : les jetons d'AVANT doivent tous être dans l'APRÈS.
 # Commentaires et blancs retirés — c'est eux que l'enveloppe déplace.
-git show HEAD:lib/x.dart | tr -cs '[:alnum:]_' '\n' | sort > /tmp/avant.txt
+# `./` : le chemin part du dossier COURANT. Sans lui, git le lit depuis la racine
+# du dépôt, et dans un monorepo la commande sort en 128 (584).
+git show HEAD:./lib/x.dart | tr -cs '[:alnum:]_' '\n' | sort > /tmp/avant.txt
 tr -cs '[:alnum:]_' '\n' < lib/x.dart | sort > /tmp/apres.txt
 comm -23 /tmp/avant.txt /tmp/apres.txt      # DOIT être vide
 ```
