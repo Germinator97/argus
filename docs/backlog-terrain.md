@@ -5097,7 +5097,7 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **7 POINTS OUVERTS** — les **583** à **589**, rendus par le run 107, la
+🔴 **6 POINTS OUVERTS** — les **583** et **585** à **589** (le **584** est fermé), rendus par le run 107, la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
 en fin de fichier) : deux endroits où le plugin supposait l'application à la
 racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
@@ -14327,7 +14327,7 @@ installer. Le terrain y échappe parce que son sous-dossier porte aussi un
 
 ### 584. La recette du diff de jetons échoue depuis un sous-dossier du dépôt
 
-**Ouvert le 29/09/2026 · OUVERT** — le SKILL prescrit
+**Ouvert le 29/09/2026 · CLOS** — le SKILL prescrit
 `git show HEAD:lib/x.dart` pour prouver qu'aucun jeton du code n'a été perdu.
 Git lit ce chemin depuis la RACINE du dépôt : lancé du sous-dossier de
 l'application, il sort en 128 — « path 'mobile/lib/main.dart' exists, but not
@@ -14339,6 +14339,18 @@ la racine.
   l'installeur, est la logique juste du 569.
 - Remède, sans arbitrage : `HEAD:./…`, et un garde qui refuse toute recette
   `HEAD:<chemin>` sans le `./`.
+
+#### ✅ Fermé le jour même — `HEAD:./`, et la recette jouée depuis un sous-dossier
+
+- La recette lit désormais `git show HEAD:./lib/x.dart`, avec la raison écrite
+  au-dessus : le `./` part du dossier courant.
+- Le garde EXÉCUTE la ligne du SKILL, telle qu'écrite, depuis le sous-dossier
+  d'un dépôt jetable (`pipefail`, sinon `sort` rend 0 quoi qu'il arrive) : il
+  prouve d'abord que la même ligne sans `./` y échoue, puis que la recette passe
+  et rend les jetons du fichier commité. Il refuse aussi toute recette
+  `HEAD:<chemin>` sans `./` dans les documents du skill.
+- Une mutation — l'ancienne forme : **TOMBE**. Suite 650/650, 677 mutations,
+  0 inerte.
 
 ### 585. Le gabarit du harnais refuse les listes de délégués que Flutter fournit
 
