@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS** — les **578** à **580**, mesurés le 29/09 par la sonde iOS
-du 572 et tranchés le jour même par Germinator (section « Mesuré par la sonde
-iOS du 572 », en fin de fichier) : trois libellés d'acceptation qui n'étaient pas
-ceux d'Apple, un compte de fenêtres juste sur Android et faux sur iOS, et une
-fenêtre orpheline qui survit à `clearState`. Les **564** à **577** sont fermés —
+🔴 **2 POINTS OUVERTS** — le **579** et le **580**, mesurés le 29/09 par la sonde
+iOS du 572 et tranchés le jour même par Germinator (section « Mesuré par la sonde
+iOS du 572 », en fin de fichier) : un compte de fenêtres juste sur Android et faux
+sur iOS, et une fenêtre orpheline qui survit à `clearState`. Le **578** est fermé :
+iOS accepte sur les libellés mesurés, et les contacts en deux gestes. Les **564**
+à **577** sont fermés —
 les huit du run 106 d'abord, puis les cinq que sa correction de terrain a rendus,
 puis le **577** : le plancher Flutter annoncé était faux, il est désormais celui
 qu'un job de CI fait tourner.
@@ -14019,7 +14020,7 @@ gabarit : `all: allow` puis `<permission>: unset`.
 
 ### 578. Sur iOS, accepter échoue sur trois fenêtres : leurs libellés n'étaient pas ceux qu'on avait écrits
 
-**Ouvert le 29/09/2026 · OUVERT** — le « non mesuré sur simulateur » du 572,
+**Ouvert le 29/09/2026 · CLOS** — le « non mesuré sur simulateur » du 572,
 mesuré. Le refus passe partout, 6/6 dans les deux langues ; l'acceptation, 3/6
 en français et 4/6 en anglais.
 
@@ -14047,6 +14048,34 @@ exige qu'une branche contacts l'appelle. Écartés : un second geste toléré da
 le sous-flow commun, qui coûterait sa borne (~6 s, 517) à chaque acceptation
 d'une autre permission ; un paramètre `env`, qui changerait le contrat du
 gabarit sans atteindre les fichiers déjà écrits.
+
+#### ✅ Fermé le jour même — les libellés mesurés, et les contacts en deux gestes
+
+- `permission-accepter.yaml` attend et touche les libellés **relevés** :
+  « Autoriser lorsque l’app est active » remplace le français deviné, et « Allow
+  Full Access » / « Autoriser l’accès complet » s'ajoutent ; « Continuer »,
+  « Limiter l’accès… » et « Autoriser une fois » restent refusés. Le refus
+  n'avait rien à changer : son commentaire dit désormais ce qui a été mesuré.
+- `permission-accepter-contacts.yaml`, au cadre, attend d'abord le **titre** de
+  la fenêtre — « Continuer » est un libellé qu'une application porte souvent —,
+  touche « Continuer », puis attend et touche « Partager les N contacts » ; sur
+  Android, il délègue au geste commun. Le gabarit et le SKILL le prescrivent.
+- Le runner lit ce geste sous son nom. L'ancien motif ne le voyait pas, et
+  prenait son `runFlow` pour le toucher qui déclenche la demande : une permission
+  demandée au lancement cessait d'être comptée. `QAM-PERM-NON-EXERCEE` n'accepte
+  les contacts que par lui, et dit pourquoi quand la branche appelle le geste
+  commun.
+- Le garde du 572 figeait le libellé deviné comme cas positif : il porte les
+  libellés mesurés et leurs voisins, et un garde neuf exige que l'attente et le
+  toucher de chaque sous-flow soient le même sélecteur.
+- Remesuré sur la sonde avec les fichiers de HEAD : acceptation **6/6** en
+  français et en anglais, contacts compris, états relus `granted` ;
+  contre-épreuve, le geste des contacts sur la fenêtre de la caméra échoue sur
+  son attente du titre.
+- Douze mutations, plus les onze du 572 dont une réancrée : **23/23 TOMBE**. La
+  mutation Android des contacts a été réencadrée : nue, elle tombait sous le
+  garde de l'encadrement, et celui de la délégation n'était jamais éprouvé.
+- Suite 644/644, 663 mutations, 0 inerte.
 
 ### 579. Sur iOS, `resilience` attend des fenêtres que son lancement n'ouvre pas
 
