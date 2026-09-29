@@ -167,6 +167,12 @@ l'avertissement de locale au lieu de le traiter (480).
 chaque utilisateur, et le moyenner avec le régime stabilisé ne décrirait ni l'un
 ni l'autre.
 
+Le verdict des flows (`startup`) fait de même depuis le **587** : quand le run a
+posé le binaire, le premier lancement qui suit est écarté de `QAM-START` —
+`startup.firstAfterInstall` nomme son flow, et `QAM-START-PREMIER` (`info`) le
+rapporte s'il dépasse le budget. Au run 107, ce seul échantillon rendait le
+verdict `major` : 3 396 ms contre 1 488 à 1 814 hors splash pour les neuf autres.
+
 **`coverage`** gagne `screensDeclared`, `screensConfigured`, `notConfigured[]`
 (écrans déclarés sans ancre sémantique, donc non testés), `visualScreens[]` et
 `visualMode`.

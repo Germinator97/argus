@@ -270,8 +270,8 @@ MUTATIONS = [
      "  if (over.length === 0) return findings;",
      "  if (over.length === 0) return findings;\n  if (over.length > 1) return over.flatMap((s) => startupFindings([s], device, platform, config));"),
     ("run", "un finding même sous le seuil",
-     '  const over = mesures.filter((s) => net(s) > budget);',
-     '  const over = mesures.filter((s) => net(s) >= 0);'),
+     '  const over = jugees.filter((s) => net(s) > budget);',
+     '  const over = jugees.filter((s) => net(s) >= 0);'),
     ("run", "le budget d'attente colle au seuil de perf",
      "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000) * 5);",
      "  return Math.max(20000, (config.thresholds?.coldStartMs ?? 2000));"),
@@ -339,8 +339,8 @@ MUTATIONS = [
      "    && String(s?.metadata?.status ?? '').toUpperCase() === 'COMPLETED');",
      "    && String(s?.metadata?.status ?? '').toUpperCase() !== '@@jamais@@');"),
     ("run", "le plancher de splash cesse d'être déduit",
-     '  const over = mesures.filter((s) => net(s) > budget);',
-     '  const over = mesures.filter((s) => s.ms > budget);'),
+     '  const over = jugees.filter((s) => net(s) > budget);',
+     '  const over = jugees.filter((s) => s.ms > budget);'),
     ("run", "le plancher devient un seuil relevé, donc il efface la dérive",
      "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0));",
      "  const floor = Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0) * 10);"),
@@ -601,8 +601,8 @@ MUTATIONS = [
      "      + (variante === 'debug' ? ' (mesuré sur un debug)' : ''),",
      "      + '',"),
     ("run", "le site d'appel cesse de LIRE le variant sur l'appareil",
-     "      platform === 'android' ? installedVariant(resolved.udid, appId) : ''),",
-     "      ''),"),
+     "      platform === 'android' ? installedVariant(resolved.udid, appId) : '', premier),",
+     "      '', premier),"),
     # ⚠️ Le style d'AVANT, remis tel quel : `max-width` seul ne borne rien sur
     # une capture de téléphone. C'est la forme exacte du défaut, pas une
     # approximation — le garde doit tomber sur ce que la page portait vraiment.
@@ -3687,6 +3687,31 @@ MUTATIONS = [
     ("gabaritharness", "585 · le gabarit type de nouveau ses délégués en Object",
      "const List<LocalizationsDelegate<Object?>> argusLocalizationsDelegates =\n    <LocalizationsDelegate<Object?>>[];",
      "const List<LocalizationsDelegate<Object>> argusLocalizationsDelegates =\n    <LocalizationsDelegate<Object>>[];"),
+    # ── 587 · le premier lancement après l'installation, jugé à part ────────
+    # Le verdict rejuge le premier lancement avec les autres.
+    ("run", "587 · le verdict juge de nouveau le premier lancement après l'installation",
+     "  const jugees = mesures.filter((s) => s !== premier);",
+     "  const jugees = mesures;"),
+    # Sans installation dans ce run, un lancement est écarté quand même.
+    ("run", "587 bis · le premier lancement est écarté même sans installation",
+     "  if (!installe) return null;\n  const lancements",
+     "  const lancements"),
+    # Le plus ancien ÉCHANTILLON passe pour le premier LANCEMENT.
+    ("run", "587 ter · le premier échantillon passe pour le premier lancement",
+     "  return (samples ?? []).find((sm) => Number(sm?.lanceA) === premier) ?? null;",
+     "  return (samples ?? []).reduce((a, sm) => (a && Number(a.lanceA) <= Number(sm.lanceA) ? a : sm), null);"),
+    # Écarté du verdict, il n'est plus rapporté nulle part.
+    ("run", "587 quater · le premier lancement n'est plus rapporté à part",
+     "  if (premier && String(premier.status ?? '').toUpperCase() !== 'FAILED' && net(premier) > budget) {",
+     "  if (false && premier && String(premier.status ?? '').toUpperCase() !== 'FAILED' && net(premier) > budget) {"),
+    # Le câblage : le verdict ne reçoit plus le premier lancement.
+    ("run", "587 quinquies · le verdict ne reçoit plus le premier lancement",
+     "      platform === 'android' ? installedVariant(resolved.udid, appId) : '', premier),",
+     "      platform === 'android' ? installedVariant(resolved.udid, appId) : '', null),"),
+    # Le premier est désigné sans lire si ce run a installé.
+    ("run", "587 sexies · le premier est désigné sans lire si ce run a installé",
+     "  const premier = premierApresInstallation(bundles, startup, opts.install && !opts.dryRun);",
+     "  const premier = premierApresInstallation(bundles, startup, true);"),
 ]
 
 

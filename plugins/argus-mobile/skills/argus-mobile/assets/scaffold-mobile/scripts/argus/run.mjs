@@ -1921,10 +1921,10 @@ export function junitsVisuelsOrphelins(fichiers, visualScreens) {
  *
  * D'où ce relevé : il rend visible ce que le harnais payait déjà.
  * @param {Array<{flow:string, steps:any[]}>} bundles @param {string} anchor
- * @returns {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>}
+ * @returns {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean, lanceA:number}>}
  */
 function startupSamples(bundles, anchor, floorMs = 0) {
-  /** @type {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>} */
+  /** @type {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean, lanceA:number}>} */
   const samples = [];
   if (!anchor) return samples;
   for (const bundle of bundles) {
@@ -1973,9 +1973,44 @@ function startupSamples(bundles, anchor, floorMs = 0) {
       status: String(step.metadata?.status ?? ''),
       precedeMs,
       absorbed,
+      // 587 — l'heure du lancement : c'est elle qui désigne le premier après
+      // l'installation, pas l'ordre des dossiers du rapport.
+      lanceA: Number(lancement?.metadata?.timestamp ?? NaN),
     });
   }
   return samples;
+}
+
+/**
+ * 587 — Le premier lancement après l'installation, s'il y en a eu une dans CE run.
+ *
+ * Chaque flow repart d'un `clearState`, mais le tout premier après la pose du
+ * binaire paie en plus ce que l'appareil ne fait qu'une fois — mesuré au run
+ * 107 : 3 396 ms (2 196 hors splash de marque) contre 1 488 à 1 814 hors splash
+ * pour les neuf autres. `argus-perf` distinguait déjà ce premier lancement
+ * (`firstLaunchMs`) du démarrage à froid ; le verdict des flows, non, et ce seul
+ * échantillon suffisait à le rendre `major`. Tranché par Germinator : écarté du
+ * verdict, rapporté à part.
+ *
+ * ⚠️ C'est le premier LANCEMENT du run, pas le premier ÉCHANTILLON : si le flow
+ * lancé en premier est mort avant de mesurer, le plus ancien échantillon est
+ * déjà un second lancement — l'écarter jugerait sans lui. On ne rend alors rien.
+ * Et sans installation dans ce run (`--no-install`), le binaire a déjà servi :
+ * rien n'est écarté.
+ * @param {Array<{steps?:any[]}>} bundles les étapes exécutées, flow par flow
+ * @param {Array<{flow:string, ms:number, lanceA?:number}>} samples
+ * @param {boolean} installe le runner a-t-il posé le binaire dans ce run
+ * @returns {any} l'échantillon du premier lancement, ou null
+ */
+export function premierApresInstallation(bundles, samples, installe) {
+  if (!installe) return null;
+  const lancements = (bundles ?? []).flatMap((b) => (b?.steps ?? [])
+    .filter((/** @type {any} */ st) => Object.keys(st?.command ?? {})[0] === 'launchAppCommand')
+    .map((/** @type {any} */ st) => Number(st?.metadata?.timestamp ?? NaN)))
+    .filter((t) => Number.isFinite(t));
+  if (lancements.length === 0) return null;
+  const premier = Math.min(...lancements);
+  return (samples ?? []).find((sm) => Number(sm?.lanceA) === premier) ?? null;
 }
 
 /**
@@ -2052,6 +2087,7 @@ function anchorAfterAuth(anchors, home) {
  * @param {Array<{flow:string, ms:number, status:string, precedeMs:number, absorbed:boolean}>} samples
  * @param {any} device @param {string} platform @param {any} config
  * @param {'debug'|'release'|''} [variante]
+ * @param {any} [premier] le premier lancement après l'installation (587), écarté du verdict
  * @returns {any[]}
  */
 /**
@@ -2110,7 +2146,7 @@ function remedeAbsorption(invitePossible, flow, platform = '') {
     + 't\'appartenait, et un run l\'a payé en cherchant comment faire.';
 }
 
-function startupFindings(samples, device, platform, config, variante = '') {
+function startupFindings(samples, device, platform, config, variante = '', premier = null) {
   const budget = config.thresholds?.coldStartMs ?? 2000;
   // ⚠️ Le plancher de marque n'est PAS un assouplissement du seuil : c'est une
   // durée que le produit a DÉCIDÉ d'imposer, et qui n'a donc rien à voir avec
@@ -2139,7 +2175,12 @@ function startupFindings(samples, device, platform, config, variante = '') {
   // néant — ici un budget TENU, ce qui est le pire des deux sens (479).
   const absorbees = vivantes.filter((s) => s.absorbed);
   const mesures = vivantes.filter((s) => !s.absorbed);
-  const over = mesures.filter((s) => net(s) > budget);
+  // 🔴 587 — LE PREMIER LANCEMENT APRÈS L'INSTALLATION N'EST PAS JUGÉ AVEC LES
+  // AUTRES. Il paie ce que l'appareil ne fait qu'une fois, et ce seul
+  // échantillon rendait le verdict `major` (run 107). Il est rapporté à part,
+  // plus bas, et le verdict porte sur les lancements suivants.
+  const jugees = mesures.filter((s) => s !== premier);
+  const over = jugees.filter((s) => net(s) > budget);
   // ⚠️ Et si TOUT est censuré, on ne conclut pas : rendre un finding de lenteur
   // sur zéro mesure serait exactement le « vert sur du néant » que le 367 a fermé,
   // dans l'autre sens. Les flows morts se rapportent par leur propre échec.
@@ -2288,6 +2329,31 @@ function startupFindings(samples, device, platform, config, variante = '') {
         status: 'open',
       });
     }
+  }
+  if (premier && String(premier.status ?? '').toUpperCase() !== 'FAILED' && net(premier) > budget) {
+    const dontP = floor > 0 ? `, dont ${floor} ms de splash assumés` : '';
+    findings.push({
+      id: 'QAM-START-PREMIER',
+      title: `le premier lancement après l'installation met ${Math.round(premier.ms / 1000)} s${dontP} `
+        + `(seuil ${budget} ms) — rapporté à part, hors du verdict de démarrage`,
+      suggestedFix: 'C\'est le coût que l\'appareil paie UNE fois par installation — et que chaque '
+        + 'utilisateur paie aussi, une fois. Il est rapporté à part pour ne pas faire tomber le verdict '
+        + 'des lancements suivants (587). `argus-perf` le mesure pour lui-même (`firstLaunchMs`) : '
+        + 'c\'est là qu\'une dérive se lit.',
+      severity: 'info',
+      dimension: 'performance',
+      screen: 'démarrage',
+      step: 0,
+      selector: '',
+      device: device.id,
+      platform,
+      osVersion: device.os ?? '',
+      expected: `premier lancement sous ${budget} ms hors splash de marque — informatif, hors verdict`,
+      actual: `${Math.round(premier.ms)} ms sur « ${premier.flow} »`,
+      evidence: [],
+      repro: [],
+      status: 'open',
+    });
   }
   if (over.length === 0) return findings;
   const worst = over.reduce((a, b) => (b.ms > a.ms ? b : a));
@@ -3228,13 +3294,15 @@ async function main() {
   const home = start.screen;
   const startup = startupSamples(bundles, home?.anchor ?? '',
     Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0)));
+  // 587 — le premier lancement après l'installation, si CE run a posé le binaire.
+  const premier = premierApresInstallation(bundles, startup, opts.install && !opts.dryRun);
   const findings = [
     ...findingsFrom(bundles, reportDevice, platform, config, home?.anchor ?? ''),
     // Le variant est LU sur l'appareil, pas déduit de la commande de build :
     // ces flows tournent sur ce qu'`argus-build` a posé. Sur iOS la lecture
     // rend '' — le finding ne dira rien plutôt que de supposer.
     ...startupFindings(startup, reportDevice, platform, config,
-      platform === 'android' ? installedVariant(resolved.udid, appId) : ''),
+      platform === 'android' ? installedVariant(resolved.udid, appId) : '', premier),
     // ⚠️ Un avertissement de console meurt avec le terminal. Celui-ci dit qu'une
     // dimension ne mesure pas ce qu'elle annonce : il doit atteindre la page.
     ...localeFindings(avertissementsLocale, reportDevice, platform),
@@ -3339,6 +3407,8 @@ async function main() {
       brandedSplashMs: Math.max(0, Number(config.thresholds?.brandedSplashMs ?? 0)),
       timeoutMs: startTimeoutMs(config),
       samples: startup,
+      // 587 — le flow du premier lancement après l'installation, écarté du verdict.
+      firstAfterInstall: premier ? premier.flow : null,
     },
     // ⚠️ Une note de console meurt avec la session (355). Celle-ci dit ce que
     // la dimension i18n a RÉELLEMENT sous les yeux : les deux locales et leur

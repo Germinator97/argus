@@ -263,6 +263,13 @@ choix du designer**. Mesuré sur un même projet à deux runs d'écart — clé 
 `QAM-START major, « 3 s pour afficher l'écran de départ »` ; clé à `2000` :
 3415 ms relevés, budget 2000, **zéro finding**. Le verdict change, l'app non.
 
+📌 **Le premier lancement après l'installation est jugé à part (587).** Il paie ce
+que l'appareil ne fait qu'une fois — mesuré, 3 396 ms contre 1 488 à 1 814 hors
+splash pour les lancements suivants —, et à lui seul il rendait `QAM-START`
+major. Quand le runner a posé le binaire, cet échantillon sort du verdict :
+`startup.firstAfterInstall` le nomme, `QAM-START-PREMIER` (`info`) le rapporte
+s'il dépasse le budget, et `argus-perf` le mesure pour lui-même (`firstLaunchMs`).
+
 🔴 **ET LE GESTE QUI FERME LES INVITES SYSTÈME PEUT AVALER CETTE MESURE — 531.**
 Avant de chercher l'écran de départ, la séquence de lancement joue un geste qui
 referme une éventuelle invite du système. Il le faut : une invite recouvre

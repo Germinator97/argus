@@ -117,6 +117,7 @@ import { runScope } from '../plugins/argus-mobile/skills/argus-mobile/assets/sca
 import { anchorAfterAuth, animationsApplicables, gesteInviteAuLancement, invitesSystemePossibles, inviteSystemeInerte } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { resilienceSansUnset } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { causeInstall } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
+import { premierApresInstallation } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
 import { branchesDeGoto, ecransSansBranche } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { flowCycles } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { ciblesRunFlow } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
@@ -19410,6 +19411,81 @@ test('585 — le gabarit type ses délégués pour recevoir les listes de Flutte
       + '.delegates et la liste de gen-l10n (invalid_assignment, mesuré) (585)');
   }
   assert.doesNotMatch(code, /LocalizationsDelegate<Object>/, 'un LocalizationsDelegate<Object> reste dans le code du gabarit (585)');
+});
+
+// ── 587 · LE PREMIER LANCEMENT APRÈS L'INSTALLATION, JUGÉ À PART ─────────────
+// Au run 107, un seul échantillon — le tout premier après la pose du binaire —
+// rendait `QAM-START` major : 3 396 ms (2 196 hors splash) contre 1 488 à 1 814
+// pour les neuf autres. Tranché par Germinator : écarté du verdict, rapporté à
+// part. Valeurs du run : budget 2 000, splash de marque 1 200.
+const CFG_587 = { thresholds: { coldStartMs: 2000, brandedSplashMs: 1200 } };
+const ANCRE_587 = { visible: { idRegex: 'home_root' } };
+/** Un flow lancé à `lanceA`, qui voit l'écran de départ au bout de `mesureMs`. */
+const flowLance587 = (/** @type {string} */ flow, /** @type {number} */ lanceA, /** @type {number} */ mesureMs) => ({
+  flow,
+  steps: [
+    { command: { launchAppCommand: { appId: 'x' } }, metadata: { status: 'COMPLETED', duration: 400, timestamp: lanceA } },
+    { command: { assertConditionCommand: { condition: ANCRE_587 } },
+      metadata: { status: 'COMPLETED', duration: mesureMs, timestamp: lanceA + 410,
+        evaluatedCommand: { c: { condition: ANCRE_587 } } } },
+  ],
+});
+/** Un flow lancé, mort avant d'attendre l'écran de départ : aucun échantillon. */
+const flowMort587 = (/** @type {string} */ flow, /** @type {number} */ lanceA) => ({
+  flow,
+  steps: [{ command: { launchAppCommand: { appId: 'x' } }, metadata: { status: 'COMPLETED', duration: 400, timestamp: lanceA } }],
+});
+// L'ordre des dossiers n'est PAS celui des lancements : a11y est lancé en premier.
+const lot587 = () => [flowLance587('resilience', 5000, 2729), flowLance587('a11y', 1000, 3396),
+  flowLance587('lifecycle', 9000, 2926)];
+
+test('587 — le premier lancement après l\'installation se désigne par son HEURE, et seulement si ce run a installé', () => {
+  const bundles = lot587();
+  const samples = startupSamples(bundles, 'home_root', 1200);
+  assert.equal(samples.length, 3, 'le montage ne rend pas ses trois échantillons : ce garde ne mesure rien');
+  assert.equal(premierApresInstallation(bundles, samples, true)?.flow, 'a11y',
+    'le premier lancement n\'est pas désigné par l\'heure du lancement — l\'ordre du rapport n\'est pas celui du run (587)');
+  assert.equal(premierApresInstallation(bundles, samples, false), null,
+    'sans installation dans ce run (--no-install), un lancement est écarté quand même : le binaire avait déjà servi (587)');
+  // Le flow lancé en PREMIER est mort avant de mesurer : le plus ancien
+  // ÉCHANTILLON est déjà un second lancement, et l'écarter jugerait sans lui.
+  const mort = [flowMort587('smoke', 500), ...bundles];
+  assert.equal(premierApresInstallation(mort, startupSamples(mort, 'home_root', 1200), true), null,
+    'le plus ancien échantillon est écarté alors que le premier LANCEMENT était ailleurs (587)');
+  assert.equal(premierApresInstallation([], [], true), null, 'sans lancement lu, un échantillon est désigné');
+});
+
+test('587 — le verdict de démarrage ne juge pas le premier lancement, et le rapporte à part', () => {
+  const dev = { id: 'emu', os: 'android-36' };
+  const bundles = lot587();
+  const samples = startupSamples(bundles, 'home_root', 1200);
+  const avec = startupFindings(samples, dev, 'android', CFG_587, 'debug', premierApresInstallation(bundles, samples, true));
+  assert.ok(!avec.some((f) => f.id === 'QAM-START'),
+    'le premier lancement après l\'installation rend encore QAM-START major, alors que les suivants tiennent le budget (587)');
+  const p = avec.find((f) => f.id === 'QAM-START-PREMIER');
+  assert.ok(p, 'le premier lancement n\'est plus rapporté nulle part : écarté du verdict, il doit l\'être à part (587)');
+  assert.equal(p.severity, 'info', 'le premier lancement fait de nouveau tomber le gate');
+  assert.match(p.actual, /3396 ms sur « a11y »/, 'le finding ne dit plus quel lancement il rapporte');
+  // L'autre moitié : sans premier à écarter, le même lot rend le verdict d'avant.
+  const sans = startupFindings(samples, dev, 'android', CFG_587, 'debug', null);
+  assert.ok(sans.some((f) => f.id === 'QAM-START' && f.severity === 'major'),
+    'sans premier lancement à écarter, le verdict ne tombe plus : ce garde ne mesure rien');
+  // Et un lancement SUIVANT au-dessus du budget fait toujours tomber le verdict.
+  const lent = [...bundles, flowLance587('i18n', 12000, 3600)];
+  const s2 = startupSamples(lent, 'home_root', 1200);
+  const f2 = startupFindings(s2, dev, 'android', CFG_587, 'debug', premierApresInstallation(lent, s2, true));
+  assert.ok(f2.some((f) => f.id === 'QAM-START' && f.severity === 'major'),
+    'écarter le premier lancement a désarmé le verdict : un lancement suivant au-dessus du budget passe (587)');
+});
+
+test('587 — le runner désigne le premier lancement là où il sait s\'il a installé, et le passe au verdict', () => {
+  const src = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(src, /const premier = premierApresInstallation\(bundles, startup, opts\.install && !opts\.dryRun\);/,
+    'le premier lancement n\'est plus désigné, ou l\'est sans lire si CE run a posé le binaire (587)');
+  assert.match(src, /startupFindings\(startup, reportDevice, platform, config,\n\s*platform === 'android' \? installedVariant\(resolved\.udid, appId\) : '', premier\)/,
+    'le verdict ne reçoit plus le premier lancement : il le juge avec les autres (587)');
+  assert.match(src, /firstAfterInstall: premier \? premier\.flow : null/, 'le rapport ne nomme plus le flow écarté (587)');
 });
 
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
