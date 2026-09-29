@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **581** et **582**, trouvés le 29/09 par la CI du fork
-(section « Trouvé par la CI du fork », en fin de fichier) : deux mutations
-VACANTES sur le runner, parce que leur garde ne jugeait qu'avec ce que ce poste
-possède — le lien du dossier temporaire de macOS, les fichiers privés des
-terrains. Les **578** à **580**, mesurés le 29/09 par la sonde iOS du
+✅ **Rien d'ouvert.** Les **581** et **582**, trouvés le 29/09 par la CI du fork
+(section « Trouvé par la CI du fork », en fin de fichier), sont fermés le jour
+même : deux mutations VACANTES sur le runner, parce que leur garde ne jugeait
+qu'avec ce que ce poste possède, ont désormais un garde qui juge sur toute
+machine — le lien est posé par le garde, le `HOME` est fabriqué. Les **578** à
+**580**, mesurés le 29/09 par la sonde iOS du
 572 (section « Mesuré par la sonde iOS du 572 »), sont fermés
 le jour même : iOS accepte sur les libellés mesurés et les contacts en deux
 gestes, `resilience` ne compte sur iOS que la fenêtre des notifications, et le
@@ -14202,7 +14203,7 @@ celles que le harnais annonce non jouables sans leur outil.
 
 ### 581. `569 quater` est VACANTE sur le runner : son garde ne voit le défaut qu'à travers le lien du dossier temporaire de macOS
 
-**Ouvert le 29/09/2026 · OUVERT** — la mutation compare le chemin de la cible
+**Ouvert le 29/09/2026 · CLOS** — la mutation compare le chemin de la cible
 LOGIQUE (`pwd` au lieu de `pwd -P`) à la racine que rend git, toujours physique.
 Le garde du 569 installe dans des dépôts créés sous `tmpdir()`. Sur macOS, ce
 chemin traverse un lien (`/var` → `/private/var`) : la mutation fait prendre une
@@ -14217,9 +14218,20 @@ mutation ne change rien que le garde puisse voir.
   et lance l'installeur à travers lui. Le défaut devient visible sur tout
   système ; le commentaire de la mutation est réécrit.
 
+#### ✅ Fermé le jour même — le garde pose son propre lien
+
+- Le garde du 569 a un cinquième cas : un dépôt jetable, un lien vers lui posé
+  par le garde, et l'installeur lancé à travers ce lien. Il vérifie d'abord que
+  le chemin traverse bien un lien et mène au dépôt monté — sans quoi le cas
+  serait vert pour la raison du cas 4.
+- Rejoué dans les conditions du runner : la 569 quater TOMBE, et c'est le
+  nouveau cas qui rougit — son message « (581) », lu sur la mutation posée à la
+  main dans un worktree jetable. Sur ce poste, elle TOMBE aussi.
+- Le commentaire de la mutation ne la dit plus propre à macOS.
+
 ### 582. `575 sexies` est VACANTE sur le runner : le seul garde qui la jugeait lit les fichiers privés du poste
 
-**Ouvert le 29/09/2026 · OUVERT** — la mutation fait cesser la lecture du
+**Ouvert le 29/09/2026 · CLOS** — la mutation fait cesser la lecture du
 classement privé PAR DÉFAUT. Le seul garde qui la voyait est le contrôle du
 dépôt livré (541), qui lit la liste des terrains et le classement dans
 `~/.argus-etalon/` et se tait sans eux — exprès : un poste sans terrain n'a
@@ -14231,3 +14243,17 @@ le câblage par défaut.
   sous-processus, avec un `HOME` fabriqué — un identifiant ambigu inventé,
   classé ou non —, et qui prouve le câblage par défaut sur toute machine, sans
   toucher à l'outil. Le contrôle réel, sur ce poste, reste tel quel.
+
+#### ✅ Fermé le jour même — un garde sous un `HOME` fabriqué
+
+- Le garde lance l'outil dans un sous-processus dont le `HOME` est un dossier
+  jetable, sans lui injecter de classement. Il prouve d'abord que l'outil lit ce
+  `HOME` — le chemin du classement y mène — et que, sans classement, un
+  identifiant ambigu inventé échoue ; puis que, classé dans le fichier privé
+  fabriqué, il n'échoue plus.
+- Rejoué dans les conditions du runner : la 575 sexies TOMBE, sous ce garde.
+  Sur ce poste, elle TOMBE sous le contrôle du dépôt livré, le premier qu'elle
+  rencontre.
+- L'outil n'a pas changé ; le commentaire de la mutation nomme son nouveau juge.
+- Suite 649/649, 676 mutations, 0 inerte. Le prochain push dira si la tranche
+  9/10 passe sur le vrai runner.
