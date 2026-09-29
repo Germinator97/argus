@@ -5097,8 +5097,15 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **581** et **582**, trouvés le 29/09 par la CI du fork
-(section « Trouvé par la CI du fork », en fin de fichier), sont fermés le jour
+🔴 **7 POINTS OUVERTS** — les **583** à **589**, rendus par le run 107, la
+confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
+en fin de fichier) : deux endroits où le plugin supposait l'application à la
+racine du dépôt, un type du gabarit trop étroit, et quatre tranchés par
+Germinator — les symboles
+que le scan réécrit, le premier lancement après l'installation, la taille d'un
+APK universel, les textes repliés par conception. Les **581** et **582**,
+trouvés le 29/09 par la CI du fork
+(section « Trouvé par la CI du fork »), sont fermés le jour
 même : deux mutations VACANTES sur le runner, parce que leur garde ne jugeait
 qu'avec ce que ce poste possède, ont désormais un garde qui juge sur toute
 machine — le lien est posé par le garde, le `HOME` est fabriqué. Les **578** à
@@ -14255,5 +14262,156 @@ le câblage par défaut.
   Sur ce poste, elle TOMBE sous le contrôle du dépôt livré, le premier qu'elle
   rencontre.
 - L'outil n'a pas changé ; le commentaire de la mutation nomme son nouveau juge.
-- Suite 649/649, 676 mutations, 0 inerte. Le prochain push dira si la tranche
-  9/10 passe sur le vrai runner.
+- Suite 649/649, 676 mutations, 0 inerte. Poussé le jour même : la CI #9 rend
+  14/14, et la tranche 9/10 passe sur le vrai runner.
+
+## Rendu par le run 107 — confirmation de 564 à 577, même terrain, Android — 29/09/2026
+
+Confirmation sur le terrain qui avait rendu les 564 à 577 — le jeu dont
+l'application vit dans un sous-dossier du dépôt, qui construit par un script
+imposé et parle à un backend réel —, choisi par Germinator selon la règle « une
+vérification se joue sur le même terrain ». Prompt **identique au run 106 à une
+ligne près** : l'état de l'appareil, mesuré (l'application absente, et non
+désinstallée). Agent vierge, 72,8 min ; 7 flows sur 7 et 3 comparaisons
+visuelles sur 3, **14 écrans déclarés = ancrés = visités**, **6 dimensions sur
+6**, 21 dettes, 22 min 36 de device sur 60. Gate `fail`, sur trois `major` de
+mesure — un démarrage en debug, un démarrage à froid sous une charge d'hôte de
+1,16 par cœur, que le finding dit lui-même non concluant, et la taille d'un APK
+universel.
+
+### Confirmés, lus sur les ARTEFACTS et non sur le compte rendu
+
+| point | ce que le run 106 avait produit | ce que le run 107 produit |
+|---|---|---|
+| **564** | « la locale de l'appareil n'a pas pu être lue » | `locale.onDevice` = `en-US`, lue sur un appareil jamais réglé |
+| **565** | 8 démarrages sur 9 absorbés par le geste d'invite | **0** absorbé ; 5 à 19 ms d'attente avant chaque mesure |
+| **566** | l'accessibilité sur l'appareil sautée (« could not get idle state ») | mesurée, animations restaurées à 1.0 après |
+| **567** | `make argus-baselines` avalait `ARGS` | `ARGS="--tags=visual --no-install"` transmis : « installation ignorée (--no-install) » |
+| **568** | la page taisait les 31 dettes de l'étage 1 | « 21 dettes assumées », la liste repliée |
+| **569** | l'installeur taisait la CI étrangère de la racine | « … porte : .gitlab-ci.yml (racine du dépôt) … ne s'exécutera NULLE PART » |
+| **570 · 571** | deux promesses de la configuration | lues dans la configuration posée : binaire écarté, deux lecteurs du budget |
+| **572** | aucune branche de permission | une branche écrite sur le vrai geste (écran de sortie, pré-prompt, fenêtre système), jouée verte |
+| **576** | 148 fichiers laissés sans un mot | 177 retirés, 0 gardé ; `.gitignore` revenu à sa version commitée ; seul reste, un dossier vide de Gradle |
+
+Exercé sans relecture du chemin : **573** (20 gardes de contraste joués). Non
+exercé, et dit par le cadre lui-même : **574** — « les 12 police(s) de ce projet
+sont embarquées en ASSETS et enregistrées à l'exécution […] Ce n'est pas
+« conforme » — c'est « non mesuré par ici » ». Non exerçables ici : **575**
+(outil du dépôt), **577** (le terrain est sur une version récente).
+
+### Ce qu'il rend — sept points
+
+Tous reproduits sur ce poste avant d'être inscrits. Trois se corrigent sans
+arbitrage (**583, 584, 585**) ; quatre changeaient le sens d'un verdict ou d'un
+mécanisme, tranchés par Germinator le jour même (**586 à 589**). Écarté sans
+point : l'analyse de dépendances ne voit que le dossier de l'application, pas
+les fonctions serveur du dépôt — hors du périmètre d'un outil mobile.
+
+### 583. Dans un monorepo, un `.fvmrc` à la seule racine n'est pas vu : Argus lance le Flutter du PATH
+
+**Ouvert le 29/09/2026 · OUVERT** — la détection de FVM ne regarde que le
+dossier courant : `[ -f .fvmrc ] || [ -d .fvm ]` dans le `Makefile`, le même
+test dans `package.snippet.json`, `usesFvm()` dans `config.mjs`, et
+`[ -f .fvmrc ]` dans les quatre étapes du workflow qui lisent la version à
+installer. Le terrain y échappe parce que son sous-dossier porte aussi un
+`.fvmrc`.
+
+- Reproduit sur un monorepo jetable, `.fvmrc` à la racine seule : le `Makefile`
+  rend `FLUTTER=flutter` et `usesFvm()` rend `false`, pendant que `fvm flutter`,
+  lancé du même sous-dossier, trouve la racine et rend **3.41.9** — le Flutter du
+  PATH est en **3.32.0**. Contre-épreuve : le même `.fvmrc` copié dans le
+  sous-dossier rend `fvm flutter` et `true`.
+- Remède, sans arbitrage à rendre : chercher comme FVM cherche — le dossier
+  courant, puis ses parents —, dans les sept sites, avec un garde qui les
+  confronte tous au même critère.
+
+### 584. La recette du diff de jetons échoue depuis un sous-dossier du dépôt
+
+**Ouvert le 29/09/2026 · OUVERT** — le SKILL prescrit
+`git show HEAD:lib/x.dart` pour prouver qu'aucun jeton du code n'a été perdu.
+Git lit ce chemin depuis la RACINE du dépôt : lancé du sous-dossier de
+l'application, il sort en 128 — « path 'mobile/lib/main.dart' exists, but not
+'lib/main.dart' ». `HEAD:./lib/main.dart` passe, depuis le sous-dossier comme à
+la racine.
+
+- Balayage de la classe : un seul site dans le plugin (`SKILL.md`) ; le seul
+  autre usage d'un chemin de dépôt, `rev-parse --show-toplevel` dans
+  l'installeur, est la logique juste du 569.
+- Remède, sans arbitrage : `HEAD:./…`, et un garde qui refuse toute recette
+  `HEAD:<chemin>` sans le `./`.
+
+### 585. Le gabarit du harnais refuse les listes de délégués que Flutter fournit
+
+**Ouvert le 29/09/2026 · OUVERT** — `harness.dart` déclare
+`List<LocalizationsDelegate<Object>>`. Les listes toutes faites —
+`GlobalMaterialLocalizations.delegates`, celle que `gen-l10n` génère — sont
+typées `LocalizationsDelegate<dynamic>`, et Dart refuse l'affectation (le type
+du paramètre n'est pas un `Object` non nul). L'agent l'a rencontré à l'analyse
+et a contourné en énumérant les délégués un par un ; celui du 106 avait écrit
+la même énumération.
+
+- Remède, sans arbitrage : `LocalizationsDelegate<Object?>`, qui les accepte
+  telles quelles, prouvé par une analyse dans un vrai projet Flutter dans les
+  deux sens.
+
+### 586. Le build de scan réécrit les symboles de release du projet
+
+**Ouvert le 29/09/2026 · OUVERT** — le build que le scan de sécurité emploie
+passe par la commande du projet : ici elle écrit sa carte d'obfuscation dans
+`build/mapping.json`, et l'agent a pointé `--split-debug-info` sur
+`build/debug-info`, le dossier des vraies releases. Le scan a donc réécrit, sous
+la version réelle de l'application, les symboles et la carte d'un binaire qui
+ne sera jamais publié ; les envoyer au monitoring rendrait illisibles les
+erreurs de la vraie release. Rien dans le SKILL ni dans la configuration ne le
+signale.
+
+**Tranché le 29/09/2026 par Germinator : un dossier dédié, et l'avertir** — le
+gabarit propose un dossier de symboles propre au scan, et la configuration comme
+le SKILL disent de ne jamais lancer le scan entre un build de publication et
+l'envoi de ses symboles : la carte qu'impose le script d'un projet ne se
+déplace pas. Écartés : sauvegarder puis restaurer ces fichiers autour du build
+(le runner écrirait dans le `build/` du projet des fichiers qu'il n'a pas
+créés) ; un avertissement seul.
+
+### 587. Un seul lancement — le premier après l'installation — suffit à rendre `QAM-START` major
+
+**Ouvert le 29/09/2026 · OUVERT** — le verdict tombe dès qu'UN échantillon
+dépasse le budget. Chaque flow repart d'un `clearState`, mais le tout premier
+après l'installation paie en plus ce que l'appareil fait une seule fois :
+**3 396 ms** (2 196 hors splash de marque) contre **1 488 à 1 814 ms** hors
+splash pour les neuf autres, sur un budget de 2 000. Le 565 a rendu ces mesures
+visibles — elles étaient absorbées jusque-là. `argus-perf` distingue déjà ce
+premier lancement (`firstLaunchMs`) du démarrage à froid ; le verdict des flows,
+non.
+
+**Tranché le 29/09/2026 par Germinator : écarter le premier après
+l'installation** — rapporté à part, comme coût unique d'installation ; le
+verdict porte sur les autres. Écartés : juger la médiane ; tout garder.
+
+### 588. `QAM-PERF-SIZE` pèse un APK universel contre un budget pensé pour ce que le store livre
+
+**Ouvert le 29/09/2026 · OUVERT** — deux runs de suite : la release du scan est
+un APK à trois ABI, **67,7 Mo**, jugé contre un budget de 60 ; la tranche la plus
+lourde pèse **~30,7 Mo** (28,0 à 32,2 selon l'ABI). Le finding ne dit pas que
+l'APK est universel, et son remède — « profiler le chemin concerné » — ne
+s'applique pas à une taille.
+
+**Tranché le 29/09/2026 par Germinator : peser la plus grosse ABI** —
+`argus-perf` lit les ABI de l'APK et juge la tranche la plus lourde (l'APK moins
+les bibliothèques natives des autres ABI) ; la taille universelle reste dans le
+texte. Écartés : exiger un binaire par ABI ; le dire seulement.
+
+### 589. Le garde de troncature compte comme dette un texte replié par conception
+
+**Ouvert le 29/09/2026 · OUVERT** — un texte qu'une application replie exprès
+— une explication derrière « En savoir plus », des fiches repliées à deux lignes
+qui s'ouvrent au toucher — se lit, pour le garde, comme un texte tronqué.
+**16 des 21 dettes** du run 107 sont de cette nature, et 8 des 31 au 106 : la
+page annonce « 21 dettes assumées » quand l'application en porte cinq, et un
+défaut réel se perd parmi des limites du garde.
+
+**Tranché le 29/09/2026 par Germinator : une déclaration au montage** — l'écran
+déclare les textes qu'il replie par conception ; le garde de troncature les
+écarte, et la page les compte à part. Le projet déclare, le garde ne devine
+pas. Écartés : une catégorie « limite du garde » dans les dettes ; garder des
+dettes commentées.
