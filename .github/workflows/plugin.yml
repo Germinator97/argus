@@ -367,6 +367,14 @@ jobs:
       - name: Il mesure une cible collée au bord d'une zone qui défile, et dispense celle qu'un défilement coupe
         run: bash tools/cibles-probe.sh /tmp/accueil
 
+      # 592 — UN MOT COUPÉ ENTRE DEUX LETTRES EST VU. Deux mots coupés vus — dont
+      # un nombre, que seule la frontière de mot d'ICU voit —, quatre coupures
+      # légitimes ignorées — espaces, trait d'union, point d'URL, idéogrammes —,
+      # chacune dont le texte passe bien à la ligne, et un repli déclaré écarté.
+      # Avant celle des polices : elle n'ajoute qu'un fichier de test.
+      - name: Il voit un mot coupé par un retour à la ligne, et pas une coupure légitime
+        run: bash tools/mots-probe.sh /tmp/accueil
+
       # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
       # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
       # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas

@@ -210,6 +210,9 @@ CIBLES = {
     # 591 — la sonde qui prouve en CI qu'une cible collée au bord d'une zone qui
     # défile est mesurée, et qu'à ses montages Flutter est bien aveugle.
     "sondecibles": ROOT / "tools/cibles-probe.dart",
+    # 592 — la sonde qui prouve en CI qu'un mot coupé est vu, et qu'une coupure
+    # légitime ne l'est pas.
+    "sondemots": ROOT / "tools/mots-probe.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3898,6 +3901,42 @@ MUTATIONS = [
     ("ciplugin", "591 septies · la CI ne joue plus la sonde des cibles",
      "        run: bash tools/cibles-probe.sh /tmp/accueil",
      "        run: echo 'sonde des cibles retirée'"),
+
+    # ── 592 · un mot coupé par un retour à la ligne est vu ──
+    # Une coupure ne se juge plus sur le mot qui la TRAVERSE : une espace, un
+    # trait d'union, le point d'une URL se lisent en mots coupés.
+    ("harness", "592 · la coupure ne se juge plus sur le mot qui la traverse",
+     "if (mot.start < i && mot.end > i) dansUnMot = true;",
+     "if (mot.start < i || mot.end > i) dansUnMot = true;"),
+    # Les écritures sans espaces ne sont plus écartées.
+    ("harness", "592 bis · les écritures sans espaces ne sont plus écartées",
+     "      if (!_argusSansEspaces.hasMatch(texte[i - 1]) &&\n          !_argusSansEspaces.hasMatch(texte[i])) {",
+     "      if (true) {"),
+    # Un repli déclaré n'est plus écarté des mots coupés.
+    ("harness", "592 ter · un repli déclaré n'est plus écarté des mots coupés",
+     "    if (argusRepliSous(paragraph, repliesParConception) != null) continue;\n    final String? coupe",
+     "    final String? coupe"),
+    # Le test des mots coupés reprend les clés de la troncature : les dettes des
+    # terrains changeraient de sens.
+    ("layout", "592 quater · les mots coupés reprennent les clés de la troncature",
+     "await argusCheck('${screen.id} · $label · aucun mot coupé',",
+     "await argusCheck('${screen.id} · $label · aucun texte tronqué',"),
+    # Le test des mots coupés ne reçoit plus les replis de l'écran.
+    ("layout", "592 quinquies · le test des mots coupés ne reçoit plus les replis",
+     "              tester,\n              repliesParConception: screen.collapsedByDesign.toSet(),\n",
+     "              tester,\n"),
+    # La sonde perd le nombre coupé, le seul cas que la frontière d'ICU départage.
+    ("sondemots", "592 sexies · la sonde perd le nombre coupé",
+     "        ('nombre', 45, '12.340'),\n",
+     ""),
+    # Un cas légitime n'a plus à passer à la ligne : « rien n'est vu » n'y prouve rien.
+    ("sondemots", "592 septies · un cas légitime n'a plus à passer à la ligne",
+     "        lignes,\n        greaterThan(1),",
+     "        lignes,\n        greaterThan(0),"),
+    # La CI ne joue plus la sonde des mots coupés.
+    ("ciplugin", "592 octies · la CI ne joue plus la sonde des mots coupés",
+     "        run: bash tools/mots-probe.sh /tmp/accueil",
+     "        run: echo 'sonde des mots coupés retirée'"),
 ]
 
 

@@ -302,6 +302,37 @@ void main() {
               );
             });
           }, skip: argusShouldSkip);
+
+          // 592 — un mot coupé entre deux lettres : ni tronqué, ni débordant.
+          // Un test à part, avec ses propres clés de dette.
+          testWidgets(argusName('$label — aucun mot coupé'), (
+            WidgetTester tester,
+          ) async {
+            await pumpArgus(
+              tester,
+              argusMonte(screen),
+              viewport: viewport,
+              textScale: scale,
+              debugLabel: screen.id,
+            );
+            tester.takeException();
+            final List<String> coupes = argusMotsCoupes(
+              tester,
+              repliesParConception: screen.collapsedByDesign.toSet(),
+            );
+            await argusCheck('${screen.id} · $label · aucun mot coupé', () async {
+              expect(
+                coupes,
+                isEmpty,
+                reason:
+                    'Mot(s) coupé(s) par un retour à la ligne sur ${screen.id} en $label :\n'
+                    '  ${coupes.join('\n  ')}\n'
+                    'Un mot trop large pour sa boîte se coupe entre deux lettres, sans '
+                    'troncature ni débordement. Élargis la boîte, fais rétrécir le texte '
+                    '(FittedBox scaleDown), ou choisis un libellé qui tient.',
+              );
+            });
+          }, skip: argusShouldSkip);
         }
       }
     });

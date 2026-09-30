@@ -1702,6 +1702,19 @@ des dettes, avec leur ancre. ⚠️ Le conteneur **le plus étroit** — le widg
 replie, jamais la racine de l'écran : tout texte tronqué sous l'ancre déclarée
 est écarté, un vrai défaut compris.
 
+📌 **Un mot coupé entre deux lettres est un défaut, pas une troncature (592).**
+Un libellé trop large pour sa boîte se coupe au milieu d'un mot — « D'accor / d »
+dans un bouton étroit —, sans dépasser `maxLines` ni déborder : les gardes de
+troncature et de débordement restent verts. Le test « aucun mot coupé » de
+`layout_test.dart` le voit, par écran, gabarit et taille de texte, avec ses
+propres clés de dette. Une coupure est légitime à une espace, après un trait
+d'union, au point ou à la barre d'une URL ; elle est un défaut quand le mot
+d'ICU continue sur la ligne suivante — après une apostrophe (« D' / accord ») ou
+au point d'un nombre (« 12. / 340 ») aussi. Les écritures qui ne séparent pas
+leurs mots par des espaces (chinois, japonais, coréen, thaï…) sont écartées, les
+replis déclarés aussi. Remède : élargir la boîte, faire rétrécir le texte
+(`FittedBox(fit: BoxFit.scaleDown)`), ou un libellé qui tient.
+
 `argus.mobile.yaml` reste la **source unique de la configuration** — c'est là que
 les scripts et les flows lisent. Les autres portent du CODE et des PARCOURS, ce
 qui n'est pas la même chose et ne pouvait pas y tenir.

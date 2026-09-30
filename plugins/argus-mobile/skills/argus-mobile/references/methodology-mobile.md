@@ -210,8 +210,9 @@ device : `maestro hierarchy --compact`.
 
 
 ### VISUAL
-`assertScreenshot` par écran clé × device × orientation × thème ; débordements et
-texte tronqué ; safe areas, encoche, barre de gestes ; **grandes polices** ;
+`assertScreenshot` par écran clé × device × orientation × thème ; débordements,
+texte tronqué et mots coupés par un retour à la ligne (592) ; safe areas,
+encoche, barre de gestes ; **grandes polices** ;
 masquage des zones non déterministes.
 
 ⚠️ **Maestro n'a PAS de masquage de pixels.** L'équivalent de `dynamicSelectors`

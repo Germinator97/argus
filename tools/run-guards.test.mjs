@@ -19758,6 +19758,58 @@ test('591 — la CI joue la sonde des cibles, dont chaque montage a ses deux ver
   assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
 });
 
+// ── 592 · UN MOT COUPÉ PAR UN RETOUR À LA LIGNE EST VU ───────────────────────
+// `didExceedMaxLines` ne voit pas un mot qui se coupe entre deux lettres sans
+// dépasser `maxLines`, et rien ne déborde : « D'accor / d » passait les deux
+// gardes. Tranché par Germinator : un test à part, « aucun mot coupé », jugé sur
+// la frontière de mot d'ICU. Le Dart ne s'exécute pas ici : la sonde
+// `mots-probe` prouve en CI les deux moitiés ; ces gardes tiennent la règle, ses
+// écarts et son câblage.
+test('592 — le cadre juge une coupure sur le mot d\'ICU, écarte ce qu\'il faut, et le dit à part', () => {
+  const cadre = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  assert.match(cadre, /final TextRange mot = paragraph\.getWordBoundary\(\s*TextPosition\(offset: i - 1\),?\s*\);\s*if \(mot\.start < i && mot\.end > i\) dansUnMot = true;/,
+    'une coupure ne se juge plus sur le mot d\'ICU qui la traverse : un trait d\'union ou une espace seraient pris pour des mots coupés (592)');
+  assert.match(cadre, /if \(!_argusSansEspaces\.hasMatch\(texte\[i - 1\]\) &&\s*!_argusSansEspaces\.hasMatch\(texte\[i\]\)\) \{/,
+    'les écritures sans espaces ne sont plus écartées : chaque paragraphe chinois ou japonais se lirait coupé (592)');
+  for (const ecriture of ['Han', 'Hiragana', 'Katakana', 'Hangul', 'Thai']) {
+    assert.match(cadre, new RegExp(`\\\\p\\{Script=${ecriture}\\}`), `l'écriture ${ecriture} n'est plus écartée (592)`);
+  }
+  assert.match(cadre, /if \(argusRepliSous\(paragraph, repliesParConception\) != null\) continue;\s*final String\? coupe = argusCoupeDansUnMot\(paragraph\);/,
+    'un repli déclaré n\'est plus écarté des mots coupés, comme il l\'est de la troncature (589, 592)');
+  const layout = readFileSync(join(SCAFFOLD_589, 'test/argus/layout_test.dart'), 'utf8');
+  assert.match(layout, /testWidgets\(argusName\('\$label — aucun mot coupé'\),/, 'le test « aucun mot coupé » a disparu de la disposition (592)');
+  // Ses PROPRES clés : celles des terrains ne changent pas de sens.
+  assert.match(layout, /await argusCheck\('\$\{screen\.id\} · \$label · aucun mot coupé',/,
+    'le test des mots coupés ne porte plus ses propres clés de dette : il se confondrait avec la troncature (592)');
+  assert.match(layout, /argusMotsCoupes\(\s*tester,\s*repliesParConception: screen\.collapsedByDesign\.toSet\(\),\s*\);/,
+    'le test des mots coupés ne reçoit plus les replis de l\'écran (592)');
+});
+
+test('592 — la CI joue la sonde des mots coupés, qui a ses deux moitiés', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const i = ci.indexOf('run: bash tools/mots-probe.sh /tmp/accueil');
+  const j = ci.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.notEqual(i, -1, 'la CI ne joue plus la sonde des mots coupés : la règle ne s\'exécute nulle part (592)');
+  assert.ok(j !== -1 && i < j, 'la sonde des mots coupés doit passer avant celle des polices, qui modifie le projet d\'accueil');
+  const sonde = readFileSync(join(RACINE, 'tools/mots-probe.dart'), 'utf8');
+  const vus = sonde.slice(sonde.indexOf("('mot', "), sonde.indexOf("('espaces', "));
+  const legitimes = sonde.slice(sonde.indexOf("('espaces', "), sonde.indexOf('un mot coupé sous un repli'));
+  assert.ok(vus.length > 0 && legitimes.length > 0, 'les deux listes de la sonde ont disparu : ce garde ne lit plus rien');
+  for (const nom of ['mot', 'nombre']) {
+    assert.match(vus, new RegExp(`\\('${nom}', `), `la sonde ne vérifie plus qu'un mot coupé « ${nom} » est vu (592)`);
+  }
+  for (const nom of ['espaces', 'trait', 'ponctuation', 'cjk']) {
+    assert.match(legitimes, new RegExp(`\\('${nom}', `), `la sonde ne vérifie plus que la coupure « ${nom} » est légitime (592)`);
+  }
+  assert.match(vus, /expect\(\s*coupes,\s*hasLength\(1\),/, 'la sonde n\'exige plus qu\'un mot coupé soit vu (592)');
+  assert.match(legitimes, /expect\(\s*lignes,\s*greaterThan\(1\),/,
+    'la sonde n\'exige plus qu\'un cas légitime passe à la ligne : « rien n\'est vu » n\'y prouverait rien');
+  assert.match(sonde, /argusMotsCoupes\(tester, repliesParConception: <String>\{'sonde_repli'\}\),\s*isEmpty,/,
+    'la sonde ne vérifie plus qu\'un repli déclaré est écarté (592)');
+  const sh = readFileSync(join(RACINE, 'tools/mots-probe.sh'), 'utf8');
+  assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

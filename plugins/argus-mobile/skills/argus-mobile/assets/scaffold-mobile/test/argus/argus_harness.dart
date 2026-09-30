@@ -1723,3 +1723,84 @@ bool argusBordQuiCoupe(Rect cible, Rect zone, SemanticsData zoneDonnees) {
       (zoneDonnees.hasAction(SemanticsAction.scrollRight) &&
           cible.left - zone.left <= ecart);
 }
+
+// ───────────────────────────────────────────────────────────────────────────
+// 8. Les mots coupés par un retour à la ligne (592)
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Les textes qu'un retour à la ligne coupe DANS un mot, à l'écran courant,
+/// rendus ligne par ligne : « D'a / cco / rd » (592).
+///
+/// 🔴 CE QUE NI LA TRONCATURE NI LE DÉBORDEMENT NE VOIENT. Un mot trop large
+/// pour sa boîte se coupe entre deux lettres : `didExceedMaxLines` reste faux,
+/// rien ne déborde, et les deux gardes restent verts. Mesuré sur un projet neuf :
+/// « D'accord » dans un bouton de 96 dp se lisait « D'a / cco / rd » dès ×1,0,
+/// verte sur les neuf combinaisons. Sur un terrain, « D'accor / d » et
+/// « Sauvegarde / r » dans des dialogues, même à 100 % en 360 dp.
+///
+/// Lu sur le paragraphe RÉEL, sans le remettre en page : une coupure est là où
+/// le curseur change de ligne. Elle est un défaut quand le mot d'ICU qui porte
+/// le dernier caractère de la ligne continue sur la suivante. Un trait d'union,
+/// une espace, le point ou la barre d'une URL ferment un mot : y couper est
+/// légitime. Une apostrophe ou le point d'un nombre, non — « D' / accord » et
+/// « 12. / 340 » sont des mots coupés, et un filtre « lettre de part et d'autre »
+/// les aurait excusés (mesuré). Les écritures qui ne séparent pas leurs mots
+/// par des espaces (chinois, japonais, coréen, thaï…) se coupent entre deux
+/// caractères par nature : écartées. Et, comme la troncature, ce que l'écran
+/// replie par conception (589).
+List<String> argusMotsCoupes(
+  WidgetTester tester, {
+  Set<String> repliesParConception = const <String>{},
+}) {
+  final List<String> coupes = <String>[];
+  for (final RenderParagraph paragraph
+      in tester.renderObjectList<RenderParagraph>(find.byType(RichText))) {
+    if (argusRepliSous(paragraph, repliesParConception) != null) continue;
+    final String? coupe = argusCoupeDansUnMot(paragraph);
+    if (coupe != null) coupes.add(coupe);
+  }
+  return coupes;
+}
+
+final RegExp _argusSansEspaces = RegExp(
+  r'[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}'
+  r'\p{Script=Thai}\p{Script=Lao}\p{Script=Khmer}\p{Script=Myanmar}]',
+  unicode: true,
+);
+
+/// Le texte de [paragraph] ligne par ligne s'il est coupé DANS un mot, sinon
+/// `null` (592).
+String? argusCoupeDansUnMot(RenderParagraph paragraph) {
+  final String texte = paragraph.text.toPlainText();
+  if (texte.length < 2) return null;
+  final List<int> debuts = <int>[0];
+  bool dansUnMot = false;
+  double yPrecedent = paragraph
+      .getOffsetForCaret(const TextPosition(offset: 0), Rect.zero)
+      .dy;
+  for (int i = 1; i < texte.length; i++) {
+    final double y = paragraph
+        .getOffsetForCaret(TextPosition(offset: i), Rect.zero)
+        .dy;
+    if (y > yPrecedent + 0.5) {
+      debuts.add(i);
+      if (!_argusSansEspaces.hasMatch(texte[i - 1]) &&
+          !_argusSansEspaces.hasMatch(texte[i])) {
+        final TextRange mot = paragraph.getWordBoundary(
+          TextPosition(offset: i - 1),
+        );
+        if (mot.start < i && mot.end > i) dansUnMot = true;
+      }
+    }
+    yPrecedent = y;
+  }
+  if (!dansUnMot) return null;
+  final List<String> lignes = <String>[
+    for (int k = 0; k < debuts.length; k++)
+      texte.substring(
+        debuts[k],
+        k + 1 < debuts.length ? debuts[k + 1] : texte.length,
+      ),
+  ];
+  return lignes.map((String l) => l.trim()).join(' / ');
+}
