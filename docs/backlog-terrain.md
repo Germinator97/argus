@@ -5097,12 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **592**, reproduit le 30/09 sur un projet jetable
-(section « Reproduit sur un projet jetable », en fin de fichier) : un mot coupé
-par un retour à la ligne n'est pas vu. Son remède est tranché par Germinator. Le
-**591** est fermé le jour même : une cible collée au bord d'une zone qui défile
-est mesurée, et seule celle qu'un défilement coupe est dispensée. Le **593**,
-rendu par le même montage, est fermé le jour même : une
+✅ **Rien d'ouvert.** Les **591** à **593**, reproduits le 30/09 sur un projet
+jetable (section « Reproduit sur un projet jetable », en fin de fichier), sont
+fermés le jour même, sur les remèdes tranchés par Germinator : une cible collée
+au bord d'une zone qui défile est mesurée, et seule celle qu'un défilement coupe
+est dispensée (591) ; un mot coupé par un retour à la ligne est vu, par un test
+à part (592) ; et, rendu par le même montage, une
 locale que les délégués ne prennent pas en charge est refusée avec sa raison, au
 lieu de se lire en débordement sur chaque écran. Le **590**, trouvé le
 30/09 par la CI du fork (section « Trouvé par la CI du fork — run #10 »), est
@@ -14715,7 +14715,7 @@ mesurées. Écarté : dire l'angle mort sans le fermer.
 
 ### 592. Le garde de troncature ne voit pas un mot coupé par un retour à la ligne
 
-**Ouvert le 30/09/2026 · OUVERT** — `argusTruncatedTexts` ne lit que
+**Ouvert le 30/09/2026 · CLOS** — `argusTruncatedTexts` ne lit que
 `didExceedMaxLines`. Un mot trop large pour sa boîte se coupe entre deux lettres
 sans dépasser `maxLines`, et rien ne déborde : aucun des deux gardes ne le voit.
 
@@ -14733,6 +14733,39 @@ leur ponctuation n'en sont pas, les écritures qui ne séparent pas leurs mots p
 des espaces sont écartées, et les replis déclarés aussi. Ses clés de dette sont
 distinctes : celles des terrains ne changent pas de sens. Écartés : le compter
 comme une troncature ; avertir sans échouer.
+
+#### ✅ Fermé le jour même — un test « aucun mot coupé », jugé sur le mot d'ICU
+
+- 🔴 **Correction du constat d'ouverture.** « D'a / cco / rd », écrit plus haut,
+  a été mesuré par une sonde qui montait l'écran sans charger les polices : c'est
+  la police carrée de `flutter_test` qui coupait là. En Roboto — la police que
+  les suites chargent —, le mot se lit « D'accor / d » à ×1,0, « D'acco / rd » à
+  ×1,3 et « D'acc / ord » à ×2,0, sur les trois gabarits : le cas vécu, mot pour
+  mot. Le constat tient — les deux gardes restaient verts en Roboto aussi —, son
+  détail était faux.
+- `argusMotsCoupes` lit le paragraphe RÉEL, sans le remettre en page : une
+  coupure est là où le curseur change de ligne, et elle est un défaut quand le
+  mot d'ICU qui porte le dernier caractère de la ligne continue sur la suivante.
+  Une espace, un trait d'union, le point ou la barre d'une URL ferment un mot ;
+  une apostrophe ou le point d'un nombre, non. Les écritures qui ne séparent pas
+  leurs mots par des espaces sont écartées, les replis déclarés aussi.
+- 🔴 **Un filtre écarté en cours de route, mesuré** : « une lettre de part et
+  d'autre de la coupure » semblait nécessaire. La contre-épreuve l'a montré
+  redondant avec la frontière d'ICU — qui sépare déjà l'URL à son point — et
+  nuisible : il aurait excusé « D' / accord » et « 12. / 340 ». Le nombre coupé,
+  dans la sonde, départage les deux.
+- `layout_test.dart` gagne « aucun mot coupé », par écran, gabarit et taille de
+  texte, avec ses propres clés de dette : celles des terrains ne changent pas de
+  sens. Le SKILL et la référence méthodologique le disent.
+- Une sonde (`tools/mots-probe.sh`), jouée par le job `harness` sur la police
+  carrée de `flutter_test` — chaque coupure y tombe au même endroit partout :
+  deux mots coupés vus, dont un nombre ; quatre coupures légitimes ignorées —
+  espaces, trait d'union, point d'URL, idéogrammes —, chacune dont le texte
+  passe bien à la ligne ; un repli déclaré écarté. Mêmes verdicts sur Flutter
+  3.47.5 et sur le plancher 3.27.0 ; une frontière affaiblie, l'exclusion des
+  écritures retirée, le repli ignoré la font tomber chacun.
+- Deux gardes, huit mutations et une cible pour la sonde : **8/8 TOMBE**. Suite
+  676/676, 741 mutations, 0 inerte.
 
 ### 593. Une locale que les délégués ne prennent pas en charge se lit comme un « Débordement » sur chaque écran
 
