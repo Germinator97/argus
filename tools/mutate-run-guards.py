@@ -3840,9 +3840,10 @@ MUTATIONS = [
      "\n    base, expire = sh_borne([\"node\", \"--test\", str(SUITE)], PLAFOND_SUITE_PROPRE_S)",
      "\n    base, expire = sh_borne([\"node\", \"--test\", str(SUITE)], None)"),
     # Le verdict PLAFOND ne dit plus où la suite bloquait.
+    # (ré-ancrée au 594 : le dernier garde se lit désormais dans les deux formats)
     ("mutateur", "590 octies · le verdict PLAFOND ne nomme plus le dernier garde rendu",
-     "\n    rendus = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith((\"✔ \", \"✖ \"))]",
-     "\n    rendus = []"),
+     "\n    rendus = gardes_rendus(sortie)\n    return rendus[-1][1] if rendus else None",
+     "\n    rendus = gardes_rendus(sortie)\n    return None"),
 
     # ── 593 · une locale sans délégué est refusée, pas lue en débordement ──
     # Le contrôle oublie un délégué que MaterialApp ajoute toujours : il ne suit
@@ -3937,6 +3938,16 @@ MUTATIONS = [
     ("ciplugin", "592 octies · la CI ne joue plus la sonde des mots coupés",
      "        run: bash tools/mots-probe.sh /tmp/accueil",
      "        run: echo 'sonde des mots coupés retirée'"),
+
+    # ── 594 · les deux formats de `node --test` ──
+    # Le TAP n'est plus lu : sur le runner (Node 22), la suite redevient rouge.
+    ("mutateur", "594 · le harnais ne lit plus le TAP de Node 22",
+     "\n            rendus.append((m.group(1) == \"ok\", m.group(2)))",
+     "\n            pass"),
+    # Le garde tombé ne se lit plus dans la sortie : chaque TOMBE redit « un garde a rougi ».
+    ("mutateur", "594 bis · un TOMBE ne nomme plus le garde tombé",
+     "\n            return \"TOMBE\", rouges[0] if rouges else \"un garde a rougi\"",
+     "\n            return \"TOMBE\", \"un garde a rougi\""),
 ]
 
 
@@ -4017,10 +4028,36 @@ def sh_borne(args, plafond, cwd=None):
         raise
 
 
+# ⚠️ 594 — LA SORTIE DE `node --test` N'A PAS UN FORMAT, ELLE EN A DEUX. Hors
+# d'un terminal, Node 24 écrit « spec » (`✔ nom (3ms)`, `✖ nom`) ; Node 22 — celui
+# de l'image du runner — écrit du TAP (`ok 1 - nom`, `not ok 1 - nom`). Ne lire que
+# « spec » rendait la suite rouge sur le runner, et le harnais refusait de muter :
+# les dix tranches d'un coup. Imposer `--test-reporter=spec` a été essayé et
+# écarté, mesuré : un reporter déjà posé par NODE_OPTIONS fait alors planter
+# `node --test`. On lit donc les deux.
+_RENDU_SPEC = re.compile(r"^([✔✖]) (.*?)(?: \([\d.]+m?s\))?$")
+_RENDU_TAP = re.compile(r"^(not ok|ok) \d+ - (.*?)(?: # (?:SKIP|TODO)\b.*)?$")
+
+
+def gardes_rendus(sortie):
+    """[(vert, nom)] des gardes que la suite a rendus, dans l'ordre — spec ou TAP."""
+    rendus = []
+    for ligne in sortie.splitlines():
+        brut = ligne.strip()
+        m = _RENDU_SPEC.match(brut)
+        if m:
+            rendus.append((m.group(1) == "✔", m.group(2)))
+            continue
+        m = _RENDU_TAP.match(brut)
+        if m:
+            rendus.append((m.group(1) == "ok", m.group(2)))
+    return rendus
+
+
 def dernier_garde_acheve(sortie):
     """Le nom du dernier test que la suite a rendu — celui qui SUIT est en cause."""
-    rendus = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith(("✔ ", "✖ "))]
-    return re.sub(r"\s*\([\d.]+m?s\)$", "", rendus[-1]) if rendus else None
+    rendus = gardes_rendus(sortie)
+    return rendus[-1][1] if rendus else None
 
 
 def digest(cible):
@@ -4507,9 +4544,10 @@ def main():
         if f"tests {NB_TESTS}" not in sortie:
             return "HARNAIS", "la suite n'a pas tourné entièrement"
         if res.returncode != 0:
-            echecs = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith("✖ ")
-                      and "subtest" not in l]
-            return "TOMBE", echecs[0] if echecs else "un garde a rougi"
+            # 594 — le premier garde ROUGE, en spec comme en TAP : sur le runner,
+            # lire « spec » seul rendait « un garde a rougi » à chaque TOMBE.
+            rouges = [nom for vert, nom in gardes_rendus(sortie) if not vert and "subtest" not in nom]
+            return "TOMBE", rouges[0] if rouges else "un garde a rougi"
         return "VACANT", "aucun garde n'a bougé"
 
     # ⚠️ TOUT CE QUI SUIT MUTE DES FICHIERS SUIVIS. Une sortie brutale — signal,
