@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **591** et **592**, reproduits le 30/09 sur un
-projet jetable (section « Reproduit sur un projet jetable », en fin de fichier) :
-une cible collée au bord d'une zone défilante n'est pas mesurée, et un mot coupé
-par un retour à la ligne n'est pas vu. Leurs remèdes sont tranchés par
-Germinator. Le **593**, rendu par le même montage, est fermé le jour même : une
+🔴 **1 POINT OUVERT** — le **592**, reproduit le 30/09 sur un projet jetable
+(section « Reproduit sur un projet jetable », en fin de fichier) : un mot coupé
+par un retour à la ligne n'est pas vu. Son remède est tranché par Germinator. Le
+**591** est fermé le jour même : une cible collée au bord d'une zone qui défile
+est mesurée, et seule celle qu'un défilement coupe est dispensée. Le **593**,
+rendu par le même montage, est fermé le jour même : une
 locale que les délégués ne prennent pas en charge est refusée avec sa raison, au
 lieu de se lire en débordement sur chaque écran. Le **590**, trouvé le
 30/09 par la CI du fork (section « Trouvé par la CI du fork — run #10 »), est
@@ -14657,7 +14658,7 @@ point.
 
 ### 591. Le garde des cibles tactiles ne mesure pas une cible collée au bord d'une zone défilante
 
-**Ouvert le 30/09/2026 · OUVERT** — `a11y_test.dart` juge les cibles par les
+**Ouvert le 30/09/2026 · CLOS** — `a11y_test.dart` juge les cibles par les
 guidelines de Flutter (`androidTapTargetGuideline`, `iOSTapTargetGuideline`),
 c'est-à-dire `MinimumTapTargetGuideline`. Lue dans sa source (3.47.5,
 `_traverse`), elle saute tout nœud dont le rectangle touche, à 0,001 px près, un
@@ -14679,6 +14680,38 @@ contenu est caché, donc qu'un défilement peut couper. Au montage, l'écran n'a
 défilé : le bord de début et les côtés ne coupent rien. De nouvelles dettes
 peuvent apparaître sur les terrains — ce sont des cibles qui n'ont jamais été
 mesurées. Écarté : dire l'angle mort sans le fermer.
+
+#### ✅ Fermé le jour même — une guideline du cadre, qui ne dispense que le bord qui coupe
+
+- `ArgusTapTargetGuideline` garde le parcours et les repères de Flutter, mais
+  un bord ne dispense une cible que si la zone CACHE du contenu au-delà — lu sur
+  ses actions de défilement, quel que soit le sens de la liste : « vers le
+  haut » disponible, du contenu sous le bord bas, et ainsi de suite —, pour tout
+  ancêtre qui défile : un `PageView` qui laisse voir ses voisines est couvert.
+  Les trois gardes de cible de `a11y_test.dart` passent par elle, et la
+  référence méthodologique le dit.
+- 🔴 **Le bord de l'écran ne dispense plus** — écart au plan, mesuré : gardée,
+  cette seconde dispense de Flutter rendait la première inutile, puisque les
+  côtés d'une liste pleine largeur sont ceux de l'écran ; la cible collée au
+  bord passait encore. Ce qui déborde de l'écran sans défiler garde son
+  rectangle entier : rien ne le rapetisse.
+- Rejoué sur le projet jetable : la cible collée au bord et des rangées de 36 dp
+  pleine largeur échouent désormais ; une cible coupée par le pli — 20 dp
+  visibles — reste dispensée ; le bouton conforme passe.
+- Une sonde (`tools/cibles-probe.sh`), jouée par le job `harness`, monte six
+  écrans avec deux verdicts écrits, celui du cadre et celui de Flutter : cible au
+  bord et liste pleine largeur mesurées là où Flutter reste aveugle ; cibles
+  coupées par le pli et par le bord d'un carrousel dispensées ; cibles conformes
+  admises. MESURÉ sur Flutter 3.47.5 et sur le plancher 3.27.0 : mêmes
+  verdicts ; sans aucune dispense, le pli, le carrousel et les conformes
+  tombent. 🔴 Deux accrocs de contre-épreuve, vus parce qu'elle n'avait pas
+  bougé : un carrousel qui ne coupait rien (six pas de 60 dp tombaient pile sur
+  360), et une mutation qui ne neutralisait qu'un cas sur quatre
+  (`false && A || B…`).
+- Deux gardes tiennent le câblage, la règle d'arête, l'absence de dispense au
+  bord de l'écran — une sortie de plus dans la guideline les fait rougir — et
+  les verdicts de la sonde ; sept mutations, et une cible pour la sonde :
+  **7/7 TOMBE**. Suite 674/674, 733 mutations, 0 inerte.
 
 ### 592. Le garde de troncature ne voit pas un mot coupé par un retour à la ligne
 
