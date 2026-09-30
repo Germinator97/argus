@@ -5097,9 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **590**, trouvé le 30/09 par la CI du fork (section
-« Trouvé par la CI du fork — run #10 », en fin de fichier), est fermé le jour
-même : la tranche 10/10 avait tourné six heures sans rendre la main, et le
+🔴 **3 POINTS OUVERTS** — les **591** à **593**, reproduits le 30/09 sur un
+projet jetable (section « Reproduit sur un projet jetable », en fin de fichier) :
+une cible collée au bord d'une zone défilante n'est pas mesurée, un mot coupé par
+un retour à la ligne n'est pas vu, et une locale sans délégués se lit comme un
+débordement. Leurs remèdes sont tranchés par Germinator. Le **590**, trouvé le
+30/09 par la CI du fork (section « Trouvé par la CI du fork — run #10 »), est
+fermé le jour même : la tranche 10/10 avait tourné six heures sans rendre la main, et le
 harnais, qui attendait la suite sans plafond et n'écrivait rien avant la fin, ne
 pouvait pas dire quelle mutation bloquait. Chaque suite a désormais un plafond
 dérivé de la suite propre, et chaque verdict se dit à sa chute. ⚠️ Le coupable
@@ -14636,3 +14640,80 @@ d'être jouée, son verdict écrit dès qu'il tombe.
 - ⚠️ **Le coupable de la tranche 10/10 n'est pas nommé.** C'est le prochain
   passage de la CI qui le dira — en PLAFOND, avec le dernier garde achevé —, à
   moins qu'un rejeu sous Linux et Node 22 ne le trouve avant.
+
+## Reproduit sur un projet jetable — les pistes de la relecture du run 107 — 30/09/2026
+
+La relecture par Germinator des correctifs de terrain du 29/09 — ceux du run
+107 — a trouvé, dans l'application, deux défauts que le cadre n'avait pas vus :
+un garde de cible tactile devenu vacant au commit qui rendait sa vue défilante,
+et des mots coupés en deux dans des dialogues — « D'accor / d », « Sauvegarde /
+r ». Deux pistes pour Argus, reproduites avant d'être inscrites : sur un projet
+Flutter neuf (Flutter 3.47.5) où l'installeur a posé le scaffold, avec les
+suites du cadre telles quelles, en ne renseignant que `harness.dart` — trois
+écrans-sondes, une police embarquée, la locale. Le montage a rendu un troisième
+point.
+
+### 591. Le garde des cibles tactiles ne mesure pas une cible collée au bord d'une zone défilante
+
+**Ouvert le 30/09/2026 · OUVERT** — `a11y_test.dart` juge les cibles par les
+guidelines de Flutter (`androidTapTargetGuideline`, `iOSTapTargetGuideline`),
+c'est-à-dire `MinimumTapTargetGuideline`. Lue dans sa source (3.47.5,
+`_traverse`), elle saute tout nœud dont le rectangle touche, à 0,001 px près, un
+côté d'un ancêtre qui défile (`hasImplicitScrolling`) — ou de l'écran —, parce
+qu'une cible à moitié défilée paraîtrait plus petite qu'elle n'est. Or presque
+tous les écrans défilent, et une rangée pleine largeur touche les deux côtés de
+sa liste.
+
+- Reproduit : une cible de 24 × 24 dp collée au bord haut-droit d'un
+  `SingleChildScrollView` passe « cibles tactiles ≥ 48 dp (Android) » et
+  « ≥ 44 dp (iOS) » ; la même, décollée de 16 dp, échoue — « expected tap
+  target size of at least Size(48.0, 48.0), but found Size(24.0, 24.0) ».
+- Vécu sur le terrain du run 107 : le garde du bouton Pause est devenu vacant au commit
+  qui a rendu la vue défilante, et c'est Germinator qui l'a vu.
+
+**Tranché le 30/09/2026 par Germinator : une guideline du cadre** — calquée sur
+celle de Flutter, elle ne saute qu'une cible collée au bord au-delà duquel du
+contenu est caché, donc qu'un défilement peut couper. Au montage, l'écran n'a pas
+défilé : le bord de début et les côtés ne coupent rien. De nouvelles dettes
+peuvent apparaître sur les terrains — ce sont des cibles qui n'ont jamais été
+mesurées. Écarté : dire l'angle mort sans le fermer.
+
+### 592. Le garde de troncature ne voit pas un mot coupé par un retour à la ligne
+
+**Ouvert le 30/09/2026 · OUVERT** — `argusTruncatedTexts` ne lit que
+`didExceedMaxLines`. Un mot trop large pour sa boîte se coupe entre deux lettres
+sans dépasser `maxLines`, et rien ne déborde : aucun des deux gardes ne le voit.
+
+- Reproduit : « D'accord » dans un `FilledButton` de 96 dp se lit « D'a / cco /
+  rd » dès ×1,0, et sur quatre lignes à ×2,0 — relevé sur les boîtes du
+  paragraphe réel —, pendant que « aucun texte tronqué » et « rien ne déborde »
+  restent verts sur les neuf combinaisons gabarit × taille de texte.
+- Vécu sur le terrain du run 107 : « D'accor / d », « Sauvegarde / r », même à 100 %
+  en 360 dp.
+
+**Tranché le 30/09/2026 par Germinator : un test à part, « aucun mot coupé »** —
+par écran, gabarit et taille de texte. Une coupure qui tombe DANS un mot, au sens
+des frontières de mot d'ICU, est un défaut ; un trait d'union ou une URL coupés à
+leur ponctuation n'en sont pas, les écritures qui ne séparent pas leurs mots par
+des espaces sont écartées, et les replis déclarés aussi. Ses clés de dette sont
+distinctes : celles des terrains ne changent pas de sens. Écartés : le compter
+comme une troncature ; avertir sans échouer.
+
+### 593. Une locale que les délégués ne prennent pas en charge se lit comme un « Débordement » sur chaque écran
+
+**Ouvert le 30/09/2026 · OUVERT** — trouvé en montant les deux points
+précédents. Le gabarit pose `argusLocale = Locale('fr', 'FR')` et aucun délégué ;
+sans délégués, le montage retombe sur ceux de Material, qui ne prennent en charge
+que l'anglais. Flutter le signale — « This application's locale, fr_FR, is not
+supported by all of its localization delegates » —, le cadre le capte comme une
+exception, et « rien ne déborde » le rapporte sur CHAQUE combinaison :
+« Débordement sur bord en compact 360×640 · texte ×1.0. Flutter n'a nommé aucun
+widget fautif pour ce débordement. » Puis il conseille de l'inscrire comme dette.
+Un projet sans `flutter_localizations` qui garde la locale par défaut recevrait
+des dizaines de faux débordements, et le conseil de les taire.
+
+**Tranché le 30/09/2026 par Germinator : refuser de monter, avec la raison** —
+comme pour une famille de police vide : si la locale n'est prise en charge par
+aucun délégué de l'un des types que le montage charge, les suites se marquent
+SKIP, disent lequel et comment le fournir. Écartés : nommer l'exception en
+restant rouge ; attendre.
