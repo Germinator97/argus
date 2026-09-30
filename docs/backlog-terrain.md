@@ -5097,12 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — le **596** et le **597**, trouvés le 30/09 par la CI
-du fork (section « Trouvé par la CI du fork — run #12 », en fin de fichier) :
-la suite s'est figée deux fois sur le runner, par intermittence, et le harnais
-a coupé deux mutations qui n'y étaient pour rien en désignant le mauvais garde ;
-et le verdict d'une tranche rouge ne se lit que dans un journal réservé aux
-administrateurs. Le **595**, trouvé le 30/09 en préparant la page du
+🔴 **1 POINT OUVERT** — le **597**, trouvé le 30/09 par la CI du fork (section
+« Trouvé par la CI du fork — run #12 », en fin de fichier) : le verdict d'une
+tranche rouge ne se lit que dans un journal réservé aux administrateurs. Le
+**596**, trouvé par la même CI, est fermé le jour même : la suite se figeait
+d'elle-même sur le runner, par intermittence, et le harnais coupait une mutation
+qui n'y était pour rien en désignant le mauvais garde — une coupure se rejoue
+désormais une fois, et le plafond nomme ce qui tourne encore. Le **595**, trouvé le 30/09 en préparant la page du
 chantier (section « Trouvé en préparant la page », en fin de fichier), est fermé
 le jour même : un garde posé dans une boucle échappait au compteur de la page ;
 la suite n'en porte plus, et un garde y veille. Le **594**, trouvé le 30/09 par la CI du fork (section
@@ -5122,8 +5123,9 @@ lieu de se lire en débordement sur chaque écran. Le **590**, trouvé le
 fermé le jour même : la tranche 10/10 avait tourné six heures sans rendre la main, et le
 harnais, qui attendait la suite sans plafond et n'écrivait rien avant la fin, ne
 pouvait pas dire quelle mutation bloquait. Chaque suite a désormais un plafond
-dérivé de la suite propre, et chaque verdict se dit à sa chute. ⚠️ Le coupable
-de cette tranche reste à nommer : le prochain passage de la CI le dira. Les **583** à **589**, rendus par le run 107 — la
+dérivé de la suite propre, et chaque verdict se dit à sa chute. Le coupable
+de cette tranche n'était pas une mutation : la suite se fige d'elle-même sur le
+runner (596). Les **583** à **589**, rendus par le run 107 — la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 ») —,
 sont fermés le jour même : FVM cherché comme FVM le
 cherche, une recette qui part du dossier courant, un type du gabarit élargi, et
@@ -14656,6 +14658,12 @@ d'être jouée, son verdict écrit dès qu'il tombe.
 - ⚠️ **Le coupable de la tranche 10/10 n'est pas nommé.** C'est le prochain
   passage de la CI qui le dira — en PLAFOND, avec le dernier garde achevé —, à
   moins qu'un rejeu sous Linux et Node 22 ne le trouve avant.
+- 🔴 **Démenti en partie par le 596, le jour même.** Le coupable n'était pas une
+  mutation : la suite se fige d'elle-même sur le runner, par intermittence. Et
+  « celui qui suit est celui qui bloquait » est faux : un fichier de test figé
+  dans un appel synchrone ne rend aucun résultat, donc le garde nommé n'est
+  qu'une borne. C'est ce qui tourne encore, au moment de la coupure, qui
+  désigne le coupable.
 
 ## Reproduit sur un projet jetable — les pistes de la relecture du run 107 — 30/09/2026
 
@@ -14928,7 +14936,7 @@ charge de quatre passes, loin de leurs plafonds.
 
 ### 596. La suite se fige par intermittence sur le runner : le harnais coupe une mutation qui n'y est pour rien, et désigne le mauvais garde
 
-**Ouvert le 30/09/2026 · OUVERT** — trois défauts dans une même coupure :
+**Ouvert le 30/09/2026 · CLOS** — trois défauts dans une même coupure :
 
 - **Les deux mutations coupées ne peuvent pas avoir figé la suite** : toutes deux
   RETIRENT du comportement. La 462 fige `usesFvm()` à `false`, ce qui ne change
@@ -14954,6 +14962,37 @@ journal. Et, sans arbitrage à rendre : au plafond, AVANT de tuer, le harnais
 nomme ce qui tourne encore dans le groupe de la suite — ligne de commande et âge
 —, la seule trace qu'aucun tampon ne retient ; le garde nommé devient ce qu'il
 est, le dernier résultat sorti.
+
+#### ✅ Fermé le jour même — une coupure se rejoue, et le plafond nomme ce qui tourne encore
+
+- Une mutation coupée au plafond est **rejouée une fois**, la mutation remise en
+  place : la cible vient d'être restaurée, et rejouer le code propre rendrait
+  VACANT. PLAFOND seulement à la seconde coupure ; le rejeu s'écrit sous le
+  verdict, même quand la mutation tombe au second essai — c'est la trace d'un
+  runner qui fige.
+- Au plafond, AVANT de tuer, le harnais relève ce qui tourne encore dans le
+  groupe de la suite : les feuilles, avec leur ligne de commande et leur âge —
+  ni la racine, ni un processus qui en attend un autre, ni un zombie. Le
+  libellé « dernier garde achevé » devient ce qu'il est : « dernier résultat
+  sorti », une borne. La suite propre coupée dit la même chose.
+- La suite factice des gardes du 590 gagne deux sujets figés SYNCHRONEMENT,
+  comme sur le runner — l'un au premier passage seulement, l'autre toujours —,
+  chacun avec un petit-enfant étiqueté que le relevé doit nommer. Un garde
+  neuf : le sujet intermittent est rejoué puis tombe, le sujet figé est coupé
+  deux fois et nomme son petit-enfant, jamais le fichier de test qui l'attend.
+  Sur ce sujet, la sortie dit « dernier résultat sorti : aucun » alors qu'un
+  garde est passé : le phénomène, reproduit.
+- 🔴 **Une des mutations était un tirage à pile ou face.** Rejouées à la main,
+  en lisant TOUS les gardes rouges et pas seulement celui que le harnais
+  crédite : déplacer le relevé après la mise à mort laissait les gardes verts
+  une fois, rouges l'autre — un processus tué n'est pas encore mort quand `ps`
+  passe juste après. Jugée ainsi, elle serait sortie VACANTE sur le runner. Cet
+  ordre ne se prouve pas de bout en bout sans cette course : un garde de
+  structure le tient, dans la branche de la coupure.
+- Deux mutations du 590 ré-ancrées dans la boucle du rejeu ; sept neuves, une
+  par propriété : **9/9 TOMBE**, jouées dans le montage minimal sous
+  Node 22.23.2, puis une à une à la main — chacune tombe sur un garde qui dit
+  sa propriété. Suite 680/680, 751 mutations, 0 inerte.
 
 ### 597. Le verdict d'une tranche rouge ne se lit que dans son journal, et seul un administrateur peut le lire
 
