@@ -5097,10 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **594**, trouvé le 30/09 par la CI du fork (section
-« Trouvé par la CI du fork — run #11 », en fin de fichier) : le harnais ne lit que
-le format « spec » de `node --test`, que Node 22, sur le runner, n'écrit pas —
-la suite y est rouge et les dix tranches refusent de démarrer. Les **591** à
+✅ **Rien d'ouvert.** Le **594**, trouvé le 30/09 par la CI du fork (section
+« Trouvé par la CI du fork — run #11 », en fin de fichier), est fermé le jour
+même : le harnais ne lisait que le format « spec » de `node --test`, que Node 22,
+sur le runner, n'écrit pas — la suite y était rouge et les dix tranches
+refusaient de démarrer ; il lit désormais les deux formats. Les **591** à
 **593**, reproduits le 30/09 sur un projet
 jetable (section « Reproduit sur un projet jetable », en fin de fichier), sont
 fermés le jour même, sur les remèdes tranchés par Germinator : une cible collée
@@ -14826,7 +14827,7 @@ achevé : aucun ».
 
 ### 594. Le harnais ne lit que le format « spec » de `node --test`, que Node 22 n'écrit pas hors d'un terminal
 
-**Ouvert le 30/09/2026 · OUVERT** — l'image `ubuntu-24.04` des runners porte
+**Ouvert le 30/09/2026 · CLOS** — l'image `ubuntu-24.04` des runners porte
 Node 22.23 ; ce poste, Node 24.21. Hors d'un terminal, Node 24 écrit ses verdicts
 au format « spec » (`✔ nom`, `✖ nom`) ; Node 22 écrit du TAP (`ok 1 - nom`,
 `not ok 1 - nom`). Le harnais lit les lignes « spec » pour nommer le dernier
@@ -14846,3 +14847,24 @@ trouve rien.
   `--test-reporter=spec` au harnais a été essayé et écarté, mesuré : un
   reporter déjà posé par `NODE_OPTIONS` fait alors planter `node --test`
   (« must match the number of specified '--test-reporter-destination' »).
+
+#### ✅ Fermé le jour même — le harnais lit les deux formats
+
+- `gardes_rendus` lit, dans l'ordre, les gardes que la suite a rendus, en
+  « spec » comme en TAP : il nourrit le dernier garde achevé d'un PLAFOND et le
+  garde tombé d'un TOMBE.
+- Reproduit d'abord : sur le commit poussé, la suite entière en TAP — le format
+  de Node 22 — n'a qu'un rouge, ce garde du 590 ; avec le correctif, 677/677 en
+  « spec » comme en TAP.
+- Le garde du plafond joue sa passe dans les deux formats, imposés par
+  `NODE_OPTIONS` : il juge pareil sous Node 22 et sous Node 24, et exige qu'un
+  TOMBE nomme le garde tombé.
+- Rejoué en TAP dans les conditions du runner : le harnais démarre — la suite
+  propre est verte —, et chaque TOMBE nomme son garde (« un AVD absent ne
+  retombe JAMAIS… »), ce qu'aucune tranche du runner n'avait jamais fait. Les
+  deux mutations neuves et la 590 octies, ré-ancrée sur le nouveau lecteur :
+  **3/3 TOMBE**, avec deux anciennes en témoins.
+- 📌 Le montage « runner simulé » ne change pas la version de Node : pour juger
+  ce que le runner lit, lui imposer son format
+  (`NODE_OPTIONS=--test-reporter=tap`).
+- Suite 677/677, 743 mutations, 0 inerte.
