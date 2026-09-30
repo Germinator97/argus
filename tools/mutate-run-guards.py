@@ -3989,6 +3989,48 @@ MUTATIONS = [
     ("mutateur", "596 septies · un processus qui en attend un autre est nommé",
      "\n            if c[0] not in parents and c[0] != str(groupe)]",
      "\n            if c[0] != str(groupe)]"),
+
+    # ── 597 · le verdict d'une tranche rouge se lit sans le journal ──
+    # Les annotations ne partent plus : la tranche rouge redevient muette.
+    ("mutateur", "597 · les annotations ne partent plus",
+     "\n    if os.environ.get(\"GITHUB_ACTIONS\") == \"true\":\n        print(commande_github(",
+     "\n    if False:\n        print(commande_github("),
+    # Les annotations partent partout : la sortie d'un poste s'en remplit.
+    ("mutateur", "597 bis · les annotations partent hors de GitHub",
+     "\n    if os.environ.get(\"GITHUB_ACTIONS\") == \"true\":\n        print(commande_github(",
+     "\n    if True:\n        print(commande_github("),
+    # Un saut de ligne n'est plus échappé : il coupe la commande.
+    ("mutateur", "597 ter · un saut de ligne n'est plus échappé",
+     ".replace(\"\\r\", \"%0D\").replace(\"\\n\", \"%0A\")",
+     ".replace(\"\\r\", \"%0D\")"),
+    # Un deux-points de titre n'est plus échappé : il termine la propriété.
+    ("mutateur", "597 quater · un deux-points de titre n'est plus échappé",
+     "\n    return texte.replace(\":\", \"%3A\").replace(\",\", \"%2C\") if propriete else texte",
+     "\n    return texte.replace(\",\", \"%2C\") if propriete else texte"),
+    # Un TOMBE s'annonce en erreur : toute tranche verte paraît rouge.
+    ("mutateur", "597 quinquies · un TOMBE s'annonce en erreur",
+     "\n          if etat not in (\"TOMBE\", \"NON JOUABLE\"):",
+     "\n          if etat != \"NON JOUABLE\":"),
+    # Un rejeu ne s'annonce plus : le gel du runner se tait quand la mutation tombe.
+    ("mutateur", "597 sexies · un rejeu ne s'annonce plus",
+     "\n              annonce_github(\"warning\", f\"Mutation n°{numero} · coupée puis rejouée\", f\"{nom} — {note}\")",
+     "\n              pass"),
+    # Une suite propre rouge ne s'annonce plus : le refus de la CI #11 redevient muet.
+    ("mutateur", "597 septies · une suite propre rouge ne s'annonce plus",
+     "\n        annonce_github(\"error\", \"Suite propre rouge\", \" ; \".join(rouges[:10]) or \"aucun garde rouge lisible\")",
+     "\n        pass"),
+    # La suite propre rouge ne nomme plus ses gardes rouges.
+    ("mutateur", "597 octies · une suite propre rouge ne nomme plus ses gardes",
+     "\n        for nom in rouges[:10]:\n            print(f\"  ✖ {nom}\")",
+     "\n        for nom in rouges[:10]:\n            pass"),
+    # Un garde rouge se nomme deux fois : « spec » répète chaque échec.
+    ("mutateur", "597 nonies · un garde rouge se nomme deux fois",
+     "\n        rouges = list(dict.fromkeys(nom for vert, nom",
+     "\n        rouges = list((nom for vert, nom"),
+    # Le titre du récapitulatif de « spec » passe pour un garde.
+    ("mutateur", "597 decies · « failing tests: » passe pour un garde rouge",
+     " and \"subtest\" not in nom and nom != \"failing tests:\"))",
+     " and \"subtest\" not in nom))"),
 ]
 
 
@@ -4151,6 +4193,34 @@ def decrire_coupure(plafond, vivants, sortie):
     dernier = dernier_resultat_sorti(sortie)
     return (f"sans réponse en {plafond:.0f} s · encore en vie : {en_vie}"
             f" · dernier résultat sorti : {dernier or 'aucun'}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 597 · Le verdict d'une tranche rouge se lit sans le journal
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# L'API rend le journal d'un job en 403 à tout compte qui n'administre pas le
+# dépôt, et l'annotation d'une tranche rouge dit seulement « Process completed
+# with exit code 1 ». Trois fois, un diagnostic a attendu qu'un journal soit
+# collé ; la dernière a coûté des heures de rejeu qui ne pouvaient rien trouver.
+# Une ANNOTATION, elle, se lit par l'API publique (check-runs/<id>/annotations).
+# ⚠️ Échappée comme la doc de GitHub l'exige : un saut de ligne coupe la
+# commande, et dans une propriété (`title=`) un deux-points ou une virgule la
+# terminent.
+def _echappe(texte, propriete=False):
+    texte = texte.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+    return texte.replace(":", "%3A").replace(",", "%2C") if propriete else texte
+
+
+def commande_github(niveau, titre, message):
+    """La ligne qui fait d'un message une annotation GitHub (597)."""
+    return f"::{niveau} title={_echappe(titre, True)}::{_echappe(message)}"
+
+
+def annonce_github(niveau, titre, message):
+    """L'annotation, SEULEMENT sous GitHub Actions : ailleurs, la sortie reste lisible (597)."""
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print(commande_github(niveau, titre, message), flush=True)
 
 
 def digest(cible):
@@ -4531,6 +4601,8 @@ def main():
         print(f"✖ la suite PROPRE n'a pas rendu la main en {PLAFOND_SUITE_PROPRE_S} s — rien n'est muté,"
               " c'est elle qu'il faut corriger.")
         print(f"  {decrire_coupure(PLAFOND_SUITE_PROPRE_S, base.vivants, base.stdout + base.stderr)}")
+        annonce_github("error", "Suite propre coupée",
+                       decrire_coupure(PLAFOND_SUITE_PROPRE_S, base.vivants, base.stdout + base.stderr))
         return 1
     m = re.search(r"tests (\d+)", base.stdout + base.stderr)
     if not m:
@@ -4540,6 +4612,14 @@ def main():
     NB_TESTS = int(m.group(1))
     if base.returncode != 0:
         print(f"✖ la suite est DÉJÀ rouge ({NB_TESTS} tests) — corrige avant de muter.")
+        # 597 — les gardes ROUGES, nommés : à la CI #11, ce refus ne disait pas lesquels.
+        # ⚠️ En « spec », Node répète chaque échec sous « ✖ failing tests: » : ce
+        # titre n'est pas un garde, et un garde ne se nomme qu'une fois.
+        rouges = list(dict.fromkeys(nom for vert, nom in gardes_rendus(base.stdout + base.stderr)
+                                    if not vert and "subtest" not in nom and nom != "failing tests:"))
+        for nom in rouges[:10]:
+            print(f"  ✖ {nom}")
+        annonce_github("error", "Suite propre rouge", " ; ".join(rouges[:10]) or "aucun garde rouge lisible")
         return 1
 
     for cle, cible in CIBLES.items():
@@ -4678,10 +4758,14 @@ def main():
           bilan.append((etat, nom, detail))
           precision = "" if etat == "TOMBE" else f" — {detail}"
           print(f" {etat} · {time.monotonic() - debut:.0f} s{precision}", flush=True)
+          # 597 — un verdict qui fait échouer la passe se lit sans le journal.
+          if etat not in ("TOMBE", "NON JOUABLE"):
+              annonce_github("error", f"Mutation n°{numero} · {etat}", f"{nom} — {detail}")
           # 596 — un rejeu se DIT, même quand la mutation tombe au second essai :
           # c'est la trace d'un runner qui fige, et un TOMBE ne la montrerait pas.
           for note in notes:
               print(f"      ⧗ {note}", flush=True)
+              annonce_github("warning", f"Mutation n°{numero} · coupée puis rejouée", f"{nom} — {note}")
 
     except KeyboardInterrupt:
         interrompu = True

@@ -20851,6 +20851,9 @@ const scriptPasse590 = (/** @type {string} */ dir, /** @type {number} */ planche
 const envPasse590 = () => {
   const env = { ...process.env };
   delete env.NODE_TEST_CONTEXT;
+  // ⚠️ 597 — sur le runner, GitHub pose GITHUB_ACTIONS : hérité, il ferait
+  // annoncer chaque passe jetable. Un garde qui veut les annotations le pose.
+  delete env.GITHUB_ACTIONS;
   return env;
 };
 
@@ -20917,6 +20920,9 @@ const passeCoupee590 = async (/** @type {string} */ format) => {
       `un TOMBE doit nommer le garde tombé, en ${format} aussi (594)\n${sortie}`);
     assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (590)\n${sortie}`);
     assert.equal(r.status, 1, 'une mutation coupée au plafond n\'est pas un défaut détecté : la passe échoue');
+    // ⚠️ 597 — L'AUTRE MOITIÉ : hors de GitHub, pas une ligne d'annotation.
+    assert.doesNotMatch(sortie, /^::(error|warning)/m,
+      `hors de GitHub Actions, la sortie d'un poste ne doit porter aucune annotation (597)\n${sortie}`);
   } finally {
     if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
     rmSync(dir, { recursive: true, force: true });
@@ -21016,8 +21022,9 @@ test('une coupure se REJOUE une fois, et le plafond nomme ce qui tourne encore (
   let petit = 0;
   try {
     const depart = Date.now();
+    // ⚠️ 597 — joué SOUS GitHub Actions : les annotations se lisent ici aussi.
     const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1, 900, [MUTATIONS_590.intermittent, MUTATIONS_590.fige])],
-      { cwd: dir, encoding: 'utf8', env: envPasse590() });
+      { cwd: dir, encoding: 'utf8', env: { ...envPasse590(), GITHUB_ACTIONS: 'true' } });
     const duree = (Date.now() - depart) / 1000;
     const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
     if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
@@ -21038,6 +21045,14 @@ test('une coupure se REJOUE une fois, et le plafond nomme ce qui tourne encore (
     assert.ok(releves.every((l) => !/suite\.test\.mjs/.test(l)),
       `le fichier de test ATTEND son petit-enfant : un parent n'est pas un coupable (596)\n${releves.join('\n')}`);
     assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (596)\n${sortie}`);
+    // 597 — la tranche rouge se lit SANS le journal : l'erreur nomme la mutation
+    // coupée deux fois, l'avertissement le rejeu — et un TOMBE ne dit rien.
+    assert.match(sortie, /^::error title=Mutation n°2 · PLAFOND::596 · le sujet se fige dans un appel synchrone — coupée deux fois · [^\n]*fige-596/m,
+      `une mutation PLAFOND doit être annoncée à GitHub, avec ce qui tournait (597)\n${sortie}`);
+    assert.match(sortie, /^::warning title=Mutation n°1 · coupée puis rejouée::596 · le sujet se fige une seule fois — coupée une fois, rejouée — [^\n]*intermittent-596/m,
+      `un rejeu doit être annoncé à GitHub, même quand la mutation tombe ensuite (597)\n${sortie}`);
+    assert.doesNotMatch(sortie, /^::error title=Mutation n°1/m,
+      `une mutation qui TOMBE ne fait pas échouer la passe : elle n'a rien à annoncer en erreur (597)\n${sortie}`);
     assert.equal(r.status, 1, 'une mutation coupée deux fois n\'est pas un défaut détecté : la passe échoue');
     assert.equal(await survit(petit), false, 'la suite coupée doit mourir avec tout son groupe (590, 596)');
     assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après la coupure');
@@ -21069,6 +21084,44 @@ test('au plafond, ce qui tourne est relevé AVANT la mise à mort (596)', () => 
   assert.ok(mise > 0, 'la coupure ne tue plus le groupe (590)');
   assert.ok(releve < mise,
     'le relevé arrive APRÈS la mise à mort : il ne lit plus que des processus en train de mourir (596)');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 597 — L'API rend le journal d'un job en 403 à qui n'administre pas le dépôt :
+// trois diagnostics ont attendu qu'un journal soit collé. Tranché par
+// Germinator : ce qui fait échouer une tranche devient une ANNOTATION, que
+// l'API publique rend à tous — seulement sous GitHub Actions.
+// ═══════════════════════════════════════════════════════════════════════════
+test('une annotation GitHub est échappée comme la doc l\'exige (597)', () => {
+  const [erreur, avertissement] = interrogerLeHarnais([
+    'print(json.dumps([h.commande_github("error", "n°1 · a:b,c", "50%\\r\\nx"),',
+    '  h.commande_github("warning", "t", "a:b, c")]))',
+  ]);
+  // Un saut de ligne couperait la commande ; dans le titre, deux-points et virgule la terminent.
+  assert.equal(erreur, '::error title=n°1 · a%3Ab%2Cc::50%25%0D%0Ax', 'titre et message doivent être échappés (597)');
+  // L'autre moitié : le MESSAGE garde ses deux-points et ses virgules, lisibles.
+  assert.equal(avertissement, '::warning title=t::a:b, c', 'le message ne s\'échappe que là où GitHub l\'exige (597)');
+});
+
+test('une suite propre ROUGE nomme ses gardes rouges, et l\'annonce à GitHub (597)', () => {
+  const dir = monterPasse590('SAIN ROUGE\n');
+  try {
+    // ⚠️ En « spec » IMPOSÉ : c'est le format qui répète chaque échec sous « ✖ failing
+    // tests: ». Sur le runner, Node 22 écrirait du TAP, où il n'y a rien à dédoublonner —
+    // et les mutations qui retirent ce tri y seraient VACANTES.
+    const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1, 900, [MUTATIONS_590.rougit])],
+      { cwd: dir, encoding: 'utf8', env: { ...envPasse590(), GITHUB_ACTIONS: 'true', NODE_OPTIONS: '--test-reporter=spec' } });
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    assert.match(sortie, /la suite est DÉJÀ rouge/, `le refus doit se dire (597)\n${sortie}`);
+    // À la CI #11, ce refus ne disait pas quel garde rougissait.
+    assert.match(sortie, /^ {2}✖ le garde du sujet$/m, `le refus doit nommer le garde rouge (597)\n${sortie}`);
+    assert.match(sortie, /^::error title=Suite propre rouge::le garde du sujet$/m,
+      `le refus doit être annoncé à GitHub, garde rouge compris (597)\n${sortie}`);
+    assert.doesNotMatch(sortie, /\[1\/1\]/, 'aucune mutation ne doit être jouée sur une suite déjà rouge');
+    assert.equal(r.status, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test('le plafond d\'une mutation SUIT la durée mesurée de la suite propre (590)', () => {
