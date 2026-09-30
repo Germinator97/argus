@@ -5097,11 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **590**, trouvé le 30/09 par la CI du fork (section
-« Trouvé par la CI du fork — run #10 », en fin de fichier) : la tranche 10/10 a
-tourné six heures sans rendre la main, et le harnais, qui attendait la suite
-sans plafond et n'écrivait rien avant la fin, ne pouvait pas dire quelle
-mutation bloquait. Les **583** à **589**, rendus par le run 107 — la
+✅ **Rien d'ouvert.** Le **590**, trouvé le 30/09 par la CI du fork (section
+« Trouvé par la CI du fork — run #10 », en fin de fichier), est fermé le jour
+même : la tranche 10/10 avait tourné six heures sans rendre la main, et le
+harnais, qui attendait la suite sans plafond et n'écrivait rien avant la fin, ne
+pouvait pas dire quelle mutation bloquait. Chaque suite a désormais un plafond
+dérivé de la suite propre, et chaque verdict se dit à sa chute. ⚠️ Le coupable
+de cette tranche reste à nommer : le prochain passage de la CI le dira. Les **583** à **589**, rendus par le run 107 — la
 confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 ») —,
 sont fermés le jour même : FVM cherché comme FVM le
 cherche, une recette qui part du dossier courant, un type du gabarit élargi, et
@@ -14577,7 +14579,7 @@ est aussi l'instrument qui le nommera.
 
 ### 590. Le harnais attend la suite sans plafond : une mutation qui la fait boucler bloque sa tranche six heures, sans un mot
 
-**Ouvert le 30/09/2026 · OUVERT** — le harnais lance `node --test` par
+**Ouvert le 30/09/2026 · CLOS** — le harnais lance `node --test` par
 `subprocess.run`, sans plafond, et l'étape du workflow n'en a pas : c'est la
 limite d'un job GitHub, 360 minutes, qui a coupé. Trois défauts ont rendu le
 journal muet :
@@ -14585,7 +14587,7 @@ journal muet :
 - la mutation en cours n'était nommée nulle part : les verdicts ne
   s'imprimaient qu'au tableau final, et le message d'interruption ne la citait
   pas ;
-- les verdicts déjà rendus — soixante-dix, sans doute — sont morts avec le job ;
+- les verdicts déjà rendus sont morts avec le job, quel qu'en soit le nombre ;
 - et un plafond posé naïvement n'aurait pas suffi. MESURÉ : `node --test` lance
   le fichier de test dans un second processus ; tuer le premier — ce que fait
   `subprocess.run` à son plafond — laisse le second, et ce qu'il a lancé,
@@ -14598,3 +14600,39 @@ de mesure avant elle ; la suite lancée dans son propre groupe de processus, tu�
 en entier au plafond comme à l'interruption ; un verdict **PLAFOND**, ni TOMBE
 ni VACANT, qui nomme le dernier garde rendu ; et chaque mutation nommée AVANT
 d'être jouée, son verdict écrit dès qu'il tombe.
+
+#### ✅ Fermé le jour même — un plafond dérivé, un groupe tué en entier, chaque verdict dit à sa chute
+
+- La suite propre est mesurée, et chaque suite mutée tourne sous un plafond de
+  cinq fois sa durée, trois minutes au moins, annoncé en tête de passe —
+  « ⧗ plafond par mutation : 355 s (suite propre : 71 s) » dans les conditions
+  du runner. La suite propre, qui n'a pas de mesure avant elle, a un plafond
+  fixe de quinze minutes : elle tourne en moins d'une.
+- La suite part dans son propre groupe de processus, tué en entier au plafond
+  comme à l'interruption du harnais. Passé le plafond, on rend ce qu'on a lu
+  plutôt que d'attendre un descendant sorti du groupe : c'est l'attente qu'on
+  borne.
+- Une suite coupée rend **PLAFOND** — ni TOMBE ni VACANT, donc la passe
+  échoue — avec le dernier garde qu'elle a rendu : celui qui suit est celui qui
+  bloquait.
+- Chaque mutation est nommée AVANT d'être jouée, sa ligne poussée aussitôt, et
+  son verdict écrit dès qu'il tombe : un job tué montre encore où il en était,
+  et l'interruption dit combien de mutations étaient jugées.
+- Quatre gardes jouent une VRAIE passe — `main()`, sur un dépôt jetable dont le
+  sujet dort : coupée au plafond et nommée, la passe continue jusqu'à son
+  bilan ; interrompue en plein sommeil, elle nomme la mutation en cours, tue la
+  suite et garde le verdict déjà rendu ; une suite propre qui bloque arrête tout
+  avant la première mutation ; et le plafond suit la suite propre. Vus d'abord
+  ROUGES sur l'ancien harnais : 30,5 s d'attente au lieu d'une coupure, aucune
+  ligne pour la mutation en cours.
+- 🔴 **Un accroc de montage, pas de fond** : `node --test` pose
+  `NODE_TEST_CONTEXT=child-v8` dans le processus du fichier de test. Hérité, il
+  fait de la suite jetable un « enfant » qui ne rend plus son résumé `tests N`,
+  et le harnais refuse de démarrer — le garde mesurait son montage. Il retire la
+  variable de l'environnement de sa passe.
+- Huit mutations, une par propriété : **8/8 TOMBE**, jouées par le nouveau
+  harnais lui-même dans les conditions du runner. Suite 670/670, 720 mutations,
+  0 inerte.
+- ⚠️ **Le coupable de la tranche 10/10 n'est pas nommé.** C'est le prochain
+  passage de la CI qui le dira — en PLAFOND, avec le dernier garde achevé —, à
+  moins qu'un rejeu sous Linux et Node 22 ne le trouve avant.
