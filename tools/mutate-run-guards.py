@@ -207,6 +207,9 @@ CIBLES = {
     # 593 — la sonde qui prouve en CI que le refus d'une locale sans délégué suit
     # Flutter cas par cas : ce dépôt n'exécute pas de Dart, elle est la preuve.
     "sondelocale": ROOT / "tools/locale-probe.dart",
+    # 591 — la sonde qui prouve en CI qu'une cible collée au bord d'une zone qui
+    # défile est mesurée, et qu'à ses montages Flutter est bien aveugle.
+    "sondecibles": ROOT / "tools/cibles-probe.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3864,6 +3867,37 @@ MUTATIONS = [
     ("ciplugin", "593 sexies · la CI ne joue plus la sonde de la locale",
      "        run: bash tools/locale-probe.sh /tmp/accueil",
      "        run: echo 'sonde de la locale retirée'"),
+
+    # ── 591 · une cible collée au bord d'une zone qui défile est mesurée ──
+    # Le garde Android à 48 dp repasse par la guideline de Flutter, aveugle.
+    ("a11yetage1", "591 · le garde Android repasse par la guideline de Flutter",
+     "\n            tester,\n            meetsGuideline(argusAndroidTapTargetGuideline),",
+     "\n            tester,\n            meetsGuideline(androidTapTargetGuideline),"),
+    # Le garde iOS aussi.
+    ("a11yetage1", "591 bis · le garde iOS repasse par la guideline de Flutter",
+     "meetsGuideline(argusIOSTapTargetGuideline)",
+     "meetsGuideline(iOSTapTargetGuideline)"),
+    # Le bord bas ne coupe plus rien : la cible sous le pli serait mesurée coupée,
+    # et celle collée en haut dispensée à tort.
+    ("harness", "591 ter · « vers le haut » désigne le mauvais bord",
+     "zoneDonnees.hasAction(SemanticsAction.scrollUp) &&\n          zone.bottom - cible.bottom <= ecart",
+     "zoneDonnees.hasAction(SemanticsAction.scrollUp) &&\n          cible.top - zone.top <= ecart"),
+    # Une dispense revient : le bord de l'écran, qui rendait la liste invisible.
+    ("harness", "591 quater · la guideline dispense de nouveau un bord de plus",
+     "    final Size taille = rect.size / ratio;",
+     "    if (rect.left <= 0.001) {\n      return result;\n    }\n    final Size taille = rect.size / ratio;"),
+    # La guideline Android ne mesure plus 48 dp.
+    ("harness", "591 quinquies · la guideline Android mesure 40 dp",
+     "\n  size: Size(48, 48),",
+     "\n  size: Size(40, 40),"),
+    # La sonde ne vérifie plus que Flutter est aveugle à ses montages.
+    ("sondecibles", "591 sexies · la sonde ne confronte plus Flutter à son verdict",
+     "      expect(\n        flutter.passed,\n        flutterPasse,",
+     "      expect(\n        flutter.passed,\n        flutter.passed,"),
+    # La CI ne joue plus la sonde : la guideline ne s'exécute plus nulle part.
+    ("ciplugin", "591 septies · la CI ne joue plus la sonde des cibles",
+     "        run: bash tools/cibles-probe.sh /tmp/accueil",
+     "        run: echo 'sonde des cibles retirée'"),
 ]
 
 

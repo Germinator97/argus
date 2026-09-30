@@ -358,6 +358,15 @@ jobs:
       - name: Il refuse une locale que ses délégués ne prennent pas en charge, et dit laquelle
         run: bash tools/locale-probe.sh /tmp/accueil
 
+      # 591 — UNE CIBLE COLLÉE AU BORD D'UNE ZONE QUI DÉFILE EST MESURÉE. Six
+      # montages, chacun avec le verdict du cadre ET celui de Flutter écrits :
+      # là où Flutter reste aveugle (une cible au bord, une liste pleine
+      # largeur), la sonde exige qu'il le soit encore — sinon le montage
+      # n'exercerait plus l'angle mort. Et l'autre moitié : une cible que le pli
+      # ou le bord d'un carrousel coupe reste dispensée. Avant celle des polices.
+      - name: Il mesure une cible collée au bord d'une zone qui défile, et dispense celle qu'un défilement coupe
+        run: bash tools/cibles-probe.sh /tmp/accueil
+
       # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
       # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
       # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas

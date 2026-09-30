@@ -60,7 +60,10 @@ void main() {
         argusDrainMountException(tester);
         await argusCheck(
           '${screen.id} · cibles tactiles ≥ 48 dp (Android)',
-          () => expectLater(tester, meetsGuideline(androidTapTargetGuideline)),
+          () => expectLater(
+            tester,
+            meetsGuideline(argusAndroidTapTargetGuideline),
+          ),
         );
         handle.dispose();
       }, skip: argusShouldSkip);
@@ -78,7 +81,7 @@ void main() {
         argusDrainMountException(tester);
         await argusCheck(
           '${screen.id} · cibles tactiles ≥ 44 dp (iOS)',
-          () => expectLater(tester, meetsGuideline(iOSTapTargetGuideline)),
+          () => expectLater(tester, meetsGuideline(argusIOSTapTargetGuideline)),
         );
         handle.dispose();
       }, skip: argusShouldSkip);
@@ -160,8 +163,10 @@ void main() {
           argusDrainMountException(tester);
           await argusCheck(
             '${screen.id} · cibles tactiles à 200 % de taille de texte',
-            () =>
-                expectLater(tester, meetsGuideline(androidTapTargetGuideline)),
+            () => expectLater(
+              tester,
+              meetsGuideline(argusAndroidTapTargetGuideline),
+            ),
           );
           handle.dispose();
         },

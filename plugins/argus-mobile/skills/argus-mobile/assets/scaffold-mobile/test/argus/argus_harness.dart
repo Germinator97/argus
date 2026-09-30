@@ -25,6 +25,8 @@ import 'dart:math' as math;
 
 // 593 — le délégué Cupertino par défaut, que `MaterialApp` ajoute toujours.
 import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
+// 591 — la tolérance de Flutter, pour mesurer les cibles comme lui.
+import 'package:flutter/foundation.dart' show precisionErrorTolerance;
 import 'package:flutter/material.dart';
 // `RenderParagraph` n'est pas ré-exporté par widgets.dart : sans cet import, la
 // mesure de troncature ne compile pas.
@@ -1579,3 +1581,145 @@ bool _argusOpaque(Color c) =>
 bool _argusInvisible(Color c) =>
     Color.alphaBlend(c, const Color(0xFF000000)) == const Color(0xFF000000) &&
     Color.alphaBlend(c, const Color(0xFFFFFFFF)) == const Color(0xFFFFFFFF);
+
+// ───────────────────────────────────────────────────────────────────────────
+// 7. Les cibles tactiles, jusqu'au bord d'une zone qui défile (591)
+// ───────────────────────────────────────────────────────────────────────────
+
+/// Les cibles tactiles d'au moins 48 dp — celles de Flutter, mesurées jusqu'au
+/// bord d'une zone qui défile (591).
+const ArgusTapTargetGuideline
+argusAndroidTapTargetGuideline = ArgusTapTargetGuideline(
+  size: Size(48, 48),
+  link: 'https://support.google.com/accessibility/android/answer/7101858?hl=en',
+);
+
+/// Les cibles tactiles d'au moins 44 dp — celles de Flutter, mesurées jusqu'au
+/// bord d'une zone qui défile (591).
+const ArgusTapTargetGuideline
+argusIOSTapTargetGuideline = ArgusTapTargetGuideline(
+  size: Size(44, 44),
+  link:
+      'https://developer.apple.com/design/human-interface-guidelines/ios/visual-design/adaptivity-and-layout/',
+);
+
+/// La taille minimale des cibles tactiles, MÊME collées au bord d'une zone qui
+/// défile (591).
+///
+/// 🔴 POURQUOI PAS CELLE DE FLUTTER. `MinimumTapTargetGuideline` saute tout
+/// nœud dont le rectangle touche, à 0,001 px près, un côté d'un ancêtre qui
+/// défile : une cible à moitié défilée paraîtrait plus petite qu'elle n'est. Or
+/// presque tous les écrans défilent, et une rangée pleine largeur touche les deux
+/// côtés de sa liste. Mesuré sur un projet neuf : une cible de 24 dp collée au
+/// bord d'un `SingleChildScrollView` passait « ≥ 48 dp », la même décollée de
+/// 16 dp échouait. Sur un terrain, le garde d'un bouton est devenu vacant au
+/// commit qui rendait sa vue défilante.
+///
+/// Ici, un bord ne dispense que s'il CACHE du contenu — lu sur les actions de
+/// défilement de chaque ancêtre, comme un lecteur d'écran les lit : une zone qui
+/// peut encore défiler vers le bas cache ce qui est sous son bord bas, et ce
+/// bord-là seul peut couper une cible. Au montage l'écran n'a pas défilé : le
+/// bord de début et les côtés ne coupent rien, et une zone qui ne défile pas ne
+/// coupe rien du tout. Le reste est celui de Flutter, repères compris.
+///
+/// ⚠️ ET LE BORD DE L'ÉCRAN NE DISPENSE PLUS. Flutter le saute aussi, pour la
+/// même raison ; mais une liste pleine largeur a pour côtés ceux de l'écran, et
+/// cette seconde dispense rendait la première inutile — mesuré : la cible collée
+/// au bord passait encore. Ce qui déborde de l'écran sans défiler garde son
+/// rectangle entier : rien ne le rogne, donc rien ne le rapetisse.
+class ArgusTapTargetGuideline extends AccessibilityGuideline {
+  /// Une taille minimale, et la recommandation qui la fixe.
+  const ArgusTapTargetGuideline({required this.size, required this.link});
+
+  /// La taille minimale d'une cible tactile, en dp.
+  final Size size;
+
+  /// La recommandation de la plateforme.
+  final String link;
+
+  @override
+  String get description =>
+      'Cibles tactiles d\'au moins $size, jusqu\'au bord d\'une zone qui défile';
+
+  @override
+  Future<Evaluation> evaluate(WidgetTester tester) async {
+    Evaluation result = const Evaluation.pass();
+    for (final RenderView vue in tester.binding.renderViews) {
+      result += _parcourir(
+        vue.flutterView.devicePixelRatio,
+        vue.owner!.semanticsOwner!.rootSemanticsNode!,
+      );
+    }
+    return result;
+  }
+
+  Evaluation _parcourir(double ratio, SemanticsNode noeud) {
+    Evaluation result = const Evaluation.pass();
+    noeud.visitChildren((SemanticsNode enfant) {
+      result += _parcourir(ratio, enfant);
+      return true;
+    });
+    if (noeud.isMergedIntoParent || !_estUneCible(noeud)) {
+      return result;
+    }
+    Rect rect = noeud.rect;
+    SemanticsNode? courant = noeud;
+    while (courant != null) {
+      final Matrix4? transform = courant.transform;
+      if (transform != null) {
+        rect = MatrixUtils.transformRect(transform, rect);
+      }
+      // Tout ancêtre qui DÉFILE — `hasImplicitScrolling` ou non : un `PageView`
+      // qui laisse voir ses voisines ne le porte pas, et les rogne pourtant.
+      if (argusBordQuiCoupe(rect, courant.rect, courant.getSemanticsData())) {
+        return result;
+      }
+      courant = courant.parent;
+    }
+    final Size taille = rect.size / ratio;
+    if (taille.width < size.width - precisionErrorTolerance ||
+        taille.height < size.height - precisionErrorTolerance) {
+      result += Evaluation.fail(
+        '$noeud: expected tap target size of at least $size, '
+        'but found $taille\n'
+        'See also: $link',
+      );
+    }
+    return result;
+  }
+
+  // Les cibles que Flutter juge : un toucher ou un appui long, ni cachées ni
+  // liens (https://www.w3.org/WAI/WCAG21/Understanding/target-size.html).
+  static bool _estUneCible(SemanticsNode noeud) {
+    final SemanticsData data = noeud.getSemanticsData();
+    if (!data.hasAction(SemanticsAction.tap) &&
+        !data.hasAction(SemanticsAction.longPress)) {
+      return false;
+    }
+    // Le plancher est Flutter 3.27 (577), où `flagsCollection` n'existe pas :
+    // l'ancien `hasFlag`, et son avertissement tu, comme plus haut.
+    // ignore: deprecated_member_use
+    return !data.hasFlag(SemanticsFlag.isHidden) &&
+        // ignore: deprecated_member_use
+        !data.hasFlag(SemanticsFlag.isLink);
+  }
+}
+
+/// Vrai quand [cible] touche un bord de [zone] au-delà duquel du contenu est
+/// caché — le seul bord qu'un défilement puisse couper (591).
+///
+/// Les actions de défilement disent où le contenu continue, quel que soit le
+/// sens de la liste : « vers le haut » disponible = du contenu sous le bord bas,
+/// « vers le bas » = au-dessus du bord haut, « vers la gauche » = au-delà du bord
+/// droit, « vers la droite » = au-delà du bord gauche.
+bool argusBordQuiCoupe(Rect cible, Rect zone, SemanticsData zoneDonnees) {
+  const double ecart = 0.001;
+  return (zoneDonnees.hasAction(SemanticsAction.scrollUp) &&
+          zone.bottom - cible.bottom <= ecart) ||
+      (zoneDonnees.hasAction(SemanticsAction.scrollDown) &&
+          cible.top - zone.top <= ecart) ||
+      (zoneDonnees.hasAction(SemanticsAction.scrollLeft) &&
+          zone.right - cible.right <= ecart) ||
+      (zoneDonnees.hasAction(SemanticsAction.scrollRight) &&
+          cible.left - zone.left <= ecart);
+}

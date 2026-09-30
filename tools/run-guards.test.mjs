@@ -19696,6 +19696,68 @@ test('593 — la CI joue la sonde de la locale, qui confronte le cadre à Flutte
   assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
 });
 
+// ── 591 · UNE CIBLE COLLÉE AU BORD D'UNE ZONE QUI DÉFILE EST MESURÉE ─────────
+// `MinimumTapTargetGuideline` saute tout nœud qui touche un côté d'une zone qui
+// défile, ou de l'écran : une rangée pleine largeur n'était jamais mesurée.
+// Tranché par Germinator : une guideline du cadre, qui ne dispense qu'une cible
+// collée au bord au-delà duquel du contenu est caché. Le Dart ne s'exécute pas
+// ici : la sonde `cibles-probe` prouve en CI les deux moitiés, et qu'à ses
+// montages Flutter est bien aveugle ; ces gardes tiennent la règle et son câblage.
+test('591 — les cibles tactiles se jugent par la guideline du cadre, jusqu\'au bord', () => {
+  const a11y = readFileSync(join(SCAFFOLD_589, 'test/argus/a11y_test.dart'), 'utf8');
+  assert.equal((a11y.match(/meetsGuideline\(argusAndroidTapTargetGuideline\)/g) ?? []).length, 2,
+    'les deux gardes Android (48 dp, et à 200 %) ne passent plus par la guideline du cadre (591)');
+  assert.equal((a11y.match(/meetsGuideline\(argusIOSTapTargetGuideline\)/g) ?? []).length, 1,
+    'le garde iOS ne passe plus par la guideline du cadre (591)');
+  assert.doesNotMatch(a11y, /meetsGuideline\((android|iOS)TapTargetGuideline\)/,
+    'un garde de cible repasse par la guideline de Flutter, aveugle au bord d\'une zone qui défile (591)');
+  const cadre = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  assert.match(cadre, /ArgusTapTargetGuideline\(\s*size: Size\(48, 48\),/, 'la guideline Android ne mesure plus 48 dp (591)');
+  assert.match(cadre, /ArgusTapTargetGuideline\(\s*size: Size\(44, 44\),/, 'la guideline iOS ne mesure plus 44 dp (591)');
+  // La règle : chaque action de défilement désigne SON bord, quel que soit le sens.
+  for (const [action, bord] of [['scrollUp', 'zone\\.bottom - cible\\.bottom'], ['scrollDown', 'cible\\.top - zone\\.top'],
+    ['scrollLeft', 'zone\\.right - cible\\.right'], ['scrollRight', 'cible\\.left - zone\\.left']]) {
+    assert.match(cadre, new RegExp(`zoneDonnees\\.hasAction\\(SemanticsAction\\.${action}\\) &&\\s*${bord} <= ecart`),
+      `« ${action} » ne désigne plus le bord qui cache du contenu : une cible de ce bord serait dispensée à tort, ou mesurée coupée (591)`);
+  }
+  // Et le parcours : TOUT ancêtre qui défile, aucune dispense au bord de l'écran.
+  const guideline = cadre.slice(cadre.indexOf('class ArgusTapTargetGuideline'), cadre.indexOf('bool argusBordQuiCoupe('));
+  assert.ok(guideline.length > 500, 'la guideline des cibles a disparu du cadre : ce garde ne lit plus rien');
+  assert.match(guideline, /if \(argusBordQuiCoupe\(rect, courant\.rect, courant\.getSemanticsData\(\)\)\) \{\s*return result;/,
+    'la dispense ne se décide plus sur le bord qui cache du contenu (591)');
+  assert.doesNotMatch(guideline, /physicalSize|Offset\.zero &/,
+    'la guideline dispense de nouveau le bord de l\'ÉCRAN : une liste pleine largeur, dont les côtés sont ceux de l\'écran, ne serait plus mesurée (591)');
+  // Quatre sorties, pas une de plus : le bilan, le nœud qui n'est pas une cible,
+  // le bord qui coupe, la fin. Une dispense ajoutée en fait une cinquième.
+  assert.equal((guideline.match(/return result;/g) ?? []).length, 4,
+    'la guideline a une sortie de plus : une nouvelle dispense laisse des cibles sans mesure (591)');
+});
+
+test('591 — la CI joue la sonde des cibles, dont chaque montage a ses deux verdicts', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const i = ci.indexOf('run: bash tools/cibles-probe.sh /tmp/accueil');
+  const j = ci.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.notEqual(i, -1, 'la CI ne joue plus la sonde des cibles : la guideline du cadre ne s\'exécute nulle part (591)');
+  assert.ok(j !== -1 && i < j, 'la sonde des cibles doit passer avant celle des polices, qui modifie le projet d\'accueil');
+  const sonde = readFileSync(join(RACINE, 'tools/cibles-probe.dart'), 'utf8');
+  // [montage, le cadre passe, Flutter passe] — Flutter aveugle là où le cadre mesure.
+  // ⚠️ Montage par montage, découpés : une recherche d'un seul tenant glisserait
+  // jusqu'au montage suivant et lirait SES verdicts.
+  const blocs = sonde.split(/\n {2}\(\n {4}'/).slice(1);
+  const verdicts = Object.fromEntries(blocs.map((b) => {
+    const m = /^([a-z]+)',[\s\S]*\n {4}(true|false),\n {4}(true|false),\n {2}\),/.exec(b);
+    return m ? [m[1], `${m[2]}/${m[3]}`] : [b.slice(0, 20), '?'];
+  }));
+  assert.deepEqual(verdicts, { bord: 'false/true', liste: 'false/true', milieu: 'false/false',
+    pli: 'true/true', carrousel: 'true/true', conforme: 'true/true' },
+  'les montages de la sonde, ou leurs deux verdicts écrits (cadre / Flutter), ont changé (591)');
+  assert.match(sonde, /expect\(\s*cadre\.passed,\s*cadrePasse,/, 'la sonde ne juge plus la guideline du cadre (591)');
+  assert.match(sonde, /expect\(\s*flutter\.passed,\s*flutterPasse,/,
+    'la sonde ne vérifie plus que Flutter est aveugle à ses montages : ils pourraient ne plus exercer l\'angle mort');
+  const sh = readFileSync(join(RACINE, 'tools/cibles-probe.sh'), 'utf8');
+  assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

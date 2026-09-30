@@ -346,10 +346,14 @@ fixé là-bas, et ce qu'il devient dépend du mode : **un** finding `a11y`/`majo
 EXPLORE/DEMO — jamais un par widget —, un reste-à-faire bloquant avant
 l'installation en REGRESS, où l'instrumentation ne repart pas.
 
-⚠️ `MinimumTapTargetGuideline` **ignore les nœuds qui touchent le bord de la vue**
-(pour ne pas accuser un élément partiellement sorti de l'écran). Une cible collée
-au bord n'est donc pas mesurée, et le garde passe sans l'avoir regardée. Vérifié
-dans la source, pas supposé.
+⚠️ `MinimumTapTargetGuideline` **ignore les nœuds qui touchent le bord de la vue
+ou d'une zone qui défile** (pour ne pas accuser un élément à moitié défilé). Une
+cible collée au bord n'y est donc pas mesurée — et une rangée pleine largeur
+touche les deux côtés de sa liste. Vérifié dans la source, pas supposé. Le cadre
+ne s'en sert donc plus (591) : `ArgusTapTargetGuideline` ne dispense qu'une cible
+collée au bord au-delà duquel une zone CACHE du contenu — lu sur ses actions de
+défilement —, la seule qu'un défilement puisse couper. Au montage l'écran n'a
+pas défilé : le bord de début et les côtés sont mesurés.
 
 À faire à la main, sur les parcours P0 : navigation **TalkBack** (Android) et
 **VoiceOver** (iOS). Aucun outil ne remplace l'écoute de ce que le lecteur annonce.
