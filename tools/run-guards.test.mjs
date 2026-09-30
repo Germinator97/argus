@@ -20859,47 +20859,53 @@ const survit = async (/** @type {number} */ pid, ms = 3000) => {
 // ⚠️ 594 — DANS LES DEUX FORMATS DE `node --test`, imposés par NODE_OPTIONS : hors
 // d'un terminal, Node 24 écrit « spec » et Node 22 — celui du runner — du TAP. Ce
 // garde, joué dans le seul format de la machine, était vert ici et rouge là-bas.
-for (const format of ['spec', 'tap']) {
-  test(`une suite qui ne rend pas la main est COUPÉE au plafond, nommée, et la passe continue (590, 594 · ${format})`, async () => {
-    const dir = monterPasse590();
-    let petit = 0;
-    try {
-      const depart = Date.now();
-      const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1)],
-        { cwd: dir, encoding: 'utf8', env: { ...envPasse590(), NODE_OPTIONS: `--test-reporter=${format}` } });
-      const duree = (Date.now() - depart) / 1000;
-      const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
-      if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
+/** La passe coupée au plafond, jouée dans UN format de `node --test` (590, 594).
+ * ⚠️ 595 — deux `test(` en début de ligne plutôt qu'une boucle : le compteur de la
+ * page ne voit que ceux-là. */
+const passeCoupee590 = async (/** @type {string} */ format) => {
+  const dir = monterPasse590();
+  let petit = 0;
+  try {
+    const depart = Date.now();
+    const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1)],
+      { cwd: dir, encoding: 'utf8', env: { ...envPasse590(), NODE_OPTIONS: `--test-reporter=${format}` } });
+    const duree = (Date.now() - depart) / 1000;
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
 
-      assert.ok(petit > 0, `le faux sujet n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
-      assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
-        `${duree.toFixed(1)} s pour une passe dont le plafond vaut quelques secondes : la suite qui boucle `
-        + `n'a pas été coupée, le harnais l'a attendue (590)\n${sortie}`);
-      assert.match(sortie, /PLAFOND/, `la mutation coupée doit être NOMMÉE comme telle, pas prise pour une autre (590)\n${sortie}`);
-      assert.match(sortie, /le sujet fait boucler la suite[^\n]*PLAFOND/,
-        `le verdict PLAFOND doit se lire sur la ligne de la mutation qui boucle (590)\n${sortie}`);
-      // Le dernier garde rendu désigne celui qui SUIT : c'est là que la suite bloquait.
-      assert.match(sortie, /dernier garde achevé : un garde qui répond/,
-        `le verdict PLAFOND doit nommer le dernier garde rendu, en ${format} aussi (590, 594)\n${sortie}`);
-      // ⚠️ Mesuré : tuer le seul `node --test` laisse vivre le processus du fichier
-      // de test ET ses enfants — ils continuent de tourner sur le code MUTÉ pendant
-      // que la passe restaure et enchaîne. C'est le groupe entier qui doit mourir.
-      assert.equal(await survit(petit), false,
-        'un descendant de la suite coupée survit : le harnais a tué `node --test` et laissé ses enfants (590)');
-      assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après la coupure');
-      // L'AUTRE MOITIÉ : un plafond qui couperait tout rendrait chaque mutation
-      // « PLAFOND ». Celle qui rougit vite reste TOMBE — et nomme le garde tombé.
-      assert.match(sortie, /le sujet rougit[^\n]*TOMBE/, `une mutation qui rougit vite doit rester TOMBE (590)\n${sortie}`);
-      assert.match(sortie, /590 · le sujet rougit\s+TOMBE\s+le garde du sujet/,
-        `un TOMBE doit nommer le garde tombé, en ${format} aussi (594)\n${sortie}`);
-      assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (590)\n${sortie}`);
-      assert.equal(r.status, 1, 'une mutation coupée au plafond n\'est pas un défaut détecté : la passe échoue');
-    } finally {
-      if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-}
+    assert.ok(petit > 0, `le faux sujet n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
+    assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
+      `${duree.toFixed(1)} s pour une passe dont le plafond vaut quelques secondes : la suite qui boucle `
+      + `n'a pas été coupée, le harnais l'a attendue (590)\n${sortie}`);
+    assert.match(sortie, /PLAFOND/, `la mutation coupée doit être NOMMÉE comme telle, pas prise pour une autre (590)\n${sortie}`);
+    assert.match(sortie, /le sujet fait boucler la suite[^\n]*PLAFOND/,
+      `le verdict PLAFOND doit se lire sur la ligne de la mutation qui boucle (590)\n${sortie}`);
+    // Le dernier garde rendu désigne celui qui SUIT : c'est là que la suite bloquait.
+    assert.match(sortie, /dernier garde achevé : un garde qui répond/,
+      `le verdict PLAFOND doit nommer le dernier garde rendu, en ${format} aussi (590, 594)\n${sortie}`);
+    // ⚠️ Mesuré : tuer le seul `node --test` laisse vivre le processus du fichier
+    // de test ET ses enfants — ils continuent de tourner sur le code MUTÉ pendant
+    // que la passe restaure et enchaîne. C'est le groupe entier qui doit mourir.
+    assert.equal(await survit(petit), false,
+      'un descendant de la suite coupée survit : le harnais a tué `node --test` et laissé ses enfants (590)');
+    assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après la coupure');
+    // L'AUTRE MOITIÉ : un plafond qui couperait tout rendrait chaque mutation
+    // « PLAFOND ». Celle qui rougit vite reste TOMBE — et nomme le garde tombé.
+    assert.match(sortie, /le sujet rougit[^\n]*TOMBE/, `une mutation qui rougit vite doit rester TOMBE (590)\n${sortie}`);
+    assert.match(sortie, /590 · le sujet rougit\s+TOMBE\s+le garde du sujet/,
+      `un TOMBE doit nommer le garde tombé, en ${format} aussi (594)\n${sortie}`);
+    assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (590)\n${sortie}`);
+    assert.equal(r.status, 1, 'une mutation coupée au plafond n\'est pas un défaut détecté : la passe échoue');
+  } finally {
+    if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
+    rmSync(dir, { recursive: true, force: true });
+  }
+};
+
+test('une suite qui ne rend pas la main est COUPÉE au plafond, nommée, et la passe continue (590, 594 · spec)',
+  () => passeCoupee590('spec'));
+test('une suite qui ne rend pas la main est COUPÉE au plafond, nommée, et la passe continue (590, 594 · tap)',
+  () => passeCoupee590('tap'));
 
 test('une passe INTERROMPUE nomme la mutation en cours, tue la suite, et garde ses verdicts (590)', async () => {
   const dir = monterPasse590();
@@ -20980,6 +20986,21 @@ test('le plafond d\'une mutation SUIT la durée mesurée de la suite propre (590
   assert.equal(r.lent, 100 * r.facteur, 'sur une machine lente, le plafond doit suivre la suite propre (590)');
   assert.equal(r.rapide, r.plancher, 'sur une suite propre très rapide, le plancher tient (590)');
   assert.ok(r.facteur >= 3, `un facteur ${r.facteur} laisse trop peu de marge à une mutation qui ralentit sans boucler`);
+});
+
+// ── 595 · UN GARDE = UN `test(` EN DÉBUT DE LIGNE ────────────────────────────
+// Le contrôle de la page compte les gardes de cette suite comme des `test(` en
+// début de ligne (`nombreDeGardes`). Un garde posé dans une boucle — un `test(` en
+// retrait — y échappait : 675 gardes lus pour 677 joués, au 594. La convention
+// n'était écrite que dans le commentaire du compteur.
+test('chaque garde de la suite est un `test(` en début de ligne, que la page sait compter (595)', () => {
+  const enRetrait = (/** @type {string} */ src) => src.match(/^[ \t]+test\(/gm) ?? [];
+  // La contre-épreuve : le motif voit un garde en retrait, et ignore celui du début de ligne.
+  assert.equal(enRetrait("test('a', () => {});\nfor (const f of x) {\n  test(`b ${f}`, () => {});\n}\n").length, 1,
+    'le motif ne voit plus un `test(` en retrait : ce garde ne mesure rien');
+  const suite = readFileSync(join(RACINE, 'tools/run-guards.test.mjs'), 'utf8');
+  assert.deepEqual(enRetrait(suite), [],
+    'un garde est posé en retrait — dans une boucle ou un bloc — : le compteur de la page ne le voit pas (595)');
 });
 
 // ── 560 · LE TYPAGE A UN LECTEUR LOCAL ──────────────────────────────────────

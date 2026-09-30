@@ -213,6 +213,9 @@ CIBLES = {
     # 592 — la sonde qui prouve en CI qu'un mot coupé est vu, et qu'une coupure
     # légitime ne l'est pas.
     "sondemots": ROOT / "tools/mots-probe.dart",
+    # 595 — la suite elle-même : sa FORME est lue par le compteur de la page (un
+    # `test(` par garde, en début de ligne), et un garde la tient désormais.
+    "suite": ROOT / "tools/run-guards.test.mjs",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3948,6 +3951,12 @@ MUTATIONS = [
     ("mutateur", "594 bis · un TOMBE ne nomme plus le garde tombé",
      "\n            return \"TOMBE\", rouges[0] if rouges else \"un garde a rougi\"",
      "\n            return \"TOMBE\", \"un garde a rougi\""),
+
+    # ── 595 · un garde = un `test(` en début de ligne ──
+    # Un garde repasse en retrait : la page ne le compterait plus.
+    ("suite", "595 · un garde de la suite repasse en retrait",
+     "\ntest('chaque garde de la suite est un `test(` en début de ligne",
+     "\n  test('chaque garde de la suite est un `test(` en début de ligne"),
 ]
 
 
