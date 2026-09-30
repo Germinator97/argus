@@ -5097,13 +5097,14 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **597**, trouvé le 30/09 par la CI du fork (section
-« Trouvé par la CI du fork — run #12 », en fin de fichier) : le verdict d'une
-tranche rouge ne se lit que dans un journal réservé aux administrateurs. Le
-**596**, trouvé par la même CI, est fermé le jour même : la suite se figeait
-d'elle-même sur le runner, par intermittence, et le harnais coupait une mutation
-qui n'y était pour rien en désignant le mauvais garde — une coupure se rejoue
-désormais une fois, et le plafond nomme ce qui tourne encore. Le **595**, trouvé le 30/09 en préparant la page du
+✅ **Rien d'ouvert.** Les **596** et **597**, trouvés le 30/09 par la CI du fork
+(section « Trouvé par la CI du fork — run #12 », en fin de fichier), sont fermés
+le jour même : la suite se figeait d'elle-même sur le runner, par intermittence,
+et le harnais coupait une mutation qui n'y était pour rien en désignant le
+mauvais garde — une coupure se rejoue désormais une fois, et le plafond nomme ce
+qui tourne encore (596) ; et ce qui fait rougir une tranche devient une
+annotation GitHub, lisible sans le journal réservé aux administrateurs (597). Le
+**595**, trouvé le 30/09 en préparant la page du
 chantier (section « Trouvé en préparant la page », en fin de fichier), est fermé
 le jour même : un garde posé dans une boucle échappait au compteur de la page ;
 la suite n'en porte plus, et un garde y veille. Le **594**, trouvé le 30/09 par la CI du fork (section
@@ -14996,7 +14997,7 @@ est, le dernier résultat sorti.
 
 ### 597. Le verdict d'une tranche rouge ne se lit que dans son journal, et seul un administrateur peut le lire
 
-**Ouvert le 30/09/2026 · OUVERT** — l'API rend le journal d'un job en `403` à
+**Ouvert le 30/09/2026 · CLOS** — l'API rend le journal d'un job en `403` à
 tout compte qui n'administre pas le dépôt, et l'annotation publique d'une tranche
 rouge dit seulement « Process completed with exit code 1 ». Trois fois — le
 22/09, à la CI #8 et à la CI #12 —, un diagnostic a attendu que Germinator colle
@@ -15006,3 +15007,29 @@ reproduire, puisque la cause ne vit que sur le runner.
 Tranché par Germinator : chaque verdict qui n'est pas TOMBE — et chaque coupure
 rejouée — est publié en **annotation GitHub**, que l'API publique rend à tous ;
 seulement sous GitHub Actions, pour que la sortie d'un poste reste lisible.
+
+#### ✅ Fermé le jour même — ce qui fait rougir une tranche devient une annotation GitHub
+
+- Chaque verdict qui fait échouer la passe — VACANT, PLAFOND, HARNAIS — et
+  chaque coupure rejouée s'écrivent aussi en commande de workflow (`::error`,
+  `::warning`) : GitHub en fait des annotations, que l'API publique rend à tous
+  (`check-runs/<id>/annotations`). Seulement sous GitHub Actions : la sortie
+  d'un poste reste lisible.
+- Échappées comme la doc de GitHub l'exige : un saut de ligne couperait la
+  commande ; dans le titre, un deux-points ou une virgule terminent la
+  propriété — le message, lui, les garde.
+- Une suite propre rouge nomme désormais ses gardes rouges, au journal et en
+  annotation : à la CI #11, le refus ne disait pas lequel. En « spec », Node
+  répète chaque échec sous « failing tests: » ; les noms sont dédoublonnés et
+  ce titre écarté. Le garde de ce refus impose « spec » à sa passe jetable :
+  sur le runner, Node 22 écrirait du TAP, où il n'y a rien à dédoublonner — et
+  les mutations qui retirent ce tri y seraient sorties VACANTES.
+- Les passes jetables des gardes retirent `GITHUB_ACTIONS` de leur
+  environnement, que le runner pose ; le garde du 596 le repose pour lire les
+  annotations, ceux du 590 tiennent l'autre moitié : aucune annotation hors de
+  GitHub.
+- Dix mutations, rejouées d'abord une à une à la main, chacune tombant sur le
+  garde qui dit sa propriété : **10/10 TOMBE**, puis par le harnais dans le
+  montage minimal sous Node 22.23.2. Suite 682/682, 761 mutations, 0 inerte.
+- 📌 La première preuve sur le runner sera la CI suivante : une coupure qui y
+  survient se lira sans journal.
