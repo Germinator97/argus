@@ -5097,10 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **595**, trouvé le 30/09 en préparant la page du
-chantier (section « Trouvé en préparant la page », en fin de fichier) : un garde
-posé dans une boucle échappe au compteur de la page, qui lirait 675 gardes quand
-la suite en joue 677. Le **594**, trouvé le 30/09 par la CI du fork (section
+✅ **Rien d'ouvert.** Le **595**, trouvé le 30/09 en préparant la page du
+chantier (section « Trouvé en préparant la page », en fin de fichier), est fermé
+le jour même : un garde posé dans une boucle échappait au compteur de la page ;
+la suite n'en porte plus, et un garde y veille. Le **594**, trouvé le 30/09 par la CI du fork (section
 « Trouvé par la CI du fork — run #11 », en fin de fichier), est fermé le jour
 même : le harnais ne lisait que le format « spec » de `node --test`, que Node 22,
 sur le runner, n'écrit pas — la suite y était rouge et les dix tranches
@@ -14876,7 +14876,7 @@ trouve rien.
 
 ### 595. Un garde posé dans une boucle échappe au compteur de la page : 675 gardes lus, 677 joués
 
-**Ouvert le 30/09/2026 · OUVERT** — le contrôle de la page du chantier compte
+**Ouvert le 30/09/2026 · CLOS** — le contrôle de la page du chantier compte
 les gardes de la suite comme un `test(` en début de ligne (`nombreDeGardes`,
 `tools/artefact-compteurs.mjs`). Le correctif du 594 a posé le garde du plafond
 dans une boucle sur les deux formats de `node --test` : un `test(` en retrait,
@@ -14888,3 +14888,14 @@ joue 677, et la page aurait publié un chiffre faux avec son aval.
 - Remède, sans arbitrage à rendre : les deux gardes redeviennent deux `test(` en
   début de ligne, autour d'une fonction commune ; et un garde exige qu'aucun
   `test(` de la suite ne soit en retrait, contre-épreuve comprise.
+
+#### ✅ Fermé le jour même — deux `test(` en début de ligne, et un garde qui tient la règle
+
+- Les deux passes du garde du plafond redeviennent deux `test(` en début de
+  ligne, autour d'une fonction commune : la suite en compte 678, et le contrôle
+  de la page aussi.
+- Un garde exige qu'aucun `test(` de la suite ne soit en retrait, contre-épreuve
+  comprise sur une source fabriquée ; vu rouge sur la boucle d'abord.
+- La suite devient une cible du harnais : une mutation remet un garde en
+  retrait, et celui-ci tombe — joué en TAP dans les conditions du runner.
+  Suite 678/678, 744 mutations, 0 inerte.
