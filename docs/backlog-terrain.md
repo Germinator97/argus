@@ -5097,11 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS** — les **591** à **593**, reproduits le 30/09 sur un
+🔴 **2 POINTS OUVERTS** — les **591** et **592**, reproduits le 30/09 sur un
 projet jetable (section « Reproduit sur un projet jetable », en fin de fichier) :
-une cible collée au bord d'une zone défilante n'est pas mesurée, un mot coupé par
-un retour à la ligne n'est pas vu, et une locale sans délégués se lit comme un
-débordement. Leurs remèdes sont tranchés par Germinator. Le **590**, trouvé le
+une cible collée au bord d'une zone défilante n'est pas mesurée, et un mot coupé
+par un retour à la ligne n'est pas vu. Leurs remèdes sont tranchés par
+Germinator. Le **593**, rendu par le même montage, est fermé le jour même : une
+locale que les délégués ne prennent pas en charge est refusée avec sa raison, au
+lieu de se lire en débordement sur chaque écran. Le **590**, trouvé le
 30/09 par la CI du fork (section « Trouvé par la CI du fork — run #10 »), est
 fermé le jour même : la tranche 10/10 avait tourné six heures sans rendre la main, et le
 harnais, qui attendait la suite sans plafond et n'écrivait rien avant la fin, ne
@@ -14701,7 +14703,7 @@ comme une troncature ; avertir sans échouer.
 
 ### 593. Une locale que les délégués ne prennent pas en charge se lit comme un « Débordement » sur chaque écran
 
-**Ouvert le 30/09/2026 · OUVERT** — trouvé en montant les deux points
+**Ouvert le 30/09/2026 · CLOS** — trouvé en montant les deux points
 précédents. Le gabarit pose `argusLocale = Locale('fr', 'FR')` et aucun délégué ;
 sans délégués, le montage retombe sur ceux de Material, qui ne prennent en charge
 que l'anglais. Flutter le signale — « This application's locale, fr_FR, is not
@@ -14717,3 +14719,25 @@ comme pour une famille de police vide : si la locale n'est prise en charge par
 aucun délégué de l'un des types que le montage charge, les suites se marquent
 SKIP, disent lequel et comment le fournir. Écartés : nommer l'exception en
 restant rouge ; attendre.
+
+#### ✅ Fermé le jour même — le refus suit Flutter, cas par cas
+
+- `argusLocaleNonPriseEnCharge` joue le contrôle de Flutter mot pour mot — pour
+  chaque type de délégué, il en faut un qui prenne la locale en charge —, sur la
+  liste que le montage charge vraiment : ceux du projet, plus ceux que
+  `MaterialApp` et `WidgetsApp` ajoutent toujours. `argusSkipReason` refuse de
+  monter quand un type reste sans délégué, le nomme, et dit quoi fournir :
+  `AppLocalizations.localizationsDelegates`, ou
+  `GlobalMaterialLocalizations.delegates` au pluriel. Il passe après « aucun
+  écran déclaré », que la CI exige d'un projet neuf.
+- Rejoué sur le projet jetable, locale du gabarit et aucun délégué : 55 tests
+  sautés avec la raison — « … aucun délégué de CupertinoLocalizations,
+  MaterialLocalizations » —, et plus un seul faux débordement.
+- Une sonde (`tools/locale-probe.sh`), jouée par le job `harness`, confronte le
+  cadre à Flutter sur quatre cas — sans délégué, sans Cupertino, en anglais,
+  complet —, chaque verdict de Flutter écrit dans la sonde. MESURÉ sur Flutter
+  3.47.5 : quatre accords ; sur un cadre muté qui oublie le délégué Cupertino par
+  défaut, elle tombe sur ses deux moitiés.
+- Deux gardes tiennent le contrôle, son câblage et l'étape de CI ; six mutations,
+  et une cible pour la sonde : **6/6 TOMBE**. Suite 672/672, 726 mutations,
+  0 inerte.
