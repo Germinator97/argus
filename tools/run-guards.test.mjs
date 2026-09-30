@@ -21047,6 +21047,30 @@ test('une coupure se REJOUE une fois, et le plafond nomme ce qui tourne encore (
   }
 });
 
+// ⚠️ 596 — L'ORDRE « RELEVER, PUIS TUER » NE SE PROUVE PAS DE BOUT EN BOUT. Mesuré :
+// un processus visé par SIGKILL n'est pas encore mort quand `ps` passe juste après,
+// et le relevé fait APRÈS la mise à mort le trouve une fois sur deux. Une passe qui
+// jouait ce défaut le rendait TOMBE ici, VACANT là — un verdict au hasard. Ce garde
+// porte donc sur la STRUCTURE : dans la branche de la coupure, le relevé précède la
+// mise à mort.
+test('au plafond, ce qui tourne est relevé AVANT la mise à mort (596)', () => {
+  const src = readFileSync(join(RACINE, 'tools/mutate-run-guards.py'), 'utf8');
+  const debut = src.indexOf('\ndef sh_borne(');
+  assert.ok(debut > 0, 'sh_borne est introuvable — mets ce garde à jour (596)');
+  const fin = src.indexOf('\ndef ', debut + 1);
+  const corps = src.slice(debut, fin > 0 ? fin : undefined)
+    .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
+  const coupure = corps.indexOf('except subprocess.TimeoutExpired:');
+  assert.ok(coupure > 0, 'la branche de la coupure est introuvable dans sh_borne — mets ce garde à jour (596)');
+  const branche = corps.slice(coupure);
+  const releve = branche.indexOf('vivants_du_groupe(proc.pid)');
+  const mise = branche.indexOf('_tue_le_groupe(proc)');
+  assert.ok(releve > 0, 'la coupure ne relève plus ce qui tourne (596)');
+  assert.ok(mise > 0, 'la coupure ne tue plus le groupe (590)');
+  assert.ok(releve < mise,
+    'le relevé arrive APRÈS la mise à mort : il ne lit plus que des processus en train de mourir (596)');
+});
+
 test('le plafond d\'une mutation SUIT la durée mesurée de la suite propre (590)', () => {
   // ⚠️ Un plafond figé couperait, sur une machine lente, des mutations qui ne
   // bouclent pas : le dériver de la suite PROPRE, mesurée sur la même machine
