@@ -5097,9 +5097,13 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **583** à **589**, rendus par le run 107 — la
-confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 »,
-en fin de fichier) —, sont fermés le jour même : FVM cherché comme FVM le
+🔴 **1 POINT OUVERT** — le **590**, trouvé le 30/09 par la CI du fork (section
+« Trouvé par la CI du fork — run #10 », en fin de fichier) : la tranche 10/10 a
+tourné six heures sans rendre la main, et le harnais, qui attendait la suite
+sans plafond et n'écrivait rien avant la fin, ne pouvait pas dire quelle
+mutation bloquait. Les **583** à **589**, rendus par le run 107 — la
+confirmation des 564 à 577 sur leur terrain (section « Rendu par le run 107 ») —,
+sont fermés le jour même : FVM cherché comme FVM le
 cherche, une recette qui part du dossier courant, un type du gabarit élargi, et
 les quatre remèdes tranchés par Germinator — un dossier de symboles propre au
 scan, le premier lancement après l'installation jugé à part, la taille jugée sur
@@ -14548,3 +14552,49 @@ dettes commentées.
   CI et les deux moitiés de la sonde. Onze mutations, et une cible pour la
   sonde : **11/11 TOMBE**. Suite 666/666, 712 mutations, 0 inerte ; typage 0
   erreur.
+
+## Trouvé par la CI du fork — run #10 (`f2e755b`), tranche 10/10 — 30/09/2026
+
+Le push du 29/09 au soir — les quinze commits de la passe 583-589 — a fait
+tourner le workflow du plugin : **13 jobs verts sur 14**. La sonde des replis
+(589) y est verte pour la première fois, et neuf tranches de mutations aussi,
+jouées en entier (de 36 à 50 minutes). La tranche **10/10** — les mutations 642
+à 712, dont les trente-six du 29/09 — n'a jamais rendu la main : GitHub l'a
+coupée à 02 h 20, « The job has exceeded the maximum execution time of
+6h0m0s ». Son journal ne pouvait pas dire laquelle bloquait, et c'est le défaut
+qu'il faut fermer d'abord.
+
+Rejoué sur ce poste dans les conditions du runner — quatre worktrees détachés
+neufs, `env -i`, `CI=true`, un `HOME` vide, un dossier temporaire sans lien —,
+les soixante et onze mutations réparties en quatre groupes, et une sonde qui
+relevait toutes les cinq secondes l'empreinte des cibles, donc quelle mutation
+était posée et depuis quand : **71/71 TOMBE**, de 50 à 90 secondes chacune,
+sous la charge de quatre passes à la fois. **Le blocage ne se reproduit pas
+ici.** Ce qui sépare encore ce montage du runner, relevé sur l'image
+`ubuntu-24.04` du 20/09 : Linux, Node 22.23 contre 24.21 ici, Python 3.12
+contre 3.14, quatre processeurs. Le coupable n'est donc pas nommé — et le 590
+est aussi l'instrument qui le nommera.
+
+### 590. Le harnais attend la suite sans plafond : une mutation qui la fait boucler bloque sa tranche six heures, sans un mot
+
+**Ouvert le 30/09/2026 · OUVERT** — le harnais lance `node --test` par
+`subprocess.run`, sans plafond, et l'étape du workflow n'en a pas : c'est la
+limite d'un job GitHub, 360 minutes, qui a coupé. Trois défauts ont rendu le
+journal muet :
+
+- la mutation en cours n'était nommée nulle part : les verdicts ne
+  s'imprimaient qu'au tableau final, et le message d'interruption ne la citait
+  pas ;
+- les verdicts déjà rendus — soixante-dix, sans doute — sont morts avec le job ;
+- et un plafond posé naïvement n'aurait pas suffi. MESURÉ : `node --test` lance
+  le fichier de test dans un second processus ; tuer le premier — ce que fait
+  `subprocess.run` à son plafond — laisse le second, et ce qu'il a lancé,
+  tourner sur le code MUTÉ pendant que la passe restaure et enchaîne.
+
+Remède, sans arbitrage à rendre : un plafond par mutation DÉRIVÉ de la suite
+propre, mesurée juste avant sur la même machine (cinq fois sa durée, trois
+minutes au moins) ; un plafond fixe et large pour la suite propre, qui n'a pas
+de mesure avant elle ; la suite lancée dans son propre groupe de processus, tué
+en entier au plafond comme à l'interruption ; un verdict **PLAFOND**, ni TOMBE
+ni VACANT, qui nomme le dernier garde rendu ; et chaque mutation nommée AVANT
+d'être jouée, son verdict écrit dès qu'il tombe.
