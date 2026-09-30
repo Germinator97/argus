@@ -3813,18 +3813,20 @@ MUTATIONS = [
     # écrit `\n` dans le littéral — sinon le motif se trouverait AUSSI ici,
     # dans sa propre déclaration, et le harnais le refuserait (motif trouvé 2×).
     # La suite mutée se relance sans plafond : la mutation qui boucle bloque la passe.
+    # (ré-ancrée au 596 : l'appel vit désormais dans la boucle du rejeu)
     ("mutateur", "590 · la suite mutée tourne de nouveau sans plafond",
-     "        res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], plafond)\n        sortie =",
-     "        res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], None)\n        sortie ="),
+     "            res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], plafond)\n            sortie =",
+     "            res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], None)\n            sortie ="),
     # Le plafond ne tue plus que `node --test` : le fichier de test et ses
     # enfants survivent, sur le code muté.
     ("mutateur", "590 bis · le plafond ne tue plus que node --test",
      "    try:\n        os.killpg(proc.pid, signal.SIGKILL)",
      "    try:\n        proc.kill()"),
     # Une suite coupée passe pour une suite qui n'a pas tourné (HARNAIS).
+    # (ré-ancrée au 596 : le verdict ne tombe qu'à la seconde coupure)
     ("mutateur", "590 ter · une suite coupée n'est plus jugée PLAFOND",
-     "        if expire:\n            # 590 — ni TOMBE ni VACANT",
-     "        if expire and False:\n            # 590 — ni TOMBE ni VACANT"),
+     "            if essai == 2:\n                # 590 — ni TOMBE ni VACANT",
+     "            if essai == 2 and False:\n                # 590 — ni TOMBE ni VACANT"),
     # La ligne qui nomme la mutation en cours n'est plus poussée : un journal
     # coupé pendant qu'elle tourne ne la montre pas.
     ("mutateur", "590 quater · la mutation en cours n'est plus poussée au journal",
@@ -3957,6 +3959,36 @@ MUTATIONS = [
     ("suite", "595 · un garde de la suite repasse en retrait",
      "\ntest('chaque garde de la suite est un `test(` en début de ligne",
      "\n  test('chaque garde de la suite est un `test(` en début de ligne"),
+
+    # ── 596 · une coupure se rejoue, et nomme ce qui tourne encore ──
+    # La coupure redevient définitive : un hoquet du runner rougit sa tranche.
+    ("mutateur", "596 · une coupure n'est plus rejouée",
+     "\n        for essai in (1, 2):\n            if essai == 2:",
+     "\n        for essai in (1,):\n            if essai == 2:"),
+    # Le rejeu joue le code PROPRE : la cible vient d'être restaurée.
+    ("mutateur", "596 bis · le rejeu rejoue le code propre, pas la mutation",
+     "            if essai == 2:\n                cible.write_text(mutee, encoding=\"utf-8\")",
+     "            if essai == 2:\n                pass"),
+    # Ce qui tourne à la coupure n'est plus relevé.
+    ("mutateur", "596 ter · ce qui tourne encore n'est plus relevé",
+     "\n        vivants = vivants_du_groupe(proc.pid)\n        _tue_le_groupe(proc)",
+     "\n        vivants = []\n        _tue_le_groupe(proc)"),
+    # Le relevé arrive après la mise à mort : il n'y a plus rien à lire.
+    ("mutateur", "596 quater · le relevé arrive après la mise à mort",
+     "\n        vivants = vivants_du_groupe(proc.pid)\n        _tue_le_groupe(proc)",
+     "\n        _tue_le_groupe(proc)\n        vivants = vivants_du_groupe(proc.pid)"),
+    # Le rejeu ne se dit plus : une mutation qui tombe au second essai le tait.
+    ("mutateur", "596 quinquies · un rejeu ne se dit plus au journal",
+     "\n          for note in notes:\n              print(f\"      ⧗ {note}\", flush=True)",
+     "\n          for note in notes:\n              pass"),
+    # La suite propre coupée ne dit plus ce qui tournait.
+    ("mutateur", "596 sexies · la suite propre coupée ne dit plus ce qui tourne",
+     "\n        print(f\"  {decrire_coupure(PLAFOND_SUITE_PROPRE_S, base.vivants, base.stdout + base.stderr)}\")",
+     "\n        print(\"  (coupée)\")"),
+    # Un parent passe pour un coupable : le fichier de test qui ATTEND est nommé.
+    ("mutateur", "596 septies · un processus qui en attend un autre est nommé",
+     "\n            if c[0] not in parents and c[0] != str(groupe)]",
+     "\n            if c[0] != str(groupe)]"),
 ]
 
 
@@ -4011,19 +4043,55 @@ def _tue_le_groupe(proc):
     proc.wait()
 
 
+def _abrege(texte, largeur=180):
+    # Le début dit le programme, la fin son dossier jetable : on garde les deux.
+    return texte if len(texte) <= largeur else f"{texte[:60]} … {texte[-(largeur - 63):]}"
+
+
+def vivants_du_groupe(groupe):
+    """Ce qui tourne encore dans le groupe de processus `groupe` — ses FEUILLES, et depuis quand.
+
+    ⚠️ 596 — C'EST LA SEULE TRACE D'UNE SUITE COUPÉE QU'AUCUN TAMPON NE RETIENT.
+    Mesuré sous Node 22.23.2 : un fichier de test figé dans un appel SYNCHRONE ne
+    rend AUCUN résultat — 342 gardes passés, pas une ligne sortie en 150 s. Le
+    dernier résultat rendu n'est donc qu'une borne ; ce qui tourne encore quand on
+    coupe se lit, lui, dans la table des processus. Un garde qui lance un
+    programme lui donne un dossier jetable à son nom (`argus-fresh-…`,
+    `argus-todo-…`) : la ligne de commande désigne le garde.
+    Les FEUILLES, parce qu'un processus qui en attend un autre n'est pas celui qui
+    bloque ; la racine — `node --test` — n'en est jamais une. Et pas les zombies :
+    tués, pas encore récoltés, ils ne tournent plus.
+    """
+    try:
+        ps = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,pgid=,stat=,etime=,args="],
+                            capture_output=True, text=True, timeout=30)
+    except (OSError, subprocess.SubprocessError) as exc:
+        return [f"table des processus illisible ({type(exc).__name__})"]
+    membres = [c for c in (ligne.split(None, 5) for ligne in ps.stdout.splitlines())
+               if len(c) == 6 and c[2] == str(groupe) and not c[3].startswith("Z")]
+    parents = {c[1] for c in membres}
+    return [f"{_abrege(c[5])} (depuis {c[4]})" for c in membres
+            if c[0] not in parents and c[0] != str(groupe)]
+
+
 def sh_borne(args, plafond, cwd=None):
     """(résultat, expiré) — la commande et TOUT ce qu'elle lance, tués au plafond.
 
     La commande part dans son propre groupe de processus pour qu'on puisse le
     tuer en entier : au plafond, et aussi quand le harnais lui-même est
-    interrompu — sinon la suite lui survivrait.
+    interrompu — sinon la suite lui survivrait. Le résultat porte `vivants` :
+    ce qui tournait encore au moment de la coupure (596), vide sinon.
     """
     proc = subprocess.Popen(args, cwd=str(ROOT if cwd is None else cwd), stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True, start_new_session=True)
     try:
         out, err = proc.communicate(timeout=plafond)
-        return subprocess.CompletedProcess(args, proc.returncode, out, err), False
+        res = subprocess.CompletedProcess(args, proc.returncode, out, err)
+        res.vivants = []
+        return res, False
     except subprocess.TimeoutExpired:
+        # 596 — relevé AVANT de tuer : après, il n'y a plus rien à lire.
+        vivants = vivants_du_groupe(proc.pid)
         _tue_le_groupe(proc)
         try:
             out, err = proc.communicate(timeout=10)
@@ -4031,7 +4099,9 @@ def sh_borne(args, plafond, cwd=None):
             # Un descendant sorti du groupe tient encore le tuyau : on rend ce
             # qu'on a lu plutôt que de l'attendre — c'est l'attente qu'on borne.
             out, err = _texte(exc.stdout), _texte(exc.stderr)
-        return subprocess.CompletedProcess(args, proc.returncode, out, err), True
+        res = subprocess.CompletedProcess(args, proc.returncode, out, err)
+        res.vivants = vivants
+        return res, True
     except BaseException:
         _tue_le_groupe(proc)
         raise
@@ -4063,10 +4133,24 @@ def gardes_rendus(sortie):
     return rendus
 
 
-def dernier_garde_acheve(sortie):
-    """Le nom du dernier test que la suite a rendu — celui qui SUIT est en cause."""
+def dernier_resultat_sorti(sortie):
+    """Le nom du dernier garde dont le résultat est SORTI — une borne, pas un coupable.
+
+    ⚠️ 596 — LE GARDE QUI SUIT N'EST PAS FORCÉMENT CELUI QUI BLOQUE. Un fichier de
+    test figé dans un appel synchrone garde ses résultats en file : la suite peut
+    avoir passé des dizaines de gardes au-delà de celui-ci. Ce qui bloque se lit
+    dans `vivants_du_groupe`.
+    """
     rendus = gardes_rendus(sortie)
     return rendus[-1][1] if rendus else None
+
+
+def decrire_coupure(plafond, vivants, sortie):
+    """Ce qu'une coupure au plafond permet de dire, sans rien deviner (590, 596)."""
+    en_vie = " ; ".join(vivants) if vivants else "rien sous la suite, qui ne rend pas la main d'elle-même"
+    dernier = dernier_resultat_sorti(sortie)
+    return (f"sans réponse en {plafond:.0f} s · encore en vie : {en_vie}"
+            f" · dernier résultat sorti : {dernier or 'aucun'}")
 
 
 def digest(cible):
@@ -4446,8 +4530,7 @@ def main():
     if expire:
         print(f"✖ la suite PROPRE n'a pas rendu la main en {PLAFOND_SUITE_PROPRE_S} s — rien n'est muté,"
               " c'est elle qu'il faut corriger.")
-        dernier = dernier_garde_acheve(base.stdout + base.stderr)
-        print(f"  dernier garde achevé : {dernier or 'aucun'}")
+        print(f"  {decrire_coupure(PLAFOND_SUITE_PROPRE_S, base.vivants, base.stdout + base.stderr)}")
         return 1
     m = re.search(r"tests (\d+)", base.stdout + base.stderr)
     if not m:
@@ -4518,19 +4601,21 @@ def main():
     numeros = range(1, len(MUTATIONS) + 1) if choisies is None else choisies
 
     # 590 — le jugement d'UNE mutation, sorti de la boucle pour qu'elle puisse
-    # dire chaque verdict au moment où il tombe.
+    # dire chaque verdict au moment où il tombe. Il rend (état, détail, notes) :
+    # les notes s'écrivent SOUS le verdict — c'est là qu'un rejeu se dit (596).
     def juge(cle, nom, avant, apres):
         if nom in manquants:
-            return "NON JOUABLE", f"outil absent : {manquants[nom]}"
+            return "NON JOUABLE", f"outil absent : {manquants[nom]}", []
         cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
         occurrences = original.count(avant)
         if occurrences != 1:
-            return "HARNAIS", f"motif trouvé {occurrences}× (attendu 1)"
+            return "HARNAIS", f"motif trouvé {occurrences}× (attendu 1)", []
 
-        cible.write_text(original.replace(avant, apres, 1), encoding="utf-8")
+        mutee = original.replace(avant, apres, 1)
+        cible.write_text(mutee, encoding="utf-8")
         if digest(cible) == propre:
             restaure(cle, propre)
-            return "HARNAIS", "le fichier n'a pas changé"
+            return "HARNAIS", "le fichier n'a pas changé", []
 
         # La cible mutée se relit d'abord avec SON validateur : une mutation
         # qui casse la syntaxe ferait rougir sans rapport avec le garde.
@@ -4539,25 +4624,37 @@ def main():
             check = sh(verif)
             if check.returncode != 0:
                 restaure(cle, propre)
-                return "HARNAIS", "la mutation ne parse pas"
+                return "HARNAIS", "la mutation ne parse pas", []
 
-        res, expire = sh_borne(["node", "--test", str(SUITE)], plafond)
-        sortie = res.stdout + res.stderr
-        restaure(cle, propre)
+        # ⚠️ 596 — UNE COUPURE SE REJOUE UNE FOIS (tranché par Germinator). Le
+        # runner fige la suite par intermittence, d'elle-même : deux coupures sur
+        # 743 passes à la CI #12, sur des mutations qui ne faisaient que RETIRER
+        # du code. Une mutation qui bloque vraiment bloque deux fois ; un hoquet
+        # du runner, non. Le rejeu remet la MUTATION en place : la cible vient
+        # d'être restaurée, et rejouer le code propre rendrait VACANT à tort.
+        notes = []
+        for essai in (1, 2):
+            if essai == 2:
+                cible.write_text(mutee, encoding="utf-8")
+            res, expire = sh_borne(["node", "--test", str(SUITE)], plafond)
+            sortie = res.stdout + res.stderr
+            restaure(cle, propre)
+            if not expire:
+                break
+            coupure = decrire_coupure(plafond, res.vivants, sortie)
+            if essai == 2:
+                # 590 — ni TOMBE ni VACANT : la suite n'a rien conclu, deux fois.
+                return "PLAFOND", f"coupée deux fois · {coupure}", notes
+            notes.append(f"coupée une fois, rejouée — {coupure}")
 
-        if expire:
-            # 590 — ni TOMBE ni VACANT : la suite n'a rien conclu. Le dernier
-            # garde qu'elle a rendu désigne celui qui SUIT, où elle bloquait.
-            dernier = dernier_garde_acheve(sortie)
-            return "PLAFOND", f"sans réponse en {plafond:.0f} s · dernier garde achevé : {dernier or 'aucun'}"
         if f"tests {NB_TESTS}" not in sortie:
-            return "HARNAIS", "la suite n'a pas tourné entièrement"
+            return "HARNAIS", "la suite n'a pas tourné entièrement", notes
         if res.returncode != 0:
             # 594 — le premier garde ROUGE, en spec comme en TAP : sur le runner,
             # lire « spec » seul rendait « un garde a rougi » à chaque TOMBE.
             rouges = [nom for vert, nom in gardes_rendus(sortie) if not vert and "subtest" not in nom]
-            return "TOMBE", rouges[0] if rouges else "un garde a rougi"
-        return "VACANT", "aucun garde n'a bougé"
+            return "TOMBE", rouges[0] if rouges else "un garde a rougi", notes
+        return "VACANT", "aucun garde n'a bougé", notes
 
     # ⚠️ TOUT CE QUI SUIT MUTE DES FICHIERS SUIVIS. Une sortie brutale — signal,
     # timeout de l'appelant, Ctrl-C — doit laisser l'arbre propre, sinon le
@@ -4577,10 +4674,14 @@ def main():
           # dernière chose que son journal dira.
           print(f"  [{rang}/{len(jouees)}] n°{numero} · {nom} …", end="", flush=True)
           debut = time.monotonic()
-          etat, detail = juge(cle, nom, avant, apres)
+          etat, detail, notes = juge(cle, nom, avant, apres)
           bilan.append((etat, nom, detail))
           precision = "" if etat == "TOMBE" else f" — {detail}"
           print(f" {etat} · {time.monotonic() - debut:.0f} s{precision}", flush=True)
+          # 596 — un rejeu se DIT, même quand la mutation tombe au second essai :
+          # c'est la trace d'un runner qui fige, et un TOMBE ne la montrerait pas.
+          for note in notes:
+              print(f"      ⧗ {note}", flush=True)
 
     except KeyboardInterrupt:
         interrompu = True

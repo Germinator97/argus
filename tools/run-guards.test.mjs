@@ -20781,17 +20781,31 @@ const monterPasse590 = (contenu = 'SAIN\n') => {
   writeFileSync(join(dir, 'cible-590.txt'), contenu);
   writeFileSync(join(dir, 'suite.test.mjs'), [
     "import { test } from 'node:test';",
-    "import { readFileSync, writeFileSync } from 'node:fs';",
+    "import { existsSync, readFileSync, writeFileSync } from 'node:fs';",
     "import { spawn } from 'node:child_process';",
     "const etat = readFileSync(new URL('./cible-590.txt', import.meta.url), 'utf8');",
+    // Un PETIT-ENFANT : c'est lui qui survit à une mise à mort visant le seul
+    // `node --test` (mesuré : le processus du fichier de test survit aussi). Il
+    // porte une ÉTIQUETTE : c'est lui que le relevé des vivants doit nommer (596).
+    'const petitEnfant = (etiquette) => {',
+    `  const petit = spawn(process.execPath, ['-e', 'setTimeout(() => {}, ${PASSE_590_SOMMEIL_S * 1000})', etiquette], { stdio: 'ignore' });`,
+    "  writeFileSync(new URL('./petit.pid', import.meta.url), String(petit.pid));",
+    '};',
+    // 596 — FIGÉ COMME SUR LE RUNNER : un appel SYNCHRONE, qui garde en file les
+    // résultats déjà obtenus. Une attente asynchrone les laisserait sortir.
+    `const fige = () => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ${PASSE_590_SOMMEIL_S * 1000});`,
     "test('un garde qui répond', () => {});",
     "test('le garde du sujet', async () => {",
     "  if (etat.includes('ROUGE')) throw new Error('le garde tombe');",
+    "  if (etat.includes('FIGE')) { petitEnfant('fige-596'); fige(); return; }",
+    // Figé au PREMIER passage seulement — un hoquet du runner — puis il tombe.
+    "  if (etat.includes('INTERMITTENT')) {",
+    "    const marque = new URL('./premier-passage', import.meta.url);",
+    "    if (!existsSync(marque)) { writeFileSync(marque, ''); petitEnfant('intermittent-596'); fige(); }",
+    "    throw new Error('le garde tombe');",
+    '  }',
     "  if (!etat.includes('BOUCLE')) return;",
-    // Un PETIT-ENFANT : c'est lui qui survit à une mise à mort visant le seul
-    // `node --test` (mesuré : le processus du fichier de test survit aussi).
-    `  const petit = spawn(process.execPath, ['-e', 'setTimeout(() => {}, ${PASSE_590_SOMMEIL_S * 1000})'], { stdio: 'ignore' });`,
-    "  writeFileSync(new URL('./petit.pid', import.meta.url), String(petit.pid));",
+    "  petitEnfant('petit-590');",
     `  await new Promise((r) => setTimeout(r, ${PASSE_590_SOMMEIL_S * 1000}));`,
     '});',
     '',
@@ -20808,6 +20822,8 @@ const monterPasse590 = (contenu = 'SAIN\n') => {
 const MUTATIONS_590 = {
   rougit: '("sujet", "590 · le sujet rougit", "SAIN", "ROUGE")',
   boucle: '("sujet", "590 · le sujet fait boucler la suite", "SAIN", "BOUCLE")',
+  fige: '("sujet", "596 · le sujet se fige dans un appel synchrone", "SAIN", "FIGE")',
+  intermittent: '("sujet", "596 · le sujet se fige une seule fois", "SAIN", "INTERMITTENT")',
 };
 
 /** Le script qui joue `main()` du harnais sur le dépôt jetable — plafonds en secondes. */
@@ -20874,15 +20890,20 @@ const passeCoupee590 = async (/** @type {string} */ format) => {
     if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
 
     assert.ok(petit > 0, `le faux sujet n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
-    assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
+    // ⚠️ 596 — la mutation qui boucle est coupée DEUX fois (une coupure se rejoue) :
+    // le seuil est le sommeil entier, qu'une seule attente sans plafond atteint déjà.
+    assert.ok(duree < PASSE_590_SOMMEIL_S,
       `${duree.toFixed(1)} s pour une passe dont le plafond vaut quelques secondes : la suite qui boucle `
       + `n'a pas été coupée, le harnais l'a attendue (590)\n${sortie}`);
     assert.match(sortie, /PLAFOND/, `la mutation coupée doit être NOMMÉE comme telle, pas prise pour une autre (590)\n${sortie}`);
     assert.match(sortie, /le sujet fait boucler la suite[^\n]*PLAFOND/,
       `le verdict PLAFOND doit se lire sur la ligne de la mutation qui boucle (590)\n${sortie}`);
-    // Le dernier garde rendu désigne celui qui SUIT : c'est là que la suite bloquait.
-    assert.match(sortie, /dernier garde achevé : un garde qui répond/,
-      `le verdict PLAFOND doit nommer le dernier garde rendu, en ${format} aussi (590, 594)\n${sortie}`);
+    // ⚠️ 596 — ce qui tourne ENCORE désigne ce qui bloque ; le dernier résultat
+    // sorti n'est qu'une borne. Coupée deux fois, la mutation reste PLAFOND.
+    assert.match(sortie, /le sujet fait boucler la suite[^\n]*coupée deux fois · sans réponse en \d+ s · encore en vie : [^\n]*petit-590/,
+      `le verdict PLAFOND doit nommer ce qui tourne encore, en ${format} aussi (596)\n${sortie}`);
+    assert.match(sortie, /dernier résultat sorti : un garde qui répond/,
+      `le verdict PLAFOND doit dire le dernier résultat sorti, en ${format} aussi (590, 594)\n${sortie}`);
     // ⚠️ Mesuré : tuer le seul `node --test` laisse vivre le processus du fichier
     // de test ET ses enfants — ils continuent de tourner sur le code MUTÉ pendant
     // que la passe restaure et enchaîne. C'est le groupe entier qui doit mourir.
@@ -20965,9 +20986,61 @@ test('une suite PROPRE qui ne rend pas la main arrête la passe avant toute muta
     assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
       `${duree.toFixed(1)} s : la suite PROPRE qui boucle a été attendue, pas coupée (590)\n${sortie}`);
     assert.match(sortie, /la suite PROPRE n'a pas rendu la main/, `le refus doit dire pourquoi (590)\n${sortie}`);
+    assert.match(sortie, /encore en vie : [^\n]*petit-590/,
+      `le refus doit nommer ce qui tournait encore dans la suite propre (596)\n${sortie}`);
     assert.doesNotMatch(sortie, /\[1\/1\]/, 'aucune mutation ne doit être jouée sur une suite propre qui bloque');
     assert.equal(r.status, 1);
     assert.equal(await survit(petit), false, 'la suite propre coupée doit mourir avec tout son groupe (590)');
+  } finally {
+    if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 596 — La CI #12 a coupé deux mutations qui n'y étaient pour rien : la suite
+// s'était figée d'elle-même sur le runner, deux fois sur 743 passes, et le
+// harnais désignait comme borne le dernier résultat SORTI. MESURÉ sous Node 22 :
+// un fichier de test figé dans un appel SYNCHRONE garde ses résultats en file —
+// aucun ne sort, 342 gardes passés. Tranché par Germinator : une coupure se
+// rejoue une fois, PLAFOND seulement à la seconde. Et au plafond, le harnais
+// nomme ce qui tourne ENCORE : la seule trace qu'aucun tampon ne retient.
+//
+// ⚠️ Le faux sujet se fige SYNCHRONEMENT, comme sur le runner — une attente
+// asynchrone laisserait sortir les résultats, et le garde du 590 n'a vu que
+// celle-là. ⚠️ Et le relevé doit nommer le PETIT-ENFANT, jamais le fichier de
+// test qui l'attend : un parent n'est pas un coupable.
+// ═══════════════════════════════════════════════════════════════════════════
+test('une coupure se REJOUE une fois, et le plafond nomme ce qui tourne encore (596)', async () => {
+  const dir = monterPasse590();
+  let petit = 0;
+  try {
+    const depart = Date.now();
+    const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1, 900, [MUTATIONS_590.intermittent, MUTATIONS_590.fige])],
+      { cwd: dir, encoding: 'utf8', env: envPasse590() });
+    const duree = (Date.now() - depart) / 1000;
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
+
+    assert.ok(petit > 0, `le faux sujet ne s'est jamais figé — ce garde ne mesure rien :\n${sortie}`);
+    assert.ok(duree < PASSE_590_SOMMEIL_S,
+      `${duree.toFixed(1)} s : une suite figée a été attendue, pas coupée (596)\n${sortie}`);
+    // Figée une fois, rejouée, puis tombée : un hoquet du runner ne rougit plus la tranche.
+    assert.match(sortie, /le sujet se fige une seule fois[^\n]*TOMBE/,
+      `une mutation coupée une fois doit être REJOUÉE, et jugée sur ce second essai (596)\n${sortie}`);
+    assert.match(sortie, /⧗ coupée une fois, rejouée — sans réponse en \d+ s · encore en vie : [^\n]*intermittent-596/,
+      `le rejeu doit se DIRE, avec ce qui tournait à la coupure — un TOMBE ne le montrerait pas (596)\n${sortie}`);
+    // Figée deux fois : PLAFOND, et le relevé nomme ce qui tourne encore.
+    assert.match(sortie, /le sujet se fige dans un appel synchrone[^\n]*PLAFOND[^\n]*coupée deux fois · sans réponse en \d+ s · encore en vie : [^\n]*fige-596/,
+      `une mutation coupée DEUX fois reste PLAFOND, et nomme ce qui tourne encore (596)\n${sortie}`);
+    const releves = sortie.match(/encore en vie : [^\n]*/g) ?? [];
+    assert.ok(releves.length >= 3, `trois coupures, trois relevés attendus — ${releves.length} lus :\n${sortie}`);
+    assert.ok(releves.every((l) => !/suite\.test\.mjs/.test(l)),
+      `le fichier de test ATTEND son petit-enfant : un parent n'est pas un coupable (596)\n${releves.join('\n')}`);
+    assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (596)\n${sortie}`);
+    assert.equal(r.status, 1, 'une mutation coupée deux fois n\'est pas un défaut détecté : la passe échoue');
+    assert.equal(await survit(petit), false, 'la suite coupée doit mourir avec tout son groupe (590, 596)');
+    assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après la coupure');
   } finally {
     if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
     rmSync(dir, { recursive: true, force: true });
