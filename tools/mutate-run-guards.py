@@ -9,12 +9,14 @@ Trois façons dont un harnais de mutation ment, toutes traitées ici :
 Et la restauration est prouvée par hash, pas annoncée.
 """
 import hashlib
+import os
 import re
 import signal
 import pathlib
 import shutil
 import subprocess
 import sys
+import time
 
 # Racine DÉRIVÉE, jamais en dur : `git checkout` résout son pathspec depuis le
 # répertoire courant, et un chemin relatif ne restaurerait rien dès que la
@@ -3793,11 +3795,129 @@ MUTATIONS = [
     ("skill", "589 undecies · le gabarit du relevé perd la case des replis",
      "  Replis déclarés    : <P> (`collapsedByDesign:`)",
      "  Replis déclarés    : <P> (`declares:`)"),
+
+    # ── 590 · aucune attente sans plafond ─────────────────────────────────
+    # ⚠️ Ce fichier est sa propre cible : chaque motif porte un saut de ligne,
+    # écrit `\n` dans le littéral — sinon le motif se trouverait AUSSI ici,
+    # dans sa propre déclaration, et le harnais le refuserait (motif trouvé 2×).
+    # La suite mutée se relance sans plafond : la mutation qui boucle bloque la passe.
+    ("mutateur", "590 · la suite mutée tourne de nouveau sans plafond",
+     "        res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], plafond)\n        sortie =",
+     "        res, expire = sh_borne([\"node\", \"--test\", str(SUITE)], None)\n        sortie ="),
+    # Le plafond ne tue plus que `node --test` : le fichier de test et ses
+    # enfants survivent, sur le code muté.
+    ("mutateur", "590 bis · le plafond ne tue plus que node --test",
+     "    try:\n        os.killpg(proc.pid, signal.SIGKILL)",
+     "    try:\n        proc.kill()"),
+    # Une suite coupée passe pour une suite qui n'a pas tourné (HARNAIS).
+    ("mutateur", "590 ter · une suite coupée n'est plus jugée PLAFOND",
+     "        if expire:\n            # 590 — ni TOMBE ni VACANT",
+     "        if expire and False:\n            # 590 — ni TOMBE ni VACANT"),
+    # La ligne qui nomme la mutation en cours n'est plus poussée : un journal
+    # coupé pendant qu'elle tourne ne la montre pas.
+    ("mutateur", "590 quater · la mutation en cours n'est plus poussée au journal",
+     " · {nom} …\", end=\"\", flush=True)\n          debut = time.monotonic()",
+     " · {nom} …\", end=\"\")\n          debut = time.monotonic()"),
+    # Le harnais interrompu laisse vivre la suite, sortie de son groupe.
+    ("mutateur", "590 quinquies · le harnais interrompu laisse vivre la suite",
+     "    except BaseException:\n        _tue_le_groupe(proc)\n        raise",
+     "    except BaseException:\n        raise"),
+    # Le plafond ne suit plus la suite propre : figé, il couperait un poste lent.
+    ("mutateur", "590 sexies · le plafond ne suit plus la suite propre",
+     "\n    return max(PLAFOND_FACTEUR * duree_propre, PLAFOND_PLANCHER_S)",
+     "\n    return PLAFOND_PLANCHER_S"),
+    # La suite propre repart sans plafond : un garde neuf qui boucle bloque tout.
+    ("mutateur", "590 septies · la suite propre repart sans plafond",
+     "\n    base, expire = sh_borne([\"node\", \"--test\", str(SUITE)], PLAFOND_SUITE_PROPRE_S)",
+     "\n    base, expire = sh_borne([\"node\", \"--test\", str(SUITE)], None)"),
+    # Le verdict PLAFOND ne dit plus où la suite bloquait.
+    ("mutateur", "590 octies · le verdict PLAFOND ne nomme plus le dernier garde rendu",
+     "\n    rendus = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith((\"✔ \", \"✖ \"))]",
+     "\n    rendus = []"),
 ]
 
 
-def sh(args, cwd=ROOT):
-    return subprocess.run(args, cwd=str(cwd), capture_output=True, text=True)
+def sh(args, cwd=None):
+    # ⚠️ 590 — la racine se lit À L'APPEL, pas à la définition : un garde qui
+    # joue la boucle sur un dépôt jetable doit y faire tourner git aussi, sinon
+    # `git checkout` restaurerait (ou échouerait) dans le VRAI dépôt.
+    return subprocess.run(args, cwd=str(ROOT if cwd is None else cwd), capture_output=True, text=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 590 · Aucune attente sans plafond
+# ═══════════════════════════════════════════════════════════════════════════
+#
+# La CI #10 : la tranche 10/10 a tourné SIX HEURES, jusqu'à la limite d'un job
+# GitHub, et son journal ne pouvait rien dire. La suite se lançait sans plafond,
+# le harnais n'écrivait rien avant son tableau final, et le message
+# d'interruption ne nommait pas la mutation en cours : les verdicts déjà rendus
+# sont morts avec le job.
+#
+# ⚠️ LE PLAFOND SUIT LA SUITE PROPRE, mesurée juste avant sur la même machine.
+# Figé, il couperait sur un poste lent des mutations qui ne bouclent pas, et ce
+# rouge-là accuserait un garde sain. Le plancher protège une suite propre très
+# rapide d'un plafond que la moindre charge dépasserait.
+PLAFOND_FACTEUR = 5
+PLAFOND_PLANCHER_S = 180
+# La suite PROPRE n'a pas de mesure avant elle : un plafond fixe, large — elle
+# tourne en moins d'une minute sur le poste comme sur le runner.
+PLAFOND_SUITE_PROPRE_S = 900
+
+
+def plafond_de(duree_propre):
+    """Le plafond d'une suite mutée, en secondes, dérivé de la suite propre."""
+    return max(PLAFOND_FACTEUR * duree_propre, PLAFOND_PLANCHER_S)
+
+
+def _texte(brut):
+    if brut is None:
+        return ""
+    return brut.decode("utf-8", "replace") if isinstance(brut, bytes) else brut
+
+
+def _tue_le_groupe(proc):
+    # ⚠️ LE GROUPE, PAS LE SEUL ENFANT. Mesuré : `node --test` lance le fichier de
+    # test dans un second processus ; tuer le premier laisse le second — et ce
+    # qu'il a lancé — tourner sur le code MUTÉ pendant que la passe restaure et
+    # enchaîne. SIGKILL : un processus qui ignore SIGTERM ne borne rien.
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    proc.wait()
+
+
+def sh_borne(args, plafond, cwd=None):
+    """(résultat, expiré) — la commande et TOUT ce qu'elle lance, tués au plafond.
+
+    La commande part dans son propre groupe de processus pour qu'on puisse le
+    tuer en entier : au plafond, et aussi quand le harnais lui-même est
+    interrompu — sinon la suite lui survivrait.
+    """
+    proc = subprocess.Popen(args, cwd=str(ROOT if cwd is None else cwd), stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True, start_new_session=True)
+    try:
+        out, err = proc.communicate(timeout=plafond)
+        return subprocess.CompletedProcess(args, proc.returncode, out, err), False
+    except subprocess.TimeoutExpired:
+        _tue_le_groupe(proc)
+        try:
+            out, err = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired as exc:
+            # Un descendant sorti du groupe tient encore le tuyau : on rend ce
+            # qu'on a lu plutôt que de l'attendre — c'est l'attente qu'on borne.
+            out, err = _texte(exc.stdout), _texte(exc.stderr)
+        return subprocess.CompletedProcess(args, proc.returncode, out, err), True
+    except BaseException:
+        _tue_le_groupe(proc)
+        raise
+
+
+def dernier_garde_acheve(sortie):
+    """Le nom du dernier test que la suite a rendu — celui qui SUIT est en cause."""
+    rendus = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith(("✔ ", "✖ "))]
+    return re.sub(r"\s*\([\d.]+m?s\)$", "", rendus[-1]) if rendus else None
 
 
 def digest(cible):
@@ -4171,7 +4291,15 @@ def main():
         print("  `--help` pour les options, `--list` pour voir les mutations sans rien toucher.")
         return 2
 
-    base = sh(["node", "--test", str(SUITE)])
+    debut = time.monotonic()
+    base, expire = sh_borne(["node", "--test", str(SUITE)], PLAFOND_SUITE_PROPRE_S)
+    duree_propre = time.monotonic() - debut
+    if expire:
+        print(f"✖ la suite PROPRE n'a pas rendu la main en {PLAFOND_SUITE_PROPRE_S} s — rien n'est muté,"
+              " c'est elle qu'il faut corriger.")
+        dernier = dernier_garde_acheve(base.stdout + base.stderr)
+        print(f"  dernier garde achevé : {dernier or 'aucun'}")
+        return 1
     m = re.search(r"tests (\d+)", base.stdout + base.stderr)
     if not m:
         print("✖ impossible de relever le compte de tests sur la suite propre —")
@@ -4234,6 +4362,53 @@ def main():
         print(f"⚠  {outil} absent — {combien} mutation(s) NON JOUABLE(S) ici : leur garde ne peut")
         print("   pas juger sans lui. Elles ne sont ni jouées ni accusées — ni prouvées.\n")
 
+    # 590 — le plafond est ANNONCÉ avec ce dont il dérive : un « PLAFOND » du
+    # bilan doit pouvoir se relire contre la durée qui l'a fixé.
+    plafond = plafond_de(duree_propre)
+    print(f"⧗  plafond par mutation : {plafond:.0f} s (suite propre : {duree_propre:.0f} s)\n", flush=True)
+    numeros = range(1, len(MUTATIONS) + 1) if choisies is None else choisies
+
+    # 590 — le jugement d'UNE mutation, sorti de la boucle pour qu'elle puisse
+    # dire chaque verdict au moment où il tombe.
+    def juge(cle, nom, avant, apres):
+        if nom in manquants:
+            return "NON JOUABLE", f"outil absent : {manquants[nom]}"
+        cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
+        occurrences = original.count(avant)
+        if occurrences != 1:
+            return "HARNAIS", f"motif trouvé {occurrences}× (attendu 1)"
+
+        cible.write_text(original.replace(avant, apres, 1), encoding="utf-8")
+        if digest(cible) == propre:
+            restaure(cle, propre)
+            return "HARNAIS", "le fichier n'a pas changé"
+
+        # La cible mutée se relit d'abord avec SON validateur : une mutation
+        # qui casse la syntaxe ferait rougir sans rapport avec le garde.
+        verif = validateur(cible)
+        if verif is not None:
+            check = sh(verif)
+            if check.returncode != 0:
+                restaure(cle, propre)
+                return "HARNAIS", "la mutation ne parse pas"
+
+        res, expire = sh_borne(["node", "--test", str(SUITE)], plafond)
+        sortie = res.stdout + res.stderr
+        restaure(cle, propre)
+
+        if expire:
+            # 590 — ni TOMBE ni VACANT : la suite n'a rien conclu. Le dernier
+            # garde qu'elle a rendu désigne celui qui SUIT, où elle bloquait.
+            dernier = dernier_garde_acheve(sortie)
+            return "PLAFOND", f"sans réponse en {plafond:.0f} s · dernier garde achevé : {dernier or 'aucun'}"
+        if f"tests {NB_TESTS}" not in sortie:
+            return "HARNAIS", "la suite n'a pas tourné entièrement"
+        if res.returncode != 0:
+            echecs = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith("✖ ")
+                      and "subtest" not in l]
+            return "TOMBE", echecs[0] if echecs else "un garde a rougi"
+        return "VACANT", "aucun garde n'a bougé"
+
     # ⚠️ TOUT CE QUI SUIT MUTE DES FICHIERS SUIVIS. Une sortie brutale — signal,
     # timeout de l'appelant, Ctrl-C — doit laisser l'arbre propre, sinon le
     # fichier muté survit à la séance et le prochain qui le lit croit au code.
@@ -4246,44 +4421,16 @@ def main():
         raise KeyboardInterrupt
     precedent = signal.signal(signal.SIGTERM, _sigterm)
     try:
-      for cle, nom, avant, apres in jouees:
-          if nom in manquants:
-              bilan.append(("NON JOUABLE", nom, f"outil absent : {manquants[nom]}"))
-              continue
-          cible, propre, original = CIBLES[cle], propres[cle], originaux[cle]
-          occurrences = original.count(avant)
-          if occurrences != 1:
-              bilan.append(("HARNAIS", nom, f"motif trouvé {occurrences}× (attendu 1)"))
-              continue
-
-          cible.write_text(original.replace(avant, apres, 1), encoding="utf-8")
-          if digest(cible) == propre:
-              restaure(cle, propre)
-              bilan.append(("HARNAIS", nom, "le fichier n'a pas changé"))
-              continue
-
-          # La cible mutée se relit d'abord avec SON validateur : une mutation
-          # qui casse la syntaxe ferait rougir sans rapport avec le garde.
-          verif = validateur(cible)
-          if verif is not None:
-              check = sh(verif)
-              if check.returncode != 0:
-                  restaure(cle, propre)
-                  bilan.append(("HARNAIS", nom, "la mutation ne parse pas"))
-                  continue
-
-          res = sh(["node", "--test", str(SUITE)])
-          sortie = res.stdout + res.stderr
-          restaure(cle, propre)
-
-          if f"tests {NB_TESTS}" not in sortie:
-              bilan.append(("HARNAIS", nom, "la suite n'a pas tourné entièrement"))
-          elif res.returncode != 0:
-              echecs = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith("✖ ")
-                        and "subtest" not in l]
-              bilan.append(("TOMBE", nom, echecs[0] if echecs else "un garde a rougi"))
-          else:
-              bilan.append(("VACANT", nom, "aucun garde n'a bougé"))
+      for rang, (numero, (cle, nom, avant, apres)) in enumerate(zip(numeros, jouees), 1):
+          # 590 — la mutation est NOMMÉE AVANT d'être jouée, et la ligne part
+          # tout de suite : si le job meurt pendant qu'elle tourne, c'est la
+          # dernière chose que son journal dira.
+          print(f"  [{rang}/{len(jouees)}] n°{numero} · {nom} …", end="", flush=True)
+          debut = time.monotonic()
+          etat, detail = juge(cle, nom, avant, apres)
+          bilan.append((etat, nom, detail))
+          precision = "" if etat == "TOMBE" else f" — {detail}"
+          print(f" {etat} · {time.monotonic() - debut:.0f} s{precision}", flush=True)
 
     except KeyboardInterrupt:
         interrompu = True
@@ -4297,13 +4444,16 @@ def main():
         restaure_tout(propres)
         signal.signal(signal.SIGTERM, precedent)
     if interrompu:
-        print("  (passe incomplète : aucun verdict n'est rendu)")
+        # 590 — les verdicts déjà rendus ne meurent plus avec la passe : chacun
+        # est sur sa ligne, au-dessus, et la mutation en cours est la dernière nommée.
+        print(f"  (passe incomplète : {len(bilan)}/{len(jouees)} mutation(s) jugée(s), verdicts au-dessus —"
+              " aucun verdict de passe n'est rendu)")
         return 130
 
     print(f"\n{'':2} {'défaut réintroduit':52} verdict")
     print("─" * 96)
     for etat, nom, detail in bilan:
-        icone = {"TOMBE": "✔", "VACANT": "✖", "HARNAIS": "⚠", "NON JOUABLE": "○"}[etat]
+        icone = {"TOMBE": "✔", "VACANT": "✖", "HARNAIS": "⚠", "NON JOUABLE": "○", "PLAFOND": "⧗"}[etat]
         print(f"{icone}  {nom:52} {etat:11} {detail[:34]}")
 
     hashs = " ".join(f"{cle}={digest(v)}" for cle, v in CIBLES.items())

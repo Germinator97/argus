@@ -13,7 +13,7 @@
 //
 //   node --test tools/run-guards.test.mjs
 import assert from 'node:assert/strict';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
@@ -20607,6 +20607,215 @@ test('une cible JSON mutée est relue avant la suite — cassée, elle est refus
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ── 590 · UNE MUTATION QUI FAIT BOUCLER LA SUITE NE BLOQUE PLUS LA PASSE ─────
+// La CI #10 : la tranche 10/10 a tourné SIX HEURES, jusqu'à la limite de GitHub,
+// et son journal ne pouvait rien dire — le harnais n'écrivait rien avant la fin,
+// attendait la suite sans plafond, et son message d'interruption ne nommait pas
+// la mutation en cours. Les verdicts déjà rendus étaient perdus.
+//
+// ⚠️ On joue une VRAIE passe — `main()`, pas une fonction extraite — sur un dépôt
+// jetable : c'est la boucle qui attend, c'est donc elle qu'il faut voir couper.
+// Le faux sujet DORT au lieu de boucler : sous une mutation qui retire le
+// plafond, ce garde doit ROUGIR, pas faire boucler la suite qui le porte.
+const PASSE_590_SOMMEIL_S = 30;
+const monterPasse590 = (contenu = 'SAIN\n') => {
+  const dir = mkdtempSync(join(tmpdir(), 'argus-590-'));
+  writeFileSync(join(dir, 'cible-590.txt'), contenu);
+  writeFileSync(join(dir, 'suite.test.mjs'), [
+    "import { test } from 'node:test';",
+    "import { readFileSync, writeFileSync } from 'node:fs';",
+    "import { spawn } from 'node:child_process';",
+    "const etat = readFileSync(new URL('./cible-590.txt', import.meta.url), 'utf8');",
+    "test('un garde qui répond', () => {});",
+    "test('le garde du sujet', async () => {",
+    "  if (etat.includes('ROUGE')) throw new Error('le garde tombe');",
+    "  if (!etat.includes('BOUCLE')) return;",
+    // Un PETIT-ENFANT : c'est lui qui survit à une mise à mort visant le seul
+    // `node --test` (mesuré : le processus du fichier de test survit aussi).
+    `  const petit = spawn(process.execPath, ['-e', 'setTimeout(() => {}, ${PASSE_590_SOMMEIL_S * 1000})'], { stdio: 'ignore' });`,
+    "  writeFileSync(new URL('./petit.pid', import.meta.url), String(petit.pid));",
+    `  await new Promise((r) => setTimeout(r, ${PASSE_590_SOMMEIL_S * 1000}));`,
+    '});',
+    '',
+  ].join('\n'));
+  const git = (/** @type {string[]} */ a) => spawnSync('git', ['-c', 'user.name=argus', '-c', 'user.email=argus@invalid', ...a],
+    { cwd: dir, encoding: 'utf8' });
+  git(['init', '-q']);
+  git(['add', '.']);
+  const commit = git(['commit', '-q', '-m', 'sujet']);
+  assert.equal(commit.status, 0, `le dépôt jetable n'a pas pu être commité : ${commit.stderr}`);
+  return dir;
+};
+
+const MUTATIONS_590 = {
+  rougit: '("sujet", "590 · le sujet rougit", "SAIN", "ROUGE")',
+  boucle: '("sujet", "590 · le sujet fait boucler la suite", "SAIN", "BOUCLE")',
+};
+
+/** Le script qui joue `main()` du harnais sur le dépôt jetable — plafonds en secondes. */
+const scriptPasse590 = (/** @type {string} */ dir, /** @type {number} */ plancher, propre = 900,
+  mutations = [MUTATIONS_590.rougit, MUTATIONS_590.boucle]) => [
+  'import importlib.util, pathlib, sys',
+  `spec = importlib.util.spec_from_file_location("harnais", ${JSON.stringify(join(RACINE, 'tools/mutate-run-guards.py'))})`,
+  'h = importlib.util.module_from_spec(spec)',
+  'spec.loader.exec_module(h)',
+  `h.ROOT = pathlib.Path(${JSON.stringify(dir)})`,
+  'h.SUITE = h.ROOT / "suite.test.mjs"',
+  'h.CIBLES = {"sujet": h.ROOT / "cible-590.txt"}',
+  `h.MUTATIONS = [${mutations.join(', ')}]`,
+  'h.PREALABLE_DE, h.SONDES = {}, {}',
+  `h.PLAFOND_PLANCHER_S = ${plancher}`,
+  `h.PLAFOND_SUITE_PROPRE_S = ${propre}`,
+  'sys.argv = ["mutate-run-guards.py", "--shard=1/1"]',
+  'sys.exit(h.main())',
+].join('\n');
+
+// ⚠️ MESURÉ : `node --test` pose `NODE_TEST_CONTEXT=child-v8` dans le processus
+// de ce fichier. Hérité, il fait de la suite jetable un « enfant » qui ne parle
+// plus qu'au format sérialisé — sans le résumé `tests N` — et le harnais refuse
+// alors de démarrer : ce garde mesurerait son montage, pas la boucle.
+const envPasse590 = () => {
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  return env;
+};
+
+/** Vrai tant que `pid` TOURNE — un zombie, déjà tué et pas encore récolté, ne tourne plus. */
+const vivant = (/** @type {number} */ pid) => {
+  try {
+    process.kill(pid, 0);
+  } catch {
+    return false;
+  }
+  const etat = spawnSync('ps', ['-o', 'stat=', '-p', String(pid)], { encoding: 'utf8' }).stdout?.trim() ?? '';
+  return etat !== '' && !etat.startsWith('Z');
+};
+
+/** Vrai si `pid` tourne ENCORE après `ms` : un orphelin tué met un instant à être récolté. */
+const survit = async (/** @type {number} */ pid, ms = 3000) => {
+  const limite = Date.now() + ms;
+  while (vivant(pid) && Date.now() < limite) await new Promise((r) => setTimeout(r, 100));
+  return vivant(pid);
+};
+
+test('une suite qui ne rend pas la main est COUPÉE au plafond, nommée, et la passe continue (590)', async () => {
+  const dir = monterPasse590();
+  let petit = 0;
+  try {
+    const depart = Date.now();
+    const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1)], { cwd: dir, encoding: 'utf8', env: envPasse590() });
+    const duree = (Date.now() - depart) / 1000;
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
+
+    assert.ok(petit > 0, `le faux sujet n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
+    assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
+      `${duree.toFixed(1)} s pour une passe dont le plafond vaut quelques secondes : la suite qui boucle `
+      + `n'a pas été coupée, le harnais l'a attendue (590)\n${sortie}`);
+    assert.match(sortie, /PLAFOND/, `la mutation coupée doit être NOMMÉE comme telle, pas prise pour une autre (590)\n${sortie}`);
+    assert.match(sortie, /le sujet fait boucler la suite[^\n]*PLAFOND/,
+      `le verdict PLAFOND doit se lire sur la ligne de la mutation qui boucle (590)\n${sortie}`);
+    // Le dernier garde rendu désigne celui qui SUIT : c'est là que la suite bloquait.
+    assert.match(sortie, /dernier garde achevé : un garde qui répond/,
+      `le verdict PLAFOND doit nommer le dernier garde rendu, sans quoi le journal ne dit pas où chercher (590)\n${sortie}`);
+    // ⚠️ Mesuré : tuer le seul `node --test` laisse vivre le processus du fichier
+    // de test ET ses enfants — ils continuent de tourner sur le code MUTÉ pendant
+    // que la passe restaure et enchaîne. C'est le groupe entier qui doit mourir.
+    assert.equal(await survit(petit), false,
+      'un descendant de la suite coupée survit : le harnais a tué `node --test` et laissé ses enfants (590)');
+    assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après la coupure');
+    // L'AUTRE MOITIÉ : un plafond qui couperait tout rendrait chaque mutation
+    // « PLAFOND ». Celle qui rougit vite reste TOMBE, et la passe va jusqu'au bout.
+    assert.match(sortie, /le sujet rougit[^\n]*TOMBE/, `une mutation qui rougit vite doit rester TOMBE (590)\n${sortie}`);
+    assert.match(sortie, /1\/2 défauts détectés/, `la passe doit aller jusqu'à son bilan (590)\n${sortie}`);
+    assert.equal(r.status, 1, 'une mutation coupée au plafond n\'est pas un défaut détecté : la passe échoue');
+  } finally {
+    if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('une passe INTERROMPUE nomme la mutation en cours, tue la suite, et garde ses verdicts (590)', async () => {
+  const dir = monterPasse590();
+  let petit = 0;
+  try {
+    // Un plafond LONG : c'est l'interruption qu'on éprouve ici, pas lui.
+    const enfant = spawn('python3', ['-c', scriptPasse590(dir, 120)], { cwd: dir, env: envPasse590() });
+    let sortie = '';
+    enfant.stdout.on('data', (d) => { sortie += d; });
+    enfant.stderr.on('data', (d) => { sortie += d; });
+    const fin = new Promise((r) => enfant.on('close', (code) => r(code)));
+    // Le signal part quand le faux sujet boucle — et le harnais doit déjà avoir
+    // DIT laquelle : c'est tout ce qu'un journal tronqué peut encore montrer.
+    const limite = Date.now() + 20000;
+    while (Date.now() < limite && !(existsSync(join(dir, 'petit.pid')) && /le sujet fait boucler la suite/.test(sortie))) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
+    const annoncee = /le sujet fait boucler la suite/.test(sortie);
+    enfant.kill('SIGTERM');
+    const code = await fin;
+
+    assert.ok(petit > 0, `le faux sujet n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
+    assert.ok(annoncee, `la mutation EN COURS n'est pas nommée avant la fin de son verdict : un journal `
+      + `coupé ne dirait pas laquelle bloquait (590)\n${sortie}`);
+    assert.match(sortie, /INTERROMPU/, `l'interruption doit se dire (590)\n${sortie}`);
+    assert.match(sortie, /le sujet rougit[^\n]*TOMBE/,
+      `le verdict rendu AVANT l'interruption doit rester lisible (590)\n${sortie}`);
+    assert.equal(code, 130, 'une passe interrompue ne rend aucun verdict de passe');
+    assert.equal(await survit(petit), false,
+      'la suite a survécu au harnais interrompu : son groupe doit mourir avec lui (590)');
+    assert.equal(readFileSync(join(dir, 'cible-590.txt'), 'utf8'), 'SAIN\n', 'la cible doit être restaurée après l\'interruption');
+  } finally {
+    if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('une suite PROPRE qui ne rend pas la main arrête la passe avant toute mutation (590)', async () => {
+  // Elle n'a pas de mesure avant elle : son plafond est fixe. Sans lui, un garde
+  // neuf qui boucle bloquerait les dix tranches — six heures chacune.
+  // ⚠️ UNE mutation, qui rougit vite : sous la mutation qui retire ce plafond, la
+  // passe doit finir aussitôt la suite propre rendue — une mutation qui boucle y
+  // coûterait cinq fois le sommeil, assez pour que la VRAIE passe juge ce garde
+  // PLAFOND au lieu de TOMBE.
+  const dir = monterPasse590('SAIN BOUCLE\n');
+  let petit = 0;
+  try {
+    const depart = Date.now();
+    const r = spawnSync('python3', ['-c', scriptPasse590(dir, 1, 1, [MUTATIONS_590.rougit])],
+      { cwd: dir, encoding: 'utf8', env: envPasse590() });
+    const duree = (Date.now() - depart) / 1000;
+    const sortie = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    if (existsSync(join(dir, 'petit.pid'))) petit = Number(readFileSync(join(dir, 'petit.pid'), 'utf8'));
+
+    assert.ok(petit > 0, `la suite propre n'a jamais bouclé — ce garde ne mesure rien :\n${sortie}`);
+    assert.ok(duree < PASSE_590_SOMMEIL_S / 2,
+      `${duree.toFixed(1)} s : la suite PROPRE qui boucle a été attendue, pas coupée (590)\n${sortie}`);
+    assert.match(sortie, /la suite PROPRE n'a pas rendu la main/, `le refus doit dire pourquoi (590)\n${sortie}`);
+    assert.doesNotMatch(sortie, /\[1\/1\]/, 'aucune mutation ne doit être jouée sur une suite propre qui bloque');
+    assert.equal(r.status, 1);
+    assert.equal(await survit(petit), false, 'la suite propre coupée doit mourir avec tout son groupe (590)');
+  } finally {
+    if (petit > 0 && vivant(petit)) process.kill(petit, 'SIGKILL');
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('le plafond d\'une mutation SUIT la durée mesurée de la suite propre (590)', () => {
+  // ⚠️ Un plafond figé couperait, sur une machine lente, des mutations qui ne
+  // bouclent pas : le dériver de la suite PROPRE, mesurée sur la même machine
+  // juste avant, est ce qui le rend juste partout. Le plancher protège une suite
+  // propre très rapide d'un plafond que la moindre charge dépasserait.
+  const r = interrogerLeHarnais([
+    'print(json.dumps({"lent": h.plafond_de(100), "rapide": h.plafond_de(1),',
+    '  "facteur": h.PLAFOND_FACTEUR, "plancher": h.PLAFOND_PLANCHER_S}))',
+  ]);
+  assert.equal(r.lent, 100 * r.facteur, 'sur une machine lente, le plafond doit suivre la suite propre (590)');
+  assert.equal(r.rapide, r.plancher, 'sur une suite propre très rapide, le plancher tient (590)');
+  assert.ok(r.facteur >= 3, `un facteur ${r.facteur} laisse trop peu de marge à une mutation qui ralentit sans boucler`);
 });
 
 // ── 560 · LE TYPAGE A UN LECTEUR LOCAL ──────────────────────────────────────
