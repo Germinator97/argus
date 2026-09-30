@@ -23,6 +23,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+// 593 — le délégué Cupertino par défaut, que `MaterialApp` ajoute toujours.
+import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
 import 'package:flutter/material.dart';
 // `RenderParagraph` n'est pas ré-exporté par widgets.dart : sans cet import, la
 // mesure de troncature ne compile pas.
@@ -404,6 +406,36 @@ String? argusFontMismatch({
   return null;
 }
 
+/// Les types de délégué dont AUCUN ne prend [locale] en charge, au montage.
+///
+/// 🔴 593 — Flutter le signale à chaque montage (« This application's locale,
+/// fr_FR, is not supported by all of its localization delegates »), le cadre
+/// capte ce signalement comme une exception, et « rien ne déborde » le rapportait
+/// en DÉBORDEMENT sur chaque combinaison — puis conseillait d'en faire une dette.
+/// Le contrôle est celui de Flutter, mot pour mot : pour chaque TYPE de délégué,
+/// il en faut un qui prenne la locale en charge. Et sur la liste que le montage
+/// charge vraiment : ceux du projet, plus ceux que `MaterialApp` et `WidgetsApp`
+/// ajoutent toujours — qui ne prennent en charge que l'anglais.
+List<String> argusLocaleNonPriseEnCharge(
+  Locale locale,
+  List<LocalizationsDelegate<Object?>> delegues,
+) {
+  final List<LocalizationsDelegate<Object?>> charges =
+      <LocalizationsDelegate<Object?>>[
+        ...delegues,
+        DefaultMaterialLocalizations.delegate,
+        DefaultCupertinoLocalizations.delegate,
+        DefaultWidgetsLocalizations.delegate,
+      ];
+  final Set<Type> sansDelegue = charges
+      .map((LocalizationsDelegate<Object?> d) => d.type)
+      .toSet();
+  for (final LocalizationsDelegate<Object?> d in charges) {
+    if (d.isSupported(locale)) sansDelegue.remove(d.type);
+  }
+  return sansDelegue.map((Type t) => '$t').toList()..sort();
+}
+
 /// Raison de sauter les gardes, ou `null` s'ils sont exploitables.
 ///
 /// Rendre une RAISON plutôt qu'un booléen : « skippé » sans explication se
@@ -435,6 +467,22 @@ String? argusSkipReason() {
     return "argusFontFamily vaut '$argusFontFamily', qui n'est pas une famille "
         'chargée (${polices.keys.join(', ')}). Un nom qui ne correspond à '
         'aucune famille chargée retombe en silence sur la police de test.';
+  }
+  // 593 — une locale sans délégué se lirait en « débordement » sur chaque
+  // écran : on refuse de monter, et on dit quoi fournir.
+  final List<String> sansDelegue = argusLocaleNonPriseEnCharge(
+    argusLocale,
+    argusLocalizationsDelegates,
+  );
+  if (sansDelegue.isNotEmpty) {
+    return "la locale $argusLocale n'est prise en charge par aucun délégué de "
+        '${sansDelegue.join(', ')}. Flutter le signalerait à chaque montage, et '
+        '« rien ne déborde » le prendrait pour un débordement. Renseigne '
+        "argusLocalizationsDelegates avec ceux de l'app — "
+        '`AppLocalizations.localizationsDelegates`, ou '
+        '`GlobalMaterialLocalizations.delegates` (au pluriel : il porte aussi '
+        'Cupertino) —, ou monte dans une locale que ses délégués prennent en '
+        'charge.';
   }
   return null;
 }

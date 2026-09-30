@@ -19654,6 +19654,48 @@ test('589 — la CI joue la sonde des replis, qui a ses deux moitiés', () => {
   assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
 });
 
+// ── 593 · UNE LOCALE SANS DÉLÉGUÉ EST REFUSÉE, PAS LUE EN DÉBORDEMENT ────────
+// Le gabarit pose fr_FR sans délégué : Flutter le signalait à chaque montage, et
+// « rien ne déborde » le rapportait en DÉBORDEMENT sur chaque écran, conseil de
+// dette compris. Tranché par Germinator : refuser de monter, avec la raison. Le
+// Dart ne s'exécute pas ici : la sonde `locale-probe` prouve en CI que le refus
+// suit Flutter cas par cas ; ces gardes tiennent le contrôle et son câblage.
+test('593 — le cadre juge la locale comme Flutter, sur les délégués que le montage charge', () => {
+  const cadre = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  assert.match(cadre,
+    /\.\.\.delegues,\s*DefaultMaterialLocalizations\.delegate,\s*DefaultCupertinoLocalizations\.delegate,\s*DefaultWidgetsLocalizations\.delegate,/,
+    'le contrôle ne compte plus les délégués que MaterialApp et WidgetsApp ajoutent toujours : il ne suit plus Flutter (593)');
+  assert.match(cadre, /if \(d\.isSupported\(locale\)\) sansDelegue\.remove\(d\.type\);/,
+    'le contrôle ne juge plus par TYPE de délégué, comme Flutter : un seul délégué suffirait pour tous (593)');
+  assert.match(cadre,
+    /final List<String> sansDelegue = argusLocaleNonPriseEnCharge\(\s*argusLocale,\s*argusLocalizationsDelegates,\s*\);\s*if \(sansDelegue\.isNotEmpty\) \{\s*return /,
+    'argusSkipReason ne refuse plus une locale sans délégué : chaque écran se lirait de nouveau en débordement (593)');
+  // Le refus vient APRÈS « aucun écran déclaré » : la CI exige ce saut-là d'un projet neuf.
+  const i = cadre.indexOf("return 'aucun écran déclaré");
+  const j = cadre.indexOf('argusLocaleNonPriseEnCharge(\n    argusLocale,');
+  assert.ok(i !== -1 && j !== -1 && i < j, 'le refus de la locale passe devant « aucun écran déclaré » : un projet neuf dirait la mauvaise raison');
+});
+
+test('593 — la CI joue la sonde de la locale, qui confronte le cadre à Flutter', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const i = ci.indexOf('run: bash tools/locale-probe.sh /tmp/accueil');
+  const j = ci.indexOf('run: bash tools/fonts-probe.sh /tmp/accueil');
+  assert.notEqual(i, -1, 'la CI ne joue plus la sonde de la locale : son Dart ne s\'exécute nulle part (593)');
+  assert.ok(j !== -1 && i < j, 'la sonde de la locale doit passer avant celle des polices, qui modifie le projet d\'accueil');
+  const sonde = readFileSync(join(RACINE, 'tools/locale-probe.dart'), 'utf8');
+  for (const [nom, attendu] of [['fr_FR sans délégué', 'true'], ['fr_FR sans Cupertino', 'true'],
+    ['en_US sans délégué', 'false'], ['fr_FR complet', 'false']]) {
+    assert.match(sonde, new RegExp(`\\('${nom}', [^\\n]*, ${attendu}\\),`),
+      `la sonde n'écrit plus le verdict de Flutter pour « ${nom} » : un accord avec rien passerait pour une preuve (593)`);
+  }
+  assert.match(sonde, /expect\(\s*refuse,\s*signale,/, 'la sonde n\'exige plus que le cadre refuse ce que Flutter signale (593)');
+  assert.match(sonde, /expect\(\s*signale,\s*flutterAttendu,/, 'la sonde ne confronte plus Flutter à son verdict écrit (593)');
+  assert.match(sonde, /argusLocaleNonPriseEnCharge\(const Locale\('en', 'US'\), aucun\),\s*isEmpty,/,
+    'la sonde ne vérifie plus qu\'une locale prise en charge passe : un refus qui coupe tout y passerait (593)');
+  const sh = readFileSync(join(RACINE, 'tools/locale-probe.sh'), 'utf8');
+  assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

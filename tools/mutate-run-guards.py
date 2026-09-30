@@ -204,6 +204,9 @@ CIBLES = {
     # 589 — la sonde qui prouve en CI que le cadre écarte et dit ce qu'un écran
     # replie par conception : ce dépôt n'exécute pas de Dart, elle est la preuve.
     "sondereplis": ROOT / "tools/replis-probe.dart",
+    # 593 — la sonde qui prouve en CI que le refus d'une locale sans délégué suit
+    # Flutter cas par cas : ce dépôt n'exécute pas de Dart, elle est la preuve.
+    "sondelocale": ROOT / "tools/locale-probe.dart",
 }
 SUITE = ROOT / "tools/run-guards.test.mjs"
 # Optionnel : sans lui, les mutations de flow ne sont pas vérifiées — et une
@@ -3834,6 +3837,33 @@ MUTATIONS = [
     ("mutateur", "590 octies · le verdict PLAFOND ne nomme plus le dernier garde rendu",
      "\n    rendus = [l.strip()[2:] for l in sortie.splitlines() if l.strip().startswith((\"✔ \", \"✖ \"))]",
      "\n    rendus = []"),
+
+    # ── 593 · une locale sans délégué est refusée, pas lue en débordement ──
+    # Le contrôle oublie un délégué que MaterialApp ajoute toujours : il ne suit
+    # plus Flutter, et refuse ou laisse passer à tort.
+    ("harness", "593 · le refus de la locale oublie un délégué par défaut",
+     "        DefaultCupertinoLocalizations.delegate,\n        DefaultWidgetsLocalizations.delegate,",
+     "        DefaultWidgetsLocalizations.delegate,"),
+    # Un seul délégué qui prend la locale en charge suffit pour tous les types.
+    ("harness", "593 bis · le contrôle de la locale ne juge plus par type",
+     "    if (d.isSupported(locale)) sansDelegue.remove(d.type);",
+     "    if (d.isSupported(locale)) sansDelegue.clear();"),
+    # argusSkipReason ne refuse plus : chaque écran se relit en débordement.
+    ("harness", "593 ter · argusSkipReason ne refuse plus une locale sans délégué",
+     "  if (sansDelegue.isNotEmpty) {\n    return \"la locale $argusLocale",
+     "  if (sansDelegue.isNotEmpty && false) {\n    return \"la locale $argusLocale"),
+    # La sonde perd un cas où Flutter signale : l'accord ne couvre plus Cupertino.
+    ("sondelocale", "593 quater · la sonde perd le cas sans Cupertino",
+     "        ('fr_FR sans Cupertino', Locale('fr', 'FR'), sansCupertino, true),\n",
+     ""),
+    # La sonde n'exige plus que le cadre suive Flutter.
+    ("sondelocale", "593 quinquies · la sonde n'exige plus l'accord avec Flutter",
+     "      expect(\n        refuse,\n        signale,",
+     "      expect(\n        refuse,\n        refuse,"),
+    # La CI ne joue plus la sonde : le refus ne s'exécute plus nulle part.
+    ("ciplugin", "593 sexies · la CI ne joue plus la sonde de la locale",
+     "        run: bash tools/locale-probe.sh /tmp/accueil",
+     "        run: echo 'sonde de la locale retirée'"),
 ]
 
 

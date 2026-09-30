@@ -350,6 +350,14 @@ jobs:
       - name: Il écarte ce que l'app replie par conception, et le dit
         run: bash tools/replis-probe.sh /tmp/accueil
 
+      # 593 — UNE LOCALE SANS DÉLÉGUÉ EST REFUSÉE, PAS LUE EN DÉBORDEMENT. Le
+      # refus du cadre doit suivre Flutter cas par cas : sans délégué, sans
+      # Cupertino, en anglais, complet — et chaque verdict de Flutter est écrit
+      # dans la sonde, pour qu'un accord avec rien ne passe pas pour une preuve.
+      # Avant celle des polices : elle n'ajoute qu'un fichier de test.
+      - name: Il refuse une locale que ses délégués ne prennent pas en charge, et dit laquelle
+        run: bash tools/locale-probe.sh /tmp/accueil
+
       # 574 — LES POLICES SE DÉRIVENT DU BUNDLE, et ça se mesure en les RENDANT.
       # Le cadre lit `FontManifest.json` et les TTF d'assets nommés à la façon
       # de google_fonts ; rien de ce dépôt ne l'exécutait, puisqu'il n'est pas
