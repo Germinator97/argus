@@ -5097,7 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **594**, trouvé le 30/09 par la CI du fork (section
+🔴 **1 POINT OUVERT** — le **595**, trouvé le 30/09 en préparant la page du
+chantier (section « Trouvé en préparant la page », en fin de fichier) : un garde
+posé dans une boucle échappe au compteur de la page, qui lirait 675 gardes quand
+la suite en joue 677. Le **594**, trouvé le 30/09 par la CI du fork (section
 « Trouvé par la CI du fork — run #11 », en fin de fichier), est fermé le jour
 même : le harnais ne lisait que le format « spec » de `node --test`, que Node 22,
 sur le runner, n'écrit pas — la suite y était rouge et les dix tranches
@@ -14868,3 +14871,20 @@ trouve rien.
   ce que le runner lit, lui imposer son format
   (`NODE_OPTIONS=--test-reporter=tap`).
 - Suite 677/677, 743 mutations, 0 inerte.
+
+## Trouvé en préparant la page du chantier — 30/09/2026
+
+### 595. Un garde posé dans une boucle échappe au compteur de la page : 675 gardes lus, 677 joués
+
+**Ouvert le 30/09/2026 · OUVERT** — le contrôle de la page du chantier compte
+les gardes de la suite comme un `test(` en début de ligne (`nombreDeGardes`,
+`tools/artefact-compteurs.mjs`). Le correctif du 594 a posé le garde du plafond
+dans une boucle sur les deux formats de `node --test` : un `test(` en retrait,
+deux gardes joués, zéro compté. Le contrôle réclamait 675 quand la suite en
+joue 677, et la page aurait publié un chiffre faux avec son aval.
+
+- Rien ne gardait la convention : elle n'est écrite que dans le commentaire de
+  `nombreDeGardes`. C'est le seul `test(` en retrait de la suite.
+- Remède, sans arbitrage à rendre : les deux gardes redeviennent deux `test(` en
+  début de ligne, autour d'une fonction commune ; et un garde exige qu'aucun
+  `test(` de la suite ne soit en retrait, contre-épreuve comprise.
