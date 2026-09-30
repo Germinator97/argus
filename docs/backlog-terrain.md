@@ -5097,7 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **595**, trouvé le 30/09 en préparant la page du
+🔴 **2 POINTS OUVERTS** — le **596** et le **597**, trouvés le 30/09 par la CI
+du fork (section « Trouvé par la CI du fork — run #12 », en fin de fichier) :
+la suite s'est figée deux fois sur le runner, par intermittence, et le harnais
+a coupé deux mutations qui n'y étaient pour rien en désignant le mauvais garde ;
+et le verdict d'une tranche rouge ne se lit que dans un journal réservé aux
+administrateurs. Le **595**, trouvé le 30/09 en préparant la page du
 chantier (section « Trouvé en préparant la page », en fin de fichier), est fermé
 le jour même : un garde posé dans une boucle échappait au compteur de la page ;
 la suite n'en porte plus, et un garde y veille. Le **594**, trouvé le 30/09 par la CI du fork (section
@@ -14899,3 +14904,66 @@ joue 677, et la page aurait publié un chiffre faux avec son aval.
 - La suite devient une cible du harnais : une mutation remet un garde en
   retrait, et celui-ci tombe — joué en TAP dans les conditions du runner.
   Suite 678/678, 744 mutations, 0 inerte.
+
+## Trouvé par la CI du fork — run #12 (`03bc596`) — 30/09/2026
+
+Le push du 594 a fait tourner le workflow du plugin : **12 jobs sur 14**. Le 594
+tient sur le runner — la suite y est verte en TAP — et huit tranches de mutation
+passent, dont la 9/10 et la 10/10 : les mutations 642 à 712, que la CI #10 n'avait
+jamais rendues, sont toutes jugées. Les tranches **7/10** et **8/10** sont rouges,
+chacune sur **un seul** verdict, lu dans leur journal — collé par Germinator :
+l'API ne le rend qu'aux administrateurs :
+
+    [15/74] n°462 · 485 · le câblage fige la décision au lieu de lire usesFvm() … PLAFOND · 193 s
+            — sans réponse en 193 s · dernier garde achevé : l'installeur rappelle
+              comment fermer un TODO, et SEULEMENT s'il en reste (341)
+    [74/74] n°595 · 569 bis · le sous-dossier n'est plus signalé … PLAFOND · 180 s
+            — sans réponse en 180 s · dernier garde achevé : l'installeur rappelle
+              comment fermer un TODO, et SEULEMENT s'il en reste (341)
+
+Rejouées ici avant d'avoir ce journal — les 148 mutations des deux tranches, sur
+le commit exact, dans les conditions du runner, sous Node 24 forcé en TAP puis
+sous le vrai Node 22.23.2 : **toutes TOMBENT**, en 73 à 216 secondes sous la
+charge de quatre passes, loin de leurs plafonds.
+
+### 596. La suite se fige par intermittence sur le runner : le harnais coupe une mutation qui n'y est pour rien, et désigne le mauvais garde
+
+**Ouvert le 30/09/2026 · OUVERT** — trois défauts dans une même coupure :
+
+- **Les deux mutations coupées ne peuvent pas avoir figé la suite** : toutes deux
+  RETIRENT du comportement. La 462 fige `usesFvm()` à `false`, ce qui ne change
+  rien sur un runner sans Flutter — la commande retombe sur `dart` dans les deux
+  cas ; la 595 sort d'office d'une fonction qui ne sert qu'en monorepo. La suite
+  s'est figée d'elle-même, deux fois sur 743 passes — et les six heures de la
+  CI #10 étaient vraisemblablement la même chose, sans plafond pour l'arrêter.
+- **Le garde nommé n'est pas celui où la suite bloquait.** MESURÉ : une copie de
+  la suite où le garde 343 se fige dans un appel SYNCHRONE, jouée sous
+  Node 22.23.2 et coupée à 150 s, ne rend **aucun** résultat — alors que 342
+  gardes sont passés —, même quand la sortie standard est rendue bloquante comme
+  sous Linux. Un fichier de test figé dans un appel synchrone garde ses résultats
+  en file. Le garde du 590 ne pouvait pas le voir : sa suite factice se fige dans
+  une attente ASYNCHRONE, qui laisse sortir les résultats. La promesse écrite à la
+  clôture du 590 — « celui qui suit est celui qui bloquait » — est fausse : le nom
+  rendu n'est qu'une borne.
+- **Une coupure isolée rougit sa tranche**, alors que la mutation coupée aurait
+  été jugée en la rejouant.
+
+Tranché par Germinator : une mutation coupée est **rejouée une fois**, et
+PLAFOND seulement si elle est coupée deux fois de suite — le rejeu annoncé au
+journal. Et, sans arbitrage à rendre : au plafond, AVANT de tuer, le harnais
+nomme ce qui tourne encore dans le groupe de la suite — ligne de commande et âge
+—, la seule trace qu'aucun tampon ne retient ; le garde nommé devient ce qu'il
+est, le dernier résultat sorti.
+
+### 597. Le verdict d'une tranche rouge ne se lit que dans son journal, et seul un administrateur peut le lire
+
+**Ouvert le 30/09/2026 · OUVERT** — l'API rend le journal d'un job en `403` à
+tout compte qui n'administre pas le dépôt, et l'annotation publique d'une tranche
+rouge dit seulement « Process completed with exit code 1 ». Trois fois — le
+22/09, à la CI #8 et à la CI #12 —, un diagnostic a attendu que Germinator colle
+un journal ; la dernière a coûté des heures de rejeu à l'aveugle, sans rien
+reproduire, puisque la cause ne vit que sur le runner.
+
+Tranché par Germinator : chaque verdict qui n'est pas TOMBE — et chaque coupure
+rejouée — est publié en **annotation GitHub**, que l'API publique rend à tous ;
+seulement sous GitHub Actions, pour que la sortie d'un poste reste lisible.
