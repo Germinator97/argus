@@ -5097,7 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **591** à **593**, reproduits le 30/09 sur un projet
+🔴 **1 POINT OUVERT** — le **594**, trouvé le 30/09 par la CI du fork (section
+« Trouvé par la CI du fork — run #11 », en fin de fichier) : le harnais ne lit que
+le format « spec » de `node --test`, que Node 22, sur le runner, n'écrit pas —
+la suite y est rouge et les dix tranches refusent de démarrer. Les **591** à
+**593**, reproduits le 30/09 sur un projet
 jetable (section « Reproduit sur un projet jetable », en fin de fichier), sont
 fermés le jour même, sur les remèdes tranchés par Germinator : une cible collée
 au bord d'une zone qui défile est mesurée, et seule celle qu'un défilement coupe
@@ -14807,3 +14811,38 @@ restant rouge ; attendre.
 - Deux gardes tiennent le contrôle, son câblage et l'étape de CI ; six mutations,
   et une cible pour la sonde : **6/6 TOMBE**. Suite 672/672, 726 mutations,
   0 inerte.
+
+## Trouvé par la CI du fork — run #11 (`993c007`) — 30/09/2026
+
+Le push des dix commits du 30/09 a fait tourner le workflow du plugin : le
+format et le job plancher sont verts, mais **« Cohérence du scaffold » est rouge
+à son étape « Les décisions du runner »** — la suite elle-même —, et les **dix
+tranches de mutation tombent en moins d'une minute** : la durée d'un harnais qui
+refuse de démarrer sur une suite déjà rouge, pas celle d'une passe.
+
+Reproduit sur ce poste en imposant aux `node --test` le format TAP : un seul
+garde tombe, celui du 590 qui coupe une suite au plafond, sur « dernier garde
+achevé : aucun ».
+
+### 594. Le harnais ne lit que le format « spec » de `node --test`, que Node 22 n'écrit pas hors d'un terminal
+
+**Ouvert le 30/09/2026 · OUVERT** — l'image `ubuntu-24.04` des runners porte
+Node 22.23 ; ce poste, Node 24.21. Hors d'un terminal, Node 24 écrit ses verdicts
+au format « spec » (`✔ nom`, `✖ nom`) ; Node 22 écrit du TAP (`ok 1 - nom`,
+`not ok 1 - nom`). Le harnais lit les lignes « spec » pour nommer le dernier
+garde rendu (590) et le garde tombé d'une mutation : sur le runner, il ne
+trouve rien.
+
+- Le garde du 590 qui coupe une suite au plafond exige « dernier garde
+  achevé : un garde qui répond » : sur le runner, la suite est rouge, et le
+  harnais refuse de muter sur une suite déjà rouge — les dix tranches d'un coup.
+- Et, pour la même raison, le tableau d'une tranche ne pouvait nommer le garde
+  tombé que sur ce poste : sur le runner, chaque TOMBE disait « un garde a
+  rougi ».
+- 🔴 Le montage « runner simulé » (`env -i`, `CI=true`…) ne change pas la
+  version de Node : il ne pouvait pas le voir. Les quatre preuves de mutation
+  de la veille, jouées dans ce montage, étaient vertes.
+- Remède, sans arbitrage à rendre : lire les deux formats. Imposer
+  `--test-reporter=spec` au harnais a été essayé et écarté, mesuré : un
+  reporter déjà posé par `NODE_OPTIONS` fait alors planter `node --test`
+  (« must match the number of specified '--test-reporter-destination' »).
