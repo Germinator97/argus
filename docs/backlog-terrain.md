@@ -5097,7 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **596** et **597**, trouvés le 30/09 par la CI du fork
+🔴 **2 POINTS OUVERTS** — les **598** et **599**, relevés le 01/10 sur l'annonce de
+la bascule d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en
+fin de fichier) : la CI du plugin changerait d'image en pleine recherche du gel
+du 596 (598), et le workflow livré aux projets d'accueil installe Node 20, en fin
+de vie depuis le 30/04/2026 (599). Les **596** et **597**, trouvés le 30/09 par la CI du fork
 (section « Trouvé par la CI du fork — run #12 », en fin de fichier), sont fermés
 le jour même : la suite se figeait d'elle-même sur le runner, par intermittence,
 et le harnais coupait une mutation qui n'y était pour rien en désignant le
@@ -15033,3 +15037,56 @@ seulement sous GitHub Actions, pour que la sortie d'un poste reste lisible.
   montage minimal sous Node 22.23.2. Suite 682/682, 761 mutations, 0 inerte.
 - 📌 La première preuve sur le runner sera la CI suivante : une coupure qui y
   survient se lira sans journal.
+
+## Relevé sur l'annonce de la bascule d'`ubuntu-latest` — 01/10/2026
+
+Les jobs des CI #12 et #13 portent une annotation de GitHub : le libellé
+`ubuntu-latest` bascule vers Ubuntu 26.04 à partir du **19/10/2026**,
+progressivement, jusqu'au 19/11 (`actions/runner-images#14748`). Relevé sur les
+fiches des deux images (`Ubuntu2404-Readme.md` et `Ubuntu2604-Readme.md`, toutes
+deux du 20/09) en attendant la CI #13.
+
+### 598. `ubuntu-latest` bascule vers Ubuntu 26.04 du 19/10 au 19/11 : la CI du plugin changerait d'image en pleine recherche du gel du 596
+
+**Ouvert le 01/10/2026 · OUVERT** — les cinq jobs du workflow du plugin tournent
+sur ce libellé. Ce qui change sous eux :
+
+- Node par défaut **22.23.2 → 24.21.0** — hors d'un terminal, `node --test` écrit
+  de nouveau du « spec » et non plus du TAP ; le 594 lit les deux.
+- Python système **3.12.3 → 3.14.4**, pip 24.0 → 25.1.1 — c'est lui qui fait
+  tourner le harnais et installe PyYAML.
+- Java par défaut 17 → 25 — l'annonce écrit « 17, inchangé », la fiche dit 25 ;
+  aucun job du plugin ne lance Java.
+- Android SDK (build-tools, `ANDROID_HOME`) et Git : inchangés.
+
+Le poste tourne déjà exactement sur Node 24.21.0 et Python 3.14.4 : les passes
+locales exercent ces versions, et `tools/mutate-run-guards.py`, seul Python du
+dépôt, n'importe aucun module retiré en 3.13 ou 3.14. Ce qu'aucune passe locale
+ne couvre : Linux 26.04 lui-même, et le gel du 596, vu seulement sous Node 22 sur
+le runner, dont la cause n'est pas trouvée. Changer d'image pendant qu'on la
+cherche ferait bouger deux variables à la fois — et le dépôt ne choisit pas
+quand un job bascule.
+
+Tranché par Germinator : les cinq jobs épinglent `ubuntu-24.04` jusqu'à ce que
+la cause du gel soit trouvée ; la migration vers 26.04 sera un commit à elle,
+jugé par sa propre CI.
+
+### 599. Le workflow livré aux projets d'accueil installe Node 20, en fin de vie depuis le 30/04/2026
+
+**Ouvert le 01/10/2026 · OUVERT** — `argus-mobile.yml`, que `install-mobile.sh`
+pose chez le projet d'accueil et que `--update` remplace (CADRE), installe
+`node-version: '20'` dans les quatre jobs qui lancent Node, et dans l'exemple
+commenté du niveau B. Node 20 est en fin de vie depuis le **30/04/2026**
+(calendrier officiel, `nodejs/Release`).
+
+- Aucune passe n'exerce Node 20 : la suite tourne sous le Node du poste
+  (24.21.0) et sous celui du runner (22.23.2). Les scripts que ce workflow lance
+  — `scripts/argus/argus-mobile.mjs`, un `node -e` — ne sont joués nulle part
+  sur la version qu'il installe.
+- Rien ne gardait la version : aucun garde ne lit `node-version`.
+- Le workflow du plugin web porte le même `'20'` : hors périmètre, tranché par
+  Germinator — on ne touche pas à la version web.
+- Remède : Node **24**, la LTS active, en fin de vie le 30/04/2028 — la version
+  sous laquelle la suite tourne avant chaque commit, et le défaut de l'image
+  26.04. Node 22 finit un an plus tôt (30/04/2027) et n'apporte rien que la
+  suite n'exerce déjà.
