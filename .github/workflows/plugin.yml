@@ -11,10 +11,17 @@ on:
     branches: [main]
   pull_request:
 
+# ⚠️ L'IMAGE EST ÉPINGLÉE, la même dans les cinq jobs (598). `ubuntu-latest`
+# bascule vers Ubuntu 26.04 du 19/10 au 19/11/2026, progressivement, sans un
+# commit d'ici : Node 22 → 24 — et le format de `node --test` hors terminal
+# avec lui —, Python 3.12 → 3.14. Tant que la suite se fige par intermittence
+# sur le runner sans cause trouvée (596), changer d'image ferait bouger deux
+# variables à la fois. La migration sera un commit à elle, jugé par sa propre
+# CI : un garde exige une seule image, écrite en clair, dans tous les jobs.
 jobs:
   scaffold:
     name: Cohérence du scaffold
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # ⚠️ `fetch-depth: 0` n'est pas du confort : le contrôle des compteurs de la
       # page dérive le nombre de commits et les passes de clôture de l'HISTORIQUE.
@@ -149,7 +156,7 @@ jobs:
   # tranche rouge n'efface pas ce que les neuf autres avaient à dire.
   mutation:
     name: Les gardes du runner gardent encore
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -197,7 +204,7 @@ jobs:
   # de reformater le cadre dans le même commit.
   format:
     name: Le cadre est formaté, à version FIXE
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -229,7 +236,7 @@ jobs:
   # trois documents disent la même. La relever, c'est les relever tous.
   plancher:
     name: L'étage 1 tourne à la version plancher annoncée
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -268,7 +275,7 @@ jobs:
   # reproduire est le seul moyen d'éprouver un montage — le lire ne suffit pas.
   harness:
     name: L'étage 1 analyse et tourne
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -276,7 +283,7 @@ jobs:
       # seule raison d'être : son défaut est `${{ runner.arch }}`, que `act`
       # renseigne depuis la machine HÔTE. Sur un Mac, l'action réclame donc un
       # SDK Flutter Linux arm64 — qui n'existe pas — et s'arrête avant d'avoir
-      # rien fait. La valeur écrite ici est celle que `ubuntu-latest` rend de
+      # rien fait. La valeur écrite ici est celle que l'image du job rend de
       # toute façon : on n'ajoute pas un comportement, on retire une dépendance
       # à un contexte qu'on ne peut pas exercer. ⚠️ Elle SUIT `runs-on` : un
       # runner ARM demanderait `arm64`.

@@ -21206,3 +21206,34 @@ test('la CI type avec la MÊME chaîne et la MÊME configuration que le poste (5
   const ignore = spawnSync('git', ['check-ignore', '-q', 'tools/typage/node_modules/x'], { cwd: RACINE });
   assert.equal(ignore.status, 0, 'tools/typage/node_modules n\'est pas ignoré : la chaîne partirait dans un commit');
 });
+
+// ── 598 · L'IMAGE DU RUNNER EST ÉPINGLÉE ─────────────────────────────────────
+// `ubuntu-latest` bascule vers Ubuntu 26.04 du 19/10 au 19/11/2026 — Node 22 →
+// 24, Python 3.12 → 3.14 — sans un commit du dépôt. Tant que le gel du 596 n'a
+// pas de cause, l'image ne change que par un commit à elle : chaque job écrit
+// la sienne en clair, et c'est la même pour tous.
+test('598 — chaque job de la CI du plugin tourne sur une seule image, épinglée', () => {
+  const ci = readFileSync(join(RACINE, '.github/workflows/plugin.yml'), 'utf8');
+  const debut = ci.indexOf('\njobs:\n');
+  assert.notEqual(debut, -1, 'le workflow n\'a plus de bloc `jobs:` en tête de ligne : rien à relever (598)');
+  const blocJobs = ci.slice(debut);
+  // Les jobs : les clés au premier niveau sous `jobs:`.
+  const jobs = [...blocJobs.matchAll(/^ {2}([A-Za-z0-9_-]+):[ \t]*$/gm)].map((m) => m[1]);
+  assert.ok(jobs.length > 0, 'aucun job lu sous `jobs:` : le relevé ne voit plus rien (598)');
+  // L'image se lit sur la ligne de `runs-on:`. Une forme qui la repousse à la
+  // ligne suivante — une liste — ne s'y lit pas, et c'est voulu : le compte
+  // ci-dessous la refuse au lieu de la sauter.
+  const images = [...blocJobs.matchAll(/^ {4}runs-on:[ \t]*(\S[^\n#]*?)[ \t]*(?:#.*)?$/gm)]
+    .map((m) => m[1].replace(/^(['"])(.*)\1$/, '$2'));
+  assert.equal(images.length, jobs.length,
+    `${jobs.length} job(s), ${images.length} image(s) lue(s) : un job ne dit plus son image en clair, sur sa ligne (598)`);
+  for (const image of images) {
+    assert.match(image, /^ubuntu-\d{2}\.\d{2}$/,
+      `un job tourne sur « ${image} » — attendu une image Ubuntu épinglée, de la forme ubuntu-AA.MM : `
+      + 'un libellé qui bascule seul change Node et Python sous la CI (598)');
+  }
+  const distinctes = [...new Set(images)];
+  assert.equal(distinctes.length, 1,
+    `les jobs tournent sur ${distinctes.join(', ')} : deux images, deux variables — `
+    + 'la migration se fait d\'un bloc, par un commit à elle (598)');
+});

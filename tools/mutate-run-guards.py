@@ -4031,6 +4031,20 @@ MUTATIONS = [
     ("mutateur", "597 decies · « failing tests: » passe pour un garde rouge",
      " and \"subtest\" not in nom and nom != \"failing tests:\"))",
      " and \"subtest\" not in nom))"),
+
+    # ── 598 · l'image du runner est épinglée ──
+    # Un job retourne sur le libellé qui bascule seul : Node et Python changent sous lui.
+    ("ciplugin", "598 · un job retourne sur ubuntu-latest",
+     "    name: Les gardes du runner gardent encore\n    runs-on: ubuntu-24.04",
+     "    name: Les gardes du runner gardent encore\n    runs-on: ubuntu-latest"),
+    # Un job passe seul sur une autre image, épinglée elle aussi : deux variables.
+    ("ciplugin", "598 bis · un job passe seul sur une autre image",
+     "    name: Le cadre est formaté, à version FIXE\n    runs-on: ubuntu-24.04",
+     "    name: Le cadre est formaté, à version FIXE\n    runs-on: ubuntu-26.04"),
+    # Un job écrit son image hors de sa ligne : le relevé ne la lirait plus.
+    ("ciplugin", "598 ter · un job écrit son image hors de sa ligne",
+     "    name: Cohérence du scaffold\n    runs-on: ubuntu-24.04",
+     "    name: Cohérence du scaffold\n    runs-on:\n      - ubuntu-latest"),
 ]
 
 
