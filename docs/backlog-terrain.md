@@ -5097,7 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **600**, trouvé le 01/10 en lisant la passe du 599
+🔴 **10 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et les
+**608** à **610**, rendus par le run 109 (sections « Rendu par le run 108 » et
+« Rendu par le run 109 », en fin de fichier). Le **608** d'abord : le job iOS du
+workflow livré publie les journaux Maestro bruts, où les secrets de recette sont
+en clair. Le **600**, trouvé le 01/10 en lisant la passe du 599
 (section « Trouvé en lisant la passe du 599 », en fin de fichier), est fermé le
 jour même : les avertissements du harnais comptent sur la décision de
 `validateur` — 48 mutations sans maestro, et non 103 —, et un workflow n'est
@@ -15185,3 +15189,191 @@ pas prouvé ne se lit plus.
   minimal sur le commit du correctif. La deuxième est créditée au premier
   garde, qui la juge aussi — l'annonce y ment ; rejouée à la main sur une copie
   mutée, le second garde tombe seul. Suite 686/686, 771 mutations, 0 inerte.
+
+
+## Rendu par le run 108 — confirmation de 583 à 593 et 599, même terrain, Android — 01/10/2026
+
+Confirmation sur le terrain du 107 — le jeu dont l'application vit dans un
+sous-dossier du dépôt —, `HEAD` en `63037d3`. Agent vierge ; run final 10 flows
+sur 10, 18 écrans sur 18, 21 min 23 s d'appareil. Lu sur les ARTEFACTS — rapport,
+page, journaux Maestro, preuves de l'agent —, pas sur le compte rendu.
+
+### Confirmés
+
+| point | ce que le run 107 avait produit | ce que le run 108 produit |
+|---|---|---|
+| **585** | délégués énumérés un par un | `argusLocalizationsDelegates = GlobalMaterialLocalizations.delegates;` tel quel, analyse muette |
+| **587** | un seul lancement — le premier — rendait QAM-START major | QAM-START-PREMIER (info, 3608 ms) à part ; QAM-START major sur un flow suivant (smoke, 2561 ms hors splash) |
+| **588** (verdict) | l'APK universel jugé contre 60 Mo | la tranche x86_64, 31 Mo, AUCUN constat de taille |
+| **589** | 16 des 21 dettes étaient des replis | « 11 dettes assumées » et, à part, « 16 textes repliés par conception » |
+| **593** | — | aucun « Débordement … aucun widget fautif » ; délégués présents |
+| **599** | — | le workflow posé porte `node-version: '24'` ×5, exemple commenté compris |
+
+Exercé sans rien trouver : **591** (23 gardes de cible tactile joués, verts). Non
+exercés : **583** (le sous-dossier porte son propre `.fvmrc`), **584** (l'agent a
+relu `HEAD` par `git archive`, pas par la recette). Exercés, et en défaut :
+**586**, **588** (l'affichage) et **592** — ci-dessous.
+
+### Ce qu'il rend — sept points
+
+Le **601** est reproduit sur ce poste par une sonde ; le **607** est établi sur
+les journaux Maestro de l'appareil, horodatés ; les **602** à **606** sont lus
+sur les artefacts du run ou dans le code au `HEAD`.
+
+### 601. Le détecteur du 592 voit un retour à la ligne là où le curseur ne fait que changer de hauteur
+
+**Ouvert le 01/10/2026 · OUVERT** — sur la carte de question du terrain, des
+guillemets en 28 px encadrent un texte en 22 px, sur la même ligne, séparés par
+une espace fine insécable (U+202F). Le détecteur rend « « / Une question ? » » :
+27 gardes rouges (9 × question, tutoriel, explication), 129 retours à la ligne
+relus à la main par l'agent, 0 vraie coupure. La page : « 27 gardes d'étage 1 en
+échec », MAJOR — un défaut qui accuse à tort. Et rien ne permettait de déclarer
+un faux positif : `debts-write` aurait inscrit les 27.
+
+- REPRODUIT sur ce poste, le détecteur COPIÉ À L'IDENTIQUE du gabarit
+  (`argus_harness.dart`, `_argusSansEspaces` et `argusCoupeDansUnMot`), vraie
+  Work Sans chargée. Contre-épreuve : « D'accord » dans 40 dp rend « D'a / cco /
+  rd » ; une ligne simple ne rend rien.
+- Le cas du terrain, sur UNE seule ligne réelle (compte du moteur de mise en
+  page) : le curseur passe de 0,16 à 5,74 px au changement de taille, et le
+  détecteur rend « « / Une question ? » ».
+- Les causes, séparées : tailles mêlées et espaces ordinaires → rien ; U+202F
+  dans une seule taille → rien ; **tailles mêlées DANS un mot** (« Bon » en 28 px,
+  « jour à tous » en 22) → « Bon / jour à tous », sur une seule ligne. La cause est le
+  critère — un saut de curseur de plus de 0,5 px vaut retour à la ligne — ; U+202F
+  n'a fait que placer le changement de taille à l'intérieur d'un mot.
+- Remède, sans arbitrage à rendre : compter les lignes par le moteur de mise en
+  page plutôt que par la hauteur du curseur ; la sonde du 592 gagne les cas d'une
+  seule ligne à tailles mêlées, qui ne doivent rien voir, et garde ses vraies
+  coupures.
+
+### 602. La carte QAM-STAGE1 n'a ni « attendu » ni « constaté », et se range en accessibilité
+
+**Ouvert le 01/10/2026 · OUVERT** — sur la page et dans `report.html`, la carte
+des gardes d'étage 1 en échec n'a ni attendu ni constaté (vides), et se range sous
+« a11y » quand ses 27 échecs sont des gardes de DISPOSITION. Une carte majeure
+qui ne dit ni ce qu'on attendait ni ce qu'on a vu ne se lit pas.
+
+### 603. Le tableau de performance oppose l'APK universel au budget, en rouge, quand le verdict juge la tranche
+
+**Ouvert le 01/10/2026 · OUVERT** — `report.html` affiche `67.8 Mo / 60 Mo` en
+`class="bad"` pour l'APK universel, pendant que le verdict du 588 juge la tranche
+(31 Mo) et n'émet rien (`perf.json`). Le tableau accuse ce que le verdict a
+écarté : un rouge sans constat derrière.
+
+### 604. Le 586 ne protège que les symboles : le build de scan réécrit les paquets de la release en attente
+
+**Ouvert le 01/10/2026 · OUVERT** — le build de scan, passé par la commande du
+projet, a réécrit, de la release en attente : `build/mapping.json` (chemin figé du
+script du projet), `flutter-apk/app-release.apk`, `apk/release/app-release.apk`,
+`mapping/release/resources.txt`, `seeds.txt` et `native-debug-symbols.zip`.
+L'agent en a restauré trois, trois autres l'ont été depuis une copie ;
+`apk/release/app-release.apk` est resté celui du scan. La règle du 586 — jamais
+entre un build de publication et l'envoi de ses symboles — laissait passer : les
+symboles étaient partis, le paquet non.
+
+### 605. Le workflow livré construit en dur, sans la commande de build du projet
+
+**Ouvert le 01/10/2026 · OUVERT** — `flutter build apk --debug` (l. 337) et
+`flutter build ios --debug --simulator` (l. 516), écrits en dur, et
+`$ARGUS run` installe ce binaire. La commande configurée (`config
+--print-build-cmd`) n'y est pas reprise : variante, `--dart-define`
+obligatoires, script maison, DSN vidé. Un projet dont l'application lève sans
+injection voit tous ses flows de CI tomber ; un DSN réel par défaut fait émettre
+la CI vers le vrai monitoring.
+
+### 606. Les cibles `make` de l'étage 1 ne relaient aucun drapeau à `flutter test`
+
+**Ouvert le 01/10/2026 · OUVERT** — `argus-anchors` (l. 148), `argus-guards`
+(l. 175) et `argus-debts*` (l. 205) appellent `$(FLUTTER) test` sans rien relayer :
+`ARGS` ne va qu'au moteur. Un cadrage qui exige `--dart-define=SENTRY_DSN=` sur
+tout `flutter test` ne se tient qu'en détournant `FLUTTER` — ce qu'a fait l'agent,
+après quatre passes sans.
+
+### 607. Sur un écran à compte à rebours, Maestro attend une hiérarchie stable AVANT chaque toucher, et le chrono s'épuise
+
+**Ouvert le 01/10/2026 · OUVERT** — au premier run complet, l'assertion « Le
+chrono est en pause » échoue : le toucher sur « Pause » est arrivé après les 15 s
+de la question. Établi sur les journaux de l'appareil (`maestro.log`,
+`commands.json`) :
+
+- Un toucher Maestro attend DEUX fois. AVANT, pour viser : « Tapping on
+  element » puis « Tap aimed via settled hierarchy » — pour « Pause »,
+  14:19:15.489 → 14:19:24.990, **9,5 s**, l'écran changeant chaque seconde. APRÈS :
+  « Something has changed … Proceed », 0,8 s.
+- Le remède de l'agent — `waitToSettleTimeoutMs: 500` et `retryTapIfNoChange:
+  false` sur les huit touchers sous chrono — règle la seconde attente, pas la
+  première : dans les runs suivants, ces touchers durent encore **10,9 à 11,3 s**.
+  Le flow y est vert parce que le tutoriel ne s'arme qu'à la première session
+  d'un compte : sans lui, « Pause » arrive à 11 s, sous les 15. Un vert obtenu par
+  un changement de scénario, pas par le remède.
+- Rien dans le SKILL sur les écrans à chrono. Remède à établir : mesurer d'abord
+  ce que Maestro 2.8.0 offre pour viser sans cette attente, sur une sonde à
+  minuterie ; puis écrire la règle des écrans à chrono.
+
+Écartés sans point : l'installeur ne dit pas que `mobile/.github/` est inerte dans
+un monorepo — sur un dépôt GitLab, le « ne s'exécutera NULLE PART » du 569 couvre
+le cas ; le marqueur `TODO(argus)` de `known_issues.dart` se ferme à la main —
+c'est ce que le SKILL prescrit (« `TODO(argus): FAIT — …` »).
+
+## Rendu par le run 109 — confirmation iOS de 578 à 580, terrain 2, simulateur — 01/10/2026
+
+Le terrain qui parle à une API réelle, sur simulateur iOS 26.3, `HEAD` en
+`63037d3`. Agent vierge, 67 min ; 11 écrans déclarés = ancrés = visités,
+13 min 15 s d'appareil, étage 1 à 144 dettes — toutes des défauts de
+l'application. Lu sur les artefacts.
+
+### Ce qui est confirmé, et ce qui ne l'a pas été
+
+- **578 à 580 NON exercés dans leurs parties corrigées.** L'application n'a que
+  `Base.lproj`, sans `CFBundleLocalizations` : les fenêtres système sont en
+  ANGLAIS sur un appareil `fr-CI` (« Allow While Using App », « Allow » : touchées,
+  vertes, mais elles l'étaient déjà). Et ses permissions partent APRÈS la
+  connexion : `resilience`, en « tout refusé », n'en voit aucune.
+- Confirmés : **585** (délégués) et **599** (Node 24 posé). Le **565** se lit tel
+  qu'assumé sur iOS : 7 démarrages sur 9 « non jugeables », absorbés par le geste
+  de fermeture des invites (~7,1 s avant chacun).
+
+### Ce qu'il rend — trois points
+
+### 608. 🔴 SÉCURITÉ — le job iOS du workflow livré publie les journaux Maestro bruts, secrets de recette en clair
+
+**Ouvert le 01/10/2026 · OUVERT** — `e2e-ios` reçoit `QA_USER` et `QA_PASS`
+(l. 544-545) et téléverse tout `argus-mobile-report/` (l. 554). Le run 109 a
+compté les valeurs des comptes de recette dans 53, 73 et 69 fichiers de ce
+dossier — `commands.json`, `maestro.log`, journaux du simulateur et de XCTest —,
+et GitHub ne masque pas les artefacts. `e2e-android`, lui, restreint ses chemins
+(l. 456-461 : `report.html`, les `*.json` et `*.xml` du rapport, captures et
+enregistrements) sous la mise en garde de ne pas publier les journaux bruts. Une
+rupture de PARITÉ.
+
+- Le garde des téléversements existait, et il parcourt TOUS les sites — mais il
+  ne lit que `if: !cancelled()`. Rien ne regardait les CHEMINS publiés par un job
+  qui reçoit un secret : le défaut est né d'un site laissé de côté pendant qu'on
+  regardait son voisin, ce que ce même garde dit en commentaire.
+- Remède, sans arbitrage à rendre : la liste d'Android pour iOS ; et un garde sur
+  tout job qui reçoit un secret : ses artefacts ne publient ni le dossier entier,
+  ni un journal Maestro.
+
+### 609. `ARGUS-MOBILE.md` situe encore l'empreinte de cadrage à la racine des références : le 143 n'avait corrigé que la méthodologie
+
+**Ouvert le 01/10/2026 · OUVERT** — `ARGUS-MOBILE.md` (l. 250) annonce
+`.maestro/_baselines/.argus-crop` ; le fichier est écrit par appareil
+(`_baselines/ios-sim/.argus-crop` au run 109). Le 143, clos le 23/08, avait
+corrigé le même chemin dans `methodology-mobile.md` — pas dans sa jumelle.
+
+### 610. `make argus-sca` promet « les dépendances Dart et natives » : il ne lit jamais `Podfile.lock`, et Gradle seulement si le projet génère ses lockfiles
+
+**Ouvert le 01/10/2026 · OUVERT** — `ARGUS-MOBILE.md` (l. 154) : « CVE des
+dépendances Dart et natives ». `findLockfiles` (`sca.mjs`) lit `pubspec.lock`, et
+les lockfiles Gradle **seulement s'ils existent** — Android ne les génère pas par
+défaut, le commentaire du script le dit lui-même. `Podfile.lock` n'est jamais lu.
+Le run 109 : « aucune CVE dans `pubspec.lock` … Le `Podfile.lock` n'est pas
+scanné » — un zéro qui se lit comme une couverture qu'il n'a pas.
+
+Écartés sans point : « installation ignorée » dans le rapport d'un passage final
+lancé en `--no-install` — exact pour le passage dont il rend compte ; le `Error 1`
+de `make argus-report` — make aplatit le code de sortie d'un gate `fail`. Et deux
+« mots coupés » relevés par le 592 dans un squelette de chargement, d'abord pris
+pour un faux positif : sonde à l'appui, ils étaient VRAIS — au ras de la limite,
+ils ont révélé un défaut du correctif posé sur le terrain.
