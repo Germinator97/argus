@@ -5097,11 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **600**, trouvé le 01/10 en lisant la passe du 599
-(section « Trouvé en lisant la passe du 599 », en fin de fichier) : sans maestro,
-le harnais annonce 103 mutations non vérifiées, dont 55 le sont, par PyYAML et
-par le parseur de la configuration ; et sans PyYAML, maestro relirait les
-workflows, qu'il rejette tous. Les **598** et **599**, relevés le 01/10 sur l'annonce de la
+✅ **Rien d'ouvert.** Le **600**, trouvé le 01/10 en lisant la passe du 599
+(section « Trouvé en lisant la passe du 599 », en fin de fichier), est fermé le
+jour même : les avertissements du harnais comptent sur la décision de
+`validateur` — 48 mutations sans maestro, et non 103 —, et un workflow n'est
+plus jamais relu par maestro, qui les rejette tous. Les **598** et **599**, relevés le 01/10 sur l'annonce de la
 bascule d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en fin
 de fichier), sont fermés le jour même : les cinq jobs de la CI du plugin
 épinglent `ubuntu-24.04`, et l'image ne changera que par un commit à elle (598) ;
@@ -15135,7 +15135,7 @@ commenté du niveau B. Node 20 est en fin de vie depuis le **30/04/2026**
 
 ### 600. Sans maestro, le harnais annonce 103 mutations de flow non vérifiées : 55 le sont — et sans PyYAML, maestro relirait les workflows qu'il rejette
 
-**Ouvert le 01/10/2026 · OUVERT** — la passe du 599, jouée dans le montage
+**Ouvert le 01/10/2026 · CLOS** — la passe du 599, jouée dans le montage
 minimal, annonce : « maestro absent du PATH — les 103 mutations de flow ne seront
 pas vérifiées syntaxiquement : un YAML cassé s'y lira comme un garde qui
 tombe ». Le compte prend toute cible `.yaml` ou `.yml`. Or `validateur` relit les
@@ -15161,3 +15161,27 @@ pas prouvé ne se lit plus.
   quelle cible —, que `validateur` applique et que les avertissements comptent ;
   un workflow n'est jamais relu par maestro, et sans PyYAML il n'a aucun
   lecteur, comme l'avertissement le dit.
+
+#### ✅ Fermé le jour même — une décision, que `validateur` applique et que les avertissements comptent
+
+- `verificateur` nomme l'outil qui relit une cible mutée, qu'il soit là ou non ;
+  `validateur` n'en fait plus que la commande, et un outil absent rend `None`,
+  jamais un autre outil. Comparé sur les 62 cibles et les quatre combinaisons
+  d'outils : c'est le seul changement de ce que `validateur` rend — sans
+  PyYAML, les deux workflows n'ont plus maestro pour lecteur.
+- Les avertissements de démarrage sont extraits pour qu'un garde les appelle,
+  et comptés sur cette décision : la passe du 600 elle-même annonce « les 48
+  mutations de flow » sans maestro, là où celle du 599 en annonçait 103 ; sans
+  PyYAML, les 33 mutations de workflow n'ont aucun lecteur, comme
+  l'avertissement le promet.
+- Deux gardes : les nombres annoncés égalent, outil par outil et combinaison
+  par combinaison, les mutations que `validateur` cesse de relire — relevées en
+  l'appelant mutation par mutation, jamais en relisant la décision ; et ni les
+  workflows ni la configuration ne passent par maestro, quand un flow y passe
+  toujours.
+- Quatre mutations — l'avertissement de maestro recompte toute cible YAML, un
+  workflow retombe sur maestro sans PyYAML, la configuration part chez maestro,
+  une annonce compte un outil présent : **4/4 TOMBE**, jouées dans le montage
+  minimal sur le commit du correctif. La deuxième est créditée au premier
+  garde, qui la juge aussi — l'annonce y ment ; rejouée à la main sur une copie
+  mutée, le second garde tombe seul. Suite 686/686, 771 mutations, 0 inerte.
