@@ -17283,6 +17283,75 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
 });
 
 
+// ── 608 · un job qui reçoit un secret ne publie aucun journal Maestro brut ──
+//
+// Le job iOS publiait tout `argus-mobile-report/` : Maestro écrit les variables
+// d'environnement en clair dans `commands.json` et dans ses journaux, et le run
+// 109 y a compté les valeurs des comptes de recette — 25 `commands.json` sur
+// 50, 28 à 45 journaux —, quand le job Android restreignait déjà ses chemins.
+// Le garde ci-dessus parcourait TOUS les téléversements, mais ne lisait que
+// `if: !cancelled()` : rien ne regardait CE QUI part.
+//
+// 📌 La liste est écrite EN CLAIR, pas dérivée du job Android : dérivée, elle
+// validerait iOS le jour où les deux publieraient la même fuite. Chaque entrée
+// a été mesurée sans valeur de recette sur ce même run.
+const PUBLIABLES_AVEC_SECRETS = new Set([
+  'argus-mobile-report/report.html',
+  'argus-mobile-report/*.json',
+  'argus-mobile-report/*.xml',
+  'argus-mobile-report/maestro/**/screenshots/**',
+  'argus-mobile-report/maestro/**/startRecording/**',
+]);
+
+/** Les jobs du workflow livré, commentaires ôtés : `{ nom, bloc }`. */
+function jobsDuWorkflow() {
+  const lignes = workflowSansCommentaires().split('\n');
+  const debut = lignes.findIndex((l) => /^jobs:\s*$/.test(l));
+  assert.ok(debut >= 0, 'plus de clé `jobs:` dans le workflow livré : ce garde ne lit plus rien');
+  const jobs = [];
+  for (const l of lignes.slice(debut + 1)) {
+    if (/^\S/.test(l)) break;
+    const tete = l.match(/^ {2}([A-Za-z0-9_-]+):\s*$/);
+    if (tete) jobs.push({ nom: tete[1], bloc: '' });
+    else if (jobs.length > 0) jobs[jobs.length - 1].bloc += `${l}\n`;
+  }
+  return jobs;
+}
+
+/** Les chemins d'une étape `upload-artifact`, en ligne ou en bloc `|`. */
+function cheminsPublies(etape) {
+  const enLigne = etape.match(/^\s*path: (?!\|)(.+)$/m);
+  if (enLigne) return [enLigne[1].trim()];
+  const bloc = etape.match(/^(\s*)path: \|\s*\n((?:\1 +\S.*\n?)+)/m);
+  assert.ok(bloc, `une étape de téléversement sans \`path:\` lisible : « ${etape.trim().slice(0, 80)} »`);
+  return bloc[2].split('\n').map((l) => l.trim()).filter(Boolean);
+}
+
+test('608 — un job qui reçoit un secret ne publie aucun journal Maestro brut', () => {
+  const jobs = jobsDuWorkflow().filter((j) => /\$\{\{\s*secrets\./.test(j.bloc));
+  let etapes = 0;
+  for (const job of jobs) {
+    for (const reste of job.bloc.split('- uses: actions/upload-artifact').slice(1)) {
+      const fin = reste.search(/^ {6}- (uses|name|run):/m);
+      const etape = fin === -1 ? reste : reste.slice(0, fin);
+      etapes += 1;
+      for (const chemin of cheminsPublies(etape)) {
+        assert.ok(PUBLIABLES_AVEC_SECRETS.has(chemin),
+          `le job « ${job.nom} » reçoit un secret et publie « ${chemin} » — Maestro écrit les `
+          + 'variables d\'environnement en clair dans `commands.json` et dans ses journaux, et '
+          + 'GitHub ne masque pas les artefacts. Ne publier que le rapport, ses JSON et XML de '
+          + 'tête, les captures et les enregistrements (608)');
+      }
+    }
+  }
+  // ⚠️ L'autre moitié : sans job à secret qui téléverse, la boucle ne mesure rien.
+  assert.ok(etapes >= 2,
+    `${etapes} téléversement(s) dans les jobs qui reçoivent un secret — Android et iOS en `
+    + 'portent un chacun : le découpage des jobs ou le motif des secrets a changé, ce garde ne '
+    + 'mesure plus ce qu\'il dit');
+});
+
+
 // ═══════════════════════════════════════════════════════════════════════════
 // 513 — le graphe des flows : un contrôle qui existait, câblé d'un seul côté
 // ═══════════════════════════════════════════════════════════════════════════

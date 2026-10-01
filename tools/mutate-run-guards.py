@@ -4060,6 +4060,20 @@ MUTATIONS = [
      "      - uses: actions/setup-node@v7\n        with:\n          node-version: '24'\n\n      - run: flutter pub get",
      "      - uses: actions/setup-node@v7\n\n      - run: flutter pub get"),
 
+    # ── 608 · un job à secret ne publie aucun journal Maestro brut ──
+    # Le job iOS republie tout le rapport : les comptes de recette repartent en artefact.
+    ("ci", "608 · le job iOS republie tout le rapport",
+     "          name: argus-mobile-report-ios\n          path: |\n            argus-mobile-report/report.html\n",
+     "          name: argus-mobile-report-ios\n          path: argus-mobile-report/\n          _: |\n            argus-mobile-report/report.html\n"),
+    # Le job Android ajoute les journaux de Maestro à sa liste.
+    ("ci", "608 bis · le job Android publie les journaux de Maestro",
+     "            argus-mobile-report/maestro/**/startRecording/**\n          retention-days: 14\n          if-no-files-found: warn\n\n  # ── Étage 2 bis",
+     "            argus-mobile-report/maestro/**/startRecording/**\n            argus-mobile-report/maestro/**/logs/**\n          retention-days: 14\n          if-no-files-found: warn\n\n  # ── Étage 2 bis"),
+    # Le job iOS publie tout le dossier de Maestro, `commands.json` compris.
+    ("ci", "608 ter · le job iOS publie tout le dossier de Maestro",
+     "            argus-mobile-report/maestro/**/startRecording/**\n          retention-days: 14\n          if-no-files-found: warn\n\n# ═",
+     "            argus-mobile-report/maestro/**\n          retention-days: 14\n          if-no-files-found: warn\n\n# ═"),
+
     # ── 600 · ce que la passe ne vérifie pas se compte sur la décision ──
     # L'avertissement de maestro recompte toute cible YAML comme un flow : 103 au lieu de 48.
     ("mutateur", "600 · l'avertissement de maestro recompte toute cible YAML",

@@ -547,11 +547,21 @@ jobs:
       - name: Rapport
         if: ${{ !cancelled() }}
         run: $ARGUS report
+      # 🔴 LA MÊME LISTE QU'ANDROID, et pour la même raison : ce job reçoit
+      # QA_USER et QA_PASS, et Maestro les écrit en clair dans `commands.json`
+      # comme dans ses journaux. Le dossier entier publiait les comptes de
+      # recette — mesuré sur un run iOS : leurs valeurs dans 25 `commands.json`
+      # sur 50, et dans 28 à 45 journaux. GitHub ne masque pas les artefacts.
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: argus-mobile-report-ios
-          path: argus-mobile-report/
+          path: |
+            argus-mobile-report/report.html
+            argus-mobile-report/*.json
+            argus-mobile-report/*.xml
+            argus-mobile-report/maestro/**/screenshots/**
+            argus-mobile-report/maestro/**/startRecording/**
           retention-days: 14
           if-no-files-found: warn
 
