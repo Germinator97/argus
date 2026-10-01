@@ -11,6 +11,10 @@
 #   mobile-dev-inc/action-maestro-cloud  v3.0.1
 # ⚠️ Le workflow du skill web est encore sur checkout@v6 / setup-node@v6 : les
 # deux ne sont plus alignés. Bumpe-le dans la même passe si tu y touches.
+#
+# Node 24 dans chaque job qui le lance, exemple commenté compris (599) : la LTS
+# active, suivie jusqu'au 30/04/2028. Node 20, écrit ici jusqu'au 01/10/2026, est
+# en fin de vie depuis le 30/04/2026. Une seule version pour tous les jobs.
 name: argus-mobile
 
 on:
@@ -51,7 +55,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - id: p
         run: |
           PLATS="$($ARGUS config --print-platforms)"
@@ -237,7 +241,7 @@ jobs:
           channel: stable
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: flutter pub get
       # ⚠️ `latest` SUIT LES PUBLICATIONS AMONT, et ce job est celui dont le sujet
       # est la chaîne d'approvisionnement. Deux runs à un jour d'écart n'analysent
@@ -327,7 +331,7 @@ jobs:
           channel: stable
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
 
       - run: flutter pub get
       - run: flutter build apk --debug
@@ -507,7 +511,7 @@ jobs:
           channel: stable
       - uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version: '24'
       - run: flutter pub get
       - run: flutter build ios --debug --simulator
       # ⚠️ VERSION NON ÉPINGLÉE, et ce n'est pas anodin ici : le runner LIT les
@@ -598,7 +602,7 @@ jobs:
 #           channel: stable
 #       - uses: actions/setup-node@v7
 #         with:
-#           node-version: '20'
+#           node-version: '24'
 #       - run: flutter pub get
 #       # 586 — un dossier de symboles propre au scan, jamais celui de la publication.
 #       - run: flutter build apk --release --obfuscate --split-debug-info=build/argus-sym

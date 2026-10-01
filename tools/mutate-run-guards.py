@@ -4045,6 +4045,20 @@ MUTATIONS = [
     ("ciplugin", "598 ter · un job écrit son image hors de sa ligne",
      "    name: Cohérence du scaffold\n    runs-on: ubuntu-24.04",
      "    name: Cohérence du scaffold\n    runs-on:\n      - ubuntu-latest"),
+
+    # ── 599 · le workflow livré installe un Node suivi ──
+    # Le premier job réinstalle Node 20, en fin de vie.
+    ("ci", "599 · un job du workflow livré réinstalle Node 20",
+     "          node-version: '24'\n      - id: p",
+     "          node-version: '20'\n      - id: p"),
+    # L'exemple commenté du niveau B réinstalle Node 20 : décommenté tel quel, il l'installerait.
+    ("ci", "599 bis · l'exemple commenté du niveau B réinstalle Node 20",
+     "#           node-version: '24'",
+     "#           node-version: '20'"),
+    # Le job Android ne dit plus quel Node installer : il prend celui de l'image.
+    ("ci", "599 ter · un job installe le Node de l'image",
+     "      - uses: actions/setup-node@v7\n        with:\n          node-version: '24'\n\n      - run: flutter pub get",
+     "      - uses: actions/setup-node@v7\n\n      - run: flutter pub get"),
 ]
 
 

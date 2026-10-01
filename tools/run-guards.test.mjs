@@ -21237,3 +21237,23 @@ test('598 — chaque job de la CI du plugin tourne sur une seule image, épingl�
     `les jobs tournent sur ${distinctes.join(', ')} : deux images, deux variables — `
     + 'la migration se fait d\'un bloc, par un commit à elle (598)');
 });
+
+// ── 599 · LE WORKFLOW LIVRÉ INSTALLE UN NODE SUIVI ───────────────────────────
+// Il installait Node 20, en fin de vie depuis le 30/04/2026, et aucune passe ne
+// l'exerçait : la suite tourne sous le Node du poste et sous celui du runner.
+// Une seule version, la même partout — l'exemple commenté compris, qu'un projet
+// décommente tel quel. Le workflow du plugin web est hors périmètre (tranché).
+test('599 — le workflow livré installe partout le même Node, la LTS active', () => {
+  const wf = readFileSync(join(SCAFFOLD, '.github/workflows/argus-mobile.yml'), 'utf8');
+  // Chaque `setup-node`, commenté ou non, et la version qu'il pose.
+  const setups = [...wf.matchAll(/^[ \t#]*- uses: actions\/setup-node@/gm)].length;
+  const versions = [...wf.matchAll(/^[ \t#]*node-version:[ \t]*['"]?([^'"\s#]+)['"]?/gm)].map((m) => m[1]);
+  assert.ok(setups > 0, 'aucun `actions/setup-node` lu dans le workflow livré : le relevé ne voit plus rien (599)');
+  assert.equal(versions.length, setups,
+    `${setups} setup-node, ${versions.length} version(s) lue(s) : un job installerait le Node de l'image, `
+    + 'qui change avec elle (599)');
+  const distinctes = [...new Set(versions)];
+  assert.deepEqual(distinctes, ['24'],
+    `le workflow livré installe ${distinctes.join(', ')} — attendu 24 partout, la LTS active, suivie jusqu'au `
+    + '30/04/2028 ; Node 20 est en fin de vie depuis le 30/04/2026 (599)');
+});
