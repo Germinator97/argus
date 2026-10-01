@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **598** et **599**, relevés le 01/10 sur l'annonce de
-la bascule d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en
-fin de fichier) : la CI du plugin changerait d'image en pleine recherche du gel
-du 596 (598), et le workflow livré aux projets d'accueil installe Node 20, en fin
-de vie depuis le 30/04/2026 (599). Les **596** et **597**, trouvés le 30/09 par la CI du fork
+🔴 **1 POINT OUVERT** — le **599**, relevé le 01/10 sur l'annonce de la bascule
+d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en fin de
+fichier) : le workflow livré aux projets d'accueil installe Node 20, en fin de
+vie depuis le 30/04/2026. Le **598**, relevé le même jour, est fermé le jour
+même : les cinq jobs de la CI du plugin épinglent `ubuntu-24.04`, et l'image ne
+changera que par un commit à elle. Les **596** et **597**, trouvés le 30/09 par la CI du fork
 (section « Trouvé par la CI du fork — run #12 », en fin de fichier), sont fermés
 le jour même : la suite se figeait d'elle-même sur le runner, par intermittence,
 et le harnais coupait une mutation qui n'y était pour rien en désignant le
@@ -15048,7 +15049,7 @@ deux du 20/09) en attendant la CI #13.
 
 ### 598. `ubuntu-latest` bascule vers Ubuntu 26.04 du 19/10 au 19/11 : la CI du plugin changerait d'image en pleine recherche du gel du 596
 
-**Ouvert le 01/10/2026 · OUVERT** — les cinq jobs du workflow du plugin tournent
+**Ouvert le 01/10/2026 · CLOS** — les cinq jobs du workflow du plugin tournent
 sur ce libellé. Ce qui change sous eux :
 
 - Node par défaut **22.23.2 → 24.21.0** — hors d'un terminal, `node --test` écrit
@@ -15070,6 +15071,25 @@ quand un job bascule.
 Tranché par Germinator : les cinq jobs épinglent `ubuntu-24.04` jusqu'à ce que
 la cause du gel soit trouvée ; la migration vers 26.04 sera un commit à elle,
 jugé par sa propre CI.
+
+#### ✅ Fermé le jour même — une seule image, épinglée, écrite en clair dans chaque job
+
+- Les cinq jobs tournent sur `ubuntu-24.04`, écrit sur la ligne de chacun ; un
+  commentaire au-dessus des jobs dit pourquoi, et comment la migration se fera :
+  un commit à elle, jugé par sa propre CI. Celui du job `harness`, qui parlait de
+  la valeur que « `ubuntu-latest` rend », ne nomme plus un libellé qu'il
+  n'emploie plus.
+- Un garde lit chaque job et son image : une par job, sur sa ligne, de la forme
+  `ubuntu-AA.MM`, la même pour tous. Une image écrite en liste sur la ligne
+  suivante n'est pas sautée : le compte la refuse.
+- Trois mutations — un job revenu sur `ubuntu-latest`, un job seul sur une autre
+  image épinglée, un job qui écrit son image hors de sa ligne : **3/3 TOMBE**,
+  chacune sur le garde du 598, jouées dans le montage minimal (Node 24.21.0,
+  Python 3.14.4) sur le commit du correctif. Suite 683/683, 764 mutations,
+  0 inerte.
+- 📌 Rien ne change aujourd'hui sur le runner : `ubuntu-latest` désigne encore
+  Ubuntu 24.04. Les CI qui suivront restent comparables aux #12 et #13 pour la
+  recherche du gel du 596.
 
 ### 599. Le workflow livré aux projets d'accueil installe Node 20, en fin de vie depuis le 30/04/2026
 
