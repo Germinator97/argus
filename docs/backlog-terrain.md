@@ -5097,7 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **598** et **599**, relevés le 01/10 sur l'annonce de la
+🔴 **1 POINT OUVERT** — le **600**, trouvé le 01/10 en lisant la passe du 599
+(section « Trouvé en lisant la passe du 599 », en fin de fichier) : sans maestro,
+le harnais annonce 103 mutations non vérifiées, dont 55 le sont, par PyYAML et
+par le parseur de la configuration ; et sans PyYAML, maestro relirait les
+workflows, qu'il rejette tous. Les **598** et **599**, relevés le 01/10 sur l'annonce de la
 bascule d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en fin
 de fichier), sont fermés le jour même : les cinq jobs de la CI du plugin
 épinglent `ubuntu-24.04`, et l'image ne changera que par un commit à elle (598) ;
@@ -15126,3 +15130,34 @@ commenté du niveau B. Node 20 est en fin de vie depuis le **30/04/2026**
 - Le workflow du plugin web garde `'20'` : hors périmètre, tranché.
 - 📌 Le correctif touche `plugins/` : le plugin installé se recale après le
   push.
+
+## Trouvé en lisant la passe du 599 — 01/10/2026
+
+### 600. Sans maestro, le harnais annonce 103 mutations de flow non vérifiées : 55 le sont — et sans PyYAML, maestro relirait les workflows qu'il rejette
+
+**Ouvert le 01/10/2026 · OUVERT** — la passe du 599, jouée dans le montage
+minimal, annonce : « maestro absent du PATH — les 103 mutations de flow ne seront
+pas vérifiées syntaxiquement : un YAML cassé s'y lira comme un garde qui
+tombe ». Le compte prend toute cible `.yaml` ou `.yml`. Or `validateur` relit les
+deux workflows avec PyYAML (33 mutations) et la configuration
+`argus.mobile.yaml` avec le parseur du skill (22) : **48** seulement dépendent de
+maestro. L'avertissement annonce plus du double de ce que la passe ne vérifie
+pas — il ne laisse rien passer, mais une passe qui se trompe sur ce qu'elle n'a
+pas prouvé ne se lit plus.
+
+- Le compte recopiait la décision de `validateur` au lieu de la lire : la copie
+  est restée sur « tout YAML est un flow » quand la configuration, puis les
+  workflows, ont eu leur propre lecteur.
+- La même décision, lue jusqu'au bout, donne l'autre moitié. MESURÉ en appelant
+  `validateur` sous les quatre combinaisons d'outils : sans PyYAML mais avec
+  maestro, il envoie les deux workflows à maestro. Et maestro 2.8.0 les rejette
+  (`Invalid Command: name`, exit 1), comme la configuration (`Invalid Command:
+  run`) ; contre-épreuve, trois flows du scaffold : exit 0. Les 33 mutations de
+  workflow rendraient donc HARNAIS, quand l'avertissement de PyYAML promet
+  qu'« elles ne seront pas ACCUSÉES ». Le runner installe PyYAML et n'a pas
+  maestro : il n'y est pas exposé ; un poste qui a maestro l'est, dès qu'un
+  interpréteur sans PyYAML lance le harnais.
+- Remède, sans arbitrage à rendre : une seule décision — quel outil relit
+  quelle cible —, que `validateur` applique et que les avertissements comptent ;
+  un workflow n'est jamais relu par maestro, et sans PyYAML il n'a aucun
+  lecteur, comme l'avertissement le dit.
