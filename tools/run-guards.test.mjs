@@ -21257,3 +21257,79 @@ test('599 — le workflow livré installe partout le même Node, la LTS active',
     `le workflow livré installe ${distinctes.join(', ')} — attendu 24 partout, la LTS active, suivie jusqu'au `
     + '30/04/2028 ; Node 20 est en fin de vie depuis le 30/04/2026 (599)');
 });
+
+// ── 600 · CE QUE LA PASSE NE VÉRIFIE PAS SE COMPTE SUR LA DÉCISION ───────────
+// Sans maestro, le harnais annonçait 103 mutations de flow sans lecteur : il
+// comptait toute cible YAML, quand les workflows (PyYAML) et la configuration
+// (le parseur du skill) ont le leur — 48 seulement dépendaient de maestro. Et la
+// décision, suivie jusqu'au bout, envoyait les workflows à maestro dès que
+// PyYAML manquait : maestro les rejette tous, chaque mutation aurait rendu
+// HARNAIS. Une seule décision, `verificateur` ; les annonces la comptent.
+test('600 — les avertissements comptent, outil par outil, les mutations que validateur ne relira pas', () => {
+  const r = interrogerLeHarnais([
+    'res = {}',
+    'for pyyaml in (True, False):',
+    '    for maestro in ("/x/maestro", None):',
+    '        # Ce que la boucle ferait, mutation par mutation : avec TOUS les outils, puis avec ceux-là.',
+    '        h.PYYAML, h.MAESTRO = True, "/x/maestro"',
+    '        complet = [h.validateur(h.CIBLES[c]) for c, *_ in h.MUTATIONS]',
+    '        h.PYYAML, h.MAESTRO = pyyaml, maestro',
+    '        ici = [h.validateur(h.CIBLES[c]) for c, *_ in h.MUTATIONS]',
+    '        perdus = {"maestro": 0, "pyyaml": 0, "autre": 0}',
+    '        for avec, sans in zip(complet, ici):',
+    '            if avec is not None and sans is None:',
+    '                if avec[0] == "/x/maestro": perdus["maestro"] += 1',
+    '                elif avec[:2] == ["python3", "-c"] and "import yaml" in avec[2]: perdus["pyyaml"] += 1',
+    '                else: perdus["autre"] += 1',
+    '        res[f"{pyyaml}/{maestro is not None}"] = {"perdus": perdus,',
+    '            "annonces": h.annonces_sans_verificateur(),',
+    '            "yaml": sum(1 for c, *_ in h.MUTATIONS if h.CIBLES[c].suffix in (".yaml", ".yml"))}',
+    'print(json.dumps(res))',
+  ]);
+  const annonce = (/** @type {string[]} */ lignes, /** @type {RegExp} */ motif) => {
+    const m = lignes.join('\n').match(motif);
+    return m ? Number(m[1]) : 0;
+  };
+  assert.equal(Object.keys(r).length, 4, 'les quatre combinaisons d\'outils doivent être jugées (600)');
+  for (const [combo, { perdus, annonces }] of Object.entries(r)) {
+    assert.equal(perdus.autre, 0, `${combo} : une mutation perd un lecteur qui n'est ni maestro ni PyYAML (600)`);
+    assert.equal(annonce(annonces, /maestro absent du PATH — les (\d+) mutations/), perdus.maestro,
+      `PyYAML/maestro = ${combo} : l'avertissement annonce ${annonce(annonces, /maestro absent du PATH — les (\d+)/)} `
+      + `mutations sans maestro, la décision en laisse ${perdus.maestro} sans lecteur (600)`);
+    assert.equal(annonce(annonces, /PyYAML absent — les (\d+) mutations/), perdus.pyyaml,
+      `PyYAML/maestro = ${combo} : l'avertissement annonce ${annonce(annonces, /PyYAML absent — les (\d+)/)} `
+      + `mutations sans PyYAML, la décision en laisse ${perdus.pyyaml} sans lecteur (600)`);
+  }
+  // Les clés sont « PyYAML/maestro », écrites par Python : True/False.
+  const sansMaestro = r['True/False'];
+  const sansPyyaml = r['False/True'];
+  // ⚠️ Prouver que le relevé MESURE : sans l'outil, des mutations perdent bien leur lecteur…
+  assert.ok(sansMaestro.perdus.maestro > 0, 'sans maestro, aucun flow ne perdrait son lecteur : le relevé ne voit plus rien (600)');
+  assert.ok(sansPyyaml.perdus.pyyaml > 0, 'sans PyYAML, aucun workflow ne perdrait son lecteur : le relevé ne voit plus rien (600)');
+  // …et, le cas de la passe du 599, pas TOUTES les cibles YAML : les workflows et la configuration ont le leur.
+  assert.ok(sansMaestro.perdus.maestro < sansMaestro.yaml,
+    `sans maestro, ${sansMaestro.perdus.maestro} mutations sur ${sansMaestro.yaml} cibles YAML perdent leur lecteur : `
+    + 'les workflows et la configuration ne dépendent pas de maestro (600)');
+});
+
+test('600 — ni les workflows ni la configuration ne sont relus par maestro, qui les rejette', () => {
+  const r = interrogerLeHarnais([
+    'res = {}',
+    'for pyyaml in (True, False):',
+    '    h.PYYAML, h.MAESTRO = pyyaml, "/x/maestro"',
+    '    res[str(pyyaml)] = {k: h.validateur(h.CIBLES[k]) for k in ("ci", "ciplugin", "yamlconf", "goto")}',
+    'print(json.dumps(res))',
+  ]);
+  assert.deepEqual(Object.keys(r).sort(), ['False', 'True'], 'les deux états de PyYAML doivent être jugés (600)');
+  for (const [pyyaml, choix] of Object.entries(r)) {
+    for (const k of ['ci', 'ciplugin', 'yamlconf']) {
+      assert.ok(choix[k] === null || choix[k][0] !== '/x/maestro',
+        `PyYAML ${pyyaml === 'True' ? 'présent' : 'absent'} : la cible « ${k} » serait relue par maestro, qui la `
+        + 'rejette toujours — chacune de ses mutations rendrait HARNAIS (600)');
+    }
+    // L'autre moitié : un flow reste relu par maestro quand il est là — sinon ce garde ne distingue rien.
+    assert.equal(choix.goto?.[0], '/x/maestro', `PyYAML ${pyyaml} : un flow n'est plus relu par maestro (600)`);
+  }
+  assert.equal(r.False.ci, null, 'sans PyYAML, un workflow n\'a aucun lecteur — c\'est ce que l\'avertissement annonce (600)');
+  assert.equal(r.False.ciplugin, null, 'sans PyYAML, le workflow du plugin n\'a aucun lecteur non plus (600)');
+});

@@ -4059,6 +4059,24 @@ MUTATIONS = [
     ("ci", "599 ter · un job installe le Node de l'image",
      "      - uses: actions/setup-node@v7\n        with:\n          node-version: '24'\n\n      - run: flutter pub get",
      "      - uses: actions/setup-node@v7\n\n      - run: flutter pub get"),
+
+    # ── 600 · ce que la passe ne vérifie pas se compte sur la décision ──
+    # L'avertissement de maestro recompte toute cible YAML comme un flow : 103 au lieu de 48.
+    ("mutateur", "600 · l'avertissement de maestro recompte toute cible YAML",
+     "            f\"⚠  maestro absent du PATH — les {manque['maestro']} mutations de flow ne seront pas vérifiées\",",
+     "            f\"⚠  maestro absent du PATH — les {sum(1 for c, *_ in MUTATIONS if CIBLES[c].suffix in ('.yaml', '.yml'))} mutations de flow ne seront pas vérifiées\","),
+    # Sans PyYAML, un workflow retombe sur maestro, qui le rejette : HARNAIS sur chaque mutation.
+    ("mutateur", "600 bis · sans PyYAML, un workflow retombe sur maestro",
+     "\n        if not PYYAML:\n            return None\n",
+     "\n        if not PYYAML:\n            return [MAESTRO, \"check-syntax\", str(cible)] if MAESTRO else None\n"),
+    # La configuration part chez maestro, qui la rejette toujours.
+    ("mutateur", "600 ter · la configuration est relue par maestro",
+     "\n        return \"config\"",
+     "\n        return \"maestro\""),
+    # Une annonce compte l'outil même présent : la passe se dirait aveugle sans l'être.
+    ("mutateur", "600 quater · une annonce compte un outil présent",
+     "\n        if outil in presents and not presents[outil]:",
+     "\n        if outil in presents:"),
 ]
 
 
@@ -4255,25 +4273,22 @@ def digest(cible):
     return hashlib.sha256(cible.read_bytes()).hexdigest()[:12]
 
 
-def validateur(cible):
-    """La commande qui dit si une cible MUTÉE se lit encore — None : aucun ici.
+def verificateur(cible):
+    """L'outil qui relit une cible MUTÉE — son nom, qu'il soit là ou non (600).
 
-    Une mutation qui casse le build fait rougir pour une raison sans rapport
-    avec le garde, et ce rouge-là se lit comme un succès. Pour un flow, c'est
-    `maestro check-syntax` qui le dit — aucun parseur d'ici ne les lit, leur
-    `---` sortant du sous-ensemble YAML du harness. Quand maestro manque, on ne
-    vérifie pas : on l'ANNONCE (voir main), plutôt que de laisser croire que ça
-    l'a été.
-    ⚠️ 563 — EXTRAIT DE LA BOUCLE pour qu'un garde l'APPELLE : écrite dedans,
-    la décision n'était gardable qu'en cherchant son texte.
+    ⚠️ 600 — UNE SEULE DÉCISION, que `validateur` applique et que les
+    avertissements de démarrage comptent. Recopiée dans l'avertissement de
+    maestro, elle avait dérivé : « toute cible YAML est un flow », 103 mutations
+    annoncées sans lecteur quand les workflows et la configuration avaient le
+    leur — 48 seulement dépendaient de maestro.
     """
     if cible.suffix == ".mjs":
-        return ["node", "--check", str(cible)]
+        return "node"
     if cible.suffix == ".sh":
         # ⚠️ AJOUTÉ AU RUN 34, même leçon que le workflow : une cible sans
         # validateur laisse passer une mutation qui casse la syntaxe, et le
         # rouge qui suit se lit comme un garde qui tombe.
-        return ["bash", "-n", str(cible)]
+        return "bash"
     if cible.name == "argus.mobile.yaml":
         # ⚠️ CE fichier-là n'est PAS un flow : c'est la configuration, et
         # `maestro check-syntax` la rejette toujours — il n'y trouve pas de
@@ -4281,32 +4296,99 @@ def validateur(cible):
         # mutation ne l'exerce, donc personne ne pouvait le savoir : une
         # cible sans mutation est vacante, comme un garde sans épreuve.
         # C'est le parseur du skill qui fait foi ici.
-        return ["node", "-e",
-                "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
-                + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
-                + "')).catch(e => { console.error(e.message); process.exit(1); })"]
-    if cible.name in ("argus-mobile.yml", "plugin.yml") and PYYAML:
+        return "config"
+    if cible.name in ("argus-mobile.yml", "plugin.yml"):
         # ⚠️ MÊME PIÈGE QUE `argus.mobile.yaml` AU RUN 30, sur un autre
         # fichier : un workflow GitHub n'est PAS un flow Maestro, donc
         # `check-syntax` le rejette toujours et TOUTE mutation rendait
         # « ne parse pas ». La cible existait sans qu'aucune mutation ne
         # puisse aboutir. C'est un YAML : on le parse comme tel.
-        return ["python3", "-c",
-                "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
+        # ⚠️ 600 — PyYAML OU RIEN. Sans lui, la décision descendait jusqu'à la
+        # branche des flows : maestro relisait les workflows qu'il rejette
+        # (mesuré, 2.8.0 : `Invalid Command: name`), et les 33 mutations de
+        # workflow rendaient HARNAIS — quand l'avertissement promet qu'elles ne
+        # seront pas accusées.
+        return "pyyaml"
     if cible.suffix == ".py":
         # ⚠️ Même exigence que `node --check` pour le JS : une mutation qui
         # casse la syntaxe fait rougir la suite pour une raison sans
         # rapport avec le garde, et ce rouge se lit comme un succès.
-        return ["python3", "-m", "py_compile", str(cible)]
+        return "python"
     if cible.suffix == ".json":
         # ⚠️ 563 — LES PREMIÈRES CIBLES JSON, les manifestes du plugin, et le
         # garde qui les lit fait un `JSON.parse` : une mutation qui casse la
         # syntaxe le ferait tomber sur l'EXCEPTION, et ce rouge se lirait comme
         # le garde qui voit la version revenue.
+        return "json"
+    if cible.suffix in (".yaml", ".yml"):
+        return "maestro"
+    return None
+
+
+def validateur(cible):
+    """La commande qui dit si une cible MUTÉE se lit encore — None : aucun ici.
+
+    Une mutation qui casse le build fait rougir pour une raison sans rapport
+    avec le garde, et ce rouge-là se lit comme un succès. Pour un flow, c'est
+    `maestro check-syntax` qui le dit — aucun parseur d'ici ne les lit, leur
+    `---` sortant du sous-ensemble YAML du harness. Quand maestro manque, on ne
+    vérifie pas : on l'ANNONCE (voir `annonces_sans_verificateur`), plutôt que
+    de laisser croire que ça l'a été.
+    ⚠️ 563 — EXTRAIT DE LA BOUCLE pour qu'un garde l'APPELLE : écrite dedans,
+    la décision n'était gardable qu'en cherchant son texte.
+    ⚠️ 600 — la décision vit dans `verificateur` ; ici, seulement la commande.
+    Un outil qui manque rend None, jamais un autre outil.
+    """
+    outil = verificateur(cible)
+    if outil == "node":
+        return ["node", "--check", str(cible)]
+    if outil == "bash":
+        return ["bash", "-n", str(cible)]
+    if outil == "config":
+        return ["node", "-e",
+                "import('" + str(SCAFFOLD / "config.mjs").replace("\\", "/")
+                + "').then(m => m.loadConfig('" + str(cible).replace("\\", "/")
+                + "')).catch(e => { console.error(e.message); process.exit(1); })"]
+    if outil == "pyyaml":
+        if not PYYAML:
+            return None
+        return ["python3", "-c",
+                "import yaml,sys; yaml.safe_load(open(sys.argv[1]))", str(cible)]
+    if outil == "python":
+        return ["python3", "-m", "py_compile", str(cible)]
+    if outil == "json":
         return ["python3", "-m", "json.tool", str(cible)]
-    if cible.suffix in (".yaml", ".yml") and MAESTRO:
+    if outil == "maestro" and MAESTRO:
         return [MAESTRO, "check-syntax", str(cible)]
     return None
+
+
+def annonces_sans_verificateur():
+    """Les avertissements de démarrage : une annonce par outil absent, avec le
+    nombre de mutations qu'il aurait relues (600).
+
+    ⚠️ COMPTÉES SUR `verificateur`, la décision que `validateur` applique —
+    jamais sur une copie. EXTRAITES pour qu'un garde les APPELLE, comme
+    `validateur` (563) : écrites dans `main`, elles ne se lisaient qu'en jouant
+    une passe.
+    """
+    presents = {"pyyaml": bool(PYYAML), "maestro": bool(MAESTRO)}
+    manque = {outil: 0 for outil in presents}
+    for cle, *_ in MUTATIONS:
+        outil = verificateur(CIBLES[cle])
+        if outil in presents and not presents[outil]:
+            manque[outil] += 1
+    lignes = []
+    if manque["pyyaml"]:
+        lignes += [
+            f"⚠  PyYAML absent — les {manque['pyyaml']} mutations de workflow ne seront pas vérifiées",
+            "   syntaxiquement. Elles ne seront pas ACCUSÉES pour autant : un vérificateur",
+            "   qui manque n'est pas une mutation fautive.  (pip install pyyaml)"]
+    if manque["maestro"]:
+        lignes += [
+            f"⚠  maestro absent du PATH — les {manque['maestro']} mutations de flow ne seront pas vérifiées",
+            "   syntaxiquement : un YAML cassé s'y lira comme un garde qui tombe."]
+    return lignes
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -4656,17 +4738,9 @@ def main():
             print("  (git checkout restaure depuis HEAD — il DÉTRUIRAIT ce travail.)")
             return 1
 
-    if not PYYAML:
-        workflows = sum(1 for c, *_ in MUTATIONS
-                        if CIBLES[c].name in ("argus-mobile.yml", "plugin.yml"))
-        print(f"⚠  PyYAML absent — les {workflows} mutations de workflow ne seront pas vérifiées")
-        print("   syntaxiquement. Elles ne seront pas ACCUSÉES pour autant : un vérificateur")
-        print("   qui manque n'est pas une mutation fautive.  (pip install pyyaml)")
-
-    if not MAESTRO:
-        flows = sum(1 for c, *_ in MUTATIONS if CIBLES[c].suffix in (".yaml", ".yml"))
-        print(f"⚠  maestro absent du PATH — les {flows} mutations de flow ne seront pas vérifiées")
-        print("   syntaxiquement : un YAML cassé s'y lira comme un garde qui tombe.")
+    # 600 — comptés sur la décision de `validateur`, jamais sur une copie.
+    for ligne in annonces_sans_verificateur():
+        print(ligne)
 
     # 559 — une table incohérente rendrait une mutation VACANTE sur le runner
     # sans que rien ne dise pourquoi : on ne démarre pas sur ce doute-là non plus.
