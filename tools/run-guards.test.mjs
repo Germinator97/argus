@@ -17283,6 +17283,45 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
 });
 
 
+// ── 609 · l'empreinte de cadrage vit dans le dossier de l'appareil ──
+//
+// Le 143 avait corrigé ce chemin dans la méthodologie, pas dans sa jumelle :
+// `ARGUS-MOBILE.md` situait encore `.argus-crop` à la racine des références,
+// où le runner ne l'écrit jamais — un run iOS l'a cherché là. Le garde lit le
+// PHÉNOMÈNE, pas le site : toute la doc livrée, et le code qui décide.
+test('609 — aucune doc livrée ne place une empreinte de cadrage hors du dossier de l\'appareil', () => {
+  const runner = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs'), 'utf8');
+  assert.match(runner,
+    /const baselineDir = resolve\([^;]*'\.maestro\/_baselines',\s*spec\.id\)/,
+    'le runner n\'écrit plus les références dans un dossier PAR appareil : ce garde décrit un '
+    + 'chemin qui n\'existe plus — relire où vivent `.argus-crop` et `.argus-device` (609)');
+
+  const docs = [];
+  const visiter = (dir) => {
+    for (const entree of readdirSync(dir, { withFileTypes: true })) {
+      const chemin = join(dir, entree.name);
+      if (entree.isDirectory()) visiter(chemin);
+      else if (entree.name.endsWith('.md')) docs.push(chemin);
+    }
+  };
+  visiter(join(RACINE, 'plugins/argus-mobile'));
+  assert.ok(docs.length >= 8, `${docs.length} documents lus : le balayage ne trouve plus la doc livrée`);
+
+  let juste = 0;
+  for (const doc of docs) {
+    const texte = readFileSync(doc, 'utf8');
+    assert.doesNotMatch(texte, /_baselines\/\.argus-(crop|device)/,
+      `${doc.slice(RACINE.length + 1)} place une empreinte à la RACINE des références : le runner `
+      + 'l\'écrit dans `.maestro/_baselines/<device-id>/`, et on la cherchera où elle n\'est pas (609)');
+    if (/_baselines\/<device(-id)?>\/\.argus-crop/.test(texte)) juste += 1;
+  }
+  // L'autre moitié : une doc qui ne dirait plus rien de ce fichier passerait.
+  assert.ok(juste >= 2,
+    `${juste} document(s) disent où vit \`.argus-crop\` — la méthodologie et ARGUS-MOBILE.md le `
+    + 'disaient : le chemin juste a disparu, ce garde ne prouve plus qu\'il est donné');
+});
+
 // ── 608 · un job qui reçoit un secret ne publie aucun journal Maestro brut ──
 //
 // Le job iOS publiait tout `argus-mobile-report/` : Maestro écrit les variables

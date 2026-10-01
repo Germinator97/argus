@@ -247,7 +247,8 @@ Deux limites à connaître :
   recadre avec `visualCropOn` — le runner le pose sur la génération **et** sur
   la comparaison. ⚠️ Le changer invalide les références déjà produites : les
   deux images ne cadrent plus la même chose et le diff accuse l'app. Le runner
-  le note dans `.maestro/_baselines/.argus-crop` et avertit s'il a bougé.
+  le note dans `.maestro/_baselines/<device-id>/.argus-crop` — le dossier porte
+  l'id de l'appareil — et avertit s'il a bougé.
 - **`visualMatchPercentage` est un pourcentage de CORRESPONDANCE**, pas un ratio
   de différence (défaut Maestro : 95). « 1 % de diff toléré » s'écrit `99`.
   Y mettre `0.01` accepterait n'importe quelle image.

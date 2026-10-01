@@ -4060,6 +4060,20 @@ MUTATIONS = [
      "      - uses: actions/setup-node@v7\n        with:\n          node-version: '24'\n\n      - run: flutter pub get",
      "      - uses: actions/setup-node@v7\n\n      - run: flutter pub get"),
 
+    # ── 609 · l'empreinte de cadrage vit dans le dossier de l'appareil ──
+    # ARGUS-MOBILE.md resitue l'empreinte à la racine des références : le défaut du run 109.
+    ("readme", "609 · ARGUS-MOBILE.md resitue l'empreinte à la racine",
+     "`.maestro/_baselines/<device-id>/.argus-crop` — le dossier porte",
+     "`.maestro/_baselines/.argus-crop` — le dossier porte"),
+    # La méthodologie, corrigée par le 143, retombe sur le même chemin.
+    ("methodo", "609 bis · la méthodologie resitue l'empreinte à la racine",
+     "(`.maestro/_baselines/<device-id>/.argus-crop` —",
+     "(`.maestro/_baselines/.argus-crop` —"),
+    # Le runner écrit les références à la racine : la doc juste deviendrait fausse.
+    ("run", "609 ter · le runner écrit les références hors du dossier de l'appareil",
+     "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
+     "config.artifacts?.baselines ?? '.maestro/_baselines');"),
+
     # ── 608 · un job à secret ne publie aucun journal Maestro brut ──
     # Le job iOS republie tout le rapport : les comptes de recette repartent en artefact.
     ("ci", "608 · le job iOS republie tout le rapport",
