@@ -5097,11 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **10 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et les
-**608** à **610**, rendus par le run 109 (sections « Rendu par le run 108 » et
-« Rendu par le run 109 », en fin de fichier). Le **608** d'abord : le job iOS du
-workflow livré publie les journaux Maestro bruts, où les secrets de recette sont
-en clair. Le **600**, trouvé le 01/10 en lisant la passe du 599
+🔴 **9 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et les
+**609** et **610**, rendus par le run 109 (sections « Rendu par le run 108 » et
+« Rendu par le run 109 », en fin de fichier). Le **608**, du même run, est fermé
+le jour même : le job iOS du workflow livré publiait les journaux Maestro bruts,
+où les secrets de recette sont en clair ; il publie désormais la liste
+d'Android, et un garde tient tout job qui reçoit un secret. Le **600**, trouvé le 01/10 en lisant la passe du 599
 (section « Trouvé en lisant la passe du 599 », en fin de fichier), est fermé le
 jour même : les avertissements du harnais comptent sur la décision de
 `validateur` — 48 mutations sans maestro, et non 103 —, et un workflow n'est
@@ -15338,7 +15339,7 @@ l'application. Lu sur les artefacts.
 
 ### 608. 🔴 SÉCURITÉ — le job iOS du workflow livré publie les journaux Maestro bruts, secrets de recette en clair
 
-**Ouvert le 01/10/2026 · OUVERT** — `e2e-ios` reçoit `QA_USER` et `QA_PASS`
+**Ouvert le 01/10/2026 · CLOS** — `e2e-ios` reçoit `QA_USER` et `QA_PASS`
 (l. 544-545) et téléverse tout `argus-mobile-report/` (l. 554). Le run 109 a
 compté les valeurs des comptes de recette dans 53, 73 et 69 fichiers de ce
 dossier — `commands.json`, `maestro.log`, journaux du simulateur et de XCTest —,
@@ -15354,6 +15355,21 @@ rupture de PARITÉ.
 - Remède, sans arbitrage à rendre : la liste d'Android pour iOS ; et un garde sur
   tout job qui reçoit un secret : ses artefacts ne publient ni le dossier entier,
   ni un journal Maestro.
+
+#### ✅ Fermé le jour même — la liste d'Android pour iOS, et un garde sur tout job à secret
+
+- Le job iOS publie la même liste qu'Android : le rapport, ses JSON et XML de
+  tête, les captures et les enregistrements. MESURÉ sur le rapport du run 109,
+  lu en mémoire sans rien extraire et en n'imprimant que des comptes : aucun des
+  fichiers que cette liste publie ne porte une valeur de recette — les
+  `commands.json` (25 sur 50) et les journaux (28 à 45) restent dans le dossier.
+- Le garde lit chaque job qui reçoit un secret et confronte chaque chemin publié
+  à cette liste, écrite EN CLAIR : dérivée du job Android, elle validerait iOS le
+  jour où les deux publieraient la même fuite.
+- Trois mutations — le job iOS republie tout le dossier, le job Android ajoute
+  les journaux de Maestro, le job iOS publie tout `maestro/` : **3/3 TOMBE**, sur
+  ce garde, jouées dans le montage minimal sur le commit du correctif. Suite
+  687/687.
 
 ### 609. `ARGUS-MOBILE.md` situe encore l'empreinte de cadrage à la racine des références : le 143 n'avait corrigé que la méthodologie
 
