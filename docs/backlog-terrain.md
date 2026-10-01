@@ -5097,12 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **599**, relevé le 01/10 sur l'annonce de la bascule
-d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en fin de
-fichier) : le workflow livré aux projets d'accueil installe Node 20, en fin de
-vie depuis le 30/04/2026. Le **598**, relevé le même jour, est fermé le jour
-même : les cinq jobs de la CI du plugin épinglent `ubuntu-24.04`, et l'image ne
-changera que par un commit à elle. Les **596** et **597**, trouvés le 30/09 par la CI du fork
+✅ **Rien d'ouvert.** Les **598** et **599**, relevés le 01/10 sur l'annonce de la
+bascule d'`ubuntu-latest` (section « Relevé sur l'annonce de la bascule », en fin
+de fichier), sont fermés le jour même : les cinq jobs de la CI du plugin
+épinglent `ubuntu-24.04`, et l'image ne changera que par un commit à elle (598) ;
+le workflow livré aux projets d'accueil installe Node 24, la LTS active, au lieu
+de Node 20, en fin de vie (599). Les **596** et **597**, trouvés le 30/09 par la CI du fork
 (section « Trouvé par la CI du fork — run #12 », en fin de fichier), sont fermés
 le jour même : la suite se figeait d'elle-même sur le runner, par intermittence,
 et le harnais coupait une mutation qui n'y était pour rien en désignant le
@@ -15093,7 +15093,7 @@ jugé par sa propre CI.
 
 ### 599. Le workflow livré aux projets d'accueil installe Node 20, en fin de vie depuis le 30/04/2026
 
-**Ouvert le 01/10/2026 · OUVERT** — `argus-mobile.yml`, que `install-mobile.sh`
+**Ouvert le 01/10/2026 · CLOS** — `argus-mobile.yml`, que `install-mobile.sh`
 pose chez le projet d'accueil et que `--update` remplace (CADRE), installe
 `node-version: '20'` dans les quatre jobs qui lancent Node, et dans l'exemple
 commenté du niveau B. Node 20 est en fin de vie depuis le **30/04/2026**
@@ -15110,3 +15110,19 @@ commenté du niveau B. Node 20 est en fin de vie depuis le **30/04/2026**
   sous laquelle la suite tourne avant chaque commit, et le défaut de l'image
   26.04. Node 22 finit un an plus tôt (30/04/2027) et n'apporte rien que la
   suite n'exerce déjà.
+
+#### ✅ Fermé le jour même — Node 24 dans chaque job, l'exemple commenté compris
+
+- Les quatre `setup-node` du workflow livré et celui de l'exemple commenté du
+  niveau B installent Node 24 ; l'en-tête dit pourquoi. Un projet d'accueil le
+  reçoit à son prochain `install-mobile.sh --update` : le fichier est du CADRE.
+- Un garde lit chaque `setup-node`, commenté ou non, et la version qu'il pose :
+  une par étape, 24 partout. Un `setup-node` sans version — qui prendrait le
+  Node de l'image, donc changerait avec elle — est refusé par le compte.
+- Trois mutations — un job revenu à Node 20, l'exemple commenté revenu à
+  Node 20, un job laissé au Node de l'image : **3/3 TOMBE**, chacune sur le
+  garde du 599, jouées dans le montage minimal sur le commit du correctif.
+  Suite 684/684, 767 mutations, 0 inerte.
+- Le workflow du plugin web garde `'20'` : hors périmètre, tranché.
+- 📌 Le correctif touche `plugins/` : le plugin installé se recale après le
+  push.
