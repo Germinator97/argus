@@ -5097,10 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **9 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et les
-**609** et **610**, rendus par le run 109 (sections « Rendu par le run 108 » et
-« Rendu par le run 109 », en fin de fichier). Le **608**, du même run, est fermé
-le jour même : le job iOS du workflow livré publiait les journaux Maestro bruts,
+🔴 **8 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et le
+**610**, rendu par le run 109 (sections « Rendu par le run 108 » et « Rendu par
+le run 109 », en fin de fichier). Le **609**, du même run, est fermé le
+02/10 : `ARGUS-MOBILE.md` situe l'empreinte de cadrage dans le dossier de
+l'appareil, et un garde lit toute la doc livrée. Le **608** est fermé le jour
+même : le job iOS du workflow livré publiait les journaux Maestro bruts,
 où les secrets de recette sont en clair ; il publie désormais la liste
 d'Android, et un garde tient tout job qui reçoit un secret. Le **600**, trouvé le 01/10 en lisant la passe du 599
 (section « Trouvé en lisant la passe du 599 », en fin de fichier), est fermé le
@@ -15373,10 +15375,22 @@ rupture de PARITÉ.
 
 ### 609. `ARGUS-MOBILE.md` situe encore l'empreinte de cadrage à la racine des références : le 143 n'avait corrigé que la méthodologie
 
-**Ouvert le 01/10/2026 · OUVERT** — `ARGUS-MOBILE.md` (l. 250) annonce
+**Ouvert le 01/10/2026 · CLOS** — `ARGUS-MOBILE.md` (l. 250) annonce
 `.maestro/_baselines/.argus-crop` ; le fichier est écrit par appareil
 (`_baselines/ios-sim/.argus-crop` au run 109). Le 143, clos le 23/08, avait
 corrigé le même chemin dans `methodology-mobile.md` — pas dans sa jumelle.
+
+#### ✅ Fermé le 02/10/2026 — le chemin juste, et un garde qui lit toute la doc livrée
+
+- `ARGUS-MOBILE.md` dit `.maestro/_baselines/<device-id>/.argus-crop`, « le
+  dossier porte l'id de l'appareil ».
+- Le garde lit le phénomène, pas le site : le dossier des références du runner
+  finit toujours par l'id de l'appareil ; AUCUN des huit documents livrés ne
+  place `.argus-crop` ni `.argus-device` à la racine ; et au moins deux donnent
+  le chemin juste — une doc qui n'en dirait plus rien passerait sans cela.
+- Trois mutations — `ARGUS-MOBILE.md` et la méthodologie retombent sur la
+  racine, le runner écrit hors du dossier de l'appareil : **3/3 TOMBE**, sur ce
+  garde, dans le montage minimal sur le commit du correctif. Suite 688/688.
 
 ### 610. `make argus-sca` promet « les dépendances Dart et natives » : il ne lit jamais `Podfile.lock`, et Gradle seulement si le projet génère ses lockfiles
 
