@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **6 POINTS OUVERTS** — les **602** à **607**, rendus par le run 108 (section
-« Rendu par le run 108 », en fin de fichier). Le **601**, du même run, est fermé
-le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
+🔴 **5 POINTS OUVERTS** — les **603** à **607**, rendus par le run 108 (section
+« Rendu par le run 108 », en fin de fichier). Le **602**, du même run, est fermé
+le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
+échecs. Le **601** est fermé le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
 non plus par le curseur, qui suit la taille du glyphe. Le **610**, rendu par le run 109,
 est fermé le 02/10 : le SCA nomme chaque source native qu'il ne lit pas, jusqu'à
 la page. Le **609**, du même run, est fermé le 02/10 : `ARGUS-MOBILE.md` situe l'empreinte de cadrage dans le dossier de
@@ -15276,10 +15277,24 @@ un faux positif : `debts-write` aurait inscrit les 27.
 
 ### 602. La carte QAM-STAGE1 n'a ni « attendu » ni « constaté », et se range en accessibilité
 
-**Ouvert le 01/10/2026 · OUVERT** — sur la page et dans `report.html`, la carte
+**Ouvert le 01/10/2026 · CLOS** — sur la page et dans `report.html`, la carte
 des gardes d'étage 1 en échec n'a ni attendu ni constaté (vides), et se range sous
 « a11y » quand ses 27 échecs sont des gardes de DISPOSITION. Une carte majeure
 qui ne dit ni ce qu'on attendait ni ce qu'on a vu ne se lit pas.
+
+#### ✅ Fermé le 02/10/2026 — l'attendu, le constaté, et la famille lue sur les noms
+
+- La carte porte un attendu — tous les gardes d'étage 1 verts, ou leur dette
+  assumée dans `known_issues.dart` — et un constaté — le compte des échecs et
+  leurs premiers noms ; `detail` garde sa phrase.
+- Sa dimension se dérive des noms des tests en échec : « a11y — », « disposition
+  — » (la résolution de police en fait partie), les ancres pour le reste ; toutes
+  les familles en échec sont nommées, dans un ordre fixe.
+- Le garde lit des `stage1.jsonl` au format réel, dont les noms viennent du
+  journal du run 109 ; trois mutations — retour à « a11y » figé, attendu retiré,
+  police rangée en ancres — et la 391, dont l'ancre était la ligne réécrite,
+  ré-ancrée dans le même commit : **4/4 TOMBE**, dans le montage minimal. Suite
+  691/691.
 
 ### 603. Le tableau de performance oppose l'APK universel au budget, en rouge, quand le verdict juge la tranche
 
