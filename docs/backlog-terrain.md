@@ -5097,10 +5097,12 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **607**, rendu par le run 108 (section « Rendu par le
-run 108 », en fin de fichier) : sur un écran à compte à rebours, Maestro attend
-une hiérarchie stable avant chaque toucher. Le **604**, du même run, est fermé
-le 02/10 : la règle du scan couvre le paquet, pas seulement ses symboles. Le
+✅ **Rien d'ouvert.** Les **601** à **610**, rendus par les runs 108 et 109
+(sections « Rendu par le run 108 » et « Rendu par le run 109 », en fin de
+fichier), sont fermés le 02/10, le **608** — une fuite de secrets — d'abord. Le
+**607** est fermé le 02/10 : mesuré sur une sonde, un toucher attend ~19 s sur
+un écran Android qui change, ~3 s avec `waitToSettleTimeoutMs: 500`, et le SKILL
+le dit. Le **604** est fermé le 02/10 : la règle du scan couvre le paquet, pas seulement ses symboles. Le
 **605** est fermé le 02/10 : le workflow livré construit par la commande que la config déclare.
 Le **606** est fermé le 02/10 : les cibles de l'étage 1 relaient `TEST_ARGS` à `flutter
 test`. Le **603** est fermé le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
@@ -15398,7 +15400,7 @@ après quatre passes sans.
 
 ### 607. Sur un écran à compte à rebours, Maestro attend une hiérarchie stable AVANT chaque toucher, et le chrono s'épuise
 
-**Ouvert le 01/10/2026 · OUVERT** — au premier run complet, l'assertion « Le
+**Ouvert le 01/10/2026 · CLOS** — au premier run complet, l'assertion « Le
 chrono est en pause » échoue : le toucher sur « Pause » est arrivé après les 15 s
 de la question. Établi sur les journaux de l'appareil (`maestro.log`,
 `commands.json`) :
@@ -15416,6 +15418,30 @@ de la question. Établi sur les journaux de l'appareil (`maestro.log`,
 - Rien dans le SKILL sur les écrans à chrono. Remède à établir : mesurer d'abord
   ce que Maestro 2.8.0 offre pour viser sans cette attente, sur une sonde à
   minuterie ; puis écrire la règle des écrans à chrono.
+
+#### ✅ Fermé le 02/10/2026 — mesuré sur une sonde, puis la règle au SKILL
+
+- MESURÉ sur une application jetable — un texte qui change tous les dixièmes,
+  une cible, le compte des touchers —, sur l'AVD du run 108 (Android 16) avec
+  Maestro 2.8.0 : par défaut, chaque toucher d'élément attend ~9 s avant de viser
+  et ~9 s après, près de 19 s ; `waitToSettleTimeoutMs: 500` borne les deux,
+  ~3 s, que la cible change elle-même ou non ; un toucher par `point:` ne vise
+  pas mais attend encore ~9 s après. Sur le simulateur iOS 26.3, rien de tout
+  cela : la cible se vise en 0,1 à 0,4 s.
+- 🔴 **Ma lecture première était fausse sur un point** : j'avais écrit que les
+  options de l'agent ne réglaient que l'attente d'APRÈS. Relu dans les
+  `commands.json` du run 108 : elles y ont ramené un toucher de 10,4 s à
+  2,3 s, et laissé un autre à 11 s — l'hypothèse « la cible change elle-même »
+  a été éprouvée sur la sonde et RÉFUTÉE. Ce cas reste sans cause reproduite, et
+  la règle le dit.
+- La règle vit à côté de la note sur les animations perpétuelles : les deux
+  attentes, l'option mesurée et `retryTapIfNoChange: false`, le cas des
+  coordonnées, iOS, et l'obligation de lire la durée de chaque toucher dans
+  `commands.json` ; un chrono plus court que le parcours s'allonge pour la
+  recette, par un point d'entrée de test. Deux mutations : **2/2 TOMBE**, dans
+  le montage minimal. Suite 696/696.
+- Sonde rangée : désinstallée de l'AVD (démarré sans instantané) et du
+  simulateur, émulateur arrêté.
 
 Écartés sans point : l'installeur ne dit pas que `mobile/.github/` est inerte dans
 un monorepo — sur un dépôt GitLab, le « ne s'exécutera NULLE PART » du 569 couvre
