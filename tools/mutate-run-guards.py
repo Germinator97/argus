@@ -4092,6 +4092,16 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 614 · « cent » multiplie ce qui le précède ──
+    # « cent » s'ajoute de nouveau : deux cent trois redevient cent cinq.
+    ("compteurs", "614 · cent s'ajoute au lieu de multiplier",
+     "    if (CENTAINES.has(mot)) { total = (total || 1) * 100; continue; }",
+     "    if (CENTAINES.has(mot)) { total += 100; continue; }"),
+    # Seul, « cent » ne vaut plus rien : la multiplication part de zéro.
+    ("compteurs", "614 bis · cent seul vaut zéro",
+     "    if (CENTAINES.has(mot)) { total = (total || 1) * 100; continue; }",
+     "    if (CENTAINES.has(mot)) { total = total * 100; continue; }"),
+
     # ── 612 · un nom classé se cherche aussi recollé ──
     # Le nom coupé n'est plus recollé : le contrôle ne cherche que la chaîne entière.
     ("confiddepot", "612 · un nom classé coupé n'est plus recollé",

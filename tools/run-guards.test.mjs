@@ -8988,6 +8988,29 @@ test('nombreFr lit les lettres, et LÈVE plutôt que de rendre zéro (333)', () 
   assert.throws(() => nombreFr(''), /vide/, 'une capture vide aussi');
 });
 
+// ── 614 · « CENT » MULTIPLIE, IL NE S'AJOUTE PAS ─────────────────────────────
+// Le premier nombre de la page au-delà de cent quatre-vingt-dix-neuf — deux
+// cent trois vidages — s'est lu 105 : « cent » était rangé parmi les unités,
+// donc additionné. Aucune valeur au-delà de 199 n'avait jamais été écrite en
+// lettres, et ce garde n'en essayait aucune.
+test('nombreFr multiplie par cent ce qui le précède (614)', () => {
+  for (const [texte, attendu] of [
+    ['deux cent trois', 203],            // 🔴 la valeur rencontrée
+    ['deux-cent-trois', 203],            // l'orthographe de 1990
+    ['deux cents', 200],
+    ['trois cent quarante et un', 341],
+    ['neuf cent quatre-vingt-dix-neuf', 999],
+    ['deux centième', 200],
+    // L'autre moitié : seul, « cent » vaut cent, et ce qui marchait marche encore.
+    ['cent', 100],
+    ['cent cinq', 105],
+    ['cent quatre-vingt-onze', 191],
+    ['cent unième', 101],
+  ]) {
+    assert.equal(nombreFr(texte), attendu, `« ${texte} » ne vaut pas ${attendu} (614)`);
+  }
+});
+
 test('texteDeLaPage retrouve un compteur coupé par une balise et replié (333)', () => {
   const page = pageFictive({ libre: 333 });
   // La contre-épreuve d'abord : sur le HTML BRUT, la tournure n'existe pas. Sans

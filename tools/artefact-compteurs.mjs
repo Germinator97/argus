@@ -40,8 +40,16 @@ const UNITES = new Map(Object.entries({
   six: 6, sept: 7, huit: 8, neuf: 9, dix: 10, onze: 11, douze: 12,
   treize: 13, quatorze: 14, quinze: 15, seize: 16,
   vingt: 20, vingts: 20, trente: 30, quarante: 40, cinquante: 50, soixante: 60,
-  cent: 100, cents: 100,
 }));
+
+/**
+ * 614 — « cent » MULTIPLIE ce qui le précède : « deux cent trois » vaut
+ * 2 × 100 + 3. Il était rangé parmi les unités, donc ADDITIONNÉ : 105, puis
+ * « deux cents » 102. Rien ne l'a vu tant que la page n'a écrit aucun nombre
+ * au-delà de cent quatre-vingt-dix-neuf ; le premier, deux cent trois
+ * vidages, s'est lu cent cinq.
+ */
+const CENTAINES = new Set(['cent', 'cents', 'centième']);
 
 /** Les ordinaux, parce que le backlog dit « quarante et unième » là où la page dit « quarante et une ». */
 const ORDINAUX = new Map(Object.entries({
@@ -49,7 +57,7 @@ const ORDINAUX = new Map(Object.entries({
   troisième: 3, quatrième: 4, cinquième: 5, sixième: 6, septième: 7, huitième: 8,
   neuvième: 9, dixième: 10, onzième: 11, douzième: 12, treizième: 13,
   quatorzième: 14, quinzième: 15, seizième: 16, vingtième: 20, trentième: 30,
-  quarantième: 40, cinquantième: 50, soixantième: 60, centième: 100,
+  quarantième: 40, cinquantième: 50, soixantième: 60,
 }));
 
 /**
@@ -77,6 +85,8 @@ export function nombreFr(brut) {
   let total = 0;
   for (const mot of normalise.split(' ')) {
     if (mot === '§80') { total += 80; continue; }
+    // Seul, « cent » vaut cent ; après « deux », il en fait deux cents.
+    if (CENTAINES.has(mot)) { total = (total || 1) * 100; continue; }
     if (UNITES.has(mot)) { total += UNITES.get(mot); continue; }
     if (ORDINAUX.has(mot)) { total += ORDINAUX.get(mot); continue; }
     throw new Error(`nombreFr : mot non reconnu « ${mot} » dans « ${texte} »`);
