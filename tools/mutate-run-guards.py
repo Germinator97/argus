@@ -3693,12 +3693,12 @@ MUTATIONS = [
      "--release --obfuscate --split-debug-info=build/symbols\n"),
     # La règle disparaît de la configuration, là où l'on écrit la commande.
     ("yamlconf", "586 ter · la configuration ne dit plus la règle du scan",
-     "D'où la règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN",
-     "D'où la règle, sans exception : ÉVITE DE LANCER LE SCAN ENTRE UN"),
+     "règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN BUILD DE",
+     "règle, sans exception : ÉVITE DE LANCER LE SCAN ENTRE UN BUILD DE"),
     # Et du SKILL.
     ("skill", "586 quater · le SKILL ne dit plus la règle du scan",
-     "à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de",
-     "à un chemin fixe ne se déplace pas : **évite de lancer le scan entre un build de"),
+     "(604). **Ne lance jamais le scan entre un build",
+     "(604). **Évite de lancer le scan entre un build"),
     # ── 585 · le gabarit accepte les délégués que Flutter fournit ───────────
     # Le gabarit revient à `Object` : Dart y refuse les listes de Flutter.
     ("gabaritharness", "585 · le gabarit type de nouveau ses délégués en Object",
@@ -4091,6 +4091,16 @@ MUTATIONS = [
     ("run", "609 ter · le runner écrit les références hors du dossier de l'appareil",
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
+
+    # ── 604 · la règle du scan couvre le paquet ──
+    # Le SKILL revient aux seuls symboles.
+    ("skill", "604 · le SKILL revient aux seuls symboles",
+     "de publication et son envoi — le paquet et ses symboles.**",
+     "de publication et l'envoi de ses symboles.**"),
+    # La configuration revient aux seuls symboles.
+    ("yamlconf", "604 bis · la configuration revient aux seuls symboles",
+     "  # PUBLICATION ET SON ENVOI — LE PAQUET ET SES SYMBOLES.",
+     "  # PUBLICATION ET L'ENVOI DE SES SYMBOLES."),
 
     # ── 605 · le workflow livré construit par la commande de la config ──
     # Le job Android retourne au build écrit en dur.

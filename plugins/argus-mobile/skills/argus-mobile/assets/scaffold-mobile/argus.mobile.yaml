@@ -134,8 +134,11 @@ build:
   # dernière vraie release, et les envoyer ensuite au monitoring rend illisibles
   # les erreurs de production. Vécu : un script de build qui écrit lui-même sa
   # carte (`--save-obfuscation-map`) à un chemin FIXE, que cette clé ne peut pas
-  # déplacer. D'où la règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN
-  # BUILD DE PUBLICATION ET L'ENVOI DE SES SYMBOLES.
+  # déplacer — et le paquet non plus : Flutter écrit le sien à un chemin fixe,
+  # que le build de scan réécrit (604 : six fichiers d'une release en attente
+  # remplacés, `app-release.apk` compris, ses symboles déjà partis). D'où la
+  # règle, sans exception : NE LANCE JAMAIS LE SCAN ENTRE UN BUILD DE
+  # PUBLICATION ET SON ENVOI — LE PAQUET ET SES SYMBOLES.
   #
   # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.
   # ⇒ DEMANDE-LE AU DISQUE plutôt que de le deviner, c'est le seul geste sûr :

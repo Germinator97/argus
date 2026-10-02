@@ -19717,10 +19717,31 @@ test('586 — toute commande de scan suggérée range ses symboles à part, et l
   assert.ok(vus >= 2, `deux commandes de scan suggérées attendues, ${vus} lue(s) : ce garde ne mesure plus rien`);
   // La phrase, lignes et marques retirées : elle court sur deux lignes, en commentaire ou en gras.
   const plat = (/** @type {string} */ t) => t.replace(/\s*\n\s*#?\s*/g, ' ').replace(/\*\*/g, '');
-  const regle = /ne lance jamais le scan entre un build de publication et l'envoi de ses symboles/i;
+  // 604 — la règle couvre désormais le PAQUET : elle ne nommait que les
+  // symboles, et une release en attente a vu son APK réécrit.
+  const regle = /ne lance jamais le scan entre un build de publication et son envoi\s*—\s*le paquet et ses symboles/i;
   assert.match(plat(sites['argus.mobile.yaml']), regle,
     'la configuration ne dit plus la règle, là où l\'on écrit la commande du scan (586)');
   assert.match(plat(readFileSync(join(base, 'SKILL.md'), 'utf8')), regle, 'le SKILL ne dit plus la règle (586)');
+});
+
+// ── 604 · LA RÈGLE DU SCAN COUVRE LE PAQUET, PAS SEULEMENT LES SYMBOLES ──────
+// Au run 108, le build de scan a réécrit six fichiers d'une release en attente,
+// `app-release.apk` compris : la règle du 586 ne nommait que les symboles, et
+// les symboles étaient partis — le paquet, non. Flutter écrit le sien à un
+// chemin fixe, que rien ne déplace : la règle est la seule protection, dans le
+// cadre tranché au 586 (sauvegarder puis restaurer avait été écarté).
+test('604 — la règle du scan nomme le paquet et ses symboles, et l\'ancienne forme a disparu', () => {
+  const base = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile');
+  const plat = (/** @type {string} */ t) => t.replace(/\s*\n\s*#?\s*/g, ' ').replace(/\*\*/g, '');
+  for (const [nom, chemin] of [['la configuration', 'assets/scaffold-mobile/argus.mobile.yaml'], ['le SKILL', 'SKILL.md']]) {
+    const texte = plat(readFileSync(join(base, chemin), 'utf8'));
+    assert.match(texte, /son envoi\s*—\s*le paquet et ses symboles/i,
+      `${nom} ne dit plus que la règle couvre le PAQUET : une release en attente s'y fait réécrire (604)`);
+    assert.doesNotMatch(texte, /entre un build de publication et l'envoi de ses symboles/i,
+      `${nom} garde l'ancienne forme, qui ne nomme que les symboles (604)`);
+    assert.match(texte, /app-release\.apk/, `${nom} ne dit plus quel paquet le scan réécrit (604)`);
+  }
 });
 
 // ── 585 · LE GABARIT ACCEPTE LES DÉLÉGUÉS QUE FLUTTER FOURNIT ────────────────

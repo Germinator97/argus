@@ -1907,8 +1907,11 @@ construit, sous la vraie version de l'app, un binaire qui ne sera jamais publié
 et écrit au même endroit que la publication il y remplace les symboles et la
 carte d'obfuscation de la dernière vraie release — les envoyer ensuite au
 monitoring rend ses erreurs illisibles. Une carte qu'un script du projet écrit
-à un chemin fixe ne se déplace pas : **ne lance jamais le scan entre un build de
-publication et l'envoi de ses symboles.**
+à un chemin fixe ne se déplace pas — et le paquet non plus : Flutter écrit le
+sien à un chemin fixe, que le build de scan réécrit. Mesuré au run 108 : six
+fichiers d'une release en attente remplacés, `app-release.apk` compris, quand
+ses symboles étaient déjà partis (604). **Ne lance jamais le scan entre un build
+de publication et son envoi — le paquet et ses symboles.**
 
 📌 **Un APK universel se juge sur sa tranche la plus lourde (588).** Il porte les
 bibliothèques natives de chaque ABI ; un appareil n'en reçoit qu'une. `argus-perf`
