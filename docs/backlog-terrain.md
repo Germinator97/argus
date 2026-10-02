@@ -5097,10 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **8 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108, et le
-**610**, rendu par le run 109 (sections « Rendu par le run 108 » et « Rendu par
-le run 109 », en fin de fichier). Le **609**, du même run, est fermé le
-02/10 : `ARGUS-MOBILE.md` situe l'empreinte de cadrage dans le dossier de
+🔴 **7 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108 (section
+« Rendu par le run 108 », en fin de fichier). Le **610**, rendu par le run 109,
+est fermé le 02/10 : le SCA nomme chaque source native qu'il ne lit pas, jusqu'à
+la page. Le **609**, du même run, est fermé le 02/10 : `ARGUS-MOBILE.md` situe l'empreinte de cadrage dans le dossier de
 l'appareil, et un garde lit toute la doc livrée. Le **608** est fermé le jour
 même : le job iOS du workflow livré publiait les journaux Maestro bruts,
 où les secrets de recette sont en clair ; il publie désormais la liste
@@ -15394,12 +15394,32 @@ corrigé le même chemin dans `methodology-mobile.md` — pas dans sa jumelle.
 
 ### 610. `make argus-sca` promet « les dépendances Dart et natives » : il ne lit jamais `Podfile.lock`, et Gradle seulement si le projet génère ses lockfiles
 
-**Ouvert le 01/10/2026 · OUVERT** — `ARGUS-MOBILE.md` (l. 154) : « CVE des
+**Ouvert le 01/10/2026 · CLOS** — `ARGUS-MOBILE.md` (l. 154) : « CVE des
 dépendances Dart et natives ». `findLockfiles` (`sca.mjs`) lit `pubspec.lock`, et
 les lockfiles Gradle **seulement s'ils existent** — Android ne les génère pas par
 défaut, le commentaire du script le dit lui-même. `Podfile.lock` n'est jamais lu.
 Le run 109 : « aucune CVE dans `pubspec.lock` … Le `Podfile.lock` n'est pas
 scanné » — un zéro qui se lit comme une couverture qu'il n'a pas.
+
+#### ✅ Fermé le 02/10/2026 — le scan dit ce qu'il ne lit pas, jusqu'à la page
+
+- MESURÉ d'abord : osv-scanner 2.5.1 ne sait pas lire un `Podfile.lock`
+  (« could not determine extractor suitable to this file ») — sur un fichier
+  SYNTHÉTIQUE, pour ne rien envoyer d'un terrain à osv.dev. Contre-épreuve : un
+  `pubspec.lock` synthétique à `dio` 4.0.0 rend GHSA-9324-jv53-9cc8.
+- `nonCouverts` nomme ce qui n'est pas lu — `ios/Podfile.lock`, `android/` sans
+  lockfile Gradle — ; `main` l'avertit, l'écrit dans `sca.json`
+  (`cve.notCovered`) et le porte jusqu'à la page par un constat `info`,
+  QAM-SCA-COVERAGE. Liste STATIQUE, plutôt qu'une lecture du message d'erreur du
+  scanner qu'une version peut reformuler ; scanner le `Podfile.lock` et échouer
+  aurait d'ailleurs fait passer toute la dimension CVE pour « non scannée ».
+- `ARGUS-MOBILE.md` et le tableau des plateformes du SKILL disent ce qui est lu ;
+  le garde du tableau exige désormais la réserve sur `Podfile.lock` en plus de
+  ses deux coches.
+- Le garde éprouve les deux sens sur un projet jetable — deux trous, puis aucun
+  quand Gradle a ses lockfiles —, le câblage dans `main` et la ligne du lisez-moi.
+  Quatre mutations : **4/4 TOMBE**, dans le montage minimal sur le commit du
+  correctif. Suite 689/689.
 
 Écartés sans point : « installation ignorée » dans le rapport d'un passage final
 lancé en `--no-install` — exact pour le passage dont il rend compte ; le `Error 1`
