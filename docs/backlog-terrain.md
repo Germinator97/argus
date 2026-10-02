@@ -5100,7 +5100,9 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 ✅ **Rien d'ouvert.** Le **611**, trouvé en fermant les points des runs 108 et
 109 (section du même nom, en fin de fichier), est fermé le 02/10 : le garde de
 l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
-chaîne. Les **601** à **610**, rendus par les runs 108 et 109
+chaîne. Le **612**, du même moment, est fermé le 02/10 : un nom de terrain
+classé se cherche aussi recollé, et une ponctuation entre ses moitiés ne le
+cache plus. Les **601** à **610**, rendus par les runs 108 et 109
 (sections « Rendu par le run 108 » et « Rendu par le run 109 », en fin de
 fichier), sont fermés le 02/10, le **608** — une fuite de secrets — d'abord. Le
 **607** est fermé le 02/10 : mesuré sur une sonde, un toucher attend ~19 s sur
@@ -15585,3 +15587,35 @@ qu'en la franchissant.
 - Un contrôle exige que chaque objet tombe dans un lot ; le garde tourne en
   ~4 s. Deux mutations — un lot unique sans borne, le témoin plus relevé — :
   **2/2 TOMBE**, dans le montage minimal. Suite 696/696.
+
+### 612. Un nom de terrain coupé par une ponctuation échappe au contrôle de confidentialité — et je l'ai écrit dans trois fichiers
+
+**Ouvert le 02/10/2026 · CLOS** — en rédigeant le 601, j'ai recopié mot pour mot
+le relevé du run 108 : un titre dont les deux moitiés du nom de l'application
+étaient rendues à deux tailles, que le détecteur imprimait coupé par une barre.
+Il est entré dans trois fichiers de ce dépôt — la note du 601, le cas de la
+sonde, le commentaire d'un garde — et dans deux messages de commit. Le contrôle
+de confidentialité (541, 575) cherchait chaque nom classé comme une chaîne
+entière : rien n'a échoué. Je l'ai vu en relisant la sonde, pas par un
+instrument.
+
+#### ✅ Fermé le 02/10/2026 — un nom classé se cherche aussi recollé
+
+- Un nom classé `distinctif` se cherche aussi dans les seules lettres de chaque
+  ligne, en minuscules : une barre, un tiret, des guillemets et des chiffres,
+  l'emphase markdown ou des blancs entre ses moitiés ne le cachent plus, et le
+  rapport le dit COUPÉ. Seuls les noms classés se recollent : ailleurs, la forme
+  exacte fait la sûreté, et joindre les mots ferait crier au loup.
+- Contre-épreuve dans les deux sens : appliqué au contenu commité, le contrôle
+  étendu trouve les trois fichiers ; sur l'arbre nettoyé, rien, et aucune autre
+  ligne du dépôt ne le déclenche.
+- LIMITES, écrites à côté du code : deux moitiés séparées par des mots, par une
+  fin de ligne ou par une balise faite de lettres ne se voient pas.
+- Les trois fichiers prennent un mot neutre pour le cas de sonde, qui
+  discrimine toujours : le critère de ligne n'y voit aucune coupure, le curseur
+  qu'il a remplacé en voit une — rejoué sur l'hôte jetable.
+- Le garde couvre cinq formes coupées, la forme entière et trois voisins qui
+  doivent rester verts. Trois mutations, et la 575 ter ré-ancrée sur le nouvel
+  appel : **4/4 TOMBE**, dans le montage minimal. Suite 697/697.
+- ⚠️ Ce correctif nettoie l'ARBRE. L'historique à pousser porte encore le
+  fragment : c'est le **613**.
