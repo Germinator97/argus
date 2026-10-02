@@ -5097,8 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Le **611**, trouvé en fermant les points des runs 108 et
-109 (section du même nom, en fin de fichier), est fermé le 02/10 : le garde de
+🔴 **1 POINT OUVERT** — le **613** (section « Trouvé en fermant les points des
+runs 108 et 109 », en fin de fichier) : 22 des 25 commits à pousser portent un
+fragment d'un nom de terrain, que le 612 a retiré de l'arbre ; l'effacer de
+l'historique demande de le réécrire avant le push — à trancher par Germinator.
+Le **611**, trouvé au même moment, est fermé le 02/10 : le garde de
 l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
 chaîne. Le **612**, du même moment, est fermé le 02/10 : un nom de terrain
 classé se cherche aussi recollé, et une ponctuation entre ses moitiés ne le
@@ -15619,3 +15622,26 @@ instrument.
   appel : **4/4 TOMBE**, dans le montage minimal. Suite 697/697.
 - ⚠️ Ce correctif nettoie l'ARBRE. L'historique à pousser porte encore le
   fragment : c'est le **613**.
+
+### 613. Le contrôle de confidentialité ne lit ni les messages de commit, ni l'historique à pousser
+
+**Ouvert le 02/10/2026 · OUVERT** — le 612 nettoie l'arbre ; il ne peut rien
+pour ce qui est déjà commité. Mesuré sur `origin/feat/argus-mobile..HEAD` le
+02/10, après la clôture du 612 : **25** commits à pousser, dont **22** portent
+le fragment du nom dans leur arbre — de l'ouverture des 601-610 au correctif du
+611 compris — et **2** dans leur message (l'ouverture des 601-610, le correctif
+du 601). L'origine n'en porte aucun : rien n'est encore public. Mais un push
+publierait ces 22 arbres et ces 2 messages, et le contrôle ne lit que les
+fichiers suivis — ni les messages, ni les objets à pousser. La règle couvre
+pourtant les deux : aucun nom de terrain, ni dans les fichiers, ni dans les
+messages de commit.
+
+Reste à trancher, par Germinator et avant tout push :
+
+- **réécrire `origin/feat/argus-mobile..HEAD`** — à chaque commit, les
+  remplacements du 612 dans les trois fichiers, et les deux messages
+  reformulés —, après un bundle de sauvegarde. Les 25 empreintes changent ;
+  aucun fichier du dépôt ne les cite (relevé le 02/10) ;
+- puis câbler le contrôle des messages et des objets **à pousser**
+  (`@{u}..HEAD`) — pas avant : il rougirait la suite sur ces deux messages tant
+  que l'historique n'est pas réécrit.
