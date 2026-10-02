@@ -3347,8 +3347,8 @@ MUTATIONS = [
     # La casse cache de nouveau un nom : le chemin de police en minuscules,
     # trouvé par ce correctif dès sa première passe, redevient invisible.
     ("confiddepot", "575 ter · la casse cache de nouveau une mention distinctive",
-     "      const ligne = ligneDe(t, a.valeur, estNomClasse(a.valeur));",
-     "      const ligne = ligneDe(t, a.valeur, false);"),
+     "      const { ligne, coupe } = ligneDe(t, a.valeur, estNomClasse(a.valeur));",
+     "      const { ligne, coupe } = ligneDe(t, a.valeur, false);"),
     # Une ligne de classement illisible est sautée : on croit classé ce qui ne
     # l'est pas, et le message accuse une ligne qu'on a sous les yeux.
     ("confiddepot", "575 quater · une ligne de classement illisible est sautée",
@@ -4091,6 +4091,20 @@ MUTATIONS = [
     ("run", "609 ter · le runner écrit les références hors du dossier de l'appareil",
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
+
+    # ── 612 · un nom classé se cherche aussi recollé ──
+    # Le nom coupé n'est plus recollé : le contrôle ne cherche que la chaîne entière.
+    ("confiddepot", "612 · un nom classé coupé n'est plus recollé",
+     "  const coupee = nom ? lignes.findIndex((l) => lettresDe(l).includes(nom)) + 1 : 0;",
+     "  const coupee = 0;"),
+    # Le recollage ne retire que les blancs : une barre ou une apostrophe coupe encore.
+    ("confiddepot", "612 bis · le recollage ne retire que les blancs",
+     "  return t.toLowerCase().replace(/[^\\p{L}]/gu, '');",
+     "  return t.toLowerCase().replace(/\\s/gu, '');"),
+    # La coupure n'est plus dite : on chercherait le nom entier sans le trouver.
+    ("confiddepot", "612 ter · la sortie ne dit plus que le nom est coupé",
+     "»${coupe ? ' COUPÉ' : ''} (",
+     "» ("),
 
     # ── 611 · le garde de l'histoire lit la base par lots ──
     # Un seul lot : la chaîne dépasse la limite de Node et le garde tombe sur son instrument.

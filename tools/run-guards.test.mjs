@@ -19670,6 +19670,42 @@ test('un identifiant classé DISTINCTIF échoue à la moindre mention, quelle qu
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+// ── 612 · UN NOM CLASSÉ, COUPÉ PAR UNE PONCTUATION, ÉCHAPPAIT AU CONTRÔLE ─────
+// Recopiant mot pour mot le relevé d'un run — un titre dont les deux moitiés du
+// nom de l'application étaient rendues à deux tailles —, j'ai écrit ce nom coupé
+// par une barre dans trois fichiers de ce dépôt. Le contrôle cherchait la chaîne
+// entière, et rien n'a échoué. Un nom classé se cherche désormais aussi dans les
+// seules lettres de chaque ligne.
+test('un nom classé distinctif se voit encore COUPÉ par une ponctuation (612)', async () => {
+  const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const dir = terrainAmbigu();
+  try {
+    const liste = () => ['PROPRE.md', 'SALE.md'];
+    const avec = (/** @type {string} */ mention) => (/** @type {string} */ f) =>
+      (f.endsWith('SALE.md') ? `ligne un\nle titre ${mention} a rendu\n` : 'rien ici');
+    // 🔴 Les deux premières formes sont celles qui ont été écrites : la note du
+    // backlog, et le cas de la sonde.
+    for (const mention of ['« Zor / blo est là »', "('Zor', 28), ('blo est là', 22)", 'zor-blo', '**Zor**blo', 'ZOR BLO']) {
+      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo');
+      const texte = r.lignes.join('\n');
+      assert.equal(r.code, 1, `« ${mention} » : un nom classé, coupé, fuit sans que rien échoue (612)`);
+      assert.match(texte, /SALE\.md:2 — « zorblo » COUPÉ/,
+        `« ${mention} » : il ne dit pas OÙ, ni que le nom n'y figure que coupé (612)`);
+      assert.ok(!texte.includes('PROPRE.md:'), `« ${mention} » : il accuse un fichier qui ne porte rien`);
+    }
+    // Entier, le nom reste dit entier : « coupé » enverrait chercher une coupure
+    // qui n'existe pas.
+    const entier = controler([dir], avec('Zorblo'), liste, () => 'distinctif zorblo').lignes.join('\n');
+    assert.match(entier, /SALE\.md:2 — « zorblo » \(/, 'un nom écrit entier est dit coupé (612)');
+    // ⚠️ L'AUTRE MOITIÉ : des mots qui ne font que lui RESSEMBLER ne le recollent
+    // pas. Un contrôle qui crierait sur eux passerait toute la moitié d'au-dessus.
+    for (const voisin of ['le zorro bloque', 'un bloc de zorb', 'zor, puis rien']) {
+      const r = controler([dir], avec(voisin), liste, () => 'distinctif zorblo');
+      assert.equal(r.code, 0, `« ${voisin} » ne porte pas le nom, et le contrôle rougit :\n${r.lignes.join('\n')}`);
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('le classement ne peut que DURCIR, et une ligne illisible l\'arrête (575)', async () => {
   const { controler } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
   // Un identifiant distinctif par sa FORME : aucune ligne du fichier privé ne

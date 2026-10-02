@@ -156,7 +156,17 @@ export function classementDe(texte) {
 }
 
 /**
- * La première ligne (1-indexée) qui porte la valeur, 0 si aucune.
+ * Les seules lettres d'un texte, en minuscules : ce qui reste d'un nom une fois
+ * ôté ce qui le coupe.
+ * @param {string} t
+ */
+export function lettresDe(t) {
+  return t.toLowerCase().replace(/[^\p{L}]/gu, '');
+}
+
+/**
+ * La première ligne (1-indexée) qui porte la valeur, 0 si aucune — et si le nom
+ * n'y figure que COUPÉ.
  *
  * ⚠️ Un `distinctif` classé se cherche SANS la casse : c'est un nom, et il fuit
  * aussi bien capitalisé en tête de phrase qu'en minuscules dans un chemin.
@@ -164,11 +174,28 @@ export function classementDe(texte) {
  * minuscules, vivait dans ce dépôt pendant que le paquet se cherchait avec sa
  * majuscule. Un identifiant distinctif par sa FORME garde la casse : c'est sa
  * forme exacte qui le rend sûr, et l'élargir ferait crier au loup.
+ *
+ * 🔴 612 — ET UN NOM CLASSÉ SE CHERCHE AUSSI RECOLLÉ. Recopiant mot pour mot ce
+ * qu'un run avait relevé — un titre dont les deux moitiés du nom de
+ * l'application étaient rendues à deux tailles —, j'ai écrit ce nom coupé par
+ * une barre, dans trois fichiers de ce dépôt : la chaîne entière n'y était
+ * nulle part, et rien n'a échoué. Une ligne dont les seules lettres portent le
+ * nom le porte. Seuls les noms CLASSÉS se recollent : ailleurs la forme exacte
+ * fait la sûreté, et joindre les mots ferait crier au loup.
+ * ⚠️ LIMITE : la coupure se recolle, pas la paraphrase. Deux moitiés séparées
+ * par des MOTS (« Zor » en 28 px, « blo »), par une fin de ligne ou par une
+ * balise faite de lettres (`Zor</b>blo` — mesuré) ne se voient pas.
  * @param {string} texte @param {string} valeur @param {boolean} insensible
+ * @returns {{ ligne: number, coupe: boolean }}
  */
 function ligneDe(texte, valeur, insensible) {
+  const lignes = texte.split('\n');
   const cherche = insensible ? valeur.toLowerCase() : valeur;
-  return texte.split('\n').findIndex((l) => (insensible ? l.toLowerCase() : l).includes(cherche)) + 1;
+  const entiere = lignes.findIndex((l) => (insensible ? l.toLowerCase() : l).includes(cherche)) + 1;
+  if (entiere || !insensible) return { ligne: entiere, coupe: false };
+  const nom = lettresDe(valeur);
+  const coupee = nom ? lignes.findIndex((l) => lettresDe(l).includes(nom)) + 1 : 0;
+  return { ligne: coupee, coupe: coupee > 0 };
 }
 
 /** Les dossiers à inspecter : l'argument, sinon la liste déclarée. */
@@ -221,9 +248,9 @@ lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8'
   for (const f of fichiers) {
     let t; try { t = String(lire(join(RACINE, f), 'utf8')); } catch { continue; }
     for (const a of attendus) {
-      const ligne = ligneDe(t, a.valeur, estNomClasse(a.valeur));
+      const { ligne, coupe } = ligneDe(t, a.valeur, estNomClasse(a.valeur));
       if (!ligne) continue;
-      const ou = `${f}:${ligne} — « ${a.valeur} » (${a.quoi})`;
+      const ou = `${f}:${ligne} — « ${a.valeur} »${coupe ? ' COUPÉ' : ''} (${a.quoi})`;
       (estFuite(a.valeur) ? fuites : ambigus).push(ou);
     }
   }
