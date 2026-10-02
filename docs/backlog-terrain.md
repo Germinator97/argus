@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **4 POINTS OUVERTS** — les **604** à **607**, rendus par le run 108 (section
-« Rendu par le run 108 », en fin de fichier). Le **603**, du même run, est fermé
-le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
+🔴 **3 POINTS OUVERTS** — les **604**, **605** et **607**, rendus par le run 108
+(section « Rendu par le run 108 », en fin de fichier). Le **606**, du même run,
+est fermé le 02/10 : les cibles de l'étage 1 relaient `TEST_ARGS` à `flutter
+test`. Le **603** est fermé le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
 montre l'APK universel en contexte. Le **602** est fermé le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
 échecs. Le **601** est fermé le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
 non plus par le curseur, qui suit la taille du glyphe. Le **610**, rendu par le run 109,
@@ -15339,11 +15340,26 @@ la CI vers le vrai monitoring.
 
 ### 606. Les cibles `make` de l'étage 1 ne relaient aucun drapeau à `flutter test`
 
-**Ouvert le 01/10/2026 · OUVERT** — `argus-anchors` (l. 148), `argus-guards`
+**Ouvert le 01/10/2026 · CLOS** — `argus-anchors` (l. 148), `argus-guards`
 (l. 175) et `argus-debts*` (l. 205) appellent `$(FLUTTER) test` sans rien relayer :
 `ARGS` ne va qu'au moteur. Un cadrage qui exige `--dart-define=SENTRY_DSN=` sur
 tout `flutter test` ne se tient qu'en détournant `FLUTTER` — ce qu'a fait l'agent,
 après quatre passes sans.
+
+#### ✅ Fermé le 02/10/2026 — `TEST_ARGS`, relayé par chaque `flutter test`
+
+- `TEST_ARGS` est relayé par chaque `$(FLUTTER) test` du Makefile et documenté à
+  côté d'`ARGS`, dans le Makefile et dans le SKILL ; `argus-debts-write` le reçoit
+  par le sous-make, qui hérite des variables de la ligne de commande.
+- Le garde lit tout `$(FLUTTER) test` du fichier, puis demande à make, par `-n`
+  sur une copie, ce que lancerait chaque cible de l'étage 1 : le drapeau atteint
+  `flutter test`. Deux gardes plus anciens citaient la forme exacte `test
+  test/argus/anchors_test.dart` — leur propre commentaire prévient qu'une forme
+  citée fait rougir un correctif juste — et lisent désormais le mécanisme ; la
+  mutation 423, ancrée sur cette ligne, est ré-ancrée.
+- Quatre mutations — `argus-guards` ou `argus-debts` ne relaient plus, le Makefile
+  ou le SKILL ne le disent plus — et la 423 : **5/5 TOMBE**, dans le montage
+  minimal. Suite 693/693.
 
 ### 607. Sur un écran à compte à rebours, Maestro attend une hiérarchie stable AVANT chaque toucher, et le chrono s'épuise
 
