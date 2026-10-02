@@ -5051,7 +5051,9 @@ test('argus-anchors lance ses DEUX moitiés, même si la première échoue (234)
   const corps = recette.slice(0, recette.indexOf('\n\n'))
     .split('\n').filter((l) => !l.trimStart().startsWith('#')).join('\n');
   assert.match(corps, /--check-anchors/, 'le croisement a disparu de la cible');
-  assert.match(corps, /test test\/argus\/anchors_test\.dart/, 'le test Dart a disparu de la cible');
+  // 606 — le MÉCANISME, pas la forme : des drapeaux (`$(TEST_ARGS)`) peuvent
+  // s'intercaler entre `test` et le fichier.
+  assert.match(corps, /test\b[^\n|]*test\/argus\/anchors_test\.dart/, 'le test Dart a disparu de la cible');
   // Les deux gestes doivent être TOLÉRANTS à l'échec l'un de l'autre…
   // ⚠️ Le MÉCANISME, pas la forme : ce garde exigeait `|| rc=` et il est tombé
   // sur le 423, qui donne une variable à CHAQUE moitié pour dire laquelle a
@@ -5394,7 +5396,7 @@ test('la cible argus-anchors APPELLE ce contrôle, elle ne fait pas que tester',
   // ⚠️ Une décision juste que personne n'appelle est le défaut du 213 et du 217.
   assert.match(corps, /--check-anchors/,
     'argus-anchors ne croise plus posé → déclaré : la moitié manquante l\'est de nouveau');
-  assert.match(corps, /test test\/argus\/anchors_test\.dart/,
+  assert.match(corps, /test\b[^\n|]*test\/argus\/anchors_test\.dart/,
     'argus-anchors ne lance plus la suite qui prouve déclaré → présent');
 });
 
@@ -17285,6 +17287,43 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
   }
 });
 
+
+// ── 606 · les cibles de l'étage 1 relaient TEST_ARGS à `flutter test` ──
+//
+// `ARGS` ne va qu'au moteur : un cadrage qui exige `--dart-define=SENTRY_DSN=`
+// sur tout `flutter test` ne tenait qu'en détournant `FLUTTER` — ce que l'agent
+// du run 108 a fait, après quatre passes sans. Le garde lit le PHÉNOMÈNE — tout
+// `$(FLUTTER) test` du fichier —, puis demande à make ce qu'il lancerait.
+test('606 — chaque `flutter test` du Makefile relaie TEST_ARGS, et make le transmet vraiment', () => {
+  const chemin = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/Makefile');
+  const make = readFileSync(chemin, 'utf8');
+  const recettes = make.split('\n').filter((l) => !/^\s*#/.test(l) && /\$\(FLUTTER\) test\b/.test(l));
+  assert.ok(recettes.length >= 3,
+    `${recettes.length} appel(s) à \`flutter test\` trouvés — l'étage 1 en a trois : le motif ne mesure plus rien`);
+  for (const ligne of recettes) {
+    assert.match(ligne, /\$\(FLUTTER\) test \$\(TEST_ARGS\)/,
+      `« ${ligne.trim().slice(0, 90)} » ne relaie pas TEST_ARGS : ses drapeaux n'iront pas à \`flutter test\` (606)`);
+  }
+  assert.match(make, /^# `TEST_ARGS` passe tes drapeaux à `flutter test`/m,
+    'le Makefile ne dit plus à quoi sert TEST_ARGS (606)');
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  assert.match(skill, /`make argus-guards TEST_ARGS="--dart-define=[^"]*"`/,
+    'le SKILL ne dit plus comment passer un drapeau à `flutter test` (606)');
+
+  // Ce que make LANCERAIT, sans rien lancer : `-n` imprime la recette développée.
+  const dir = mkdtempSync(join(tmpdir(), 'argus-make-606-'));
+  try {
+    cpSync(chemin, join(dir, 'Makefile'));
+    for (const cible of ['argus-guards', 'argus-anchors', 'argus-debts']) {
+      const sortie = execFileSync('make', ['-n', cible, 'TEST_ARGS=--dart-define=SONDE_606=1'],
+        { cwd: dir, encoding: 'utf8' });
+      assert.match(sortie, /flutter test --dart-define=SONDE_606=1 /,
+        `make ${cible} ne transmet pas TEST_ARGS à \`flutter test\` (606) — il lancerait : ${sortie.slice(0, 200)}`);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 // ── 603 · le tableau de performance juge ce que le verdict juge ──
 //

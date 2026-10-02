@@ -2663,7 +2663,9 @@ quels tags existent** ; ce n'est pas une raison pour lui donner un nom au hasard
 `--tags`** — `argus-baselines` compris, où il économise le plus (2 min 28 au
 lieu de 6 sur un terrain mesuré). Par `make`, il passe dans `ARGS` :
 `make argus-baselines ARGS="--tags=visual --no-install"` — toute cible qui
-appelle le moteur d'une seule ligne le transmet (567). Un run l'y a transposé sans garantie et a dû
+appelle le moteur d'une seule ligne le transmet (567). Pour `flutter test`, c'est
+`TEST_ARGS` : `make argus-guards TEST_ARGS="--dart-define=SENTRY_DSN="` — les
+trois cibles de l'étage 1 le relaient (606) ; inutile de détourner `FLUTTER`. Un run l'y a transposé sans garantie et a dû
 vérifier lui-même que le rapport restait `scope: complet`. Il l'est : sauter la
 pose d'un binaire inchangé ne filtre aucun flow, donc ne réduit aucun
 périmètre. ⚠️ **Le rapport d'un run filtré porte

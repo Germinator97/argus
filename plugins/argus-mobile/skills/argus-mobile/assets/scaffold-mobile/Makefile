@@ -33,6 +33,13 @@ ARGUS := node scripts/argus/argus-mobile.mjs
 # régénérait toutes les références et reposait le binaire, c'est-à-dire tout ce
 # qu'on avait demandé d'éviter, sans un mot.
 
+# `TEST_ARGS` passe tes drapeaux à `flutter test`, par les cibles de l'étage 1 —
+# `argus-anchors`, `argus-guards`, `argus-debts` :
+# `make argus-guards TEST_ARGS="--dart-define=SENTRY_DSN="`. 🔴 606 — Elles n'en
+# relayaient aucun : `ARGS` ne va qu'au moteur, si bien qu'un projet qui exige un
+# `--dart-define` sur tout `flutter test` ne tenait qu'en détournant `FLUTTER` —
+# ce qu'un run a fait, après quatre passes sans.
+
 .PHONY: argus-help argus argus-lint argus-guards argus-debts argus-run argus-smoke argus-visual \
         argus-baselines argus-perf argus-a11y argus-sec argus-sca argus-report \
         argus-anchors argus-reach \
@@ -145,7 +152,7 @@ argus-anchors: ## Les ancres sémantiques arrivent-elles dans l'arbre ? (sans de
 # échoue) : on RÉSUME après les deux, en nommant celle qui a échoué.
 	@croise=0; suite=0; \
 	$(ARGUS) config --check-anchors || croise=$$?; \
-	$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \
+	$(FLUTTER) test $(TEST_ARGS) test/argus/anchors_test.dart || suite=$$?; \
 	if [ $$croise -ne 0 ] || [ $$suite -ne 0 ]; then \
 	  echo ""; \
 	  echo "  ✖ argus-anchors ÉCHOUE — ce que la dernière ligne ci-dessus ne dit pas :"; \
@@ -172,7 +179,7 @@ argus-guards: ## Étage 1 — gardes a11y et disposition, sans device
 # ⚠️ Et le dossier est DEMANDÉ à la config, jamais recopié : il est configurable,
 # donc l'écrire en dur ferait écrire la recette là où le rapport ne lit pas, et
 # la dimension se rapporterait « jamais lancée » au sortir d'un run vert.
-	@$(FLUTTER) test --file-reporter json:"$$($(ARGUS) config --print-artifacts-dir)/stage1.jsonl" test/argus
+	@$(FLUTTER) test $(TEST_ARGS) --file-reporter json:"$$($(ARGUS) config --print-artifacts-dir)/stage1.jsonl" test/argus
 
 # ⚠️ QUATRE LANCEMENTS POUR UNE PREMIÈRE INSTALLATION, et deux étaient du
 # recopiage. Un run l'a mesuré : obtenir les échecs, les lister, capturer la
@@ -202,7 +209,7 @@ argus-debts: ## Le bloc known_issues prêt à coller, dérivé des échecs de l'
 # message ne s'affichait jamais. Une suite verte et une suite qui n'a pas tourné
 # rendaient le même silence total, c'est-à-dire exactement les deux cas que cette
 # phrase existe pour séparer. On capture, puis on décide.
-	@dettes="$$($(FLUTTER) test test/argus 2>&1 \
+	@dettes="$$($(FLUTTER) test $(TEST_ARGS) test/argus 2>&1 \
 	  | sed -e 's/\x1b\[[0-9;]*m//g' \
 	  | awk '/known_issues\.dart/ { f = 4; next } \
 	         f > 0 { f--; if ($$0 ~ /^ +\047[^\047]+\047,$$/) { print; f = 0 } }' \

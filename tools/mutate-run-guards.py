@@ -1963,8 +1963,8 @@ MUTATIONS = [
     # mais plus rien ne peut dire LAQUELLE a échoué, et la dernière ligne
     # affichée redevient celle de la moitié qui passe.
     ("makefile", "423 · les deux moitiés repartagent un compteur unique",
-     "$(FLUTTER) test test/argus/anchors_test.dart || suite=$$?; \\",
-     "$(FLUTTER) test test/argus/anchors_test.dart || croise=$$?; \\"),
+     "$(FLUTTER) test $(TEST_ARGS) test/argus/anchors_test.dart || suite=$$?; \\",
+     "$(FLUTTER) test $(TEST_ARGS) test/argus/anchors_test.dart || croise=$$?; \\"),
     # 424 a — le fichier cesse de prescrire la DERNIÈRE occurrence : il ne reste
     # que le piège, sans le geste qui y survit.
     ("dette", "424 · le fichier ne prescrit plus la dernière occurrence",
@@ -4091,6 +4091,24 @@ MUTATIONS = [
     ("run", "609 ter · le runner écrit les références hors du dossier de l'appareil",
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
+
+    # ── 606 · les cibles de l'étage 1 relaient TEST_ARGS ──
+    # Les gardes d'étage 1 ne relaient plus TEST_ARGS.
+    ("makefile", "606 · argus-guards ne relaie plus TEST_ARGS",
+     "\t@$(FLUTTER) test $(TEST_ARGS) --file-reporter json:",
+     "\t@$(FLUTTER) test --file-reporter json:"),
+    # Le relevé des dettes ne les relaie plus.
+    ("makefile", "606 bis · argus-debts ne relaie plus TEST_ARGS",
+     "$$($(FLUTTER) test $(TEST_ARGS) test/argus 2>&1",
+     "$$($(FLUTTER) test test/argus 2>&1"),
+    # Le Makefile ne dit plus à quoi sert TEST_ARGS.
+    ("makefile", "606 ter · le Makefile tait TEST_ARGS",
+     "# `TEST_ARGS` passe tes drapeaux à `flutter test`, par les cibles de l'étage 1 —",
+     "# Les cibles de l'étage 1 —"),
+    # Le SKILL ne dit plus comment passer un drapeau à flutter test.
+    ("skill", "606 quater · le SKILL tait TEST_ARGS",
+     "`make argus-guards TEST_ARGS=\"--dart-define=SENTRY_DSN=\"`",
+     "`make argus-guards`"),
 
     # ── 603 · le tableau de performance juge ce que le verdict juge ──
     # Le tableau rejuge l'APK universel contre le budget.
