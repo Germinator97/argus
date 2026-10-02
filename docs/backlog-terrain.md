@@ -5097,9 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **2 POINTS OUVERTS** — les **604** et **607**, rendus par le run 108 (section
-« Rendu par le run 108 », en fin de fichier). Le **605**, du même run, est fermé
-le 02/10 : le workflow livré construit par la commande que la config déclare.
+🔴 **1 POINT OUVERT** — le **607**, rendu par le run 108 (section « Rendu par le
+run 108 », en fin de fichier) : sur un écran à compte à rebours, Maestro attend
+une hiérarchie stable avant chaque toucher. Le **604**, du même run, est fermé
+le 02/10 : la règle du scan couvre le paquet, pas seulement ses symboles. Le
+**605** est fermé le 02/10 : le workflow livré construit par la commande que la config déclare.
 Le **606** est fermé le 02/10 : les cibles de l'étage 1 relaient `TEST_ARGS` à `flutter
 test`. Le **603** est fermé le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
 montre l'APK universel en contexte. Le **602** est fermé le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
@@ -15320,7 +15322,7 @@ qui ne dit ni ce qu'on attendait ni ce qu'on a vu ne se lit pas.
 
 ### 604. Le 586 ne protège que les symboles : le build de scan réécrit les paquets de la release en attente
 
-**Ouvert le 01/10/2026 · OUVERT** — le build de scan, passé par la commande du
+**Ouvert le 01/10/2026 · CLOS** — le build de scan, passé par la commande du
 projet, a réécrit, de la release en attente : `build/mapping.json` (chemin figé du
 script du projet), `flutter-apk/app-release.apk`, `apk/release/app-release.apk`,
 `mapping/release/resources.txt`, `seeds.txt` et `native-debug-symbols.zip`.
@@ -15328,6 +15330,22 @@ L'agent en a restauré trois, trois autres l'ont été depuis une copie ;
 `apk/release/app-release.apk` est resté celui du scan. La règle du 586 — jamais
 entre un build de publication et l'envoi de ses symboles — laissait passer : les
 symboles étaient partis, le paquet non.
+
+#### ✅ Fermé le 02/10/2026 — la règle couvre le paquet, dans le cadre tranché au 586
+
+- Flutter écrit son paquet à un chemin fixe, que rien ne déplace, et le 586 a
+  écarté la sauvegarde-restauration du `build/` du projet : la règle est la
+  protection. Le SKILL et la configuration disent désormais « ne lance jamais le
+  scan entre un build de publication et son envoi — le paquet et ses symboles »,
+  avec le cas mesuré.
+- Le garde du 586 lit la phrase étendue ; celui du 604 vérifie que les deux sites
+  nomment le paquet et que la forme « symboles seuls » a disparu. Les mutations
+  586 ter et quater, ancrées sur l'ancienne phrase, sont ré-ancrées ; deux
+  mutations ramènent chaque site aux seuls symboles : **4/4 TOMBE**, dans le
+  montage minimal. Suite 695/695.
+- 📌 Non fait, et ce serait une décision neuve : DÉTECTER un paquet de release en
+  attente avant le build de scan (refus ou drapeau explicite). À trancher par
+  Germinator s'il le veut.
 
 ### 605. Le workflow livré construit en dur, sans la commande de build du projet
 
