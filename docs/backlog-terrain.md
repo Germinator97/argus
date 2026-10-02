@@ -5097,7 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-✅ **Rien d'ouvert.** Les **601** à **610**, rendus par les runs 108 et 109
+✅ **Rien d'ouvert.** Le **611**, trouvé en fermant les points des runs 108 et
+109 (section du même nom, en fin de fichier), est fermé le 02/10 : le garde de
+l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
+chaîne. Les **601** à **610**, rendus par les runs 108 et 109
 (sections « Rendu par le run 108 » et « Rendu par le run 109 », en fin de
 fichier), sont fermés le 02/10, le **608** — une fuite de secrets — d'abord. Le
 **607** est fermé le 02/10 : mesuré sur une sonde, un toucher attend ~19 s sur
@@ -15556,3 +15559,29 @@ de `make argus-report` — make aplatit le code de sortie d'un gate `fail`. Et d
 « mots coupés » relevés par le 592 dans un squelette de chargement, d'abord pris
 pour un faux positif : sonde à l'appui, ils étaient VRAIS — au ras de la limite,
 ils ont révélé un défaut du correctif posé sur le terrain.
+
+## Trouvé en fermant les points des runs 108 et 109 — 02/10/2026
+
+### 611. Le garde de l'historique lit toute la base d'objets en une seule chaîne : passé 512 Mio, il tombe sur son instrument
+
+**Ouvert le 02/10/2026 · CLOS** — juste après la clôture du 607, la suite rougit
+sur un seul garde, le 500 (« aucune fuite dans l'HISTOIRE du dépôt ») :
+`Cannot create a string longer than 0x1fffffe8 characters`. Il passe à
+`git cat-file --batch` tous les objets atteignables et en lit la sortie d'un
+seul tenant. Mesurée, la base atteignable pesait **484,6 Mio** au début de la
+passe, **511,3** avant son dernier commit, **512,2** après : la limite d'une
+chaîne Node est juste sous 512 Mio. Le garde ne disait rien d'une fuite, il
+tombait sur son instrument — et la CI y serait tombée au push suivant. Rien ne
+l'annonçait : la base grossit de quelques Mio par passe, et la limite ne se voit
+qu'en la franchissant.
+
+#### ✅ Fermé le 02/10/2026 — la base se lit par lots bornés en taille
+
+- Les objets se groupent par taille cumulée, 64 Mio par lot, lue par
+  `--batch-check` ; chaque lot est lu et balayé à part, les fuites mises en
+  commun, et le témoin doit paraître dans au moins un lot. Un objet n'est jamais
+  coupé entre deux lots, donc une valeur non plus. Compter les lots en objets ne
+  tiendrait pas : quelques versions du fichier de la suite en rempliraient un.
+- Un contrôle exige que chaque objet tombe dans un lot ; le garde tourne en
+  ~4 s. Deux mutations — un lot unique sans borne, le témoin plus relevé — :
+  **2/2 TOMBE**, dans le montage minimal. Suite 696/696.
