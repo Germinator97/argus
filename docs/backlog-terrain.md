@@ -5097,8 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **7 POINTS OUVERTS** — les **601** à **607**, rendus par le run 108 (section
-« Rendu par le run 108 », en fin de fichier). Le **610**, rendu par le run 109,
+🔴 **6 POINTS OUVERTS** — les **602** à **607**, rendus par le run 108 (section
+« Rendu par le run 108 », en fin de fichier). Le **601**, du même run, est fermé
+le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
+non plus par le curseur, qui suit la taille du glyphe. Le **610**, rendu par le run 109,
 est fermé le 02/10 : le SCA nomme chaque source native qu'il ne lit pas, jusqu'à
 la page. Le **609**, du même run, est fermé le 02/10 : `ARGUS-MOBILE.md` situe l'empreinte de cadrage dans le dossier de
 l'appareil, et un garde lit toute la doc livrée. Le **608** est fermé le jour
@@ -15225,7 +15227,7 @@ sur les artefacts du run ou dans le code au `HEAD`.
 
 ### 601. Le détecteur du 592 voit un retour à la ligne là où le curseur ne fait que changer de hauteur
 
-**Ouvert le 01/10/2026 · OUVERT** — sur la carte de question du terrain, des
+**Ouvert le 01/10/2026 · CLOS** — sur la carte de question du terrain, des
 guillemets en 28 px encadrent un texte en 22 px, sur la même ligne, séparés par
 une espace fine insécable (U+202F). Le détecteur rend « « / Une question ? » » :
 27 gardes rouges (9 × question, tutoriel, explication), 129 retours à la ligne
@@ -15249,6 +15251,28 @@ un faux positif : `debts-write` aurait inscrit les 27.
   page plutôt que par la hauteur du curseur ; la sonde du 592 gagne les cas d'une
   seule ligne à tailles mêlées, qui ne doivent rien voir, et garde ses vraies
   coupures.
+
+#### ✅ Fermé le 02/10/2026 — la ligne se lit par sa boîte de hauteur `max`
+
+- `_argusHautDeLigne` lit la boîte de chaque caractère en `BoxHeightStyle.max`,
+  qui prend la hauteur de TOUTE sa ligne : son haut est celui de la ligne,
+  quelles que soient les tailles qui la composent. Éprouvé d'abord sur la sonde
+  jetable : le cas du terrain et les tailles mêlées dans un mot ne rendent plus
+  rien, « D'a / cco / rd » reste vu — et une vraie coupure entre tailles mêlées
+  se découpe juste, là où l'ancien critère ajoutait une coupure fantôme après les
+  guillemets.
+- La sonde du dépôt gagne trois cas à tailles mêlées, après ceux du 592 : les
+  guillemets et le changement de taille dans un mot tiennent sur UNE ligne et ne
+  sont pas vus ; une vraie coupure l'est. Leur nombre de lignes vient d'un
+  `TextPainter`, pas du critère qu'on juge.
+- Jouée comme la CI — application jetable, cadre posé par l'installeur, analysé
+  sous les lints courants — : la sonde passe ; l'ancien critère remis dans la
+  copie installée reproduit le faux positif du run 108 (« « / Une question ? » »,
+  « Bon / jour à tous ») et la fait échouer.
+- Le garde tient le critère et les cas de la sonde ; quatre mutations — retour au
+  curseur, boîte serrée, cas des guillemets retiré, cas d'une ligne qui n'a plus
+  à tenir sur une ligne — : **4/4 TOMBE**, dans le montage minimal sur le commit
+  du correctif. Suite 690/690.
 
 ### 602. La carte QAM-STAGE1 n'a ni « attendu » ni « constaté », et se range en accessibilité
 
