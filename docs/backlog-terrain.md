@@ -5097,11 +5097,11 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **1 POINT OUVERT** — le **613** (section « Trouvé en fermant les points des
-runs 108 et 109 », en fin de fichier) : 22 des 25 commits à pousser portent un
-fragment d'un nom de terrain, que le 612 a retiré de l'arbre ; l'effacer de
-l'historique demande de le réécrire avant le push — à trancher par Germinator.
-Le **611**, trouvé au même moment, est fermé le 02/10 : le garde de
+✅ **Rien d'ouvert.** Le **613** (section « Trouvé en fermant les points des runs
+108 et 109 », en fin de fichier) est fermé le 02/10 : l'historique à pousser, qui
+portait un fragment d'un nom de terrain, a été réécrit avant tout push sur
+décision de Germinator, et le contrôle de confidentialité lit désormais ce qu'un
+push publierait. Le **611**, trouvé au même moment, est fermé le 02/10 : le garde de
 l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
 chaîne. Le **612**, du même moment, est fermé le 02/10 : un nom de terrain
 classé se cherche aussi recollé, et une ponctuation entre ses moitiés ne le
@@ -15627,7 +15627,7 @@ instrument.
 
 ### 613. Le contrôle de confidentialité ne lit ni les messages de commit, ni l'historique à pousser
 
-**Ouvert le 02/10/2026 · OUVERT** — le 612 nettoie l'arbre ; il ne peut rien
+**Ouvert le 02/10/2026 · CLOS** — le 612 nettoie l'arbre ; il ne peut rien
 pour ce qui est déjà commité. Mesuré sur `origin/feat/argus-mobile..HEAD` le
 02/10, après la clôture du 612 : **25** commits à pousser, dont **22** portent
 le fragment du nom dans leur arbre — de l'ouverture des 601-610 au correctif du
@@ -15647,6 +15647,38 @@ Reste à trancher, par Germinator et avant tout push :
 - puis câbler le contrôle des messages et des objets **à pousser**
   (`@{u}..HEAD`) — pas avant : il rougirait la suite sur ces deux messages tant
   que l'historique n'est pas réécrit.
+
+#### ✅ Fermé le 02/10/2026 — l'historique réécrit avant tout push, et le contrôle lit ce qu'un push publierait
+
+- Tranché par Germinator : réécrire. Un bundle COMPLET de la branche d'abord,
+  hors dépôt, vérifié puis rejoué par un clone : même `HEAD`, 1038 commits, même
+  arbre. Puis `filter-branch` sur `origin/feat/argus-mobile..HEAD` : un filtre
+  d'INDEX — aucun checkout, donc aucune conversion possible — remplace le
+  fragment dans les trois fichiers seulement, et un filtre de message reformule
+  les deux messages et celui du correctif du 612, qui ne touche plus ces
+  fichiers. Joué à blanc d'abord : à la frontière du 612, la version transformée
+  coïncide ligne pour ligne.
+- Vérifié commit par commit : 28 commits, sujets, auteurs, committers et dates
+  identiques, même point de départ ; 22 arbres changés sur les seules lignes du
+  fragment, 6 identiques, l'arbre final identique ; plus aucun fragment, ni dans
+  un arbre ni dans un message à pousser — quand l'ancien `HEAD` le porte encore,
+  contre-épreuve de l'instrument. La ref de sauvegarde de `filter-branch` est
+  retirée ; le reflog et le bundle gardent l'ancien historique, hors de ce que
+  pousse une branche.
+- Le contrôle lit désormais ce qu'un push publierait : les messages et toutes
+  les versions de fichier des commits qu'une branche locale porte et qu'aucune
+  branche distante n'a (`--branches --not --remotes`, plutôt que `@{u}..HEAD` :
+  une autre branche locale se pousse aussi), par lots bornés en taille comme au
+  611. L'historique déjà publié n'est pas relu ; un historique illisible fait
+  échouer. Joué sur le vrai dépôt AVANT la réécriture, il a désigné les 2
+  messages et 20 versions des 3 fichiers, et rien d'autre parmi 89 textes ;
+  après, il passe.
+- Deux gardes — un dépôt jetable où seul l'historique porte le nom (un message,
+  un fichier retiré au commit suivant), l'historique publié ignoré et un
+  historique illisible qui échoue ; et le câblage par défaut, joué dans un
+  sous-processus sous un HOME fabriqué, donc jugé sur toute machine. Sept
+  mutations, et les 575 sexies et 612 ter ré-ancrées : **8/8 TOMBE**, dans le
+  montage minimal. Suite 700/700.
 
 ### 614. Le lecteur des compteurs de la page additionne « cent » : deux cent trois vidages s'y lisent cent cinq
 
