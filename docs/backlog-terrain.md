@@ -37,7 +37,8 @@ s'en sert pour ne PAS réclamer un commit de clôture qui n'existe pas — il a
 confondu « le numéro est pris » et « le point est clos » pendant quarante-six
 passes, faute d'avoir jamais rencontré l'un sans l'autre.
 
-Formulé sans jamais nommer les projets d'essai : ce dépôt est public.
+Formulé sans jamais nommer les projets d'essai ni recopier leurs textes — un relevé
+de run se cite avec un exemple neutre (612, 615) : ce dépôt est public.
 
 ## Écrit par un agent qui découvrait le skill — clos
 
@@ -5105,7 +5106,9 @@ push publierait. Le **611**, trouvé au même moment, est fermé le 02/10 : le g
 l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
 chaîne. Le **612**, du même moment, est fermé le 02/10 : un nom de terrain
 classé se cherche aussi recollé, et une ponctuation entre ses moitiés ne le
-cache plus. Le **614** est fermé le 02/10 : le lecteur des compteurs de la page
+cache plus. Le **615** est fermé le 02/10 : quatre textes de l'application d'un
+terrain, recopiés d'un relevé, sont neutralisés dans tout ce qui reste à pousser.
+Le **614** est fermé le 02/10 : le lecteur des compteurs de la page
 multiplie par cent au lieu d'additionner. Les **601** à **610**, rendus par les
 runs 108 et 109
 (sections « Rendu par le run 108 » et « Rendu par le run 109 », en fin de
@@ -15698,3 +15701,37 @@ panne — mais il accusait une page juste.
   200, 341, 999, l'ordinal 200, et ce qui marchait déjà : 100, 105, 191, 101.
 - Deux mutations — « cent » de nouveau additionné, « cent » seul à zéro — :
   **2/2 TOMBE**, dans le montage minimal. Suite 698/698.
+
+### 615. Des textes de l'application d'un terrain recopiés dans le dépôt : une question, un libellé d'état, deux identifiants
+
+**Ouvert le 02/10/2026 · CLOS** — relevé en fermant le 613 : les relevés du run
+108, recopiés pour décrire les 601 et 607, ont fait entrer dans ce dépôt quatre
+textes de l'application du terrain — le texte d'une question, l'assertion d'un
+état de pause, deux identifiants sémantiques — dans le backlog, la sonde, l'ancre
+d'une mutation, le commentaire d'un garde, le **gabarit livré** (un commentaire du
+harnais posé chez les projets d'accueil) et un message de commit. Aucun ne nomme
+l'application ; tous la décrivent. Le contrôle de confidentialité ne pouvait pas
+les voir : il dérive les identifiants des DÉCLARATIONS d'un terrain — paquet,
+applicationId, bundle, polices —, pas de ses textes.
+
+#### ✅ Fermé le 02/10/2026 — neutralisés dans tout ce qui reste à pousser, sur demande de Germinator
+
+- MESURÉ d'abord : les sources des quatre terrains — identifiants `snake_case`,
+  littéraux de plusieurs mots, contenus JSON, noms de classes — balayées contre
+  tout le texte que les commits à pousser AJOUTENT, messages compris : deux
+  identifiants et un libellé, plus du bruit (des fragments coupés par les
+  apostrophes, tous déjà publiés). Le texte de la question n'est pas dans les
+  sources — un contenu servi à distance — : relu à la main, avec chaque citation
+  « … » et chaque `code` que la passe ajoute et que l'historique publié n'a pas.
+  Les quatre, et rien d'autre ; aucun dans l'historique publié.
+- Neutralisés par une seconde réécriture de `origin/feat/argus-mobile..HEAD`, par
+  la méthode du 613 — bundle complet vérifié, filtre d'index sur cinq fichiers,
+  filtre de message, à blanc d'abord : 30 commits, sujets, auteurs et dates
+  intacts, chaque arbre changé sur les seules lignes visées, un message changé ;
+  l'arbre final diffère de 10 lignes. La sonde du 601, rejouée sur l'hôte jetable
+  avec les textes neutres, discrimine toujours : le critère de ligne n'y voit
+  aucune coupure, l'ancien critère en voit une.
+- Pas de garde : les textes d'une application ne se dérivent pas de ses
+  déclarations, et dériver tout son code ferait crier au loup — la limite écrite
+  au 541. La règle est écrite là où on écrit, en tête de ce fichier : un relevé de
+  run se cite avec un exemple neutre. Suite 700/700.
