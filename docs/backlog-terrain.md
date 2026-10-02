@@ -5105,7 +5105,9 @@ Le **611**, trouvé au même moment, est fermé le 02/10 : le garde de
 l'historique lit la base d'objets par lots, et ne tombe plus sur la taille d'une
 chaîne. Le **612**, du même moment, est fermé le 02/10 : un nom de terrain
 classé se cherche aussi recollé, et une ponctuation entre ses moitiés ne le
-cache plus. Les **601** à **610**, rendus par les runs 108 et 109
+cache plus. Le **614** est fermé le 02/10 : le lecteur des compteurs de la page
+multiplie par cent au lieu d'additionner. Les **601** à **610**, rendus par les
+runs 108 et 109
 (sections « Rendu par le run 108 » et « Rendu par le run 109 », en fin de
 fichier), sont fermés le 02/10, le **608** — une fuite de secrets — d'abord. Le
 **607** est fermé le 02/10 : mesuré sur une sonde, un toucher attend ~19 s sur
@@ -15645,3 +15647,22 @@ Reste à trancher, par Germinator et avant tout push :
 - puis câbler le contrôle des messages et des objets **à pousser**
   (`@{u}..HEAD`) — pas avant : il rougirait la suite sur ces deux messages tant
   que l'historique n'est pas réécrit.
+
+### 614. Le lecteur des compteurs de la page additionne « cent » : deux cent trois vidages s'y lisent cent cinq
+
+**Ouvert le 02/10/2026 · CLOS** — en préparant la version suivante de la page, le
+contrôle (`check-artefact.mjs`) refuse le compteur des vidages : la page écrit
+« deux cent trois », il lit **105**. `nombreFr` (`tools/artefact-compteurs.mjs`)
+rangeait « cent » parmi les unités, donc l'ADDITIONNAIT : « deux cent trois »
+valait 2 + 100 + 3, « deux cents » 102. Rien ne l'avait vu : aucune valeur
+au-delà de 199 n'avait encore été écrite en lettres sur la page, et le garde du
+lecteur (333) n'en essayait aucune. Le contrôle a échoué, ce qui est la bonne
+panne — mais il accusait une page juste.
+
+#### ✅ Fermé le 02/10/2026 — « cent » multiplie ce qui le précède
+
+- « cent », « cents » et « centième » multiplient ce qui les précède, ou valent
+  cent seuls. Le garde tient 203 — la valeur rencontrée —, sa graphie de 1990,
+  200, 341, 999, l'ordinal 200, et ce qui marchait déjà : 100, 105, 191, 101.
+- Deux mutations — « cent » de nouveau additionné, « cent » seul à zéro — :
+  **2/2 TOMBE**, dans le montage minimal. Suite 698/698.
