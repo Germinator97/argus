@@ -22,6 +22,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 // 593 — le délégué Cupertino par défaut, que `MaterialApp` ajoute toujours.
 import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
@@ -1739,8 +1740,9 @@ bool argusBordQuiCoupe(Rect cible, Rect zone, SemanticsData zoneDonnees) {
 /// « Sauvegarde / r » dans des dialogues, même à 100 % en 360 dp.
 ///
 /// Lu sur le paragraphe RÉEL, sans le remettre en page : une coupure est là où
-/// le curseur change de ligne. Elle est un défaut quand le mot d'ICU qui porte
-/// le dernier caractère de la ligne continue sur la suivante. Un trait d'union,
+/// la LIGNE change — lue par une boîte de hauteur `max`, pas par le curseur
+/// (601). Elle est un défaut quand le mot d'ICU qui porte le dernier caractère
+/// de la ligne continue sur la suivante. Un trait d'union,
 /// une espace, le point ou la barre d'une URL ferment un mot : y couper est
 /// légitime. Une apostrophe ou le point d'un nombre, non — « D' / accord » et
 /// « 12. / 340 » sont des mots coupés, et un filtre « lettre de part et d'autre »
@@ -1768,6 +1770,24 @@ final RegExp _argusSansEspaces = RegExp(
   unicode: true,
 );
 
+/// Le haut de la LIGNE qui porte le caractère [i] de [paragraph] ; `null`
+/// s'il n'a pas de boîte.
+///
+/// 🔴 601 — C'ÉTAIT LE HAUT DU CURSEUR, qui suit la taille du glyphe : des
+/// guillemets en 28 px devant un texte en 22 px le faisaient descendre de plus
+/// de 5 px sur UNE seule ligne, et le détecteur y voyait un retour à la ligne —
+/// « « / Une question ? » », vingt-sept gardes rouges sur un terrain, aucune
+/// vraie coupure. Une boîte de hauteur `max` prend celle de toute sa ligne :
+/// son haut est celui de la ligne, quelles que soient les tailles qui la
+/// composent.
+double? _argusHautDeLigne(RenderParagraph paragraph, int i) {
+  final List<TextBox> boites = paragraph.getBoxesForSelection(
+    TextSelection(baseOffset: i, extentOffset: i + 1),
+    boxHeightStyle: ui.BoxHeightStyle.max,
+  );
+  return boites.isEmpty ? null : boites.first.top;
+}
+
 /// Le texte de [paragraph] ligne par ligne s'il est coupé DANS un mot, sinon
 /// `null` (592).
 String? argusCoupeDansUnMot(RenderParagraph paragraph) {
@@ -1775,14 +1795,13 @@ String? argusCoupeDansUnMot(RenderParagraph paragraph) {
   if (texte.length < 2) return null;
   final List<int> debuts = <int>[0];
   bool dansUnMot = false;
-  double yPrecedent = paragraph
-      .getOffsetForCaret(const TextPosition(offset: 0), Rect.zero)
-      .dy;
+  double? hautPrecedent = _argusHautDeLigne(paragraph, 0);
   for (int i = 1; i < texte.length; i++) {
-    final double y = paragraph
-        .getOffsetForCaret(TextPosition(offset: i), Rect.zero)
-        .dy;
-    if (y > yPrecedent + 0.5) {
+    final double? haut = _argusHautDeLigne(paragraph, i);
+    // Un caractère sans boîte — un retour forcé, une marque nulle — ne dit
+    // rien de sa ligne : la précédente tient.
+    if (haut == null) continue;
+    if (hautPrecedent != null && haut > hautPrecedent + 0.5) {
       debuts.add(i);
       if (!_argusSansEspaces.hasMatch(texte[i - 1]) &&
           !_argusSansEspaces.hasMatch(texte[i])) {
@@ -1792,7 +1811,7 @@ String? argusCoupeDansUnMot(RenderParagraph paragraph) {
         if (mot.start < i && mot.end > i) dansUnMot = true;
       }
     }
-    yPrecedent = y;
+    hautPrecedent = haut;
   }
   if (!dansUnMot) return null;
   final List<String> lignes = <String>[

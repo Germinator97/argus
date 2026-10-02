@@ -4092,6 +4092,25 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 601 · la ligne se lit par sa boîte, pas par le curseur ──
+    # Le détecteur relit la ligne au curseur : le faux positif du run 108 revient.
+    ("harness", "601 · le détecteur relit la ligne au curseur",
+     "  final List<TextBox> boites = paragraph.getBoxesForSelection(\n    TextSelection(baseOffset: i, extentOffset: i + 1),\n    boxHeightStyle: ui.BoxHeightStyle.max,\n  );\n  return boites.isEmpty ? null : boites.first.top;",
+     "  return paragraph.getOffsetForCaret(TextPosition(offset: i), Rect.zero).dy;"),
+    # La boîte prend la hauteur de son glyphe : son haut suit à nouveau la taille.
+    ("harness", "601 bis · la boîte prend la hauteur de son glyphe",
+     "    boxHeightStyle: ui.BoxHeightStyle.max,",
+     "    boxHeightStyle: ui.BoxHeightStyle.tight,"),
+    # La sonde perd le cas des guillemets, celui du terrain.
+    ("sondemots", "601 ter · la sonde perd le cas des guillemets",
+     "        ('guillemets', 600, <(String, double)>[('«" + chr(92) + "u202F', 28), ('Une question ?"
+     + chr(92) + "u202F', 22), ('»', 28)], false),\n",
+     ""),
+    # Un cas d'une ligne n'a plus à tenir sur une ligne.
+    ("sondemots", "601 quater · un cas d'une ligne n'a plus à tenir sur une ligne",
+     "          lignes,\n          equals(1),",
+     "          lignes,\n          greaterThan(0),"),
+
     # ── 608 · un job à secret ne publie aucun journal Maestro brut ──
     # Le job iOS republie tout le rapport : les comptes de recette repartent en artefact.
     ("ci", "608 · le job iOS republie tout le rapport",

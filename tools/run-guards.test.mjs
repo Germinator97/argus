@@ -19972,6 +19972,44 @@ test('592 — la CI joue la sonde des mots coupés, qui a ses deux moitiés', ()
   assert.match(sh, /rien à mesurer" >&2; exit 2;/, 'la sonde conclut sans scaffold installé');
 });
 
+// ── 601 · LA LIGNE SE LIT PAR SA BOÎTE, PAS PAR LE CURSEUR ──────────────────
+// Le haut du curseur suit la taille du glyphe : des guillemets en 28 px devant
+// un texte en 22 px le déplaçaient sur UNE seule ligne, et le détecteur y
+// voyait un retour à la ligne — « « / Une question ? » », vingt-sept gardes
+// rouges sur un terrain, aucune vraie coupure. Reproduit, le détecteur copié à
+// l'identique : tailles mêlées DANS un mot, une ligne, « Bon / jour à tous ». Le
+// Dart ne s'exécute pas ici : la sonde `mots-probe` prouve en CI les deux sens ;
+// ce garde tient le critère et les cas de la sonde.
+test('601 — le détecteur lit la ligne par sa boîte de hauteur max, et la sonde le prouve', () => {
+  const cadre = readFileSync(join(SCAFFOLD_589, 'test/argus/argus_harness.dart'), 'utf8');
+  // La lecture de la ligne, puis le détecteur qui l'appelle, jusqu'à sa fin.
+  const debut = cadre.indexOf('double? _argusHautDeLigne(');
+  const detecteurDebut = cadre.indexOf('String? argusCoupeDansUnMot(');
+  assert.ok(debut > 0 && detecteurDebut > debut,
+    'la lecture de la ligne ou le détecteur ont disparu du cadre, ou ne se suivent plus : ce garde ne lit plus rien');
+  const detecteur = cadre.slice(debut, cadre.indexOf('\n}\n', detecteurDebut));
+  assert.doesNotMatch(detecteur, /getOffsetForCaret/,
+    'le détecteur relit la ligne au CURSEUR : des tailles mêlées sur une ligne redeviennent des mots coupés (601)');
+  assert.match(detecteur, /boxHeightStyle: ui\.BoxHeightStyle\.max,/,
+    'la boîte ne prend plus la hauteur de sa LIGNE : son haut suit à nouveau la taille du glyphe (601)');
+  assert.match(detecteur, /final double\? haut = _argusHautDeLigne\(paragraph, i\);/,
+    'le détecteur ne lit plus la ligne par `_argusHautDeLigne` (601)');
+
+  const sonde = readFileSync(join(RACINE, 'tools/mots-probe.dart'), 'utf8');
+  const cas = sonde.slice(sonde.indexOf('// ── 601 ·'));
+  assert.ok(cas.length > 30, 'la sonde a perdu ses cas du 601 : le critère n\'est plus prouvé en CI');
+  for (const [nom, coupe] of [['guillemets', 'false'], ['dans un mot', 'false'], ['vraie coupure', 'true']]) {
+    assert.match(cas, new RegExp(`\\('${nom}', \\d+, <\\(String, double\\)>\\[[^\\]]*\\], ${coupe}\\)`),
+      `la sonde ne joue plus le cas « ${nom} » attendu ${coupe === 'true' ? 'vu' : 'non vu'} (601)`);
+  }
+  assert.match(cas, /final int lignes = peintre\.computeLineMetrics\(\)\.length;/,
+    'la sonde ne compte plus ses lignes par un `TextPainter` : elle jugerait le critère par lui-même (601)');
+  assert.match(cas, /expect\(\s*lignes,\s*equals\(1\),/,
+    'un cas d\'une ligne n\'a plus à tenir sur une ligne : « rien n\'est vu » n\'y prouverait rien (601)');
+  assert.match(cas, /expect\(\s*coupes,\s*isEmpty,/, 'la sonde n\'exige plus que des tailles mêlées sur une ligne ne soient pas vues (601)');
+  assert.match(cas, /expect\(\s*coupes,\s*hasLength\(1\),/, 'la sonde n\'exige plus qu\'une vraie coupure à tailles mêlées soit vue (601)');
+});
+
 // ── 584 · LA RECETTE DU DIFF DE JETONS, JOUÉE DEPUIS UN SOUS-DOSSIER ─────────
 // `git show HEAD:<chemin>` lit le chemin depuis la RACINE du dépôt : dans un
 // monorepo, lancé du dossier de l'application, il sort en 128 — mesuré au run

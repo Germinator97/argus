@@ -133,4 +133,66 @@ void main() {
     );
     print('CAS repli : écarté sous ancre déclarée');
   });
+
+  // ── 601 · des tailles mêlées sur UNE ligne ne sont pas un retour à la ligne ──
+  // Le détecteur lisait la ligne par le haut du CURSEUR, qui suit la taille du
+  // glyphe : des guillemets en 28 px devant un texte en 22 px le faisaient
+  // descendre sur une seule ligne, et il y voyait un mot coupé. La vérité du
+  // nombre de lignes vient ici d'un `TextPainter` — pas du critère qu'on juge,
+  // qui se donnerait raison à lui-même.
+  for (final (String nom, double largeur, List<(String, double)> morceaux, bool coupe)
+      in <(String, double, List<(String, double)>, bool)>[
+        ('guillemets', 600, <(String, double)>[('«\u202F', 28), ('Une question ?\u202F', 22), ('»', 28)], false),
+        ('dans un mot', 600, <(String, double)>[('Bon', 28), ('jour à tous', 22)], false),
+        ('vraie coupure', 120, <(String, double)>[('«\u202F', 28), ('Anticonstitutionnellement\u202F', 22), ('»', 28)], true),
+      ]) {
+    testWidgets('601 — tailles mêlées, $nom', (WidgetTester tester) async {
+      final TextSpan texte = TextSpan(
+        children: <InlineSpan>[
+          for (final (String t, double taille) in morceaux)
+            TextSpan(text: t, style: TextStyle(fontSize: taille)),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(width: largeur, child: RichText(text: texte)),
+            ),
+          ),
+        ),
+      );
+      final TextPainter peintre = TextPainter(
+        text: texte,
+        textDirection: TextDirection.ltr,
+      )..layout(maxWidth: largeur);
+      final int lignes = peintre.computeLineMetrics().length;
+      peintre.dispose();
+      final List<String> coupes = argusMotsCoupes(tester);
+      print('CAS 601 $nom : $lignes lignes · coupé=$coupes');
+      if (coupe) {
+        expect(
+          lignes,
+          greaterThan(1),
+          reason: '$nom : le texte ne passe plus à la ligne, le cas ne prouve rien',
+        );
+        expect(
+          coupes,
+          hasLength(1),
+          reason: '$nom : une vraie coupure entre des tailles mêlées doit rester vue (601)',
+        );
+      } else {
+        expect(
+          lignes,
+          equals(1),
+          reason: '$nom : le texte passe à la ligne, le cas ne prouve plus rien',
+        );
+        expect(
+          coupes,
+          isEmpty,
+          reason: '$nom : des tailles mêlées sur UNE ligne lues comme un mot coupé (601)',
+        );
+      }
+    });
+  }
 }
