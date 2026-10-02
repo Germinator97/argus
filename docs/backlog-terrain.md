@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **5 POINTS OUVERTS** — les **603** à **607**, rendus par le run 108 (section
-« Rendu par le run 108 », en fin de fichier). Le **602**, du même run, est fermé
-le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
+🔴 **4 POINTS OUVERTS** — les **604** à **607**, rendus par le run 108 (section
+« Rendu par le run 108 », en fin de fichier). Le **603**, du même run, est fermé
+le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
+montre l'APK universel en contexte. Le **602** est fermé le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
 échecs. Le **601** est fermé le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
 non plus par le curseur, qui suit la taille du glyphe. Le **610**, rendu par le run 109,
 est fermé le 02/10 : le SCA nomme chaque source native qu'il ne lit pas, jusqu'à
@@ -15298,10 +15299,22 @@ qui ne dit ni ce qu'on attendait ni ce qu'on a vu ne se lit pas.
 
 ### 603. Le tableau de performance oppose l'APK universel au budget, en rouge, quand le verdict juge la tranche
 
-**Ouvert le 01/10/2026 · OUVERT** — `report.html` affiche `67.8 Mo / 60 Mo` en
+**Ouvert le 01/10/2026 · CLOS** — `report.html` affiche `67.8 Mo / 60 Mo` en
 `class="bad"` pour l'APK universel, pendant que le verdict du 588 juge la tranche
 (31 Mo) et n'émet rien (`perf.json`). Le tableau accuse ce que le verdict a
 écarté : un rouge sans constat derrière.
+
+#### ✅ Fermé le 02/10/2026 — le tableau juge ce que le verdict juge
+
+- Quand `perf.json` porte la pesée par ABI — pour une release seulement,
+  exactement quand le verdict s'en sert —, la ligne jugée est la tranche la plus
+  lourde, nommée, et l'APK universel suit en contexte, sans budget. Sans cette
+  pesée — un debug, un iOS —, la taille entière reste jugée.
+- Le garde reprend les chiffres du `perf.json` du run 108 : tranche verte,
+  universel en contexte, plus aucun rouge ; sans pesée, la taille entière rougit
+  au-dessus du budget. Trois mutations — l'universel rejugé, sa ligne retirée, sa
+  ligne dotée du budget — : **3/3 TOMBE**, dans le montage minimal. Suite
+  692/692.
 
 ### 604. Le 586 ne protège que les symboles : le build de scan réécrit les paquets de la release en attente
 
