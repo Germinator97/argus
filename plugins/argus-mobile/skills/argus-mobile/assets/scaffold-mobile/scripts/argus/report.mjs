@@ -366,13 +366,21 @@ export function perfRows(perf) {
   const metrics = perf?.metrics;
   if (!metrics) return '';
   const thresholds = perf.thresholds ?? {};
+  // 🔴 603 — LE TABLEAU JUGE CE QUE LE VERDICT JUGE. Il opposait l'APK
+  // universel au budget, en rouge (67,8 Mo / 60 au run 108), quand le verdict
+  // du 588 juge la tranche la plus lourde — 31 Mo — et n'émettait rien : un
+  // rouge sans constat derrière. L'universel reste affiché, en contexte.
+  const parAbi = metrics.binaryHeaviestAbi;
   /** @type {Array<[string, any, any, string]>} */
   const rows = [
     ['Premier lancement après installation', metrics.firstLaunchMs, null, 'ms'],
     ['Démarrage à froid (médiane)', metrics.coldStartMs, thresholds.coldStartMs, 'ms'],
     ['Démarrage à chaud (médiane)', metrics.warmStartMs, thresholds.warmStartMs, 'ms'],
     ['Mémoire (TOTAL PSS)', metrics.memoryMb, thresholds.memoryMb, 'Mo'],
-    ['Taille du binaire', metrics.binarySizeMb, thresholds.binarySizeMb, 'Mo'],
+    parAbi
+      ? [`Taille du binaire — tranche ${parAbi.abi}, la plus lourde`, parAbi.trancheMb, thresholds.binarySizeMb, 'Mo']
+      : ['Taille du binaire', metrics.binarySizeMb, thresholds.binarySizeMb, 'Mo'],
+    parAbi ? [`APK universel (${parAbi.nAbi} ABI)`, parAbi.universelMb, null, 'Mo'] : ['', null, null, ''],
   ];
   return rows.filter(([, value]) => value !== null && value !== undefined).map(([label, value, budget, unit]) => {
     const cls = budget === null || budget === undefined ? '' : (value <= budget ? 'good' : 'bad');

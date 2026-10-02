@@ -4092,6 +4092,20 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 603 · le tableau de performance juge ce que le verdict juge ──
+    # Le tableau rejuge l'APK universel contre le budget.
+    ("report", "603 · le tableau rejuge l'APK universel",
+     "parAbi.trancheMb, thresholds.binarySizeMb, 'Mo']",
+     "parAbi.universelMb, thresholds.binarySizeMb, 'Mo']"),
+    # L'universel disparaît du tableau.
+    ("report", "603 bis · l'universel disparaît du tableau",
+     "    parAbi ? [`APK universel (${parAbi.nAbi} ABI)`, parAbi.universelMb, null, 'Mo'] : ['', null, null, ''],\n",
+     ""),
+    # L'universel reçoit le budget : il rougit à nouveau.
+    ("report", "603 ter · l'universel reçoit le budget",
+     "parAbi.universelMb, null, 'Mo']",
+     "parAbi.universelMb, thresholds.binarySizeMb, 'Mo']"),
+
     # ── 602 · la carte d'étage 1 dit l'attendu, le constaté et sa famille ──
     # La carte retombe en « a11y » quels que soient ses échecs.
     ("report", "602 · la carte d'étage 1 retombe en a11y",

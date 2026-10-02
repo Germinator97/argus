@@ -17286,6 +17286,40 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
 });
 
 
+// ── 603 · le tableau de performance juge ce que le verdict juge ──
+//
+// Au run 108, la page opposait l'APK universel au budget — `67.8 Mo / 60`, en
+// `class="bad"` — pendant que le verdict du 588 jugeait la tranche la plus
+// lourde, 31 Mo, et n'émettait rien. Les chiffres sont ceux de son `perf.json`.
+test('603 — le tableau de performance juge la tranche, et montre l\'universel en contexte', () => {
+  const perf = {
+    platform: 'android',
+    metrics: {
+      binarySizeMb: 67.8,
+      binaryHeaviestAbi: { universelMb: 67.8, abi: 'x86_64', trancheMb: 31, nAbi: 3 },
+    },
+    thresholds: { binarySizeMb: 60 },
+    findings: [],
+  };
+  const lignes = perfRows(perf).split('</tr>').filter(Boolean);
+  const jugee = lignes.find((l) => l.includes('tranche x86_64'));
+  assert.ok(jugee, 'la ligne de taille ne dit plus quelle tranche elle juge (603)');
+  assert.match(jugee, /class="good">31 Mo/,
+    'la taille jugée n\'est plus la tranche sous son budget : le tableau rougit là où le verdict n\'émet rien (603)');
+  const universel = lignes.find((l) => l.includes('APK universel (3 ABI)'));
+  assert.ok(universel, 'l\'APK universel a disparu du tableau : sa taille est un contexte utile (603)');
+  assert.match(universel, /class="">67\.8 Mo/, 'l\'APK universel est à nouveau jugé contre le budget (603)');
+  assert.match(universel, /— \(contexte\)/, 'l\'APK universel ne se dit plus « contexte » (603)');
+  assert.doesNotMatch(perfRows(perf), /class="bad"/, 'un rouge reste sur un binaire que le verdict accepte (603)');
+
+  // L'autre moitié : sans pesée par ABI — un debug, un iOS —, la taille entière
+  // reste jugée, et rougit au-dessus du budget.
+  const entier = perfRows({ ...perf, metrics: { binarySizeMb: 67.8 } });
+  assert.match(entier, /<td>Taille du binaire<\/td><td class="bad">67\.8 Mo/,
+    'sans pesée par ABI, la taille entière n\'est plus jugée (603)');
+  assert.doesNotMatch(entier, /APK universel/, 'une ligne d\'universel apparaît sans pesée par ABI (603)');
+});
+
 // ── 602 · la carte d'étage 1 dit ce qu'on attendait, ce qu'on a vu, et où ──
 //
 // Au run 108, la carte QAM-STAGE1 n'avait ni « attendu » ni « constaté » — deux
