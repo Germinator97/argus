@@ -93,7 +93,7 @@ import { RAISONS_CANAL_OUVERT, canauxOuvertsDe, parseYaml as parseYamlConf } fro
 import { canauxOuvertsBloc } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { sizeFinding, rapportSansDemarrage } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/perf.mjs';
 import { buildHintFor } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sec.mjs';
-import { coverageLine, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
+import { coverageLine, familleDesEchecs, stalenessOf, readStage1} from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { LIGHTBOX, STYLE, findingCards, perfRows } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { consignePublication, historiqueDe, pertePossible, renderArtifact, runRecord } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
 import { plateformeLisible, titreDuRapport, titrePublie } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/report.mjs';
@@ -17285,6 +17285,51 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
   }
 });
 
+
+// ── 602 · la carte d'étage 1 dit ce qu'on attendait, ce qu'on a vu, et où ──
+//
+// Au run 108, la carte QAM-STAGE1 n'avait ni « attendu » ni « constaté » — deux
+// cases vides sous un constat MAJEUR —, et se rangeait en « a11y » quand ses
+// vingt-sept échecs étaient des gardes de disposition. Les noms des fixtures
+// sont ceux d'un vrai `stage1.jsonl` (run 109 : 758 « disposition — … »,
+// 140 « a11y — … », 5 « résolution de police — … », et les ancres sans préfixe).
+test('602 — la carte d\'étage 1 dit l\'attendu, le constaté et la famille de ses échecs', () => {
+  const tmp = mkdtempSync(join(tmpdir(), 'argus-stage1-602-'));
+  try {
+    const ecrire = (nom, noms) => {
+      const lignes = [{ protocolVersion: '0.1.1', type: 'start', time: 0 }];
+      noms.forEach((n, i) => {
+        lignes.push({ test: { id: i + 1, name: n, hidden: false }, type: 'testStart', time: 1 });
+        lignes.push({ testID: i + 1, result: 'error', skipped: false, hidden: false, type: 'testDone', time: 2 });
+      });
+      lignes.push({ type: 'done', success: false, time: 3 });
+      const chemin = join(tmp, nom);
+      writeFileSync(chemin, lignes.map((l) => JSON.stringify(l)).join('\n') + '\n', 'utf8');
+      return chemin;
+    };
+    const disposition = readStage1(ecrire('disposition.jsonl', [
+      'disposition — question compact 360×640 · texte ×2.0 — aucun mot coupé',
+      'disposition — tutoriel compact 360×640 · texte ×1.0 — aucun mot coupé',
+    ])).findings[0];
+    assert.equal(disposition.dimension, 'disposition',
+      'des échecs de disposition se rangent ailleurs qu\'en disposition — au run 108, en « a11y » (602)');
+    assert.ok(String(disposition.expected ?? '').length > 0, 'la carte n\'a plus d\'« attendu » : une case vide (602)');
+    assert.match(String(disposition.actual ?? ''), /2 garde\(s\) en échec : disposition — question/,
+      'le « constaté » ne compte plus les échecs ou ne les nomme plus (602)');
+
+    assert.equal(readStage1(ecrire('melange.jsonl', [
+      'disposition — accueil compact 360×640 · texte ×2.0 — rien ne déborde',
+      'a11y — accueil cibles tactiles ≥ 48 dp (Android)',
+      'les ancres de racine sont uniques',
+    ])).findings[0].dimension, 'a11y · disposition · ancres',
+    'trois familles en échec : la carte doit les nommer toutes, dans un ordre fixe (602)');
+    assert.equal(familleDesEchecs(['résolution de police — les trois termes (437)']), 'disposition',
+      'la résolution de police appartient à la disposition (602)');
+    assert.equal(familleDesEchecs(['commandes de « login » — 4 ancre(s)']), 'ancres');
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+});
 
 // ── 610 · le SCA dit ce qu'il ne lit pas ──
 //

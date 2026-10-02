@@ -1504,8 +1504,8 @@ MUTATIONS = [
     # vise la SÉVÉRITÉ, pas la présence de la source : retirer la source ferait
     # tomber le garde par une autre voie, et on croirait la sévérité gardée.
     ("report", "391 · l'étage 1 repasse sous le seuil du gate",
-     "    id: 'QAM-STAGE1', severity: 'major', dimension: 'a11y',",
-     "    id: 'QAM-STAGE1', severity: 'info', dimension: 'a11y',"),
+     "    id: 'QAM-STAGE1', severity: 'major', dimension: familleDesEchecs(echecs),",
+     "    id: 'QAM-STAGE1', severity: 'info', dimension: familleDesEchecs(echecs),"),
     # 392 — la clé du binaire iOS reperd ce qu'un flavor y change.
     ("yamlconf", "392 · la clé build.ios ne dit plus ce qu'un flavor déplace",
      "  # ⚠️ UN FLAVOR DÉPLACE CE CHEMIN, et le défaut ci-dessous n'en porte aucun.",
@@ -4091,6 +4091,20 @@ MUTATIONS = [
     ("run", "609 ter · le runner écrit les références hors du dossier de l'appareil",
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
+
+    # ── 602 · la carte d'étage 1 dit l'attendu, le constaté et sa famille ──
+    # La carte retombe en « a11y » quels que soient ses échecs.
+    ("report", "602 · la carte d'étage 1 retombe en a11y",
+     "id: 'QAM-STAGE1', severity: 'major', dimension: familleDesEchecs(echecs),",
+     "id: 'QAM-STAGE1', severity: 'major', dimension: 'a11y',"),
+    # La carte perd son attendu : une case vide sous un constat majeur.
+    ("report", "602 bis · la carte d'étage 1 perd son attendu",
+     "    expected: 'tous les gardes d\\'étage 1 verts — ou leur dette assumée dans `test/argus/known_issues.dart`',\n",
+     ""),
+    # La résolution de police n'est plus rangée en disposition.
+    ("report", "602 ter · la résolution de police tombe en ancres",
+     " || nom.startsWith('résolution de police')) return 'disposition';",
+     ") return 'disposition';"),
 
     # ── 601 · la ligne se lit par sa boîte, pas par le curseur ──
     # Le détecteur relit la ligne au curseur : le faux positif du run 108 revient.

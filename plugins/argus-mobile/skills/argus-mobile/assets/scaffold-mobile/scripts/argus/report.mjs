@@ -91,13 +91,36 @@ export function readStage1(path) {
   if (echecs.length === 0) return { findings: [], replis };
   // Un seul finding : 117 lignes noieraient la page, et le détail vit dans la
   // sortie de `make argus-guards`, qui donne la ligne EXACTE à corriger.
+  const premiers = `${echecs.slice(0, 5).join(' · ')}`
+    + `${echecs.length > 5 ? ` … et ${echecs.length - 5} autres` : ''}`;
   return { findings: [{
-    id: 'QAM-STAGE1', severity: 'major', dimension: 'a11y',
+    id: 'QAM-STAGE1', severity: 'major', dimension: familleDesEchecs(echecs),
     title: `${echecs.length} garde(s) d'étage 1 en échec`,
-    detail: `Mesurés sans device par \`make argus-guards\`. Les premiers : `
-      + `${echecs.slice(0, 5).join(' · ')}${echecs.length > 5 ? ` … et ${echecs.length - 5} autres` : ''}. `
+    // 🔴 602 — la carte n'avait ni attendu ni constaté : la page affichait deux
+    // cases vides sous un constat majeur, qui ne disait ni ce qu'on voulait ni
+    // ce qu'on avait vu.
+    expected: 'tous les gardes d\'étage 1 verts — ou leur dette assumée dans `test/argus/known_issues.dart`',
+    actual: `${echecs.length} garde(s) en échec : ${premiers}`,
+    detail: `Mesurés sans device par \`make argus-guards\`. Les premiers : ${premiers}. `
       + 'Relance la cible pour la liste complète : ses messages donnent la ligne à corriger.',
   }], replis };
+}
+
+/**
+ * 602 — La famille des gardes en échec, lue sur leurs noms : « a11y — … »,
+ * « disposition — … » (la résolution de police en fait partie), et les ancres
+ * pour le reste. La carte se rangeait en « a11y » quels que soient ses échecs :
+ * au run 108, ses vingt-sept étaient des gardes de DISPOSITION.
+ * @param {string[]} echecs @returns {string}
+ */
+export function familleDesEchecs(echecs) {
+  /** @type {Set<string>} */
+  const familles = new Set(echecs.map((nom) => {
+    if (nom.startsWith('a11y — ')) return 'a11y';
+    if (nom.startsWith('disposition — ') || nom.startsWith('résolution de police')) return 'disposition';
+    return 'ancres';
+  }));
+  return ['a11y', 'disposition', 'ancres'].filter((f) => familles.has(f)).join(' · ');
 }
 
 /**
