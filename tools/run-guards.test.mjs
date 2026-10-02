@@ -19725,6 +19725,31 @@ test('586 — toute commande de scan suggérée range ses symboles à part, et l
   assert.match(plat(readFileSync(join(base, 'SKILL.md'), 'utf8')), regle, 'le SKILL ne dit plus la règle (586)');
 });
 
+// ── 607 · SUR ANDROID, UN ÉCRAN QUI CHANGE FAIT ATTENDRE CHAQUE TOUCHER ─────
+// Au run 108, le toucher sur « Pause » est arrivé après les 15 s de la
+// question : Maestro attend que l'écran se pose AVANT de viser et APRÈS avoir
+// touché. Mesuré sur une sonde (Android 16, Maestro 2.8.0, un texte qui change
+// tous les dixièmes) : ~19 s par toucher par défaut, ~3 s avec
+// `waitToSettleTimeoutMs: 500`, que la cible change elle-même ou non ; ~9 s
+// après un toucher par `point:` ; rien sur iOS. Le SKILL n'en disait rien.
+test('607 — le SKILL dit l\'attente des touchers sur un écran qui change, et le remède mesuré', () => {
+  const skill = readFileSync(join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/SKILL.md'), 'utf8');
+  const debut = skill.indexOf('**Et sur Android, chaque TOUCHER y attend aussi (607).**');
+  assert.ok(debut > 0, 'la règle des écrans qui changent a disparu du SKILL (607)');
+  const regle = skill.slice(debut, skill.indexOf('\n\n', debut)).replace(/\s+/g, ' ');
+  assert.match(regle, /`waitToSettleTimeoutMs: 500`/, 'la règle ne donne plus l\'option qui borne les attentes (607)');
+  assert.match(regle, /`retryTapIfNoChange: false`/,
+    'la règle ne dit plus de couper le second toucher, qui reprendrait la pause (607)');
+  assert.match(regle, /AVANT de viser, puis APRÈS avoir touché/, 'la règle ne nomme plus les DEUX attentes (607)');
+  assert.match(regle, /`point:` ne vise pas, mais attend encore/,
+    'la règle ne dit plus qu\'un toucher par coordonnées attend toujours après (607)');
+  assert.match(regle, /Lis la durée de chaque toucher dans `commands\.json`/,
+    'la règle ne dit plus de LIRE la durée de chaque toucher : l\'option n\'a pas suffi partout (607)');
+  // Le chiffre est mesuré, et il est dit pour quelle plateforme.
+  assert.match(regle, /Android 16 avec Maestro 2\.8\.0/, 'la mesure ne dit plus sur quoi elle a été prise (607)');
+  assert.match(regle, /Sur iOS, rien de tout cela/, 'la règle ne dit plus qu\'iOS n\'attend pas (607)');
+});
+
 // ── 604 · LA RÈGLE DU SCAN COUVRE LE PAQUET, PAS SEULEMENT LES SYMBOLES ──────
 // Au run 108, le build de scan a réécrit six fichiers d'une release en attente,
 // `app-release.apk` compris : la règle du 586 ne nommait que les symboles, et

@@ -1474,6 +1474,20 @@ ce sont souvent les écrans les plus travaillés, donc ceux qui ont le plus à
 cacher. Retiens en revanche que `waitForAnimationToEnd` expirera sur eux à
 l'étage 2 — mesuré ~7,3 s, au-delà de son propre timeout de 5 s.
 
+🔴 **Et sur Android, chaque TOUCHER y attend aussi (607).** Un écran qui change
+en continu — chrono, sablier, compteur — fait attendre Maestro qu'il se pose
+AVANT de viser, puis APRÈS avoir touché : mesuré sur Android 16 avec Maestro
+2.8.0, près de **19 s par toucher** (9 s + 9 s), de quoi épuiser le chrono qu'on
+voulait tester. `waitToSettleTimeoutMs: 500` borne les deux attentes — mesuré :
+19 s → 3 s, que la cible change elle-même ou non — ; ajoute
+`retryTapIfNoChange: false` quand un second toucher défairait le premier (la
+pause qui reprend). Un toucher par `point:` ne vise pas, mais attend encore ~9 s
+après. Sur iOS, rien de tout cela : la cible se vise sans attendre. ⚠️ **Lis la
+durée de chaque toucher dans `commands.json`** : sur un terrain, l'option a
+ramené un toucher de 10,4 s à 2,3 s et en a laissé un autre à 11 s, sans cause
+reproduite. Si le chrono reste plus court que le parcours, il ne se gagne pas du
+côté de Maestro : allonge-le pour la recette, par un point d'entrée de test.
+
 ⚠️ **UNE COQUILLE À ONGLETS DONNE TROIS RÉPONSES À « OÙ METTRE LA RACINE ».**
 La consigne « la racine va DANS le `SafeArea` quand elle sert de `visualCropOn` »
 suppose *un écran = un `Scaffold`*. Avec une coquille qui porte la barre du haut

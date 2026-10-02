@@ -4092,6 +4092,16 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 607 · sur Android, un écran qui change fait attendre chaque toucher ──
+    # La règle perd l'option qui borne les attentes.
+    ("skill", "607 · la règle perd waitToSettleTimeoutMs",
+     "2.8.0, près de **19 s par toucher** (9 s + 9 s), de quoi épuiser le chrono qu'on\nvoulait tester. `waitToSettleTimeoutMs: 500` borne les deux attentes",
+     "2.8.0, près de **19 s par toucher** (9 s + 9 s), de quoi épuiser le chrono qu'on\nvoulait tester. Une option borne les deux attentes"),
+    # La règle ne dit plus de lire la durée de chaque toucher.
+    ("skill", "607 bis · la règle ne dit plus de lire la durée des touchers",
+     "⚠️ **Lis la\ndurée de chaque toucher dans `commands.json`** :",
+     "⚠️ **Note** :"),
+
     # ── 604 · la règle du scan couvre le paquet ──
     # Le SKILL revient aux seuls symboles.
     ("skill", "604 · le SKILL revient aux seuls symboles",
