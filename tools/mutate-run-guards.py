@@ -4092,6 +4092,16 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 611 · le garde de l'histoire lit la base par lots ──
+    # Un seul lot : la chaîne dépasse la limite de Node et le garde tombe sur son instrument.
+    ("suite", "611 · l'histoire se relit d'un seul tenant",
+     "  const PLAFOND_DE_LOT = 64 * 1024 * 1024;",
+     "  const PLAFOND_DE_LOT = Infinity;"),
+    # Le témoin n'est plus relevé : l'instrument se dirait aveugle sur un dépôt lu.
+    ("suite", "611 bis · le témoin des lots n'est plus relevé",
+     "    if (!lu.instrumentAveugle) temoinVu = true;",
+     "    if (!lu.instrumentAveugle) temoinVu = temoinVu;"),
+
     # ── 607 · sur Android, un écran qui change fait attendre chaque toucher ──
     # La règle perd l'option qui borne les attentes.
     ("skill", "607 · la règle perd waitToSettleTimeoutMs",

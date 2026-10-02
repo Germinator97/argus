@@ -16614,11 +16614,44 @@ test('aucune fuite dans l\'HISTOIRE du dépôt, pas seulement dans la page (500)
   assert.ok(objets.length > 500,
     `${objets.length} blob(s) lus dans la base d'objets — le balayage ne mesure rien`);
 
-  const texte = execFileSync('git', ['cat-file', '--batch'],
-    { cwd: RACINE, input: `${objets.join('\n')}\n`, encoding: 'latin1', maxBuffer: 1 << 30 });
-  const { fuites, instrumentAveugle } = fuitesDe(texte);
-  assert.ok(!instrumentAveugle,
-    'le témoin n\'apparaît pas dans les objets lus : ce n\'est pas le dépôt qui est propre, '
+  // 🔴 611 — PAR LOTS, JAMAIS D'UN SEUL TENANT. La base atteignable a franchi
+  // 512 Mio le 02/10/2026 — 484,6 au début d'une passe, 512,2 après — : lue en
+  // une chaîne, elle dépassait la limite de Node (0x1fffffe8 caractères), et ce
+  // garde tombait sur son INSTRUMENT, pas sur une fuite. Les lots se forment par
+  // TAILLE cumulée : comptés en objets, quelques versions du fichier de suite
+  // suffiraient à en faire déborder un. Un objet n'est jamais coupé entre deux
+  // lots, donc une valeur non plus.
+  const PLAFOND_DE_LOT = 64 * 1024 * 1024;
+  const tailles = execFileSync('git', ['cat-file', '--batch-check=%(objectname) %(objectsize)'],
+    { cwd: RACINE, input: `${objets.join('\n')}\n`, encoding: 'utf8', maxBuffer: 1 << 28 })
+    .split('\n').filter(Boolean).map((l) => l.split(' '));
+  /** @type {string[][]} */
+  const lots = [];
+  let lot = [];
+  let poids = 0;
+  for (const [id, taille] of tailles) {
+    if (lot.length > 0 && poids + Number(taille) > PLAFOND_DE_LOT) {
+      lots.push(lot);
+      lot = [];
+      poids = 0;
+    }
+    lot.push(id);
+    poids += Number(taille);
+  }
+  if (lot.length > 0) lots.push(lot);
+  assert.equal(lots.flat().length, objets.length, 'un objet manque aux lots : le balayage ne lit pas tout');
+
+  const fuites = [];
+  let temoinVu = false;
+  for (const ids of lots) {
+    const texte = execFileSync('git', ['cat-file', '--batch'],
+      { cwd: RACINE, input: `${ids.join('\n')}\n`, encoding: 'latin1', maxBuffer: 1 << 30 });
+    const lu = fuitesDe(texte);
+    fuites.push(...lu.fuites);
+    if (!lu.instrumentAveugle) temoinVu = true;
+  }
+  assert.ok(temoinVu,
+    'le témoin n\'apparaît dans aucun lot lu : ce n\'est pas le dépôt qui est propre, '
     + 'c\'est l\'instrument qui ne lit rien');
 
   // Figé par ÉGALITÉ : une valeur qui APPARAÎT doit être arbitrée, une qui
