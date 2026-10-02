@@ -5097,9 +5097,10 @@ et « aucun chiffre de ce fichier ne décrit une exécution complète ») et le 
 
 ## Ce qui reste
 
-🔴 **3 POINTS OUVERTS** — les **604**, **605** et **607**, rendus par le run 108
-(section « Rendu par le run 108 », en fin de fichier). Le **606**, du même run,
-est fermé le 02/10 : les cibles de l'étage 1 relaient `TEST_ARGS` à `flutter
+🔴 **2 POINTS OUVERTS** — les **604** et **607**, rendus par le run 108 (section
+« Rendu par le run 108 », en fin de fichier). Le **605**, du même run, est fermé
+le 02/10 : le workflow livré construit par la commande que la config déclare.
+Le **606** est fermé le 02/10 : les cibles de l'étage 1 relaient `TEST_ARGS` à `flutter
 test`. Le **603** est fermé le 02/10 : le tableau de performance juge la tranche que le verdict juge, et
 montre l'APK universel en contexte. Le **602** est fermé le 02/10 : la carte d'étage 1 dit l'attendu, le constaté et la famille de ses
 échecs. Le **601** est fermé le 02/10 : le détecteur du 592 lit la ligne par sa boîte de hauteur `max`, et
@@ -15330,13 +15331,29 @@ symboles étaient partis, le paquet non.
 
 ### 605. Le workflow livré construit en dur, sans la commande de build du projet
 
-**Ouvert le 01/10/2026 · OUVERT** — `flutter build apk --debug` (l. 337) et
+**Ouvert le 01/10/2026 · CLOS** — `flutter build apk --debug` (l. 337) et
 `flutter build ios --debug --simulator` (l. 516), écrits en dur, et
 `$ARGUS run` installe ce binaire. La commande configurée (`config
 --print-build-cmd`) n'y est pas reprise : variante, `--dart-define`
 obligatoires, script maison, DSN vidé. Un projet dont l'application lève sans
 injection voit tous ses flows de CI tomber ; un DSN réel par défaut fait émettre
 la CI vers le vrai monitoring.
+
+#### ✅ Fermé le 02/10/2026 — chaque job construit par la commande de la config, sans `fvm`
+
+- Les deux jobs évaluent `config --print-build-cmd --platform=<la leur> --no-fvm`.
+  Les défauts d'`androidBuildCmd` et d'`iosBuildCmd` sont les deux lignes écrites
+  en dur : un projet resté aux défauts construit la même chose. `--no-fvm` est
+  neuf : l'action Flutter a déjà posé la version épinglée dans le PATH du runner,
+  et un préfixe `fvm` y désignerait un outil absent.
+- Le garde balaie tout le workflow livré à la recherche d'un build littéral,
+  comme celui du Makefile (run 9) balaie ses recettes ; vérifie que chaque job
+  e2e demande SA plateforme sans `fvm` ; et lance `config` sur un projet jetable
+  épinglé par FVM, à commande configurée : préfixée par défaut, nue avec
+  `--no-fvm`.
+- Quatre mutations — Android retourne au build littéral, iOS garde `fvm` ou
+  demande Android, la config ignore `--no-fvm` — : **4/4 TOMBE**, dans le montage
+  minimal. Suite 694/694.
 
 ### 606. Les cibles `make` de l'étage 1 ne relaient aucun drapeau à `flutter test`
 
