@@ -19605,13 +19605,13 @@ test('une fuite fabriquée est VUE dans le dépôt (541)', async () => {
     : 'rien ici');
   // `() => null` : aucun classement — ce garde-ci ne doit pas dépendre du fichier
   // privé du poste qui le joue (575).
-  const vu = controler([dir], faux, () => ['PROPRE.md', 'SALE.md'], () => null);
+  const vu = controler([dir], faux, () => ['PROPRE.md', 'SALE.md'], () => null, () => []);
   assert.equal(vu.code, 1, 'la fuite fabriquée n\'est pas vue : le contrôle ne sait pas chercher');
   assert.match(vu.lignes.join('\n'), /SALE\.md:1/, 'il ne dit pas OÙ, donc on ne peut pas corriger');
   assert.ok(!vu.lignes.join('\n').includes('PROPRE.md'), 'il accuse un fichier qui ne porte rien');
 
   // … et sur les mêmes fichiers sans le nom, il se tait.
-  const propre = controler([dir], () => 'rien ici', () => ['PROPRE.md', 'SALE.md'], () => null);
+  const propre = controler([dir], () => 'rien ici', () => ['PROPRE.md', 'SALE.md'], () => null, () => []);
   assert.equal(propre.code, 0, 'il rougit sur un dépôt propre');
   rmSync(dir, { recursive: true, force: true });
 });
@@ -19623,8 +19623,8 @@ test('le dépôt LIVRÉ ne porte aucun identifiant distinctif de terrain (541)',
   assert.notEqual(code, 2, `le contrôle n'a rien mesuré :\n${lignes.join('\n')}`);
   // ⚠️ Depuis le 575, ce rouge peut aussi dire « un identifiant ambigu n'est pas
   // CLASSÉ » : un nouveau terrain force la décision ici, sur le poste qui le porte.
-  assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC, ou un identifiant `
-    + `ambigu n'est pas classé (575) :\n${lignes.join('\n')}`);
+  assert.equal(code, 0, `des identifiants de terrain sont dans ce dépôt PUBLIC ou dans ce qui reste à `
+    + `POUSSER (613), ou un identifiant ambigu n'est pas classé (575) :\n${lignes.join('\n')}`);
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -19652,7 +19652,7 @@ test('un identifiant AMBIGU non classé fait échouer le contrôle, et dit où l
     const rien = () => 'rien ici';
     const liste = () => ['A.md'];
     for (const [cas, classement] of [['absent', null], ['vide', ''], ['qui classe un autre nom', 'mot autre']]) {
-      const r = controler([dir], rien, liste, () => classement);
+      const r = controler([dir], rien, liste, () => classement, () => []);
       assert.equal(r.code, 1, `classement ${cas} : un identifiant ambigu NON classé passe — `
         + 'un nouveau terrain rejoindrait les ambigus en silence, le trou exact du 575');
       const texte = r.lignes.join('\n');
@@ -19662,7 +19662,7 @@ test('un identifiant AMBIGU non classé fait échouer le contrôle, et dit où l
     // ⚠️ L'AUTRE MOITIÉ : classé, dans l'une ou l'autre classe, il ne demande
     // plus rien. Sans elle, un contrôle qui échoue toujours passerait ce garde.
     for (const classement of ['mot zorblo', 'distinctif zorblo', '# un commentaire\n\nmot zorblo  # et un autre\n']) {
-      const r = controler([dir], rien, liste, () => classement);
+      const r = controler([dir], rien, liste, () => classement, () => []);
       assert.equal(r.code, 0, `« ${classement.trim()} » est un classement valide, et le contrôle rougit :\n${r.lignes.join('\n')}`);
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -19678,7 +19678,7 @@ test('un identifiant classé DISTINCTIF échoue à la moindre mention, quelle qu
     // 🔴 Le chemin en minuscules est le cas RENCONTRÉ en écrivant ce correctif :
     // le nom d'une police, recopié dans un chemin d'assets.
     for (const mention of ['zorblo', 'Zorblo', 'ZORBLO', 'assets/fonts/zorblo/']) {
-      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo');
+      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo', () => []);
       const texte = r.lignes.join('\n');
       assert.equal(r.code, 1, `« ${mention} » : un nom classé distinctif fuit sans que rien échoue`);
       assert.match(texte, /SALE\.md:2/, `« ${mention} » : il ne dit pas OÙ, donc on ne peut pas corriger`);
@@ -19686,7 +19686,7 @@ test('un identifiant classé DISTINCTIF échoue à la moindre mention, quelle qu
     }
     // ⚠️ ET LE MÊME TEXTE, CLASSÉ « mot », NE FAIT PAS ÉCHOUER — il est RAPPORTÉ.
     // Un contrôle qui rougirait sur toute mention passerait la moitié d'au-dessus.
-    const mot = controler([dir], avec('zorblo'), liste, () => 'mot zorblo');
+    const mot = controler([dir], avec('zorblo'), liste, () => 'mot zorblo', () => []);
     assert.equal(mot.code, 0, `classé « mot », une mention fait échouer :\n${mot.lignes.join('\n')}`);
     assert.match(mot.lignes.join('\n'), /SALE\.md:2/,
       'classé « mot », la mention n\'est même plus rapportée : le silence d\'avant le 541 revient');
@@ -19709,7 +19709,7 @@ test('un nom classé distinctif se voit encore COUPÉ par une ponctuation (612)'
     // 🔴 Les deux premières formes sont celles qui ont été écrites : la note du
     // backlog, et le cas de la sonde.
     for (const mention of ['« Zor / blo est là »', "('Zor', 28), ('blo est là', 22)", 'zor-blo', '**Zor**blo', 'ZOR BLO']) {
-      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo');
+      const r = controler([dir], avec(mention), liste, () => 'distinctif zorblo', () => []);
       const texte = r.lignes.join('\n');
       assert.equal(r.code, 1, `« ${mention} » : un nom classé, coupé, fuit sans que rien échoue (612)`);
       assert.match(texte, /SALE\.md:2 — « zorblo » COUPÉ/,
@@ -19718,12 +19718,12 @@ test('un nom classé distinctif se voit encore COUPÉ par une ponctuation (612)'
     }
     // Entier, le nom reste dit entier : « coupé » enverrait chercher une coupure
     // qui n'existe pas.
-    const entier = controler([dir], avec('Zorblo'), liste, () => 'distinctif zorblo').lignes.join('\n');
+    const entier = controler([dir], avec('Zorblo'), liste, () => 'distinctif zorblo', () => []).lignes.join('\n');
     assert.match(entier, /SALE\.md:2 — « zorblo » \(/, 'un nom écrit entier est dit coupé (612)');
     // ⚠️ L'AUTRE MOITIÉ : des mots qui ne font que lui RESSEMBLER ne le recollent
     // pas. Un contrôle qui crierait sur eux passerait toute la moitié d'au-dessus.
     for (const voisin of ['le zorro bloque', 'un bloc de zorb', 'zor, puis rien']) {
-      const r = controler([dir], avec(voisin), liste, () => 'distinctif zorblo');
+      const r = controler([dir], avec(voisin), liste, () => 'distinctif zorblo', () => []);
       assert.equal(r.code, 0, `« ${voisin} » ne porte pas le nom, et le contrôle rougit :\n${r.lignes.join('\n')}`);
     }
   } finally { rmSync(dir, { recursive: true, force: true }); }
@@ -19738,12 +19738,12 @@ test('le classement ne peut que DURCIR, et une ligne illisible l\'arrête (575)'
   const ambigu = terrainAmbigu();
   try {
     const sale = (/** @type {string} */ f) => (f.endsWith('SALE.md') ? 'nom_bidon_qui_ne_fuit_pas' : 'rien');
-    const adouci = controler([dir], sale, () => ['SALE.md'], () => 'mot nom_bidon_qui_ne_fuit_pas');
+    const adouci = controler([dir], sale, () => ['SALE.md'], () => 'mot nom_bidon_qui_ne_fuit_pas', () => []);
     assert.equal(adouci.code, 1, 'un « mot » a tu une fuite distinctive par sa forme');
 
     // Une faute de frappe dans une classe n'est pas sautée : on croirait classé
     // ce qui ne l'est pas, et le message accuserait une ligne qu'on a sous les yeux.
-    const r = controler([ambigu], () => 'rien', () => ['A.md'], () => 'distinctf zorblo');
+    const r = controler([ambigu], () => 'rien', () => ['A.md'], () => 'distinctf zorblo', () => []);
     assert.equal(r.code, 1, 'une ligne de classement illisible passe');
     assert.match(r.lignes.join('\n'), /ligne 1 non reconnue/, 'il ne dit pas QUELLE ligne est illisible');
   } finally {
@@ -19765,7 +19765,7 @@ test('le contrôle lit le classement privé PAR DÉFAUT, et ce garde juge sur to
   // Aucun classement injecté : c'est le défaut de `controler` qui est jugé.
   const jouer = () => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e',
     `const m = await import(${JSON.stringify(outil)});
-     const r = m.controler([${JSON.stringify(dir)}], () => 'rien ici', () => ['A.md']);
+     const r = m.controler([${JSON.stringify(dir)}], () => 'rien ici', () => ['A.md'], undefined, () => []);
      console.log(JSON.stringify({ code: r.code, classement: m.CLASSEMENT }));`],
   { env: { ...process.env, HOME: maison }, encoding: 'utf8' }));
   try {
@@ -19783,6 +19783,98 @@ test('le contrôle lit le classement privé PAR DÉFAUT, et ce garde juge sur to
   } finally {
     rmSync(maison, { recursive: true, force: true });
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+// ── 613 · CE QU'UN PUSH PUBLIERAIT : LES MESSAGES ET LES OBJETS ───────────────
+// Le contrôle ne lisait que les fichiers suivis. Mesuré le 02/10/2026 : l'arbre
+// était propre, et vingt-deux des vingt-huit commits à pousser portaient un
+// fragment d'un nom de terrain dans leurs fichiers, deux dans leur message.
+
+/** Un dépôt jetable ; une branche distante simulée marque ce qui est « publié ». */
+const depotJetable = () => {
+  // Chemin RÉEL : sous macOS, le dossier temporaire passe par un lien, et un
+  // outil lancé par un chemin à lien ne se reconnaît pas comme point d'entrée.
+  const d = realpathSync(mkdtempSync(join(tmpdir(), 'argus-613-')));
+  const git = (/** @type {string[]} */ ...a) => execFileSync('git', ['-c', 'core.hooksPath=/dev/null',
+    '-c', 'commit.gpgsign=false', '-c', 'user.name=argus', '-c', 'user.email=argus@exemple.invalid', ...a],
+  { cwd: d, encoding: 'utf8' });
+  git('init', '-q');
+  return { d, git, publier: () => git('update-ref', 'refs/remotes/origin/main', 'HEAD') };
+};
+
+test('le contrôle lit ce qu\'un push publierait — messages et fichiers retirés —, pas l\'historique publié (613)', async () => {
+  const { controler, aPousserDe } = await import(join(RACINE, 'tools/confidentialite-depot.mjs'));
+  const terrain = terrainAmbigu();
+  const { d, git, publier } = depotJetable();
+  try {
+    const juger = (lireAPousser = () => aPousserDe(d)) => controler([terrain], () => 'rien ici', () => ['A.md'],
+      () => 'distinctif zorblo', lireAPousser);
+    writeFileSync(join(d, 'A.md'), 'rien ici\n');
+    git('add', 'A.md');
+    git('commit', '-q', '-m', 'docs: un début');
+    publier();
+    assert.equal(juger().code, 0, `rien à pousser, et le contrôle rougit :\n${juger().lignes.join('\n')}`);
+
+    // 🔴 La forme rencontrée : l'ARBRE est propre — le fichier est retiré au
+    // commit suivant —, et seul l'historique à pousser porte encore le nom.
+    writeFileSync(join(d, 'SALE.md'), 'ligne un\nle terrain zorblo a rendu\n');
+    git('add', 'SALE.md');
+    git('commit', '-q', '-m', 'docs: le titre « Zor / blo est là »');
+    git('rm', '-q', 'SALE.md');
+    git('commit', '-q', '-m', 'docs: retire la mention');
+    const r = juger();
+    const texte = r.lignes.join('\n');
+    assert.equal(r.code, 1, `un nom dans ce qu'un push publierait passe :\n${texte}`);
+    assert.match(texte, /message de \w+ docs: le titre « Zor \/ blo est là »:1 — « zorblo » COUPÉ/,
+      `le message à pousser n'est pas lu (613) :\n${texte}`);
+    assert.match(texte, /SALE\.md @\w+:2 — « zorblo » \(/,
+      `le fichier retiré n'est pas lu dans l'historique à pousser (613) :\n${texte}`);
+
+    // ⚠️ L'AUTRE MOITIÉ : publié, ce n'est plus « à pousser » — le corriger
+    // exigerait de réécrire un dépôt public, une autre décision.
+    publier();
+    assert.equal(juger().code, 0, 'l\'historique déjà publié est relu, et fait échouer pour toujours (613)');
+
+    // Et un historique qu'on n'a pas pu lire n'est pas un historique propre.
+    const illisible = juger(() => { throw new Error('dépôt corrompu'); });
+    assert.equal(illisible.code, 1, 'un historique illisible passe pour propre (613)');
+    assert.match(illisible.lignes.join('\n'), /ILLISIBLE — dépôt corrompu/, 'il ne dit pas ce qu\'il n\'a pas pu lire');
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+    rmSync(terrain, { recursive: true, force: true });
+  }
+});
+
+// Le câblage par défaut, jugé sur toute machine — la leçon du 582 : sur le
+// runner, aucun terrain, donc le contrôle du dépôt livré se tait.
+test('le contrôle lit l\'historique à pousser PAR DÉFAUT, et ce garde juge sur toute machine (613)', () => {
+  const terrain = terrainAmbigu();
+  const maison = mkdtempSync(join(tmpdir(), 'argus-613-maison-'));
+  const { d, git, publier } = depotJetable();
+  try {
+    mkdirSync(join(maison, '.argus-etalon'));
+    writeFileSync(join(maison, '.argus-etalon', 'identifiants-classes.txt'), 'distinctif zorblo\n');
+    mkdirSync(join(d, 'tools'));
+    cpSync(join(RACINE, 'tools/confidentialite-depot.mjs'), join(d, 'tools/confidentialite-depot.mjs'));
+    git('add', 'tools');
+    git('commit', '-q', '-m', 'chore: l\'outil');
+    publier();
+    git('commit', '-q', '--allow-empty', '-m', 'docs: le titre « Zor / blo est là »');
+    const jouer = () => spawnSync(process.execPath, [join(d, 'tools/confidentialite-depot.mjs'), terrain],
+      { env: { ...process.env, HOME: maison }, encoding: 'utf8' });
+    const sale = jouer();
+    assert.equal(sale.status, 1, `le message à pousser n'est pas lu par défaut (613) :\n${sale.stdout}${sale.stderr}`);
+    assert.match(sale.stdout, /message de \w+ docs: le titre « Zor \/ blo est là »:1/,
+      `il ne désigne pas le message (613) :\n${sale.stdout}`);
+    // L'autre moitié : publié, il se tait — le montage ne rougit pas toujours.
+    publier();
+    const propre = jouer();
+    assert.equal(propre.status, 0, `publié, l'historique fait encore échouer :\n${propre.stdout}${propre.stderr}`);
+  } finally {
+    rmSync(d, { recursive: true, force: true });
+    rmSync(maison, { recursive: true, force: true });
+    rmSync(terrain, { recursive: true, force: true });
   }
 });
 

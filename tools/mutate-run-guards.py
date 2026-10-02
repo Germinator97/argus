@@ -3363,8 +3363,8 @@ MUTATIONS = [
     # contrôle du dépôt livré la jugeait, et il se tait sans les fichiers privés :
     # VACANTE sur le runner. Un garde la juge désormais sous un HOME fabriqué.
     ("confiddepot", "575 sexies · le classement privé n'est plus lu",
-     "lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {",
-     "lireClassement = () => null) {"),
+     "lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null),",
+     "lireClassement = () => null,"),
     # ── 576 · ce qu'Argus a fait naître repart avec lui, le reste est nommé ─
     # Les produits survivent de nouveau : la ligne dit « retiré », le dossier reste.
     ("installeur", "576 · les produits d'Argus survivent de nouveau",
@@ -4092,6 +4092,32 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 613 · ce qu'un push publierait : les messages et les objets ──
+    # Le câblage : l'historique à pousser n'est plus lu par défaut.
+    ("confiddepot", "613 · l'historique à pousser n'est plus lu par défaut",
+     "lireAPousser = () => aPousserDe(RACINE)) {",
+     "lireAPousser = () => []) {"),
+    # L'historique déjà publié est relu : il ferait échouer pour toujours.
+    ("confiddepot", "613 bis · l'historique publié est relu aussi",
+     "const A_POUSSER = ['--branches', '--not', '--remotes'];",
+     "const A_POUSSER = ['--branches'];"),
+    # Les messages ne sont plus lus : le trou exact du 613.
+    ("confiddepot", "613 ter · les messages à pousser ne sont plus lus",
+     "  return [...messagesAPousser(git), ...objetsAPousser(git)];",
+     "  return [...objetsAPousser(git)];"),
+    # Les fichiers ne sont plus lus : un nom retiré de l'arbre part au push.
+    ("confiddepot", "613 quater · les fichiers à pousser ne sont plus lus",
+     "  return [...messagesAPousser(git), ...objetsAPousser(git)];",
+     "  return [...messagesAPousser(git)];"),
+    # La sortie de l'historique ne dit plus qu'un nom n'y figure que coupé.
+    ("confiddepot", "613 sexies · la sortie à pousser ne dit plus le nom coupé",
+     "    if (ligne) trouvees.push(`${ou}:${ligne} — « ${a.valeur} »${coupe ? ' COUPÉ' : ''} (${a.quoi}) · à pousser`);",
+     "    if (ligne) trouvees.push(`${ou}:${ligne} — « ${a.valeur} » (${a.quoi}) · à pousser`);"),
+    # Un historique illisible passe pour propre.
+    ("confiddepot", "613 quinquies · un historique illisible passe pour propre",
+     "    return { code: 1, lignes: [`✖ historique à pousser ILLISIBLE",
+     "    return { code: 0, lignes: [`✖ historique à pousser ILLISIBLE"),
+
     # ── 614 · « cent » multiplie ce qui le précède ──
     # « cent » s'ajoute de nouveau : deux cent trois redevient cent cinq.
     ("compteurs", "614 · cent s'ajoute au lieu de multiplier",
@@ -4113,8 +4139,8 @@ MUTATIONS = [
      "  return t.toLowerCase().replace(/\\s/gu, '');"),
     # La coupure n'est plus dite : on chercherait le nom entier sans le trouver.
     ("confiddepot", "612 ter · la sortie ne dit plus que le nom est coupé",
-     "»${coupe ? ' COUPÉ' : ''} (",
-     "» ("),
+     "      const ou = `${f}:${ligne} — « ${a.valeur} »${coupe ? ' COUPÉ' : ''} (${a.quoi})`;",
+     "      const ou = `${f}:${ligne} — « ${a.valeur} » (${a.quoi})`;"),
 
     # ── 611 · le garde de l'histoire lit la base par lots ──
     # Un seul lot : la chaîne dépasse la limite de Node et le garde tombe sur son instrument.

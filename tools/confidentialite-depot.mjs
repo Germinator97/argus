@@ -207,15 +207,135 @@ export function terrainsDe(args) {
 }
 
 /**
+ * Ce qu'une branche locale porte et qu'aucune branche distante n'a : ce qu'un
+ * push publierait.
+ */
+const A_POUSSER = ['--branches', '--not', '--remotes'];
+
+/** Le plafond d'un lot d'objets lus d'un seul `cat-file --batch` (611). */
+const PLAFOND_DE_LOT = 64 * 1024 * 1024;
+
+/**
+ * 🔴 613 — CE QU'UN PUSH PUBLIERAIT : les messages et les objets des commits
+ * qu'aucune branche distante ne porte encore. Le contrôle ne lisait que les
+ * fichiers suivis. Mesuré le 02/10/2026 : l'arbre était propre, et vingt-deux
+ * des vingt-huit commits à pousser portaient pourtant un fragment d'un nom de
+ * terrain dans leurs fichiers, deux dans leur message — un push les aurait
+ * publiés, et l'historique d'un dépôt public ne se corrige plus.
+ *
+ * ⚠️ L'historique DÉJÀ publié n'est pas relu : le corriger exigerait de
+ * réécrire un dépôt public, une autre décision. Le garde du 500 balaie toute
+ * la base, pour ses propres motifs.
+ * @param {string} racine
+ * @returns {{ou: string, texte: string}[]}
+ */
+export function aPousserDe(racine) {
+  /** @param {string[]} args @param {string} [entree] */
+  const git = (args, entree) => execFileSync('git', args, { cwd: racine, input: entree, maxBuffer: 1 << 30 });
+  return [...messagesAPousser(git), ...objetsAPousser(git)];
+}
+
+/**
+ * Les messages des commits à pousser, chacun désigné par son sujet.
+ * @param {(args: string[], entree?: string) => Buffer} git
+ */
+function messagesAPousser(git) {
+  const journal = git(['log', '--format=%h %s%x1f%B%x1e', ...A_POUSSER]).toString('utf8');
+  return journal.split('\x1e').map((bloc) => bloc.split('\x1f'))
+    .filter(([tete]) => tete?.trim())
+    .map(([tete, corps]) => ({ ou: `message de ${tete.trim()}`, texte: corps ?? '' }));
+}
+
+/**
+ * Les fichiers que les commits à pousser introduisent, toutes versions, lus par
+ * lots bornés en taille : sur une longue branche locale, d'un seul tenant, la
+ * sortie dépasserait la limite d'une chaîne Node (611).
+ * @param {(args: string[], entree?: string) => Buffer} git
+ */
+function objetsAPousser(git) {
+  /** @type {Map<string, string>} */
+  const chemins = new Map();
+  for (const l of git(['rev-list', '--objects', ...A_POUSSER]).toString('utf8').split('\n')) {
+    const i = l.indexOf(' ');
+    if (i > 0) chemins.set(l.slice(0, i), l.slice(i + 1));
+  }
+  if (chemins.size === 0) return [];
+  const blobs = git(['cat-file', '--batch-check=%(objectname) %(objecttype) %(objectsize)'], `${[...chemins.keys()].join('\n')}\n`)
+    .toString('utf8').split('\n').map((l) => l.split(' ')).filter(([, type]) => type === 'blob');
+  /** @type {string[][]} */
+  const lots = [];
+  let lot = [];
+  let poids = 0;
+  for (const [id, , taille] of blobs) {
+    if (lot.length > 0 && poids + Number(taille) > PLAFOND_DE_LOT) { lots.push(lot); lot = []; poids = 0; }
+    lot.push(id);
+    poids += Number(taille);
+  }
+  if (lot.length > 0) lots.push(lot);
+  return lots.flatMap((ids) => lireLot(git(['cat-file', '--batch'], `${ids.join('\n')}\n`), chemins));
+}
+
+/**
+ * Découpe la sortie de `cat-file --batch` : un en-tête, puis exactement la
+ * taille qu'il annonce, EN OCTETS — d'où un Buffer, jamais une chaîne.
+ * @param {Buffer} brut @param {Map<string, string>} chemins
+ */
+function lireLot(brut, chemins) {
+  /** @type {{ou: string, texte: string}[]} */
+  const lus = [];
+  let pos = 0;
+  while (pos < brut.length) {
+    const fin = brut.indexOf(0x0a, pos);
+    const entete = brut.subarray(pos, fin).toString('utf8');
+    const [id, type, taille] = entete.split(' ');
+    if (type !== 'blob') throw new Error(`objet illisible : « ${entete} »`);
+    const debut = fin + 1;
+    lus.push({ ou: `${chemins.get(id)} @${id.slice(0, 7)}`, texte: brut.subarray(debut, debut + Number(taille)).toString('utf8') });
+    pos = debut + Number(taille) + 1;
+  }
+  return lus;
+}
+
+/**
+ * Les fuites d'un texte à pousser. Seules les FUITES comptent ici : un mot
+ * ordinaire rapporté à chaque version de chaque fichier noierait la sortie.
+ * ⚠️ Un premier tri sur le texte entier évite de découper en lignes les
+ * dizaines de versions qui ne portent rien ; la ligne se cherche ensuite comme
+ * dans un fichier, avec les mêmes limites.
+ * @param {string} ou @param {string} texte @param {{valeur: string, quoi: string}[]} attendus
+ * @param {(v: string) => boolean} estFuite @param {(v: string) => boolean} estNomClasse
+ */
+function fuitesAPousser(ou, texte, attendus, estFuite, estNomClasse) {
+  const bas = texte.toLowerCase();
+  /** @type {string | null} */
+  let lettres = null;
+  /** @type {string[]} */
+  const trouvees = [];
+  for (const a of attendus) {
+    if (!estFuite(a.valeur)) continue;
+    const nom = estNomClasse(a.valeur);
+    const present = nom
+      ? bas.includes(a.valeur.toLowerCase()) || (lettres ??= lettresDe(texte)).includes(lettresDe(a.valeur))
+      : texte.includes(a.valeur);
+    if (!present) continue;
+    const { ligne, coupe } = ligneDe(texte, a.valeur, nom);
+    if (ligne) trouvees.push(`${ou}:${ligne} — « ${a.valeur} »${coupe ? ' COUPÉ' : ''} (${a.quoi}) · à pousser`);
+  }
+  return trouvees;
+}
+
+/**
  * @param {string[]} args
  * @param {(chemin: string, enc: 'utf8') => string | Buffer} [lire]
  * @param {() => string[]} [lister]
  * @param {() => string | null} [lireClassement] le classement privé, `null` s'il n'existe pas
+ * @param {() => {ou: string, texte: string}[]} [lireAPousser] ce qu'un push publierait (613)
  * @returns {{code: number, lignes: string[]}}
  */
 export function controler(args, lire = readFileSync, lister = () =>
   execFileSync('git', ['ls-files'], { cwd: RACINE, encoding: 'utf8' }).trim().split('\n'),
-lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null)) {
+lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8') : null),
+lireAPousser = () => aPousserDe(RACINE)) {
   const dossiers = terrainsDe(args).filter((d) => existsSync(d));
   if (dossiers.length === 0) {
     return { code: 2, lignes: [
@@ -254,6 +374,17 @@ lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8'
       (estFuite(a.valeur) ? fuites : ambigus).push(ou);
     }
   }
+  // 613 — et ce qu'un push publierait. Un historique qu'on n'a pas pu lire
+  // n'est pas un historique propre : il fait échouer.
+  /** @type {{ou: string, texte: string}[]} */
+  let aPousser;
+  try {
+    aPousser = lireAPousser();
+  } catch (e) {
+    return { code: 1, lignes: [`✖ historique à pousser ILLISIBLE — ${e instanceof Error ? e.message : String(e)}`,
+      '   Ce contrôle n\'a pas pu le lire, ce qui ne dit pas qu\'il est propre : ne pas pousser.'] };
+  }
+  for (const { ou, texte } of aPousser) fuites.push(...fuitesAPousser(ou, texte, attendus, estFuite, estNomClasse));
 
   const aClasser = [
     ...erreurs.map((e) => `✖ classement illisible — ${e}`),
@@ -282,12 +413,13 @@ lireClassement = () => (existsSync(CLASSEMENT) ? readFileSync(CLASSEMENT, 'utf8'
       ? ['', `⚪ classé « mot » mais distinctif par sa forme, donc sans effet : ${sansEffet.map((v) => `« ${v} »`).join(', ')}`]
       : []),
   ];
-  const bilan = `${attendus.length} identifiant(s) dérivé(s) de ${dossiers.length} terrain(s) · ${fichiers.length} fichiers`;
+  const bilan = `${attendus.length} identifiant(s) dérivé(s) de ${dossiers.length} terrain(s) · ${fichiers.length} fichiers`
+    + ` · ${aPousser.length} message(s) et version(s) de fichier à pousser`;
   if (fuites.length || aClasser.length) {
     return { code: 1, lignes: [...fuites, ...(fuites.length && aClasser.length ? [''] : []), ...aClasser, '',
       `${fuites.length} fuite(s) · ${aClasser.length ? `${nonClasses.length} identifiant(s) à classer · ` : ''}${bilan}`, ...note] };
   }
-  return { code: 0, lignes: [`✔ aucun identifiant de terrain dans le dépôt · ${bilan}`, ...note] };
+  return { code: 0, lignes: [`✔ aucun identifiant de terrain dans le dépôt, ni dans ce qui reste à pousser · ${bilan}`, ...note] };
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
