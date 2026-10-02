@@ -334,7 +334,13 @@ jobs:
           node-version: '24'
 
       - run: flutter pub get
-      - run: flutter build apk --debug
+      # 🔴 605 — LA COMMANDE QUE LA CONFIG DÉCLARE, pas une ligne écrite en dur :
+      # variante, `--dart-define` obligatoires, script maison. En dur, le build les
+      # ignorait, et un projet dont l'app lève sans injection voyait tous ses
+      # flows tomber. `--no-fvm` : l'action ci-dessus a déjà posé la version
+      # épinglée dans le PATH.
+      - name: Construire le binaire que la config déclare
+        run: eval "$($ARGUS config --print-build-cmd --platform=android --no-fvm)"
 
       # ⚠️ VERSION NON ÉPINGLÉE, et ce n'est pas anodin ici : le runner LIT les
       # formats de sortie de Maestro (`commands.json`, `manifest.json`, la place
@@ -513,7 +519,13 @@ jobs:
         with:
           node-version: '24'
       - run: flutter pub get
-      - run: flutter build ios --debug --simulator
+      # 🔴 605 — LA COMMANDE QUE LA CONFIG DÉCLARE, pas une ligne écrite en dur :
+      # variante, `--dart-define` obligatoires, script maison. En dur, le build les
+      # ignorait, et un projet dont l'app lève sans injection voyait tous ses
+      # flows tomber. `--no-fvm` : l'action ci-dessus a déjà posé la version
+      # épinglée dans le PATH.
+      - name: Construire le binaire que la config déclare
+        run: eval "$($ARGUS config --print-build-cmd --platform=ios --no-fvm)"
       # ⚠️ VERSION NON ÉPINGLÉE, et ce n'est pas anodin ici : le runner LIT les
       # formats de sortie de Maestro (`commands.json`, `manifest.json`, la place
       # de `metadata.status`), relevés sur 2.8.0 et cités à sept endroits du

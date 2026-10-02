@@ -17288,6 +17288,54 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
 });
 
 
+// ── 605 · le workflow livré construit par la commande que la config déclare ──
+//
+// Il construisait par `flutter build apk --debug` (et `ios --debug --simulator`)
+// écrits en dur, et `$ARGUS run` installait ce binaire : variante, `--dart-define`
+// obligatoires, script maison — rien de la config n'y était repris. Le même
+// défaut que le Makefile avait (run 9), revenu par la CI : le garde balaie donc
+// TOUT le workflow, comme celui du Makefile balaie toutes ses recettes.
+test('605 — le workflow livré construit par la commande que la config déclare, sans fvm', () => {
+  const wf = workflowSansCommentaires();
+  const enDur = wf.split('\n').filter((l) => /\bflutter\s+build\b/.test(l));
+  assert.deepEqual(enDur, [],
+    'ces lignes du workflow livré lancent un build littéral au lieu de la commande de la config (605) :\n  '
+    + enDur.join('\n  '));
+  const jobs = jobsDuWorkflow();
+  for (const [nom, plateforme] of [['e2e-android', 'android'], ['e2e-ios', 'ios']]) {
+    const job = jobs.find((j) => j.nom === nom);
+    assert.ok(job, `le job ${nom} a disparu du workflow livré : ce garde ne lit plus rien`);
+    assert.ok(job.bloc.includes(
+      `run: eval "$($ARGUS config --print-build-cmd --platform=${plateforme} --no-fvm)"`),
+    `le job ${nom} ne construit pas par la commande ${plateforme} de la config, sans fvm (605)`);
+  }
+
+  // `--no-fvm` dans les DEUX sens, sur un projet épinglé par FVM. Hermétique,
+  // comme le garde du 213 : un PATH sans `adb`, donc aucune ABI ciblée.
+  const scaffold = join(RACINE, 'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile');
+  const dossier = mkdtempSync(join(tmpdir(), 'argus-605-'));
+  const vide = mkdtempSync(join(tmpdir(), 'argus-605-sans-adb-'));
+  try {
+    cpSync(join(scaffold, 'scripts'), join(dossier, 'scripts'), { recursive: true });
+    const yaml = readFileSync(join(scaffold, 'argus.mobile.yaml'), 'utf8');
+    const commande = 'flutter build apk --debug --flavor dev --dart-define=API_URL=https://exemple.test';
+    const configure = yaml.replace(/^ {2}androidBuildCmd: .*$/m, `  androidBuildCmd: ${commande}`);
+    assert.notEqual(configure, yaml, 'la clé androidBuildCmd a changé de forme : la commande configurée n\'est plus posée');
+    writeFileSync(join(dossier, 'argus.mobile.yaml'), configure);
+    writeFileSync(join(dossier, '.fvmrc'), '{\n  "flutter": "3.32.0"\n}\n');
+    const lancer = (/** @type {string[]} */ args) =>
+      execFileSync(process.execPath, ['scripts/argus/config.mjs', ...args],
+        { cwd: dossier, encoding: 'utf8', env: { ...process.env, PATH: vide } }).trim();
+    assert.equal(lancer(['--print-build-cmd', '--platform=android']), `fvm ${commande}`,
+      'sur un projet épinglé, la commande locale doit passer par fvm — sinon `--no-fvm` ne prouve rien');
+    assert.equal(lancer(['--print-build-cmd', '--platform=android', '--no-fvm']), commande,
+      '`--no-fvm` garde la commande de la config mais doit retirer le préfixe que la CI ne peut pas lancer (605)');
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+    rmSync(vide, { recursive: true, force: true });
+  }
+});
+
 // ── 606 · les cibles de l'étage 1 relaient TEST_ARGS à `flutter test` ──
 //
 // `ARGS` ne va qu'au moteur : un cadrage qui exige `--dart-define=SENTRY_DSN=`

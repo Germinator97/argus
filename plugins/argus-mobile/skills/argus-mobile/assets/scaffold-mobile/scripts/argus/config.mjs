@@ -2870,7 +2870,12 @@ function main() {
     const brute = projectBuildCmd(config, platform);
     const udid = arg('--device') || (platform === 'android' ? defaultAndroidDevice(config).udid : '');
     const ciblee = platform === 'ios' ? brute : buildCmdForAbi(brute, deviceAbi(udid));
-    console.log(flutterCommand(ciblee));
+    // 🔴 605 — `--no-fvm`, pour la CI : l'action Flutter y pose la version
+    // épinglée dans le PATH, et un `fvm` y désignerait un outil absent. Le
+    // workflow livré construit désormais par CETTE commande, plus par une ligne
+    // écrite en dur qui ignorait variante, `--dart-define` et script maison.
+    const sansFvm = process.argv.slice(2).includes('--no-fvm');
+    console.log(sansFvm ? flutterCommandIn(ciblee, false) : flutterCommand(ciblee));
     return;
   }
 

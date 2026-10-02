@@ -4092,6 +4092,24 @@ MUTATIONS = [
      "config.artifacts?.baselines ?? '.maestro/_baselines', spec.id);",
      "config.artifacts?.baselines ?? '.maestro/_baselines');"),
 
+    # ── 605 · le workflow livré construit par la commande de la config ──
+    # Le job Android retourne au build écrit en dur.
+    ("ci", "605 · le job Android rebuild en dur",
+     "        run: eval \"$($ARGUS config --print-build-cmd --platform=android --no-fvm)\"",
+     "        run: flutter build apk --debug"),
+    # Le job iOS garde le préfixe fvm, absent du runner.
+    ("ci", "605 bis · le job iOS garde fvm",
+     "--print-build-cmd --platform=ios --no-fvm)",
+     "--print-build-cmd --platform=ios)"),
+    # Le job iOS demande la commande Android.
+    ("ci", "605 ter · le job iOS demande la commande Android",
+     "--print-build-cmd --platform=ios --no-fvm)",
+     "--print-build-cmd --platform=android --no-fvm)"),
+    # La config ignore --no-fvm : la CI recevrait un fvm qu'elle n'a pas.
+    ("config", "605 quater · la config ignore --no-fvm",
+     "    const sansFvm = process.argv.slice(2).includes('--no-fvm');",
+     "    const sansFvm = false;"),
+
     # ── 606 · les cibles de l'étage 1 relaient TEST_ARGS ──
     # Les gardes d'étage 1 ne relaient plus TEST_ARGS.
     ("makefile", "606 · argus-guards ne relaie plus TEST_ARGS",
