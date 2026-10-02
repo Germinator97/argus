@@ -151,7 +151,7 @@ ce qui se **parse**. `make argus-lint` le détecte en deux secondes, sans device
 | `make argus-perf` | démarrage à froid/à chaud, mémoire, taille |
 | `make argus-a11y` | cibles tactiles et labels, sur l'écran affiché |
 | `make argus-sec` | MASVS statique (sources + binaire) |
-| `make argus-sca` | CVE des dépendances Dart et natives |
+| `make argus-sca` | CVE des dépendances Dart, et Gradle si le projet a ses lockfiles — `Podfile.lock` n'est pas lu, et le rapport le dit |
 | `make argus-report` | agrège tout en `argus-mobile-report/report.html` |
 | `make argus` | tout, dans l'ordre |
 

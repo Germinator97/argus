@@ -154,7 +154,7 @@ dire AVANT d'installer** — pas au moment où trois dimensions se rapportent
 |---|---|---|
 | parcours fonctionnels (flows Maestro) | ✔ | ✔ |
 | régression visuelle | ✔ | ✔ |
-| dépendances vulnérables (SCA) | ✔ | ✔ — le scan ne lit pas la plateforme |
+| dépendances vulnérables (SCA) | ✔ Dart ; Gradle s'il a ses lockfiles | ✔ Dart — `Podfile.lock` n'est pas lu, le rapport le dit |
 | sécurité, **sources** | ✔ manifeste Android | ✔ `Info.plist` |
 | sécurité, **binaire** | ✔ APK (`unzip` + `aapt2`) | ✖ — passe par MobSF sur l'IPA |
 | performance, **taille** | ✔ | ✔ via `build.iosScan` |

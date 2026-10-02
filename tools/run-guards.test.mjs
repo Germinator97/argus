@@ -131,7 +131,7 @@ import { compteursDeLaPage, compteursDuDepot, dernierPointDu, dernierRunDesEtalo
 import { EXCEPTIONS, fuitesDe } from './artefact-confidentialite.mjs';
 import { litterauxDart } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/config.mjs';
 import { masquerSecrets, secretsVides } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/run.mjs';
-import { bandOf, cvssOf, findingsFromOsv, pubOutdatedCommand } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sca.mjs';
+import { bandOf, cvssOf, findingDeCouverture, findingsFromOsv, nonCouverts, pubOutdatedCommand } from '../plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/scripts/argus/sca.mjs';
 
 /** Trois émulateurs, dans un ordre de démarrage qui n'est pas celui qu'on croit. */
 const TROIS_EMULATEURS = [
@@ -4645,7 +4645,10 @@ test('ce que le SKILL promet par plateforme est ce que les scripts font', () => 
   // inutile. Ce qui TOURNE sur iOS doit y figurer comme tel.
   assert.match(tableau, /parcours fonctionnels[^|]*\| ✔ \| ✔/, 'les flows tournent sur iOS, le tableau doit le dire');
   assert.match(tableau, /régression visuelle \| ✔ \| ✔/, 'le visuel tourne sur iOS, le tableau doit le dire');
-  assert.match(tableau, /dépendances vulnérables \(SCA\) \| ✔ \| ✔/, 'le SCA ne lit pas la plateforme');
+  // 610 — ✔ des deux côtés pour les dépendances Dart, et la réserve native dite :
+  // « Dart et natives » promettait ce que le scanner ne lit pas.
+  assert.match(tableau, /dépendances vulnérables \(SCA\) \| ✔[^|]*\| ✔[^|]*Podfile\.lock[^|]*\|/,
+    'le tableau ne dit plus que le SCA tourne des deux côtés, ou plus que `Podfile.lock` n\'est pas lu (610)');
 
   // Et la promesse du `description` ne doit pas rouvrir ce qu'on vient de fermer.
   const entete = skill.slice(0, skill.indexOf('\n---', 4));
@@ -17282,6 +17285,57 @@ test('512 — la CI ne neutralise pas l\'étape qui porte le verdict', () => {
   }
 });
 
+
+// ── 610 · le SCA dit ce qu'il ne lit pas ──
+//
+// `make argus-sca` promettait « les dépendances Dart et natives » : il ne lisait
+// jamais `Podfile.lock` — osv-scanner ne sait pas le lire, mesuré sur 2.5.1 —,
+// et Gradle seulement si le projet génère ses lockfiles, ce qu'Android ne fait
+// pas par défaut. Le run 109 : « aucune CVE dans `pubspec.lock` … Le
+// `Podfile.lock` n'est pas scanné » — un zéro qui se lisait comme une couverture.
+test('610 — le SCA nomme chaque source native qu\'il ne lit pas, et la page le voit', () => {
+  const projet = mkdtempSync(join(tmpdir(), 'argus-sca-610-'));
+  try {
+    // Un projet aux deux plateformes, sans lockfile Gradle : deux trous.
+    mkdirSync(join(projet, 'ios'));
+    writeFileSync(join(projet, 'ios', 'Podfile.lock'), 'PODS:\n');
+    mkdirSync(join(projet, 'android'));
+    const deux = nonCouverts(projet, [join(projet, 'pubspec.lock')]);
+    assert.deepEqual(deux.map((m) => m.path), ['ios/Podfile.lock', 'android/'],
+      'un projet iOS + Android sans lockfile Gradle : le SCA doit nommer les DEUX sources qu\'il ne lit pas (610)');
+    const constat = findingDeCouverture(deux);
+    assert.equal(constat?.id, 'QAM-SCA-COVERAGE');
+    assert.equal(constat?.severity, 'info', 'un trou de couverture se DIT, il ne fait pas échouer le gate');
+    assert.match(String(constat?.actual), /ios\/Podfile\.lock/);
+    assert.match(String(constat?.actual), /android\//);
+
+    // L'autre moitié : ce qui est lu ne se signale pas.
+    const gradle = join(projet, 'android', 'app', 'gradle.lockfile');
+    rmSync(join(projet, 'ios'), { recursive: true, force: true });
+    assert.deepEqual(nonCouverts(projet, [join(projet, 'pubspec.lock'), gradle]), [],
+      'un projet Android qui a ses lockfiles Gradle est lu : rien à signaler (610)');
+    assert.equal(findingDeCouverture([]), null);
+  } finally {
+    rmSync(projet, { recursive: true, force: true });
+  }
+
+  // Le CÂBLAGE : une fonction juste que `main` n'appelle pas ne dit rien.
+  const src = readFileSync(join(SCRIPTS_DIR, 'sca.mjs'), 'utf8');
+  assert.match(src, /cve\.notCovered = nonCouverts\(root, lockfiles\)/,
+    'sca.mjs ne calcule plus ce qu\'il ne lit pas : `sca.json` se tait à nouveau (610)');
+  assert.match(src, /if \(couverture\) findings\.push\(couverture\)/,
+    'sca.mjs ne porte plus le trou jusqu\'à la page : le zéro s\'y affiche seul (610)');
+
+  // Et les deux sites qui promettaient : ils disent ce qui n'est pas lu.
+  const lisezMoi = readFileSync(join(RACINE,
+    'plugins/argus-mobile/skills/argus-mobile/assets/scaffold-mobile/ARGUS-MOBILE.md'), 'utf8');
+  const ligne = lisezMoi.split('\n').find((l) => l.startsWith('| `make argus-sca` |'));
+  assert.ok(ligne, 'la ligne de `make argus-sca` a disparu d\'ARGUS-MOBILE.md : ce garde ne lit plus rien');
+  assert.doesNotMatch(ligne, /Dart et natives/,
+    'ARGUS-MOBILE.md promet à nouveau « Dart et natives » : `Podfile.lock` n\'est pas lu (610)');
+  assert.match(ligne, /Podfile\.lock/,
+    'ARGUS-MOBILE.md ne dit plus que `Podfile.lock` n\'est pas lu (610)');
+});
 
 // ── 609 · l'empreinte de cadrage vit dans le dossier de l'appareil ──
 //

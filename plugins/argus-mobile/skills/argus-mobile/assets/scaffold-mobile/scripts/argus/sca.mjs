@@ -2,10 +2,11 @@
 // ARGUS:CADRE — au plugin : `install-mobile.sh --update` remplace ce fichier.
 // @ts-check
 /**
- * Argus Mobile — SCA (dépendances Dart et natives)
+ * Argus Mobile — SCA (dépendances Dart, et natives là où le scanner les lit)
  * ------------------------------------------------------------------------
  * CVE des paquets via osv-scanner sur `pubspec.lock` et sur les lockfiles
- * Gradle s'il y en a, plus l'état de fraîcheur via `pub outdated`.
+ * Gradle s'il y en a, plus l'état de fraîcheur via `pub outdated`. Ce qui
+ * n'est PAS lu — `Podfile.lock`, Gradle sans lockfile — est dit (610).
  * Écrit argus-mobile-report/sca.json.
  *
  * osv-scanner est OPTIONNEL. Absent, la partie CVE est rapportée `skipped` avec
@@ -104,6 +105,56 @@ function findLockfiles(root) {
     }
   }
   return found;
+}
+
+/**
+ * Ce que le scan ne lit PAS, et pourquoi (610).
+ *
+ * `make argus-sca` promettait « les dépendances Dart et natives » : un zéro se
+ * lisait comme une couverture qu'il n'avait pas. `Podfile.lock` n'était jamais
+ * lu — osv-scanner ne sait pas le lire (« could not determine extractor »,
+ * MESURÉ sur 2.5.1, contre-épreuve `pubspec.lock` vue) —, et Gradle ne l'est
+ * que si le projet génère ses lockfiles, ce qu'Android ne fait pas par défaut.
+ * Même principe qu'un scanner absent : le silence se distingue, il ne se tait
+ * pas.
+ * @param {string} root @param {string[]} lockfiles @returns {Array<{path:string, why:string}>}
+ */
+export function nonCouverts(root, lockfiles) {
+  /** @type {Array<{path:string, why:string}>} */
+  const manques = [];
+  if (existsSync(join(root, 'ios', 'Podfile.lock'))) {
+    manques.push({
+      path: 'ios/Podfile.lock',
+      why: 'osv-scanner ne sait pas lire les Podfile.lock : les dépendances CocoaPods ne sont pas scannées',
+    });
+  }
+  const gradle = lockfiles.some((f) => /gradle\.lockfile$/.test(f));
+  if (existsSync(join(root, 'android')) && !gradle) {
+    manques.push({
+      path: 'android/',
+      why: 'aucun lockfile Gradle — Android ne les génère pas par défaut : les dépendances natives Android ne sont pas scannées',
+    });
+  }
+  return manques;
+}
+
+/**
+ * Le constat qui porte les sources non lues jusqu'à la page : sans lui, le zéro
+ * de `sca.json` s'y affiche seul. `null` quand tout est lu.
+ * @param {Array<{path:string, why:string}>} manques @returns {any}
+ */
+export function findingDeCouverture(manques) {
+  if (manques.length === 0) return null;
+  return {
+    id: 'QAM-SCA-COVERAGE',
+    title: `${manques.length} source(s) de dépendances natives non scannée(s)`,
+    dimension: 'security', severity: 'info',
+    expected: 'toutes les dépendances du projet scannées',
+    actual: manques.map((m) => `${m.path} — ${m.why}`).join(' · '),
+    suggestedFix: 'Les dépendances natives se vérifient à la main tant que le scanner ne les lit pas. '
+      + 'Côté Android, `dependencyLocking` génère les lockfiles Gradle que le scan sait lire.',
+    status: 'open',
+  };
 }
 
 /**
@@ -241,6 +292,9 @@ function main() {
   let findings = [];
   /** @type {any} */
   const cve = { scanned: false, why: '', lockfiles: lockfiles.map((f) => relative(root, f)) };
+  // 610 — ce qui n'est pas lu se DIT, en sortie, dans `sca.json` et sur la page.
+  cve.notCovered = nonCouverts(root, lockfiles);
+  for (const m of cve.notCovered) warn(`non scanné : ${m.path} — ${m.why}`);
 
   if (!scanner.present) {
     cve.why = missingToolMessage('osv-scanner');
@@ -261,6 +315,8 @@ function main() {
       }
       findings.push(...findingsFromOsv(results, root, failOn));
     }
+    const couverture = findingDeCouverture(cve.notCovered);
+    if (couverture) findings.push(couverture);
   }
 
   const outdated = pubOutdated();

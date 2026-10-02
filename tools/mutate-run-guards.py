@@ -4060,6 +4060,24 @@ MUTATIONS = [
      "      - uses: actions/setup-node@v7\n        with:\n          node-version: '24'\n\n      - run: flutter pub get",
      "      - uses: actions/setup-node@v7\n\n      - run: flutter pub get"),
 
+    # ── 610 · le SCA dit ce qu'il ne lit pas ──
+    # Le Podfile.lock ne se signale plus : le zéro redevient une couverture.
+    ("sca", "610 · le Podfile.lock ne se signale plus",
+     "  if (existsSync(join(root, 'ios', 'Podfile.lock'))) {",
+     "  if (false && existsSync(join(root, 'ios', 'Podfile.lock'))) {"),
+    # Le trou est calculé mais ne monte plus jusqu'à la page.
+    ("sca", "610 bis · le trou ne monte plus jusqu'à la page",
+     "    if (couverture) findings.push(couverture);",
+     "    void couverture;"),
+    # ARGUS-MOBILE.md repromet « Dart et natives ».
+    ("readme", "610 ter · ARGUS-MOBILE.md repromet les dépendances natives",
+     "| `make argus-sca` | CVE des dépendances Dart, et Gradle si le projet a ses lockfiles — `Podfile.lock` n'est pas lu, et le rapport le dit |",
+     "| `make argus-sca` | CVE des dépendances Dart et natives |"),
+    # Le tableau du SKILL retombe sur « ✔ | ✔ » sans réserve.
+    ("skill", "610 quater · le tableau du SKILL retire la réserve native",
+     "| ✔ Dart — `Podfile.lock` n'est pas lu, le rapport le dit |",
+     "| ✔ — le scan ne lit pas la plateforme |"),
+
     # ── 609 · l'empreinte de cadrage vit dans le dossier de l'appareil ──
     # ARGUS-MOBILE.md resitue l'empreinte à la racine des références : le défaut du run 109.
     ("readme", "609 · ARGUS-MOBILE.md resitue l'empreinte à la racine",
